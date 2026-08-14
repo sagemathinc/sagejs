@@ -28,11 +28,16 @@ const {
 
 const ROOT = resolve(__dirname, "..");
 const EXPECTED_PYTHON = "python-runtime-ok";
-const PLATFORM = "linux-x64";
+const SUPPORTED_ARCHITECTURES = new Set(["arm64", "x64"]);
+if (!SUPPORTED_ARCHITECTURES.has(process.arch)) {
+  throw new Error(`unsupported Linux release architecture ${process.arch}`);
+}
+const PLATFORM = `linux-${process.arch}`;
 const DISTRIBUTION_NAME = `sagejs-${PLATFORM}`;
 const PACKAGE_VERSION = require("../package.json").version;
 const SYSTEM_PATH = "/usr/bin:/bin";
 const BUILD_RECEIPTS = Object.freeze({
+  baseline: "linux-baseline-receipt.json",
   math: "sagejs-build-manifest.json",
   python: "sagepython-build-manifest.json",
 });
@@ -62,9 +67,15 @@ function withReceiptDefaults(options) {
 }
 
 function parseArguments(argv) {
+  const baselineDirectory = join(
+    ROOT,
+    "build",
+    process.arch === "x64" ? "linux-baseline" : `linux-baseline-${PLATFORM}`,
+  );
   const result = {
-    math: join(ROOT, "build", "sea", "sagejs"),
-    python: join(ROOT, "build", "sea", "sagepython"),
+    baselineReceipt: join(baselineDirectory, "linux-baseline-receipt.json"),
+    math: join(baselineDirectory, "sea", "sagejs"),
+    python: join(baselineDirectory, "sea", "sagepython"),
     mathReceipt: undefined,
     pythonReceipt: undefined,
     output: undefined,
@@ -74,7 +85,9 @@ function parseArguments(argv) {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--math") result.math = resolve(argv[++index] ?? "");
+    if (argument === "--baseline-receipt") {
+      result.baselineReceipt = resolve(argv[++index] ?? "");
+    } else if (argument === "--math") result.math = resolve(argv[++index] ?? "");
     else if (argument === "--python") {
       result.python = resolve(argv[++index] ?? "");
     } else if (argument === "--math-receipt") {
@@ -204,6 +217,44 @@ function artifactMetadata(filename) {
   return result;
 }
 
+function validateBaselineReceipt(options, receipts) {
+  const baseline = JSON.parse(readFileSync(options.baselineReceipt, "utf8"));
+  assert.equal(baseline.schema, "sagejs.linux-baseline-receipt-v1");
+  assert.equal(baseline.platform, PLATFORM);
+  assert.equal(baseline.sourceCommit, receipts.math.source.commit);
+  assert.equal(baseline.sourceCommit, receipts.python.source.commit);
+  assert.equal(baseline.nodeVersion, receipts.math.toolchain.seaNode.version);
+  assert.equal(baseline.nodeVersion, receipts.python.toolchain.seaNode.version);
+  assert.equal(
+    baseline.inspection?.aggregate?.dependencies.some(
+      (dependency) => dependency.toLowerCase() === "libatomic.so.1",
+    ),
+    false,
+    "Linux baseline inputs depend on libatomic.so.1",
+  );
+  const expected = {
+    "sea/sagejs": options.math,
+    "sea/sagejs-build-manifest.json": options.mathReceipt,
+    "sea/sagepython": options.python,
+    "sea/sagepython-build-manifest.json": options.pythonReceipt,
+  };
+  assert.equal(
+    baseline.seaArtifacts?.schema,
+    "sagejs.linux-baseline-sea-artifacts-v1",
+  );
+  assert.equal(baseline.seaArtifacts?.sourceCommit, baseline.sourceCommit);
+  assert.equal(baseline.seaArtifacts?.nodeVersion, baseline.nodeVersion);
+  assert.equal(baseline.seaArtifacts?.platform, baseline.platform);
+  for (const [name, filename] of Object.entries(expected)) {
+    const recorded = baseline.seaArtifacts.artifacts?.[name];
+    assert.ok(recorded, `baseline receipt omits ${name}`);
+    const observed = artifactMetadata(filename);
+    assert.equal(observed.sha256, recorded.sha256, `${name} hash mismatch`);
+    assert.equal(observed.bytes, recorded.bytes, `${name} size mismatch`);
+  }
+  return baseline;
+}
+
 function visitFiles(directory, prefix = "") {
   const result = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -251,7 +302,7 @@ function validateExecutableReceipts(options) {
   ]) {
     assert.equal(receipt.sagejsVersion, PACKAGE_VERSION, `${name} version receipt mismatch`);
     assert.equal(receipt.target.platform, "linux", `${name} is not a Linux build`);
-    assert.equal(receipt.target.arch, "x64", `${name} is not an x64 build`);
+    assert.equal(receipt.target.arch, process.arch, `${name} architecture mismatch`);
     assert.equal(
       receipt.capabilities?.artifact?.nativeMathematics,
       nativeMathematics,
@@ -282,7 +333,10 @@ function validateExecutableReceipts(options) {
     null,
     "sagepython receipt unexpectedly declares a mathematics profile",
   );
-  return { math, python };
+  const baseline = options.baselineReceipt
+    ? validateBaselineReceipt(options, { math, python })
+    : null;
+  return { baseline, math, python };
 }
 
 function validateEmbeddedExecutable(executable, expectedReceipt) {
@@ -427,6 +481,7 @@ function publishValidatedReleaseCandidate(
 
 function packageReleaseCandidate(options, internals = {}) {
   options = withReceiptDefaults(options);
+  assert.ok(options.baselineReceipt, "authoritative Linux baseline receipt is required");
   const receipts = validateExecutableReceipts(options);
   const embeddedValidator = internals.validateEmbeddedExecutable ||
     validateEmbeddedExecutable;
@@ -442,6 +497,7 @@ function packageReleaseCandidate(options, internals = {}) {
       [options.python, join(distribution, "sagepython"), 0o755],
       [options.mathReceipt, join(distribution, BUILD_RECEIPTS.math), 0o644],
       [options.pythonReceipt, join(distribution, BUILD_RECEIPTS.python), 0o644],
+      [options.baselineReceipt, join(distribution, BUILD_RECEIPTS.baseline), 0o644],
       [join(ROOT, "LICENSE"), join(distribution, "LICENSE"), 0o644],
       [join(ROOT, "README.md"), join(distribution, "README.md"), 0o644],
       [join(ROOT, "DISTRIBUTION.md"), join(distribution, "DISTRIBUTION.md"), 0o644],
@@ -453,6 +509,10 @@ function packageReleaseCandidate(options, internals = {}) {
     // report one file while shipping another.
     assert.deepEqual(readBuildManifest(join(distribution, BUILD_RECEIPTS.math)), receipts.math);
     assert.deepEqual(readBuildManifest(join(distribution, BUILD_RECEIPTS.python)), receipts.python);
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(distribution, BUILD_RECEIPTS.baseline), "utf8")),
+      receipts.baseline,
+    );
     for (const entry of readdirSync(join(ROOT, "licenses"), {
       withFileTypes: true,
     })) {
@@ -515,6 +575,7 @@ function extractReleaseCandidate(archive, directory) {
     "LICENSE",
     "README.md",
     "SHA256SUMS",
+    BUILD_RECEIPTS.baseline,
     BUILD_RECEIPTS.math,
     BUILD_RECEIPTS.python,
     "licenses",
@@ -677,12 +738,17 @@ function assertEmptyTemporary(usage, label) {
 function validateReleaseCandidate(options, internals = {}) {
   options = withReceiptDefaults(options);
   assert.equal(process.platform, "linux", "Linux release validation requires Linux");
-  assert.equal(process.arch, "x64", "Linux release validation requires x64");
+  assert.equal(
+    SUPPORTED_ARCHITECTURES.has(process.arch),
+    true,
+    "Linux release validation requires x64 or arm64",
+  );
   for (const filename of [
     options.math,
     options.python,
     options.mathReceipt,
     options.pythonReceipt,
+    options.baselineReceipt,
   ]) {
     assert.ok(filename, "SEA artifacts and receipts are required");
     assert.ok(lstatSync(filename).isFile(), `${filename} is not a regular file`);
@@ -704,6 +770,9 @@ function validateReleaseCandidate(options, internals = {}) {
     const pythonExecutable = join(distribution, "sagepython");
     const fixtures = writeFixtures(workspace);
     const embeddedReceipts = {
+      baseline: JSON.parse(
+        readFileSync(join(distribution, BUILD_RECEIPTS.baseline), "utf8"),
+      ),
       math: readBuildManifest(join(distribution, BUILD_RECEIPTS.math)),
       python: readBuildManifest(join(distribution, BUILD_RECEIPTS.python)),
     };
@@ -1015,6 +1084,7 @@ module.exports = {
   runInstaller,
   stageAtomicWrite,
   treeUsage,
+  validateBaselineReceipt,
   validateExecutableReceipts,
   validateEmbeddedExecutable,
   validateReleaseCandidate,

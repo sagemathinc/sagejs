@@ -91,8 +91,35 @@ function writeReceipts(directory, nativeMathProfile = undefined) {
   return { mathReceipt, pythonReceipt };
 }
 
+function writeBaselineReceipt(directory, files) {
+  const baselineReceipt = join(directory, "linux-baseline-receipt.json");
+  const artifacts = Object.fromEntries([
+    ["sea/sagejs", files.math],
+    ["sea/sagejs-build-manifest.json", files.mathReceipt],
+    ["sea/sagepython", files.python],
+    ["sea/sagepython-build-manifest.json", files.pythonReceipt],
+  ].map(([name, filename]) => [name, artifactMetadata(filename)]));
+  writeFileSync(baselineReceipt, `${JSON.stringify({
+    inspection: { aggregate: { dependencies: [] } },
+    nodeVersion: "26.7.0",
+    platform: "linux-x64",
+    schema: "sagejs.linux-baseline-receipt-v1",
+    seaArtifacts: {
+      artifacts,
+      nodeVersion: "26.7.0",
+      platform: "linux-x64",
+      schema: "sagejs.linux-baseline-sea-artifacts-v1",
+      sourceCommit: COMMIT,
+    },
+    sourceCommit: COMMIT,
+  }, null, 2)}\n`);
+  return baselineReceipt;
+}
+
 test("Linux release arguments have explicit artifact and sample controls", () => {
   const parsed = parseArguments([
+    "--baseline-receipt",
+    "./baseline-receipt.json",
     "--math",
     "./math",
     "--python",
@@ -108,6 +135,7 @@ test("Linux release arguments have explicit artifact and sample controls", () =>
     "--keep",
   ]);
   assert.match(parsed.math, /\/math$/);
+  assert.match(parsed.baselineReceipt, /\/baseline-receipt\.json$/);
   assert.match(parsed.python, /\/python$/);
   assert.match(parsed.mathReceipt, /\/math-receipt\.json$/);
   assert.match(parsed.pythonReceipt, /\/python-receipt\.json$/);
@@ -213,6 +241,11 @@ test("Linux release archive is deterministic and installer-compatible", () => {
       chmodSync(filename, 0o755);
     }
     const receipts = writeReceipts(directory);
+    receipts.baselineReceipt = writeBaselineReceipt(directory, {
+      math,
+      python,
+      ...receipts,
+    });
     const options = {
       math,
       python,
@@ -405,6 +438,11 @@ test("installer rejects corruption without damage and atomically upgrades", () =
     );
     writeFileSync(python, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
     const receipts = writeReceipts(directory);
+    receipts.baselineReceipt = writeBaselineReceipt(directory, {
+      math,
+      python,
+      ...receipts,
+    });
     const candidate = packageReleaseCandidate(
       {
         math,
@@ -493,6 +531,11 @@ test("installer rejects corruption without damage and atomically upgrades", () =
       { mode: 0o755 },
     );
     writeFileSync(python, "#!/bin/sh\necho upgraded-python\n", { mode: 0o755 });
+    receipts.baselineReceipt = writeBaselineReceipt(directory, {
+      math,
+      python,
+      ...receipts,
+    });
     packageReleaseCandidate(
       {
         math,
