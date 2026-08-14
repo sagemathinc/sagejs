@@ -19,6 +19,13 @@ Each SEA executable embeds Node.js 26.7.0. Its complete upstream license and
 bundled third-party terms are in `NODE-26.7.0-LICENSE.txt`; the inventory binds
 the exact builder authority for each platform. Linux builders use the pinned
 Node source archive; macOS and Windows use the pinned official binary archive.
+Node's Temporal implementation statically embeds 46 vendored Rust crates whose
+terms were not enumerated by the top-level Node license. Every `LICENSE*` file
+from the exact pinned source archive is retained, with crate identity and source
+digest, in `NODE-26.7.0-RUST-CRATES-LICENSES.txt`. Linux builds use an exact
+official Rust 1.86.0 toolchain solely to compile Node; it is not redistributed.
+Its source authorities and complete Rust/Cargo terms are recorded in
+`RUST-1.86.0-LICENSES.txt`.
 
 The optional graph addon statically links the GPL-2.0-or-later igraph 1.0.1
 library and its bundled Bliss implementation; see `IGRAPH-GPL-NOTICE.md`.

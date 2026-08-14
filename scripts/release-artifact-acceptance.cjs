@@ -23,6 +23,7 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { basename, dirname, join, relative, resolve, sep } = require("node:path");
+const { unzipSync } = require("fflate");
 
 const {
   canonicalJson,
@@ -34,12 +35,32 @@ const { compareVersions } = require("./release-native-binary-inspector.cjs");
 const RECEIPT_SCHEMA = "sagejs.release-artifact-acceptance-v1";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const APPLE_TEAM_ID = "BVF94G2MB4";
+const MAXIMUM_ZIP_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024;
+const RUST_TOOLCHAIN_AUTHORITIES = Object.freeze({
+  "linux-arm64": Object.freeze({
+    filename: "rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+    sha256: "2b97d1e09a1d7fdbed748332879318ee7f41c008837f87ccb44ec045df0a8a1b",
+    target: "aarch64-unknown-linux-gnu",
+    url: "https://static.rust-lang.org/dist/2025-04-03/" +
+      "rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+    version: "1.86.0",
+  }),
+  "linux-x64": Object.freeze({
+    filename: "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    sha256: "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
+    target: "x86_64-unknown-linux-gnu",
+    url: "https://static.rust-lang.org/dist/2025-04-03/" +
+      "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    version: "1.86.0",
+  }),
+});
 const TARGETS = Object.freeze({
   "linux-x64": {
     arch: "x64",
     archiveExtension: ".tar.xz",
     executableNames: ["sagejs", "sagepython"],
     format: "elf",
+    metadataNames: ["linux-baseline-receipt.json"],
     platform: "linux",
   },
   "linux-arm64": {
@@ -47,6 +68,7 @@ const TARGETS = Object.freeze({
     archiveExtension: ".tar.xz",
     executableNames: ["sagejs", "sagepython"],
     format: "elf",
+    metadataNames: ["linux-baseline-receipt.json"],
     platform: "linux",
   },
   "macos-arm64": {
@@ -54,6 +76,7 @@ const TARGETS = Object.freeze({
     archiveExtension: ".zip",
     executableNames: ["sagejs", "sagepython"],
     format: "macho",
+    metadataNames: [],
     platform: "darwin",
   },
   "windows-x64": {
@@ -61,6 +84,7 @@ const TARGETS = Object.freeze({
     archiveExtension: ".zip",
     executableNames: ["sagejs.exe", "sagepython.exe"],
     format: "pe",
+    metadataNames: ["UNSIGNED-WINDOWS.txt", "release.json"],
     platform: "win32",
   },
 });
@@ -92,9 +116,10 @@ const WINDOWS_SYSTEM_DEPENDENCIES = new Set([
 const REQUIRED_THIRD_PARTY_IDS = Object.freeze([
   "cortex-compute-engine", "cpython-path-modules", "fflas-ffpack", "fflate", "ffpoly", "flint",
   "givaro", "gmp", "igraph", "libsodium", "libzmq", "m4ri", "mpc", "mpfr",
-  "mpmath", "node", "npm-production-closure", "numpy-ts", "odlyzko-zeta-data",
+  "mpmath", "node", "node-rust-crates", "npm-production-closure", "numpy-ts", "odlyzko-zeta-data",
   "openblas", "playwright-core",
-  "plotly.js", "pyjeon-standard-library", "pylang-lineage", "smalljac", "tree-sitter-macaulay2",
+  "plotly.js", "pyjeon-standard-library", "pylang-lineage", "rust-toolchain", "smalljac",
+  "tree-sitter-macaulay2",
   "tree-sitter-magma", "tree-sitter-matlab", "tree-sitter-python",
   "tree-sitter-sage", "tree-sitter-wolfram", "unicode-namealiases-data", "web-tree-sitter",
   "zeromq.js",
@@ -308,13 +333,16 @@ function zipArchiveMembers(filename) {
     const nameLength = bytes.readUInt16LE(offset + 28);
     const extraLength = bytes.readUInt16LE(offset + 30);
     const commentLength = bytes.readUInt16LE(offset + 32);
+    const memberDisk = bytes.readUInt16LE(offset + 34);
     const external = bytes.readUInt32LE(offset + 38);
     const localOffset = bytes.readUInt32LE(offset + 42);
     const end = offset + 46 + nameLength + extraLength + commentLength;
     const nameBytes = bytes.subarray(offset + 46, offset + 46 + nameLength);
     if (
       end > bytes.length ||
-      (flags & 0x9) !== 0 ||
+      memberDisk !== 0 ||
+      (flags & 0x1) !== 0 ||
+      ![0, 8].includes(compression) ||
       compressedSize === 0xffffffff ||
       uncompressedSize === 0xffffffff ||
       localOffset === 0xffffffff ||
@@ -338,24 +366,43 @@ function zipArchiveMembers(filename) {
     const localNameStart = localOffset + 30;
     const dataStart = localNameStart + localNameLength + localExtraLength;
     const dataEnd = dataStart + compressedSize;
+    const streamed = (flags & 0x8) !== 0;
+    let recordEnd = dataEnd;
+    if (streamed) {
+      if (
+        localCrc !== 0 || localCompressedSize !== 0 || localUncompressedSize !== 0 ||
+        dataEnd + 16 > directoryOffset ||
+        bytes.readUInt32LE(dataEnd) !== 0x08074b50 ||
+        bytes.readUInt32LE(dataEnd + 4) !== crc ||
+        bytes.readUInt32LE(dataEnd + 8) !== compressedSize ||
+        bytes.readUInt32LE(dataEnd + 12) !== uncompressedSize
+      ) throw new Error(`invalid streamed ZIP descriptor for ${name}`);
+      recordEnd += 16;
+    }
     validateZipExtra(bytes, localNameStart + localNameLength, localExtraLength, name);
     if (
       localFlags !== flags ||
       localCompression !== compression ||
-      localCrc !== crc ||
-      localCompressedSize !== compressedSize ||
-      localUncompressedSize !== uncompressedSize ||
+      (!streamed && localCrc !== crc) ||
+      (!streamed && localCompressedSize !== compressedSize) ||
+      (!streamed && localUncompressedSize !== uncompressedSize) ||
       localNameLength !== nameLength ||
       dataEnd > directoryOffset ||
       !bytes.subarray(localNameStart, localNameStart + localNameLength).equals(nameBytes)
     ) throw new Error(`local/central ZIP metadata mismatch for ${name}`);
-    localRanges.push({ end: dataEnd, start: localOffset });
+    localRanges.push({ end: recordEnd, start: localOffset });
     const unixMode = (madeBy >> 8) === 3 ? external >>> 16 : 0;
     const fileType = unixMode & 0xf000;
     const directory = name.endsWith("/") || fileType === 0x4000 ||
       ((madeBy >> 8) !== 3 && (external & 0x10) !== 0);
     const regular = !directory && (fileType === 0 || fileType === 0x8000);
-    members.push({ directory, name, regular });
+    members.push({
+      compressedSize,
+      directory,
+      name,
+      regular,
+      uncompressedSize,
+    });
     offset = end;
   }
   if (offset !== directoryOffset + directorySize) {
@@ -395,7 +442,41 @@ function preflightArchive(archive, target) {
   const members = descriptor.archiveExtension === ".zip"
     ? zipArchiveMembers(archive)
     : tarArchiveMembers(archive);
-  return validateArchiveMembers(members, `sagejs-${target}`);
+  const result = validateArchiveMembers(members, `sagejs-${target}`);
+  if (descriptor.archiveExtension === ".zip") {
+    const uncompressedBytes = members.reduce(
+      (sum, member) => sum + member.uncompressedSize,
+      0,
+    );
+    if (
+      !Number.isSafeInteger(uncompressedBytes) ||
+      uncompressedBytes > MAXIMUM_ZIP_UNCOMPRESSED_BYTES
+    ) throw new Error("ZIP archive expands beyond the release acceptance bound");
+  }
+  return result;
+}
+
+function extractWindowsZip(archive, destination, expectedMembers) {
+  const expanded = unzipSync(new Uint8Array(readFileSync(archive)));
+  const names = Object.keys(expanded);
+  const observedMembers = names.map((name) =>
+    validateArchiveMember(name, "sagejs-windows-x64")
+  ).sort();
+  assert.deepEqual(
+    observedMembers,
+    expectedMembers,
+    "Windows ZIP extractor and byte-level preflight see different members",
+  );
+  for (const name of names.sort()) {
+    const normalized = name.endsWith("/") ? name.slice(0, -1) : name;
+    const filename = join(destination, ...normalized.split("/"));
+    if (name.endsWith("/")) {
+      mkdirSync(filename, { recursive: true });
+    } else {
+      mkdirSync(dirname(filename), { recursive: true });
+      writeFileSync(filename, expanded[name], { flag: "wx", mode: 0o644 });
+    }
+  }
 }
 
 function extractArchive(archive, target, destination) {
@@ -403,12 +484,14 @@ function extractArchive(archive, target, destination) {
   if (!basename(archive).endsWith(descriptor.archiveExtension)) {
     throw new Error(`${target} archive must end in ${descriptor.archiveExtension}`);
   }
-  preflightArchive(archive, target);
+  const members = preflightArchive(archive, target);
   mkdirSync(destination);
   if (descriptor.platform === "darwin") {
     runChecked("ditto", ["-x", "-k", archive, destination], {
       label: "macOS ZIP extraction",
     });
+  } else if (descriptor.platform === "win32") {
+    extractWindowsZip(archive, destination, members);
   } else {
     runChecked("tar", ["-xf", archive, "-C", destination], {
       label: "release archive extraction",
@@ -449,6 +532,7 @@ function verifyInternalChecksums(distribution, descriptor) {
     "sagejs-build-manifest.json",
     "sagepython-build-manifest.json",
     ...descriptor.executableNames,
+    ...(descriptor.metadataNames || []),
   ];
   for (const name of required) {
     if (!files.includes(name)) throw new Error(`archive is missing ${name}`);
@@ -512,6 +596,202 @@ function validateBuildReceipts(distribution, options) {
   assert.equal(python.capabilities?.artifact?.kind, "single-executable");
   assert.equal(python.capabilities?.artifact?.nativeMathematics, false);
   return { math, python };
+}
+
+function canonicalJsonFile(filename, label) {
+  const contents = readFileSync(filename, "utf8");
+  let value;
+  try {
+    value = JSON.parse(contents);
+  } catch (error) {
+    throw new Error(`cannot parse ${label}: ${error.message}`);
+  }
+  if (contents !== `${JSON.stringify(value, null, 2)}\n`) {
+    throw new Error(`${label} is not canonical generated JSON`);
+  }
+  return { contents, value };
+}
+
+function artifactMetadata(filename) {
+  const status = statSync(filename);
+  return {
+    bytes: status.size,
+    filename: basename(filename),
+    mode: (status.mode & 0o777).toString(8).padStart(3, "0"),
+    sha256: sha256File(filename),
+  };
+}
+
+function validateLinuxBaselineMetadata(distribution, receipts, options) {
+  const filename = join(distribution, "linux-baseline-receipt.json");
+  const { value: baseline } = canonicalJsonFile(filename, "Linux baseline receipt");
+  const source = receipts.math.toolchain?.seaNode?.source;
+  const rustToolchain = RUST_TOOLCHAIN_AUTHORITIES[options.target];
+  if (
+    !exactKeys(baseline, [
+      "authority", "buildImage", "compiler", "configureArguments", "containerEngine",
+      "inspection", "nativeMathProfile", "nodeSource", "platform", "pnpmDistribution",
+      "policy", "requestedSourceRef", "runtimeImage", "runtimeProbe", "rustToolchain",
+      "schema", "seaArtifacts", "seaProbe", "sourceCommit",
+    ]) ||
+    baseline.schema !== "sagejs.linux-baseline-receipt-v1" ||
+    baseline.platform !== options.target ||
+    baseline.requestedSourceRef !== options["expected-commit"] ||
+    baseline.sourceCommit !== options["expected-commit"] ||
+    !exactKeys(baseline.nodeSource, ["filename", "sha256", "url", "version"]) ||
+    !source
+  ) throw new Error("Linux baseline receipt has invalid release identity");
+  assert.deepEqual(baseline.nodeSource, source, "Linux baseline/SEA Node authority differs");
+  assert.deepEqual(
+    receipts.python.toolchain?.seaNode?.source,
+    source,
+    "the two SEA receipts have different Node authority",
+  );
+  assert.equal(receipts.math.toolchain?.seaNode?.version, source.version);
+  assert.equal(receipts.python.toolchain?.seaNode?.version, source.version);
+  assert.deepEqual(
+    baseline.nativeMathProfile,
+    receipts.math.toolchain?.nativeMathProfile,
+    "Linux native mathematics profile differs from the SEA receipt",
+  );
+  assert.equal(receipts.python.toolchain?.nativeMathProfile, null);
+  assert.equal(baseline.runtimeProbe?.observation?.node, `v${source.version}`);
+  assert.equal(baseline.runtimeProbe?.observation?.temporal, "object");
+  assert.equal(baseline.runtimeProbe?.exitStatus, 0);
+  assert.equal(baseline.seaProbe?.stdout, "sagejs-linux-sea-ok");
+  assert.equal(baseline.configureArguments.includes("--v8-enable-temporal-support"), true);
+  assert.deepEqual(baseline.rustToolchain, rustToolchain, "Linux Rust authority differs");
+  assert.deepEqual(
+    receipts.math.toolchain?.seaNode?.rustToolchain,
+    rustToolchain,
+    "mathematics SEA Rust authority differs",
+  );
+  assert.deepEqual(
+    receipts.python.toolchain?.seaNode?.rustToolchain,
+    rustToolchain,
+    "Python SEA Rust authority differs",
+  );
+  if (
+    !exactKeys(
+      baseline.seaArtifacts,
+      [
+        "artifacts", "executables", "nodeSource", "platform", "rustToolchain", "schema",
+        "sourceCommit",
+      ],
+    ) ||
+    baseline.seaArtifacts?.schema !== "sagejs.linux-baseline-sea-artifacts-v1" ||
+    baseline.seaArtifacts?.platform !== options.target ||
+    baseline.seaArtifacts?.sourceCommit !== options["expected-commit"]
+  ) throw new Error("Linux baseline SEA artifact identity differs");
+  assert.deepEqual(
+    baseline.seaArtifacts.nodeSource,
+    source,
+    "Linux baseline SEA artifact Node authority differs",
+  );
+  assert.deepEqual(
+    baseline.seaArtifacts.rustToolchain,
+    rustToolchain,
+    "Linux baseline SEA artifact Rust authority differs",
+  );
+  const executableEvidence = (receipt) => {
+    const report = receipt.toolchain?.nativeBinaries?.report;
+    return {
+      embeddedAddonInputSetSha256: report?.inputSetSha256,
+      embeddedAddons: (report?.files || [])
+        .filter((file) => file.role === "embedded-node-addon")
+        .map((file) => ({ bytes: file.size, label: file.label, sha256: file.sha256 })),
+      manifestSource: receipt.source,
+      nativeInputReportSha256: receipt.toolchain?.nativeBinaries?.reportSha256,
+      target: receipt.target,
+    };
+  };
+  assert.deepEqual(
+    baseline.seaArtifacts.executables,
+    {
+      sagejs: executableEvidence(receipts.math),
+      sagepython: executableEvidence(receipts.python),
+    },
+    "Linux baseline executable evidence differs from build manifests",
+  );
+  const expected = {
+    "sea/sagejs": "sagejs",
+    "sea/sagejs-build-manifest.json": "sagejs-build-manifest.json",
+    "sea/sagepython": "sagepython",
+    "sea/sagepython-build-manifest.json": "sagepython-build-manifest.json",
+  };
+  assert.deepEqual(
+    Object.keys(baseline.seaArtifacts.artifacts || {}).sort(),
+    Object.keys(expected).sort(),
+    "Linux baseline SEA artifact inventory differs",
+  );
+  for (const [recordedName, archiveName] of Object.entries(expected)) {
+    const recorded = baseline.seaArtifacts.artifacts?.[recordedName];
+    if (!exactKeys(recorded, ["bytes", "filename", "mode", "sha256"])) {
+      throw new Error(`Linux baseline receipt omits ${recordedName}`);
+    }
+    assert.deepEqual(
+      recorded,
+      artifactMetadata(join(distribution, archiveName)),
+      `Linux baseline ${recordedName} differs from archive`,
+    );
+  }
+  if (!Array.isArray(baseline.inspection?.aggregate?.dependencies)) {
+    throw new Error("Linux baseline receipt has no dependency inventory");
+  }
+  if (baseline.inspection.aggregate.dependencies.some(
+    (dependency) => String(dependency).toLowerCase() === "libatomic.so.1"
+  )) throw new Error("Linux baseline receipt depends on libatomic.so.1");
+  return {
+    nodeSource: source,
+    platform: baseline.platform,
+    rustToolchain,
+    schema: baseline.schema,
+    sha256: sha256File(filename),
+    sourceCommit: baseline.sourceCommit,
+  };
+}
+
+const UNSIGNED_WINDOWS_NOTICE = [
+  "These Windows executables are not Authenticode-signed.",
+  "Verify the published SHA-256 checksum before running them.",
+  "",
+].join("\n");
+
+function validateWindowsUnsignedMetadata(distribution, options) {
+  const noticeFilename = join(distribution, "UNSIGNED-WINDOWS.txt");
+  const notice = readFileSync(noticeFilename, "utf8");
+  if (notice !== UNSIGNED_WINDOWS_NOTICE) {
+    throw new Error("Windows unsigned notice differs from the reviewed text");
+  }
+  const manifestFilename = join(distribution, "release.json");
+  const { value: manifest } = canonicalJsonFile(
+    manifestFilename,
+    "Windows unsigned release manifest",
+  );
+  if (
+    !exactKeys(manifest, ["schema", "signature", "sourceCommit", "target", "version"]) ||
+    manifest.schema !== "sagejs.windows-release-manifest-v1" ||
+    manifest.target !== "windows-x64" ||
+    manifest.version !== options["expected-version"] ||
+    manifest.sourceCommit !== options["expected-commit"] ||
+    !exactKeys(manifest.signature, ["scheme", "status"]) ||
+    manifest.signature.scheme !== "authenticode" ||
+    manifest.signature.status !== "unsigned"
+  ) throw new Error("Windows unsigned release manifest has invalid identity");
+  return {
+    manifestSha256: sha256File(manifestFilename),
+    noticeSha256: sha256File(noticeFilename),
+    signature: manifest.signature,
+  };
+}
+
+function validateTargetMetadata(distribution, receipts, options) {
+  const platform = TARGETS[options.target].platform;
+  if (platform === "linux") {
+    return validateLinuxBaselineMetadata(distribution, receipts, options);
+  }
+  if (platform === "win32") return validateWindowsUnsignedMetadata(distribution, options);
+  return null;
 }
 
 function exactKeys(value, expected) {
@@ -600,15 +880,37 @@ function validateThirdPartyInventory(distribution, receipts, options) {
         !/^https:\/\//.test(source.url || "")
       ) throw new Error(`${entry.id} has an invalid vendored source identity`);
     } else if (source.kind === "platform-build-authorities") {
-      if (!exactKeys(source, ["kind", "targets"]) || !exactKeys(source.targets, Object.keys(TARGETS))) {
+      if (
+        !exactKeys(source, ["kind", "targets"]) ||
+        source.targets === null ||
+        typeof source.targets !== "object" ||
+        Array.isArray(source.targets) ||
+        Object.keys(source.targets).length === 0 ||
+        Object.keys(source.targets).some((target) => !TARGETS[target])
+      ) {
+        throw new Error(`${entry.id} has incomplete platform build authorities`);
+      }
+      const requiredTargets = entry.id === "rust-toolchain"
+        ? Object.keys(RUST_TOOLCHAIN_AUTHORITIES)
+        : Object.keys(TARGETS);
+      if (!exactKeys(source.targets, requiredTargets)) {
         throw new Error(`${entry.id} has incomplete platform build authorities`);
       }
       for (const [target, authority] of Object.entries(source.targets)) {
         if (
-          !exactKeys(authority, ["filename", "sha256", "url", "version"]) ||
+          !exactKeys(
+            authority,
+            entry.id === "rust-toolchain"
+              ? ["filename", "sha256", "target", "url", "version"]
+              : ["filename", "sha256", "url", "version"],
+          ) ||
           authority.version !== entry.version ||
           !HASH_PATTERN.test(authority.sha256 || "") ||
-          !authority.url?.startsWith("https://nodejs.org/dist/v26.7.0/") ||
+          !/^https:\/\//.test(authority.url || "") ||
+          (entry.id === "node" &&
+            !authority.url.startsWith("https://nodejs.org/dist/v26.7.0/")) ||
+          (entry.id === "rust-toolchain" &&
+            !authority.url.startsWith("https://static.rust-lang.org/dist/2025-04-03/")) ||
           basename(new URL(authority.url).pathname) !== authority.filename ||
           !TARGETS[target]
         ) throw new Error(`${entry.id} has invalid build authority for ${target}`);
@@ -652,6 +954,26 @@ function validateThirdPartyInventory(distribution, receipts, options) {
     JSON.stringify(receipts.python.toolchain.seaNode.source) !== JSON.stringify(platformNode)
   ) {
     throw new Error("Node license inventory does not match both SEA builder receipts");
+  }
+  const rust = byId["rust-toolchain"];
+  const platformRust = rust.source.targets?.[options.target];
+  if (TARGETS[options.target].platform === "linux") {
+    if (
+      rust.version !== "1.86.0" ||
+      !platformRust ||
+      !exactKeys(platformRust, ["filename", "sha256", "target", "url", "version"]) ||
+      JSON.stringify(platformRust) !== JSON.stringify(RUST_TOOLCHAIN_AUTHORITIES[options.target]) ||
+      JSON.stringify(receipts.math.toolchain?.seaNode?.rustToolchain) !==
+        JSON.stringify(platformRust) ||
+      JSON.stringify(receipts.python.toolchain?.seaNode?.rustToolchain) !==
+        JSON.stringify(platformRust)
+    ) throw new Error("Rust license inventory does not match both Linux SEA builder receipts");
+  } else if (
+    platformRust !== undefined ||
+    receipts.math.toolchain?.seaNode?.rustToolchain !== undefined ||
+    receipts.python.toolchain?.seaNode?.rustToolchain !== undefined
+  ) {
+    throw new Error("non-Linux SEA unexpectedly declares the Linux Rust build toolchain");
   }
 
   const npmInventoryFilename = join(licenseDirectory, "NPM-PRODUCTION.json");
@@ -1138,6 +1460,7 @@ function acceptReleaseArtifact(options, internals = {}) {
     }
     const receipts = validateBuildReceipts(distribution, options);
     const thirdParty = validateThirdPartyInventory(distribution, receipts, options);
+    const targetMetadata = validateTargetMetadata(distribution, receipts, options);
     const nativeBinaries = {
       sagejs: validateNativeReceipt(receipts.math, options, "sagejs"),
       sagepython: validateNativeReceipt(receipts.python, options, "sagepython"),
@@ -1180,6 +1503,7 @@ function acceptReleaseArtifact(options, internals = {}) {
       signatures,
       source: receipts.math.source,
       target: receipts.math.target,
+      targetMetadata,
       thirdParty,
       version: receipts.math.sagejsVersion,
     };
@@ -1214,11 +1538,13 @@ if (require.main === module) {
 
 module.exports = {
   RECEIPT_SCHEMA,
+  RUST_TOOLCHAIN_AUTHORITIES,
   TARGETS,
   acceptReleaseArtifact,
   assertInstallerHasNoScripts,
   dependencyAllowed,
   extractArchive,
+  extractWindowsZip,
   isolatedEnvironment,
   parseArguments,
   peCertificateTable,
@@ -1226,6 +1552,7 @@ module.exports = {
   tarArchiveMembers,
   validateBenchmarkStatistics,
   validateBuildReceipts,
+  validateTargetMetadata,
   validateArchiveMember,
   validateArchiveMembers,
   validateNativeReceipt,
