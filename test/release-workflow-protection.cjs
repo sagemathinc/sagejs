@@ -66,6 +66,8 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
 test("macOS signs the exact immutable tested input and notarizes it", () => {
   const macosBuild = job("macos-arm64");
   const macosSign = job("sign-macos-arm64");
+  assert.match(macosBuild, /pnpm run build:zeromq:darwin/);
+  assert.match(macosBuild, /pnpm test:sea/);
   assert.match(macosBuild, /id: upload-signing-input/);
   assert.match(macosBuild, /signing-input-artifact-id:/);
   assert.match(macosSign, /environment: sagejs-signing/);
