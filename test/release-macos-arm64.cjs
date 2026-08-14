@@ -21,6 +21,9 @@ const {
   OFFICIAL_MACOS_ARM64_NODE,
   validateMacosArm64SeaNode,
 } = require("../scripts/macos-release-node-authority.cjs");
+const {
+  compareVersions,
+} = require("../scripts/release-native-binary-inspector.cjs");
 
 const root = join(__dirname, "..");
 const archive = process.env.SAGEJS_RELEASE_MACOS_ARCHIVE;
@@ -408,13 +411,14 @@ test(
       assert.equal(capabilityReport.buildReceipt.availability, "available");
       const nativeReport = capabilityReport.buildReceipt.manifest
         .toolchain.nativeBinaries.report;
+      const releaseMinimum = expectedMinimum || "13.5";
       assert.equal(
-        nativeReport.policy.maximumMinimumMacos,
-        expectedMinimum || "13.5",
+        compareVersions(nativeReport.policy.maximumMinimumMacos, releaseMinimum),
+        0,
       );
       assert.equal(
-        nativeReport.aggregate.maximumMinimumMacos,
-        expectedMinimum || "13.5",
+        compareVersions(nativeReport.aggregate.maximumMinimumMacos, releaseMinimum),
+        0,
       );
       assert.match(
         capabilityReport.buildReceipt.manifest.capabilities
