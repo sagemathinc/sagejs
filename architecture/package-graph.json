@@ -38,10 +38,19 @@
       "arch": "arm64",
       "overrides": {
         "development-cli": {
-          "normalized_median_ms": 425,
+          "normalized_median_ms": 500,
           "evidence": [
             "GitHub Actions job 94758445357: 380.1 ms normalized median",
-            "GitHub Actions job 94767636220: 387.4 ms normalized median"
+            "GitHub Actions job 94767636220: 387.4 ms normalized median",
+            "bench-arm b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5: 456.2 ms normalized median"
+          ]
+        },
+        "development-cli-empty": {
+          "normalized_median_ms": 275,
+          "evidence": [
+            "GitHub Actions job 94758445357: 215.7 ms normalized median",
+            "GitHub Actions job 94767636220: 223.8 ms normalized median",
+            "bench-arm b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5: 251.9 ms normalized median"
           ]
         }
       }
