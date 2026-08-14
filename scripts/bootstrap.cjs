@@ -168,8 +168,11 @@ function bootstrapBuildPlan() {
   return [
     {
       phase: "compiler",
-      command: "pnpm",
-      arguments: ["run", "build"],
+      command: "node",
+      arguments: [
+        "scripts/build.cjs",
+        "--without-production-native-kernels",
+      ],
     },
     {
       phase: "native",
@@ -185,6 +188,11 @@ function bootstrapBuildPlan() {
       phase: "native",
       command: "pnpm",
       arguments: ["--dir", "packages/graph", "build"],
+    },
+    {
+      phase: "native",
+      command: "pnpm",
+      arguments: ["--dir", "packages/m4ri", "build"],
     },
     {
       phase: "production",
@@ -226,8 +234,8 @@ function main(inputArguments = process.argv.slice(2)) {
   step(
     5,
     process.platform === "linux" && process.arch === "x64"
-      ? "Building FLINT, ffpoly, smalljac, igraph, and their Node addons"
-      : "Building FLINT, FFLAS/FFPACK, igraph, and their generated adapters",
+      ? "Building FLINT, FFLAS/FFPACK, ffpoly, smalljac, M4RI, and igraph"
+      : "Building FLINT, FFLAS/FFPACK, M4RI, igraph, and generated adapters",
   );
   executeBuildPhase(buildPlan, "native");
 

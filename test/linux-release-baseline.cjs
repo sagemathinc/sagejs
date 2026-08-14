@@ -95,6 +95,16 @@ test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => 
   assert.equal(witness.schema, "sagejs.linux-node-gcc-witness-v1");
   assert.equal(witness.historicalPrototype, true);
   assert.match(witness.recipeCommit, /^[0-9a-f]{40}$/);
+  const reachable = spawnSync(
+    "git",
+    ["merge-base", "--is-ancestor", witness.recipeCommit, "HEAD"],
+    { stdio: "ignore" },
+  );
+  assert.equal(
+    reachable.status,
+    0,
+    "the historical recipe commit must be reachable from the release source",
+  );
   for (const value of Object.values(witness.authority)) {
     assert.match(value.sha256, /^[0-9a-f]{64}$/);
   }

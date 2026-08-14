@@ -295,8 +295,12 @@ static inline int sagejs_fmpz_mod_polynomial_equal(
 {
     if (!sagejs_fmpz_mod_polynomial_same_modulus(left, right))
         return 0;
-    fmpz_set_ui(result, (ulong) fmpz_mod_poly_equal(
-        left->value, right->value, left->context));
+    int equal = left->value->length == right->value->length;
+    for (slong index = 0; equal && index < left->value->length; index++)
+        equal = fmpz_equal(
+            left->value->coeffs + index,
+            right->value->coeffs + index);
+    fmpz_set_ui(result, (ulong) equal);
     return 1;
 }
 

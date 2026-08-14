@@ -555,15 +555,25 @@ function buildFfpoly(source) {
   );
 }
 
+function smalljacMakeOptions(
+  nativePrefix = prefix,
+  buildOptions = mathBuildOptions,
+) {
+  const include = `-I${join(nativePrefix, "include")}`;
+  return [
+    `CFLAGS=${buildOptions.optionalX64Accelerators.cflags.join(" ")}`,
+    `CPPFLAGS=${include}`,
+    `INCLUDES=${include}`,
+  ];
+}
+
 function buildSmalljac(source) {
-  const cflags = mathBuildOptions.optionalX64Accelerators.cflags.join(" ");
   run(
     "make",
     [
       `-j${jobs}`,
       "libsmalljac.a",
-      `CFLAGS=${cflags}`,
-      `INCLUDES=-I${join(prefix, "include")}`,
+      ...smalljacMakeOptions(),
     ],
     { cwd: source }
   );
@@ -668,4 +678,5 @@ module.exports = {
   openBlasMakeOptions,
   receiptExpectation,
   reusableBuildReceipt,
+  smalljacMakeOptions,
 };

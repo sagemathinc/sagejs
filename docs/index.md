@@ -9,6 +9,7 @@ mathematics, native to JavaScript and designed for both humans and agents.
 
 Start with:
 
+- [Sage functionality roadmap](../SAGE-FUNCTIONALITY-ROADMAP.md)
 - [Documentation strategy](../DOCUMENTATION.md)
 - [DocSpec v1](../DOCSPEC.md)
 - [Generated API reference](reference/api.md)

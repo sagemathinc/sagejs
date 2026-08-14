@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.linux-node-gcc-witness-v1",
   "historicalPrototype": true,
-  "recipeCommit": "4a62114d2d9cb7d213f422f2694e42ca975a38c7",
+  "recipeCommit": "7f1740b45f47ce3000404b3b63d783a639fda85b",
   "authority": {
     "containerfile": {
       "sha256": "d91720e5e6674435895b29aaf8964f784ca8cd50377812f46bd8b4eaceab566f"

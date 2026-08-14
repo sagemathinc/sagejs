@@ -360,6 +360,18 @@ function validationCommandsForFiles(files) {
   const has = (prefix) => files.some((filename) => filename.startsWith(prefix));
   const matches = (pattern) => files.some((filename) => pattern.test(filename));
 
+  // A long-lived worktree can retain an installed generated adapter after its
+  // private dependency prefix has been cleaned. Restore or rebuild native
+  // packages before the ordinary compiler build tries to reconcile those
+  // adapters. The package builders establish compiler prerequisites
+  // themselves, so this order is also valid in a fresh worktree.
+  if (has("packages/flint/")) {
+    add("pnpm", "parallel:cache", "--", "prepare", "--package", "flint");
+  }
+  if (has("packages/graph/")) {
+    add("pnpm", "parallel:cache", "--", "prepare", "--package", "graph");
+  }
+
   if (has("src/") || has("tools/") || has("scripts/")) add("pnpm", "build");
   if (
     has("architecture/") || has("ARCHITECTURE.md") || has("AGENTS.md") ||
@@ -379,11 +391,9 @@ function validationCommandsForFiles(files) {
     add("pnpm", "test:integration");
   }
   if (has("packages/flint/")) {
-    add("pnpm", "parallel:cache", "--", "prepare", "--package", "flint");
     add("pnpm", "test:native");
   }
   if (has("packages/graph/")) {
-    add("pnpm", "parallel:cache", "--", "prepare", "--package", "graph");
     add("pnpm", "test:native");
   }
   if (has("packages/flint-wasm/")) add("pnpm", "test:wasm");

@@ -206,7 +206,6 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(
     validationCommandsForFiles(["packages/flint/src/p1.c"]),
     [
-      ["pnpm", "architecture:check"],
       [
         "pnpm",
         "parallel:cache",
@@ -215,7 +214,25 @@ test("changed-file checks rebuild native code before testing it", () => {
         "--package",
         "flint",
       ],
+      ["pnpm", "architecture:check"],
       ["pnpm", "test:native"],
+    ],
+  );
+  assert.deepEqual(
+    validationCommandsForFiles([
+      "tools/native-kernel/compiler.cjs",
+      "packages/flint/scripts/build-deps.cjs",
+    ]).slice(0, 2),
+    [
+      [
+        "pnpm",
+        "parallel:cache",
+        "--",
+        "prepare",
+        "--package",
+        "flint",
+      ],
+      ["pnpm", "build"],
     ],
   );
   assert.deepEqual(validationCommandsForFiles(["DOCUMENTATION.md"]), [
