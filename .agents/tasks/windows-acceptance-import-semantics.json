@@ -126,10 +126,20 @@
       "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
       "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.489,
+      "started_at": "2026-08-14T13:23:29.921Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "win32-x64"
     }
   ],
   "handoff": {
-    "summary": "Final artifact acceptance now proves Windows PE imports per production file rather than trusting an aggregate dependency name. Every embedded-node-addon must delay-load node.exe and must not import it eagerly; exactly one executable-template must use the production sea/node-template label and must not import node.exe. Labels and dependencies are unique under Windows case folding, and the aggregate dependency set is recomputed exactly from canonical per-file ordinary and delayed imports before node.exe receives its narrow contextual allowance. MSVCP140.dll, VCRUNTIME140.dll, and VCRUNTIME140_1.dll remain forbidden. Adversarial report-shaped tests cover eager, missing, mixed, cross-addon, forged aggregate, absent/duplicate/mislabeled/wrong-role template, and case-fold duplicate evidence while the complete acceptance suite preserves archive checksum, ZIP security, license, metadata, and signing gates. Independent source review approved exact f92e0b8edb4afca2b2cebba72cd63f3b88e00593.",
+    "summary": "Final artifact acceptance now proves Windows PE imports per production file rather than trusting an aggregate dependency name. Every embedded-node-addon must delay-load node.exe and must not import it eagerly; exactly one executable-template must use the production sea/node-template label and must not import node.exe. Labels and dependencies are unique under Windows case folding, and the aggregate dependency set is recomputed exactly from canonical per-file ordinary and delayed imports before node.exe receives its narrow contextual allowance. MSVCP140.dll, VCRUNTIME140.dll, and VCRUNTIME140_1.dll remain forbidden. Adversarial report-shaped tests cover eager, missing, mixed, cross-addon, forged aggregate, absent/duplicate/mislabeled/wrong-role template, and case-fold duplicate evidence while the complete acceptance suite preserves archive checksum, ZIP security, license, metadata, and signing gates. Independent source review approved exact f92e0b8edb4afca2b2cebba72cd63f3b88e00593. The exact focused suite passes 20/20 under official Node 26.7.0 on both Linux x64 and native Windows x64.",
     "risks": [
       "This is source validation authority, not a final Windows artifact receipt. The frozen Windows candidate must still be rebuilt with the separate static-CRT policy and pass full archive acceptance.",
       "The initial default pnpm test:changed compared with an older origin/main, selected 178 inherited release and mathematics files, then failed unrelated production-kernel, optional-native-capability, timing, and concurrent-load tests in this fresh isolated worktree. The explicit task-base changed gate, claimed acceptance suite, architecture, portable, and strict gates all pass on exact f92e0b8.",
