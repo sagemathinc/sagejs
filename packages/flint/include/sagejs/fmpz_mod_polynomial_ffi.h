@@ -557,8 +557,8 @@ static inline int sagejs_fmpz_mod_polynomial_factor_resource(
         fmpz_mod_ctx_modulus(source->context));
     fmpz_mod_poly_factor_init(result->value, result->context);
     fmpz_init(result->unit);
-    fmpz_mod_poly_get_coeff_fmpz(result->unit, source->value,
-        fmpz_mod_poly_degree(source->value, source->context), source->context);
+    fmpz_set(result->unit,
+        source->value->coeffs + source->value->length - 1);
     fmpz_mod_poly_t monic;
     fmpz_mod_poly_init(monic, result->context);
     fmpz_mod_poly_make_monic(monic, source->value, result->context);
