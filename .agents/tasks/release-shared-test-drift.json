@@ -4,7 +4,7 @@
   "id": "release-shared-test-drift",
   "title": "Release Shared Test Drift",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Update shared release tests to assert the exact platform-specific FFLAS cache provenance emitted when a custom FLINT prefix is selected",
   "base_commit": "18f5475a82297a2066462b732388406832a3449f",
@@ -62,15 +62,43 @@
       "commit": "18f5475a82297a2066462b732388406832a3449f",
       "workspace_fingerprint": "2dd332bd6acdf5df61bd9da4c4407183545ec669f385f61cccaf228183ac8aa5",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.416,
+      "started_at": "2026-08-14T11:28:42.042Z",
+      "commit": "503f3a04cca7a2b9e53b7689530d57a2da64c6c5",
+      "workspace_fingerprint": "4ccaefe5bf0c4240b4bb901aec3341bcdc1fe70f0df104cbe775eb2092a0a1d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.87,
+      "started_at": "2026-08-14T11:29:17.901Z",
+      "commit": "503f3a04cca7a2b9e53b7689530d57a2da64c6c5",
+      "workspace_fingerprint": "4ccaefe5bf0c4240b4bb901aec3341bcdc1fe70f0df104cbe775eb2092a0a1d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.696,
+      "started_at": "2026-08-14T11:29:43.506Z",
+      "commit": "503f3a04cca7a2b9e53b7689530d57a2da64c6c5",
+      "workspace_fingerprint": "4ccaefe5bf0c4240b4bb901aec3341bcdc1fe70f0df104cbe775eb2092a0a1d9",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "The custom-FLINT-prefix regression now preserves Linux's aggregate FFLAS skip while requiring the ordered fflas-dependencies and fflas-addon cache misses on Darwin and Windows, matching the existing production dependency model without loosening IDs, statuses, or ordering.",
-    "risks": [
-      "Linux exercises the shared-prefix branch locally; the release macOS job supplies real-host coverage of the independent FFLAS branch."
-    ],
+    "summary": "The custom-FLINT-prefix regression now preserves Linux's aggregate FFLAS skip while requiring the ordered fflas-dependencies and fflas-addon cache misses on Darwin and Windows, matching the existing production dependency model without loosening IDs, statuses, or ordering. Independent review approved source commit 503f3a04cca7a2b9e53b7689530d57a2da64c6c5. A clean physical Apple M1 Max checkout of that exact commit passed both focused cases under Node 26.7.0 (2/2, 0 failures), exercising the independent FFLAS branch on Darwin.",
+    "risks": [],
     "next_steps": [
-      "Run the focused test on real macOS arm64 and integrate only after independent review."
+      "Integrate this exact completed lane into the frozen release baseline."
     ]
   }
 }
