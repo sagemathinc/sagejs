@@ -24,7 +24,7 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "required",
     "macos-arm64": "required"
   },
@@ -103,10 +103,20 @@
       "commit": "3795fb3249e2b0fc576b00592a1c6670bb15e750",
       "workspace_fingerprint": "d5c2072066a2afc2ae2789b79ee384afd97f2a85d4d422a08695b31c8db4d234",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=native compiler self-host bypasses an installed platform launcher|native cache cleanup rejects broad, symlinked, and unexpected roots|native cache broad-root matching follows Windows path casing test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.946,
+      "started_at": "2026-08-14T12:24:42.000Z",
+      "commit": "3795fb3249e2b0fc576b00592a1c6670bb15e750",
+      "workspace_fingerprint": "d5c2072066a2afc2ae2789b79ee384afd97f2a85d4d422a08695b31c8db4d234",
+      "platform": "windows-x64"
     }
   ],
   "handoff": {
-    "summary": "Native-cache maintenance now accepts a canonical ancestor alias such as macOS /var to /private/var only when requested and expected roots resolve to the same physical root. It lstat-rejects a symlink or non-directory at the declared final root, applies broad-root checks with Windows-aware path identity, and returns the physical root before all descendant traversal and deletion. The installed platform package assertion likewise compares Node's canonical resolution. Exact source 3795fb3249e2b0fc576b00592a1c6670bb15e750 passed independent source review, Linux focused 3/3 and full 48/48 tests, release-cache lifecycle 2/2, all required lane checks, and physical Apple M1 Max focused 3/3 plus release-cache lifecycle 2/2 after a clean build.",
+    "summary": "Native-cache maintenance now accepts a canonical ancestor alias such as macOS /var to /private/var only when requested and expected roots resolve to the same physical root. It lstat-rejects a symlink or non-directory at the declared final root, applies broad-root checks with Windows-aware path identity, and returns the physical root before all descendant traversal and deletion. The installed platform package assertion likewise compares Node's canonical resolution. Exact source 3795fb3249e2b0fc576b00592a1c6670bb15e750 passed independent source review, Linux x64 focused 3/3 and full 48/48 tests, release-cache lifecycle 2/2, all required lane commands, physical Apple M1 Max focused 3/3 plus release-cache lifecycle 2/2 after a clean build, and native Windows x64 focused 2/2 with the POSIX symlink fixture correctly skipped. Linux arm64 is not separately applicable: this path-only change has POSIX versus Windows behavior but no architecture-dependent branch or native code.",
     "risks": [],
     "next_steps": [
       "Integrate this exact reviewed closure before reopening test/parallel-development.cjs for the queued Windows portability fix."
