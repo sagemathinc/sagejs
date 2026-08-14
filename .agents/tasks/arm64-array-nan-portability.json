@@ -4,7 +4,7 @@
   "id": "arm64-array-nan-portability",
   "title": "Make array NaN byte tests architecture-neutral",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Validate exact float array bytes without assuming an architecture-dependent NaN sign bit",
   "base_commit": "ff05b2b7bf203ead711c3601a805907804a0133f",
@@ -65,12 +65,12 @@
     }
   ],
   "handoff": {
-    "summary": "Exclude the architecture-dependent NaN sign/payload bytes from fixed CPython vectors while retaining exact byte assertions for every finite and infinite value, exact raw round trips including NaN, byteswap round trips, and explicit math.isnan semantics. The focused test passes on Linux x64 and native Linux arm64 at ff05b2b7.",
+    "summary": "Exclude the architecture-dependent NaN sign/payload bytes from fixed CPython vectors while retaining exact byte assertions for every finite and infinite value, exact raw round trips including NaN, byteswap round trips, and explicit math.isnan semantics. The focused test passes on Linux x64 and native Linux arm64, and the independently reviewed change is integrated into the release authority.",
     "risks": [
       "The fixed vectors deliberately no longer constrain a NaN sign bit because IEEE 754 does not assign that bit semantic meaning."
     ],
     "next_steps": [
-      "Integrate this focused portability fix into the consolidated release source."
+      "Retain the focused array test in the ordinary unit tier on every supported architecture."
     ]
   }
 }
