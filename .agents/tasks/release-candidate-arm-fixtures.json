@@ -4,7 +4,7 @@
   "id": "release-candidate-arm-fixtures",
   "title": "Portable Linux release-candidate fixtures",
   "lane": "distribution",
-  "status": "active",
+  "status": "review",
   "owner": "linux-arm64-release",
   "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
   "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
@@ -42,11 +42,26 @@
       "commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
       "workspace_fingerprint": "dc032a9429d671370122c25385e9e258826130348967ceb3b71b4c8c773bcadc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "ssh bench-arm cd /home/user/sagejs-worktrees/release-candidate-arm-fixtures && /home/user/node-official-26.7.0.Q6DufW/node-v26.7.0-linux-arm64/bin/node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.385,
+      "started_at": "2026-08-14T13:23:40.227Z",
+      "commit": "58517e728f72ea114d32f91c01148d2cd4f15f3d",
+      "workspace_fingerprint": "d451f17841305a4291144da6003c9366ded72758d5ee998d44f6248f6c26a658",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Linux release-candidate fixtures now derive the receipt target, official Rust authority, archive/checksum basename, readiness marker, and installer archive name from the supported host architecture. The suite retains literal x64 ratchets and adds literal arm64 ratchets. All 11 focused tests pass on both local Linux x64 and native Linux arm64 at exact commit 58517e728f72ea114d32f91c01148d2cd4f15f3d.",
+    "risks": [
+      "The parallel runner records the invoking host as linux-x64 for the SSH validation receipt; the recorded command and captured test output identify the native bench-arm execution explicitly.",
+      "The broad pnpm test:changed run was stopped after unrelated optional-native-adapter failures; its unit tier passed 445/445 before those integration failures. The claimed one-file suite passed independently on both architectures."
+    ],
+    "next_steps": [
+      "Integrate commit 58517e728f72ea114d32f91c01148d2cd4f15f3d into the shared release baseline and let the native macOS arm64 release-source job exercise the same architecture-aware fixtures."
+    ]
   }
 }
