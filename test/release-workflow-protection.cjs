@@ -89,18 +89,33 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
 test("macOS signs the exact immutable tested input and notarizes it", () => {
   const macosBuild = job("macos-arm64");
   const macosSign = job("sign-macos-arm64");
+  assert.match(macosBuild, /runs-on: blacksmith-6vcpu-macos-15/);
+  assert.match(macosSign, /runs-on: macos-15/);
+  assert.doesNotMatch(macosSign, /runs-on: blacksmith-/);
   assert.match(macosBuild, /pnpm run build:zeromq:darwin/);
   assert.match(macosBuild, /pnpm test:sea/);
   assert.match(macosBuild, /id: upload-signing-input/);
   assert.match(macosBuild, /signing-input-artifact-id:/);
+  assert.match(
+    macosBuild,
+    /shasum -a 256 \\\n\s+sagejs sagejs-build-manifest\.json \\\n\s+sagepython sagepython-build-manifest\.json/,
+  );
+  assert.match(
+    macosBuild,
+    /tar -cf \.\.\/signing-input\/tested-sea\.tar \\\n\s+sagejs sagejs-build-manifest\.json \\\n\s+sagepython sagepython-build-manifest\.json/,
+  );
   assert.match(macosSign, /environment: sagejs-signing/);
   assert.match(
     macosSign,
     /artifact-ids: \$\{\{ needs\.macos-arm64\.outputs\.signing-input-artifact-id \}\}/,
   );
   assert.match(macosSign, /shasum -a 256 -c tested-sea\.tar\.sha256/);
-  assert.match(macosSign, /\$'sagejs\\nsagepython'/);
+  assert.match(
+    macosSign,
+    /\$'sagejs\\nsagejs-build-manifest\.json\\nsagepython\\nsagepython-build-manifest\.json'/,
+  );
   assert.match(macosSign, /Unexpected or duplicate tested SEA tar member/);
+  assert.match(macosSign, /shasum -a 256 -c \.\.\/signing-input\/sea\.sha256/);
   assert.match(macosSign, /pnpm release:macos -- --skip-build/);
   assert.match(macosSign, /id: upload-release/);
   assert.match(macosSign, /release-artifact-digest:/);
@@ -149,6 +164,21 @@ test("stable publication is GitHub-only, explicit, immutable, and fail-closed", 
   assert.doesNotMatch(publish, /--clobber|--generate-notes/);
   assert.match(publish, /--draft=false --latest/);
   assert.doesNotMatch(publish, /pnpm publish|npm publish|NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.match(
+    publish,
+    /\[\[ "\$TAG" =~ \^v\(0\|\[1-9\]\[0-9\]\*\)\\\./,
+  );
+  assert.match(
+    publish,
+    /printf '# Sage\.js %s\\n\\n' "\$TAG" > publication\/release-notes\.md/,
+  );
+  assert.match(
+    publish,
+    /cat >> publication\/release-notes\.md <<'EOF'/,
+  );
+  assert.doesNotMatch(publish, /release-notes\.md <<EOF/);
+  assert.match(publish, /native-mathematics `sagejs`/);
+  assert.match(publish, /adjacent `\.sha256` files/);
 });
 
 test("every action that can influence release bytes is immutable", () => {

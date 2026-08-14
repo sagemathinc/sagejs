@@ -128,8 +128,10 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
   node scripts/build-zeromq-darwin.cjs
   pnpm test:sea
 else
-  [[ -x build/sea/sagejs && -x build/sea/sagepython ]] || {
-    echo "--skip-build requires build/sea/sagejs and sagepython" >&2
+  [[ -x build/sea/sagejs && -x build/sea/sagepython && \
+      -f build/sea/sagejs-build-manifest.json && \
+      -f build/sea/sagepython-build-manifest.json ]] || {
+    echo "--skip-build requires both SEA executables and build manifests" >&2
     exit 2
   }
 fi
@@ -152,6 +154,10 @@ if [[ $UNSIGNED -eq 0 ]]; then
   mkdir -p "$PAYLOAD/usr/local/bin"
 fi
 cp build/sea/sagejs build/sea/sagepython "$DIST/"
+cp \
+  build/sea/sagejs-build-manifest.json \
+  build/sea/sagepython-build-manifest.json \
+  "$DIST/"
 cp LICENSE README.md DISTRIBUTION.md "$DIST/"
 cp licenses/* "$DIST/licenses/"
 
@@ -186,6 +192,15 @@ FACTOR_OUTPUT="$(printf 'factor(2026)\n' | "$DIST/sagejs")"
   echo "sagejs failed its native factorization smoke test" >&2
   exit 1
 }
+
+(
+  cd "$DIST"
+  find . -type f ! -path ./SHA256SUMS -print | LC_ALL=C sort | sed 's#^\./##' |
+    while IFS= read -r filename; do
+      shasum -a 256 "$filename"
+    done > SHA256SUMS
+  shasum -a 256 -c SHA256SUMS
+)
 
 ditto -c -k --keepParent "$DIST" "$ARCHIVE"
 (

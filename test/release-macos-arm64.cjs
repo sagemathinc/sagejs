@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const {
   existsSync,
   mkdtempSync,
@@ -12,7 +13,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { basename, join, resolve } = require("node:path");
+const { basename, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { performance } = require("node:perf_hooks");
@@ -45,6 +46,27 @@ function signatureDetails(executable) {
   });
   assert.equal(result.status, 0, result.stderr);
   return `${result.stdout}\n${result.stderr}`;
+}
+
+function filesRecursively(directory) {
+  const files = [];
+  function visit(current) {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const filename = join(current, entry.name);
+      if (entry.isDirectory()) visit(filename);
+      else if (entry.isFile()) {
+        files.push(relative(directory, filename).split(sep).join("/"));
+      } else {
+        assert.fail(`release distribution contains a non-regular entry: ${filename}`);
+      }
+    }
+  }
+  visit(directory);
+  return files.sort();
+}
+
+function sha256(filename) {
+  return createHash("sha256").update(readFileSync(filename)).digest("hex");
 }
 
 function loadCommandRpaths(output) {
@@ -93,6 +115,22 @@ test(
     assert.match(result.stdout, /--unsigned/);
     assert.match(result.stdout, /no Developer ID signature/);
     assert.match(result.stdout, /not publishable/);
+  },
+);
+
+test(
+  "the macOS release packages tested manifests and a closed checksum inventory",
+  () => {
+    const source = readFileSync(
+      join(root, "scripts", "release-macos.sh"),
+      "utf8",
+    );
+    assert.match(source, /-f build\/sea\/sagejs-build-manifest\.json/);
+    assert.match(source, /-f build\/sea\/sagepython-build-manifest\.json/);
+    assert.match(source, /build\/sea\/sagejs-build-manifest\.json/);
+    assert.match(source, /build\/sea\/sagepython-build-manifest\.json/);
+    assert.match(source, /find \. -type f ! -path \.\/SHA256SUMS/);
+    assert.match(source, /shasum -a 256 -c SHA256SUMS/);
   },
 );
 
@@ -188,6 +226,71 @@ test(
       const entries = readdirSync(extraction);
       assert.deepEqual(entries, [basename(archive, ".zip")]);
       const distribution = join(extraction, entries[0]);
+      assert.deepEqual(readdirSync(distribution).sort(), [
+        "DISTRIBUTION.md",
+        "LICENSE",
+        "README.md",
+        "SHA256SUMS",
+        "licenses",
+        "sagejs",
+        "sagejs-build-manifest.json",
+        "sagepython",
+        "sagepython-build-manifest.json",
+      ]);
+      assert.ok(
+        sourceRoot,
+        "release source root is required for artifact identity checks",
+      );
+      assert.deepEqual(
+        readdirSync(join(distribution, "licenses")).sort(),
+        readdirSync(join(sourceRoot, "licenses")).sort(),
+      );
+      for (const manifest of [
+        "sagejs-build-manifest.json",
+        "sagepython-build-manifest.json",
+      ]) {
+        assert.deepEqual(
+          readFileSync(join(distribution, manifest)),
+          readFileSync(join(sourceRoot, "build", "sea", manifest)),
+          `${manifest} changed after the protected signing input was restored`,
+        );
+      }
+
+      const checksumFilename = join(distribution, "SHA256SUMS");
+      const checksumEntries = readFileSync(checksumFilename, "utf8")
+        .trimEnd()
+        .split("\n")
+        .map((line) => {
+          const match = line.match(/^([0-9a-f]{64})  ([^\0]+)$/);
+          assert.ok(match, `invalid SHA256SUMS line: ${line}`);
+          const member = match[2];
+          assert.equal(
+            member.startsWith("/"),
+            false,
+            `absolute checksum member: ${member}`,
+          );
+          assert.equal(
+            member.split("/").includes(".."),
+            false,
+            `escaping checksum member: ${member}`,
+          );
+          return { digest: match[1], member };
+        });
+      const expectedChecksumMembers = filesRecursively(distribution).filter(
+        (filename) => filename !== "SHA256SUMS",
+      );
+      assert.deepEqual(
+        checksumEntries.map(({ member }) => member),
+        expectedChecksumMembers,
+      );
+      for (const { digest, member } of checksumEntries) {
+        assert.equal(
+          sha256(join(distribution, member)),
+          digest,
+          `checksum mismatch: ${member}`,
+        );
+      }
+
       const sagejs = join(distribution, "sagejs");
       const sagepython = join(distribution, "sagepython");
       for (const executable of [sagejs, sagepython]) {

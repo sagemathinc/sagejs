@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-release-manifest-transport",
+  "title": "Mac release manifest transport",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Carry both exact SEA build manifests through protected macOS signing and package them with an internally verified SHA256SUMS inventory",
+  "base_commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
+  "claims": [
+    "scripts/release-macos.sh",
+    ".github/workflows/ci.yml",
+    "test/release-macos-arm64.cjs",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact signing-input member and digest regression",
+      "Exact ZIP member and internal SHA256SUMS regression"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "node --test test/release-workflow-protection.cjs test/release-macos-arm64.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-workflow-protection.cjs test/release-macos-arm64.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.209,
+      "started_at": "2026-08-14T09:52:06.362Z",
+      "commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
+      "workspace_fingerprint": "8e6f021b2f4d7d2747c7f3373109fca0964a3d5b598a4da1029e418f74665b24",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The protected handoff authenticates both executables and both SEA build manifests, the signed ZIP carries the exact restored manifests plus a complete internal SHA256SUMS inventory, and Apple secrets are confined to the first-party macos-15 signer.",
+    "risks": [
+      "The dynamic ZIP extraction/signature test is macOS-only and is intentionally skipped by the recorded Linux validation receipt."
+    ],
+    "next_steps": [
+      "Run the full unsigned archive witness on macOS after integration into the frozen release authority.",
+      "Run signing and notarization only from an approved release-candidate tag."
+    ]
+  }
+}

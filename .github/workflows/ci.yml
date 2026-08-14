@@ -621,8 +621,13 @@ jobs:
           mkdir -p build/signing-input
           (
             cd build/sea
-            shasum -a 256 sagejs sagepython > ../signing-input/sea.sha256
-            tar -cf ../signing-input/tested-sea.tar sagejs sagepython
+            shasum -a 256 \
+              sagejs sagejs-build-manifest.json \
+              sagepython sagepython-build-manifest.json \
+              > ../signing-input/sea.sha256
+            tar -cf ../signing-input/tested-sea.tar \
+              sagejs sagejs-build-manifest.json \
+              sagepython sagepython-build-manifest.json
           )
           (
             cd build/signing-input
@@ -645,7 +650,7 @@ jobs:
     needs:
       - release-tag-policy
       - macos-arm64
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-15
     timeout-minutes: 30
     environment: sagejs-signing
     outputs:
@@ -675,7 +680,7 @@ jobs:
           path: build/signing-input
           merge-multiple: true
 
-      - name: Verify and restore the exact tested executables
+      - name: Verify and restore the exact tested SEA inputs
         run: |
           diff -u \
             <(printf '%s\n' sea.sha256 tested-sea.tar tested-sea.tar.sha256) \
@@ -686,7 +691,7 @@ jobs:
             shasum -a 256 -c tested-sea.tar.sha256
           )
           members="$(tar -tf build/signing-input/tested-sea.tar)"
-          [[ "$members" == $'sagejs\nsagepython' ]] || {
+          [[ "$members" == $'sagejs\nsagejs-build-manifest.json\nsagepython\nsagepython-build-manifest.json' ]] || {
             echo "Unexpected or duplicate tested SEA tar member(s):" >&2
             printf '%s\n' "$members" >&2
             exit 1
@@ -854,10 +859,13 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          cat > publication/release-notes.md <<EOF
-          # Sage.js ${TAG}
-
-          This hardened, provenance-tracked Sage.js ${TAG} release provides open,
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "Stable release notes require a stable version tag: $TAG" >&2
+            exit 1
+          }
+          printf '# Sage.js %s\n\n' "$TAG" > publication/release-notes.md
+          cat >> publication/release-notes.md <<'EOF'
+          This hardened, provenance-tracked Sage.js release provides open,
           portable, high-performance software for research mathematics. It
           contains the latest exact arithmetic, polynomial, matrix, graph,
           number-theory, compiler, and Sage-compatible runtime work from the
