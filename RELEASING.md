@@ -54,26 +54,72 @@ macOS runner itself is discarded after the job.
 
 ### Configure Apple credentials from a trusted Mac
 
-Use Keychain Access to export the Developer ID Application and Developer ID
-Installer identities together as one password-protected PKCS#12 file. Generate
-an App Store Connect API key authorized for notarization and download its
-`AuthKey_*.p8` file. Then upload both files directly from the trusted Mac; do
-not copy them into the repository:
+In Keychain Access, select the `login` keychain and **My Certificates**. Expand
+the Developer ID Application and Developer ID Installer entries and confirm
+that each has its private key underneath it. Command-select the two top-level
+certificate entries, choose **File -> Export Items**, and export them together
+as one password-protected `sagejs-developer-id.p12` file. A public certificate
+without its private key is not a signing identity and is not sufficient.
+
+Keychain Access can encode PKCS#12 files with legacy RC2 encryption. OpenSSL 3
+disables that cipher by default, so validate the resulting container with:
 
 ```sh
-repo=sagemathinc/sagejs
-environment=sagejs-signing
-base64 < /path/to/sagejs-developer-id.p12 | tr -d '\n' | \
-  gh secret set SAGEJS_APPLE_CERTIFICATE_P12_BASE64 -R "$repo" -e "$environment"
-base64 < /path/to/AuthKey_KEYID.p8 | tr -d '\n' | \
-  gh secret set SAGEJS_APPLE_NOTARY_KEY_BASE64 -R "$repo" -e "$environment"
-gh secret set SAGEJS_APPLE_CERTIFICATE_PASSWORD -R "$repo" -e "$environment"
-gh secret set SAGEJS_APPLE_NOTARY_KEY_ID -R "$repo" -e "$environment"
-gh secret set SAGEJS_APPLE_NOTARY_ISSUER_ID -R "$repo" -e "$environment"
+openssl pkcs12 -legacy -in /path/to/sagejs-developer-id.p12 -info -noout
 ```
 
-The final three commands prompt for their values without putting them on the
-command line. Confirm the resulting names, never their values, with
+The output must contain two private-key bags, normally shown as two `Shrouded
+Keybag` entries. macOS `security import`, which the release workflow uses,
+accepts this Keychain-generated container directly.
+
+In App Store Connect, create a dedicated **Team** API key for Sage.js
+notarization and download its one-time `AuthKey_*.p8` file. Individual API keys
+cannot authenticate `notarytool`. Record the App Store Connect Key ID and
+Issuer ID; the Issuer ID is a UUID and is not the Apple developer Team ID.
+Validate the new key locally without replacing an existing Keychain profile:
+
+```sh
+xcrun notarytool store-credentials sagejs-ci-test \
+  --key /path/to/AuthKey_KEYID.p8 \
+  --key-id KEYID \
+  --issuer ISSUER_UUID
+xcrun notarytool history --keychain-profile sagejs-ci-test \
+  --output-format json >/dev/null
+```
+
+Upload both files directly from the trusted Mac; do not copy them into the
+repository. Run these commands in Bash rather than sourcing a saved script, so
+the entered values disappear with the process:
+
+```bash
+repo=sagemathinc/sagejs
+environment=sagejs-signing
+p12=/path/to/sagejs-developer-id.p12
+api_key=/path/to/AuthKey_KEYID.p8
+
+base64 < "$p12" | tr -d '\n' | \
+  gh secret set SAGEJS_APPLE_CERTIFICATE_P12_BASE64 -R "$repo" -e "$environment"
+base64 < "$api_key" | tr -d '\n' | \
+  gh secret set SAGEJS_APPLE_NOTARY_KEY_BASE64 -R "$repo" -e "$environment"
+
+read -r -s -p "P12 export password: " certificate_password
+printf '\n'
+read -r -p "App Store Connect Key ID: " notary_key_id
+read -r -p "App Store Connect Issuer ID UUID: " notary_issuer_id
+
+printf '%s' "$certificate_password" | \
+  gh secret set SAGEJS_APPLE_CERTIFICATE_PASSWORD -R "$repo" -e "$environment"
+printf '%s' "$notary_key_id" | \
+  gh secret set SAGEJS_APPLE_NOTARY_KEY_ID -R "$repo" -e "$environment"
+printf '%s' "$notary_issuer_id" | \
+  gh secret set SAGEJS_APPLE_NOTARY_ISSUER_ID -R "$repo" -e "$environment"
+
+unset certificate_password notary_key_id notary_issuer_id
+```
+
+The scalar values travel over standard input rather than appearing in shell
+history or process arguments. Confirm the resulting names, never their values,
+with
 `gh secret list -R sagemathinc/sagejs -e sagejs-signing`.
 
 ## Release checklist
