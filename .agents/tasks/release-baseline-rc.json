@@ -12,6 +12,8 @@
     ".agents/",
     ".github/",
     "package.json",
+    "bench/prime-host-boundaries.cjs",
+    "licenses/",
     "scripts/",
     "packages/flint/include/sagejs/",
     "tools/runtime-bootstrap.ts",
