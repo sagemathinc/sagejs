@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, statSync } from "fs";
+import { mkdirSync, realpathSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { Script } from "vm";
@@ -305,6 +305,17 @@ export function runRuntimeBootstrap(
     string,
     { sourceHash: string; functions: Record<string, unknown> }
   >();
+  const physicalNativeSourcePath = (filename: string): string => {
+    const absolute = resolve(filename);
+    try {
+      return realpathSync(absolute);
+    } catch (_error) {
+      // Embedded release resources do not necessarily have a host filesystem
+      // identity.  Their canonical resource spelling remains the only valid
+      // identity and `nativeSourceHash` below still fails closed if unreadable.
+      return absolute;
+    }
+  };
   const nativeSourceHashes = new Map<string, string>();
   type NativeForeignDeclaration = {
     id: string;
@@ -438,7 +449,10 @@ export function runRuntimeBootstrap(
       throw new TypeError("invalid Sage.js native-module registration");
     }
     validatedNativeCompatibility(filename, compatibility, sourceHash);
-    nativeModules.set(resolve(filename), { sourceHash, functions });
+    nativeModules.set(physicalNativeSourcePath(filename), {
+      sourceHash,
+      functions,
+    });
   };
   const resolveNativeFunction = (
     filename: string,
@@ -456,7 +470,7 @@ export function runRuntimeBootstrap(
     ) {
       return null;
     }
-    const sourcePath = resolve(filename);
+    const sourcePath = physicalNativeSourcePath(filename);
     const sourceHash = nativeSourceHash(sourcePath);
     if (sourceHash === undefined) return null;
     const registered = nativeModules.get(sourcePath);
