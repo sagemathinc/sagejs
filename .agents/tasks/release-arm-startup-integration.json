@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-arm-startup-integration",
+  "title": "Integrate Linux ARM64 startup profile",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently approved evidence-backed Linux ARM64 development startup profile into a closed intermediate release checkpoint",
+  "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
+  "claims": [
+    ".agents/tasks/release-arm-startup-integration.json",
+    ".agents/tasks/linux-arm64-startup-profile.json",
+    "architecture/package-graph.json",
+    "scripts/check-startup-budget.cjs",
+    "test/startup-budget.cjs"
+  ],
+  "dependencies": [
+    "linux-arm64-startup-profile",
+    "release-producer-claims-integration"
+  ],
+  "references": [
+    "Approved source lane db6258674e6f191b8187c31e2231a45c73a5c5c6..5f1d7fe638c3763fc41289f8dc7b89dc20a48fad",
+    "Linux ARM64 production receipt at da2e49c90d20c6f00867d888486aebb215f8134e"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact-target profile-selection and adversarial configuration tests retain generic budgets for every unmatched platform and architecture",
+      "Hosted and clean unloaded ARM64 receipts bound the development-only profile while raw catastrophic ceilings remain unchanged"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/startup-budget.cjs",
+    "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
