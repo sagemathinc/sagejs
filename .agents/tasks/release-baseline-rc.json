@@ -2,11 +2,11 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "release-baseline-rc",
-  "title": "Release baseline consolidation",
+  "title": "Intermediate release integration checkpoint",
   "lane": "integration",
   "status": "complete",
   "owner": "user",
-  "objective": "Consolidate only reviewed release-critical changes onto the dense QQ release authority and publish a validated release candidate source branch without tagging or publishing artifacts",
+  "objective": "Consolidate the independently reviewed shared release authorities into an intermediate checkpoint on which the remaining macOS and Windows packaging lanes can complete without overlapping integration claims",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
   "claims": [
     ".agents/",
@@ -114,6 +114,26 @@
       "seconds": 0.631,
       "started_at": "2026-08-14T11:23:04.709Z",
       "commit": "388f8cc7c72659bd9e51bf061ca3bced01f80092",
+      "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.414,
+      "started_at": "2026-08-14T11:24:42.409Z",
+      "commit": "310a130f23f5081ca426bda9f81d45bbae9f5a3c",
+      "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.447,
+      "started_at": "2026-08-14T11:25:14.774Z",
+      "commit": "310a130f23f5081ca426bda9f81d45bbae9f5a3c",
       "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
       "platform": "linux-x64"
     }
