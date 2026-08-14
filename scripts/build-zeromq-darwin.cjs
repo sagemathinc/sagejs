@@ -39,7 +39,7 @@ const VCPKG_BASELINE = "608d1dbcd6969679f82b1ca6b89d58939c9b228e";
 const PROJECT_OPTIONS_SHA256 =
   ZEROMQ_SOURCE.projectOptionsSha256;
 const PROJECT_OPTIONS_URL =
-  "https://github.com/aminya/project_options/archive/refs/tags/v0.41.0.zip";
+  "https://github.com/aminya/project_options/archive/refs/tags/${PROJECT_OPTIONS_VERSION}.zip";
 const SOURCE_URL =
   ZEROMQ_SOURCE.url;
 
