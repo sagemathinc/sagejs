@@ -96,6 +96,7 @@
   "validation": [
     "node --test test/sea-windows-virtual-path.cjs",
     "node --test test/startup-budget.cjs",
+    "pnpm test:release",
     "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
     "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
@@ -436,10 +437,110 @@
       "commit": "470b5b39c5c4e5229e84d02bde53ef2a4b4e5112",
       "workspace_fingerprint": "7b8e79491bb6f9c708b7737369673f21bee2513772239314aefb36c1d9cdcfb7",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/startup-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "started_at": "2026-08-15T07:21:21.028Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.757,
+      "started_at": "2026-08-15T07:21:45.791Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.529,
+      "started_at": "2026-08-15T07:21:52.078Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.901,
+      "started_at": "2026-08-15T07:21:57.228Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.48,
+      "started_at": "2026-08-15T07:22:11.986Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.725,
+      "started_at": "2026-08-15T07:22:38.566Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1375.388,
+      "started_at": "2026-08-15T07:23:07.285Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-finite-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.039,
+      "started_at": "2026-08-15T07:46:18.248Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1403.383,
+      "started_at": "2026-08-15T07:46:40.646Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.621,
+      "started_at": "2026-08-15T08:11:10.188Z",
+      "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
+      "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite, all repaired budget cleanup gates, and the root-A SEA FLINT, graph, plot, and M4RI smoke path, proving the Windows virtual-resource repair. It stopped only when the platform-neutral 300 ms normalized full SEA startup budget rejected the target; empty startup and raw catastrophic ceilings passed. Capture-only diagnostic 3 reproduced the exact unmodified default-11 gate under system Node 26.5.1 at 358.0 ms normalized, and diagnostic 4 removed the comparator-version confound by running that same checker under the manifest-matched official Node 26.7.0 at 362.0 ms normalized. This merge brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2 without modifying either completed dependency contract; the evidence-backed Windows x64 SEA full-startup override remains a separate source change and no new proof identity has been prepared.",
+    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite, all repaired budget cleanup gates, and the root-A SEA FLINT, graph, plot, and M4RI smoke path, proving the Windows virtual-resource repair. It stopped only when the platform-neutral 300 ms normalized full SEA startup budget rejected the target; empty startup and raw catastrophic ceilings passed. Capture-only diagnostic 3 reproduced the exact unmodified default-11 gate under system Node 26.5.1 at 358.0 ms normalized, and diagnostic 4 removed the comparator-version confound by running that same checker under the manifest-matched official Node 26.7.0 at 362.0 ms normalized. Merge f5c8dd51a7b8029137db074f66981036cd3a5259 brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2 without modifying either completed dependency contract. The separate source change adds only an evidence-backed win32-x64 sea-cli normalized full-startup profile of 400 ms, retaining generic, development, empty, hard-ceiling, reference, and sample policy. Focused profile, package-graph, release, architecture, portable, strict, and clean full changed-file gates pass at workspace fingerprint bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1; no new proof identity has been prepared.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
@@ -453,11 +554,13 @@
       "Failed attempt 6 is preserved at C:\\Users\\user\\evidence\\windows-static-1223b27\\attempt-6. Exact SHA-256 hashes are status.json 43d6bb8b66d4faac02a34239f1d4c48585fe5f3cfdbd9af1e9fb1724820b563d, proof.log b20d66b92b467818af6252b58fd658a2cfad71c14f27476d999854cc8d7bcddb, ownership.json dcf609258078ffb9f3c6e1fa7e7461659960cef64fc580b55f85d008b2a5b79c, and toolchain-preflight.json 146f535f2371fa178c93df251f72b2004d3c35bed62481f5f0b1a23fd6026348. Its root-A sagejs.exe is 8de6cb2160740a8042abd3099d5cd11f4811fc9c61433a61872e0673d6f25aab with manifest 58f5f601eb06d7cf46920aace8bfadcf7a53259eb37f5e5729ea016b0e6b58e4. Attempt 6 passed the repaired native and SEA correctness gates but stopped before root B, binary policy, reproducibility, ZIP, or extracted acceptance when the generic 300 ms normalized full startup gate rejected the target; no retry was made.",
       "Capture-only diagnostic 3 is preserved at C:\\Users\\user\\evidence\\windows-sea-startup-gate-1223b27\\diagnostic-3. Exact hashes are status.json e6c0dc9e855a4d60d49f0c43153a1181ddb58af94d73e5a167e522f4082fc2b0, proof.log a91775e7c29ff22034109906359fd328b9d302cc5a4067160819ed4847c1c575, ownership.json d013df0b537062744462c353177c303041df467dec3d6504fea859e02b12be79, result.json c07e5dd117817aefe153ea5d34b5c7f177b122ceee617e5e73f561850c6c6bfa, child result bebad1360a9fa23f40633e1dd740cbcd79fc5d2ca824d05c2ee40cc3c1189047, stdout 1743ec3c345efb21768fc1d29e141c0c57d257ff47c5b60396d43cb8eb1dd4c8, and stderr 97894de7cdc447c25f350e43e335e954e4a54ecf9e4353e778ef870dcef014ec. The unmodified default-11 checker under system Node 26.5.1 measured 358.0 ms normalized full, 204.2 ms normalized empty, and 692.9 ms raw full startup.",
       "Capture-only diagnostic 4 is preserved at C:\\Users\\user\\evidence\\windows-sea-startup-official-node-1223b27\\diagnostic-4. Exact hashes are status.json d4a745e019fd3e94148ef3c613baa43f9deb1aaef67c64c1ce45a4a6fb927ca1, proof.log d63e3fa4ec803b6123b702bd23864ba9ce623bd6799495f216e1e51f1786b108, ownership.json 64474ba530d25490a190b8a95b4cad7deae62b3c6830daeb60cd3c1a3312bb75, result.json 1f7fdc7a9b6c1b2ee06479bc4ebbea1ef1629a95b9af3a782b64b8b3d2cb72a9, child result c51a14683eb5ae3ce25e02d87c571a8fc4ed88a41c9a54fca6849558c170d011, stdout de2e0f0adbf72d0dc7531a3343269e873e6a8dd142cd6b12aa7c121ce924f0c6, and stderr 8da84e592a909ff8128e4e3193ca7c458d137b1e8438213dd477f2ba44039c02. The exact unmodified checker under manifest-matched official Node 26.7.0 measured 362.0 ms normalized full, 206.0 ms normalized empty, and 707.3 ms raw full startup, proving the Node patch-version comparator mismatch was not causal.",
+      "The 400 ms win32-x64 sea-cli profile leaves 10.5 percent headroom above the larger independently reproduced normalized median of 362.0 ms. It does not raise generic or unmatched SEA policy, development or empty startup budgets, the 1500 ms raw ceiling, the 30 ms reference, or the default 11 samples.",
       "The first receipt-backed changed-file run stopped after test/cache-automatic.cjs completed its first nine cases but did not exit a concurrent stale-lock takeover case. The isolated test then passed all 17 cases, and a clean receipt-backed full changed-file rerun passed without recurrence; no source changed between those observations.",
+      "The first receipt-backed changed-file run for the Windows profile completed all correctness and native gates but its final finite-matrix budget observed transient normalized construct_500 9.42 ms above 8 ms and multiply_500 25.21 ms above 25 ms. The isolated finite budget immediately passed at 7.55 ms and 18.30 ms under the same workspace fingerprint, and the complete clean changed-file rerun passed at 5.01 ms and 5.00 ms without source changes; both the failed and passing receipts are preserved.",
       "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template."
     ],
     "next_steps": [
-      "Add and independently review only an evidence-backed win32-x64 sea-cli normalized full-startup profile of 400 ms, retaining generic, unmatched-target, empty, raw-ceiling, reference, and sample policy.",
+      "Independently review the exact merge, evidence-backed win32-x64 sea-cli 400 ms profile, focused regressions, and receipt-bound source closure before any new Windows execution.",
       "Only after exact source approval, prepare and separately review a fresh attempt 7 identity that uses official Node 26.7.0 for pnpm and startup-checker normalization before any registration or launch.",
       "Preserve and independently review the native receipt, binary inventories, reproducibility evidence, canonical unsigned ZIP, and extracted acceptance JSON plus sidecar before integration."
     ]

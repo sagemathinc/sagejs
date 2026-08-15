@@ -150,6 +150,91 @@ test("Linux ARM64 selects only its evidence-backed development overrides", () =>
   }
 });
 
+test("Windows x64 selects only its evidence-backed full SEA override", () => {
+  const target = { platform: "win32", arch: "x64" };
+  const fullSea = startupDefaults(true, false, target);
+  assert.deepEqual(
+    {
+      budgetMs: fullSea.budgetMs,
+      hardLimitMs: fullSea.hardLimitMs,
+      referenceNodeMs: fullSea.referenceNodeMs,
+      samples: fullSea.samples,
+      budgetProfile: fullSea.budgetProfile,
+    },
+    {
+      budgetMs: 400,
+      hardLimitMs: 1500,
+      referenceNodeMs: 30,
+      samples: 11,
+      budgetProfile: "win32-x64",
+    },
+  );
+  assert.equal(fullSea.evidence.length, 2);
+  assert.match(fullSea.evidence[0], /c07e5dd117817aefe153ea5d34b5c7f17/);
+  assert.match(fullSea.evidence[0], /1743ec3c345efb21768fc1d29e141c0c/);
+  assert.match(fullSea.evidence[0], /358\.0 ms normalized/);
+  assert.match(fullSea.evidence[0], /692\.9 ms raw/);
+  assert.match(fullSea.evidence[1], /1f7fdc7a9b6c1b2ee06479bc4ebbea1e/);
+  assert.match(fullSea.evidence[1], /de2e0f0adbf72d0dc7531a3343269e87/);
+  assert.match(fullSea.evidence[1], /362\.0 ms normalized/);
+  assert.match(fullSea.evidence[1], /707\.3 ms raw/);
+  assert.match(fullSea.evidence[1], /manifest-matched official Node 26\.7\.0/);
+
+  for (const [sea, empty, expectedBudget, expectedHardLimit] of [
+    [false, false, 350, 1500],
+    [false, true, 225, 1000],
+    [true, true, 225, 1000],
+  ]) {
+    const defaults = startupDefaults(sea, empty, target);
+    assert.equal(defaults.budgetMs, expectedBudget);
+    assert.equal(defaults.hardLimitMs, expectedHardLimit);
+    assert.equal(defaults.referenceNodeMs, 30);
+    assert.equal(defaults.samples, 11);
+    assert.equal(defaults.budgetProfile, "generic");
+    assert.deepEqual(defaults.evidence, []);
+  }
+});
+
+test("Windows startup evidence changes profile acceptance, not generic policy", () => {
+  const diagnostic4 = { nodeMedianMs: 58.6, targetMedianMs: 707.3 };
+  const generic = assessStartup({
+    ...diagnostic4,
+    budgetMs: startupDefaults(
+      true,
+      false,
+      { platform: "linux", arch: "x64" },
+    ).budgetMs,
+  });
+  const windows = assessStartup({
+    ...diagnostic4,
+    budgetMs: startupDefaults(
+      true,
+      false,
+      { platform: "win32", arch: "x64" },
+    ).budgetMs,
+  });
+  assert.ok(generic.normalizedMs >= 362 && generic.normalizedMs < 363);
+  assert.equal(generic.withinNormalizedBudget, false);
+  assert.equal(generic.passed, false);
+  assert.equal(windows.normalizedMs, generic.normalizedMs);
+  assert.equal(windows.withinNormalizedBudget, true);
+  assert.equal(windows.withinHardLimit, true);
+  assert.equal(windows.passed, true);
+
+  for (const target of [
+    { platform: "linux", arch: "x64" },
+    { platform: "linux", arch: "arm64" },
+    { platform: "darwin", arch: "arm64" },
+  ]) {
+    const otherSea = startupDefaults(true, false, target);
+    assert.equal(otherSea.budgetMs, 300);
+    assert.equal(otherSea.hardLimitMs, 1500);
+    assert.equal(otherSea.referenceNodeMs, 30);
+    assert.equal(otherSea.samples, 11);
+    assert.equal(otherSea.budgetProfile, "generic");
+  }
+});
+
 test("generic startup budgets remain the fallback without an exact override", () => {
   for (const target of [
     { platform: "linux", arch: "x64" },

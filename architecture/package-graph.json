@@ -54,6 +54,19 @@
           ]
         }
       }
+    },
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "overrides": {
+        "sea-cli": {
+          "normalized_median_ms": 400,
+          "evidence": [
+            "Windows diagnostic 3 result c07e5dd117817aefe153ea5d34b5c7f177b122ceee617e5e73f561850c6c6bfa and stdout 1743ec3c345efb21768fc1d29e141c0c57d257ff47c5b60396d43cb8eb1dd4c8: 358.0 ms normalized, 692.9 ms raw under system Node 26.5.1",
+            "Windows diagnostic 4 result 1f7fdc7a9b6c1b2ee06479bc4ebbea1ef1629a95b9af3a782b64b8b3d2cb72a9 and stdout de2e0f0adbf72d0dc7531a3343269e873e6a8dd142cd6b12aa7c121ce924f0c6: 362.0 ms normalized, 707.3 ms raw under manifest-matched official Node 26.7.0"
+          ]
+        }
+      }
     }
   ],
   "packages": [
