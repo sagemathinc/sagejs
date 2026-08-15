@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const {
   chmodSync,
@@ -27,6 +27,7 @@ const {
   nativeBinaryPolicy,
   nativeDependencyReceiptSource,
   productionKernelReceipt,
+  seaBuildPlan,
   seaNodeSourceFromEnvironment,
   seaNodeRustToolchainFromEnvironment,
   SEA_ASSEMBLY_POLICY,
@@ -45,6 +46,67 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
+
+test("SEA build helpers are import-safe under unrelated release arguments", () => {
+  const script = [
+    'process.argv.push("--target", "windows-x64", "--archive", "candidate.zip");',
+    'const sea = require("./scripts/build-sea.cjs");',
+    "process.stdout.write(JSON.stringify({",
+    "  addon: sea.EMBEDDED_ADDON_ROLE,",
+    "  label: sea.NODE_TEMPLATE_LABEL,",
+    "  template: sea.NODE_TEMPLATE_ROLE,",
+    "}));",
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["-e", script], {
+    cwd: join(__dirname, ".."),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    addon: "embedded-node-addon",
+    label: "sea/node-template",
+    template: "executable-template",
+  });
+});
+
+test("SEA direct build planning preserves CLI modes and validation", () => {
+  assert.deepEqual(seaBuildPlan([], "26.7.0"), {
+    buildMath: false,
+    buildPython: true,
+  });
+  assert.deepEqual(seaBuildPlan(["--python"], "26.7.0"), {
+    buildMath: false,
+    buildPython: true,
+  });
+  assert.deepEqual(seaBuildPlan(["--with-flint"], "26.7.0"), {
+    buildMath: true,
+    buildPython: false,
+  });
+  assert.deepEqual(seaBuildPlan(["--all"], "26.7.0"), {
+    buildMath: true,
+    buildPython: true,
+  });
+  assert.throws(
+    () => seaBuildPlan(["--target", "windows-x64"], "26.7.0"),
+    /usage: node scripts\/build-sea\.cjs/,
+  );
+  assert.throws(
+    () => seaBuildPlan(["--all"], "25.4.0"),
+    /requires Node\.js 25\.5 or newer/,
+  );
+
+  const direct = spawnSync(
+    process.execPath,
+    [join(__dirname, "..", "scripts", "build-sea.cjs"), "--not-a-mode"],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  assert.equal(direct.status, 1);
+  assert.match(direct.stderr, /usage: node scripts\/build-sea\.cjs/);
+});
 
 test("SEA Node source provenance is canonical and fail-closed", () => {
   const source = {

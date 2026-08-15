@@ -137,26 +137,31 @@ const NODE_TEMPLATE_LABEL = "sea/node-template";
 const NODE_TEMPLATE_ROLE = "executable-template";
 const EMBEDDED_ADDON_ROLE = "embedded-node-addon";
 
-const args = new Set(process.argv.slice(2));
 const standaloneModuleDefinition = JSON.stringify(
   standaloneModuleInventory(),
 );
-const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
-const buildMath = args.has("--all") || args.has("--with-flint");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
-const [nodeMajor, nodeMinor] = process.versions.node
-  .split(".")
-  .map((part) => Number(part));
-if (nodeMajor < 25 || (nodeMajor === 25 && nodeMinor < 5)) {
-  throw new Error(
-    "building a Sage.js single executable requires Node.js 25.5 or newer; " +
-      "the resulting artifact does not require Node.js on the target system",
-  );
-}
-if (!buildPython && !buildMath) {
-  throw new Error(
-    "usage: node scripts/build-sea.cjs [--python] [--with-flint] [--all]",
-  );
+
+function seaBuildPlan(argv, nodeVersion = process.versions.node) {
+  const args = new Set(argv);
+  const buildPython =
+    args.size === 0 || args.has("--all") || args.has("--python");
+  const buildMath = args.has("--all") || args.has("--with-flint");
+  const [nodeMajor, nodeMinor] = nodeVersion
+    .split(".")
+    .map((part) => Number(part));
+  if (nodeMajor < 25 || (nodeMajor === 25 && nodeMinor < 5)) {
+    throw new Error(
+      "building a Sage.js single executable requires Node.js 25.5 or newer; " +
+        "the resulting artifact does not require Node.js on the target system",
+    );
+  }
+  if (!buildPython && !buildMath) {
+    throw new Error(
+      "usage: node scripts/build-sea.cjs [--python] [--with-flint] [--all]",
+    );
+  }
+  return { buildMath, buildPython };
 }
 
 function sha256(filename) {
@@ -1373,7 +1378,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   }
 }
 
-function buildAll() {
+function buildAll({ buildMath, buildPython }) {
   rmSync(outputDirectory, { recursive: true, force: true });
   mkdirSync(outputDirectory, { recursive: true });
   const sourceIdentity = gitSourceIdentity(root, { allowDirty: true });
@@ -1419,8 +1424,12 @@ function buildAll() {
   }
 }
 
-function main() {
-  return withSeaBuildLock(join(root, "build", ".sea-build.lock"), buildAll);
+function main(argv = process.argv.slice(2)) {
+  const plan = seaBuildPlan(argv);
+  return withSeaBuildLock(
+    join(root, "build", ".sea-build.lock"),
+    () => buildAll(plan),
+  );
 }
 
 if (require.main === module) main();
@@ -1440,6 +1449,7 @@ module.exports = {
   nativeDependencyReceiptSource,
   observeSeaBuilder,
   productionKernelReceipt,
+  seaBuildPlan,
   seaNodeSourceFromEnvironment,
   seaNodeRustToolchainFromEnvironment,
   SEA_ASSEMBLY_POLICY,
