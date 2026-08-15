@@ -401,7 +401,7 @@ async function run(environment = process.env) {
         });
       }
     } finally {
-      session.close();
+      await session.close();
     }
 
     console.log(`Dense QQ matrix budget (${samples} samples per case)`);

@@ -249,7 +249,7 @@ async function run(environment = process.env) {
         });
       }
     } finally {
-      session.close();
+      await session.close();
     }
 
     console.log(`Packed polynomial budget (${samples} warm samples)`);

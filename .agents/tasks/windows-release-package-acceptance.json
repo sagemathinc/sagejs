@@ -4,7 +4,7 @@
   "id": "windows-release-package-acceptance",
   "title": "Windows static-CRT unsigned release packaging and acceptance",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs, and gate publication on native extracted-artifact acceptance",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
@@ -23,6 +23,10 @@
     "packages/graph/scripts/build-deps.cjs",
     "packages/graph/test/build-deps.cjs",
     "scripts/build-sea.cjs",
+    "scripts/check-finite-matrix-budget.cjs",
+    "scripts/check-integer-matrix-budget.cjs",
+    "scripts/check-polynomial-budget.cjs",
+    "scripts/check-rational-matrix-budget.cjs",
     "scripts/create-windows-release-zip.cjs",
     "scripts/native-math-profile.cjs",
     "scripts/native-worktree-cache.cjs",
@@ -38,6 +42,7 @@
     "test/native-math-profile.cjs",
     "test/node-test-manifest.cjs",
     "test/parallel-development.cjs",
+    "test/performance-budget-cleanup.cjs",
     "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
     "test/release-workflow-protection.cjs",
@@ -75,6 +80,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
     "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
     "pnpm architecture:check",
@@ -254,19 +260,112 @@
       "commit": "08fb3d96ce43051d6f71e5c247c659f77c336f94",
       "workspace_fingerprint": "060b9c9158c091b0eaa778e00869913100ee58aaffde27f3b8c1992e05548773",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/performance-budget-cleanup.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.103,
+      "started_at": "2026-08-15T00:26:05.398Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 65.662,
+      "started_at": "2026-08-15T00:26:09.268Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.432,
+      "started_at": "2026-08-15T00:27:21.769Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.821,
+      "started_at": "2026-08-15T00:27:35.278Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 519.999,
+      "started_at": "2026-08-15T00:27:49.204Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1358.926,
+      "started_at": "2026-08-15T00:37:24.513Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.516,
+      "started_at": "2026-08-15T01:00:13.585Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.048,
+      "started_at": "2026-08-15T01:00:38.522Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.59,
+      "started_at": "2026-08-15T01:00:57.153Z",
+      "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
+      "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact repair source 922373d1c20606eee8fb31ea529ad611685ab9b7 is pushed after fresh Windows attempt 3 at source 6ecc6f61e8db6f48a7c21df56873fa7851b09f04 exposed pointer-shaped bits in the first native binary64 result. Generated float64 Node adapters now perform the Windows napi_create_double delay-load warmup during module initialization before defining exports; integer-only and non-Windows adapters are unchanged. Focused native-kernel, architecture, release-focused, portable, strict-baselib, and full changed-file validation pass at workspace fingerprint 2a90f56ade806308881b9b22efde41ea7a5aa83b7418843017b5fd491f31d060. This is a source-stage closure pending independent review and a new fresh Windows proof.",
+    "summary": "Exact repair source 922373d1c20606eee8fb31ea529ad611685ab9b7 passed the repaired first-float gate in fresh Windows attempt 4. That proof then exposed a separate Windows lifecycle race after all dense QQ budget timings passed: four performance-budget scripts started asynchronous Sage session shutdown without awaiting it before recursively removing the native cache. The finite, integer, rational, and polynomial budget scripts now await session shutdown before cache removal, with a focused structural and asynchronous ordering regression registered in the host test manifest. At workspace fingerprint c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36, focused cleanup, native-kernel, release-focused, architecture, portable, strict-baselib, full changed-file, and all-contract validation pass; the full changed-file rerun includes all four actual budget gates.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
       "Exact repair source 922373d1c20606eee8fb31ea529ad611685ab9b7 is not Windows-native proof. A new independently approved proof identity must repeat the fresh native Windows build, SEA, binary-policy, two-root byte-reproducibility, canonical ZIP, and extracted-artifact acceptance sequence.",
+      "Failed attempt 4 is preserved at C:\\Users\\user\\evidence\\windows-static-922373d\\attempt-4. Exact SHA-256 hashes are status.json 354b3857630875cba3fadfac574c4525d6c8dae548e5d9384f016e53ddd99f5f, proof.log 80d86a456d3e396bcc8c33976eaddf416026d18bb52070fee0dc8e109fb629a9, ownership.json 428eae03d4143eb0d4d4b99b2b1736d6666002c71ae3039be1e8d16c754932a5, and toolchain-preflight.json 75dc24b242c2aea946e136f34f9e548f5e614345df98ff21585539050d935e27.",
+      "Attempt 4 ran once under triggerless S4U task \\SagejsWindowsStatic922373dAttempt4. The repaired test/native-kernel.cjs first-float gate passed, but the proof stopped in test:matrix:rational-performance when unawaited Sage session shutdown raced rmSync of C:\\Users\\user\\AppData\\Local\\Temp\\sagejs-rational-matrix-budget-vrIini. The leftover cache tree and absence of a live Node process were audited read-only; no retry was made.",
+      "The first receipt-backed changed-file run stopped after test/cache-automatic.cjs completed its first nine cases but did not exit a concurrent stale-lock takeover case. The isolated test then passed all 17 cases, and a clean receipt-backed full changed-file rerun passed without recurrence; no source changed between those observations.",
       "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template."
     ],
     "next_steps": [
-      "Obtain independent approval of exact repair source 922373d1c20606eee8fb31ea529ad611685ab9b7 and its task closure.",
-      "Prepare, independently review, and launch one fresh Windows proof identity at the repaired exact source.",
+      "Obtain independent review of the exact awaited-session cleanup source commit and task closure.",
+      "Only after source approval, prepare, independently review, and launch one fresh Windows proof identity at the repaired exact source.",
       "Preserve and independently review the native receipt, binary inventories, reproducibility evidence, canonical unsigned ZIP, and extracted acceptance JSON plus sidecar before integration."
     ]
   }

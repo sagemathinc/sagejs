@@ -246,7 +246,7 @@ async function run(environment = process.env) {
         });
       }
     } finally {
-      session.close();
+      await session.close();
     }
 
     console.log(`Dense ZZ matrix budget (${samples} warm samples)`);
