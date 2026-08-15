@@ -538,6 +538,39 @@ function visitFiles(root, prefix = "") {
   return files.sort();
 }
 
+function assertSafeInternalChecksumPath(path) {
+  if (
+    path.startsWith("/") ||
+    path.includes("\\") ||
+    /[^\x21-\x7e]/.test(path) ||
+    path.split("/").some((part) => !part || part === "." || part === "..")
+  ) throw new Error(`unsafe internal checksum path ${JSON.stringify(path)}`);
+}
+
+function writeInternalChecksums(distribution) {
+  const declaredRoot = resolve(distribution);
+  const rootInformation = lstatSync(declaredRoot);
+  if (rootInformation.isSymbolicLink()) {
+    throw new Error("release distribution must not be a symbolic link or junction");
+  }
+  if (!rootInformation.isDirectory()) {
+    throw new Error("release distribution must be a directory");
+  }
+  const root = realpathSync(declaredRoot);
+  const output = join(root, "SHA256SUMS");
+  if (existsSync(output)) {
+    throw new Error(`refusing to replace existing internal checksums ${output}`);
+  }
+  const files = visitFiles(root);
+  if (files.length === 0) throw new Error("release distribution is empty");
+  for (const path of files) assertSafeInternalChecksumPath(path);
+  const contents = `${files.map((path) =>
+    `${sha256File(join(root, ...path.split("/")))}  ${path}`
+  ).join("\n")}\n`;
+  writeFileSync(output, contents, { flag: "wx", mode: 0o644 });
+  return { files, output, sha256: sha256Text(contents) };
+}
+
 function verifyInternalChecksums(distribution, descriptor) {
   const files = visitFiles(distribution);
   const required = [
@@ -1704,6 +1737,7 @@ module.exports = {
   verifyMacPackage,
   verifyRuntime,
   verifySignatures,
+  writeInternalChecksums,
   writeReceipt,
   zipArchiveMembers,
 };

@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const {
   chmodSync,
@@ -10,6 +11,7 @@ const {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -33,6 +35,7 @@ const {
   validateZipExtra,
   verifyChecksum,
   verifyInternalChecksums,
+  writeInternalChecksums,
   zipArchiveMembers,
 } = require("../scripts/release-artifact-acceptance.cjs");
 const {
@@ -270,24 +273,6 @@ function copyLicenseInventory(distribution) {
   });
 }
 
-function visitDistribution(base, prefix = "") {
-  const entries = require("node:fs").readdirSync(join(base, prefix), {
-    withFileTypes: true,
-  });
-  return entries.flatMap((entry) => {
-    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
-    return entry.isDirectory() ? visitDistribution(base, path) : [path];
-  }).sort();
-}
-
-function writeInternalChecksums(distribution) {
-  const files = visitDistribution(distribution).filter((name) => name !== "SHA256SUMS");
-  writeFileSync(
-    join(distribution, "SHA256SUMS"),
-    `${files.map((name) => `${hash(readFileSync(join(distribution, name)))}  ${name}`).join("\n")}\n`,
-  );
-}
-
 function recordedArtifact(distribution, name) {
   const filename = join(distribution, name);
   const status = statSync(filename);
@@ -460,6 +445,108 @@ test("external archive checksums bind both bytes and basename", () =>
     writeFileSync(sidecar, `${hash("changed bytes")}  another.tar.xz\n`);
     assert.throws(() => verifyChecksum(archive, sidecar), /checksum names/);
   }));
+
+test("internal checksum writer uses acceptance's exact code-unit order", () =>
+  withTemporary((directory) => {
+    const distribution = join(directory, "distribution");
+    mkdirSync(join(distribution, "licenses"), { recursive: true });
+    const contents = {
+      "README.md": "readme\n",
+      "UNSIGNED-WINDOWS.txt": "unsigned\n",
+      "licenses/APACHE-2.0.txt": "apache\n",
+      "licenses/NPM-PRODUCTION-LICENSES.txt": "license corpus\n",
+      "licenses/NPM-PRODUCTION.json": "{}\n",
+      "sagejs-build-manifest.json": "{}\n",
+      "sagejs.exe": "sagejs\n",
+      "sagepython-build-manifest.json": "{}\n",
+      "sagepython.exe": "sagepython\n",
+    };
+    for (const [name, value] of Object.entries(contents)) {
+      writeFileSync(join(distribution, ...name.split("/")), value);
+    }
+    const files = Object.keys(contents).sort();
+    const expected = `${files.map((name) =>
+      `${hash(contents[name])}  ${name}`
+    ).join("\n")}\n`;
+    const result = writeInternalChecksums(distribution);
+    assert.deepEqual(result.files, files);
+    assert.equal(readFileSync(result.output, "utf8"), expected);
+    assert.equal(result.sha256, hash(expected));
+    assert.throws(
+      () => writeInternalChecksums(distribution),
+      /refusing to replace existing internal checksums/,
+    );
+  }));
+
+test("internal checksum CLI preserves canonical bytes and refuses replacement", () =>
+  withTemporary((directory) => {
+    const distribution = join(directory, "distribution");
+    mkdirSync(distribution);
+    writeFileSync(join(distribution, "README.md"), "readme\n");
+    const command = join(root, "scripts", "write-release-checksums.cjs");
+    const first = spawnSync(process.execPath, [command, distribution], {
+      encoding: "utf8",
+    });
+    assert.equal(first.status, 0, first.stderr);
+    assert.match(first.stdout, /Wrote .*SHA256SUMS for 1 regular file/);
+    assert.equal(
+      readFileSync(join(distribution, "SHA256SUMS"), "utf8"),
+      `${hash("readme\n")}  README.md\n`,
+    );
+    const second = spawnSync(process.execPath, [command, distribution], {
+      encoding: "utf8",
+    });
+    assert.equal(second.status, 1);
+    assert.match(second.stderr, /refusing to replace existing internal checksums/);
+    const usage = spawnSync(process.execPath, [command], { encoding: "utf8" });
+    assert.equal(usage.status, 2);
+    assert.match(usage.stderr, /Usage: node scripts\/write-release-checksums\.cjs/);
+  }));
+
+test("internal checksum writer rejects unsafe and non-regular inputs", () => {
+  withTemporary((directory) => {
+    const distribution = join(directory, "unsafe");
+    mkdirSync(distribution);
+    writeFileSync(join(distribution, "space name.txt"), "unsafe\n");
+    assert.throws(
+      () => writeInternalChecksums(distribution),
+      /unsafe internal checksum path/,
+    );
+  });
+  if (process.platform === "win32") return;
+  withTemporary((directory) => {
+    const distribution = join(directory, "linked");
+    mkdirSync(distribution);
+    writeFileSync(join(distribution, "real.txt"), "real\n");
+    symlinkSync("real.txt", join(distribution, "alias.txt"));
+    assert.throws(
+      () => writeInternalChecksums(distribution),
+      /archive contains a symbolic link/,
+    );
+  });
+  withTemporary((directory) => {
+    const distribution = join(directory, "special");
+    mkdirSync(distribution);
+    const fifo = join(distribution, "pipe");
+    const created = spawnSync("mkfifo", [fifo], { encoding: "utf8" });
+    assert.equal(created.status, 0, created.stderr);
+    assert.throws(
+      () => writeInternalChecksums(distribution),
+      /archive contains a non-file entry/,
+    );
+  });
+  withTemporary((directory) => {
+    const distribution = join(directory, "actual");
+    mkdirSync(distribution);
+    writeFileSync(join(distribution, "README.md"), "readme\n");
+    const alias = join(directory, "alias");
+    symlinkSync(distribution, alias, "dir");
+    assert.throws(
+      () => writeInternalChecksums(alias),
+      /release distribution must not be a symbolic link or junction/,
+    );
+  });
+});
 
 test("archive inventory covers every file and every executable bit", () =>
   withTemporary((directory) => {

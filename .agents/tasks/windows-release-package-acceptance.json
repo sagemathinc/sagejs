@@ -6,7 +6,7 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs, integrate exact-target startup-profile authority, calibrate only evidence-backed Windows x64 SEA full startup, keep SEA build-helper imports free of direct-CLI argument side effects, and gate publication on native extracted-artifact acceptance",
+  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs with acceptance-canonical internal checksum ordering, integrate exact-target startup-profile authority, calibrate only evidence-backed Windows x64 SEA full startup, keep SEA build-helper imports free of direct-CLI argument side effects, and gate publication on native extracted-artifact acceptance",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
   "claims": [
     ".github/workflows/ci.yml",
@@ -35,8 +35,10 @@
     "scripts/native-math-profile.cjs",
     "scripts/native-worktree-cache.cjs",
     "scripts/prepare-release-publication.cjs",
+    "scripts/release-artifact-acceptance.cjs",
     "scripts/release-capabilities.cjs",
     "scripts/release-cpu-profile.cjs",
+    "scripts/write-release-checksums.cjs",
     "src/baselib/sagejs/ffi/flint.py",
     "src/lib/sagejs/ffi/flint.py",
     "test/arbitrary-prime-polynomial-resource-ffi.cjs",
@@ -47,6 +49,7 @@
     "test/node-test-manifest.cjs",
     "test/parallel-development.cjs",
     "test/performance-budget-cleanup.cjs",
+    "test/release-artifact-acceptance.cjs",
     "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
     "test/sea-windows-virtual-path.cjs",
@@ -88,7 +91,10 @@
     "C:\\Users\\user\\windows-integer-budget-94acef2-diagnostic1-registration-cleanup.json",
     "C:\\Users\\user\\evidence\\windows-integer-budget-94acef2-diagnostic2\\diagnostic-2",
     "/home/user/d1-wrong-registration-cleanup-20260815",
-    "/home/user/d2-terminal-readonly-20260815"
+    "/home/user/d2-terminal-readonly-20260815",
+    "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+    "C:\\Users\\user\\evidence\\windows-static-94acef2-attempt10\\attempt-10",
+    "/home/user/attempt10-terminal-evidence-20260815T203413Z"
   ],
   "architecture": {
     "strategy": "compiler-infrastructure",
@@ -99,7 +105,8 @@
       "Native Windows extracted-artifact acceptance receipt",
       "Exact-target startup profile selection retains generic and unmatched-target policy",
       "Independent default-11 Windows x64 SEA receipts under system Node 26.5.1 and manifest-matched official Node 26.7.0",
-      "Foreign-argv import safety plus direct SEA build CLI mode, usage, and Node-version validation"
+      "Foreign-argv import safety plus direct SEA build CLI mode, usage, and Node-version validation",
+      "One Node-owned internal checksum writer whose code-unit path order is consumed unchanged by final artifact acceptance"
     ],
     "exceptions": []
   },
@@ -113,6 +120,7 @@
     "node --test test/sea-build-manifest.cjs",
     "node --test test/sea-windows-virtual-path.cjs",
     "node --test test/startup-budget.cjs",
+    "node --test test/release-artifact-acceptance.cjs test/release-workflow-protection.cjs",
     "pnpm test:release",
     "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
@@ -674,10 +682,80 @@
       "commit": "ecd2828988512a463bb91ad6cb5751f0c796eb4d",
       "workspace_fingerprint": "4c2fc80fbac3325aac89ea179101aff200782498e115c90db4a47a99b401645c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.622,
+      "started_at": "2026-08-15T21:01:30.139Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.535,
+      "started_at": "2026-08-15T21:01:35.033Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.81,
+      "started_at": "2026-08-15T21:01:40.447Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.314,
+      "started_at": "2026-08-15T21:01:50.561Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.595,
+      "started_at": "2026-08-15T21:02:16.703Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1470.522,
+      "started_at": "2026-08-15T21:03:05.742Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.575,
+      "started_at": "2026-08-15T21:27:47.487Z",
+      "commit": "8208f7abb94602138b0d69528ef9a0fed5bda3fc",
+      "workspace_fingerprint": "16275a2ac112bd908072543eccf77d696e808f47a076675f704ba7f7df7bea3f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite and repaired root-A SEA correctness gates before its generic startup-profile failure was isolated and repaired. Merge f5c8dd51a7b8029137db074f66981036cd3a5259 brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2, and source 9174546c565ad949a9422219d78b7b90f7dca894 adds only the evidence-backed win32-x64 sea-cli normalized 400 ms profile while retaining generic, development, empty, hard, reference, and sample policy. Fresh attempt 7 then passed the complete root-A native/SEA suite, matched official-Node startup gate, canonical unsigned ZIP construction, expansion, and extracted unsigned-signature precheck before final archive acceptance exited without captured child streams. It stopped before root-A binary proof, root B, byte reproducibility, or an acceptance receipt. Capture-only diagnostic 5 honestly failed before child launch on a PowerShell 5.1 OrderedDictionary Measure-Object adaptation error. Corrected capture-only diagnostic 6 preserved all proof inputs and inventories and decisively reproduced the original acceptance failure: release-artifact-acceptance.cjs imports constants from build-sea.cjs, whose top-level direct-CLI parser consumed the acceptance process's foreign arguments and threw build-sea usage before acceptance. Source 94acef2dfefb7886dd6261be763a5037c9bd7722 now defers Node-version and build-mode parsing to direct CLI execution, passes an explicit plan into buildAll, preserves exported constants, and ratchets foreign-argv import safety plus direct CLI mode, usage, and version behavior. Its focused, release, architecture, portable, strict, and clean full changed-file gates pass under workspace fingerprint 4c2fc80fbac3325aac89ea179101aff200782498e115c90db4a47a99b401645c. Fresh attempt 8 ran once from the exact reviewed packet and entered root-A native dependency work, but the Windows VM unexpectedly rebooted before the native suite completed. Attempt 8 is therefore invalid/incomplete external evidence: it is neither a Sage.js source failure nor a proof pass, and Task Scheduler's post-boot Ready/result 0 is stale and non-authoritative. Fresh attempt 9 then ran once from the exact reviewed source 94acef2dfefb7886dd6261be763a5037c9bd7722 and reboot closure ecd2828988512a463bb91ad6cb5751f0c796eb4d. It stopped honestly in the root-A native suite when the existing unmodified five-sample integer-matrix budget observed density_500 at 8.45 ms against its 8.00 ms budget, before SEA, packaging, root B, or release acceptance. A first capture diagnostic was never launched because registration with the PowerShell -User override changed the reviewed XML S4U principal to InteractiveToken; the exact never-run registration was audited and removed without creating evidence. Fresh capture diagnostic 2 used XML-only S4U registration, exact official Node 26.7.0, the preserved attempt-9 root, and isolated caches to run the same unmodified default-five checker exactly once. It passed every integer metric, including density_500 at 6.32 ms against 8.00 ms, while prior preserved attempts measured 6.15, 5.93, and 5.90 ms. The independently verified diagnostic classifies attempt 9's 8.45 ms as a transient fixed-host timing outlier, not a source regression or proof pass; no source, budget, attempt-9 evidence, or proof state changed.",
+    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite and repaired root-A SEA correctness gates before its generic startup-profile failure was isolated and repaired. Merge f5c8dd51a7b8029137db074f66981036cd3a5259 brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2, and source 9174546c565ad949a9422219d78b7b90f7dca894 adds only the evidence-backed win32-x64 sea-cli normalized 400 ms profile while retaining generic, development, empty, hard, reference, and sample policy. Fresh attempt 7 then passed the complete root-A native/SEA suite, matched official-Node startup gate, canonical unsigned ZIP construction, expansion, and extracted unsigned-signature precheck before final archive acceptance exited without captured child streams. It stopped before root-A binary proof, root B, byte reproducibility, or an acceptance receipt. Capture-only diagnostic 5 honestly failed before child launch on a PowerShell 5.1 OrderedDictionary Measure-Object adaptation error. Corrected capture-only diagnostic 6 preserved all proof inputs and inventories and decisively reproduced the original acceptance failure: release-artifact-acceptance.cjs imports constants from build-sea.cjs, whose top-level direct-CLI parser consumed the acceptance process's foreign arguments and threw build-sea usage before acceptance. Source 94acef2dfefb7886dd6261be763a5037c9bd7722 now defers Node-version and build-mode parsing to direct CLI execution, passes an explicit plan into buildAll, preserves exported constants, and ratchets foreign-argv import safety plus direct CLI mode, usage, and version behavior. Its focused, release, architecture, portable, strict, and clean full changed-file gates pass under workspace fingerprint 4c2fc80fbac3325aac89ea179101aff200782498e115c90db4a47a99b401645c. Fresh attempt 8 ran once from the exact reviewed packet and entered root-A native dependency work, but the Windows VM unexpectedly rebooted before the native suite completed. Attempt 8 is therefore invalid/incomplete external evidence: it is neither a Sage.js source failure nor a proof pass, and Task Scheduler's post-boot Ready/result 0 is stale and non-authoritative. Fresh attempt 9 then ran once from the exact reviewed source 94acef2dfefb7886dd6261be763a5037c9bd7722 and reboot closure ecd2828988512a463bb91ad6cb5751f0c796eb4d. It stopped honestly in the root-A native suite when the existing unmodified five-sample integer-matrix budget observed density_500 at 8.45 ms against its 8.00 ms budget, before SEA, packaging, root B, or release acceptance. A first capture diagnostic was never launched because registration with the PowerShell -User override changed the reviewed XML S4U principal to InteractiveToken; the exact never-run registration was audited and removed without creating evidence. Fresh capture diagnostic 2 used XML-only S4U registration, exact official Node 26.7.0, the preserved attempt-9 root, and isolated caches to run the same unmodified default-five checker exactly once. It passed every integer metric, including density_500 at 6.32 ms against 8.00 ms, while prior preserved attempts measured 6.15, 5.93, and 5.90 ms. The independently verified diagnostic classifies attempt 9's 8.45 ms as a transient fixed-host timing outlier, not a source regression or proof pass; no source, budget, attempt-9 evidence, or proof state changed. Fresh attempt 10 then passed the complete root-A native and SEA suites, including density_500 at 7.51 ms, and produced exact official-Node SEAs plus a canonical unsigned ZIP before strict extracted-artifact acceptance rejected the internal SHA256SUMS path order. The exact 54-file package and extracted inventories are byte-identical and every one of the 53 listed per-path digests is correct, but the Windows producer used locale-sensitive PowerShell Sort-Object Path while acceptance requires JavaScript default code-unit order. This lane now uses one exported Node-owned writer for both production generation and the unchanged strict acceptance order, with no-overwrite and unsafe-link/path/special-file rejection.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
@@ -708,11 +786,15 @@
       "Never-run integer capture diagnostic 1 used reviewed harness 08ffe892db58e7e88ad934b0683c0ed08f0ad5d9be4af54e565341acbaf66de8 and task XML 72ffcefb240e75c8f086749bae335c797c2cab8b47cf6b58827341ab9cb1bca0, but registration with the PowerShell -User override produced API LogonType Interactive and exported InteractiveToken instead of S4U. Its exact never-run export was 1188 UTF-8 bytes with SHA-256 1ffea2b861eafba9670943e461fc3c6f6a25ed6ccb8a0da924aab247c061d00a. Two independent audits and the cleanup precheck established Ready/result 267011, the 1999 sentinel LastRun, NextRun null, zero missed runs/triggers, and the exact action before the single exact registration was unregistered. No diagnostic-1 claim, family, or proof evidence was ever created. Exact cleanup receipt 1a6b780054bd74aa02d209b23747197ea5107fb5afa3cda44a5c889231b5ac81 records exportBytesPreserved false rather than reconstructing missing export bytes; Task Scheduler's Operational log was disabled, so no deletion event is claimed.",
       "Capture-only integer diagnostic 2 is preserved at C:\\Users\\user\\evidence\\windows-integer-budget-94acef2-diagnostic2\\diagnostic-2 under triggerless XML-only S4U task \\SagejsWindowsIntegerBudget94acef2Diagnostic2. It ran exactly once and ended Ready/result 0 because capture completed; this Scheduler result is diagnostic completion, not attempt-9 proof success. Reviewed harness c1c5b140a1af21b47bcd768ab1d4ff138d0bc05cb091cab89f06c878ed224657, task XML 0463a9a42de810ee31bbe486d2e6cac85303963753100f394b6d2c33728e0f34, cleanup receipt 1a6b780054bd74aa02d209b23747197ea5107fb5afa3cda44a5c889231b5ac81, and task export 1c29250eb24fde269d1777f3b8fb78a7974da3fe872a8139d133b434e065d194 bind normalized API user plus exact exported SID and S4U authority. Exact evidence hashes are ownership.json 6149d3acd9002542cf73d17b69ab2176fbae189096c79ca2bee91f90d1af137f, status.json 1e1632e3194f2f7e76cd52231a7c104cc5ed91458c00ac4989da81da0ac4b307, proof.log dd159abb8ea5c5ceebc1485a5d9df842f5426cf544b4e596ce089ae2b8ea08f7, result.json 917d8a69dae552010a86538062ee276807f88d7d8dc079e563d1b622827754d5, child result 1b97c66e1237f5931a6aa7fcf17a224a61d5dc52429d7a8e3192aa055b546381, stdout 6753df567de06c6036b7e3c1cb97144f5794d0965b7c035afc1bf11d9a95656b, and empty stderr e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
       "Diagnostic 2 invoked the exact unmodified default-five scripts/check-integer-matrix-budget.cjs once under official Node 26.7.0 e921fe5307e29bf6fd00000dd594356affd3a7b044e52720c7f10decbdc305b9 with fresh contained TEMP, HOME, XDG, dynamic, native, and parallel-native caches. It exited 0 without timeout, signal, error, or stderr after 36071.959 ms and measured density_500 6.32 / 6.32 / 8.00 ms; every other integer metric also passed. Preserved exact historical readings were attempt 5 6.15 ms, attempt 6 5.93 ms, attempt 7 5.90 ms, and attempt 9 8.45 ms. Same-boot pre/post health exceeded 31 GB free physical and 32 GB free virtual memory, all bound inputs rehashed, diagnostic 1 remained absent, and attempt-9 task, evidence, roots, output absences, and zero-process state remained exact. This evidence classifies attempt 9's 8.45 ms as transient host timing only; it does not justify a source or budget change and does not satisfy the Windows release proof.",
-      "A read-only local copy of diagnostic-2 core evidence and its isolated generated-cache tree is preserved at /home/user/d2-terminal-readonly-20260815. SHA256SUMS contains 24 entries, all of which verify, and has SHA-256 3efa7cd70e75eafd6c40660c33a115eb7788ecaa3816ad6a6f3f1111c2cb5a84. The local copy matches the exact remote hashes and did not write, retry, clean, or mutate diagnostic 2 or attempt 9."
+      "A read-only local copy of diagnostic-2 core evidence and its isolated generated-cache tree is preserved at /home/user/d2-terminal-readonly-20260815. SHA256SUMS contains 24 entries, all of which verify, and has SHA-256 3efa7cd70e75eafd6c40660c33a115eb7788ecaa3816ad6a6f3f1111c2cb5a84. The local copy matches the exact remote hashes and did not write, retry, clean, or mutate diagnostic 2 or attempt 9.",
+      "Failed attempt 10 is preserved without modification at C:\\Users\\user\\evidence\\windows-static-94acef2-attempt10\\attempt-10 under triggerless S4U task \\SagejsWindowsStatic94acef2Attempt10. It ran exactly once from source 94acef2dfefb7886dd6261be763a5037c9bd7722 and closure 8208f7abb94602138b0d69528ef9a0fed5bda3fc using reviewed harness 0b4c058cfc4386949170f271fcd3ca77e9f055c12aecba6965796eafb6abec60, task XML 508667b90d349cd86c44d282cb0b73bf4ce4a5b284df8be78f03249cb3998e3c, helper 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and task export 959ae7fe110bb1997f7d1355a7fbfdfb0d1f1a0d86e9a161a64b705f2c40063e. It ended Ready/result 1 with NextRun null, missed runs 0, zero non-null triggers, no surviving proof process, and exact core hashes status.json 2da789d77070dbb9a1f2ff8786cc94d1cdaef494b84169433aac45da4fdfd7a9, proof.log 190552ddb225d699bb71159478868ac36b03b9b4df6e24c9f420976b62c7681a, ownership.json 2c5ea385cefb16c51c5b377f92f485bd831d17f5d92a0213efda382ed648f455, toolchain-preflight.json d5512457aebe8036f56c7768b955a5c627f382c0d6b2566ea6cabaa19644f0ee, and execution-authority.json b075f19627d475f0ff59fc6fa5c118dfbcfe0138fd32d0ff66f049e9cf51a678.",
+      "Attempt 10 passed the full root-A native and SEA suites, including density_500 7.51 / 7.51 / 8.00 ms, then produced sagejs.exe 43525a31f80bd40d59c145b8a7cebe925eb4a54f08528ce0ff0af781fd19ae76, sagepython.exe 41a0d0f06c592b14332389dad0fba962c330f3ecc8443005d0243e1d59801991, manifests 054e60b9acab4188a3427d68f77de9963d0c56488e4fa6bf2ccd14f8b383ccb1 and 7b143e21223d5a4221337f6cfc24c249619bba52e8a19711e72f105398499b7a, unsigned ZIP f5da067dba778daa7fac85eb794a3348e4c6e3cb0603c4f7a7629ca5b7aea704, and sidecar 1e29b074761ed1dae6977fdc07179677125f789025a43264354e452ccf183e5b. Acceptance exited 1 before root-A binary proof, root B, reproducibility, or an acceptance receipt; no retry was made.",
+      "Attempt 10's package and acceptance-extracted inventories are byte-identical at 54 files, 602976156 bytes, and canonical SHA-256 28fe38febbacd657b0b2bf7d3e22b1f48860681f4817d4943246f7aae92d4ec5. USN records show sagejs-release-acceptance-w5qO4r was created at 2026-08-15T20:34:01Z, fully extracted, and deleted at 20:34:13Z without ever creating the later runtime directory. Internal SHA256SUMS f137c13eb9508a15fd66d789950eb7029e4de84eb294e26114345c31414eda1a contains the exact 53-file set and every per-path digest matches, but PowerShell Sort-Object Path differs from JavaScript default code-unit order at 49 positions; the first mismatch is checksum line 3 actual licenses/APACHE-2.0.txt versus expected README.md. The unchanged strict verifyInternalChecksums assertion therefore rejected before metadata, native receipt, signature, or runtime validation. Attempt 7 carries the identical path order but its then-earlier import-safety defect masked this second failure; diagnostic 6 also stopped at that earlier import boundary.",
+      "A read-only local copy of attempt-10 core evidence, task export, terminal transcript, exact package metadata, bounded inventory/events/USN receipts, stale-audit cleanup, and checksum-order comparison is preserved at /home/user/attempt10-terminal-evidence-20260815T203413Z. Its 30-entry SHA256SUMS verifies completely and has SHA-256 1fba6758f7e144c43dd3937ee06da87661a86d6f0170fdedcaf4b198c597e892. Static checksum-order audit SHA-256 is 524a90f33a668fc6b2df2d31eefe8b9d26ca5154858224486d9bc7097ec92296. The exact leaked read-only audit leaf PID 6400 was stopped only after parent authorization and exact identity revalidation; its parent and dedicated sshd exited naturally, freeing about 2 GB while all attempt-10 task, core, root, and artifact hashes remained unchanged."
     ],
     "next_steps": [
-      "Independently review this exact contract-only attempt-9 failure, never-run diagnostic-1 cleanup, and successful capture-only diagnostic-2 lifecycle closure plus its 24-entry read-only local evidence manifest.",
-      "Only after that closure is approved, prepare and separately review a fresh attempt-10 identity that binds immutable attempt-9 and diagnostic-2 evidence plus the diagnostic-1 registration cleanup; never reuse or retry attempts 8 or 9.",
+      "Independently review the Node-owned canonical internal checksum writer, exact Windows workflow replacement, mixed-case and punctuation ordering regression, safety gates, and immutable attempt-10 failure evidence.",
+      "Only after exact source and contract closure are independently approved, prepare and separately review a fresh proof identity that invokes scripts/write-release-checksums.cjs under the manifest-matched official Node; never reuse or retry attempt 10.",
       "Preserve and independently review the native receipt, binary inventories, reproducibility evidence, canonical unsigned ZIP, and extracted acceptance JSON plus sidecar before integration."
     ]
   }

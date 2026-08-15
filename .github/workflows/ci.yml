@@ -563,22 +563,8 @@ jobs:
           & node -e "const fs=require('node:fs'),{serialize}=require('./scripts/release-manifest.cjs');fs.writeFileSync(process.argv[1],serialize({schema:'sagejs.windows-release-manifest-v1',signature:{scheme:'authenticode',status:'unsigned'},sourceCommit:process.argv[3],target:'windows-x64',version:process.argv[2]}))" `
             "$release/release.json" $version $sourceCommit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $checksums = Get-ChildItem $release -File -Recurse |
-            ForEach-Object {
-              $relative = [IO.Path]::GetRelativePath($release, $_.FullName).Replace('\', '/')
-              $digest = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
-              [PSCustomObject]@{
-                Path = $relative
-                Line = "${digest}  $relative"
-              }
-            } |
-            Sort-Object Path |
-            ForEach-Object { $_.Line }
-          [IO.File]::WriteAllText(
-            (Join-Path (Resolve-Path $release).Path "SHA256SUMS"),
-            (($checksums -join "`n") + "`n"),
-            [Text.UTF8Encoding]::new($false)
-          )
+          node scripts/write-release-checksums.cjs $release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $archive = "build/release/sagejs-windows-x64-unsigned.zip"
           node scripts/create-windows-release-zip.cjs $release $archive
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
