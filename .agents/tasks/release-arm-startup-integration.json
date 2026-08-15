@@ -1,0 +1,122 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-arm-startup-integration",
+  "title": "Integrate Linux ARM64 startup profile",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Integrate the independently approved evidence-backed Linux ARM64 development startup profile into a closed intermediate release checkpoint",
+  "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
+  "claims": [
+    ".agents/tasks/release-arm-startup-integration.json",
+    ".agents/tasks/linux-arm64-startup-profile.json",
+    "architecture/package-graph.json",
+    "scripts/check-startup-budget.cjs",
+    "test/startup-budget.cjs"
+  ],
+  "dependencies": [
+    "linux-arm64-startup-profile",
+    "release-producer-claims-integration"
+  ],
+  "references": [
+    "Approved source lane db6258674e6f191b8187c31e2231a45c73a5c5c6..5f1d7fe638c3763fc41289f8dc7b89dc20a48fad",
+    "Linux ARM64 production receipt at da2e49c90d20c6f00867d888486aebb215f8134e"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact-target profile-selection and adversarial configuration tests retain generic budgets for every unmatched platform and architecture",
+      "Hosted and clean unloaded ARM64 receipts bound the development-only profile while raw catastrophic ceilings remain unchanged"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/startup-budget.cjs",
+    "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/startup-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-08-14T15:59:15.782Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 258.559,
+      "started_at": "2026-08-14T15:59:16.519Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.656,
+      "started_at": "2026-08-14T16:03:43.496Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.376,
+      "started_at": "2026-08-14T16:03:49.768Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.406,
+      "started_at": "2026-08-14T16:04:30.584Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.663,
+      "started_at": "2026-08-14T16:04:53.744Z",
+      "commit": "7206c7bbf6d5a6b2ab19d3fd2f96dca4b380e861",
+      "workspace_fingerprint": "847514fe74472eba64442de430f8eff1f1363c1172436395042131424254e57c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated the full independently approved source lane db6258674e6f191b8187c31e2231a45c73a5c5c6..5f1d7fe638c3763fc41289f8dc7b89dc20a48fad in order as ffc87c4, 89f2a05, and 0b6c705 onto exact closed baseline 494030a37b82adf42db02452ff6cbc0ff3444d4c. All three commits are range-equivalent and the package graph, startup checker, focused test, and initial source-task closure blobs are exact. Strict exact-target profile selection calibrates only Linux ARM64 development startup to 500 ms full and 275 ms empty; generic, x64, both SEA budgets, sample normalization, and raw ceilings remain unchanged. The source run array remains byte-identical, preserving the b22 425/225-calibration ARM failure and the da2 438.2/243.3 ms passing ARM production receipt. At one current integration fingerprint, focused startup tests passed 10/10, exact-base changed-file build/architecture/unit passed 454/454, standalone architecture passed, portable passed 452/452, strict baselib passed at zero errors, and all 219 parallel task contracts passed. Independent review approved exact checkpoint 39218fce7c8765b826c41bffc352146cd98f6a10 after confirming 3/3 ordered range equivalence, exact implementation blobs, unchanged source receipt hash 560abecd with b22 failure and da2 pass, lifecycle-only source-task delta, current receipts, and clean focused/scoped/all checks.",
+    "risks": [
+      "Startup timing is host-sensitive. The integration validates exact profile selection, malformed configuration rejection, and unchanged fallback policy on Linux x64, while the preserved clean unloaded Linux ARM64 receipt remains the target-native timing authority.",
+      "The final protected Linux ARM64 artifact authority must re-exercise the 11-sample production startup check before publication; this intermediate integration created no tag and published no artifact."
+    ],
+    "next_steps": [
+      "Return this exact authoritative checkpoint for later sequencing with the independently progressing Windows static/package lane.",
+      "Retain the final target-native ARM64 startup execution as a protected release gate."
+    ]
+  }
+}

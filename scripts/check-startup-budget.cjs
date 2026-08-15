@@ -9,16 +9,109 @@ const { performance } = require("node:perf_hooks");
 const ROOT = resolve(__dirname, "..");
 const EXPECTED = "1267650600228229401496703205376";
 const PACKAGE_GRAPH = require("../architecture/package-graph.json");
+const DECLARED_PROFILE_TARGETS = new Set([
+  "darwin-arm64",
+  "linux-arm64",
+  "linux-x64",
+  "win32-x64",
+]);
 
-function startupDefaults(sea = false, empty = false) {
+function plainObject(value) {
+  return value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype;
+}
+
+function exactKeys(value, expected, name) {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length ||
+      actual.some((key, index) => key !== wanted[index])) {
+    throw new Error(
+      `${name} must contain exactly ${wanted.join(", ")}; got ${actual.join(", ")}`,
+    );
+  }
+}
+
+function startupBudgetProfiles(packageGraph = PACKAGE_GRAPH) {
+  const profiles = packageGraph.startup_budget_profiles ?? [];
+  if (!Array.isArray(profiles)) {
+    throw new Error("startup_budget_profiles must be an array");
+  }
+  const seen = new Set();
+  return profiles.map((profile, profileIndex) => {
+    const name = `startup_budget_profiles[${profileIndex}]`;
+    if (!plainObject(profile)) throw new Error(`${name} must be an object`);
+    exactKeys(profile, ["platform", "arch", "overrides"], name);
+    if (typeof profile.platform !== "string" ||
+        typeof profile.arch !== "string") {
+      throw new Error(`${name} platform and arch must be strings`);
+    }
+    const target = `${profile.platform}-${profile.arch}`;
+    if (!DECLARED_PROFILE_TARGETS.has(target)) {
+      throw new Error(`${name} declares unknown target ${target}`);
+    }
+    if (seen.has(target)) {
+      throw new Error(`duplicate startup budget profile ${target}`);
+    }
+    seen.add(target);
+    if (!plainObject(profile.overrides) ||
+        Object.keys(profile.overrides).length === 0) {
+      throw new Error(`${name}.overrides must be a nonempty object`);
+    }
+    const overrides = {};
+    for (const [budgetName, override] of Object.entries(profile.overrides)) {
+      const overrideName = `${name}.overrides.${budgetName}`;
+      if (!Object.hasOwn(packageGraph.startup_budgets, budgetName)) {
+        throw new Error(`${overrideName} names an unknown generic budget`);
+      }
+      if (!plainObject(override)) {
+        throw new Error(`${overrideName} must be an object`);
+      }
+      exactKeys(override, ["normalized_median_ms", "evidence"], overrideName);
+      const normalizedMedianMs = override.normalized_median_ms;
+      if (!Number.isFinite(normalizedMedianMs) || normalizedMedianMs <= 0) {
+        throw new Error(
+          `${overrideName}.normalized_median_ms must be a positive number`,
+        );
+      }
+      if (!Array.isArray(override.evidence) ||
+          override.evidence.length === 0 ||
+          override.evidence.some((item) =>
+            typeof item !== "string" || item.trim() === "")) {
+        throw new Error(`${overrideName}.evidence must contain nonempty strings`);
+      }
+      overrides[budgetName] = {
+        normalizedMedianMs,
+        evidence: [...override.evidence],
+      };
+    }
+    return { platform: profile.platform, arch: profile.arch, target, overrides };
+  });
+}
+
+function startupDefaults(
+  sea = false,
+  empty = false,
+  target = { platform: process.platform, arch: process.arch },
+  packageGraph = PACKAGE_GRAPH,
+) {
   const name = `${sea ? "sea-cli" : "development-cli"}${empty ? "-empty" : ""}`;
-  const budget = PACKAGE_GRAPH.startup_budgets[name];
+  const budget = packageGraph.startup_budgets?.[name];
   if (!budget) throw new Error(`missing startup budget ${name}`);
+  const profile = startupBudgetProfiles(packageGraph).find(
+    (candidate) =>
+      candidate.platform === target.platform && candidate.arch === target.arch,
+  );
+  const override = profile?.overrides[name];
   return {
-    budgetMs: budget.normalized_median_ms,
+    budgetMs: override?.normalizedMedianMs ?? budget.normalized_median_ms,
     hardLimitMs: budget.hard_limit_ms,
     referenceNodeMs: budget.reference_node_ms,
     samples: budget.samples,
+    budgetProfile: override ? profile.target : "generic",
+    evidence: override?.evidence ?? [],
   };
 }
 
@@ -235,6 +328,7 @@ function run(argv = process.argv.slice(2), environment = process.env) {
   console.log(`  measured load factor:  ${assessment.loadFactor.toFixed(2)}x`);
   console.log(`  normalized Sage.js:    ${assessment.normalizedMs.toFixed(1)} ms`);
   console.log(`  normalized empty:      ${emptyAssessment.normalizedMs.toFixed(1)} ms`);
+  console.log(`  startup budget profile: ${defaults.budgetProfile}`);
   console.log(`  normalized budget:     ${budgetMs.toFixed(1)} ms`);
   console.log(`  catastrophic ceiling:  ${hardLimitMs.toFixed(1)} ms raw`);
 
@@ -279,5 +373,6 @@ module.exports = {
   parseArguments,
   positiveNumber,
   sampleCount,
+  startupBudgetProfiles,
   startupDefaults,
 };

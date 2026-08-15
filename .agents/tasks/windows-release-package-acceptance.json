@@ -6,11 +6,14 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs, and gate publication on native extracted-artifact acceptance",
+  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs, integrate exact-target startup-profile authority, calibrate only evidence-backed Windows x64 SEA full startup, and gate publication on native extracted-artifact acceptance",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
   "claims": [
     ".github/workflows/ci.yml",
+    ".agents/tasks/linux-arm64-startup-profile.json",
+    ".agents/tasks/release-arm-startup-integration.json",
     ".agents/tasks/windows-release-package-acceptance.json",
+    "architecture/package-graph.json",
     "ffi/flint.ffi.json",
     "ffi/flint.ffi.py",
     "packages/flint/binding.gyp",
@@ -23,6 +26,7 @@
     "packages/graph/scripts/build-deps.cjs",
     "packages/graph/test/build-deps.cjs",
     "scripts/build-sea.cjs",
+    "scripts/check-startup-budget.cjs",
     "scripts/check-finite-matrix-budget.cjs",
     "scripts/check-integer-matrix-budget.cjs",
     "scripts/check-polynomial-budget.cjs",
@@ -46,6 +50,7 @@
     "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
     "test/sea-windows-virtual-path.cjs",
+    "test/startup-budget.cjs",
     "test/release-workflow-protection.cjs",
     "test/windows-release-zip.cjs",
     "test/windows-static-runtime.cjs",
@@ -54,6 +59,7 @@
     "tools/native-kernel/compiler.cjs"
   ],
   "dependencies": [
+    "release-arm-startup-integration",
     "release-mac-native-integration",
     "release-producer-claims-integration",
     "release-windows-delay-load-integration",
@@ -64,7 +70,10 @@
     "1d5ef9eb91ac4c07eb387beb068a0e7becd67a5e",
     "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
     "922373d1c20606eee8fb31ea529ad611685ab9b7",
-    "e1c08df0dc57bbeb7596a771fc60c1547e3c12b7"
+    "e1c08df0dc57bbeb7596a771fc60c1547e3c12b7",
+    "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+    "C:\\Users\\user\\evidence\\windows-sea-startup-gate-1223b27\\diagnostic-3",
+    "C:\\Users\\user\\evidence\\windows-sea-startup-official-node-1223b27\\diagnostic-4"
   ],
   "architecture": {
     "strategy": "compiler-infrastructure",
@@ -72,7 +81,9 @@
     "oracles": [
       "Generated float64 adapter structural and first-result execution regression",
       "Same-source JavaScript float64 fallback",
-      "Native Windows extracted-artifact acceptance receipt"
+      "Native Windows extracted-artifact acceptance receipt",
+      "Exact-target startup profile selection retains generic and unmatched-target policy",
+      "Independent default-11 Windows x64 SEA receipts under system Node 26.5.1 and manifest-matched official Node 26.7.0"
     ],
     "exceptions": []
   },
@@ -84,6 +95,7 @@
   },
   "validation": [
     "node --test test/sea-windows-virtual-path.cjs",
+    "node --test test/startup-budget.cjs",
     "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
     "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
@@ -427,7 +439,7 @@
     }
   ],
   "handoff": {
-    "summary": "Exact Windows SEA virtual-resource repair source 1223b27a410dc1b62c630cf045785f607d67c519 follows the independently approved first-float and awaited-session cleanup repairs. Fresh Windows attempt 5 passed the complete native suite and all four repaired budget cleanup gates, then failed in the root-A SEA smoke when the first embedded FLINT @native wrappers lacked nativeAvailable. Capture-only diagnostic 1 reproduced the failure without rebuilding or modifying proof evidence. Windows path.resolve had attached the current drive to root-relative SEA source and native-cache paths, but embedded resource lookup recognized only the undriven virtual root, so source hashing and native-wrapper loading fell through. Resource lookup now canonicalizes separators and removes only that optional drive prefix before matching the exact virtual-root boundary, preserving existing POSIX behavior. A focused mocked-SEA regression proves drive-resolved source reads, embedded native-wrapper loading, nativeAvailable, POSIX identity, and sibling-prefix rejection. At workspace fingerprint ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9, focused Windows SEA, architecture, portable, strict-baselib, full changed-file, and all-contract receipt gates pass; the full changed-file gate includes the complete native suite and every budget.",
+    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite, all repaired budget cleanup gates, and the root-A SEA FLINT, graph, plot, and M4RI smoke path, proving the Windows virtual-resource repair. It stopped only when the platform-neutral 300 ms normalized full SEA startup budget rejected the target; empty startup and raw catastrophic ceilings passed. Capture-only diagnostic 3 reproduced the exact unmodified default-11 gate under system Node 26.5.1 at 358.0 ms normalized, and diagnostic 4 removed the comparator-version confound by running that same checker under the manifest-matched official Node 26.7.0 at 362.0 ms normalized. This merge brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2 without modifying either completed dependency contract; the evidence-backed Windows x64 SEA full-startup override remains a separate source change and no new proof identity has been prepared.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
@@ -438,13 +450,15 @@
       "Attempt 5 ran once under triggerless S4U task \\SagejsWindowsStaticE1c08dfAttempt5 and ended Ready/result 1. The full fresh native suite passed, including all four repaired budget cleanup gates, and root A produced sagejs.exe b3cbbeda54b0333e4021177cee53c11d00a1c1ae9446be95d305f1115d24c9fa with manifest d28014cd8e58e9324c7237938dc7d9e7f5fd21d3bb3d5694b69d1e8986abb83f and sagepython.exe 884ffc2ed0bd8fa4a2f34829d13625322d1aa85ca4a67b3be6e50e3eb5e76e80 with manifest 1348a636ac78f320d50782b6bf0d6eb48fe9c907dbdbe994d4d59e35b88ee463. It then stopped at aggregate pnpm test:sea before root B, binary policy, reproducibility, ZIP, or extracted acceptance; no retry was made.",
       "The capture-only diagnostic at C:\\Users\\user\\evidence\\windows-sea-smoke-e1c08df\\diagnostic-1 ran once under triggerless S4U task \\SagejsWindowsSeaSmokeE1c08dfDiagnostic1 and preserved attempt 5. Its exact script and XML hashes are a6caf0b5222a6209e405533e39051eaf04c777196106e96ae95af504afa53ac3 and b2de93e912b371f83c89633a17cdaa1ed63ebd146549a80f6813a090dd54c78b. Exact diagnostic hashes are status.json 04ed1fca1373421c101c18a71f58378e4346914c465baef24890434c3f46332f, result.json 7ae4be2af5dbc479d563cee63ad8f4c7f063070d91289596207c354ad9b0e05f, stdout.log e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, stderr.log 4dc77a2beb2530350902673174d784c8b48824b1d9c1b694caa3922e77bdfcf3, proof.log daadcabce6d2c9ec784efce4d9d07d9367e6e29031359a753728eaf1f4d4244c, and ownership.json 92d93818b2f91f99af67b580ce888b634b234c52c885650828d4a889c5ed3e0d.",
       "Diagnostic 1 isolated system temporary, XDG, dynamic, and parallel-native caches, made no build or proof-evidence mutation, and captured the unmodified root-A sea-smoke child from 2026-08-15T03:08:29.5312903Z through 2026-08-15T03:09:53.5082944Z. The child exited 1 after 83985.074 ms because test/sea-smoke.cjs:54 observed that nativeAvailable was absent on the first embedded FLINT @native wrappers. On Windows, path.resolve adds the current drive to the root-relative SEA virtual source and native-cache paths, while the resource lookup before this repair recognized only the undriven virtual root; the source hash and embedded native wrapper therefore fell through instead of loading the asset.",
-      "Exact Windows SEA virtual-resource repair source 1223b27a410dc1b62c630cf045785f607d67c519 is validated on Linux with explicit Win32 path resolution and mocked embedded assets, but is not a fresh native Windows proof. No attempt 6 identity has been prepared, registered, or launched.",
+      "Failed attempt 6 is preserved at C:\\Users\\user\\evidence\\windows-static-1223b27\\attempt-6. Exact SHA-256 hashes are status.json 43d6bb8b66d4faac02a34239f1d4c48585fe5f3cfdbd9af1e9fb1724820b563d, proof.log b20d66b92b467818af6252b58fd658a2cfad71c14f27476d999854cc8d7bcddb, ownership.json dcf609258078ffb9f3c6e1fa7e7461659960cef64fc580b55f85d008b2a5b79c, and toolchain-preflight.json 146f535f2371fa178c93df251f72b2004d3c35bed62481f5f0b1a23fd6026348. Its root-A sagejs.exe is 8de6cb2160740a8042abd3099d5cd11f4811fc9c61433a61872e0673d6f25aab with manifest 58f5f601eb06d7cf46920aace8bfadcf7a53259eb37f5e5729ea016b0e6b58e4. Attempt 6 passed the repaired native and SEA correctness gates but stopped before root B, binary policy, reproducibility, ZIP, or extracted acceptance when the generic 300 ms normalized full startup gate rejected the target; no retry was made.",
+      "Capture-only diagnostic 3 is preserved at C:\\Users\\user\\evidence\\windows-sea-startup-gate-1223b27\\diagnostic-3. Exact hashes are status.json e6c0dc9e855a4d60d49f0c43153a1181ddb58af94d73e5a167e522f4082fc2b0, proof.log a91775e7c29ff22034109906359fd328b9d302cc5a4067160819ed4847c1c575, ownership.json d013df0b537062744462c353177c303041df467dec3d6504fea859e02b12be79, result.json c07e5dd117817aefe153ea5d34b5c7f177b122ceee617e5e73f561850c6c6bfa, child result bebad1360a9fa23f40633e1dd740cbcd79fc5d2ca824d05c2ee40cc3c1189047, stdout 1743ec3c345efb21768fc1d29e141c0c57d257ff47c5b60396d43cb8eb1dd4c8, and stderr 97894de7cdc447c25f350e43e335e954e4a54ecf9e4353e778ef870dcef014ec. The unmodified default-11 checker under system Node 26.5.1 measured 358.0 ms normalized full, 204.2 ms normalized empty, and 692.9 ms raw full startup.",
+      "Capture-only diagnostic 4 is preserved at C:\\Users\\user\\evidence\\windows-sea-startup-official-node-1223b27\\diagnostic-4. Exact hashes are status.json d4a745e019fd3e94148ef3c613baa43f9deb1aaef67c64c1ce45a4a6fb927ca1, proof.log d63e3fa4ec803b6123b702bd23864ba9ce623bd6799495f216e1e51f1786b108, ownership.json 64474ba530d25490a190b8a95b4cad7deae62b3c6830daeb60cd3c1a3312bb75, result.json 1f7fdc7a9b6c1b2ee06479bc4ebbea1ef1629a95b9af3a782b64b8b3d2cb72a9, child result c51a14683eb5ae3ce25e02d87c571a8fc4ed88a41c9a54fca6849558c170d011, stdout de2e0f0adbf72d0dc7531a3343269e873e6a8dd142cd6b12aa7c121ce924f0c6, and stderr 8da84e592a909ff8128e4e3193ca7c458d137b1e8438213dd477f2ba44039c02. The exact unmodified checker under manifest-matched official Node 26.7.0 measured 362.0 ms normalized full, 206.0 ms normalized empty, and 707.3 ms raw full startup, proving the Node patch-version comparator mismatch was not causal.",
       "The first receipt-backed changed-file run stopped after test/cache-automatic.cjs completed its first nine cases but did not exit a concurrent stale-lock takeover case. The isolated test then passed all 17 cases, and a clean receipt-backed full changed-file rerun passed without recurrence; no source changed between those observations.",
       "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template."
     ],
     "next_steps": [
-      "Obtain independent review of exact Windows SEA virtual-resource repair source 1223b27a410dc1b62c630cf045785f607d67c519 and this task closure.",
-      "Only after source approval, prepare and separately review a fresh attempt 6 identity at the repaired exact source before any registration or launch.",
+      "Add and independently review only an evidence-backed win32-x64 sea-cli normalized full-startup profile of 400 ms, retaining generic, unmatched-target, empty, raw-ceiling, reference, and sample policy.",
+      "Only after exact source approval, prepare and separately review a fresh attempt 7 identity that uses official Node 26.7.0 for pnpm and startup-checker normalization before any registration or launch.",
       "Preserve and independently review the native receipt, binary inventories, reproducibility evidence, canonical unsigned ZIP, and extracted acceptance JSON plus sidecar before integration."
     ]
   }
