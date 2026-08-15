@@ -72,6 +72,7 @@
     "922373d1c20606eee8fb31ea529ad611685ab9b7",
     "e1c08df0dc57bbeb7596a771fc60c1547e3c12b7",
     "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+    "9174546c565ad949a9422219d78b7b90f7dca894",
     "C:\\Users\\user\\evidence\\windows-sea-startup-gate-1223b27\\diagnostic-3",
     "C:\\Users\\user\\evidence\\windows-sea-startup-official-node-1223b27\\diagnostic-4"
   ],
@@ -537,10 +538,20 @@
       "commit": "f5c8dd51a7b8029137db074f66981036cd3a5259",
       "workspace_fingerprint": "bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.616,
+      "started_at": "2026-08-15T08:11:57.166Z",
+      "commit": "9174546c565ad949a9422219d78b7b90f7dca894",
+      "workspace_fingerprint": "daa7aab8e0523cb055e7983af8aa29e072b8cda5f94fc0b2e2a85a04bd76f363",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite, all repaired budget cleanup gates, and the root-A SEA FLINT, graph, plot, and M4RI smoke path, proving the Windows virtual-resource repair. It stopped only when the platform-neutral 300 ms normalized full SEA startup budget rejected the target; empty startup and raw catastrophic ceilings passed. Capture-only diagnostic 3 reproduced the exact unmodified default-11 gate under system Node 26.5.1 at 358.0 ms normalized, and diagnostic 4 removed the comparator-version confound by running that same checker under the manifest-matched official Node 26.7.0 at 362.0 ms normalized. Merge f5c8dd51a7b8029137db074f66981036cd3a5259 brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2 without modifying either completed dependency contract. The separate source change adds only an evidence-backed win32-x64 sea-cli normalized full-startup profile of 400 ms, retaining generic, development, empty, hard-ceiling, reference, and sample policy. Focused profile, package-graph, release, architecture, portable, strict, and clean full changed-file gates pass at workspace fingerprint bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1; no new proof identity has been prepared.",
+    "summary": "Exact Windows repairs 1223b27a410dc1b62c630cf045785f607d67c519 passed their focused, architecture, portable, strict, full changed-file, and parallel source gates. Fresh Windows attempt 6 then passed the complete native suite, all repaired budget cleanup gates, and the root-A SEA FLINT, graph, plot, and M4RI smoke path, proving the Windows virtual-resource repair. It stopped only when the platform-neutral 300 ms normalized full SEA startup budget rejected the target; empty startup and raw catastrophic ceilings passed. Capture-only diagnostic 3 reproduced the exact unmodified default-11 gate under system Node 26.5.1 at 358.0 ms normalized, and diagnostic 4 removed the comparator-version confound by running that same checker under the manifest-matched official Node 26.7.0 at 362.0 ms normalized. Merge f5c8dd51a7b8029137db074f66981036cd3a5259 brings in exact closed startup-profile authority 8d18904b2bbd0860b89e6236d7b35346e3c9bba2 without modifying either completed dependency contract. Source 9174546c565ad949a9422219d78b7b90f7dca894 adds only an evidence-backed win32-x64 sea-cli normalized full-startup profile of 400 ms, retaining generic, development, empty, hard-ceiling, reference, and sample policy. Focused profile, package-graph, release, architecture, portable, strict, and clean full changed-file gates pass at workspace fingerprint bc2ddd6d39c42456ac839491cd3b59ca37da17d67c691068c009e85a2f83db1, and the post-source all-contract closure passes at daa7aab8e0523cb055e7983af8aa29e072b8cda5f94fc0b2e2a85a04bd76f363; no new proof identity has been prepared.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
