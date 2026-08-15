@@ -63,6 +63,7 @@ const unit = [
   "test/audit-gaps.cjs",
   "test/standalone-library.cjs",
   "test/sea-build-manifest.cjs",
+  "test/sea-windows-virtual-path.cjs",
 ];
 
 const integration = [

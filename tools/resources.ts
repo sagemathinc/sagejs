@@ -131,11 +131,16 @@ function attachEmbeddedFfiManifest(
 }
 
 function assetKeyForVirtualPath(filename: string): string | undefined {
-  const normalized = normalize(filename);
-  const prefix = `${VIRTUAL_ROOT}/`;
-  const platformPrefix = normalize(prefix);
-  if (!normalized.startsWith(platformPrefix)) return;
-  return normalized.slice(platformPrefix.length).replaceAll("\\", "/");
+  const normalized = normalize(filename).replaceAll("\\", "/");
+  const virtualRoot = VIRTUAL_ROOT.replaceAll("\\", "/");
+  // Resolving a root-relative Windows virtual path attaches the current drive
+  // (for example, `\\__sagejs_sea__\\lib` becomes
+  // `C:\\__sagejs_sea__\\lib`). That drive is host context, not part of the
+  // embedded asset identity.
+  const canonical = normalized.replace(/^[A-Za-z]:(?=\/)/, "");
+  const prefix = `${virtualRoot}/`;
+  if (!canonical.startsWith(prefix)) return;
+  return canonical.slice(prefix.length);
 }
 
 export function isSingleExecutable(): boolean {

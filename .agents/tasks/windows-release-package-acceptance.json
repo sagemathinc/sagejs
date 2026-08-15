@@ -45,9 +45,11 @@
     "test/performance-budget-cleanup.cjs",
     "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
+    "test/sea-windows-virtual-path.cjs",
     "test/release-workflow-protection.cjs",
     "test/windows-release-zip.cjs",
     "test/windows-static-runtime.cjs",
+    "tools/resources.ts",
     "tools/native-kernel/c-backend.cjs",
     "tools/native-kernel/compiler.cjs"
   ],
@@ -81,6 +83,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/sea-windows-virtual-path.cjs",
     "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
     "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
@@ -351,6 +354,66 @@
       "commit": "2ebe1ce4837ff2f393c825d791b51a7fc49826b9",
       "workspace_fingerprint": "c54fc178c4811d230eb887387519d4961506059eea00e9e96eed28ca43fd2a36",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/sea-windows-virtual-path.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.101,
+      "started_at": "2026-08-15T03:25:04.493Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.906,
+      "started_at": "2026-08-15T03:25:12.051Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.537,
+      "started_at": "2026-08-15T03:25:21.570Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.546,
+      "started_at": "2026-08-15T03:25:46.067Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1345.174,
+      "started_at": "2026-08-15T03:26:06.078Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.66,
+      "started_at": "2026-08-15T03:48:37.769Z",
+      "commit": "e6b3a230bd98afa00f6962316861685bb3306e2c",
+      "workspace_fingerprint": "ce2242e77537d1bc253d13a505052d7fef5f0b08b9bdbdda3f24063cf00de6a9",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -361,6 +424,10 @@
       "Exact cleanup repair source e1c08df0dc57bbeb7596a771fc60c1547e3c12b7 is not Windows-native proof. A new independently approved proof identity must repeat the fresh native Windows build, SEA, binary-policy, two-root byte-reproducibility, canonical ZIP, and extracted-artifact acceptance sequence.",
       "Failed attempt 4 is preserved at C:\\Users\\user\\evidence\\windows-static-922373d\\attempt-4. Exact SHA-256 hashes are status.json 354b3857630875cba3fadfac574c4525d6c8dae548e5d9384f016e53ddd99f5f, proof.log 80d86a456d3e396bcc8c33976eaddf416026d18bb52070fee0dc8e109fb629a9, ownership.json 428eae03d4143eb0d4d4b99b2b1736d6666002c71ae3039be1e8d16c754932a5, and toolchain-preflight.json 75dc24b242c2aea946e136f34f9e548f5e614345df98ff21585539050d935e27.",
       "Attempt 4 ran once under triggerless S4U task \\SagejsWindowsStatic922373dAttempt4. The repaired test/native-kernel.cjs first-float gate passed, but the proof stopped in test:matrix:rational-performance when unawaited Sage session shutdown raced rmSync of C:\\Users\\user\\AppData\\Local\\Temp\\sagejs-rational-matrix-budget-vrIini. The leftover cache tree and absence of a live Node process were audited read-only; no retry was made.",
+      "Failed attempt 5 is preserved at C:\\Users\\user\\evidence\\windows-static-e1c08df\\attempt-5. Exact SHA-256 hashes are status.json ac1299803fe7a55813585b7341ba4b19be5dc57c43bab6482c6815e86ce06641, proof.log 247b4f9e9c2fe181df975030385dfa68efe1d694c3d433aeecfad3c3ba030bef, ownership.json 0e870a826f31d42b805e881128360b51969ea06cee3665add3dffd6c1e645d79, and toolchain-preflight.json f20d84be2acecf97d75b478747675717214750203a771223c5f461f217134d50. The exact reviewed harness, helper, and task XML hashes are 1d57da8cd7ddac2ee34e6bcc1b448582c5624486da944d9ef942ae6611e93f73, 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and 1ab0ed8ad9e745c8e128b9b7b0908e0c3b5acec5b295abe1050330160b556c58.",
+      "Attempt 5 ran once under triggerless S4U task \\SagejsWindowsStaticE1c08dfAttempt5 and ended Ready/result 1. The full fresh native suite passed, including all four repaired budget cleanup gates, and root A produced sagejs.exe b3cbbeda54b0333e4021177cee53c11d00a1c1ae9446be95d305f1115d24c9fa with manifest d28014cd8e58e9324c7237938dc7d9e7f5fd21d3bb3d5694b69d1e8986abb83f and sagepython.exe 884ffc2ed0bd8fa4a2f34829d13625322d1aa85ca4a67b3be6e50e3eb5e76e80 with manifest 1348a636ac78f320d50782b6bf0d6eb48fe9c907dbdbe994d4d59e35b88ee463. It then stopped at aggregate pnpm test:sea before root B, binary policy, reproducibility, ZIP, or extracted acceptance; no retry was made.",
+      "The capture-only diagnostic at C:\\Users\\user\\evidence\\windows-sea-smoke-e1c08df\\diagnostic-1 ran once under triggerless S4U task \\SagejsWindowsSeaSmokeE1c08dfDiagnostic1 and preserved attempt 5. Its exact script and XML hashes are a6caf0b5222a6209e405533e39051eaf04c777196106e96ae95af504afa53ac3 and b2de93e912b371f83c89633a17cdaa1ed63ebd146549a80f6813a090dd54c78b. Exact diagnostic hashes are status.json 04ed1fca1373421c101c18a71f58378e4346914c465baef24890434c3f46332f, result.json 7ae4be2af5dbc479d563cee63ad8f4c7f063070d91289596207c354ad9b0e05f, stdout.log e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, stderr.log 4dc77a2beb2530350902673174d784c8b48824b1d9c1b694caa3922e77bdfcf3, transcript.log daadcabce6d2c9ec784efce4d9d07d9367e6e29031359a753728eaf1f4d4244c, and ownership.json 92d93818b2f91f99af67b580ce888b634b234c52c885650828d4a889c5ed3e0d.",
+      "Diagnostic 1 isolated system temporary, XDG, dynamic, and parallel-native caches, made no build or proof-evidence mutation, and captured the unmodified root-A sea-smoke child from 2026-08-15T03:08:29.5312903Z through 2026-08-15T03:09:53.5082944Z. The child exited 1 after 83985.074 ms because test/sea-smoke.cjs:54 observed that nativeAvailable was absent on the first embedded FLINT @native wrappers. On Windows, path.resolve adds the current drive to the root-relative SEA virtual source and native-cache paths, while the resource lookup before this repair recognized only the undriven virtual root; the source hash and embedded native wrapper therefore fell through instead of loading the asset.",
       "The first receipt-backed changed-file run stopped after test/cache-automatic.cjs completed its first nine cases but did not exit a concurrent stale-lock takeover case. The isolated test then passed all 17 cases, and a clean receipt-backed full changed-file rerun passed without recurrence; no source changed between those observations.",
       "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template."
     ],
