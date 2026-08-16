@@ -33,6 +33,7 @@ const unit = [
   "test/foreign-adapter-build-graph.cjs",
   "test/runtime-cache.cjs",
   "test/startup-budget.cjs",
+  "test/integer-matrix-budget-profile.cjs",
   "test/timing-core.cjs",
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",

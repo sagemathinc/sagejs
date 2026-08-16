@@ -69,6 +69,22 @@
       }
     }
   ],
+  "integer_matrix_budget_profiles": [
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "overrides": {
+        "density_500": {
+          "normalized_median_ms": 10,
+          "evidence": [
+            "Windows S4U attempts 5, 6, and 7 proof logs 247b4f9e9c2fe181df975030385dfa68efe1d694c3d433aeecfad3c3ba030bef, b20d66b92b467818af6252b58fd658a2cfad71c14f27476d999854cc8d7bcddb, and 9e02dd7c00d456a769fd55e570c3f038d52cebadfdb1e223ec272046deca573f: density_500 6.15, 5.93, and 5.90 ms normalized",
+            "Windows S4U attempts 9, 10, 11, 12, and 13 proof logs 8a53fd95674b9fb87ee70baaa1ecb956e756a47c5c6c60ff5e77aed6d84bb611, 190552ddb225d699bb71159478868ac36b03b9b4df6e24c9f420976b62c7681a, 805a0880713b6261ef00a553bbd854c83e5a5d7be3069ff7e2a1ad2022fa156d, de91d6c84230309e40b27928dad9e88fea76cb2b883b9e2e05d53f59967ff07c, and b2812964cedfbe9b7f90140437acc8d404a31fb3495f2c85fca0ce925de1ea8f: density_500 8.45, 7.51, 7.79, 7.95, and 8.77 ms normalized",
+            "Windows capture diagnostic 2 stdout 6753df567de06c6036b7e3c1cb97144f5794d0965b7c035afc1bf11d9a95656b under manifest-matched official Node 26.7.0: unmodified default-five density_500 6.32 ms normalized"
+          ]
+        }
+      }
+    }
+  ],
   "packages": [
     {
       "id": "core-runtime",

@@ -8,8 +8,33 @@ const { join } = require("node:path");
 const { compile } = require("@sagemath/sagejs/native");
 const flint = require("../packages/flint");
 const { createSage } = require("../dist/tools/kernel.js");
+const PACKAGE_GRAPH = require("../architecture/package-graph.json");
 
 const root = join(__dirname, "..");
+const DECLARED_PROFILE_TARGETS = new Set([
+  "darwin-arm64",
+  "linux-arm64",
+  "linux-x64",
+  "win32-x64",
+]);
+
+function plainObject(value) {
+  return value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype;
+}
+
+function exactKeys(value, expected, name) {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length ||
+      actual.some((key, index) => key !== wanted[index])) {
+    throw new Error(
+      `${name} must contain exactly ${wanted.join(", ")}; got ${actual.join(", ")}`,
+    );
+  }
+}
 
 function positiveNumber(value, name, fallback) {
   if (value === undefined || value === "") return fallback;
@@ -106,6 +131,122 @@ const cases = [
   },
 ];
 
+function integerMatrixBudgetProfiles(packageGraph = PACKAGE_GRAPH) {
+  const profiles = packageGraph.integer_matrix_budget_profiles ?? [];
+  if (!Array.isArray(profiles)) {
+    throw new Error("integer_matrix_budget_profiles must be an array");
+  }
+  const genericNames = new Set(cases.map(({ name }) => name));
+  const seen = new Set();
+  return profiles.map((profile, profileIndex) => {
+    const name = `integer_matrix_budget_profiles[${profileIndex}]`;
+    if (!plainObject(profile)) throw new Error(`${name} must be an object`);
+    exactKeys(profile, ["platform", "arch", "overrides"], name);
+    if (typeof profile.platform !== "string" ||
+        profile.platform.trim() === "" ||
+        typeof profile.arch !== "string" ||
+        profile.arch.trim() === "") {
+      throw new Error(`${name} platform and arch must be nonempty strings`);
+    }
+    const target = `${profile.platform}-${profile.arch}`;
+    if (!DECLARED_PROFILE_TARGETS.has(target)) {
+      throw new Error(`${name} declares unknown target ${target}`);
+    }
+    if (seen.has(target)) {
+      throw new Error(`duplicate integer matrix budget profile ${target}`);
+    }
+    seen.add(target);
+    if (!plainObject(profile.overrides) ||
+        Object.keys(profile.overrides).length === 0) {
+      throw new Error(`${name}.overrides must be a nonempty object`);
+    }
+    const overrides = {};
+    for (const [caseName, override] of Object.entries(profile.overrides)) {
+      const overrideName = `${name}.overrides.${caseName}`;
+      if (!genericNames.has(caseName)) {
+        throw new Error(`${overrideName} names an unknown generic budget`);
+      }
+      if (!plainObject(override)) {
+        throw new Error(`${overrideName} must be an object`);
+      }
+      exactKeys(override, ["normalized_median_ms", "evidence"], overrideName);
+      const normalizedMedianMs = override.normalized_median_ms;
+      if (!Number.isFinite(normalizedMedianMs) || normalizedMedianMs <= 0) {
+        throw new Error(
+          `${overrideName}.normalized_median_ms must be a positive number`,
+        );
+      }
+      if (!Array.isArray(override.evidence) ||
+          override.evidence.length === 0 ||
+          override.evidence.some((item) =>
+            typeof item !== "string" || item.trim() === "")) {
+        throw new Error(`${overrideName}.evidence must contain nonempty strings`);
+      }
+      overrides[caseName] = {
+        normalizedMedianMs,
+        evidence: [...override.evidence],
+      };
+    }
+    return { platform: profile.platform, arch: profile.arch, target, overrides };
+  });
+}
+
+function integerMatrixBudgetCases(
+  target = { platform: process.platform, arch: process.arch },
+  packageGraph = PACKAGE_GRAPH,
+) {
+  if (!plainObject(target)) throw new Error("target must be an object");
+  exactKeys(target, ["platform", "arch"], "target");
+  if (typeof target.platform !== "string" ||
+      target.platform.trim() === "" ||
+      typeof target.arch !== "string" ||
+      target.arch.trim() === "") {
+    throw new Error("target platform and arch must be nonempty strings");
+  }
+  const profile = integerMatrixBudgetProfiles(packageGraph).find(
+    (candidate) =>
+      candidate.platform === target.platform && candidate.arch === target.arch,
+  );
+  return cases.map((testCase) => {
+    const override = profile?.overrides[testCase.name];
+    return {
+      ...testCase,
+      budget: override?.normalizedMedianMs ?? testCase.budget,
+      budgetProfile: override ? profile.target : "generic",
+      evidence: override?.evidence ?? [],
+    };
+  });
+}
+
+function assessIntegerMatrixTiming({
+  raw,
+  normalized,
+  budget,
+  budgetScale = 1,
+  hardLimit = 500,
+}) {
+  for (const [name, value] of Object.entries({
+    raw,
+    normalized,
+    budget,
+    budgetScale,
+    hardLimit,
+  })) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(`${name} must be a positive number`);
+    }
+  }
+  const scaledBudget = budget * budgetScale;
+  const withinNormalizedBudget = normalized <= scaledBudget;
+  const withinHardLimit = raw <= hardLimit;
+  return {
+    scaledBudget,
+    withinNormalizedBudget,
+    withinHardLimit,
+    passed: withinNormalizedBudget && withinHardLimit,
+  };
+}
+
 const structural = [
   "dense_integer_matrix_add",
   "dense_integer_matrix_subtract",
@@ -153,6 +294,7 @@ async function run(environment = process.env) {
     "SAGEJS_INTEGER_MATRIX_HARD_LIMIT_MS",
     500,
   );
+  const selectedCases = integerMatrixBudgetCases();
   const cache = mkdtempSync(join(tmpdir(), "sagejs-integer-matrix-budget-"));
   const savedCache = process.env.SAGEJS_NATIVE_CACHE_DIR;
   const savedRequired = process.env.SAGEJS_NATIVE_REQUIRED;
@@ -197,7 +339,7 @@ async function run(environment = process.env) {
         throw new Error("integer matrix gate did not resolve isolated kernels");
       }
 
-      const definitions = cases.flatMap((testCase) => [
+      const definitions = selectedCases.flatMap((testCase) => [
         `def _integer_surface_${testCase.name}():`,
         "    started = _integer_budget_runtime.wall_time()",
         `    result = ${testCase.expression}`,
@@ -224,7 +366,7 @@ async function run(environment = process.env) {
         ...definitions,
       ].join("\n"));
 
-      for (const testCase of cases) {
+      for (const testCase of selectedCases) {
         await session.evaluate(`_integer_surface_${testCase.name}()`);
         const times = [];
         for (let index = 0; index < samples; index += 1) {
@@ -238,11 +380,19 @@ async function run(environment = process.env) {
           times.push(elapsed);
         }
         const raw = median(times);
+        const normalized = raw / loadFactor;
+        const assessment = assessIntegerMatrixTiming({
+          raw,
+          normalized,
+          budget: testCase.budget,
+          budgetScale,
+          hardLimit,
+        });
         results.push({
           ...testCase,
           raw,
-          normalized: raw / loadFactor,
-          scaledBudget: testCase.budget * budgetScale,
+          normalized,
+          ...assessment,
         });
       }
     } finally {
@@ -253,6 +403,13 @@ async function run(environment = process.env) {
     console.log("  implementation: typed-python-isolated + declared-flint-isolated");
     console.log(`  raw FLINT construction+multiply median: ${referenceMedian.toFixed(2)} ms`);
     console.log(`  measured load factor: ${loadFactor.toFixed(2)}x`);
+    const activeProfiles = [...new Set(
+      results.filter(({ budgetProfile }) => budgetProfile !== "generic")
+        .map(({ budgetProfile }) => budgetProfile),
+    )];
+    console.log(
+      `  integer matrix budget profile: ${activeProfiles.join(", ") || "generic"}`,
+    );
     console.log("  operation                         raw / normalized / budget");
     const failures = [];
     for (const result of results) {
@@ -262,7 +419,7 @@ async function run(environment = process.env) {
         `${result.normalized.toFixed(2).padStart(7)} / ` +
         `${result.scaledBudget.toFixed(2).padStart(7)} ms`,
       );
-      if (result.normalized > result.scaledBudget || result.raw > hardLimit) {
+      if (!result.passed) {
         failures.push(result.name);
       }
     }
@@ -287,4 +444,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { cases, exactEntries, median, nativeReference, run };
+module.exports = {
+  assessIntegerMatrixTiming,
+  cases,
+  exactEntries,
+  integerMatrixBudgetCases,
+  integerMatrixBudgetProfiles,
+  median,
+  nativeReference,
+  run,
+};
