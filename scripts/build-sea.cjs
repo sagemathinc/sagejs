@@ -39,6 +39,7 @@ const {
 const {
   REPORT_SCHEMA: NATIVE_BINARY_REPORT_SCHEMA,
   assertNativeInputs,
+  clearPeCertificateTableFile,
 } = require("./release-native-binary-inspector.cjs");
 const {
   createSeaNativeDependencyBindings,
@@ -131,6 +132,10 @@ const SEA_ASSEMBLY_POLICY = Object.freeze({
   schema: "sagejs.sea-assembly-policy/v1",
   useCodeCache: true,
   useSnapshot: false,
+  windowsCertificateTable: Object.freeze({
+    action: "clear-data-directory-entry",
+    index: 4,
+  }),
 });
 const NATIVE_BINARY_RECEIPT_SCHEMA = "sagejs.native-binary-receipt/v1";
 const NODE_TEMPLATE_LABEL = "sea/node-template";
@@ -1350,6 +1355,9 @@ function buildExecutable(name, withFlint, sourceIdentity) {
       cwd: staged.directory,
       stdio: "inherit",
     });
+    if (builder.platform === "win32") {
+      clearPeCertificateTableFile(output);
+    }
     const observedAfterBuild = createSeaBuildManifest({
       assets: staged.assets,
       mainBundle: staged.mainBundle,

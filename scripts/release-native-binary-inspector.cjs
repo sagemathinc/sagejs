@@ -2,7 +2,13 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { readFileSync, writeFileSync } = require("node:fs");
+const {
+  closeSync,
+  openSync,
+  readFileSync,
+  writeFileSync,
+  writeSync,
+} = require("node:fs");
 const { basename } = require("node:path");
 
 const REPORT_SCHEMA = "sagejs.native-binary-inspection-v1";
@@ -476,8 +482,14 @@ function peRvaString(buffer, rva, sections) {
   throw new BinaryFormatError(`PE string RVA 0x${rva.toString(16)} is not mapped`);
 }
 
-function inspectPe(buffer) {
+function peHeaderLayout(buffer) {
+  if (!Buffer.isBuffer(buffer)) {
+    throw new TypeError("PE binary must be a Buffer");
+  }
   requireRange(buffer, 0, 0x40, "DOS header");
+  if (buffer.readUInt16LE(0) !== 0x5a4d) {
+    throw new BinaryFormatError("invalid DOS signature");
+  }
   const peOffset = buffer.readUInt32LE(0x3c);
   requireRange(buffer, peOffset, 24, "PE header");
   if (buffer.toString("binary", peOffset, peOffset + 4) !== "PE\0\0") {
@@ -499,6 +511,89 @@ function inspectPe(buffer) {
   const dataDirectory = optional + (is64 ? 112 : 96);
   const directoryCountOffset = optional + (is64 ? 108 : 92);
   const directoryCount = buffer.readUInt32LE(directoryCountOffset);
+  return {
+    coff,
+    dataDirectory,
+    directoryCount,
+    is64,
+    magic,
+    machine,
+    optional,
+    optionalEnd: optional + optionalSize,
+    optionalSize,
+    peOffset,
+    sectionCount,
+  };
+}
+
+function peCertificateTable(buffer) {
+  const layout = peHeaderLayout(buffer);
+  const entryOffset = layout.dataDirectory + 4 * 8;
+  if (layout.directoryCount <= 4 || entryOffset + 8 > layout.optionalEnd) {
+    throw new BinaryFormatError(
+      "PE optional header does not contain a certificate-table directory",
+    );
+  }
+  requireRange(buffer, entryOffset, 8, "PE certificate-table directory");
+  const offset = buffer.readUInt32LE(entryOffset);
+  const size = buffer.readUInt32LE(entryOffset + 4);
+  if ((offset === 0) !== (size === 0)) {
+    throw new BinaryFormatError("malformed PE certificate-table directory");
+  }
+  if (size !== 0) {
+    if (offset % 8 !== 0) {
+      throw new BinaryFormatError("PE certificate table is not 8-byte aligned");
+    }
+    requireRange(buffer, offset, size, "PE certificate table");
+  }
+  return {
+    entryOffset,
+    offset,
+    size,
+    wordSize: layout.is64 ? 64 : 32,
+  };
+}
+
+function clearPeCertificateTable(buffer) {
+  const table = peCertificateTable(buffer);
+  if (table.offset === 0) return { ...table, changed: false };
+  buffer.fill(0, table.entryOffset, table.entryOffset + 8);
+  return { ...table, changed: true };
+}
+
+function clearPeCertificateTableFile(filename) {
+  const buffer = readFileSync(filename);
+  const result = clearPeCertificateTable(buffer);
+  if (!result.changed) return result;
+  const descriptor = openSync(filename, "r+");
+  try {
+    const written = writeSync(descriptor, Buffer.alloc(8), 0, 8, result.entryOffset);
+    if (written !== 8) {
+      throw new Error(`short write while clearing ${filename}'s PE certificate table`);
+    }
+  } finally {
+    closeSync(descriptor);
+  }
+  const observed = peCertificateTable(readFileSync(filename));
+  if (observed.offset !== 0 || observed.size !== 0) {
+    throw new Error(`failed to clear ${filename}'s PE certificate table`);
+  }
+  return result;
+}
+
+function inspectPe(buffer) {
+  const layout = peHeaderLayout(buffer);
+  const {
+    coff,
+    dataDirectory,
+    directoryCount,
+    is64,
+    machine,
+    optional,
+    optionalSize,
+    sectionCount,
+  } = layout;
+  const certificateTable = peCertificateTable(buffer);
   const imageBase = is64
     ? safeNumber(buffer.readBigUInt64LE(optional + 24), "PE image base")
     : buffer.readUInt32LE(optional + 28);
@@ -572,6 +667,10 @@ function inspectPe(buffer) {
     architecture: architectureName("pe", machine),
     machine,
     subsystem: buffer.readUInt16LE(optional + 68),
+    certificateTable: {
+      offset: certificateTable.offset,
+      size: certificateTable.size,
+    },
     dependencies: uniqueSorted(imports),
     delayDependencies: uniqueSorted(delayed),
   };
@@ -896,6 +995,8 @@ function main() {
 
 module.exports = {
   BinaryFormatError,
+  clearPeCertificateTable,
+  clearPeCertificateTableFile,
   EMBEDDED_NODE_ADDON_ROLE,
   NativeBinaryPolicyError,
   REPORT_SCHEMA,
@@ -904,6 +1005,7 @@ module.exports = {
   inspectBinaryBuffer,
   inspectNativeBinary,
   inspectNativeInputs,
+  peCertificateTable,
 };
 
 if (require.main === module) main();

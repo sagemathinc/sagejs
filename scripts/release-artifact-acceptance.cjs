@@ -35,7 +35,10 @@ const {
   NODE_TEMPLATE_LABEL,
   NODE_TEMPLATE_ROLE,
 } = require("./build-sea.cjs");
-const { compareVersions } = require("./release-native-binary-inspector.cjs");
+const {
+  compareVersions,
+  peCertificateTable: inspectPeCertificateTable,
+} = require("./release-native-binary-inspector.cjs");
 
 const RECEIPT_SCHEMA = "sagejs.release-artifact-acceptance-v1";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
@@ -1292,30 +1295,14 @@ function validateNativeReceipt(receipt, options, label) {
 }
 
 function peCertificateTable(filename) {
-  const bytes = readFileSync(filename);
-  if (bytes.length < 0x40 || bytes.readUInt16LE(0) !== 0x5a4d) {
-    throw new Error(`${filename} is not a PE executable`);
+  try {
+    const { offset, size } = inspectPeCertificateTable(readFileSync(filename));
+    return { offset, size };
+  } catch (error) {
+    throw new Error(`${filename} has an invalid PE certificate table: ${error.message}`, {
+      cause: error,
+    });
   }
-  const pe = bytes.readUInt32LE(0x3c);
-  if (pe + 24 > bytes.length || bytes.toString("ascii", pe, pe + 4) !== "PE\0\0") {
-    throw new Error(`${filename} has an invalid PE header`);
-  }
-  const optional = pe + 24;
-  const magic = bytes.readUInt16LE(optional);
-  const dataDirectories = magic === 0x20b ? optional + 112 :
-    magic === 0x10b ? optional + 96 : -1;
-  if (dataDirectories < 0 || dataDirectories + 8 * 5 > bytes.length) {
-    throw new Error(`${filename} has an invalid PE optional header`);
-  }
-  const offset = bytes.readUInt32LE(dataDirectories + 8 * 4);
-  const size = bytes.readUInt32LE(dataDirectories + 8 * 4 + 4);
-  if ((offset === 0) !== (size === 0)) {
-    throw new Error(`${filename} has a malformed Authenticode certificate table`);
-  }
-  if (size && (offset + size > bytes.length || offset % 8 !== 0)) {
-    throw new Error(`${filename} has an invalid Authenticode certificate table`);
-  }
-  return { offset, size };
 }
 
 function assertInstallerHasNoScripts(expanded, packageInfo) {

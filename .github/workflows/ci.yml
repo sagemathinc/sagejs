@@ -543,6 +543,9 @@ jobs:
             "$release/sagepython-build-manifest.json"
           Copy-Item LICENSE,README.md,DISTRIBUTION.md $release
           Copy-Item licenses/* "$release/licenses"
+          & node -e "const fs=require('node:fs'),{peCertificateTable}=require('./scripts/release-native-binary-inspector.cjs');for(const file of process.argv.slice(1)){const {offset,size}=peCertificateTable(fs.readFileSync(file));if(offset!==0||size!==0)throw new Error(file+' retains a PE certificate-table entry')}" `
+            "$release/sagejs.exe" "$release/sagepython.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($executable in "sagejs.exe", "sagepython.exe") {
             $signature = Get-AuthenticodeSignature "$release/$executable"
             if ($signature.Status -ne "NotSigned") {
@@ -578,6 +581,10 @@ jobs:
           $archive = "build/release/sagejs-windows-x64-unsigned.zip"
           $extracted = "build/release/windows-unsigned-signature-check"
           Expand-Archive -LiteralPath $archive -DestinationPath $extracted
+          & node -e "const fs=require('node:fs'),{peCertificateTable}=require('./scripts/release-native-binary-inspector.cjs');for(const file of process.argv.slice(1)){const {offset,size}=peCertificateTable(fs.readFileSync(file));if(offset!==0||size!==0)throw new Error(file+' retains a PE certificate-table entry')}" `
+            "$extracted/sagejs-windows-x64/sagejs.exe" `
+            "$extracted/sagejs-windows-x64/sagepython.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($executable in "sagejs.exe", "sagepython.exe") {
             $signature = Get-AuthenticodeSignature `
               "$extracted/sagejs-windows-x64/$executable"

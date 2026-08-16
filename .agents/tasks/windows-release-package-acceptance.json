@@ -6,7 +6,7 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs with acceptance-canonical internal checksum ordering, integrate exact-target startup-profile authority, calibrate only evidence-backed Windows x64 SEA full startup, keep SEA build-helper imports free of direct-CLI argument side effects, and gate publication on native extracted-artifact acceptance",
+  "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, repair the generated float64 Node adapter's first delayed import, package an explicit unsigned release from official Node 26.7.0 inputs with acceptance-canonical internal checksum ordering and a cleared post-SEA PE certificate-table directory, integrate exact-target startup-profile authority, calibrate only evidence-backed Windows x64 SEA full startup, keep SEA build-helper imports free of direct-CLI argument side effects, and gate publication on native extracted-artifact acceptance",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
   "claims": [
     ".github/workflows/ci.yml",
@@ -38,6 +38,7 @@
     "scripts/release-artifact-acceptance.cjs",
     "scripts/release-capabilities.cjs",
     "scripts/release-cpu-profile.cjs",
+    "scripts/release-native-binary-inspector.cjs",
     "scripts/write-release-checksums.cjs",
     "src/baselib/sagejs/ffi/flint.py",
     "src/lib/sagejs/ffi/flint.py",
@@ -50,6 +51,7 @@
     "test/parallel-development.cjs",
     "test/performance-budget-cleanup.cjs",
     "test/release-artifact-acceptance.cjs",
+    "test/release-native-binary-inspector.cjs",
     "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
     "test/sea-windows-virtual-path.cjs",
@@ -98,7 +100,9 @@
     "/home/user/attempt10-terminal-evidence-20260815T203413Z",
     "938767b17aa0bcd8c0d82f3151cd11d826a276e1",
     "C:\\Users\\user\\evidence\\windows-static-150f3b6-attempt11\\attempt-11",
-    "/home/user/attempt11-terminal-evidence-20260815T2345Z"
+    "/home/user/attempt11-terminal-evidence-20260815T2345Z",
+    "26ab49534066a80089073e5ce994ec7818ceb1cd",
+    "C:\\Users\\user\\evidence\\windows-static-150f3b6-attempt12\\attempt-12"
   ],
   "architecture": {
     "strategy": "compiler-infrastructure",
@@ -110,7 +114,8 @@
       "Exact-target startup profile selection retains generic and unmatched-target policy",
       "Independent default-11 Windows x64 SEA receipts under system Node 26.5.1 and manifest-matched official Node 26.7.0",
       "Foreign-argv import safety plus direct SEA build CLI mode, usage, and Node-version validation",
-      "One Node-owned internal checksum writer whose code-unit path order is consumed unchanged by final artifact acceptance"
+      "One Node-owned internal checksum writer whose code-unit path order is consumed unchanged by final artifact acceptance",
+      "Byte-exact PE32 and PE32+ certificate-directory hygiene that clears only data-directory entry 4 while preserving its formerly referenced SEA resource bytes"
     ],
     "exceptions": []
   },
@@ -125,6 +130,7 @@
     "node --test test/sea-windows-virtual-path.cjs",
     "node --test test/startup-budget.cjs",
     "node --test test/release-artifact-acceptance.cjs test/release-workflow-protection.cjs",
+    "node --test test/release-native-binary-inspector.cjs test/sea-build-manifest.cjs test/release-artifact-acceptance.cjs test/release-workflow-protection.cjs",
     "pnpm test:release",
     "node --test test/performance-budget-cleanup.cjs",
     "node --test test/native-kernel.cjs",
@@ -766,10 +772,90 @@
       "commit": "150f3b669946f88cb8e51094882d96ee021515d4",
       "workspace_fingerprint": "189c96050348115dfe41a786bd157bd3d988312ae9924e0b08fdbe8751ec25bd",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-native-binary-inspector.cjs test/sea-build-manifest.cjs test/release-artifact-acceptance.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.666,
+      "started_at": "2026-08-16T02:28:26.085Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.49,
+      "started_at": "2026-08-16T02:28:37.458Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.513,
+      "started_at": "2026-08-16T02:28:42.149Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.062,
+      "started_at": "2026-08-16T02:28:58.241Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.743,
+      "started_at": "2026-08-16T02:29:24.957Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache-automatic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.392,
+      "started_at": "2026-08-16T02:40:02.242Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1338.379,
+      "started_at": "2026-08-16T02:40:09.403Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.566,
+      "started_at": "2026-08-16T03:02:53.363Z",
+      "commit": "26ab49534066a80089073e5ce994ec7818ceb1cd",
+      "workspace_fingerprint": "efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact Windows source 150f3b669946f88cb8e51094882d96ee021515d4 has passed its focused, release, architecture, portable, strict, clean full changed-file, and parallel gates. It includes the reviewed Windows SEA virtual-path, async session-close, matched-runtime startup-profile, build-sea import-safety, and Node-owned canonical release-checksum repairs accumulated through the approved dependency chain. Fresh attempt 11 ran exactly once from that source and closure 938767b17aa0bcd8c0d82f3151cd11d826a276e1. It passed the complete root-A native and SEA suites, canonical checksum generation and validation, build-receipt validation, and third-party inventory validation, then stopped honestly at strict target-metadata validation because the proof harness wrote a compact 205-byte release.json instead of the 241-byte canonical release-manifest.cjs serialization. Production Windows CI already invokes the canonical Node serializer, so this is a proof-harness fidelity defect rather than a source failure. Attempt 11 stopped before an acceptance receipt, root-A binary proof, root B, or byte reproducibility and is a failed, non-reusable proof. Its exact immutable evidence and compact-versus-canonical bytes are preserved locally and on the Windows VM; the active contract remains pending an independently reviewed fresh proof identity.",
+    "summary": "The active Windows lane now carries a narrow post-assembly PE hygiene repair derived from failed attempt 12. Windows SEA assembly uses the shared fail-closed PE parser to clear only the eight-byte certificate-table data-directory entry before final manifest observation; it never truncates or zeros the referenced bytes, which in attempt 12 are live SEA resource data. Synthetic PE32 and PE32+ tests prove the byte mutation is confined to that entry, malformed and out-of-bounds inputs fail closed, and an already-clear entry is idempotent. Protected Windows packaging and extracted-artifact checks independently require both a zero certificate directory and Get-AuthenticodeSignature NotSigned. Attempt 12 remains an honest failed, non-reusable proof: native and SEA gates, canonical metadata, canonical checksum generation, build/native receipts, and third-party validation passed, but strict acceptance first rejected the stale nonzero certificate directory before runtime, root B, binary-policy, or reproducibility proof. Exact immutable evidence remains on the Windows VM; no retry or proof mutation was made, and a fresh proof identity remains pending exact source and closure review.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
@@ -785,6 +871,7 @@
       "Capture-only diagnostic 4 is preserved at C:\\Users\\user\\evidence\\windows-sea-startup-official-node-1223b27\\diagnostic-4. Exact hashes are status.json d4a745e019fd3e94148ef3c613baa43f9deb1aaef67c64c1ce45a4a6fb927ca1, proof.log d63e3fa4ec803b6123b702bd23864ba9ce623bd6799495f216e1e51f1786b108, ownership.json 64474ba530d25490a190b8a95b4cad7deae62b3c6830daeb60cd3c1a3312bb75, result.json 1f7fdc7a9b6c1b2ee06479bc4ebbea1ef1629a95b9af3a782b64b8b3d2cb72a9, child result c51a14683eb5ae3ce25e02d87c571a8fc4ed88a41c9a54fca6849558c170d011, stdout de2e0f0adbf72d0dc7531a3343269e873e6a8dd142cd6b12aa7c121ce924f0c6, and stderr 8da84e592a909ff8128e4e3193ca7c458d137b1e8438213dd477f2ba44039c02. The exact unmodified checker under manifest-matched official Node 26.7.0 measured 362.0 ms normalized full, 206.0 ms normalized empty, and 707.3 ms raw full startup, proving the Node patch-version comparator mismatch was not causal.",
       "The 400 ms win32-x64 sea-cli profile leaves 10.5 percent headroom above the larger independently reproduced normalized median of 362.0 ms. It does not raise generic or unmatched SEA policy, development or empty startup budgets, the 1500 ms raw ceiling, the 30 ms reference, or the default 11 samples.",
       "The first receipt-backed changed-file run stopped after test/cache-automatic.cjs completed its first nine cases but did not exit a concurrent stale-lock takeover case. The isolated test then passed all 17 cases, and a clean receipt-backed full changed-file rerun passed without recurrence; no source changed between those observations.",
+      "The first full changed-file validation of the PE hygiene workspace repeated that previously documented cache-only concurrency behavior: test/cache-automatic.cjs completed its first nine cases and then left the concurrent stale-lock takeover promise pending with an otherwise resolved event loop. After 378.185 seconds the exact validation session received one bounded interrupt; the parallel wrapper exited before recording a run receipt, and no source changed. On the same workspace fingerprint efd4578ad10a093f6f71290f3c973726d369da99b9ca0e11ac4f596df7155041, the isolated cache suite immediately passed all 17 cases in 0.39 seconds and the complete clean changed-file rerun passed in 1338.38 seconds, including all 475 unit tests, 440 integration tests, native packages, lifecycle fuzz, native-kernel, migrations, and finite, integer, rational, and polynomial budgets.",
       "The first receipt-backed changed-file run for the Windows profile completed all correctness and native gates but its final finite-matrix budget observed transient normalized construct_500 9.42 ms above 8 ms and multiply_500 25.21 ms above 25 ms. The isolated finite budget immediately passed at 7.55 ms and 18.30 ms under the same workspace fingerprint, and the complete clean changed-file rerun passed at 5.01 ms and 5.00 ms without source changes; both the failed and passing receipts are preserved.",
       "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template.",
       "Failed attempt 7 is preserved at C:\\Users\\user\\evidence\\windows-static-9174546\\attempt-7 under triggerless S4U task \\SagejsWindowsStatic9174546Attempt7, which ran exactly once and ended Ready/result 1. Exact SHA-256 hashes are status.json 4dfc175a4f4cb7430eb5f2a9461c60d7527ea3f135d2a85eab9bddcc06619ffd, proof.log 9e02dd7c00d456a769fd55e570c3f038d52cebadfdb1e223ec272046deca573f, ownership.json 36eb167a897969b67f4d308789ac17bd2b479d815ba07892d2c453f7503ff210, toolchain-preflight.json 9f9402ef818341033ce35bb07c3badfd5305b43a5344fd4c204334254e6714b6, execution-authority.json 444a29e8ea4af21e7e81e0b2857cab3577ebd9e307f9737a6360da0f9891333b, harness ce442005c896a02125f593d98c56f88c3ff8c3df1ccccae82a3b0c61ebfae1ec, task XML 8ef829b389f810103856d48c7b8ec5d04af9c6a22359c4a786f718217fa65694, helper 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and task export 72b0f8381ac8d3de56dc14aa775f4fe41af2eed1b3b18d88436b07491acedcc5. The complete root-A native/SEA suite, exact matched-runtime startup, canonical ZIP creation, expansion, and extracted unsigned-signature precheck passed. The archive is b01bc1ef67f83873cda5500684a1f8179973293ea9924ca26885ef555d699004 with sidecar 5eedf49c9078389baae96ab18756590617ca1415ddabfbe771e244ae39c307b8; package and extracted inventories are both 54 files, 602976668 bytes, and canonical SHA-256 8c9937707809471e9f3e758b223aa6912d36a746ec24288f653c602bcc8855a7. The acceptance child then exited 1 without captured streams, before root-A binary proof, root B, reproducibility, or an acceptance receipt; no retry was made.",
@@ -807,12 +894,15 @@
       "A read-only local copy of attempt-10 core evidence, task export, terminal transcript, exact package metadata, bounded inventory/events/USN receipts, stale-audit cleanup, and checksum-order comparison is preserved at /home/user/attempt10-terminal-evidence-20260815T203413Z. Its 30-entry SHA256SUMS verifies completely and has SHA-256 1fba6758f7e144c43dd3937ee06da87661a86d6f0170fdedcaf4b198c597e892. Static checksum-order audit SHA-256 is 524a90f33a668fc6b2df2d31eefe8b9d26ca5154858224486d9bc7097ec92296. The exact leaked read-only audit leaf PID 6400 was stopped only after parent authorization and exact identity revalidation; its parent and dedicated sshd exited naturally, freeing about 2 GB while all attempt-10 task, core, root, and artifact hashes remained unchanged.",
       "Failed attempt 11 is preserved without modification at C:\\Users\\user\\evidence\\windows-static-150f3b6-attempt11\\attempt-11 under triggerless S4U task \\SagejsWindowsStatic150f3b6Attempt11. It ran exactly once from source 150f3b669946f88cb8e51094882d96ee021515d4 and closure 938767b17aa0bcd8c0d82f3151cd11d826a276e1 using reviewed harness 57a8f66cce776d4c963cf407e8fd3fa7a045c6cbc598e6b6c76935115b243381, task XML 3eb743ea587b6f612920c5883b8b4c9bc7a165afab483c47e567771505b800fc, helper 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and task export 53c0911824fe8f05f0500912d6c33041ac79a55ac4aefcf12bf2e0f075a8df3f. It ended Ready/result 1 with LastRun reported as 2026-08-15T21:52:52Z, NextRun null, missed runs 0, zero non-null triggers, API user/S4U/Limited authority, and no surviving proof process. Exact core hashes are status.json 8196480b5ed292a812692064f491e2a59320a6ef7032590bba75307e6f0a826c, proof.log 805a0880713b6261ef00a553bbd854c83e5a5d7be3069ff7e2a1ad2022fa156d, ownership.json b68ea7ed626e16beebaf9f902a6ccd1779979d60fc71b1dcb1cdfa33ca471d62, toolchain-preflight.json 29afc4a9a5921d05739fcb090e5628a87ae89b23449c38986e2b98f03bb76f0f, and execution-authority.json 27d179638087c06e9b2836105f34ec3733fa9082421492ef2ad55e11face3d2c.",
       "Attempt 11 passed the complete root-A native and SEA suites, invoked the exact Node-owned canonical checksum writer, and produced sagejs.exe 71262beb5a7aa31bdc1f023fffa04a380d1831eae28a4f1d3c601a826ab9c472, sagepython.exe 8589c7c9067d645d96eba0b88c5c63ff958a96e4732b2142d92f010d09e2c395, manifests bbc003803b077f322c77c79cd711d1e8896c5e1557ab1b7020f3dbbe2a45dcd0 and c3714e20ebd4ddbe5a0fe1eb5732eb98890695792e3e48468c1467d76f9f43ab, unsigned ZIP 1218e702fbb94d00993e6260c8d9f9c498fb682b8138006cac14fb45488f5251, and archive sidecar 4ab2902098b5a9b7063739a0148fa95079c80f713b6ef2060e564081d21d7304. Read-only validation proves internal SHA256SUMS 0b6d824177c62c4e54fa8ce78f3ceaa61fb98be96e3a12662441de6624a9d35c (5049 bytes, 54 package files), build receipts, and third-party inventory all pass. The first rejection is validateTargetMetadata canonicalJsonFile: the proof harness wrote compact release.json ca08765216530d17b98b7e4f4f8fff154a2ef075f93dbe3822dd341660f47c98 (205 bytes), while exact production release-manifest.cjs serialize bytes are 4d8acb2a75a670d944420e10fb3d75c04709da71f8ef0b4233e3e3d840ff7709 (241 bytes). Production CI already invokes that Node serializer at .github/workflows/ci.yml:563-564, so this is a proof-harness fidelity defect, not a source failure. Acceptance receipt and sidecar, root-A binary proof, every root-B SEA/package output, root-B binary proof, reproducibility.json, and proof-result.json remain absent; attempt 11 is an honest failed and non-reusable proof, not a pass.",
-      "A read-only local copy of attempt-11 core evidence, exact task export and packet inputs, focused transcript/validator audits, and package metadata is preserved at /home/user/attempt11-terminal-evidence-20260815T2345Z. Its 22-entry SHA256SUMS verifies completely and has SHA-256 bb8722e157a51570a312a01987a35c5642ed6c383cafbf4827f886022bf9d137. The actual and expected release.json bytes are preserved separately. Large executables and the unsigned archive remain immutable on the Windows VM with exact hashes recorded, avoiding another local multi-hundred-megabyte copy. No retry, cleanup, source edit, task edit, or proof-state mutation was performed."
+      "A read-only local copy of attempt-11 core evidence, exact task export and packet inputs, focused transcript/validator audits, and package metadata is preserved at /home/user/attempt11-terminal-evidence-20260815T2345Z. Its 22-entry SHA256SUMS verifies completely and has SHA-256 bb8722e157a51570a312a01987a35c5642ed6c383cafbf4827f886022bf9d137. The actual and expected release.json bytes are preserved separately. Large executables and the unsigned archive remain immutable on the Windows VM with exact hashes recorded, avoiding another local multi-hundred-megabyte copy. No retry, cleanup, source edit, task edit, or proof-state mutation was performed.",
+      "Failed attempt 12 is preserved without modification at C:\\Users\\user\\evidence\\windows-static-150f3b6-attempt12\\attempt-12 under triggerless S4U task \\SagejsWindowsStatic150f3b6Attempt12. It ran exactly once from source 150f3b669946f88cb8e51094882d96ee021515d4 and closure 26ab49534066a80089073e5ce994ec7818ceb1cd using reviewed harness 1cb8036aa5bd393b55b1a3717dbe8023603f90f81ecab6241e46a6137154432f, task XML 4580dc7873bbd93e202011798322105fd0b95da30fc281ff3a83ac4e666a6b56, helper 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and task export f92a7de8a16796ee911796ffa6a263b470c7f18e7c5689e888472e0e4223e424. It ended Ready/result 1 with NextRun null, missed runs 0, zero non-null triggers, no surviving proof process, and exact core hashes status.json 59d8b0e39ba0d37e24ae447fee30f445c605aa22c59b82bd689894073602e6d0, proof.log de91d6c84230309e40b27928dad9e88fea76cb2b883b9e2e05d53f59967ff07c, ownership.json 69dc6327814879808d37791e5a6c3cfe11daf8bf20d37d8d82591bf3b7f97eb2, toolchain-preflight.json 63d8b800b6aa7112538e47b7b90c91de7f4f1b029bc16d389807d9a74ac434b6, and execution-authority.json 3f5bf774e5bcb21d1f59836631e12dbbc272f4080761b2f7d33169302c88cb5d.",
+      "Attempt 12 passed the complete root-A native and SEA suites, exact production release-manifest serialization, canonical internal checksum generation, ZIP creation, internal-checksum validation, build-manifest and native-receipt validation, third-party inventory, and target metadata. It produced sagejs.exe 1e2b61a1136000792b617cbf353c8d7c81680eaaa4d8bb619834555a89f375ed, sagepython.exe 85ae60db6eace69c057f13c25c690e3691acfc406946ab0a9057cad64b4cb2df, manifests 51a6e7214058d0ab7dc07f6a99567e722eb309e577f9f94be5fd476b9589f370 and 6d4e2b476f4b5710fc4a92ab95d5cb8722a05d66dc6709511d31176246eb2af1, unsigned ZIP 97c49d542fe690dbc5cd205c2207f41c0619a978f0f57165478519b29d512965, sidecar 3380e189818a6c8a68ba6120b130d549708cfe92719ae5d4142b74c41ee18c05, internal SHA256SUMS 93b1318159600c03f6907f21e98be7fda75959b7c2dd5ed93c2174343ff632d6, and canonical release.json 4d8acb2a75a670d944420e10fb3d75c04709da71f8ef0b4233e3e3d840ff7709. Strict acceptance first rejected verifySignatures at release-artifact-acceptance.cjs:1488: both SEA outputs retained certificate-table offset 103158272 and size 15688, while Get-AuthenticodeSignature reported NotSigned and the new SEA .rsrc raw data starts at exactly 103158272. The stale directory therefore points into live resource bytes and only its eight-byte optional-header entry may be cleared; its referenced range must never be truncated or zeroed.",
+      "Bounded NTFS USN evidence records acceptance workspace sagejs-release-acceptance-OdEUtL from 2026-08-16T02:08:37Z through deletion at 02:08:48Z, with distribution and executable extraction but no runtime, runtime/home, runtime/tmp, or runtime/cache creation. Acceptance therefore stopped at static signature validation before verifyRuntime. Root A remains exact and tracked-clean with its immutable artifacts; root B remains exact, tracked-clean, and pristine without node_modules or release outputs. Acceptance receipt and sidecar, both binary-policy proofs, reproducibility.json, and proof-result.json are absent. Attempt 12 is an incomplete failed proof, not a release pass, and was neither retried nor reused."
     ],
     "next_steps": [
-      "Independently review this exact attempt-11 lifecycle closure, its immutable remote and local evidence hashes, the successful canonical-checksum boundary, and the exact compact-versus-canonical release.json classification.",
-      "Only after this contract-only closure is independently approved, prepare and separately review a fully fresh proof identity whose harness invokes the exact production release-manifest.cjs serializer under the manifest-matched official Node; bind the serializer input and output bytes and never reuse or retry attempt 11.",
-      "Repeat the complete two-root native, SEA, canonical checksum, package, extracted acceptance, PE/binary policy, and byte-reproducibility proof. Preserve and independently review the acceptance JSON plus sidecar and every terminal artifact before integration."
+      "Independently review the exact post-SEA PE certificate-directory source repair, its byte-exact PE32 and PE32+ tests, the strict workflow and acceptance ratchets, and the immutable attempt-12 failure boundary.",
+      "Only after exact source and closure approval, prepare and separately review a fully fresh proof identity that invokes the unchanged production serializer and checksum writer and never reuses or retries attempt 12.",
+      "Repeat the complete two-root native, SEA, canonical metadata and checksum, package, extracted acceptance, PE/binary policy, and byte-reproducibility proof. Require both a zero PE certificate directory and Get-AuthenticodeSignature NotSigned before accepting either Windows executable."
     ]
   }
 }

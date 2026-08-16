@@ -46,6 +46,10 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
+const buildSeaSource = readFileSync(
+  join(__dirname, "..", "scripts", "build-sea.cjs"),
+  "utf8",
+);
 
 test("SEA build helpers are import-safe under unrelated release arguments", () => {
   const script = [
@@ -776,6 +780,29 @@ test("SEA code caching is generated under deterministic V8 policy", () => {
     SEA_ASSEMBLY_POLICY.builderArguments.slice(-2),
     ["--build-sea", "sea-config.json"],
   );
+  assert.deepEqual(SEA_ASSEMBLY_POLICY.windowsCertificateTable, {
+    action: "clear-data-directory-entry",
+    index: 4,
+  });
+});
+
+test("Windows SEA assembly clears the certificate directory before manifest finalization", () => {
+  const assembly = buildSeaSource.indexOf(
+    "execFileSync(staged.seaNode, SEA_ASSEMBLY_POLICY.builderArguments",
+  );
+  const platformGate = buildSeaSource.indexOf(
+    'if (builder.platform === "win32")',
+    assembly,
+  );
+  const clear = buildSeaSource.indexOf(
+    "clearPeCertificateTableFile(output)",
+    platformGate,
+  );
+  const manifest = buildSeaSource.indexOf("const observedAfterBuild", clear);
+  assert.ok(assembly >= 0);
+  assert.ok(platformGate > assembly);
+  assert.ok(clear > platformGate);
+  assert.ok(manifest > clear);
 });
 
 test("SEA inputs are copied into an immutable logical staging layout", () => {

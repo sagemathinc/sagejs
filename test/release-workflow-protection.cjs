@@ -211,6 +211,12 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
   assert.equal(workflow.includes("  sign-windows-x64:\n"), false);
   assert.match(windows, /Get-AuthenticodeSignature/);
   assert.match(windows, /Status -ne "NotSigned"/);
+  assert.equal([...windows.matchAll(/peCertificateTable/g)].length, 4);
+  assert.equal([...windows.matchAll(/offset!==0\|\|size!==0/g)].length, 2);
+  assert.equal(
+    [...windows.matchAll(/retains a PE certificate-table entry/g)].length,
+    2,
+  );
   assert.match(windows, /UNSIGNED-WINDOWS\.txt/);
   assert.match(windows, /sagejs\.windows-release-manifest-v1/);
   assert.match(windows, /scheme:'authenticode',status:'unsigned'/);

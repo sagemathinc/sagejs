@@ -16,9 +16,12 @@ const {
   EMBEDDED_NODE_ADDON_ROLE,
   NativeBinaryPolicyError,
   assertNativeInputs,
+  clearPeCertificateTable,
+  clearPeCertificateTableFile,
   compareVersions,
   inspectBinaryBuffer,
   inspectNativeInputs,
+  peCertificateTable,
 } = require("../scripts/release-native-binary-inspector.cjs");
 
 function align(value, multiple) {
@@ -180,12 +183,22 @@ function universalMachoFixture(slices) {
   return result;
 }
 
-function peFixture({ machine = 0x8664, nodeLinkage = "delay" } = {}) {
+function peFixture({
+  certificateTable = null,
+  machine = 0x8664,
+  nodeLinkage = "delay",
+  wordSize = 64,
+} = {}) {
   if (!["delay", "eager", "missing"].includes(nodeLinkage)) {
     throw new Error(`unsupported node linkage fixture: ${nodeLinkage}`);
   }
+  if (![32, 64].includes(wordSize)) {
+    throw new Error(`unsupported PE word size: ${wordSize}`);
+  }
   const peOffset = 0x80;
-  const optionalSize = 240;
+  const optionalSize = wordSize === 64 ? 240 : 224;
+  const dataDirectoryOffset = wordSize === 64 ? 112 : 96;
+  const directoryCountOffset = wordSize === 64 ? 108 : 92;
   const sectionOffset = peOffset + 4 + 20 + optionalSize;
   const rawOffset = 0x200;
   const buffer = Buffer.alloc(0x600);
@@ -198,15 +211,26 @@ function peFixture({ machine = 0x8664, nodeLinkage = "delay" } = {}) {
   buffer.writeUInt16LE(optionalSize, coff + 16);
   buffer.writeUInt16LE(0x2022, coff + 18);
   const optional = coff + 20;
-  buffer.writeUInt16LE(0x20b, optional);
-  buffer.writeBigUInt64LE(0x140000000n, optional + 24);
+  buffer.writeUInt16LE(wordSize === 64 ? 0x20b : 0x10b, optional);
+  if (wordSize === 64) buffer.writeBigUInt64LE(0x140000000n, optional + 24);
+  else buffer.writeUInt32LE(0x400000, optional + 28);
   buffer.writeUInt16LE(3, optional + 68);
-  buffer.writeUInt32LE(16, optional + 108);
-  buffer.writeUInt32LE(0x1000, optional + 112 + 8);
-  buffer.writeUInt32LE(40, optional + 112 + 12);
+  buffer.writeUInt32LE(16, optional + directoryCountOffset);
+  buffer.writeUInt32LE(0x1000, optional + dataDirectoryOffset + 8);
+  buffer.writeUInt32LE(40, optional + dataDirectoryOffset + 12);
+  if (certificateTable !== null) {
+    buffer.writeUInt32LE(
+      certificateTable.offset,
+      optional + dataDirectoryOffset + 4 * 8,
+    );
+    buffer.writeUInt32LE(
+      certificateTable.size,
+      optional + dataDirectoryOffset + 4 * 8 + 4,
+    );
+  }
   if (nodeLinkage === "delay") {
-    buffer.writeUInt32LE(0x1040, optional + 112 + 13 * 8);
-    buffer.writeUInt32LE(64, optional + 112 + 13 * 8 + 4);
+    buffer.writeUInt32LE(0x1040, optional + dataDirectoryOffset + 13 * 8);
+    buffer.writeUInt32LE(64, optional + dataDirectoryOffset + 13 * 8 + 4);
   }
   buffer.write(".rdata", sectionOffset, "ascii");
   buffer.writeUInt32LE(0x400, sectionOffset + 8);
@@ -412,6 +436,101 @@ test("PE inspection reports architecture and ordinary plus delayed imports", () 
   assert.equal(report.architecture, "x64");
   assert.deepEqual(report.dependencies, ["KERNEL32.dll"]);
   assert.deepEqual(report.delayDependencies, ["node.exe"]);
+  assert.deepEqual(report.certificateTable, { offset: 0, size: 0 });
+});
+
+test("Windows SEA certificate-table hygiene changes only the PE directory entry", () => {
+  for (const wordSize of [32, 64]) {
+    const original = peFixture({
+      certificateTable: { offset: 0x580, size: 16 },
+      machine: wordSize === 64 ? 0x8664 : 0x14c,
+      wordSize,
+    });
+    original.fill(0xa5, 0x580, 0x590);
+    const buffer = Buffer.from(original);
+    const before = peCertificateTable(buffer);
+    assert.equal(before.wordSize, wordSize);
+    assert.deepEqual(
+      { offset: before.offset, size: before.size },
+      { offset: 0x580, size: 16 },
+    );
+
+    const result = clearPeCertificateTable(buffer);
+    assert.equal(result.changed, true);
+    assert.deepEqual(
+      { offset: result.offset, size: result.size },
+      { offset: 0x580, size: 16 },
+    );
+    assert.deepEqual(
+      buffer.subarray(0, result.entryOffset),
+      original.subarray(0, result.entryOffset),
+    );
+    assert.deepEqual(
+      buffer.subarray(result.entryOffset, result.entryOffset + 8),
+      Buffer.alloc(8),
+    );
+    assert.deepEqual(
+      buffer.subarray(result.entryOffset + 8),
+      original.subarray(result.entryOffset + 8),
+    );
+    assert.deepEqual(buffer.subarray(0x580, 0x590), Buffer.alloc(16, 0xa5));
+    assert.deepEqual(peCertificateTable(buffer), {
+      entryOffset: result.entryOffset,
+      offset: 0,
+      size: 0,
+      wordSize,
+    });
+    const afterFirstClear = Buffer.from(buffer);
+    assert.equal(clearPeCertificateTable(buffer).changed, false);
+    assert.deepEqual(buffer, afterFirstClear);
+  }
+});
+
+test("PE certificate-table hygiene writes only the eight header bytes on disk", () => {
+  const original = peFixture({ certificateTable: { offset: 0x580, size: 16 } });
+  original.fill(0x5a, 0x580, 0x590);
+  const [filename] = temporaryFiles([["sagejs.exe", original]]);
+  const result = clearPeCertificateTableFile(filename);
+  const observed = readFileSync(filename);
+  assert.equal(result.changed, true);
+  assert.deepEqual(
+    observed.subarray(0, result.entryOffset),
+    original.subarray(0, result.entryOffset),
+  );
+  assert.deepEqual(
+    observed.subarray(result.entryOffset, result.entryOffset + 8),
+    Buffer.alloc(8),
+  );
+  assert.deepEqual(
+    observed.subarray(result.entryOffset + 8),
+    original.subarray(result.entryOffset + 8),
+  );
+  assert.equal(clearPeCertificateTableFile(filename).changed, false);
+});
+
+test("PE certificate-table hygiene fails closed on malformed headers and bounds", () => {
+  assert.throws(() => clearPeCertificateTable(Buffer.alloc(16)), /DOS header/);
+
+  const unsupported = peFixture();
+  unsupported.writeUInt16LE(0x999, 0x80 + 24);
+  assert.throws(
+    () => clearPeCertificateTable(unsupported),
+    /unsupported PE optional header/,
+  );
+
+  const missingDirectory = peFixture();
+  missingDirectory.writeUInt32LE(4, 0x80 + 24 + 108);
+  assert.throws(() => clearPeCertificateTable(missingDirectory), /does not contain/);
+
+  const inconsistent = peFixture();
+  inconsistent.writeUInt32LE(0x580, 0x80 + 24 + 112 + 4 * 8);
+  assert.throws(() => clearPeCertificateTable(inconsistent), /malformed/);
+
+  const unaligned = peFixture({ certificateTable: { offset: 0x581, size: 8 } });
+  assert.throws(() => clearPeCertificateTable(unaligned), /8-byte aligned/);
+
+  const outOfBounds = peFixture({ certificateTable: { offset: 0x5f8, size: 16 } });
+  assert.throws(() => clearPeCertificateTable(outOfBounds), /outside the .* binary/);
 });
 
 test("Windows embedded addons must delay-load node.exe", () => {

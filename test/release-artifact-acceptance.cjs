@@ -1148,7 +1148,9 @@ test("PE certificate-table evidence distinguishes unsigned from signed bytes", (
       bytes.writeUInt16LE(0x5a4d, 0);
       bytes.writeUInt32LE(0x80, 0x3c);
       bytes.write("PE\0\0", 0x80, "binary");
+      bytes.writeUInt16LE(240, 0x80 + 4 + 16);
       bytes.writeUInt16LE(0x20b, 0x80 + 24);
+      bytes.writeUInt32LE(16, 0x80 + 24 + 108);
       if (signed) {
         bytes.writeUInt32LE(0x200, 0x80 + 24 + 112 + 8 * 4);
         bytes.writeUInt32LE(8, 0x80 + 24 + 112 + 8 * 4 + 4);
