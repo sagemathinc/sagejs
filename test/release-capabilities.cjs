@@ -33,6 +33,9 @@ const {
   seaNativeDependencyDefinitions,
   validateSeaNativeDependencyBindings,
 } = require("../scripts/native-dependency-receipt.cjs");
+const {
+  inspectBinaryBuffer,
+} = require("../scripts/release-native-binary-inspector.cjs");
 
 const repositoryRoot = resolve(__dirname, "..");
 const script = join(repositoryRoot, "scripts", "release-capabilities.cjs");
@@ -85,6 +88,44 @@ function digestBytes(value) {
 
 function digest(filename) {
   return digestBytes(readFileSync(filename));
+}
+
+function peFixture({ certificateTable = null } = {}) {
+  const peOffset = 0x80;
+  const optionalSize = 240;
+  const dataDirectoryOffset = 112;
+  const sectionOffset = peOffset + 4 + 20 + optionalSize;
+  const rawOffset = 0x200;
+  const buffer = Buffer.alloc(0x600);
+  buffer.write("MZ", 0, "binary");
+  buffer.writeUInt32LE(peOffset, 0x3c);
+  buffer.write("PE\0\0", peOffset, "binary");
+  const coff = peOffset + 4;
+  buffer.writeUInt16LE(0x8664, coff);
+  buffer.writeUInt16LE(1, coff + 2);
+  buffer.writeUInt16LE(optionalSize, coff + 16);
+  buffer.writeUInt16LE(0x2022, coff + 18);
+  const optional = coff + 20;
+  buffer.writeUInt16LE(0x20b, optional);
+  buffer.writeBigUInt64LE(0x140000000n, optional + 24);
+  buffer.writeUInt16LE(3, optional + 68);
+  buffer.writeUInt32LE(16, optional + 108);
+  if (certificateTable !== null) {
+    buffer.writeUInt32LE(
+      certificateTable.offset,
+      optional + dataDirectoryOffset + 4 * 8,
+    );
+    buffer.writeUInt32LE(
+      certificateTable.size,
+      optional + dataDirectoryOffset + 4 * 8 + 4,
+    );
+  }
+  buffer.write(".rdata", sectionOffset, "ascii");
+  buffer.writeUInt32LE(0x400, sectionOffset + 8);
+  buffer.writeUInt32LE(0x1000, sectionOffset + 12);
+  buffer.writeUInt32LE(0x400, sectionOffset + 16);
+  buffer.writeUInt32LE(rawOffset, sectionOffset + 20);
+  return buffer;
 }
 
 function installAdapter(root, packageName, addonName) {
@@ -434,11 +475,7 @@ function nativeBinaryReceipt(assets, target) {
     }
     return {
       ...common,
-      architecture: target.arch,
-      delayDependencies: [],
-      machine: 0x8664,
-      subsystem: 3,
-      wordSize: 64,
+      ...inspectBinaryBuffer(peFixture()),
     };
   });
   const aggregate = {
@@ -557,6 +594,33 @@ function fixedOptions(item, overrides = {}) {
     root: item.root,
     versions: { modules: "127", napi: "10", node: "22.22.2" },
     ...overrides,
+  };
+}
+
+function windowsNativeReceiptFixture() {
+  const target = {
+    arch: "x64",
+    endianness: "LE",
+    libc: null,
+    nodeAbi: "127",
+    nodeNapi: "10",
+    platform: "win32",
+    wordBits: 64,
+  };
+  const index = kernelIndex();
+  const assets = { "compiler/compiler.js": "compiler" };
+  for (const id of ["flint", "fflas", "igraph"]) embedAdapter(assets, id);
+  addKernelAssets(assets, index);
+  const manifest = embedBuildManifest(assets, index, {
+    manifest: { target },
+  });
+  return {
+    assets,
+    embedded: {
+      assets: new Set(Object.keys(assets)),
+      bytes: (name) => Object.hasOwn(assets, name) ? bytes(assets[name]) : null,
+    },
+    manifest,
   };
 }
 
@@ -1031,6 +1095,93 @@ test("SEA native binary evidence rejects omitted, extra, tampered, and wrong-tar
       rmSync(item.directory, { recursive: true, force: true });
     }
   }
+});
+
+test("Windows native receipts consume the inspector's exact certificate-table shape", () => {
+  const producer = windowsNativeReceiptFixture();
+  const receipt = producer.manifest.toolchain.nativeBinaries;
+  const template = receipt.report.files.find(
+    ({ label }) => label === "sea/node-template",
+  );
+  const templateBytes = peFixture({
+    certificateTable: { offset: 0x580, size: 16 },
+  });
+  Object.assign(template, inspectBinaryBuffer(templateBytes), {
+    sha256: digestBytes(templateBytes),
+    size: templateBytes.length,
+  });
+  producer.manifest.toolchain.seaNode.executableSha256 = template.sha256;
+
+  const addon = receipt.report.files.find(
+    ({ label }) => label !== "sea/node-template",
+  );
+  const addonBytes = peFixture();
+  producer.assets[addon.label] = addonBytes;
+  Object.assign(addon, inspectBinaryBuffer(addonBytes), {
+    sha256: digestBytes(addonBytes),
+    size: addonBytes.length,
+  });
+  refreshNativeBinaryReceipt(receipt);
+
+  assert.deepEqual(template.certificateTable, { offset: 0x580, size: 16 });
+  assert.deepEqual(addon.certificateTable, { offset: 0, size: 0 });
+  assert.equal(
+    nativeBinaryReceiptContract(producer.manifest, producer.embedded),
+    true,
+  );
+});
+
+test("Windows certificate-table receipts reject malformed and out-of-bounds records", () => {
+  const valid = windowsNativeReceiptFixture();
+  const validReceipt = valid.manifest.toolchain.nativeBinaries;
+  const validTemplate = validReceipt.report.files.find(
+    ({ label }) => label === "sea/node-template",
+  );
+  validTemplate.size = 103173960;
+  validTemplate.certificateTable = { offset: 103158272, size: 15688 };
+  refreshNativeBinaryReceipt(validReceipt);
+  assert.equal(
+    nativeBinaryReceiptContract(valid.manifest, valid.embedded),
+    true,
+  );
+
+  const mutations = [
+    (table) => { delete table.offset; },
+    (table) => { table.unexpected = true; },
+    (table) => { table.offset = 0; table.size = 8; },
+    (table) => { table.offset = 8; table.size = 0; },
+    (table) => { table.offset = -8; },
+    (table) => { table.size = -8; },
+    (table) => { table.offset = 103158273; },
+    (table) => { table.offset = Number.MAX_SAFE_INTEGER + 1; },
+    (table, file) => { table.offset = file.size - 8; table.size = 16; },
+  ];
+  for (const mutate of mutations) {
+    const item = windowsNativeReceiptFixture();
+    const receipt = item.manifest.toolchain.nativeBinaries;
+    const template = receipt.report.files.find(
+      ({ label }) => label === "sea/node-template",
+    );
+    template.size = 103173960;
+    template.certificateTable = { offset: 103158272, size: 15688 };
+    mutate(template.certificateTable, template);
+    refreshNativeBinaryReceipt(receipt);
+    assert.equal(
+      nativeBinaryReceiptContract(item.manifest, item.embedded),
+      false,
+    );
+  }
+
+  const missing = windowsNativeReceiptFixture();
+  const missingReceipt = missing.manifest.toolchain.nativeBinaries;
+  delete missingReceipt.report.files.find(
+    ({ label }) => label === "sea/node-template",
+  ).certificateTable;
+  refreshNativeBinaryReceipt(missingReceipt);
+  assert.equal(
+    nativeBinaryReceiptContract(missing.manifest, missing.embedded),
+    false,
+  );
 });
 
 test("native binary receipts validate word size in each format's canonical location", () => {

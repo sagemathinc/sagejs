@@ -255,6 +255,21 @@ function validSymbolFamilies(file) {
   return (families.GLIBC?.maximum ?? null) === (file.maximumGlibc ?? null);
 }
 
+function validPeCertificateTable(table, fileSize) {
+  if (
+    !exactKeys(table, ["offset", "size"]) ||
+    !Number.isSafeInteger(table.offset) ||
+    !Number.isSafeInteger(table.size) ||
+    table.offset < 0 ||
+    table.size < 0 ||
+    (table.offset === 0) !== (table.size === 0)
+  ) return false;
+  if (table.offset === 0) return true;
+  return table.offset % 8 === 0 &&
+    table.offset <= fileSize &&
+    table.size <= fileSize - table.offset;
+}
+
 function validNativeBinaryFileShape(file) {
   const common = ["dependencies", "format", "label", "role", "sha256", "size"];
   if (file.format === "elf") {
@@ -334,6 +349,7 @@ function validNativeBinaryFileShape(file) {
   if (file.format === "pe") {
     return exactKeys(file, [...common,
       "architecture",
+      "certificateTable",
       "delayDependencies",
       "machine",
       "subsystem",
@@ -342,6 +358,7 @@ function validNativeBinaryFileShape(file) {
       file.wordSize === 64 &&
       Number.isSafeInteger(file.machine) &&
       Number.isSafeInteger(file.subsystem) &&
+      validPeCertificateTable(file.certificateTable, file.size) &&
       uniqueSortedStrings(file.delayDependencies);
   }
   return false;
