@@ -946,10 +946,100 @@
       "commit": "8d3fbc60bed6bee07c8ae8b54715d5b68481753d",
       "workspace_fingerprint": "42fd722a482a320670d80d0ed1800299c6306c5005efa1631e58ae098be6c81d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-capabilities.cjs test/release-native-binary-inspector.cjs test/sea-build-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.79,
+      "started_at": "2026-08-16T10:56:11.194Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.592,
+      "started_at": "2026-08-16T10:56:17.188Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.49,
+      "started_at": "2026-08-16T10:56:23.145Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.61,
+      "started_at": "2026-08-16T10:56:34.180Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.99,
+      "started_at": "2026-08-16T10:57:05.665Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1503.414,
+      "started_at": "2026-08-16T10:57:40.201Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-finite-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.617,
+      "started_at": "2026-08-16T11:23:08.064Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1578.077,
+      "started_at": "2026-08-16T11:23:30.425Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.705,
+      "started_at": "2026-08-16T11:49:54.440Z",
+      "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
+      "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Attempt 15 is preserved as an honest one-run, non-reusable incomplete proof after passing native and reaching the first relocated sagepython capabilities check; capture-only diagnostic 1 reproduced that exact command once with status 1 and the deterministic invalid immutable release build-manifest error while preserving all A15 inputs and absences. Both external manifests validate. The exact source defect is producer-consumer schema drift: the PE inspector emits certificateTable on every native-binary record, but the embedded receipt consumer still required the previous exact key set. The current narrow repair consumes the inspector-owned {offset,size} shape, validates safe nonnegative paired values, nonzero alignment and file bounds, accepts the exact official Node nonzero table and zero addon tables, and rejects missing, extra, half-zero, negative, unsafe, unaligned, and out-of-bounds records. Focused producer-consumer, inspector, SEA manifest, release, and parallel checks pass; full current-fingerprint validation and the contract-only closure remain pending before any fresh Windows proof preparation.",
+    "summary": "Attempt 15 is preserved as an honest one-run, non-reusable incomplete proof after passing native and reaching the first relocated sagepython capabilities check; capture-only diagnostic 1 reproduced that exact command once with status 1 and the deterministic invalid immutable release build-manifest error while preserving all A15 inputs and absences. Both external manifests validate. The exact source defect is producer-consumer schema drift: the PE inspector emits certificateTable on every native-binary record, but the embedded receipt consumer still required the previous exact key set. Source commit 46a7596470a34e7df383b505cf6f9218926ba4fc now consumes the inspector-owned {offset,size} shape, validates safe nonnegative paired values, nonzero alignment and file bounds, accepts the exact official Node nonzero table and zero addon tables, and rejects missing, extra, half-zero, negative, unsafe, unaligned, and out-of-bounds records. At common workspace fingerprint 3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4, focused producer-consumer tests pass 62, release, architecture, portable 482, and strict-zero checks pass; the first full changed run preserved one unrelated transient finite-matrix timing failure, its isolated checker passed, the single clean full rerun passed unit 484, integration 440 with 3 skips, every native and performance gate, and final parallel check 220. Only this contract-only closure and independent exact review remain before any fresh Windows proof preparation.",
     "risks": [
       "Failed attempt 3 is preserved at C:\\Users\\user\\evidence\\windows-static-6ecc6f6\\attempt-3. Exact SHA-256 hashes are status.json 15a03d71004b969c5c1de51e7148f6f773d81b2a11e61d5423eb9494b612e7da, proof.log 08c24e781e74bec81b2f73b1789502d6b1aa1b6c3a2ce9d830118064a864f5cf, ownership.json 6604403f8bd01db37d5292c40d350e17a8bb76ec2b8116c7ae8923636076d039, and toolchain-preflight.json 922bf0bdca1e1612c2c3831c7a31b3480f1bb273711454473c0698a817089128.",
       "Attempt 3 ran from 2026-08-14T19:48:23.1169828Z through 2026-08-14T21:12:33.6707635Z under triggerless S4U task \\SagejsWindowsStatic6ecc6f6Attempt3 and stopped at test/native-kernel.cjs:1156. It produced no binary-policy, reproducibility, ZIP, or extracted-artifact acceptance proof.",
@@ -1002,7 +1092,8 @@
       "Failed attempt 15 is preserved without modification at C:\\Users\\user\\evidence\\windows-static-8d3fbc6-attempt15\\attempt-15 under triggerless XML-only S4U task \\SagejsWindowsStatic8d3fbc6Attempt15. It ran exactly once from source 8d3fbc60bed6bee07c8ae8b54715d5b68481753d and closure 8efe8c1953a34ca900726f4199008df0235eb906 using reviewed harness 9c2479918df64da422976ea2153aa8d8830dbae28f290fd97d73b85e53a252d8, task XML 0881dc8b3e6a07ec6635b5bfaeff11bac25ac5ee3182d53cbc57ccda44bac393, helper 83138921e5a9e2dd989b580fba6fe0992972afd595f5aa367512d5e30f7fe447, and task export 481217c2996ef49340dcde37d9cc27e5b2f9245a8963e3f328deb5f253b091c4. It ended Ready/result 1 with LastRun 2026-08-16T08:04:04Z, NextRun null, missed runs 0, zero non-null triggers, no surviving proof process, and exact core hashes status.json cc3df3fac65cad4dd9704bd6ed917ccc8dd8378e146fb405e3b56569de88489f, proof.log 2f2e3d9b9262800a791e2e56c5ab8b1474ac5d546b62f65c67a19ed948a6aa02, ownership.json a54046abbac068173a851d1b6e8416bfa943fbc34738b7e9c5d1af9702e30e50, toolchain-preflight.json cf2d59732b7250967bf0ec99471498e13cd37cfa324031c3c1f806ba2cd2cc70, and execution-authority.json d92ae78c68414eef0f4ab045fcced97729de6ec7b6bf4ce5ff7223469c22d281.",
       "Attempt 15 passed the full fresh root-A native suite, including density_500 8.22 / 8.22 / 10.00 ms, built PE-hygienic sagejs.exe 27463676ae1653fa0f6f5766d76fa182ab6d789725fff311af3a10fb8ba18137 and sagepython.exe 80ca0caa84f64ab4a591e63984c5d34f710ef7207a679191a3885e57844d987e with sidecar manifests 8fbe28c83edc7c2d7f90a865b844376b6f295f79ca6b55c04b3aee502839b592 and 1e8f5bf0adda6f81e0ec1a2e91371a916608c8ce66284f0d71d42660f9fa4921, then rejected the initial relocated sagepython.exe capabilities --json command before later SEA smoke fixtures or startup timing. Root A remains exact and tracked-clean with node_modules, root B exact, tracked-clean, and pristine; all sixteen proof, root-B, archive, and acceptance outputs remain absent. Attempt 15 is an honest incomplete failed proof and was neither retried nor reused. Its read-only local evidence copy has SHA256SUMS c34fc7c104ca89c1c34e19667b74ab7983c8221c822d5d0148c8c0c34f30ebb2 with all nine entries passing and audit.json f5384b186ed128ff678323f8e72ea2ca471ce0b417b37ed3a24d43f92ec807ce.",
       "Capture-only diagnostic 1 is preserved at C:\\Users\\user\\evidence\\windows-sea-capabilities-8d3fbc6-diagnostic1\\diagnostic-1 under triggerless XML-only S4U task \\SagejsWindowsSeaCapabilities8d3fbc6Diagnostic1. It invoked the exact preserved relocated sagepython.exe capabilities --json once under the original sea-smoke workspace inventory and fresh external TEMP, HOME, XDG, dynamic, native, and parallel-native caches. The child exited 1 after 1778.467 ms without timeout, signal, process error, stdout, or survivors; stderr SHA-256 264dca8393f20a93f8f09db1c9534498e53221fb8df4c84f006c7cd13b96b8dc contains exactly `embedded Sage.js build receipt is unavailable: invalid immutable release build manifest`. Exact diagnostic hashes are ownership.json 088de872ba23e80d79410dc217e11bc59dac78804c31ef8d87ffa2ba4daa1e99, status.json e841764aaae2088631da0339dbfbcc076e9bb9899fbb1bc8e90a53013244adb4, proof.log a598ccfcd092e05c30b6ebd7858102cdce590f4a162c0dddfcb049803e6927f6, result.json 2825997428929aee5d6954136b0a99a0aae89990865ea3f4b91e01dfe40a8a00, child result 54ae2b693c0317245e62fdd6a6dd370dded3ad186df97389f619d22f78b1286d, empty stdout e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, task export febf4501c168ca5549aeb7724d5a39738347f42e614063006fe0d85483d482f9, and reviewed harness/XML 9a016a0cd7bbf1b5a68d9e08e542bef7260d7430cc08b4368ad6a30ae6c47f8c/e1342731954bf7718768d18d35330661971ff19ece272e575f99d18e2781003e. Diagnostic completion result 0 is not a proof pass. A15 task, roots, all bound inputs, and sixteen terminal absences remained exact before and after. The local nine-entry SHA256SUMS e4f5bcb297924e87945994b53dcccb7118a096871ef910f316a1beaa3a841d32 passes completely.",
-      "Both preserved A15 sidecar manifests pass validateBuildManifest and retain their exact identity checksums. The deterministic embedded receipt rejection is a source schema-coupling defect: release-native-binary-inspector.cjs began emitting certificateTable {offset,size} on every PE record, while release-capabilities.cjs validNativeBinaryFileShape still required the older exact PE key set without certificateTable. The first PE record therefore failed exactKeys before any embedded byte or hash comparison. The official Node template's valid nonzero certificate table is offset 103158272, size 15688, exactly within its 103173960-byte file; generated addons have the paired zero state. This is not post-embedding mutation, certificate-directory clearing corruption, or startup timing."
+      "Both preserved A15 sidecar manifests pass validateBuildManifest and retain their exact identity checksums. The deterministic embedded receipt rejection is a source schema-coupling defect: release-native-binary-inspector.cjs began emitting certificateTable {offset,size} on every PE record, while release-capabilities.cjs validNativeBinaryFileShape still required the older exact PE key set without certificateTable. The first PE record therefore failed exactKeys before any embedded byte or hash comparison. The official Node template's valid nonzero certificate table is offset 103158272, size 15688, exactly within its 103173960-byte file; generated addons have the paired zero state. This is not post-embedding mutation, certificate-directory clearing corruption, or startup timing.",
+      "The first full changed-file receipt for source 46a7596470a34e7df383b505cf6f9218926ba4fc passed every correctness and native gate before the unrelated finite-field matrix checker observed construct_500 at 8.86 ms raw and normalized against its 8.00 ms budget under measured load factor 1.00. The same-fingerprint isolated checker passed construct_500 at 9.10 ms raw and 3.38 ms normalized under measured load factor 2.69, and the single complete clean rerun passed it at 8.11 ms raw and 1.91 ms normalized under measured load factor 4.26, then passed every integer, rational, and polynomial gate. No source or policy changed between these observations; the failed, isolated passing, and full passing receipts are all preserved under workspace fingerprint 3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4."
     ],
     "next_steps": [
       "Independently review the exact PE receipt consumer repair, producer-to-consumer shape regression, adversarial certificate-table validation, Attempt 15 and diagnostic-1 lifecycle evidence, and common-fingerprint validation receipts.",
