@@ -173,6 +173,11 @@ function bootstrapBuildPlan() {
     },
     {
       phase: "native",
+      command: "node",
+      arguments: ["scripts/native-prebuilt-dependencies.cjs", "install"],
+    },
+    {
+      phase: "native",
       command: "pnpm",
       arguments: ["--dir", "packages/flint", "build"],
     },
@@ -185,6 +190,11 @@ function bootstrapBuildPlan() {
       phase: "native",
       command: "pnpm",
       arguments: ["--dir", "packages/graph", "build"],
+    },
+    {
+      phase: "native",
+      command: "pnpm",
+      arguments: ["--dir", "packages/m4ri", "build"],
     },
     {
       phase: "production",
@@ -225,9 +235,7 @@ function main(inputArguments = process.argv.slice(2)) {
 
   step(
     5,
-    process.platform === "linux" && process.arch === "x64"
-      ? "Building FLINT, ffpoly, smalljac, igraph, and their Node addons"
-      : "Building FLINT, FFLAS/FFPACK, igraph, and their generated adapters",
+    "Restoring or building FLINT, FFLAS/FFPACK, igraph, M4RI, and native adapters",
   );
   executeBuildPhase(buildPlan, "native");
 
@@ -259,9 +267,9 @@ Sage.js is ready.
 ${withoutSea ? "" : `  Self-contained executable:          build/sea/sagejs${executableSuffix}\n`}  Fast test tiers:                   pnpm test:unit && pnpm test:native
   Full test suite:                   pnpm test
 
-The native libraries are cached under packages/flint/.native,
-packages/fflas/.native, and packages/graph/.native, so subsequent bootstrap
-runs reuse them unless the pinned versions change.
+Portable native dependencies are restored from SHA-256-verified prebuilds when
+available and cached under ~/.cache/sagejs/native-prebuilt. Package-local
+.native directories are reused unless the pinned versions or build inputs change.
 `);
 }
 

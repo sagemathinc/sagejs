@@ -28,6 +28,9 @@ const {
 const packageRoot = resolve(__dirname, "..");
 const repositoryRoot = resolve(packageRoot, "..", "..");
 const {
+  prebuiltPackageIsCurrent,
+} = require("../../../scripts/native-prebuilt-dependencies.cjs");
+const {
   NATIVE_MATH_DEPENDENCY_VERSIONS,
   flintObservedCapabilities,
   nativeMathBuildProfile,
@@ -156,6 +159,13 @@ function patchWindowsFlintHeaders() {
 function buildWindowsDependencies() {
   if (process.arch !== "x64") {
     throw new Error("the native Windows FLINT backend currently requires x64");
+  }
+  if (prebuiltPackageIsCurrent(repositoryRoot, "flint", prefix, [
+    join(prefix, "lib", "flint.lib"),
+    join(prefix, "lib", "openblas.lib"),
+  ])) {
+    process.stdout.write(`Using prebuilt FLINT dependencies in ${prefix}\n`);
+    return;
   }
 
   const manifest = JSON.parse(
@@ -471,6 +481,23 @@ async function main() {
     throw new Error(
       `the native FLINT backend does not yet support ${process.platform}/${process.arch}`
     );
+  }
+  const prebuiltRequired = [
+    "libgmp.a",
+    "libflint.a",
+    "libmpc.a",
+    "libmpfr.a",
+    "libopenblas.a",
+    ...(smalljacAccelerator ? ["libff_poly.a", "libsmalljac.a"] : []),
+  ].map((name) => join(prefix, "lib", name));
+  if (prebuiltPackageIsCurrent(
+    repositoryRoot,
+    "flint",
+    prefix,
+    prebuiltRequired,
+  )) {
+    process.stdout.write(`Using prebuilt FLINT dependencies in ${prefix}\n`);
+    return;
   }
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
   const expectedBuild = {

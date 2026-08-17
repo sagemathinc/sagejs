@@ -16,6 +16,9 @@ const { spawnSync } = require("node:child_process");
 
 const packageRoot = resolve(__dirname, "..");
 const repositoryRoot = resolve(packageRoot, "..", "..");
+const {
+  prebuiltPackageIsCurrent,
+} = require("../../../scripts/native-prebuilt-dependencies.cjs");
 const buildRoot = join(packageRoot, ".native");
 const prefix = resolve(
   process.env.SAGEJS_M4RI_PREFIX || join(buildRoot, "prefix"),
@@ -128,6 +131,18 @@ function makePrefixRelocatable() {
 
 async function buildDependencies() {
   const stamp = join(prefix, ".sagejs-m4ri-dependencies.json");
+  const prebuiltRequired = process.platform === "win32"
+    ? [stamp]
+    : [stamp, join(prefix, "lib", "libm4ri.a")];
+  if (prebuiltPackageIsCurrent(
+    repositoryRoot,
+    "m4ri",
+    prefix,
+    prebuiltRequired,
+  )) {
+    process.stdout.write(`Using prebuilt M4RI dependencies in ${prefix}\n`);
+    return;
+  }
   const supported =
     ((process.platform === "linux" || process.platform === "darwin") &&
       (process.arch === "x64" || process.arch === "arm64"));

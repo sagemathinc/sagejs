@@ -10,6 +10,27 @@ const test = require("node:test");
 const serialization = require("../dist/tools/serialization.js");
 const { createSage } = require("../dist/tools/kernel.js");
 
+test("compact integer tuple tables decode exact bounded JSON", () => {
+  const table = serialization.loadsIntegerTupleTable(
+    '{"2":{"1":[1,1],"3":[1,0,1,1]}}',
+  );
+  assert.ok(table instanceof Map);
+  assert.deepEqual(table.get(2).get(1), [1, 1]);
+  assert.ok(Object.isFrozen(table.get(2).get(1)));
+  assert.throws(
+    () => serialization.loadsIntegerTupleTable('{"02":{"1":[1]}}'),
+    /canonical nonnegative integer/,
+  );
+  assert.throws(
+    () => serialization.loadsIntegerTupleTable('{"2":{"1":[1.5]}}'),
+    /not an exact integer/,
+  );
+  assert.throws(
+    () => serialization.loadsIntegerTupleTable('{"2":[]}'),
+    /row is not an object/,
+  );
+});
+
 test("serialization v1 preserves graphs, exact integers, and binary blocks", () => {
   const shared = { exact: 2n ** 200n };
   const value = [shared, shared, new Uint8Array([0, 1, 127, 255]), NaN, -0];

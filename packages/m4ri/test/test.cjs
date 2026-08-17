@@ -29,12 +29,23 @@ function close(resource, closer) {
   closer(resource);
 }
 
-test("ordinary dependency builds preserve a restored shared generation", {
+test("ordinary dependency builds preserve a restored dependency generation", {
   skip: process.platform === "win32",
 }, () => {
   const prefix = join(root, ".native", "prefix");
-  assert.equal(lstatSync(prefix).isSymbolicLink(), true);
-  const generation = readlinkSync(prefix);
+  const shared = lstatSync(prefix).isSymbolicLink();
+  const generation = shared ? readlinkSync(prefix) : null;
+  if (!shared) {
+    assert.equal(
+      JSON.parse(
+        readFileSync(
+          join(prefix, ".sagejs-prebuilt-dependencies.json"),
+          "utf8",
+        ),
+      ).package,
+      "m4ri",
+    );
+  }
   const header = join(prefix, "include", "sagejs", "m4ri_matrix_ffi.h");
   const contents = readFileSync(header);
   const environment = { ...process.env };
@@ -49,8 +60,8 @@ test("ordinary dependency builds preserve a restored shared generation", {
     },
   );
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.equal(lstatSync(prefix).isSymbolicLink(), true);
-  assert.equal(readlinkSync(prefix), generation);
+  assert.equal(lstatSync(prefix).isSymbolicLink(), shared);
+  if (shared) assert.equal(readlinkSync(prefix), generation);
   assert.deepEqual(readFileSync(header), contents);
   assert.match(result.stdout, /Native cache m4ri-dependencies: present/);
 });
