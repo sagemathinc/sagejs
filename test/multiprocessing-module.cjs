@@ -400,6 +400,19 @@ test("multiprocessing imports without a worker host capability", async () => {
 
 test("task evaluators load only validated precompiled module resources", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-task-modules-"));
+  const dependencyCache = {
+    version: "test-compiler-version",
+    signature: "dependency-source-signature",
+    mode: "python",
+    module: "worker_dependency",
+    javascriptTemplate: [
+      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      "var collision;",
+      "collision = function collision(left, right) { return left + right; };",
+      "var dependencyFixture = function dependencyFixture(value) { return collision(value, 1); };",
+      'Reflect.set(ρσ_modules["worker_dependency"], "dependencyFixture", dependencyFixture);',
+    ].join("\n"),
+  };
   const cache = {
     version: "test-compiler-version",
     signature: "test-source-signature",
@@ -408,7 +421,11 @@ test("task evaluators load only validated precompiled module resources", () => {
     javascriptTemplate: [
       'var __file__ = "__sagejs_precompiled_module_filename__";',
       'void Reflect.get(ρσ_modules, "__name__");',
-      "var fixture = function fixture(value) { return value + 1; };",
+      "var collision;",
+      'var dependency = globalThis.__sagejs_load_module__("worker_dependency");',
+      'var dependencyFixture = Reflect.get(dependency, "dependencyFixture");',
+      "collision = function collision(value) { return value * 2; };",
+      "var fixture = function fixture(value) { return dependencyFixture(value); };",
       'fixture.__module__ = "worker_fixture";',
       'fixture.__name__ = "fixture";',
       'Reflect.set(\u03c1\u03c3_modules["worker_fixture"], "fixture", fixture);',
@@ -417,6 +434,10 @@ test("task evaluators load only validated precompiled module resources", () => {
   writeFileSync(
     join(directory, "worker_fixture.json"),
     JSON.stringify(cache),
+  );
+  writeFileSync(
+    join(directory, "worker_dependency.json"),
+    JSON.stringify(dependencyCache),
   );
   writeFileSync(
     join(directory, "task-runtime-modules.json"),
@@ -430,6 +451,13 @@ test("task evaluators load only validated precompiled module resources", () => {
           signature: cache.signature,
           mode: cache.mode,
           filename: "/__sagejs_task_modules__/worker_fixture.py",
+        },
+        worker_dependency: {
+          resource: "worker_dependency.json",
+          version: dependencyCache.version,
+          signature: dependencyCache.signature,
+          mode: dependencyCache.mode,
+          filename: "/__sagejs_task_modules__/worker_dependency.py",
         },
         // This valid mapping intentionally has no resource file. Loading the
         // used fixture must not touch unrelated graph entries at startup.
@@ -469,7 +497,7 @@ test("task evaluators load only validated precompiled module resources", () => {
       'const { createTaskEvaluator } = require("./dist/tools/task-evaluator.js");',
       'const { hasPrecompiledTaskModule } = require("./dist/tools/resources.js");',
       "const evaluator = createTaskEvaluator({ mode: 'python', onOutput() {} });",
-      "const source = 'function fixture(value) { return value + 1; }';",
+      "const source = 'function fixture(value) { return dependencyFixture(value); }';",
       "console.log(hasPrecompiledTaskModule('worker_fixture'));",
       "console.log(hasPrecompiledTaskModule('worker_missing'));",
       "console.log(evaluator.invoke({ module: 'worker_fixture', name: 'fixture', source }, [41]));",
