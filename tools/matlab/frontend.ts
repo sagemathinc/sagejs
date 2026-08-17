@@ -13,6 +13,8 @@ import {
 import {
   BinaryExpression,
   CallExpression,
+  CommandStatement,
+  FieldExpression,
   MatlabExpression,
   MatlabProgram,
   MatlabStatement,
@@ -98,16 +100,29 @@ class AstBuilder {
         const commandArguments = node.namedChildren.filter((child) =>
           child.type === "command_argument"
         );
-        if (!commandName || commandArguments.length) {
+        if (!commandName) {
           return this.unsupported(node);
         }
+        const name = this.text(commandName);
+        if (
+          commandArguments.length === 0 &&
+          !new Set(["figure", "grid", "hold"]).has(name)
+        ) {
+          return {
+            kind: "expression",
+            expression: {
+              kind: "name",
+              name,
+              span: sourceSpan(commandName),
+            },
+            suppressOutput,
+            span: sourceSpan(node),
+          };
+        }
         return {
-          kind: "expression",
-          expression: {
-            kind: "name",
-            name: this.text(commandName),
-            span: sourceSpan(commandName),
-          },
+          kind: "command",
+          name,
+          arguments: commandArguments.map((argument) => this.text(argument)),
           suppressOutput,
           span: sourceSpan(node),
         };
@@ -169,6 +184,21 @@ class AstBuilder {
     };
   }
 
+  private field(node: SyntaxNode): FieldExpression {
+    const object = node.childForFieldName("object");
+    const fields = node.childrenForFieldName("field");
+    if (!object || fields.length === 0) return this.unsupported(node);
+    for (const field of fields) {
+      if (field.type !== "identifier") return this.unsupported(field);
+    }
+    return {
+      kind: "field",
+      object: this.expression(object),
+      fields: fields.map((field) => this.text(field)),
+      span: sourceSpan(node),
+    };
+  }
+
   expression(node: SyntaxNode): MatlabExpression {
     switch (node.type) {
       case "identifier":
@@ -190,6 +220,8 @@ class AstBuilder {
         return this.matrix(node);
       case "function_call":
         return this.call(node);
+      case "field_expression":
+        return this.field(node);
       case "range": {
         const elements = node.namedChildren.map((child) =>
           this.expression(child)
@@ -253,6 +285,27 @@ class SageLowerer {
     sum: "_np.sum",
     tan: "_np.tan",
     zeros: "_np.zeros",
+    axes: "_matlab.axes",
+    delete: "_matlab.delete",
+    figure: "_matlab.figure",
+    gca: "_matlab.gca",
+    gcf: "_matlab.gcf",
+    get: "_matlab.get",
+    grid: "_matlab.grid",
+    hold: "_matlab.hold",
+    ishold: "_matlab.ishold",
+    legend: "_matlab.legend",
+    plot: "_matlab.plot",
+    plotspec: "_matlab.plotspec",
+    plotly: "_matlab.plotly",
+    set: "_matlab.set",
+    subplot: "_matlab.subplot",
+    surf: "_matlab.surf",
+    title: "_matlab.title",
+    xlabel: "_matlab.xlabel",
+    xlim: "_matlab.xlim",
+    ylabel: "_matlab.ylabel",
+    ylim: "_matlab.ylim",
   };
 
   program(program: MatlabProgram, captureResult = false): string {
@@ -276,6 +329,17 @@ class SageLowerer {
     asResult = false,
   ): string {
     if (statement.kind === "assignment") {
+      if (statement.target.kind === "field") {
+        const fields = statement.target.fields;
+        let target = this.expression(statement.target.object);
+        for (const field of fields.slice(0, -1)) {
+          target = `_matlab.get_property(${target}, ${JSON.stringify(field)})`;
+        }
+        const assignment = `_matlab.set_property(${target}, ${
+          JSON.stringify(fields.at(-1))
+        }, ${this.expression(statement.value)})`;
+        return statement.suppressOutput ? assignment : `print(${assignment})`;
+      }
       if (statement.target.kind === "call") {
         if (statement.target.callee.kind !== "name") {
           throw new MatlabSyntaxError(
@@ -310,8 +374,35 @@ class SageLowerer {
         ? assignment
         : `${assignment}\nprint(${statement.target.name})`;
     }
+    if (statement.kind === "command") {
+      return this.command(statement);
+    }
     const value = this.expression(statement.expression);
     return statement.suppressOutput || asResult ? value : `print(${value})`;
+  }
+
+  private command(statement: CommandStatement): string {
+    const commandFunctions: Record<string, string> = {
+      figure: "_matlab.figure",
+      grid: "_matlab.grid",
+      hold: "_matlab.hold",
+    };
+    const target = commandFunctions[statement.name];
+    if (!target) {
+      throw new MatlabSyntaxError(
+        `MATLAB command '${statement.name}' is recognized but is not supported yet`,
+        statement.span,
+      );
+    }
+    if (statement.name === "figure" && statement.arguments.length !== 0) {
+      throw new MatlabSyntaxError(
+        "MATLAB command-form figure does not accept arguments; use figure(...) instead",
+        statement.span,
+      );
+    }
+    return `${target}(${
+      statement.arguments.map((argument) => JSON.stringify(argument)).join(", ")
+    })`;
   }
 
   private call(expression: CallExpression): string {
@@ -322,11 +413,6 @@ class SageLowerer {
       })`;
     }
     const name = expression.callee.name;
-    if (name === "plot" && expression.arguments.length === 2) {
-      return `line(list(zip(${
-        this.expression(expression.arguments[0])
-      }, ${this.expression(expression.arguments[1])})))`;
-    }
     const direct = this.directFunctions[name];
     if (direct) {
       return `${direct}(${
@@ -408,6 +494,13 @@ class SageLowerer {
         }])`;
       case "call":
         return this.call(expression);
+      case "field": {
+        let value = this.expression(expression.object);
+        for (const field of expression.fields) {
+          value = `_matlab.get_property(${value}, ${JSON.stringify(field)})`;
+        }
+        return value;
+      }
       case "range":
         return `_np.array(_matlab.colon(${this.expression(expression.start)}, ${
           this.expression(expression.stop)
