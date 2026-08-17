@@ -23,7 +23,10 @@ from sagejs.number_fields.buchmann_lenstra import (
     buchmann_lenstra_overorder,
     check_buchmann_lenstra_result,
 )
-from sagejs.number_fields.discriminant_components import decompose_discriminant
+from sagejs.number_fields.discriminant_components import (
+    check_decomposition_certificate,
+    decompose_discriminant,
+)
 from sagejs.number_fields.maximal_order_certification import (
     certify_global_order,
     make_composite_local_maximality_witness,
@@ -435,6 +438,91 @@ def _normalize_requested_primes(value: Any) -> list[int] | None:
     return primes
 
 
+def _replace_composite_by_certified_primes(
+    decomposition: dict[str, Any],
+    record: dict[str, Any],
+    trace: MaximalOrderTrace,
+) -> None:
+    """Factor only a lazy component after composite local work cannot finish.
+
+    This deliberately is not the entry path: prefactorization and collective
+    Buchmann--Lenstra work already had the opportunity to avoid factorization.
+    It is the completeness fallback for the remaining supported exact input.
+    """
+    support = int(record["base"])
+    outer_exponent = int(record["exponent"])
+    token = trace.begin(
+        "component-factorization-fallback",
+        {"component_bits": support.bit_length()},
+    )
+    replacements = []
+    for prime_value, multiplicity_value in sage.factor(support):
+        prime = _exact_integer(prime_value)
+        multiplicity = int(multiplicity_value)
+        prime_certificate = decompose_discriminant(None, prime)
+        prime_components = prime_certificate["components"]
+        if (
+            len(prime_components) != 1
+            or prime_components[0]["state"] != "proven-prime"
+            or int(prime_components[0]["base"]) != prime
+        ):
+            raise ArithmeticError(
+                "fallback factorization returned a prime without a proof"
+            )
+        exponent = multiplicity * outer_exponent
+        replacements.append(
+            {
+                "value": prime**exponent,
+                "state": "proven-prime",
+                "base": prime,
+                "exponent": exponent,
+                "evidence": prime_components[0]["evidence"],
+            }
+        )
+    if not replacements:
+        raise ArithmeticError("fallback component factorization was empty")
+    position = -1
+    for index, component in enumerate(decomposition["components"]):
+        if component is record:
+            position = index
+            break
+    if position < 0:
+        for index, component in enumerate(decomposition["components"]):
+            if (
+                int(component["value"]) == int(record["value"])
+                and int(component["base"]) == support
+                and int(component["exponent"]) == outer_exponent
+            ):
+                position = index
+                break
+    if position < 0:
+        raise ArithmeticError("fallback component is absent from its decomposition")
+    remaining = list(decomposition["components"])
+    remaining.pop(position)
+    decomposition["components"] = sorted(
+        remaining + replacements,
+        key=lambda component: int(component["value"]),
+    )
+    decomposition["events"].append(
+        {
+            "kind": "component-factorization-fallback",
+            "parent": int(record["value"]),
+            "children": [int(component["value"]) for component in replacements],
+        }
+    )
+    decomposition["certified"] = all(
+        component["state"] == "proven-prime"
+        for component in decomposition["components"]
+    )
+    if not check_decomposition_certificate(decomposition, require_proven=False):
+        raise ArithmeticError("fallback component refinement failed certification")
+    trace.end(
+        token,
+        "complete",
+        {"prime_count": len(replacements)},
+    )
+
+
 def compute_maximal_order(
     field: Any,
     *,
@@ -502,16 +590,13 @@ def compute_maximal_order(
                 equation_discriminant=equation_discriminant,
             )
             trace.end(token, result.state, {"index": result.index})
-            if result.state == "split":
-                raise ArithmeticError(
-                    "composite local work discovered a split; rerun decomposition with "
-                    + str(result.split.left if result.split is not None else support)
-                )
             if result.state != "complete" or result.basis is None:
-                raise ArithmeticError(
-                    "certified composite maximal-order work is incomplete: "
-                    + str(result.message)
+                _replace_composite_by_certified_primes(
+                    decomposition,
+                    record,
+                    trace,
                 )
+                continue
             if not check_buchmann_lenstra_result(coefficients, result):
                 raise ArithmeticError("composite local-order evidence failed replay")
             if result.discriminant is None:

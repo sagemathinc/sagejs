@@ -101,3 +101,27 @@ test("forced local algorithms remain differential and certified", async () => {
     await session.close();
   }
 });
+
+test("the completeness fallback refines only its unresolved component", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.number_fields.discriminant_components import decompose_discriminant, check_decomposition_certificate",
+        "from sagejs.number_fields.maximal_order_contracts import MaximalOrderTrace",
+        "from sagejs.number_fields.maximal_order_engine import _replace_composite_by_certified_primes",
+        "decomposition = decompose_discriminant(None, 2 * 11 * 35^3, small_prime_bound=2, rho_steps=0)",
+        "record = [component for component in decomposition['components'] if component['state'] == 'composite'][0]",
+        "trace = MaximalOrderTrace(True)",
+        "_replace_composite_by_certified_primes(decomposition, record, trace)",
+        "[(component['base'], component['exponent'], component['state']) for component in decomposition['components']], check_decomposition_certificate(decomposition, require_proven=True), trace.to_dict()['events'][0]['stage']",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "([(2, 1, 'proven-prime'), (11, 1, 'proven-prime'), (5, 3, 'proven-prime'), (7, 3, 'proven-prime')], True, 'component-factorization-fallback')",
+    );
+  } finally {
+    await session.close();
+  }
+});
