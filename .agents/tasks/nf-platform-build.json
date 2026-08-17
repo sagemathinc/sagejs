@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-platform-build",
+  "title": "Fix fresh smalljac native dependency build",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make fresh Linux x64 FLINT dependency builds compile smalljac against the managed GMP prefix and regress the build command",
+  "base_commit": "0e8c027ba2945399b0a0e1a9bc084f7855ff1fae",
+  "claims": [
+    "packages/flint/scripts/build-deps.cjs",
+    "packages/flint/test/unix-build-deps-source.cjs",
+    "packages/flint/package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint/test/unix-build-deps-source.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.118,
+      "started_at": "2026-08-17T23:02:02.590Z",
+      "commit": "0e8c027ba2945399b0a0e1a9bc084f7855ff1fae",
+      "workspace_fingerprint": "d620c91330fb634ff1b8bbf56d8f366515d3c107fd64a23a8debdb85d93dbd8e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
