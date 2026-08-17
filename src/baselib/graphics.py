@@ -632,7 +632,9 @@ def _sage_primitive_plan(name: str, options: Any) -> Any:
         fromlist=[name],
     )
     planner = getattr(planning, name)
-    return planner(public_options)
+    # Strict library mappings are runtime Python dictionaries. Materialize
+    # them recursively before bootstrap code uses native property access.
+    return _plot_spec_json_value(planner(public_options))
 
 
 def _plotly_marker_record(style: Any) -> Any:
