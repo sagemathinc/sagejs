@@ -131,6 +131,8 @@ class SeriesElement(sage.Element):
         factor = int(factor)
         if factor <= 0:
             raise ValueError("series inflation factor must be positive")
+        if factor == 1 and (precision is None or precision == self._precision):
+            return self
         target_precision = precision
         if target_precision is None and self._precision is not None:
             target_precision = self._precision * factor
@@ -345,6 +347,7 @@ class SeriesRingParent(sage.Parent):
         variable: str,
         default_precision: int,
         laurent: bool,
+        sparse: bool = False,
     ) -> None:
         kind = "Laurent" if laurent else "Power"
         self._name = kind + " Series Ring in " + variable + " over " + str(base)
@@ -352,12 +355,14 @@ class SeriesRingParent(sage.Parent):
         self._variable = variable
         self._default_precision = default_precision
         self._is_laurent = laurent
+        self._is_sparse = sparse
         self._kind = "LaurentSeriesRing" if laurent else "PowerSeriesRing"
         self._construction = {
             "kind": "laurent_series" if laurent else "power_series",
             "base": base,
             "variable": variable,
             "default_precision": default_precision,
+            "sparse": sparse,
         }
         self._polynomial_ring = sage.PolynomialRing(base, variable)
 
@@ -369,6 +374,15 @@ class SeriesRingParent(sage.Parent):
 
     def default_prec(self) -> int:
         return self._default_precision
+
+    def is_sparse(self) -> bool:
+        return self._is_sparse
+
+    def is_dense(self) -> bool:
+        return not self._is_sparse
+
+    def ngens(self) -> int:
+        return 1
 
     def _from_native(
         self,
@@ -452,6 +466,8 @@ class SeriesRingParent(sage.Parent):
             self._base,
             self._variable,
             self._default_precision,
+            None,
+            self._is_sparse,
         )
 
     def __call__(self, value: Any = 0) -> SeriesElement:
@@ -502,9 +518,12 @@ def _series_ring(
     variable: str,
     default_prec: int,
     laurent: bool,
+    sparse: bool = False,
 ) -> SeriesRingParent:
-    if base is not sage.QQ and base._kind != "GF":
-        raise TypeError("FLINT series currently support QQ and prime finite fields")
+    if base is not sage.ZZ and base is not sage.QQ and base._kind not in ["GF", "ZMOD"]:
+        raise TypeError(
+            "FLINT series currently support ZZ, QQ, and modular coefficient rings"
+        )
     if not isinstance(variable, str) or not runtime.regexp(
         r"^[A-Za-z_][A-Za-z0-9_]*$"
     ).test(variable):
@@ -516,10 +535,15 @@ def _series_ring(
     if by_variable is runtime.undefined:
         by_variable = runtime.map()
         ρσ_series_ring_cache.set(base, by_variable)
-    key = variable + ("|laurent|" if laurent else "|power|") + str(default_prec)
+    key = (
+        variable
+        + ("|laurent|" if laurent else "|power|")
+        + str(default_prec)
+        + ("|sparse" if sparse else "|dense")
+    )
     parent = by_variable.get(key)
     if parent is runtime.undefined:
-        parent = SeriesRingParent(base, variable, default_prec, laurent)
+        parent = SeriesRingParent(base, variable, default_prec, laurent, sparse)
         by_variable.set(key, parent)
     return parent
 
@@ -541,6 +565,7 @@ def PowerSeriesRing(
     variable: Any = None,
     default_prec: int = 20,
     names: Any = None,
+    sparse: bool = False,
 ) -> SeriesRingParent:
     if (
         variable is not None
@@ -548,6 +573,10 @@ def PowerSeriesRing(
         and variable[runtime.kwargs_symbol]
     ):
         names = variable.names
+        if hasattr(variable, "default_prec"):
+            default_prec = variable.default_prec
+        if hasattr(variable, "sparse"):
+            sparse = variable.sparse
         variable = None
     if names is not None:
         variable = names
@@ -558,6 +587,7 @@ def PowerSeriesRing(
         _series_variable_name(variable),
         default_prec,
         False,
+        sparse,
     )
 
 
@@ -566,6 +596,7 @@ def LaurentSeriesRing(
     variable: Any = None,
     default_prec: int = 20,
     names: Any = None,
+    sparse: bool = False,
 ) -> SeriesRingParent:
     if (
         variable is not None
@@ -573,6 +604,10 @@ def LaurentSeriesRing(
         and variable[runtime.kwargs_symbol]
     ):
         names = variable.names
+        if hasattr(variable, "default_prec"):
+            default_prec = variable.default_prec
+        if hasattr(variable, "sparse"):
+            sparse = variable.sparse
         variable = None
     if names is not None:
         variable = names
@@ -583,13 +618,41 @@ def LaurentSeriesRing(
         _series_variable_name(variable),
         default_prec,
         True,
+        sparse,
     )
 
 
-def big_oh(value: Any) -> SeriesElement:
-    if isinstance(value, SeriesElement):
+_puiseux_module_cache = runtime.undefined
+
+
+def _puiseux_module() -> Any:
+    global _puiseux_module_cache
+    if _puiseux_module_cache is runtime.undefined:
+        _puiseux_module_cache = __import__(
+            "sage.rings.puiseux_series_ring",
+            fromlist=["puiseux_series_ring"],
+        )
+    return _puiseux_module_cache
+
+
+def PuiseuxSeriesRing(
+    base: Any,
+    variable: Any = None,
+    default_prec: int = 20,
+    names: Any = None,
+    name: Any = None,
+    sparse: bool = False,
+) -> Any:
+    return _puiseux_module().PuiseuxSeriesRing(
+        base, variable, default_prec, names, name, sparse
+    )
+
+
+def big_oh(value: Any) -> Any:
+    parent_kind = getattr(getattr(value, "_parent", None), "_kind", None)
+    if isinstance(value, SeriesElement) or parent_kind == "PuiseuxSeriesRing":
         return value._bigoh()
-    raise TypeError("O(...) currently requires a power or Laurent series")
+    raise TypeError("O(...) currently requires a power, Laurent, or Puiseux series")
 
 
 runtime.reflect.set(runtime.global_object, "O", big_oh)

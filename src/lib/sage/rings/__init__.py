@@ -1,0 +1,1 @@
+"""Sage-compatible ring namespace."""

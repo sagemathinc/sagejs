@@ -157,6 +157,316 @@ def _dash_value(linestyle: str) -> str:
     return _option_get(styles, linestyle, linestyle)
 
 
+def get_matplotlib_linestyle(linestyle: Any, return_type: str) -> Any:
+    r"""Translate between matplotlib's short and long line-style names."""
+    long_to_short = {
+        "solid": "-",
+        "dashed": "--",
+        "dotted": ":",
+        "dashdot": "-.",
+    }
+    short_to_long = {
+        "-": "solid",
+        "--": "dashed",
+        ":": "dotted",
+        "-.": "dashdot",
+    }
+
+    if linestyle is None:
+        return None
+
+    if not hasattr(linestyle, "startswith"):
+        type_name = str(type(linestyle))[8:-2].split(".")[-1]
+        raise AttributeError("'" + type_name + "' object has no attribute 'startswith'")
+    style = linestyle
+    if style.startswith("default"):
+        return get_matplotlib_linestyle(style[len("default") :], "short")
+    if style.startswith("steps"):
+        for prefix in ("steps-mid", "steps-post", "steps-pre"):
+            if style.startswith(prefix):
+                return prefix + get_matplotlib_linestyle(style[len(prefix) :], "short")
+        return "steps" + get_matplotlib_linestyle(style[len("steps") :], "short")
+
+    if return_type == "short":
+        if style in short_to_long:
+            return style
+        if style in ("", " ", "None"):
+            return ""
+        if style in long_to_short:
+            return long_to_short[style]
+        raise ValueError(_invalid_linestyle_message(style))
+
+    if return_type == "long":
+        if style in long_to_short:
+            return style
+        if style in ("", " ", "None"):
+            return "None"
+        if style in short_to_long:
+            return short_to_long[style]
+        raise ValueError(_invalid_linestyle_message(style))
+    return None
+
+
+def _invalid_linestyle_message(style: str) -> str:
+    return (
+        "WARNING: Unrecognized linestyle '"
+        + style
+        + "'. Possible linestyle options are:\n"
+        + "{'solid', 'dashed', 'dotted', dashdot', 'None'}, respectively "
+        + "{'-', '--', ':', '-.', ''}"
+    )
+
+
+def _variable_key(value: Any) -> str:
+    return str(value)
+
+
+def _distinct_sorted_variables(values: list[Any]) -> "tuple[Any, ...]":
+    unique_names = []
+    unique_values = []
+    for value in values:
+        name = _variable_key(value)
+        if name not in unique_names:
+            unique_names.append(name)
+            unique_values.append(value)
+    ordered_names = list(unique_names)
+    ordered_names.sort()
+    return tuple(unique_values[unique_names.index(name)] for name in ordered_names)
+
+
+def unify_arguments(
+    funcs: Any,
+) -> "tuple[tuple[Any, ...], tuple[Any, ...]]":
+    r"""Return all variables and the subset free in the supplied functions."""
+    ce = runtime.reflect.get(
+        runtime.global_object,
+        "CallableExpression",
+    )
+
+    function_values = list(funcs) if isinstance(funcs, (list, tuple)) else [funcs]
+    variables = []
+    free_variables = []
+
+    for function_value in function_values:
+        function_arguments = ()
+        if isinstance(function_value, ce):
+            function_arguments = tuple(function_value._arguments_tuple())
+            variables += list(function_arguments)
+
+        try:
+            argument_names = {
+                _variable_key(argument) for argument in function_arguments
+            }
+            vm = getattr(function_value, "variables")  # noqa: B009
+            for variable in vm():
+                if _variable_key(variable) not in argument_names:
+                    variables.append(variable)
+                    free_variables.append(variable)
+        except AttributeError:
+            pass
+
+    return (
+        _distinct_sorted_variables(variables),
+        _distinct_sorted_variables(free_variables),
+    )
+
+
+@runtime.callable_instance_class
+class FastCallablePlotWrapper:
+    r"""Convert numerical callable results to real floats or `NaN`."""
+
+    def __init__(self, ff: Any, imag_tol: float) -> None:
+        self._ff = ff
+        self._imag_tol = float(imag_tol)
+
+    def __call__(self, *args: Any) -> float:
+        try:
+            value = self._ff(*args)
+            if runtime.jstype(value) == "number":
+                return float(value)
+            if runtime.jstype(value) not in ("object", "function"):
+                return float(value)
+
+            real_value = runtime.reflect.get(value, "real")
+            imaginary_value = runtime.reflect.get(value, "imag")
+            if real_value is runtime.undefined or imaginary_value is runtime.undefined:
+                return float(value)
+            if runtime.jstype(real_value) == "function":
+                real_value = runtime.reflect.apply(real_value, value, [])
+            if runtime.jstype(imaginary_value) == "function":
+                imaginary_value = runtime.reflect.apply(imaginary_value, value, [])
+            real_part = float(real_value)
+            imaginary_part = float(imaginary_value)
+            if abs(imaginary_part) < self._imag_tol:
+                return real_part
+            if runtime.number.isNaN(real_part) and runtime.number.isNaN(imaginary_part):
+                return float("nan")
+            raise ValueError("complex fast-callable function result")
+        except ValueError:
+            return float("nan")
+
+
+def _grid_fast_callable(
+    function_value: Any,
+    variables: list[Any],
+    imaginary_tolerance: float,
+) -> Any:
+    value_kind = runtime.jstype(function_value)
+    plot_compiler = None
+    if value_kind in ("object", "function"):
+        plot_compiler = getattr(function_value, "_plot_fast_callable", None)
+    if callable(plot_compiler):
+        return FastCallablePlotWrapper(
+            runtime.reflect.apply(plot_compiler, function_value, [variables]),
+            imaginary_tolerance,
+        )
+
+    if value_kind in ("object", "function") and hasattr(
+        function_value, "_fast_callable_"
+    ):
+        compiler = runtime.reflect.get(runtime.global_object, "fast_callable")
+        if runtime.jstype(compiler) == "function":
+            compiled = runtime.reflect.apply(
+                compiler,
+                runtime.undefined,
+                [function_value, variables],
+            )
+            return FastCallablePlotWrapper(compiled, imaginary_tolerance)
+
+    if value_kind == "function":
+        sm = __import__("sagejs._baselib.symbolic", fromlist=["cos"])
+        for symbolic_name in (
+            "sin cos tan arcsin arccos arctan sinh cosh tanh exp log ln sqrt"
+        ).split(" "):
+            symbolic_function = getattr(sm, symbolic_name, None)
+            if function_value is symbolic_function:
+                expression = runtime.reflect.apply(
+                    function_value,
+                    runtime.undefined,
+                    variables,
+                )
+                expression_compiler = getattr(expression, "_plot_fast_callable", None)
+                if callable(expression_compiler):
+                    compiled = runtime.reflect.apply(
+                        expression_compiler,
+                        expression,
+                        [variables],
+                    )
+                    return FastCallablePlotWrapper(compiled, imaginary_tolerance)
+
+    if callable(function_value):
+        return function_value
+
+    def constant_function(*_args: Any) -> Any:
+        return function_value
+
+    return FastCallablePlotWrapper(constant_function, imaginary_tolerance)
+
+
+def setup_for_eval_on_grid(
+    funcs: Any,
+    ranges: Sequence[Any],
+    plot_points: Any = None,
+    return_vars: bool = False,
+    imaginary_tolerance: float = 1e-8,
+) -> Any:
+    r"""Normalize plot ranges and prepare functions for grid evaluation."""
+    range_values = [tuple(value) for value in ranges]
+    range_lengths = [len(value) for value in range_values]
+    if max(range_lengths) > 3:
+        raise ValueError(
+            "At least one variable range has more than 3 entries: each should "
+            "either have 2 or 3 entries, with one of the forms (xmin, xmax) "
+            "or (x, xmin, xmax)"
+        )
+    if max(range_lengths) != min(range_lengths):
+        raise ValueError("Some variable ranges specify variables while others do not")
+
+    explicit_variables = len(range_values[0]) == 3
+    if explicit_variables:
+        variable_values = [value[0] for value in range_values]
+        ranges_without_variables = [value[1:] for value in range_values]
+        variable_names = [_variable_key(value) for value in variable_values]
+        if len(set(variable_names)) < len(variable_names):
+            raise ValueError(
+                "range variables should be distinct, but there are duplicates"
+            )
+    else:
+        inferred_variables, _free_variables = unify_arguments(funcs)
+        variable_values = list(inferred_variables)
+        ranges_without_variables = range_values
+
+    if len(ranges_without_variables) > 1:
+        normalized_ranges = []
+        for value in ranges_without_variables:
+            if value[-2] > value[-1]:
+                normalized_ranges.append((value[-1], value[-2]))
+            else:
+                normalized_ranges.append(value)
+        ranges_without_variables = normalized_ranges
+
+    argument_count = len(ranges_without_variables)
+    if len(variable_values) < argument_count:
+        variable_values += ["_"] * (argument_count - len(variable_values))
+
+    numeric_ranges = [
+        [float(endpoint) for endpoint in value] for value in ranges_without_variables
+    ]
+    if plot_points is None:
+        plot_points = 2
+    if not isinstance(plot_points, (list, tuple)):
+        point_counts = [plot_points] * len(numeric_ranges)
+    elif len(plot_points) != argument_count:
+        raise ValueError(
+            "plot_points must be either an integer or a list of integers, "
+            "one for each range"
+        )
+    else:
+        point_counts = list(plot_points)
+    point_counts = [int(value) if value >= 2 else 2 for value in point_counts]
+    range_steps = [
+        abs(value[1] - value[0]) / (count - 1)
+        for value, count in zip(numeric_ranges, point_counts, strict=True)
+    ]
+    if min(range_steps) == 0.0:
+        raise ValueError("plot start point and end point must be different")
+
+    funcs_kind = runtime.jstype(funcs)
+    has_iterator = False
+    if funcs_kind in ("object", "function"):
+        has_iterator = (
+            runtime.jstype(runtime.reflect.get(funcs, "__iter__")) == "function"
+        )
+    if isinstance(funcs, (list, tuple)) or has_iterator:
+        prepared_funcs = tuple(
+            _grid_fast_callable(value, variable_values, imaginary_tolerance)
+            for value in funcs
+        )
+    else:
+        prepared_funcs = _grid_fast_callable(
+            funcs,
+            variable_values,
+            imaginary_tolerance,
+        )
+    range_specs = [
+        tuple(value + [range_step])
+        for value, range_step in zip(numeric_ranges, range_steps, strict=True)
+    ]
+    if return_vars:
+        returned_variables = (
+            variable_values if explicit_variables else tuple(variable_values)
+        )
+        return prepared_funcs, range_specs, returned_variables
+    return prepared_funcs, range_specs
+
+
+FastCallablePlotWrapper.__module__ = "sage.plot.misc"
+runtime.set_class_repr(
+    FastCallablePlotWrapper,
+    "<class 'sage.plot.misc.FastCallablePlotWrapper'>",
+)
+
+
 def _marker_value(marker: str) -> str:
     markers = {
         "o": "circle",
