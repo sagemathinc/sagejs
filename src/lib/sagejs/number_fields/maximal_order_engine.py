@@ -287,11 +287,22 @@ def _local_selection_decision(
     case.  The richer choices therefore matter on native fallback and remain
     forceable for differential testing.
     """
-    polygon_module = __import__(
-        "sagejs.number_fields.local_polygons",
-        fromlist=["local_polygons"],
-    )
-    factors = polygon_module.factor_mod_prime(coefficients, prime)
+    # The native boundary accepts only word-sized local characteristics.  A
+    # larger certified prime therefore has exactly one available implementation:
+    # the arbitrary-integer polygon path in `_arbitrary_prime_local_order`.
+    # Factoring `f mod p` here cannot affect that choice and the exact polygon
+    # constructor will compute the factorization it needs under its own
+    # certificate.  In particular, this capability branch must not turn a
+    # selector estimate into a second, potentially dominant local computation.
+    arbitrary_prime = prime > _MAX_WORD_PRIME
+    if arbitrary_prime:
+        factors: list[dict[str, Any]] = []
+    else:
+        polygon_module = __import__(
+            "sagejs.number_fields.local_polygons",
+            fromlist=["local_polygons"],
+        )
+        factors = polygon_module.factor_mod_prime(coefficients, prime)
     factor_degrees = [int(record["degree"]) for record in factors]
     factor_multiplicities = [int(record["multiplicity"]) for record in factors]
     degree = len(coefficients) - 1
@@ -341,6 +352,14 @@ def _local_selection_decision(
         "factor_multiplicities": factor_multiplicities,
         "factor_count": factor_count,
         "repeated_degree": repeated_degree,
+        "finite_field_factorization": {
+            "performed": not arbitrary_prime,
+            "reason": (
+                "required for word-prime algorithm selection"
+                if not arbitrary_prime
+                else "arbitrary-prime capability forces the exact polygon path"
+            ),
+        },
         "expected_output_entries": degree * (degree + 1) // 2,
         "expected_output_bytes": output_bytes,
         "predicted_micros": predicted_micros,
@@ -365,6 +384,37 @@ def _local_selection_decision(
         },
         "benchmark": _SELECTOR_BENCHMARK,
     }
+    if arbitrary_prime:
+        metrics["auto_eligibility"] = {
+            "round2": {
+                "eligible": False,
+                "reason": "the native Round-2 boundary requires a word prime",
+            },
+            "polygon": {
+                "eligible": True,
+                "reason": "exact arbitrary-integer prime-field arithmetic",
+            },
+            "round4": {
+                "eligible": False,
+                "reason": "the modified Round-4 host adapter requires a word prime",
+            },
+            "om-maxmin": {
+                "eligible": False,
+                "reason": "the current OM/MaxMin host adapter requires a word prime",
+            },
+        }
+        return (
+            SelectionDecision(
+                "polygon",
+                (
+                    "the certified prime exceeds the native word boundary; "
+                    "the exact arbitrary-integer polygon path is mandatory"
+                ),
+                metrics,
+                forced=forced_algorithm is not None,
+            ),
+            tuple(int(value) for value in coefficients),
+        )
     if forced_algorithm is not None:
         return (
             SelectionDecision(

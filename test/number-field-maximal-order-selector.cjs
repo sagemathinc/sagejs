@@ -26,6 +26,57 @@ test("the maximal-order selector is deterministic and input-derived", async () =
   }
 });
 
+test(
+  "arbitrary-prime selection skips estimates but exact polygons certify the lattice",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(
+        [
+          "from sagejs.number_fields.maximal_order_certification import check_order_lattice",
+          "from sagejs.number_fields.maximal_order_engine import _basis_from_order, inspect_maximal_order_selection",
+          "import sagejs.number_fields.local_polygons as polygons",
+          "p = 18446744073709551629",
+          "coefficients = [-2*p^2, 0, 1]",
+          "equation_discriminant = 8*p^2",
+          "original_factor = polygons.factor_mod_prime",
+          "calls = []",
+          "def trapped_factor(*args):",
+          "    calls.append(args[1])",
+          "    raise AssertionError('selector started finite-field factorization')",
+          "polygons.factor_mod_prime = trapped_factor",
+          "large = inspect_maximal_order_selection(coefficients, equation_discriminant, [p], algorithm='auto')",
+          "large_decision = large['local_decisions'][0]",
+          "polygons.factor_mod_prime = original_factor",
+          "def counted_factor(*args):",
+          "    calls.append(args[1])",
+          "    return original_factor(*args)",
+          "polygons.factor_mod_prime = counted_factor",
+          "word = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='auto')",
+          "polygons.factor_mod_prime = original_factor",
+          "R.<x> = QQ[]",
+          "K.<a> = NumberField(R(coefficients))",
+          "O = K.maximal_order(v=p, trace=True)",
+          "basis = _basis_from_order(O, 1)",
+          "lattice = check_order_lattice(coefficients, basis.numerator, basis.denominator)",
+          "corrupt_numerator = [list(row) for row in basis.numerator]",
+          "corrupt_numerator[-1][0] = corrupt_numerator[-1][0] + 1",
+          "corrupt = check_order_lattice(coefficients, corrupt_numerator, basis.denominator)",
+          "stages = [event['stage'] for event in O.maximal_order_trace()['events']]",
+          "[calls, large_decision['algorithm'], large_decision['metrics']['finite_field_factorization'], large_decision['metrics']['factor_degrees'], word['local_decisions'][0]['metrics']['finite_field_factorization']['performed'], O.basis(), O.discriminant(), O._maximal_order_local_evidence['certified'], lattice['valid'], corrupt['valid'], 'arbitrary-prime-local-order' in stages]",
+        ].join("\n"),
+      );
+      assert.equal(
+        result.repr,
+        "[[2], 'polygon', {'performed': False, 'reason': 'arbitrary-prime capability forces the exact polygon path'}, [], True, [1, 1/18446744073709551629*a], 8, True, True, False, True]",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
 test("the public fallback uses canonical jobs and preserves forced equivalence", async () => {
   const session = await createSage();
   try {
