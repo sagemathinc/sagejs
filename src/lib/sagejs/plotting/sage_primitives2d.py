@@ -334,6 +334,10 @@ def polygon_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
 def arrow_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
     """Return a Plotly annotation plan for a straight Sage arrow."""
     values = validate_options("arrow", options)
+    if "thickness" in values:
+        raise NotImplementedError(
+            "Sage accepts but ignores arrow thickness; use width for the shaft"
+        )
     head = values.get("head", 1)
     if isinstance(head, bool) or head not in (0, 1, 2):
         raise KeyError("head parameter must be one of 0 (start), 1 (end) or 2 (both)")

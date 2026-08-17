@@ -154,6 +154,7 @@ cases = [
     lambda: line_render_plan({"marker": "$x$"}),
     lambda: point_render_plan({"marker": "not-a-marker"}),
     lambda: arrow_render_plan({"head": 3}),
+    lambda: arrow_render_plan({"thickness": 99}),
     lambda: arrow_render_plan({"head": 2, "linestyle": "dashed"}),
     lambda: arrow_render_plan({"zorder": 7}),
     lambda: text_render_plan({"clip": True}),
