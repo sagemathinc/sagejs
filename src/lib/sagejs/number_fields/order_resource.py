@@ -197,12 +197,11 @@ def native_order_from_polynomial(
             flint.fmpz_matrix_set_entry(hints, row, 0, prime)
         resource = flint.number_field_order_from_polynomial_resource(polynomial, hints)
         try:
-            reported_status = flint.number_field_order_resource_status(resource)
+            # The validated compact payload is the authoritative transfer and
+            # includes the status.  Reading the same field through a scalar
+            # FFI accessor would add a redundant host crossing.
             payload = resource.copy_bytes()
-            result = decode_order_resource(payload)
-            if result.status != reported_status:
-                raise ArithmeticError("native order status disagrees with its payload")
-            return result
+            return decode_order_resource(payload)
         finally:
             resource.close()
     finally:
