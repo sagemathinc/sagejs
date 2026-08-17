@@ -22,7 +22,7 @@
     {
       "id": "elliptic-curves",
       "description": "Elliptic curves, point counting, databases, and arithmetic",
-      "allowed_claims": ["src/baselib/elliptic_curves.py", "packages/flint/src/addon.c", "packages/flint/src/addon.h", "packages/flint/scripts/", "packages/flint/README.md"],
+      "allowed_claims": ["src/baselib/elliptic_curves.py", "src/lib/sagejs/elliptic_curves/", "packages/flint/src/addon.c", "packages/flint/src/addon.h", "packages/flint/src/eclib_rank", "packages/flint/src/elliptic_lfunction", "packages/flint/include/sagejs/elliptic", "packages/flint/test/elliptic", "packages/flint/scripts/", "packages/flint/README.md"],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:native", "pnpm bench:elliptic-curves"]
     },
     {
