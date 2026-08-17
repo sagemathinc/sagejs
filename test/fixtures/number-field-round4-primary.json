@@ -15,6 +15,12 @@
       "local_index": "262144",
       "local_index_valuation": 18,
       "local_output_discriminant": "12018746582523550105600",
+      "characteristic_polynomial_metrics": {
+        "calls": 30,
+        "cache_hits": 2,
+        "max_input_coefficient_bits": 83,
+        "max_denominator_bits": 5
+      },
       "required_power_stages": [
         "power-basis-ramification",
         "power-basis-residue-refinement",
@@ -30,11 +36,31 @@
       "local_index": "4611686018427387904",
       "local_index_valuation": 62,
       "local_output_discriminant": "1461501637330902918203684832716283019655932542976",
+      "characteristic_polynomial_metrics": {
+        "calls": 30,
+        "cache_hits": 5,
+        "max_input_coefficient_bits": 2168,
+        "max_denominator_bits": 5
+      },
       "required_power_stages": [
         "power-basis-ramification",
         "power-basis-ramification-composition",
         "assemble-power-basis-hnf"
       ]
+    }
+  ],
+  "diagnostic_cases": [
+    {
+      "id": "pari-round4-vector-010-p2",
+      "coefficients": ["87782430961", "0", "73445288000", "0", "1769278869776", "0", "2940754348320", "0", "3788371498452", "0", "3275906117440", "0", "1764753386480", "0", "613283590880", "0", "143402547926", "0", "23223642560", "0", "2645190320", "0", "212540000", "0", "11928052", "0", "455360", "0", "11216", "0", "160", "0", "1"],
+      "prime": "2",
+      "characteristic_polynomial_call_limit": 45,
+      "attempted_calls": 46,
+      "cache_hits": 1,
+      "input_coefficient_bits_total": 147655,
+      "max_input_coefficient_bits": 70585,
+      "max_denominator_bits": 12,
+      "expected_status": "diagnostic-fail-closed"
     }
   ]
 }
