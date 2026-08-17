@@ -14,6 +14,10 @@ const { basename, join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const packageRoot = resolve(__dirname, "..");
+const repositoryRoot = resolve(packageRoot, "..", "..");
+const {
+  prebuiltPackageIsCurrent,
+} = require("../../../scripts/native-prebuilt-dependencies.cjs");
 const buildRoot = join(packageRoot, ".native");
 const prefix = resolve(
   process.env.SAGEJS_GRAPH_PREFIX || join(buildRoot, "prefix"),
@@ -175,6 +179,20 @@ function configureAndBuild(source) {
 }
 
 async function main() {
+  const library = join(
+    prefix,
+    "lib",
+    process.platform === "win32" ? "igraph.lib" : "libigraph.a",
+  );
+  if (prebuiltPackageIsCurrent(
+    repositoryRoot,
+    "graph",
+    prefix,
+    [library, stamp],
+  )) {
+    process.stdout.write(`Using prebuilt igraph dependencies in ${prefix}\n`);
+    return;
+  }
   if (existsSync(stamp) && readFileSync(stamp, "utf8") === expectedStamp()) {
     installSagejsHeader();
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);

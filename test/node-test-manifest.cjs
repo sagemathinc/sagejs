@@ -15,6 +15,7 @@ const unit = [
   "test/math-dispatch-benchmark-ingestion.cjs",
   "test/macos-arm64-math-witness.cjs",
   "test/native-build-order.cjs",
+  "test/native-prebuilt-dependencies.cjs",
   "test/native-export-audit.cjs",
   "test/foreign-adapter-build-graph.cjs",
   "test/runtime-cache.cjs",

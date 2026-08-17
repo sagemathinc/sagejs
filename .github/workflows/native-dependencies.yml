@@ -1,0 +1,102 @@
+name: Publish native dependency prebuilds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sagejs-native-dependencies
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }} dependencies
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runner: ubuntu-22.04
+          - target: linux-arm64
+            runner: ubuntu-22.04-arm
+          - target: macos-x64
+            runner: macos-15-intel
+          - target: macos-arm64
+            runner: macos-15
+          - target: windows-x64
+            runner: windows-2025
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out Sage.js
+        uses: actions/checkout@v7
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+
+      - name: Install Unix build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake m4 xz-utils
+
+      - name: Install macOS build prerequisites
+        if: runner.os == 'macOS'
+        run: brew install cmake m4 xz
+
+      - name: Build pinned static dependencies
+        shell: bash
+        env:
+          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_NATIVE_MATH_PROFILE: portable
+        run: |
+          node packages/flint/scripts/build-deps.cjs
+          node packages/fflas/scripts/build-deps.cjs --cache-build
+          node packages/graph/scripts/build-deps.cjs
+          node packages/m4ri/scripts/build-deps.cjs --cache-build
+
+      - name: Pack content-addressed dependency bundle
+        run: node scripts/native-prebuilt-dependencies.cjs pack build/native-dependencies
+
+      - name: Upload dependency bundle for publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-dependencies-${{ matrix.target }}
+          path: |
+            build/native-dependencies/*.tar.gz
+            build/native-dependencies/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish verified dependency bundles
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download all dependency bundles
+        uses: actions/download-artifact@v8
+        with:
+          pattern: native-dependencies-*
+          path: native-dependencies
+          merge-multiple: true
+
+      - name: Create the native dependency release and upload bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view native-dependencies-1 \
+            --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create native-dependencies-1 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target main \
+              --title "Sage.js native dependency prebuilds" \
+              --notes "Content-addressed, SHA-256-verified static dependency bundles used by pnpm bootstrap."
+          find native-dependencies -maxdepth 1 -type f -print0 | \
+            xargs -0 gh release upload native-dependencies-1 \
+              --repo "$GITHUB_REPOSITORY" --clobber

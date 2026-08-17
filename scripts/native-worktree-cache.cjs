@@ -1511,6 +1511,21 @@ function sharedOutputRootsPresent(workspaceRoot, entry, spec) {
 function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   assertInputsCurrent(workspace, spec);
   const workspaceRoot = resolvedWorkspaceRoot(workspace);
+  if (spec.stage === "dependencies" && spec.packageId) {
+    const {
+      packageTargets,
+      prebuiltPackageIsCurrent,
+    } = require("./native-prebuilt-dependencies.cjs");
+    const prefix = packageTargets(workspaceRoot)[spec.packageId];
+    if (prebuiltPackageIsCurrent(
+      workspaceRoot,
+      spec.packageId,
+      prefix,
+      spec.requiredOutputs.map((filename) => join(workspaceRoot, filename)),
+    )) {
+      return { status: "present", entry: prefix, prebuilt: true };
+    }
+  }
   const entry = cacheEntry(cacheRoot, spec);
   if (!validCacheEntry(entry, spec)) {
     if (existsSync(entry)) quarantineCacheEntry(entry);
