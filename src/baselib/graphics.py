@@ -1100,33 +1100,6 @@ class Arrow(Line):
             opacity=style["opacity"],
         )
 
-    def _plot_spec_payload(self) -> dict[str, Any]:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
-        width = float(_option_get(self._options, "width", 2))
-        runtime.reflect.set(trace, "mode", "lines+markers")
-        runtime.reflect.set(
-            trace,
-            "marker",
-            _native_record(
-                color=_color_value(_option_get(self._options, "rgbcolor", [0, 0, 1])),
-                size=[0, max(6, width * 4)],
-                symbol=["circle", "arrow"],
-                angleref="previous",
-            ),
-        )
-        return {
-            "kind": "plotly-trace",
-            "data": {"traces": [_plot_spec_json_value(trace)]},
-            "source_intent": {
-                "representation": "raw-plotly-fallback",
-                "primitive": repr(self),
-            },
-            "style": {},
-            "visibility": True,
-            "legend": {},
-            "metadata": {"semantic": False},
-        }
-
 
 @runtime.sequence_class
 class Point(GraphicPrimitive):
@@ -1237,27 +1210,6 @@ class Polygon(Line):
                 "label": None if legend_label is None else str(legend_label),
             },
             "metadata": {"semantic": True, "zorder": plan["zorder"]},
-        }
-
-    def _plot_spec_payload(self) -> dict[str, Any]:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
-        options = self._options
-        color = _option_get(
-            options, "rgbcolor", _option_get(options, "color", [0, 0, 1])
-        )
-        runtime.reflect.set(trace, "fill", "toself")
-        runtime.reflect.set(trace, "fillcolor", _color_value(color))
-        return {
-            "kind": "plotly-trace",
-            "data": {"traces": [_plot_spec_json_value(trace)]},
-            "source_intent": {
-                "representation": "raw-plotly-fallback",
-                "primitive": repr(self),
-            },
-            "style": {},
-            "visibility": True,
-            "legend": {},
-            "metadata": {"semantic": False},
         }
 
 
