@@ -7,7 +7,7 @@ commit `8dca7f18acedf7c2283a5d0e689c269f8258c981`. The tracked patch replaces NT
 and PARI operations in that closure with FLINT-backed exact arithmetic and a
 direct finite-field point count. No eclib, NTL, or PARI library is linked.
 
-The package test imports all 21 distinct nonsingular curves from upstream
+The focused package test imports all 21 distinct nonsingular curves from upstream
 eclib's `tests/in_no_ntl/tmrank-short.in`, including ranks 2 through 15. It
 checks both rank bounds, validates every returned projective point on the
 input Weierstrass model, and records upstream eclib 20250122 results for:
@@ -24,10 +24,50 @@ Four simultaneous Node workers alternate rank-2 and rank-3 calls to catch
 leaked or shared modular state. The test is deterministic because each call
 resets eclib's FLINT random state and restores its thread-local modulus.
 
-The point list is not advertised as a saturated Mordell--Weil basis. The
-adapter processes descent and initial-search points but calls eclib with a
-saturation bound of zero. A later saturation API can extend this boundary
-without weakening what `rank_data()` currently promises.
+The checked-in differential oracle adds the first 1,024 isogeny-class leaders
+in conductor order from John Cremona's `ecdata` file
+`allcurves/allcurves.00000-09999`. Its provenance records the exact ecdata
+revision and file digest, plus the upstream eclib/mwrank version and command.
+It records upstream's found projective points as well as rank and 2-Selmer
+data. Since an unsaturated full-rank subgroup has no canonical basis, the test
+compares point counts and verifies both implementations' points on the curve
+rather than requiring identical coordinates.
+Run it with:
+
+```sh
+pnpm --dir packages/flint test:eclib:corpus
+```
+
+Regenerate it only from an independent upstream executable, never from the
+FLINT port under test:
+
+```sh
+ECLIB_MWRANK=/path/to/upstream/mwrank \
+ECDATA_ALLCURVES=/path/to/allcurves.00000-09999 \
+pnpm --dir packages/flint generate:eclib:corpus
+```
+
+The cheap `found_points()` path requests no saturation and makes no basis
+claim. `gens()` requests eclib's automatic saturation and succeeds only when
+both the rank and saturation are proven. `rank_data(saturate=True)` preserves
+the initial points while reporting the resulting generators, saturation
+index, and any unresolved primes.
+
+## Clean cross-platform validation
+
+From a fresh worktree with no `packages/flint/.native` or
+`packages/flint/build` directory, run:
+
+```sh
+pnpm --dir packages/flint validate:eclib:clean
+```
+
+The command disables native dependency bundles, downloads verified source
+archives into the new worktree, builds the complete dependency prefix and
+addon, runs the focused eclib suite, and inspects the addon's imported
+libraries for PARI or NTL. It supports Linux x64/arm64, macOS arm64, and native
+Windows x64 using the same platform-specific dependency paths as release
+builds.
 
 ## Benchmark
 

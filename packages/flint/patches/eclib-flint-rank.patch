@@ -1,3 +1,59 @@
+diff --git a/libsrc/descent.cc b/libsrc/descent.cc
+index 85e9bd3..002d0e3 100644
+--- a/libsrc/descent.cc
++++ b/libsrc/descent.cc
+@@ -99,6 +99,10 @@ void two_descent::do_the_descent(long firstlim, long secondlim,
+     rank_bound = r12->getrankbound();
+     selmer_rank = r12->getselmer();
+     certain=r12->getcertain();
++    fullmw=0;
++    sat_bound=0;
++    saturation_index=1;
++    unsaturated_primes.clear();
+     // the last parameter here is set to a known upper bound on the rank
+     mwbasis = new mw(&e_min,verbose>2,1,rank_bound);
+ }
+@@ -154,6 +158,8 @@ void two_descent::report_rank() const
+ 
+ void two_descent::saturate(long sat_bd, long sat_low_bd)
+ {
++  saturation_index=1;
++  unsaturated_primes.clear();
+ 
+ // Do a quick search for points on the curve before processing points
+   bigfloat hlim=to_bigfloat(PRE_SATURATION_SEARCH_LIMIT);
+@@ -199,6 +205,8 @@ void two_descent::saturate(long sat_bd, long sat_low_bd)
+         cout <<"Saturating (with bound = "<<sat_bd<<")..." << flush;
+       long index; vector<long> unsat;
+       int sat_ok = mwbasis->saturate(index,unsat,sat_bd,sat_low_bd);
++      saturation_index=index;
++      unsaturated_primes=unsat;
+       // no need to check p-saturation for p<=sat_low_bd (default 2)
+ 
+       if(verbose)
+diff --git a/libsrc/eclib/descent.h b/libsrc/eclib/descent.h
+index 8e6f7e0..8e1691e 100644
+--- a/libsrc/eclib/descent.h
++++ b/libsrc/eclib/descent.h
+@@ -92,7 +92,8 @@ class two_descent {
+ private: rank12 * r12;  // does all the work
+   int verbose, two_torsion_exists, selmer_only;
+   int success, certain, fullmw;
+-  long rank, rank_bound, selmer_rank, sat_bound;
++  long rank, rank_bound, selmer_rank, sat_bound, saturation_index;
++  vector<long> unsaturated_primes;
+   mw* mwbasis;
+   vector<bigrational> qai;  // Coefficients of initial curve
+   Curvedata e_orig, e_min;
+@@ -131,6 +132,8 @@ public:
+   int ok()      const {return success;}
+   int get2t() const {return two_torsion_exists;}
+   int getfullmw() const {return fullmw;}
++  long getsaturationindex() const {return saturation_index;}
++  vector<long> getunsaturatedprimes() const {return unsaturated_primes;}
+   bigfloat regulator() {return mwbasis->regulator();}
+   vector<P2Point> getbasis(); // returns points on original model
+   vector<Point> getpbasis();  // returns points on integral model
 diff --git a/libsrc/arith.cc b/libsrc/arith.cc
 index d1e3471..717161e 100644
 --- a/libsrc/arith.cc

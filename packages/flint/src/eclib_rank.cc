@@ -38,7 +38,8 @@ bool require_arguments(
     return false;
   if (count != expected)
   {
-    napi_throw_type_error(env, nullptr, "ecRankData expects ten BigInt arguments");
+    napi_throw_type_error(
+        env, nullptr, "ecRankData expects ten BigInts and one boolean");
     return false;
   }
   return true;
@@ -71,6 +72,18 @@ bool bigint_to_zz(napi_env env, napi_value value, ZZ& output)
                       static_cast<slong>(count));
   if (sign) fmpz_neg(output.data(), output.data());
   return true;
+}
+
+bool value_to_bool(napi_env env, napi_value value, bool& output)
+{
+  napi_valuetype type;
+  if (!check_napi(env, napi_typeof(env, value, &type))) return false;
+  if (type != napi_boolean)
+  {
+    napi_throw_type_error(env, nullptr, "saturation flag must be a boolean");
+    return false;
+  }
+  return check_napi(env, napi_get_value_bool(env, value, &output));
 }
 
 napi_value zz_to_bigint(napi_env env, const ZZ& value)
@@ -160,13 +173,29 @@ napi_value point_array(napi_env env, const std::vector<P2Point>& points)
   return output;
 }
 
+napi_value long_array(napi_env env, const std::vector<long>& values)
+{
+  napi_value output;
+  if (!check_napi(env, napi_create_array_with_length(env, values.size(), &output)))
+    return nullptr;
+  for (size_t index = 0; index < values.size(); ++index)
+  {
+    napi_value converted;
+    if (!check_napi(env, napi_create_int64(env, values[index], &converted)) ||
+        !check_napi(env, napi_set_element(
+            env, output, static_cast<uint32_t>(index), converted)))
+      return nullptr;
+  }
+  return output;
+}
+
 }  // namespace
 
 extern "C" napi_value sagejs_ec_rank_data(
     napi_env env, napi_callback_info info)
 {
-  napi_value arguments[10];
-  if (!require_arguments(env, info, 10, arguments)) return nullptr;
+  napi_value arguments[11];
+  if (!require_arguments(env, info, 11, arguments)) return nullptr;
 
   try
   {
@@ -186,16 +215,37 @@ extern "C" napi_value sagejs_ec_rank_data(
       }
       coefficients.emplace_back(numerator, denominator);
     }
+    bool request_saturation = false;
+    if (!value_to_bool(env, arguments[10], request_saturation)) return nullptr;
 
     two_descent descent(coefficients, 0, 0, 20, 5, -1, 1);
-    std::vector<P2Point> points;
+    std::vector<P2Point> found_points;
+    std::vector<P2Point> generators;
+    bool saturation_attempted = false;
+    bool saturated = false;
+    long saturation_index = 0;
+    std::vector<long> unsaturated_primes;
     if (descent.ok())
     {
       // Process all points discovered by the descent and the inexpensive
-      // pre-saturation search.  A zero bound deliberately does not claim a
-      // fully saturated Mordell-Weil basis.
+      // pre-saturation search before optionally proving saturation.
       descent.saturate(0);
-      points = descent.getbasis();
+      found_points = descent.getbasis();
+      generators = found_points;
+      if (request_saturation)
+      {
+        saturation_attempted = true;
+        descent.saturate(-1);
+        generators = descent.getbasis();
+        saturated = descent.getfullmw();
+        saturation_index = descent.getsaturationindex();
+        unsaturated_primes = descent.getunsaturatedprimes();
+      }
+      else if (descent.getrank() == 0)
+      {
+        saturated = true;
+        saturation_index = 1;
+      }
     }
 
     const long lower = descent.getrank();
@@ -208,7 +258,15 @@ extern "C" napi_value sagejs_ec_rank_data(
         !set_named_long(env, output, "rankLowerBound", lower) ||
         !set_named_long(env, output, "rankUpperBound", upper) ||
         !set_named_long(env, output, "twoSelmerRank", descent.getselmer()) ||
-        !set_named(env, output, "points", point_array(env, points)))
+        !set_named(env, output, "foundPoints", point_array(env, found_points)) ||
+        !set_named_bool(
+            env, output, "saturationAttempted", saturation_attempted) ||
+        !set_named_bool(env, output, "saturationProven", saturated) ||
+        !set_named_long(env, output, "saturationIndex", saturation_index) ||
+        !set_named(
+            env, output, "unsaturatedPrimes",
+            long_array(env, unsaturated_primes)) ||
+        !set_named(env, output, "generators", point_array(env, generators)))
       return nullptr;
     return output;
   }

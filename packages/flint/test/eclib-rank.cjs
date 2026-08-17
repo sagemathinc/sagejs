@@ -38,8 +38,11 @@ const rankCases = [
   ], 15],
 ];
 
-function rankData(flint, coefficients) {
-  return flint.ecRankData(...coefficients.flatMap((value) => [value, 1n]));
+function rankData(flint, coefficients, saturate = false) {
+  return flint.ecRankData(
+    ...coefficients.flatMap((value) => [value, 1n]),
+    saturate,
+  );
 }
 
 function pointIsOnCurve(coefficients, [x, y, z]) {
@@ -59,7 +62,7 @@ if (!isMainThread) {
         data.rankLowerBound,
         data.rankUpperBound,
         data.twoSelmerRank,
-        data.points.length,
+        data.foundPoints.length,
         expectedRank,
       ]);
     }
@@ -75,8 +78,8 @@ if (!isMainThread) {
       assert.equal(data.certain, true);
       assert.equal(data.rankLowerBound, expectedRank);
       assert.equal(data.rankUpperBound, expectedRank);
-      assert.equal(data.points.length, expectedRank);
-      for (const point of data.points) {
+      assert.equal(data.foundPoints.length, expectedRank);
+      for (const point of data.foundPoints) {
         assert.equal(pointIsOnCurve(coefficients, point), true);
       }
     }
@@ -89,7 +92,12 @@ if (!isMainThread) {
       rankLowerBound: 2,
       rankUpperBound: 2,
       twoSelmerRank: 2,
-      points: [[0n, -1n, 1n], [-1n, 1n, 1n]],
+      foundPoints: [[0n, -1n, 1n], [-1n, 1n, 1n]],
+      saturationAttempted: false,
+      saturationProven: false,
+      saturationIndex: 0,
+      unsaturatedPrimes: [],
+      generators: [[0n, -1n, 1n], [-1n, 1n, 1n]],
     });
     assert.deepEqual(rankData(flint, [0n, 0n, 1n, -7n, 6n]), {
       success: true,
@@ -97,7 +105,12 @@ if (!isMainThread) {
       rankLowerBound: 3,
       rankUpperBound: 3,
       twoSelmerRank: 3,
-      points: [[1n, -1n, 1n], [-2n, 3n, 1n], [-14n, 25n, 8n]],
+      foundPoints: [[1n, -1n, 1n], [-2n, 3n, 1n], [-14n, 25n, 8n]],
+      saturationAttempted: false,
+      saturationProven: false,
+      saturationIndex: 0,
+      unsaturatedPrimes: [],
+      generators: [[1n, -1n, 1n], [-2n, 3n, 1n], [-14n, 25n, 8n]],
     });
     assert.deepEqual(rankData(flint, [0n, 0n, 0n, -1n, 0n]), {
       success: true,
@@ -105,11 +118,26 @@ if (!isMainThread) {
       rankLowerBound: 0,
       rankUpperBound: 0,
       twoSelmerRank: 2,
-      points: [],
+      foundPoints: [],
+      saturationAttempted: false,
+      saturationProven: true,
+      saturationIndex: 1,
+      unsaturatedPrimes: [],
+      generators: [],
     });
     const highRank = rankData(flint, rankCases.at(-1)[0]);
     assert.equal(highRank.twoSelmerRank, 16);
-    assert.equal(highRank.points.length, 15);
+    assert.equal(highRank.foundPoints.length, 15);
+  });
+
+  test("automatic saturation reports a proven Mordell-Weil basis", () => {
+    const data = rankData(flint, [1n, -1n, 0n, -18n, 4n], true);
+    assert.equal(data.saturationAttempted, true);
+    assert.equal(data.saturationProven, true);
+    assert.equal(data.saturationIndex, 1);
+    assert.deepEqual(data.unsaturatedPrimes, []);
+    assert.deepEqual(data.foundPoints, [[-26n, 49n, 8n]]);
+    assert.deepEqual(data.generators, [[-1n, 5n, 1n]]);
   });
 
   test("modulus state is isolated across repeated and concurrent descents", async () => {
@@ -135,14 +163,18 @@ if (!isMainThread) {
   });
 
   test("rank adapter validates its exact boundary", () => {
-    assert.throws(() => flint.ecRankData(), /ten BigInt/);
+    assert.throws(() => flint.ecRankData(), /ten BigInts and one boolean/);
     assert.throws(
-      () => flint.ecRankData(...Array.from({ length: 10 }, () => 0)),
+      () => flint.ecRankData(...Array.from({ length: 10 }, () => 0), false),
       /BigInts/,
     );
     assert.throws(
-      () => flint.ecRankData(...Array.from({ length: 10 }, () => 0n)),
+      () => flint.ecRankData(...Array.from({ length: 10 }, () => 0n), false),
       /denominator is zero/,
+    );
+    assert.throws(
+      () => flint.ecRankData(...Array.from({ length: 10 }, () => 1n), 0),
+      /saturation flag/,
     );
   });
 }

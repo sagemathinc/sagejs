@@ -1935,9 +1935,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/eclib_rank.cc",
-        "line": 165,
-        "lines": 61,
-        "sha256": "71411ef9efc10228ae3ac871b3b980921cb37cfe0a25a15d4dbef2d2f72c8fc4",
+        "line": 194,
+        "lines": 90,
+        "sha256": "e5bf97452e6f2974362693fde5701e6b9f43c80ba0a5ab77748747cd38163bdd",
         "calls": [
           "IsZero",
           "bigint_to_zz",
@@ -1947,9 +1947,13 @@
           "emplace_back",
           "getbasis",
           "getcertain",
+          "getfullmw",
           "getrank",
           "getrankbound",
+          "getsaturationindex",
           "getselmer",
+          "getunsaturatedprimes",
+          "long_array",
           "napi_create_object",
           "napi_throw_error",
           "napi_throw_range_error",
@@ -1961,6 +1965,7 @@
           "set_named",
           "set_named_bool",
           "set_named_long",
+          "value_to_bool",
           "what"
         ]
       },
@@ -1976,6 +1981,7 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint/test/eclib-rank-corpus.cjs",
         "packages/flint/test/eclib-rank.cjs"
       ],
       "declared_ffi": null

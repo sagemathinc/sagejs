@@ -21,7 +21,10 @@ const cases = [
 ];
 
 function nativeRank(coefficients) {
-  return flint.ecRankData(...coefficients.flatMap((value) => [value, 1n]));
+  return flint.ecRankData(
+    ...coefficients.flatMap((value) => [value, 1n]),
+    false,
+  );
 }
 
 function median(values) {

@@ -132,12 +132,16 @@ into this addon; no eclib, NTL, or PARI library is linked.
 
 The public `rank_data()` result distinguishes lower and upper bounds and marks
 whether they coincide. `rank()` refuses to present an unresolved interval as
-an exact rank. `gens()` returns the independent points found by descent and
-search, but the adapter deliberately requests no expensive saturation, so
-those points may generate a finite-index subgroup. Exact descent and local
-solubility arithmetic uses FLINT; eclib's `NO_MPFP` machine-floating path is
-used only for height/search heuristics. Calls reset their deterministic random
-state and restore their thread-local modulus before returning. See
+an exact rank. `found_points()` (and `gens(proof=False)`) returns the
+independent points found by descent and search without claiming that their
+subgroup is saturated. `gens()` and `saturated_gens()` request eclib's
+automatic saturation, require coincident rank bounds, and return a proven
+Mordell--Weil basis modulo torsion; failure to prove either fact raises an
+`ArithmeticError`. `rank_data(saturate=True)` exposes the saturation index and
+any unresolved primes explicitly. Exact descent and local solubility
+arithmetic uses FLINT; eclib's `NO_MPFP` machine-floating path is used only for
+height/search heuristics. Calls reset their deterministic random state and
+restore their thread-local modulus before returning. See
 [`bench/ELLIPTIC-RANK.md`](../../bench/ELLIPTIC-RANK.md) for oracle coverage,
 limitations, and representative timings.
 

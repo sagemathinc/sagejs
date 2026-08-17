@@ -51,6 +51,7 @@
     "src/lib/sage/plot/misc.py",
     "src/lib/conway_polynomials/__init__.py",
     "src/lib/sagejs_elliptic_advanced.py",
+    "src/lib/sagejs_elliptic_descent.py",
     "src/lib/sagejs/__init__.py",
     "src/lib/sagejs/javascript.py",
     "src/lib/sagejs/native.py",

@@ -16,25 +16,30 @@ def _untyped(value: Any) -> Any:
 
 
 _elliptic_advanced_state = {"module": runtime.undefined}
+_elliptic_descent_state = {"module": runtime.undefined}
 
 
-def _elliptic_advanced() -> Any:
-    module = _elliptic_advanced_state["module"]
+def _elliptic_lazy_module(state: dict[str, Any], name: str) -> Any:
+    module = state["module"]
     if module is runtime.undefined:
         registry = runtime.reflect.get(runtime.global_object, "ρσ_modules")
         if registry is not runtime.undefined:
-            module = runtime.reflect.get(registry, "sagejs_elliptic_advanced")
+            module = runtime.reflect.get(registry, name)
     if module is runtime.undefined:
         loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
         if loader is runtime.undefined:
-            raise RuntimeError(
-                "the advanced elliptic-curve module loader is unavailable"
-            )
-        module = runtime.reflect.apply(
-            loader, runtime.undefined, ["sagejs_elliptic_advanced"]
-        )
-        _elliptic_advanced_state["module"] = module
+            raise RuntimeError("the elliptic-curve module loader is unavailable")
+        module = runtime.reflect.apply(loader, runtime.undefined, [name])
+        state["module"] = module
     return module
+
+
+def _elliptic_advanced() -> Any:
+    return _elliptic_lazy_module(_elliptic_advanced_state, "sagejs_elliptic_advanced")
+
+
+def _elliptic_descent() -> Any:
+    return _elliptic_lazy_module(_elliptic_descent_state, "sagejs_elliptic_descent")
 
 
 class _EllipticPositiveInfinity:
@@ -654,6 +659,7 @@ class EllipticCurveParent(sage.Parent):
         self._conductor = conductor_value
         self._rank = rank_value
         self._rank_descent_cache = runtime.undefined
+        self._saturated_rank_descent_cache = runtime.undefined
         self._label = label
         self._global_minimal_model_cache = runtime.undefined
         self._local_data_cache = runtime.map()
@@ -981,26 +987,22 @@ class EllipticCurveParent(sage.Parent):
         self._conductor = answer
         return answer
 
-    def _rank_descent_data(self) -> Any:
+    def _rank_descent_data(self, saturate: bool = False) -> Any:
+        if saturate:
+            if self._saturated_rank_descent_cache is runtime.undefined:
+                self._saturated_rank_descent_cache = (
+                    _elliptic_descent().ec_rank_descent_data(self, True)
+                )
+            return self._saturated_rank_descent_cache
         if self._rank_descent_cache is runtime.undefined:
-            self._rank_descent_cache = _elliptic_advanced().ec_rank_descent_data(self)
+            self._rank_descent_cache = _elliptic_descent().ec_rank_descent_data(
+                self, False
+            )
         return self._rank_descent_cache
 
-    def rank_data(self) -> dict[str, Any]:
-        """Return exact FLINT-backed 2-descent results over `QQ`.
-
-        `points` contains independent rational points found during descent and
-        the initial search. They are not claimed to be a saturated
-        Mordell--Weil basis.
-        """
-        data = self._rank_descent_data()
-        return {
-            "rank_lower_bound": data[0],
-            "rank_upper_bound": data[1],
-            "two_selmer_rank": data[2],
-            "certain": data[3],
-            "points": data[4],
-        }
+    def rank_data(self, saturate: bool = False) -> dict[str, Any]:
+        """Return exact FLINT-backed 2-descent and optional saturation data."""
+        return _elliptic_descent().ec_rank_data(self, saturate)
 
     def rank_bounds(self) -> Any:
         """Return the proven lower and upper bounds for the rational rank."""
@@ -1011,9 +1013,17 @@ class EllipticCurveParent(sage.Parent):
         """Return the dimension of the 2-Selmer group used by 2-descent."""
         return int(self._rank_descent_data()[2])
 
-    def gens(self) -> Any:
-        """Return independent rational points found by 2-descent and search."""
+    def found_points(self) -> Any:
+        """Return independent points found without claiming saturation."""
         return self._rank_descent_data()[4]
+
+    def saturated_gens(self) -> Any:
+        """Return a proven Mordell--Weil basis modulo torsion."""
+        return _elliptic_descent().ec_saturated_gens(self)
+
+    def gens(self, proof: bool = True) -> Any:
+        """Return saturated generators, or merely found points without proof."""
+        return self.saturated_gens() if proof else self.found_points()
 
     def rank(self) -> int:
         if self._rank is not runtime.undefined:
