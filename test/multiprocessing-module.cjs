@@ -348,6 +348,15 @@ test("imported worker functions retain isolated live module cells", () => {
     const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), "main.py"], {
       cwd: directory,
       encoding: "utf8",
+      env: {
+        ...process.env,
+        // This regression exercises serialized project modules rather than
+        // the optional fail-closed precompiled task graph.
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: join(
+          directory,
+          "missing-task-modules",
+        ),
+      },
       timeout: 120_000,
     });
     assert.equal(result.status, 0, result.stderr);
