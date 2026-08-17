@@ -296,7 +296,7 @@ def point_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
         # is an area in points squared.  Keeping the public numeric value here
         # is an intentional Plotly-native translation that preserves Sage.js's
         # established, readable default rather than making points too small.
-        "size": _nonnegative(values.get("size", 10), "size"),
+        "size": _nonnegative(int(values.get("size", 10)), "size"),
         "symbol": symbol,
         "opacity": _opacity(values),
         "zorder": _zorder(values, 0, truncate=True),
@@ -314,7 +314,7 @@ def polygon_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
     edge = values.get("edgecolor") if fill else color
     if edge is None:
         edge = color
-    default_thickness = 0 if fill else 1
+    default_thickness = 0 if fill and values.get("edgecolor") is None else 1
     return {
         "close_path": True,
         "fill": fill,
@@ -340,6 +340,14 @@ def arrow_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
     has_line, dash, shape = _line_style(values.get("linestyle", "solid"))
     if not has_line or shape != "linear":
         raise ValueError("arrow linestyle must draw a non-step shaft")
+    if dash != "solid":
+        raise NotImplementedError(
+            "dashed and dotted arrow shafts are not supported by Plotly annotations"
+        )
+    if "zorder" in values and float(values["zorder"]) != 2.0:
+        raise NotImplementedError(
+            "non-default arrow zorder is not supported by Plotly annotations"
+        )
     shorten = _nonnegative(values.get("arrowshorten", 0), "arrowshorten")
     size = _nonnegative(values.get("arrowsize", 5), "arrowsize")
     return {
@@ -408,6 +416,10 @@ def text_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
         )
         or rotation != 0.0
     )
+    if requires_annotation and "zorder" in values and float(values["zorder"]) != 3.0:
+        raise NotImplementedError(
+            "styled annotation text cannot preserve a non-default zorder in Plotly"
+        )
     return {
         "background_color": values.get("background_color"),
         "color": normalized_color(values, (0.0, 0.0, 1.0)),

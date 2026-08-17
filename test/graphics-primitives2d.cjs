@@ -37,8 +37,8 @@ answer = {
         "arrowsize": 11,
         "arrowshorten": 14,
         "width": 4,
-        "linestyle": "dashed",
-        "zorder": 8,
+        "linestyle": "solid",
+        "zorder": 2,
     }),
     "hues": [hue_rgb(0), hue_rgb(1 / 3), hue_rgb(2 / 3), hue_rgb(1)],
     "line": line_render_plan({
@@ -82,7 +82,7 @@ answer = {
         "fontweight": "bold",
         "fontsize": 17,
         "alpha": 0.4,
-        "zorder": 9,
+        "zorder": 3,
     }),
 }
 print(json.dumps(answer, sort_keys=True, separators=(",", ":")))
@@ -154,8 +154,11 @@ cases = [
     lambda: line_render_plan({"marker": "$x$"}),
     lambda: point_render_plan({"marker": "not-a-marker"}),
     lambda: arrow_render_plan({"head": 3}),
+    lambda: arrow_render_plan({"linestyle": "dashed"}),
+    lambda: arrow_render_plan({"zorder": 7}),
     lambda: text_render_plan({"clip": True}),
     lambda: text_render_plan({"bounding_box": {"boxstyle": "round"}}),
+    lambda: text_render_plan({"rotation": 45, "zorder": 7}),
 ]
 for case in cases:
     try:
