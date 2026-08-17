@@ -26,6 +26,51 @@ _parent_class = runtime.reflect.get(_core_global, "EllipticCurveParent")
 _point_class = runtime.reflect.get(_core_global, "EllipticCurvePoint")
 
 
+def ec_rank_descent_data(curve: Any) -> Any:
+    if curve._base is not sage.QQ and curve._base is not sage.ZZ:
+        raise NotImplementedError(
+            "2-descent rank computation is only implemented over QQ"
+        )
+
+    native_arguments = []
+    for coefficient in curve._ainvs:
+        if hasattr(coefficient, "_denominator"):
+            native_arguments.append(runtime.integer_bigint(coefficient._numerator))
+            native_arguments.append(runtime.integer_bigint(coefficient._denominator))
+        else:
+            native_arguments.append(runtime.integer_bigint(coefficient))
+            native_arguments.append(runtime.bigint(1))
+
+    backend = runtime.flint_backend()
+    native = runtime.reflect.apply(
+        runtime.reflect.get(backend, "ecRankData"),
+        backend,
+        native_arguments,
+    )
+    if not bool(runtime.reflect.get(native, "success")):
+        raise ArithmeticError("eclib 2-descent failed for this elliptic curve")
+
+    found_points = []
+    for coordinates in runtime.reflect.get(native, "points"):
+        found_points.append(
+            curve(
+                [
+                    _untyped(sage.QQ)(coordinates[0], coordinates[2]),
+                    _untyped(sage.QQ)(coordinates[1], coordinates[2]),
+                ]
+            )
+        )
+    return runtime.math_tuple(
+        [
+            int(runtime.reflect.get(native, "rankLowerBound")),
+            int(runtime.reflect.get(native, "rankUpperBound")),
+            int(runtime.reflect.get(native, "twoSelmerRank")),
+            bool(runtime.reflect.get(native, "certain")),
+            runtime.math_tuple(found_points),
+        ]
+    )
+
+
 def _ec_poly_trim(poly: list[int]) -> list[int]:
     while len(poly) > 1 and poly[-1] == 0:
         poly.pop()

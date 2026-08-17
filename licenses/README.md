@@ -37,3 +37,8 @@ later and asks research users to cite Kiran Kedlaya and Andrew Sutherland,
 The dependency build records the exact upstream URLs, versions, and SHA-256
 digests used to produce the linked addon. The combined Sage.js distribution
 is conveyed under GPL-3.0-only.
+
+The native mathematics addon also compiles a patched source closure from John
+Cremona's eclib for elliptic-curve 2-descent. See `ECLIB-GPL-NOTICE.md` for the
+exact revision, source and patch locations, and GPL-2.0-or-later notice. The
+combined Sage.js distribution is conveyed under GPL-3.0-only.

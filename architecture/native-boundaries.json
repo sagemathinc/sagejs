@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 62,
+    "classified-native-file": 64,
     "declared-ffi": 398,
     "declared-ffi-resource": 27,
-    "napi-export": 292,
+    "napi-export": 293,
     "runtime-intrinsic": 136,
     "wasm-export": 46
   },
@@ -5198,6 +5198,16 @@
       "family": "elliptic"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:ecRankData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecRankData",
+      "symbol": "sagejs_ec_rank_data",
+      "disposition": "retain-host-adapter",
+      "family": "elliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7893,6 +7903,22 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/eclib_rank.cc",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/eclib_rank.cc",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/eclib_rank.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/eclib_rank.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/src/extension_field.c",

@@ -59,8 +59,20 @@ const jobs =
 const macosDeploymentTarget = process.platform === "darwin"
   ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
   : undefined;
+const {
+  ECLIB_REVISION,
+  ECLIB_SOURCE_NAME,
+  ECLIB_SOURCE_PATH,
+} = require("./eclib-source.cjs");
 
 const dependencies = [
+  {
+    name: "eclib",
+    version: ECLIB_REVISION,
+    url: `https://github.com/JohnCremona/eclib/archive/${ECLIB_REVISION}.tar.gz`,
+    sha256: "ec3efe86c385c4dcb8a748423333b45059446666f0b28984c24b05549a566d88",
+    archive: process.env.SAGEJS_ECLIB_TARBALL,
+  },
   {
     name: "gmp",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
@@ -302,6 +314,33 @@ function extract(archive, dependency) {
   return source;
 }
 
+async function prepareEclibSource() {
+  const dependency = dependencies.find(({ name }) => name === "eclib");
+  const archive = await obtainArchive(dependency);
+  const source = extract(archive, dependency);
+  if (source !== ECLIB_SOURCE_PATH || basename(source) !== ECLIB_SOURCE_NAME) {
+    throw new Error(`unexpected eclib source path ${source}`);
+  }
+  run(
+    "git",
+    [
+      "apply",
+      "--whitespace=nowarn",
+      join(packageRoot, "patches", "eclib-flint-rank.patch"),
+    ],
+    {
+      cwd: source,
+      // The extracted source lives inside the Sage.js worktree but is not
+      // part of it.  Prevent Git from discovering the parent repository and
+      // silently skipping paths that are intentionally relative to eclib.
+      env: { GIT_CEILING_DIRECTORIES: packageRoot },
+    },
+  );
+  process.stdout.write(
+    `Prepared FLINT-only eclib rank source ${ECLIB_REVISION}\n`,
+  );
+}
+
 function buildGmp(source) {
   const configure = [
     `--prefix=${prefix}`,
@@ -466,6 +505,7 @@ function buildSmalljac(source) {
 }
 
 async function main() {
+  await prepareEclibSource();
   if (process.platform === "win32") {
     buildWindowsDependencies();
     return;
@@ -542,8 +582,9 @@ async function main() {
   mkdirSync(sources, { recursive: true });
   const archives = new Map();
   const selectedDependencies = dependencies.filter(
-    ({ name }) => smalljacAccelerator ||
-      (name !== "ffpoly" && name !== "smalljac")
+    ({ name }) => name !== "eclib" &&
+      (smalljacAccelerator ||
+        (name !== "ffpoly" && name !== "smalljac"))
   );
   for (const dependency of selectedDependencies) {
     archives.set(dependency.name, await obtainArchive(dependency));

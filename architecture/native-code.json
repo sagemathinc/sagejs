@@ -200,6 +200,20 @@
       "rationale": "Declarations for Dirichlet-character native operations."
     },
     {
+      "path": "packages/flint/src/eclib_rank.cc",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Narrow Node-API adapter around the pinned, patched eclib 2-descent source closure; mathematical algorithms remain attributable to upstream eclib and use FLINT storage."
+    },
+    {
+      "path": "packages/flint/src/eclib_rank.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Internal addon declaration for the eclib rank-data boundary."
+    },
+    {
       "path": "packages/flint/src/extension_field.c",
       "category": "external-library-bridge",
       "review_status": "accepted",

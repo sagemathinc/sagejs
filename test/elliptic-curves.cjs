@@ -191,6 +191,42 @@ test("elliptic-curve coefficients, labels, and bundled Cremona data", async () =
   }
 });
 
+test("FLINT-backed 2-descent exposes rank bounds, Selmer rank, and points", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([0,1,1,-2,0])",
+            "F = EllipticCurve([0,0,1,-7,6])",
+            "T = EllipticCurve([0,0,0,-1,0])",
+            "R = EllipticCurve([0,0,QQ(1)/2,-7,6])",
+            "[E.rank(), E.rank_bounds(), E.two_selmer_rank(), E.gens(),",
+            " F.rank_data(), T.rank_bounds(), T.two_selmer_rank(), T.gens(),",
+            " R.rank_bounds(), R.gens()]",
+          ].join("\n"),
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "[2, (2, 2), 2, ((0 : -1 : 1), (-1 : 1 : 1)), " +
+        "{'rank_lower_bound': 3, 'rank_upper_bound': 3, " +
+        "'two_selmer_rank': 3, 'certain': True, " +
+        "'points': ((1 : -1 : 1), (-2 : 3 : 1), (-7/4 : 25/8 : 1))}, " +
+        "(0, 0), 2, (), (2, 2), " +
+        "((1 : -1/2 : 1), (-11/4 : 15/8 : 1))]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "EllipticCurve(GF(5), [0,0,1,-1,0]).rank_bounds()",
+      ),
+      /only implemented over QQ/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("native integral elliptic coefficient sweep", async () => {
   const session = await createSage();
   try {

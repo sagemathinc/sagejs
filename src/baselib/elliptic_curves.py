@@ -653,6 +653,7 @@ class EllipticCurveParent(sage.Parent):
         self._ainvs = runtime.math_tuple([base(value) for value in coefficients])
         self._conductor = conductor_value
         self._rank = rank_value
+        self._rank_descent_cache = runtime.undefined
         self._label = label
         self._global_minimal_model_cache = runtime.undefined
         self._local_data_cache = runtime.map()
@@ -980,12 +981,53 @@ class EllipticCurveParent(sage.Parent):
         self._conductor = answer
         return answer
 
+    def _rank_descent_data(self) -> Any:
+        if self._rank_descent_cache is runtime.undefined:
+            self._rank_descent_cache = _elliptic_advanced().ec_rank_descent_data(self)
+        return self._rank_descent_cache
+
+    def rank_data(self) -> dict[str, Any]:
+        """Return exact FLINT-backed 2-descent results over `QQ`.
+
+        `points` contains independent rational points found during descent and
+        the initial search. They are not claimed to be a saturated
+        Mordell--Weil basis.
+        """
+        data = self._rank_descent_data()
+        return {
+            "rank_lower_bound": data[0],
+            "rank_upper_bound": data[1],
+            "two_selmer_rank": data[2],
+            "certain": data[3],
+            "points": data[4],
+        }
+
+    def rank_bounds(self) -> Any:
+        """Return the proven lower and upper bounds for the rational rank."""
+        data = self._rank_descent_data()
+        return runtime.math_tuple([data[0], data[1]])
+
+    def two_selmer_rank(self) -> int:
+        """Return the dimension of the 2-Selmer group used by 2-descent."""
+        return int(self._rank_descent_data()[2])
+
+    def gens(self) -> Any:
+        """Return independent rational points found by 2-descent and search."""
+        return self._rank_descent_data()[4]
+
     def rank(self) -> int:
-        if self._rank is runtime.undefined:
-            raise NotImplementedError(
-                "general elliptic-curve rank computation is not implemented"
+        if self._rank is not runtime.undefined:
+            return int(self._rank)
+        data = self._rank_descent_data()
+        if not data[3]:
+            raise ArithmeticError(
+                "the rational rank is only known to lie between "
+                + str(data[0])
+                + " and "
+                + str(data[1])
             )
-        return int(self._rank)
+        self._rank = data[0]
+        return int(data[0])
 
     def quadratic_twist(self, value: Any) -> EllipticCurveParent:
         twist = sage.QQ(value)
@@ -1335,7 +1377,7 @@ runtime.register_doc(
             "Weierstrass equations",
             "modular forms",
         ],
-        "backends": ["Sage.js exact arithmetic"],
+        "backends": ["Sage.js exact arithmetic", "eclib 2-descent over FLINT"],
         "sage_compatibility": {
             "status": "partial",
             "notes": (
@@ -1344,7 +1386,8 @@ runtime.register_doc(
                 "explicit-kernel normalized Vélu isogenies, "
                 "basic invariants, global minimal models, complete Tate local "
                 "data and conductors over QQ, small Cremona labels, and "
-                "coefficient lists are supported."
+                "coefficient lists are supported. Over QQ, a FLINT-only eclib "
+                "port supplies rank bounds, 2-Selmer ranks, and found points."
             ),
         },
         "provenance": [
@@ -1368,6 +1411,13 @@ runtime.register_doc(
                 "license": "GPL-2.0-or-later",
             },
             {
+                "kind": "upstream-library",
+                "source": "John Cremona's eclib 2-descent",
+                "url": "https://github.com/JohnCremona/eclib",
+                "revision": "8dca7f18acedf7c2283a5d0e689c269f8258c981",
+                "license": "GPL-2.0-or-later",
+            },
+            {
                 "kind": "algorithm-derived",
                 "source": "Vélu and SageMath explicit-kernel isogenies",
                 "url": (
@@ -1380,9 +1430,9 @@ runtime.register_doc(
         ],
         "limitations": [
             (
-                "General ranks, descent, isogeny classes, polynomial-kernel "
-                "Kohel isogenies, duals, and square-root Vélu need additional "
-                "arithmetic algorithms or databases."
+                "The found rational points are not fully saturated. Isogeny "
+                "classes, polynomial-kernel Kohel isogenies, duals, and "
+                "square-root Vélu need additional algorithms or databases."
             ),
         ],
     },

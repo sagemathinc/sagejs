@@ -112,12 +112,13 @@
       ]
     },
     "elliptic": {
-      "rationale": "Elliptic-curve exports combine smalljac calls with Sage.js-owned point and coefficient conversion.",
-      "fallback": "Strict Python elliptic-curve code remains the semantic fallback.",
+      "rationale": "Elliptic-curve exports combine smalljac, a pinned eclib 2-descent source closure, and Sage.js-owned point and coefficient conversion.",
+      "fallback": "Strict Python elliptic-curve arithmetic remains the semantic fallback; database ranks remain available and unsupported native-only rank computation reports its capability boundary.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
-        "PARI/GP"
+        "PARI/GP",
+        "upstream eclib"
       ]
     },
     "graph": {
@@ -432,6 +433,11 @@
       "id": "napi:@sagemath/sagejs-flint:ecApIntegral",
       "family": "elliptic",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecRankData",
+      "family": "elliptic",
+      "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",

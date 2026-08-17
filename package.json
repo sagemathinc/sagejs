@@ -205,6 +205,7 @@
     "bench:serialization": "node bench/compare-serialization.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
+    "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
