@@ -82,7 +82,8 @@ jobs:
         run: |
           node scripts/native-prebuilt-dependencies.cjs \
             install-archive build/native-dependencies
-          pnpm --dir packages/flint build
+          pnpm --dir packages/flint build:addon
+          pnpm --dir packages/flint build:ffi
           node --test packages/flint/test/eclib-rank.cjs
 
       - name: Upload dependency bundle for publication
