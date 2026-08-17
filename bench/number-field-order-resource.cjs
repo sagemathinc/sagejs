@@ -8,7 +8,7 @@ const {
   rmSync,
   writeFileSync,
 } = require("node:fs");
-const { cpus, tmpdir } = require("node:os");
+const { cpus, loadavg, release, tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
@@ -335,12 +335,16 @@ try {
     },
     environment: {
       platform: `${process.platform}-${process.arch}`,
+      osRelease: release(),
       cpu: cpus()[0]?.model || "unknown",
+      loadAverageAtReport: loadavg(),
       node: process.version,
       compiler: commandOutput(process.env.CC || "cc", ["--version"]).split("\n")[0],
+      flint: "3.6.0",
       pari: commandOutput("gp", ["--version-short"]),
       julia: commandOutput("julia", ["--version"]),
-      hecke: "0.39.21 (local audited checkout /home/user/upstream/Hecke.jl)",
+      hecke: "0.39.21 @ eab7e5566e56d8864fe9cd7b895811ab9df2fe32",
+      nemo: "0.56.1 @ 1dcc3625f1899332c52660f6eb074352aa3e7f40",
       openblasThreads: 1,
       flintArchiveSha256: createHash("sha256").update(flintArchive).digest("hex"),
     },
