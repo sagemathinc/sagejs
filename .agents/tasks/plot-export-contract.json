@@ -4,7 +4,7 @@
   "id": "plot-export-contract",
   "title": "Define graphics export capabilities",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement a versioned JSON-safe Node graphics export capability contract, portable Chromium discovery, bounded resource validation, stable actionable error codes, and focused tests while preserving browser-free JSON/HTML export",
   "base_commit": "c8c66113105d496f38aa3908d855419839940c4c",

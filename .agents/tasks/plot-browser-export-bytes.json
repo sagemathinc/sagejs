@@ -4,7 +4,7 @@
   "id": "plot-browser-export-bytes",
   "title": "Return browser-rendered image bytes",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Add browser Plotly export capability discovery and PNG/SVG/JPEG/WebP byte-return APIs with safe data-URL decoding, types, accessibility-neutral cleanup, and focused unit/browser tests",
   "base_commit": "c8c66113105d496f38aa3908d855419839940c4c",

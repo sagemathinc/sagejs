@@ -4,7 +4,7 @@
   "id": "plot-coverage-classifier",
   "title": "Generated plotting coverage classifier",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate a deterministic coverage.json classifying every pinned Sage and frontend plotting entry as faithful, translated, unsupported, or extension, with evidence completeness checks and no ambiguous partial state.",
   "base_commit": "a3e5f264aaf9df38f2af104a03950f88b3832c47",
