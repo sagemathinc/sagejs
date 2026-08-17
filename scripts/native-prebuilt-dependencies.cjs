@@ -32,7 +32,12 @@ const { spawnSync } = require("node:child_process");
 
 const root = resolve(__dirname, "..");
 const schema = "sagejs.native-dependency-bundle-v1";
-const release = "native-dependencies-1";
+// The first catalog tag was accidentally published empty before this
+// repository enabled the draft-first immutable-release flow.  Keep its value
+// in the bundle identity so the already-built, verified archives retain their
+// content keys, while downloads use the replacement immutable catalog.
+const bundleSeries = "native-dependencies-1";
+const catalogRelease = "native-dependencies-2";
 const packages = Object.freeze(["flint", "fflas", "graph", "m4ri"]);
 const supportedTargets = new Set([
   "linux-x64",
@@ -123,7 +128,7 @@ function bundleIdentity(repositoryRoot = root, options = {}) {
     deploymentTarget: platform === "darwin" ? "13.0" : null,
     inputDigest: inputDigest(repositoryRoot),
     profile: "portable",
-    release,
+    release: bundleSeries,
     schema,
     target: targetName(platform, arch),
   };
@@ -387,7 +392,7 @@ async function installPrebuiltDependencies(repositoryRoot = root, options = {}) 
   }
   const name = assetName(repositoryRoot);
   const base = (process.env.SAGEJS_NATIVE_PREBUILT_BASE_URL ||
-    `https://github.com/sagemathinc/sagejs/releases/download/${release}`).replace(/\/$/, "");
+    `https://github.com/sagemathinc/sagejs/releases/download/${catalogRelease}`).replace(/\/$/, "");
   const cache = resolve(
     process.env.SAGEJS_NATIVE_PREBUILT_CACHE ||
       join(homedir(), ".cache", "sagejs", "native-prebuilt"),
@@ -452,6 +457,7 @@ module.exports = {
   assetName,
   bundleIdentity,
   bundleKey,
+  catalogRelease,
   createBundle,
   identityInputs,
   installBundleArchive,

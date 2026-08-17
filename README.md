@@ -82,6 +82,11 @@ GNU assembly, so Linux arm64, macOS, and Windows currently use the tested
 portable elliptic-curve point-count fallback behind the same API. Verified
 bundles are cached by content identity under `~/.cache/sagejs/native-prebuilt`;
 installed prefixes remain under each package's `.native` directory.
+The published bundles use the portable native-math profile: ordinary compiled
+code does not use `-march=native`, x86-64 GMP and OpenBLAS select compatible
+optimized kernels at runtime, arm64 OpenBLAS retains its ARMv8 baseline, and
+Windows OpenBLAS uses its generic x86-64 target. CPU-specialized local builds
+are fingerprinted separately and are never restored from the release catalog.
 
 On Apple Silicon macOS, install the Xcode Command Line Tools and Homebrew
 packages `node`, `pnpm`, `m4`, and `xz`. The native libraries target macOS 13

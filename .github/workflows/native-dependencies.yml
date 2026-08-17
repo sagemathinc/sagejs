@@ -6,6 +6,9 @@ on:
 permissions:
   contents: write
 
+env:
+  NATIVE_DEPENDENCY_RELEASE: native-dependencies-2
+
 concurrency:
   group: sagejs-native-dependencies
   cancel-in-progress: false
@@ -90,13 +93,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view native-dependencies-1 \
-            --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create native-dependencies-1 \
+          mapfile -d '' assets < <(
+            find native-dependencies -maxdepth 1 -type f -print0
+          )
+          if [ "${#assets[@]}" -ne 10 ]; then
+            echo "expected ten dependency archive/checksum assets, found ${#assets[@]}" >&2
+            exit 1
+          fi
+          if gh release view "$NATIVE_DEPENDENCY_RELEASE" \
+            --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            expected=$(printf '%s\n' "${assets[@]##*/}" | sort)
+            published=$(gh release view "$NATIVE_DEPENDENCY_RELEASE" \
+              --repo "$GITHUB_REPOSITORY" --json assets \
+              --jq '.assets[].name' | sort)
+            if [ "$expected" != "$published" ]; then
+              echo "$NATIVE_DEPENDENCY_RELEASE is immutable and does not contain the expected asset set" >&2
+              echo "bump the native dependency catalog release before publishing changed inputs" >&2
+              exit 1
+            fi
+            echo "$NATIVE_DEPENDENCY_RELEASE already contains the complete immutable asset set"
+          else
+            gh release create "$NATIVE_DEPENDENCY_RELEASE" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --target main \
               --title "Sage.js native dependency prebuilds" \
               --notes "Content-addressed, SHA-256-verified static dependency bundles used by pnpm bootstrap."
-          find native-dependencies -maxdepth 1 -type f -print0 | \
-            xargs -0 gh release upload native-dependencies-1 \
-              --repo "$GITHUB_REPOSITORY" --clobber
+          fi
