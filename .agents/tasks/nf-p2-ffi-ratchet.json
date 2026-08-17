@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-p2-ffi-ratchet",
+  "title": "Number-field order FFI integration ratchets",
+  "lane": "integration",
+  "status": "active",
+  "owner": "nf_p2_kernel_perf",
+  "objective": "Repair the shared FFI ratchets and preserve Python TypeError messages for wrong generated resource types after adding the direct number-field order resource",
+  "base_commit": "1e113cb03806aeafe6ac2f6ea9afe38e6c8fdac5",
+  "claims": [
+    "test/ffi.cjs",
+    "architecture/native-code.json",
+    "architecture/native-boundaries.json",
+    "tools/native-kernel/ffi-codegen.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "generated FFI inventory",
+      "public resource kernel wrong-type behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/ffi.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.52,
+      "started_at": "2026-08-17T22:01:39.309Z",
+      "commit": "1e113cb03806aeafe6ac2f6ea9afe38e6c8fdac5",
+      "workspace_fingerprint": "3a801c1832f7e5b2c390f277658fcf960b8c15188936fee6d77f47f80002f483",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.336,
+      "started_at": "2026-08-17T22:02:36.313Z",
+      "commit": "1e113cb03806aeafe6ac2f6ea9afe38e6c8fdac5",
+      "workspace_fingerprint": "3a801c1832f7e5b2c390f277658fcf960b8c15188936fee6d77f47f80002f483",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 23.289,
+      "started_at": "2026-08-17T22:03:16.515Z",
+      "commit": "1e113cb03806aeafe6ac2f6ea9afe38e6c8fdac5",
+      "workspace_fingerprint": "3a801c1832f7e5b2c390f277658fcf960b8c15188936fee6d77f47f80002f483",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Updated the exact generated-FLINT inventory for the direct number-field order resource (407 functions, 28 resources), regenerated the 975-entry native-boundary snapshot, and classified the standalone C timing/oracle witness as benchmark-only. Generated native wrappers now route public-resource validation failures through the shared native exception helper. The focused wrong-type regression distinguishes the generated-wrapper message from the dynamic-adapter message, and the full 42-test FFI file plus architecture and task-contract gates pass on Linux x64.",
+    "risks": [
+      "The integration change has been executed on Linux x64; the inventory and compiler output are platform-neutral and retain the existing Linux arm64, Windows x64, and macOS arm64 CI requirements.",
+      "The portable lane is independently red at test/baselib-boundaries.cjs because inherited src/lib/sagejs/number_fields/local_polygons.py lacks the readable sagejs.runtime namespace import. That file is outside this integration contract and is owned by the local-polygons lane; all 42 FFI tests and architecture checks pass."
+    ],
+    "next_steps": [
+      "Integrate this commit before arithmetic lanes that require the updated native-code classification and boundary ratchet."
+    ]
+  }
+}
