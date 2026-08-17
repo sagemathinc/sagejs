@@ -172,6 +172,7 @@ const integration = [
   "test/matlab-plotting.cjs",
   "test/wolfram-plotting.cjs",
   "test/plot-gallery-quality.cjs",
+  "test/plotting-performance-ledger.cjs",
   "test/approximate-polynomial.cjs",
   "test/bytes.cjs",
   "test/exact-polynomial-resources.cjs",
