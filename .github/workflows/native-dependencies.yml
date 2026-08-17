@@ -116,6 +116,7 @@ jobs:
             gh release create "$NATIVE_DEPENDENCY_RELEASE" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --target main \
+              --latest=false \
               --title "Sage.js native dependency prebuilds" \
               --notes "Content-addressed, SHA-256-verified static dependency bundles used by pnpm bootstrap."
           fi

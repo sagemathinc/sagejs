@@ -54,13 +54,15 @@ function fixture() {
 
 test("native dependency assets have stable platform and source identities", () => {
   assert.equal(catalogRelease, "native-dependencies-3");
+  const workflow = readFileSync(
+    join(repositoryRoot, ".github", "workflows", "native-dependencies.yml"),
+    "utf8",
+  );
   assert.match(
-    readFileSync(
-      join(repositoryRoot, ".github", "workflows", "native-dependencies.yml"),
-      "utf8",
-    ),
+    workflow,
     new RegExp(`NATIVE_DEPENDENCY_RELEASE: ${catalogRelease}\\b`),
   );
+  assert.match(workflow, /gh release create[\s\S]*--latest=false/);
   assert.equal(targetName("linux", "x64"), "linux-x64");
   assert.equal(targetName("darwin", "arm64"), "macos-arm64");
   assert.equal(targetName("win32", "x64"), "windows-x64");
