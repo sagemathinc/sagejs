@@ -108,6 +108,9 @@ test("portable source paths validate roots, prefixes, and symlink containment", 
       "src/../lib",
       "src/.",
       "NUL",
+      "NUL.txt",
+      "nested/COM1.log",
+      "nested/LPT9.py",
     ]) {
       assert.throws(
         () => createPortableSourcePaths(temporary, prefix),

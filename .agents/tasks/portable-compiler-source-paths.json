@@ -137,12 +137,12 @@
     "risks": [
       "The fresh worktree has no FLINT addon or headers, so pnpm test:compiler and the broad integration/CLI tier reach existing native-dependent tests but fail only on the missing packages/flint/build/Release/sagejs_flint.node or flint/flint.h. The focused suite, full self build, TypeScript check, Python formatting check, and architecture audit pass.",
       "scripts/build-runtime-cache.cjs is integration-owned. It still constructs the absolute compiler source filename before V8 cache serialization, which causes exactly one checkout-root occurrence in dist/runtime-cache/compiler.bin even though compiler.js is clean. A reproduced fix is to read/cache the compiler under a relative path without ever constructing that absolute filename.",
-      "scripts/build-module-cache.cjs is integration-owned and does not yet opt into the portable policy. All 124 generated dist/module-cache JSON files therefore retain one checkout-root filename field apiece. Their cached output bodies are clean and null-policy relocation is preserved, but release assets must rebuild these caches under the portable policy before packaging.",
+      "scripts/build-module-cache.cjs is integration-owned. All 124 generated dist/module-cache JSON files retain one checkout-root occurrence in the non-authoritative filename field, while their cached output bodies are clean. These installed precompiled caches must retain filename_policy:null so they remain relocatable; the integration builder must normalize only the copied filename field to stable src/lib/... metadata.",
       "Windows and two-root full release builds remain required after integration; this lane proves two-root equality for representative compiler output and scans its owned compiler/runtime artifacts on Linux."
     ],
     "next_steps": [
       "In the release integration lane, opt scripts/build-task-runtime.cjs into --portable-sagejs-paths with an explicit virtual physical filename beneath src.",
-      "In the release integration lane, opt scripts/build-module-cache.cjs into --portable-sagejs-paths with an explicit virtual physical stdin filename beneath src and scan every distributed cache JSON for the checkout root.",
+      "In the release integration lane, normalize each copied module-cache JSON filename to stable src/lib/... metadata while retaining filename_policy:null, then scan every distributed cache JSON for the checkout root and verify relocated cache use rehydrates the current physical filename.",
       "In the release integration lane, make scripts/build-runtime-cache.cjs create the compiler V8 cache from a relative source filename and extend the artifact regression to compiler.bin and the task runtime.",
       "Register test/portable-source-paths.cjs in test/node-test-manifest.cjs, rebuild, and run the full Windows release proof from two fresh checkout roots after the separately gated native path-remapping work."
     ]
