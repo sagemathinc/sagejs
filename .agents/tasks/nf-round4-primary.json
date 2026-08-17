@@ -53,6 +53,16 @@
       "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
       "workspace_fingerprint": "8d6cd6de8f0835efa99b5ddb0a15718f104ba896cc4d354d471ef773cbc23900",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=bounded residue test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.65,
+      "started_at": "2026-08-17T22:11:20.942Z",
+      "commit": "c303c87e46013405b25c42f1ac256c6ee90fa9f8",
+      "workspace_fingerprint": "68af4a3abaa07e26d564cfb764a5ce04ef8dbf23b733977bf91af45c5167f9e1",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -60,10 +70,10 @@
     "risks": [
       "Vector 008 remains a measured performance debt: about 20.0s in the power-basis kernel and 22.3s through the strict public wrapper on the shared Linux x64 host.",
       "Multiple modular primary components and higher-residue-field root matching remain explicit unsupported boundaries delegated to Round 2.",
-      "Vector 010 reaches a ramification-degree decrease which requires closer parity with PARI progress state before it can be accepted."
+      "Vector 010 now passes the former ramification-degree-decrease and finite-field-root boundaries, but did not complete within a 240-second direct strict run; its next exact characteristic-polynomial stage remains a performance bound."
     ],
     "next_steps": [
-      "Implement PARI progress state semantics for vector 010 without weakening invariants.",
+      "Profile and source-transparently compile the post-root-matching characteristic-polynomial stage that bounds vector 010.",
       "Move repeated exact characteristic-polynomial work toward the source-transparent native boundary; a single degree-32 probe measured about 217ms.",
       "Integrate the public dispatcher/selector separately through the shared integration lane."
     ]
