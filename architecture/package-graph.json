@@ -258,7 +258,7 @@
       "id": "plot-spec",
       "layer": 2,
       "startup": "lazy",
-      "max_source_bytes": 50000,
+      "max_source_bytes": 250000,
       "depends_on": ["core-runtime", "python-stdlib"],
       "modules": ["sagejs.plotting"],
       "files": [],
@@ -268,7 +268,7 @@
       "id": "graphics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 320000,
+      "max_source_bytes": 400000,
       "depends_on": ["core-runtime", "arithmetic", "symbolics", "plot-spec"],
       "files": ["src/baselib/graphics.py", "src/baselib/graphics3d.py"],
       "prefixes": []
@@ -326,7 +326,7 @@
       "id": "polyglot",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 35000,
+      "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
         "numeric-compat", "graphics"

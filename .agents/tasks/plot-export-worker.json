@@ -1,0 +1,190 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-export-worker",
+  "title": "Persistent bounded Chromium export worker",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace one-Chromium-per-image Node export with a lazy persistent offline renderer worker that preserves synchronous save semantics, enforces contract limits/timeouts, recovers once after failure, and disposes cleanly.",
+  "base_commit": "00a84bf556eacf9689d330253d51152231e11168",
+  "claims": [
+    "tools/graphics-export.ts",
+    "tools/plotly-image-renderer.ts",
+    "tools/plotly-renderer-client.ts",
+    "tools/plotly-renderer-worker.ts",
+    "test/graphics-export.cjs",
+    "test/graphics-export-worker.cjs",
+    "bench/graphics-export-worker.cjs"
+  ],
+  "dependencies": [
+    "plot-export-contract"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing static export bytes plus cold/warm benchmark and failure-recovery tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm exec tsc --pretty false",
+    "node test/graphics-export-worker.cjs",
+    "node bench/graphics-export-worker.cjs",
+    "node test/graphics-export-capabilities.cjs",
+    "node test/graphics-export.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec tsc --pretty false",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.05,
+      "started_at": "2026-08-17T05:59:00.812Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-worker.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.048,
+      "started_at": "2026-08-17T05:59:06.789Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/graphics-export-worker.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.605,
+      "started_at": "2026-08-17T05:59:13.171Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.129,
+      "started_at": "2026-08-17T05:59:30.208Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.413,
+      "started_at": "2026-08-17T05:59:35.152Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.666,
+      "started_at": "2026-08-17T06:00:00.119Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "a04599d1344c4067925d9aaed614ce8c93979db43901b7c1e2c9e951e34fd99a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 560.753,
+      "started_at": "2026-08-17T06:04:35.180Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --pretty false",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.057,
+      "started_at": "2026-08-17T06:14:34.586Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-worker.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.056,
+      "started_at": "2026-08-17T06:14:36.356Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.282,
+      "started_at": "2026-08-17T06:14:37.155Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.549,
+      "started_at": "2026-08-17T06:14:40.222Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.139,
+      "started_at": "2026-08-17T06:15:05.136Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/graphics-export-worker.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.725,
+      "started_at": "2026-08-17T06:15:35.766Z",
+      "commit": "00a84bf556eacf9689d330253d51152231e11168",
+      "workspace_fingerprint": "89b73edccab3f3defba2f1607be139462ad4c645a19bc090d064a7175887247f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a lazy synchronous SharedArrayBuffer renderer client and a persistent offline Playwright worker. One browser/page is reused, Chromium closes after 60 seconds idle and recycles after 100 jobs, one retry is allowed for a reported browser/page crash, and shutdown disposes through the save-hook lifecycle and process beforeExit. Fixed request/output bounds and timeout behavior, including a header-only error protocol that remains safe with a one-byte response buffer. Focused fake-worker tests cover reuse, busy rejection, timeout/hard-exit fallback, one crash restart, stable second-crash failure, limits, tiny buffers, and disposal. Real Chromium validation produced byte-identical cold/warm PNGs, a valid SVG, a prompt beforeExit shutdown, and a 3.10x three-image warm speedup (8719.4 ms cold versus 2812.3 ms warm).",
+    "risks": [
+      "A native hard worker exit cannot be observed by a main-thread exit callback while Atomics.wait blocks; it deliberately resolves as the bounded timeout and is terminated without retry, while reported browser/page crashes retry exactly once.",
+      "The required full integration tier ran and the graphics capability/export tests passed, but the tier failed in unrelated native-kernel and performance tests because this branch lacks a matching production native-kernel cache; the fresh failing receipt is retained."
+    ],
+    "next_steps": [
+      "Register test/graphics-export-worker.cjs in the central test manifest from the integration lane; this task intentionally has no manifest claim.",
+      "Rerun pnpm test:integration after publishing a production native-kernel cache matching this branch, then set the task contract to review."
+    ]
+  }
+}

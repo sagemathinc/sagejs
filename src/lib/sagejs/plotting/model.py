@@ -13,8 +13,20 @@ from ._json import (
     materialize_object,
 )
 from .diagnostics import Diagnostic, materialize_diagnostic
+from .inspection import (
+    alternative_text,
+    layer_by_id,
+    layer_data,
+    natural_description,
+    select_layers,
+    semantic_bounds,
+    structured_description,
+)
+from .validation import validate_spec
 
 PLOTSPEC_SCHEMA_VERSION = 1
+
+_UNSAFE_OVERRIDE_KEYS = ("__proto__", "constructor", "prototype")
 
 
 def _nonempty_string(value: Any, name: str) -> str:
@@ -29,6 +41,30 @@ def _valid_identifier(value: str) -> bool:
         if character not in allowed:
             return False
     return value != ""
+
+
+def _validate_override_tree(value: JSONValue) -> None:
+    if isinstance(value, dict):
+        for key in value:
+            if key in _UNSAFE_OVERRIDE_KEYS:
+                raise ValueError("unsafe Plotly override key: " + key)
+            _validate_override_tree(value[key])
+    elif isinstance(value, list):
+        for index in range(len(value)):
+            _validate_override_tree(value[index])
+
+
+def _materialize_plotly_overrides(
+    value: Mapping[str, Any] | None,
+) -> dict[str, JSONValue]:
+    overrides = materialize_object(value, "$.plotly_overrides")
+    for key in overrides:
+        if key not in ("config", "layout"):
+            raise ValueError("unsupported Plotly override: " + key)
+        if not isinstance(overrides[key], dict):
+            raise TypeError("$.plotly_overrides." + key + " must be a mapping")
+    _validate_override_tree(overrides)
+    return overrides
 
 
 def stable_layer_id(ordinal: int, namespace: str = "layer") -> str:
@@ -221,6 +257,26 @@ class PlotLayer:
             "metadata": self.metadata,
         }
 
+    def revise(
+        self,
+        **changes: Any,
+    ) -> "PlotLayer":
+        record = self.to_dict()
+        allowed = (
+            "kind",
+            "data",
+            "source_intent",
+            "style",
+            "visibility",
+            "legend",
+            "metadata",
+        )
+        for name in changes:
+            if name not in allowed:
+                raise TypeError("unknown plot layer revision field: " + name)
+            record[name] = changes[name]
+        return PlotLayer.from_dict(record)
+
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "PlotLayer":
         """Construct a layer from its materialized record."""
@@ -333,9 +389,7 @@ class PlotSpec:
         self._animation = materialize_object(animation, "$.animation")
         self._provenance = _materialize_provenance(provenance)
         self._diagnostics = tuple(materialized_diagnostics)
-        self._plotly_overrides = materialize_object(
-            plotly_overrides, "$.plotly_overrides"
-        )
+        self._plotly_overrides = _materialize_plotly_overrides(plotly_overrides)
 
     @property
     def schema_version(self) -> int:
@@ -367,6 +421,114 @@ class PlotSpec:
     @property
     def plotly_overrides(self) -> dict[str, JSONValue]:
         return materialize_object(self._plotly_overrides, "$.plotly_overrides")
+
+    def layer(self, layer_id: str) -> PlotLayer:
+        return layer_by_id(self, layer_id)
+
+    def select_layers(
+        self,
+        layer_ids: str | Sequence[str] | None = None,
+        *,
+        kind: str | None = None,
+        visible: bool | None = None,
+    ) -> tuple[PlotLayer, ...]:
+        return select_layers(
+            self,
+            layer_ids,
+            kind=kind,
+            visible=visible,
+        )
+
+    def data(self, layer_id: str) -> JSONValue:
+        return layer_data(self, layer_id)
+
+    def bounds(self, layer_id: str | None = None) -> dict[str, JSONValue]:
+        return semantic_bounds(self, layer_id)
+
+    def description(self) -> dict[str, JSONValue]:
+        return structured_description(self)
+
+    def describe(self) -> str:
+        return natural_description(self)
+
+    def alt_text(self) -> str:
+        return alternative_text(self)
+
+    def validate(
+        self,
+        *,
+        max_samples: int | None = 100000,
+        max_payload_bytes: int | None = 5000000,
+        require_alt_text: bool = True,
+    ) -> tuple[Diagnostic, ...]:
+        return validate_spec(
+            self,
+            max_samples=max_samples,
+            max_payload_bytes=max_payload_bytes,
+            require_alt_text=require_alt_text,
+        )
+
+    def clone(self) -> "PlotSpec":
+        return PlotSpec.from_dict(self.to_dict())
+
+    def revise(
+        self,
+        **changes: Any,
+    ) -> "PlotSpec":
+        document = self.to_dict()
+        allowed = tuple(document.keys())
+        for name in changes:
+            if name == "schema_version" or name not in allowed:
+                raise TypeError("unknown PlotSpec revision field: " + name)
+            document[name] = changes[name]
+        return PlotSpec.from_dict(document)
+
+    def revise_layer(self, layer_id: str, **changes: Any) -> "PlotSpec":
+        target = self.layer(layer_id)
+        replacement = target.revise(**changes)
+        layers = [
+            replacement if layer.id == layer_id else layer for layer in self._layers
+        ]
+        return self.revise(layers=layers)
+
+    def add_layer(
+        self,
+        layer: PlotLayer | Mapping[str, Any],
+        *,
+        index: int | None = None,
+    ) -> "PlotSpec":
+        materialized = _materialize_layer(layer)
+        if any(existing.id == materialized.id for existing in self._layers):
+            raise ValueError("duplicate plot layer ID: " + materialized.id)
+        layers = list(self._layers)
+        if index is None:
+            layers.append(materialized)
+        else:
+            if isinstance(index, bool) or not isinstance(index, int):
+                raise TypeError("layer insertion index must be an integer")
+            if index < 0 or index > len(layers):
+                raise IndexError("layer insertion index out of range")
+            layers.insert(index, materialized)
+        return self.revise(layers=layers)
+
+    def remove_layer(self, layer_id: str) -> "PlotSpec":
+        self.layer(layer_id)
+        layers = [layer for layer in self._layers if layer.id != layer_id]
+        diagnostics = [
+            diagnostic
+            for diagnostic in self.diagnostics
+            if layer_id not in diagnostic.layer_ids
+        ]
+        return self.revise(layers=layers, diagnostics=diagnostics)
+
+    def with_theme(self, theme: str) -> "PlotSpec":
+        return self.revise(theme=theme)
+
+    def with_plotly_overrides(
+        self,
+        overrides: Mapping[str, Any] | None,
+    ) -> "PlotSpec":
+        return self.revise(plotly_overrides=overrides)
 
     def to_dict(self) -> dict[str, JSONValue]:
         """Return the complete detached materialized PlotSpec document."""
