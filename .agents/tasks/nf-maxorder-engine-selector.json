@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-engine-selector",
+  "title": "Nf Maxorder Engine Selector",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate deterministic P5 scheduling into the public maximal-order engine and expose a measured inspectable selector across Round2, polygon, Round4, OM, and parallel choices",
+  "base_commit": "c3ab0bc8f4e379abac6c3f871a5fa9e3b1b3e78f",
+  "claims": [
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-maximal-order-selector.cjs",
+    "bench/number-field-maximal-order-selector.cjs"
+  ],
+  "dependencies": [
+    "nf-maxorder-parallel"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sequential certified maximal-order engine",
+      "forced algorithm differential results"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-engine.cjs test/number-field-maximal-order-selector.cjs test/number-field-buchmann-lenstra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.952,
+      "started_at": "2026-08-17T21:37:19.446Z",
+      "commit": "cf80686da1a8e5c12d678f07c69017e578daaf0b",
+      "workspace_fingerprint": "e6384831610888b320928ecab6c37f6036dda068bcce9022d820b46fa52bace4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.08,
+      "started_at": "2026-08-17T21:37:39.143Z",
+      "commit": "cf80686da1a8e5c12d678f07c69017e578daaf0b",
+      "workspace_fingerprint": "e6384831610888b320928ecab6c37f6036dda068bcce9022d820b46fa52bace4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.285,
+      "started_at": "2026-08-17T21:38:00.965Z",
+      "commit": "cf80686da1a8e5c12d678f07c69017e578daaf0b",
+      "workspace_fingerprint": "e6384831610888b320928ecab6c37f6036dda068bcce9022d820b46fa52bace4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.402,
+      "started_at": "2026-08-17T21:38:16.433Z",
+      "commit": "cf80686da1a8e5c12d678f07c69017e578daaf0b",
+      "workspace_fingerprint": "e6384831610888b320928ecab6c37f6036dda068bcce9022d820b46fa52bace4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
