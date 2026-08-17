@@ -270,7 +270,7 @@ async function main() {
     );
     assert.equal(
       (await session.evaluate("sphere().spec().layers[0].kind")).repr,
-      "'plotly-trace'",
+      "'surface'",
     );
 
     await session.evaluate(
