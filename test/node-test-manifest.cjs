@@ -163,6 +163,7 @@ const integration = [
   "test/plotting-coverage.cjs",
   "test/plot-spec-core.cjs",
   "test/plot-agent-api.cjs",
+  "test/plot-themes.cjs",
   "test/approximate-polynomial.cjs",
   "test/bytes.cjs",
   "test/exact-polynomial-resources.cjs",

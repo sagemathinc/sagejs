@@ -58,6 +58,8 @@
     "src/lib/sagejs/plotting/diagnostics.py",
     "src/lib/sagejs/plotting/inspection.py",
     "src/lib/sagejs/plotting/model.py",
+    "src/lib/sagejs/plotting/styles.py",
+    "src/lib/sagejs/plotting/themes.py",
     "src/lib/sagejs/plotting/validation.py",
     "src/lib/sagejs/ffi/fflas.py",
     "src/lib/sagejs/ffi/m4ri.py",
