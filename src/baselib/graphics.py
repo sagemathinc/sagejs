@@ -5195,7 +5195,11 @@ def _curve_callable(
 ) -> tuple[Any, Any]:
     """Return a plot callable and the resolved symbolic variable."""
     resolved_variable = variable
-    if runtime.jstype(function_value) == "function":
+    if (
+        runtime.jstype(function_value) == "function"
+        and not hasattr(function_value, "_plot_fast_callable")
+        and not hasattr(function_value, "_fast_callable_")
+    ):
         return function_value, resolved_variable
     if resolved_variable is None and hasattr(function_value, "variables"):
         variables = list(function_value.variables())
