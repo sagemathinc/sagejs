@@ -4,7 +4,7 @@ This module is an ordinary-Python port of the mathematical stages used by
 Hecke's BSD-2-Clause `MaxOrd/Polygons.jl` and
 `MaxOrd/DedekindCriterion.jl` at commit
 `eab7e5566e56d8864fe9cd7b895811ab9df2fe32`.  It does not import Hecke (or
-PARI) at runtime.  The external systems are differential oracles only.
+PARI) at run time.  The external systems are differential oracles only.
 
 Integer polynomials are represented by coefficient lists in increasing degree
 order.  All public results contain only integers, booleans, strings, lists,
