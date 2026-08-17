@@ -7,7 +7,7 @@
       "fixture_count": 13,
       "max_wall_ms": 15000,
       "max_checked_fixture_bytes": 500000,
-      "observed_checked_fixture_bytes": 300209
+      "observed_checked_fixture_bytes": 303254
     },
     {
       "id": "warm-browser-responsive-layout",

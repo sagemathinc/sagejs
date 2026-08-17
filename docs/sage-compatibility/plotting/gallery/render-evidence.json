@@ -509,10 +509,10 @@
         "width": "800",
         "height": "600",
         "view_box": "0 0 800 600",
-        "path_count": 8,
-        "text_count": 12,
+        "path_count": 6,
+        "text_count": 1,
         "image_count": 0,
-        "byte_length": 6320
+        "byte_length": 3293
       },
       "png": {
         "signature_hex": "89504e470d0a1a0a",
@@ -520,7 +520,7 @@
         "height": 600,
         "bit_depth": 8,
         "color_type": 6,
-        "byte_length": 25103
+        "byte_length": 21689
       }
     },
     {

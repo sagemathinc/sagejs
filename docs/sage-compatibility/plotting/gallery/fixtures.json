@@ -5815,7 +5815,7 @@
       "dimension": 2,
       "theme": "notebook",
       "title": "Wolfram Graphics semantic 2D primitives",
-      "source": "g=Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]}];",
+      "source": "g=Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False];",
       "alt_text": "2D plot with 3 layers: 1 line, 1 point and 1 text. Bounds: x from 0 to 2; y from 0 to 1. Source frontend: wolfram.",
       "alt_text_origin": "generated",
       "bounds": {
@@ -5842,16 +5842,16 @@
             "showgrid": false,
             "showline": false,
             "ticks": "",
-            "visible": true,
-            "zeroline": true
+            "visible": false,
+            "zeroline": false
           },
           "yaxis": {
             "mirror": false,
             "showgrid": false,
             "showline": false,
             "ticks": "",
-            "visible": true,
-            "zeroline": true
+            "visible": false,
+            "zeroline": false
           }
         },
         "diagnostics": [],
@@ -5883,17 +5883,42 @@
             },
             "source_intent": {
               "constructor": "line",
-              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]}]",
+              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False]",
               "filename": "<embedded>",
               "frontend": "wolfram",
               "head": "Graphics",
+              "ordered_options": [
+                {
+                  "name": "Axes",
+                  "rule": "Rule",
+                  "source": "Axes->False",
+                  "source_span": {
+                    "end": {
+                      "column": 100,
+                      "line": 1,
+                      "offset": 99
+                    },
+                    "start": {
+                      "column": 89,
+                      "line": 1,
+                      "offset": 88
+                    }
+                  },
+                  "translation": {
+                    "classification": "translated",
+                    "option": "Axes",
+                    "rule": "Rule",
+                    "target": "axes"
+                  }
+                }
+              ],
               "ranges": [],
               "representation": "normalized-primitive",
               "source_span": {
                 "end": {
-                  "column": 89,
+                  "column": 101,
                   "line": 1,
-                  "offset": 88
+                  "offset": 100
                 },
                 "start": {
                   "column": 3,
@@ -5901,7 +5926,14 @@
                   "offset": 2
                 }
               },
-              "translation_events": []
+              "translation_events": [
+                {
+                  "classification": "translated",
+                  "option": "Axes",
+                  "rule": "Rule",
+                  "target": "axes"
+                }
+              ]
             },
             "style": {
               "color": "blue",
@@ -5931,17 +5963,42 @@
             },
             "source_intent": {
               "constructor": "point",
-              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]}]",
+              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False]",
               "filename": "<embedded>",
               "frontend": "wolfram",
               "head": "Graphics",
+              "ordered_options": [
+                {
+                  "name": "Axes",
+                  "rule": "Rule",
+                  "source": "Axes->False",
+                  "source_span": {
+                    "end": {
+                      "column": 100,
+                      "line": 1,
+                      "offset": 99
+                    },
+                    "start": {
+                      "column": 89,
+                      "line": 1,
+                      "offset": 88
+                    }
+                  },
+                  "translation": {
+                    "classification": "translated",
+                    "option": "Axes",
+                    "rule": "Rule",
+                    "target": "axes"
+                  }
+                }
+              ],
               "ranges": [],
               "representation": "normalized-primitive",
               "source_span": {
                 "end": {
-                  "column": 89,
+                  "column": 101,
                   "line": 1,
-                  "offset": 88
+                  "offset": 100
                 },
                 "start": {
                   "column": 3,
@@ -5949,7 +6006,14 @@
                   "offset": 2
                 }
               },
-              "translation_events": []
+              "translation_events": [
+                {
+                  "classification": "translated",
+                  "option": "Axes",
+                  "rule": "Rule",
+                  "target": "axes"
+                }
+              ]
             },
             "style": {
               "color": "red",
@@ -5979,17 +6043,42 @@
             },
             "source_intent": {
               "constructor": "text",
-              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]}]",
+              "expression": "Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False]",
               "filename": "<embedded>",
               "frontend": "wolfram",
               "head": "Graphics",
+              "ordered_options": [
+                {
+                  "name": "Axes",
+                  "rule": "Rule",
+                  "source": "Axes->False",
+                  "source_span": {
+                    "end": {
+                      "column": 100,
+                      "line": 1,
+                      "offset": 99
+                    },
+                    "start": {
+                      "column": 89,
+                      "line": 1,
+                      "offset": 88
+                    }
+                  },
+                  "translation": {
+                    "classification": "translated",
+                    "option": "Axes",
+                    "rule": "Rule",
+                    "target": "axes"
+                  }
+                }
+              ],
               "ranges": [],
               "representation": "normalized-primitive",
               "source_span": {
                 "end": {
-                  "column": 89,
+                  "column": 101,
                   "line": 1,
-                  "offset": 88
+                  "offset": 100
                 },
                 "start": {
                   "column": 3,
@@ -5997,7 +6086,14 @@
                   "offset": 2
                 }
               },
-              "translation_events": []
+              "translation_events": [
+                {
+                  "classification": "translated",
+                  "option": "Axes",
+                  "rule": "Rule",
+                  "target": "axes"
+                }
+              ]
             },
             "style": {
               "color": "black",
@@ -6024,16 +6120,16 @@
               "showgrid": false,
               "showline": false,
               "ticks": "",
-              "visible": true,
-              "zeroline": true
+              "visible": false,
+              "zeroline": false
             },
             "yaxis": {
               "mirror": false,
               "showgrid": false,
               "showline": false,
               "ticks": "",
-              "visible": true,
-              "zeroline": true
+              "visible": false,
+              "zeroline": false
             }
           }
         },
@@ -6122,18 +6218,18 @@
             "size": 12
           },
           "xaxis": {
-            "visible": true,
+            "visible": false,
             "showline": false,
             "mirror": false,
-            "zeroline": true,
+            "zeroline": false,
             "ticks": "",
             "showgrid": false
           },
           "yaxis": {
-            "visible": true,
+            "visible": false,
             "showline": false,
             "mirror": false,
-            "zeroline": true,
+            "zeroline": false,
             "ticks": "",
             "showgrid": false
           }
