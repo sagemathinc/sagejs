@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement Hecke-informed Dedekind criterion, first-order Newton polygons, residual regularity, local index evidence, and multiplier-ring fallback planning from P3",
-  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "base_commit": "fa6490ce4c296fb9ab66f44f5284a6d14060bc83",
   "claims": [
     "src/lib/sagejs/number_fields/local_polygons.py",
     "test/number-field-local-polygons.cjs",
