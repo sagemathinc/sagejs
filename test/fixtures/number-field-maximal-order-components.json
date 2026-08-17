@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "primality": [
+    { "value": "97", "state": "proven-prime" },
+    { "value": "341", "state": "composite" },
+    { "value": "561", "state": "composite" },
+    { "value": "3215031751", "state": "composite" },
+    { "value": "18446744073709551653", "state": "probable-prime-awaiting-proof" }
+  ],
+  "decompositions": [
+    {
+      "label": "prime-powers",
+      "discriminant": "523584",
+      "components": ["64", "81", "101"]
+    },
+    {
+      "label": "semiprime",
+      "discriminant": "1022117",
+      "components": ["1009", "1013"]
+    },
+    {
+      "label": "large-prime",
+      "discriminant": "18446744073709551653",
+      "components": ["18446744073709551653"]
+    }
+  ],
+  "quadratic_order": {
+    "defining_polynomial": [-5, 0, 1],
+    "basis_numerator": [[2, 0], [1, 1]],
+    "basis_denominator": 2,
+    "equation_discriminant": 20,
+    "order_discriminant": 5,
+    "index": 2
+  }
+}
