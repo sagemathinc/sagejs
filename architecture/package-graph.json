@@ -164,7 +164,8 @@
         "core-runtime",
         "native-integration",
         "arithmetic",
-        "linear-algebra"
+        "linear-algebra",
+        "python-stdlib"
       ],
       "modules": ["sagejs.number_fields"],
       "files": [],
