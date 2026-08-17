@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "runtime-precompiled-loader",
+  "title": "Allowlisted precompiled worker module loader",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Load the explicitly precompiled maximal-order worker module graph in lightweight multiprocessing evaluators without a parser, compiler, or arbitrary filesystem lookup, and reject unknown or uncompiled modules with Windows/SEA-safe fallback semantics",
+  "base_commit": "0e8c027ba2945399b0a0e1a9bc084f7855ff1fae",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/resources.ts",
+    "tools/host.ts",
+    "src/lib/multiprocessing.py",
+    "scripts/build-lazy-module-cache.cjs",
+    "scripts/precompiled-python-packages.json",
+    "scripts/build-sea.cjs",
+    "test/multiprocessing-module.cjs",
+    "test/sea-smoke.cjs"
+  ],
+  "dependencies": [
+    "nf-maxorder-public-worker"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "focused worker loader tests",
+      "multiprocessing module integration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a fail-closed resource manifest and lazy loader for build-precompiled multiprocessing modules, an exact read-only capability query, portable virtual filenames, and focused synthetic loader/rejection coverage. Ordinary builds without the optional graph retain self-contained Pool behavior and report the module capability as false.",
+    "risks": [
+      "The declared nf-maxorder-public-worker dependency is not yet committed on this base, so the real local_parallel_worker graph and x^2-8 Pool integration require validation after integration.",
+      "The full multiprocessing test passed 9 of 10 cases here; its advanced elliptic case requires the optional FLINT addon, which this isolated worktree does not have installed."
+    ],
+    "next_steps": [
+      "After integrating nf-maxorder-public-worker, run pnpm python:precompile:run and the focused public Round2 worker test.",
+      "Run the full multiprocessing suite in a prepared native worktree and exercise the emitted graph in a SEA/Windows build."
+    ]
+  }
+}
