@@ -147,6 +147,7 @@ const integration = [
   "test/operator-module.cjs",
   "test/multiprocessing-module.cjs",
   "test/serialization.cjs",
+  "test/conway-polynomials.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",
   "test/dashboard-examples.cjs",

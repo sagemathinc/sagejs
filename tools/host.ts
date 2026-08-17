@@ -581,6 +581,32 @@ export class NodeHostAdapter {
           const serializer = require("./serialization") as typeof import("./serialization");
           return { ok: true, value: serializer.loads(String(args[0])) };
         }
+        case "serializationLoadsIntegerTupleTable": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return {
+            ok: true,
+            value: serializer.loadsIntegerTupleTable(String(args[0])),
+          };
+        }
+        case "serializationLoadIntegerTupleTable": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return {
+            ok: true,
+            value: serializer.loadsIntegerTupleTable(
+              fs.readFileSync(this.resolve(args[0]), "utf8"),
+            ),
+          };
+        }
+        case "serializationIntegerTupleTableView": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return {
+            ok: true,
+            value: serializer.integerTupleTableView(
+              args[0],
+              String(args[1]) as "keys" | "values" | "items",
+            ),
+          };
+        }
         case "serializationPack": {
           const serializer = require("./serialization") as typeof import("./serialization");
           return { ok: true, value: serializer.pack(args[0]) };

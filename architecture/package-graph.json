@@ -168,7 +168,11 @@
         "python-stdlib"
       ],
       "modules": ["sagejs.polynomial_algorithms"],
-      "files": [],
+      "files": [
+        "src/lib/conway_polynomials/__init__.py",
+        "src/lib/sage/databases/__init__.py",
+        "src/lib/sage/databases/conway.py"
+      ],
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
     },
     {

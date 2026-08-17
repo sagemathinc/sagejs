@@ -892,6 +892,24 @@ _extension_fields = runtime.map()
 _residue_rings = runtime.map()
 
 
+def _database_conway_coefficients(prime: int, degree: int) -> list[int] | None:
+    """Return a packaged Conway polynomial when FLINT's table lacks it."""
+    try:
+        conway_polynomials = __import__("conway_polynomials")
+    except ImportError:
+        return None
+
+    prime_key = runtime.normalize_integer(prime)
+    degree_key = runtime.normalize_integer(degree)
+    degrees = conway_polynomials.database().get(prime_key)
+    if degrees is None:
+        return None
+    coefficients = degrees.get(degree_key)
+    if coefficients is None:
+        return None
+    return [runtime.integer_bigint(value) for value in coefficients]
+
+
 def _make_extension_field(
     order: int,
     prime: int,
@@ -903,11 +921,13 @@ def _make_extension_field(
     variable = _finite_field_name(name, names, degree)
     prime_field = GF(prime)
     coefficients = None
+    explicit_modulus = False
     if (
         modulus is not runtime.undefined
         and modulus is not None
         and modulus != "primitive"
     ):
+        explicit_modulus = True
         if not hasattr(modulus, "coefficients"):
             raise TypeError("finite field modulus must be a polynomial")
         raw_coefficients = modulus.coefficients()
@@ -959,7 +979,15 @@ def _make_extension_field(
         if runtime.jstype(message) == "string" and runtime.regexp(
             "Conway polynomial"
         ).test(message):
-            missing_conway = True
+            coefficients = _database_conway_coefficients(prime, degree)
+            if coefficients is None:
+                missing_conway = True
+            else:
+                context = backend.fqContextWithModulus(
+                    prime,
+                    coefficients,
+                    variable,
+                )
         elif coefficients is not None:
             raise ValueError(message)  # noqa: B904
         else:
@@ -990,7 +1018,7 @@ def _make_extension_field(
         modulus_coefficients,
         prime_field,
         element_type,
-        coefficients is not None,
+        explicit_modulus,
     )
     _extension_fields.set(key, field)
     conversion = _field_coercion(field)

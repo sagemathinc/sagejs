@@ -1,5 +1,7 @@
 {
   "imports": [
-    "mpmath"
+    "conway_polynomials",
+    "mpmath",
+    "sage.databases.conway"
   ]
 }
