@@ -650,14 +650,10 @@ def _native_plan_value(value: Any) -> Any:
             runtime.reflect.set(answer, str(key), _native_plan_value(item))
         return answer
     if runtime.jstype(value) == "object":
-        answer = _native_object()
-        for key in runtime.object.keys(value):
-            runtime.reflect.set(
-                answer,
-                str(key),
-                _native_plan_value(runtime.reflect.get(value, key)),
-            )
-        return answer
+        # Planner-created mappings are handled above. Other host objects are
+        # semantic option values (for example Sage color instances), whose
+        # methods and identity must remain intact for renderer normalization.
+        return value
     raise TypeError("primitive render plan is not JSON-safe: " + str(value))
 
 
