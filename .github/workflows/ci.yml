@@ -106,6 +106,7 @@ jobs:
           pnpm test:unit
           pnpm test:integration
           pnpm test:native
+          pnpm --dir packages/flint test:eclib:corpus
           pnpm test:installer
           pnpm test:release
 

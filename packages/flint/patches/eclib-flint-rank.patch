@@ -1,0 +1,1506 @@
+diff --git a/libsrc/descent.cc b/libsrc/descent.cc
+index 85e9bd3..002d0e3 100644
+--- a/libsrc/descent.cc
++++ b/libsrc/descent.cc
+@@ -99,6 +99,10 @@ void two_descent::do_the_descent(long firstlim, long secondlim,
+     rank_bound = r12->getrankbound();
+     selmer_rank = r12->getselmer();
+     certain=r12->getcertain();
++    fullmw=0;
++    sat_bound=0;
++    saturation_index=1;
++    unsaturated_primes.clear();
+     // the last parameter here is set to a known upper bound on the rank
+     mwbasis = new mw(&e_min,verbose>2,1,rank_bound);
+ }
+@@ -154,6 +158,8 @@ void two_descent::report_rank() const
+ 
+ void two_descent::saturate(long sat_bd, long sat_low_bd)
+ {
++  saturation_index=1;
++  unsaturated_primes.clear();
+ 
+ // Do a quick search for points on the curve before processing points
+   bigfloat hlim=to_bigfloat(PRE_SATURATION_SEARCH_LIMIT);
+@@ -199,6 +205,8 @@ void two_descent::saturate(long sat_bd, long sat_low_bd)
+         cout <<"Saturating (with bound = "<<sat_bd<<")..." << flush;
+       long index; vector<long> unsat;
+       int sat_ok = mwbasis->saturate(index,unsat,sat_bd,sat_low_bd);
++      saturation_index=index;
++      unsaturated_primes=unsat;
+       // no need to check p-saturation for p<=sat_low_bd (default 2)
+ 
+       if(verbose)
+diff --git a/libsrc/eclib/descent.h b/libsrc/eclib/descent.h
+index 8e6f7e0..8e1691e 100644
+--- a/libsrc/eclib/descent.h
++++ b/libsrc/eclib/descent.h
+@@ -92,7 +92,8 @@ class two_descent {
+ private: rank12 * r12;  // does all the work
+   int verbose, two_torsion_exists, selmer_only;
+   int success, certain, fullmw;
+-  long rank, rank_bound, selmer_rank, sat_bound;
++  long rank, rank_bound, selmer_rank, sat_bound, saturation_index;
++  vector<long> unsaturated_primes;
+   mw* mwbasis;
+   vector<bigrational> qai;  // Coefficients of initial curve
+   Curvedata e_orig, e_min;
+@@ -131,6 +132,8 @@ public:
+   int ok()      const {return success;}
+   int get2t() const {return two_torsion_exists;}
+   int getfullmw() const {return fullmw;}
++  long getsaturationindex() const {return saturation_index;}
++  vector<long> getunsaturatedprimes() const {return unsaturated_primes;}
+   bigfloat regulator() {return mwbasis->regulator();}
+   vector<P2Point> getbasis(); // returns points on original model
+   vector<Point> getpbasis();  // returns points on integral model
+diff --git a/libsrc/arith.cc b/libsrc/arith.cc
+index d1e3471..717161e 100644
+--- a/libsrc/arith.cc
++++ b/libsrc/arith.cc
+@@ -22,12 +22,13 @@
+ //////////////////////////////////////////////////////////////////////////
+  
+ #include "eclib/arith.h"
++#include <cstring>
+ 
+ /* Prime number procs; adapted from Pari  */
+ 
+ // These have not been stl-ized at all since they work just fine...
+ 
+-primeclass the_primes;    // The one and only instance
++thread_local primeclass the_primes;
+ 
+ primeclass::primeclass() 
+ {
+diff --git a/libsrc/bitspace.cc b/libsrc/bitspace.cc
+index f576eea..4fc115d 100644
+--- a/libsrc/bitspace.cc
++++ b/libsrc/bitspace.cc
+@@ -32,12 +32,13 @@ bitspace::bitspace(long d)
+ 	  <<"! replacing with 0\n";
+       d=0;
+     }
+-  if(d>NTL_BITS_PER_LONG)
++  constexpr long bits_per_long = std::numeric_limits<unsigned long>::digits;
++  if(d>bits_per_long)
+     {
+       cout<<"Error in bitspace constructor with dimension "<<d
+-	  <<">" <<NTL_BITS_PER_LONG<<"! replacing with "
+-          <<NTL_BITS_PER_LONG<<"\n";
+-      d=NTL_BITS_PER_LONG;
++	  <<">" <<bits_per_long<<"! replacing with "
++	  <<bits_per_long<<"\n";
++      d=bits_per_long;
+     }
+   maxdim=d;
+   pivs.resize(maxdim);
+diff --git a/libsrc/curvemod.cc b/libsrc/curvemod.cc
+index 39a5bbc..9c6ef3c 100644
+--- a/libsrc/curvemod.cc
++++ b/libsrc/curvemod.cc
+@@ -22,7 +22,6 @@
+ //////////////////////////////////////////////////////////////////////////
+ 
+ 
+-#include "eclib/pari_interface.h"
+ #include "eclib/pointsmod.h"
+ 
+ // constructors
+@@ -94,12 +93,10 @@ void curvemodq::set_group_order_via_legendre()
+ 
+ void curvemodq::set_group_order()
+ {
+-  ZZ a1z = NTL::conv<ZZ>(a1),
+-    a2z = NTL::conv<ZZ>(a2),
+-    a3z = NTL::conv<ZZ>(a3),
+-    a4z = NTL::conv<ZZ>(a4),
+-    a6z = NTL::conv<ZZ>(a6);
+-  order = 1+q-ellap(a1z,a2z,a3z,a4z,a6z,q);
++  // The historical default delegated this point count to PARI.  The
++  // FLINT-only rank core deliberately keeps the simple, exact Legendre
++  // sum already implemented by eclib instead.
++  set_group_order_via_legendre();
+ }
+ 
+ // Division poly functions:
+diff --git a/libsrc/curvered.cc b/libsrc/curvered.cc
+index 8efba77..0b49128 100644
+--- a/libsrc/curvered.cc
++++ b/libsrc/curvered.cc
+@@ -22,7 +22,7 @@
+ //////////////////////////////////////////////////////////////////////////
+ 
+ #include "eclib/ffmod.h"
+-#include "eclib/pari_interface.h" // for ellap
++#include "eclib/curvemod.h"
+ 
+ ostream& operator<<(ostream& os, const Kodaira_code& c)
+ {
+@@ -1032,7 +1032,7 @@ int CurveRed::neron(long p, int kod)
+   return 0; /* should not occur */
+ }
+ 
+-// Trace of Frobenius (via pari) if p good
++// Trace of Frobenius if p good
+ // (or 0 for additive reduction, +1 for split multiplicative, -1 for nonsplit)
+ long CurveRed::ap(long p) const
+ {
+@@ -1045,11 +1045,14 @@ long CurveRed::ap(long p) const
+   case 1: return -LocalRootNumber(P);
+   case 0: default: // good primes
+     // NB p must be good here else the ai mod p may define a singular curve
+-    return ellap(posmod(a1,p), posmod(a2,p), posmod(a3,p), posmod(a4,p), posmod(a6,p), p);
++    {
++      curvemodq reduced(*this, P);
++      return to_long(P + 1 - reduced.group_order());
++    }
+   }
+ }
+ 
+-// Trace of Frobenius (via pari) if p good
++// Trace of Frobenius if p good
+ // (or 0 for additive reduction, +1 for split multiplicative, -1 for nonsplit)
+ ZZ CurveRed::ap(const ZZ& p) const
+ {
+@@ -1059,7 +1062,10 @@ ZZ CurveRed::ap(const ZZ& p) const
+   case 1: return ZZ(-LocalRootNumber(p));
+     // good primes
+   case 0: default:
+-    return ellap(a1,a2,a3,a4,a6, p);
++    {
++      curvemodq reduced(*this, p);
++      return p + 1 - reduced.group_order();
++    }
+   }
+ }
+ 
+diff --git a/libsrc/eclib/arith.h b/libsrc/eclib/arith.h
+index 14ca380..91b8ac2 100644
+--- a/libsrc/eclib/arith.h
++++ b/libsrc/eclib/arith.h
+@@ -52,7 +52,7 @@ public:
+   friend long maxprime(void);
+ };
+ 
+-extern primeclass the_primes;  // The one and only instance
++extern thread_local primeclass the_primes;
+ 
+ inline long prime_number (long n)   /* returns n'th prime from global list */
+   {return the_primes.number(n);}
+diff --git a/libsrc/eclib/ffmod.h b/libsrc/eclib/ffmod.h
+index 23ff793..e063bdd 100644
+--- a/libsrc/eclib/ffmod.h
++++ b/libsrc/eclib/ffmod.h
+@@ -36,9 +36,9 @@ class ffmodq{
+   public:
+ 
+   // static members defining the function field:
+-  static galois_field Fq;        //  the constant field
+-  static curvemodq E;            //  the curve mod q
+-  static ZZ_pX f1, f2;          //  f2=a1*x+a3, f2=x^3+a2*x^2+a4*x+a6
++  static thread_local galois_field Fq; // the constant field
++  static thread_local curvemodq E;     // the curve mod q
++  static thread_local ZZ_pX f1, f2;   // f2=a1*x+a3, f1=x^3+a2*x^2+a4*x+a6
+   static void init(const curvemodq& EE); // set Fq, E, f1, f2
+ 
+   // data defining one element of th function field:
+diff --git a/libsrc/eclib/flinterface.h b/libsrc/eclib/flinterface.h
+index eac37a7..888ea1e 100644
+--- a/libsrc/eclib/flinterface.h
++++ b/libsrc/eclib/flinterface.h
+@@ -42,7 +42,6 @@
+ 
+ #include <flint/nmod.h>
+ #include <flint/nmod_mat.h>
+-#include <flint/profiler.h>
+ 
+ typedef unsigned int hlimb_t;
+ 
+diff --git a/libsrc/eclib/flint_backend.h b/libsrc/eclib/flint_backend.h
+new file mode 100644
+index 0000000..1836a1d
+--- /dev/null
++++ b/libsrc/eclib/flint_backend.h
+@@ -0,0 +1,568 @@
++// FLINT-only compatibility types for eclib's historical arithmetic surface.
++#ifndef ECLIB_FLINT_BACKEND_H
++#define ECLIB_FLINT_BACKEND_H
++
++#include <flint/fmpz.h>
++#include <flint/fmpz_factor.h>
++#include <flint/fmpz_mod.h>
++#include <flint/fmpz_mod_poly.h>
++#include <flint/fmpz_mod_poly_factor.h>
++#include <flint/fmpz_poly.h>
++#include <flint/fmpz_poly_factor.h>
++#include <flint/flint.h>
++
++#include <cmath>
++#include <cassert>
++#include <cstddef>
++#include <iostream>
++#include <stdexcept>
++#include <string>
++#include <type_traits>
++#include <utility>
++#include <vector>
++
++class ZZ {
++public:
++  ZZ() { fmpz_init(value_); }
++  ZZ(int value) { fmpz_init_set_si(value_, value); }
++  ZZ(long value) { fmpz_init_set_si(value_, value); }
++  explicit ZZ(const std::string& value) {
++    fmpz_init(value_);
++    fmpz_set_str(value_, value.c_str(), 10);
++  }
++  ZZ(const ZZ& other) { fmpz_init_set(value_, other.value_); }
++  ZZ(ZZ&& other) noexcept {
++    fmpz_init(value_);
++    fmpz_swap(value_, other.value_);
++  }
++  ~ZZ() { fmpz_clear(value_); }
++
++  ZZ& operator=(const ZZ& other) {
++    if (this != &other) fmpz_set(value_, other.value_);
++    return *this;
++  }
++  ZZ& operator=(ZZ&& other) noexcept {
++    if (this != &other) fmpz_swap(value_, other.value_);
++    return *this;
++  }
++  ZZ& operator=(long value) { fmpz_set_si(value_, value); return *this; }
++  ZZ& operator=(int value) { fmpz_set_si(value_, value); return *this; }
++
++  static ZZ zero() { return ZZ(0); }
++  const fmpz* data() const { return value_; }
++  fmpz* data() { return value_; }
++
++  ZZ operator+() const { return *this; }
++  ZZ operator-() const { ZZ out; fmpz_neg(out.value_, value_); return out; }
++  ZZ operator+(const ZZ& other) const { ZZ out; fmpz_add(out.value_, value_, other.value_); return out; }
++  ZZ operator-(const ZZ& other) const { ZZ out; fmpz_sub(out.value_, value_, other.value_); return out; }
++  ZZ operator*(const ZZ& other) const { ZZ out; fmpz_mul(out.value_, value_, other.value_); return out; }
++  ZZ operator/(const ZZ& other) const { ZZ out; fmpz_tdiv_q(out.value_, value_, other.value_); return out; }
++  ZZ operator%(const ZZ& other) const {
++    ZZ quotient, out;
++    fmpz_tdiv_qr(quotient.value_, out.value_, value_, other.value_);
++    return out;
++  }
++  ZZ operator+(long other) const { ZZ out; fmpz_add_si(out.value_, value_, other); return out; }
++  ZZ operator-(long other) const { ZZ out; fmpz_sub_si(out.value_, value_, other); return out; }
++  ZZ operator*(long other) const { ZZ out; fmpz_mul_si(out.value_, value_, other); return out; }
++  ZZ operator/(long other) const { ZZ out; fmpz_tdiv_q_si(out.value_, value_, other); return out; }
++  long operator%(long other) const {
++    const ulong modulus = static_cast<ulong>(other < 0 ? -other : other);
++    const long remainder = static_cast<long>(fmpz_tdiv_ui(value_, modulus));
++    return fmpz_sgn(value_) < 0 ? -remainder : remainder;
++  }
++  ZZ operator<<(long count) const { ZZ out; fmpz_mul_2exp(out.value_, value_, count); return out; }
++  ZZ operator>>(long count) const { ZZ out; fmpz_fdiv_q_2exp(out.value_, value_, count); return out; }
++
++  ZZ& operator+=(const ZZ& other) { fmpz_add(value_, value_, other.value_); return *this; }
++  ZZ& operator-=(const ZZ& other) { fmpz_sub(value_, value_, other.value_); return *this; }
++  ZZ& operator*=(const ZZ& other) { fmpz_mul(value_, value_, other.value_); return *this; }
++  ZZ& operator/=(const ZZ& other) { fmpz_tdiv_q(value_, value_, other.value_); return *this; }
++  ZZ& operator%=(const ZZ& other) {
++    ZZ quotient, remainder;
++    fmpz_tdiv_qr(quotient.value_, remainder.value_, value_, other.value_);
++    fmpz_set(value_, remainder.value_);
++    return *this;
++  }
++  ZZ& operator+=(long other) { fmpz_add_si(value_, value_, other); return *this; }
++  ZZ& operator-=(long other) { fmpz_sub_si(value_, value_, other); return *this; }
++  ZZ& operator*=(long other) { fmpz_mul_si(value_, value_, other); return *this; }
++  ZZ& operator/=(long other) { fmpz_tdiv_q_si(value_, value_, other); return *this; }
++  ZZ& operator<<=(long count) { fmpz_mul_2exp(value_, value_, count); return *this; }
++  ZZ& operator>>=(long count) { fmpz_fdiv_q_2exp(value_, value_, count); return *this; }
++  ZZ& operator++() { fmpz_add_ui(value_, value_, 1); return *this; }
++  ZZ operator++(int) { ZZ old(*this); ++*this; return old; }
++  ZZ& operator--() { fmpz_sub_ui(value_, value_, 1); return *this; }
++  ZZ operator--(int) { ZZ old(*this); --*this; return old; }
++
++  friend bool operator==(const ZZ& left, const ZZ& right) { return fmpz_equal(left.value_, right.value_); }
++  friend bool operator!=(const ZZ& left, const ZZ& right) { return !fmpz_equal(left.value_, right.value_); }
++  friend bool operator<(const ZZ& left, const ZZ& right) { return fmpz_cmp(left.value_, right.value_) < 0; }
++  friend bool operator<=(const ZZ& left, const ZZ& right) { return fmpz_cmp(left.value_, right.value_) <= 0; }
++  friend bool operator>(const ZZ& left, const ZZ& right) { return fmpz_cmp(left.value_, right.value_) > 0; }
++  friend bool operator>=(const ZZ& left, const ZZ& right) { return fmpz_cmp(left.value_, right.value_) >= 0; }
++  friend bool operator==(const ZZ& left, long right) { return fmpz_equal_si(left.value_, right); }
++  friend bool operator!=(const ZZ& left, long right) { return !fmpz_equal_si(left.value_, right); }
++  friend bool operator<(const ZZ& left, long right) { return fmpz_cmp_si(left.value_, right) < 0; }
++  friend bool operator<=(const ZZ& left, long right) { return fmpz_cmp_si(left.value_, right) <= 0; }
++  friend bool operator>(const ZZ& left, long right) { return fmpz_cmp_si(left.value_, right) > 0; }
++  friend bool operator>=(const ZZ& left, long right) { return fmpz_cmp_si(left.value_, right) >= 0; }
++
++  friend std::ostream& operator<<(std::ostream& stream, const ZZ& value) {
++    char* text = fmpz_get_str(nullptr, 10, value.value_);
++    stream << text;
++    flint_free(text);
++    return stream;
++  }
++  friend std::istream& operator>>(std::istream& stream, ZZ& value) {
++    std::string text;
++    stream >> text;
++    if (stream && fmpz_set_str(value.value_, text.c_str(), 10) != 0) {
++      stream.setstate(std::ios::failbit);
++    }
++    return stream;
++  }
++
++private:
++  fmpz_t value_;
++};
++
++inline ZZ operator+(long left, const ZZ& right) { return right + left; }
++inline ZZ operator-(long left, const ZZ& right) { return ZZ(left) - right; }
++inline ZZ operator*(long left, const ZZ& right) { return right * left; }
++inline ZZ operator/(long left, const ZZ& right) { return ZZ(left) / right; }
++inline bool operator==(long left, const ZZ& right) { return right == left; }
++inline bool operator!=(long left, const ZZ& right) { return right != left; }
++inline bool operator<(long left, const ZZ& right) { return right > left; }
++inline bool operator<=(long left, const ZZ& right) { return right >= left; }
++inline bool operator>(long left, const ZZ& right) { return right < left; }
++inline bool operator>=(long left, const ZZ& right) { return right <= left; }
++
++inline ZZ to_ZZ(long value) { return ZZ(value); }
++inline ZZ to_ZZ(int value) { return ZZ(value); }
++inline ZZ to_ZZ(const ZZ& value) { return value; }
++inline ZZ to_ZZ(const char* value) { return ZZ(std::string(value)); }
++inline ZZ to_ZZ(const INT& value) {
++  fmpz_t temporary;
++  value.get_fmpz(temporary);
++  ZZ out;
++  fmpz_set(out.data(), temporary);
++  fmpz_clear(temporary);
++  return out;
++}
++inline long to_long(const ZZ& value) {
++  assert(fmpz_fits_si(value.data()));
++  return fmpz_get_si(value.data());
++}
++inline int to_int(const ZZ& value) { return static_cast<int>(to_long(value)); }
++inline INT to_INT(int value) { return INT(value); }
++inline INT to_INT(long value) { return INT(value); }
++inline INT to_INT(const INT& value) { return value; }
++inline INT to_INT(const ZZ& value) {
++  fmpz_t temporary;
++  fmpz_init_set(temporary, value.data());
++  INT out(temporary);
++  fmpz_clear(temporary);
++  return out;
++}
++inline double to_double(const ZZ& value) { return fmpz_get_d(value.data()); }
++inline long rem(const ZZ& value, long modulus) { return value % modulus; }
++inline int sign(const ZZ& value) { return fmpz_sgn(value.data()); }
++inline bool IsZero(const ZZ& value) { return fmpz_is_zero(value.data()); }
++inline bool IsOne(const ZZ& value) { return fmpz_is_one(value.data()); }
++inline bool IsOdd(const ZZ& value) { return fmpz_is_odd(value.data()); }
++inline long bit(const ZZ& value, long index) { return fmpz_tstbit(value.data(), index); }
++inline long bit(long value, long index) { return (value >> index) & 1L; }
++inline long NumBits(const ZZ& value) { return fmpz_bits(value.data()); }
++inline void SetBit(ZZ& value, long index) { fmpz_setbit(value.data(), index); }
++inline void LeftShift(ZZ& out, const ZZ& value, long count) { fmpz_mul_2exp(out.data(), value.data(), count); }
++inline void RightShift(ZZ& out, const ZZ& value, long count) { fmpz_fdiv_q_2exp(out.data(), value.data(), count); }
++inline void add(ZZ& out, const ZZ& left, const ZZ& right) { fmpz_add(out.data(), left.data(), right.data()); }
++inline void sub(ZZ& out, const ZZ& left, const ZZ& right) { fmpz_sub(out.data(), left.data(), right.data()); }
++inline void mul(ZZ& out, const ZZ& left, const ZZ& right) { fmpz_mul(out.data(), left.data(), right.data()); }
++inline void div(ZZ& out, const ZZ& left, const ZZ& right) { fmpz_tdiv_q(out.data(), left.data(), right.data()); }
++inline void negate(ZZ& out, const ZZ& value) { fmpz_neg(out.data(), value.data()); }
++inline void sqr(ZZ& out, const ZZ& value) { fmpz_mul(out.data(), value.data(), value.data()); }
++inline ZZ sqr(const ZZ& value) { ZZ out; sqr(out, value); return out; }
++inline ZZ abs(const ZZ& value) { ZZ out; fmpz_abs(out.data(), value.data()); return out; }
++inline void SqrRoot(ZZ& out, const ZZ& value) { fmpz_sqrt(out.data(), value.data()); }
++inline ZZ SqrRoot(const ZZ& value) { ZZ out; SqrRoot(out, value); return out; }
++inline ZZ GCD(const ZZ& left, const ZZ& right) { ZZ out; fmpz_gcd(out.data(), left.data(), right.data()); return out; }
++inline void XGCD(ZZ& gcd, ZZ& left_cofactor, ZZ& right_cofactor, const ZZ& left, const ZZ& right) {
++  fmpz_xgcd(gcd.data(), left_cofactor.data(), right_cofactor.data(), left.data(), right.data());
++}
++inline ZZ power(const ZZ& value, long exponent) { ZZ out; fmpz_pow_ui(out.data(), value.data(), exponent); return out; }
++inline long Jacobi(const ZZ& value, const ZZ& modulus) { return fmpz_jacobi(value.data(), modulus.data()); }
++inline void SqrRootMod(ZZ& out, const ZZ& value, const ZZ& modulus) {
++  fmpz_sqrtmod(out.data(), value.data(), modulus.data());
++}
++inline void PowerMod(ZZ& out, const ZZ& base, const ZZ& exponent, const ZZ& modulus) {
++  fmpz_powm(out.data(), base.data(), exponent.data(), modulus.data());
++}
++inline void DivRem(ZZ& quotient, ZZ& remainder, const ZZ& numerator, const ZZ& denominator) {
++  fmpz_tdiv_qr(quotient.data(), remainder.data(), numerator.data(), denominator.data());
++}
++inline long DivRem(ZZ& quotient, const ZZ& numerator, long denominator) {
++  ZZ remainder;
++  fmpz_tdiv_qr(quotient.data(), remainder.data(), numerator.data(), ZZ(denominator).data());
++  return fmpz_get_si(remainder.data());
++}
++inline void swap(ZZ& left, ZZ& right) { fmpz_swap(left.data(), right.data()); }
++inline ZZ NextPrime(const ZZ& value) { ZZ out; fmpz_nextprime(out.data(), value.data(), 1); return out; }
++inline bool ProbPrime(const ZZ& value) { return fmpz_is_prime(value.data()); }
++
++template <class Coefficient>
++class FlintPolynomial {
++public:
++  std::vector<Coefficient> rep;
++
++  FlintPolynomial() = default;
++  FlintPolynomial(long degree, const Coefficient& coefficient) {
++    if (degree >= 0) {
++      rep.resize(static_cast<std::size_t>(degree + 1));
++      rep[static_cast<std::size_t>(degree)] = coefficient;
++      normalize();
++    }
++  }
++  FlintPolynomial(long constant) {
++    Coefficient value(constant);
++    if (!IsZero(value)) rep.push_back(value);
++  }
++  FlintPolynomial(const Coefficient& constant) {
++    if (!IsZero(constant)) rep.push_back(constant);
++  }
++  void SetLength(long length) { rep.resize(static_cast<std::size_t>(length)); }
++  void normalize() {
++    while (!rep.empty() && IsZero(rep.back())) rep.pop_back();
++  }
++  FlintPolynomial operator+() const { return *this; }
++  FlintPolynomial operator-() const {
++    FlintPolynomial out(*this);
++    for (auto& coefficient : out.rep) coefficient = -coefficient;
++    return out;
++  }
++  FlintPolynomial operator+(const FlintPolynomial& other) const {
++    FlintPolynomial out;
++    out.rep.resize(std::max(rep.size(), other.rep.size()));
++    for (std::size_t index = 0; index < out.rep.size(); ++index) {
++      const Coefficient left = index < rep.size() ? rep[index] : Coefficient(0);
++      const Coefficient right = index < other.rep.size() ? other.rep[index] : Coefficient(0);
++      out.rep[index] = left + right;
++    }
++    out.normalize();
++    return out;
++  }
++  FlintPolynomial operator-(const FlintPolynomial& other) const { return *this + (-other); }
++  FlintPolynomial operator*(const FlintPolynomial& other) const {
++    FlintPolynomial out;
++    if (rep.empty() || other.rep.empty()) return out;
++    out.rep.resize(rep.size() + other.rep.size() - 1);
++    for (std::size_t left = 0; left < rep.size(); ++left)
++      for (std::size_t right = 0; right < other.rep.size(); ++right)
++        out.rep[left + right] += rep[left] * other.rep[right];
++    out.normalize();
++    return out;
++  }
++  FlintPolynomial operator+(const Coefficient& scalar) const {
++    FlintPolynomial out(*this);
++    if (out.rep.empty()) out.rep.push_back(scalar); else out.rep[0] += scalar;
++    out.normalize();
++    return out;
++  }
++  FlintPolynomial operator-(const Coefficient& scalar) const { return *this + (-scalar); }
++  FlintPolynomial operator*(const Coefficient& scalar) const {
++    FlintPolynomial out(*this);
++    for (auto& coefficient : out.rep) coefficient *= scalar;
++    out.normalize();
++    return out;
++  }
++  FlintPolynomial& operator+=(const FlintPolynomial& other) { *this = *this + other; return *this; }
++  FlintPolynomial& operator-=(const FlintPolynomial& other) { *this = *this - other; return *this; }
++  FlintPolynomial& operator*=(const FlintPolynomial& other) { *this = *this * other; return *this; }
++  FlintPolynomial& operator*=(const Coefficient& scalar) { *this = *this * scalar; return *this; }
++  FlintPolynomial& operator/=(const FlintPolynomial& divisor) { *this = divide_exact(divisor); return *this; }
++  FlintPolynomial operator/(const FlintPolynomial& divisor) const { return divide_exact(divisor); }
++  friend bool operator==(const FlintPolynomial& left, const FlintPolynomial& right) {
++    return left.rep == right.rep;
++  }
++  friend bool operator!=(const FlintPolynomial& left, const FlintPolynomial& right) {
++    return !(left == right);
++  }
++  friend FlintPolynomial operator+(const Coefficient& scalar, const FlintPolynomial& polynomial) {
++    return polynomial + scalar;
++  }
++  friend FlintPolynomial operator-(const Coefficient& scalar, const FlintPolynomial& polynomial) {
++    return (-polynomial) + scalar;
++  }
++  friend FlintPolynomial operator*(const Coefficient& scalar, const FlintPolynomial& polynomial) {
++    return polynomial * scalar;
++  }
++private:
++  FlintPolynomial divide_exact(const FlintPolynomial& divisor) const {
++    if (divisor.rep.empty()) throw std::domain_error("polynomial division by zero");
++    FlintPolynomial remainder(*this), quotient;
++    const long divisor_degree = static_cast<long>(divisor.rep.size()) - 1;
++    if (static_cast<long>(remainder.rep.size()) - 1 < divisor_degree) return quotient;
++    quotient.rep.resize(remainder.rep.size() - divisor.rep.size() + 1);
++    while (!remainder.rep.empty() &&
++           static_cast<long>(remainder.rep.size()) - 1 >= divisor_degree) {
++      const long shift = static_cast<long>(remainder.rep.size()) - 1 - divisor_degree;
++      const Coefficient factor = remainder.rep.back() / divisor.rep.back();
++      quotient.rep[static_cast<std::size_t>(shift)] += factor;
++      for (long index = 0; index <= divisor_degree; ++index)
++        remainder.rep[static_cast<std::size_t>(index + shift)] -=
++          factor * divisor.rep[static_cast<std::size_t>(index)];
++      remainder.normalize();
++    }
++    if (!remainder.rep.empty()) throw std::domain_error("inexact polynomial division");
++    quotient.normalize();
++    return quotient;
++  }
++};
++
++using ZZX = FlintPolynomial<ZZ>;
++
++inline thread_local ZZ flint_modulus(0);
++
++class FlintRandomState {
++public:
++  FlintRandomState() { flint_rand_init(state_); reset(); }
++  ~FlintRandomState() { flint_rand_clear(state_); }
++  void reset() { flint_rand_set_seed(state_, 0x53414745UL, 0x4a535241UL); }
++  flint_rand_struct* data() { return state_; }
++private:
++  flint_rand_t state_;
++};
++
++inline thread_local FlintRandomState flint_random_state;
++inline void reset_flint_random_state() { flint_random_state.reset(); }
++
++inline ZZ flint_mod_reduce(const ZZ& value) {
++  if (IsZero(flint_modulus)) return value;
++  ZZ out;
++  fmpz_mod(out.data(), value.data(), flint_modulus.data());
++  return out;
++}
++
++class ZZ_p {
++public:
++  ZZ_p() = default;
++  ZZ_p(long value) : value_(flint_mod_reduce(ZZ(value))) {}
++  ZZ_p(const ZZ& value) : value_(flint_mod_reduce(value)) {}
++  static void init(const ZZ& modulus) { flint_modulus = abs(modulus); }
++  const ZZ& value() const { return value_; }
++  ZZ_p operator+() const { return *this; }
++  ZZ_p operator-() const { return ZZ_p(-value_); }
++  ZZ_p operator+(const ZZ_p& other) const { return ZZ_p(value_ + other.value_); }
++  ZZ_p operator-(const ZZ_p& other) const { return ZZ_p(value_ - other.value_); }
++  ZZ_p operator*(const ZZ_p& other) const { return ZZ_p(value_ * other.value_); }
++  ZZ_p operator/(const ZZ_p& other) const {
++    ZZ inverse;
++    if (!fmpz_invmod(inverse.data(), other.value_.data(), flint_modulus.data())) {
++      throw std::domain_error("division by a nonunit in ZZ_p");
++    }
++    return ZZ_p(value_ * inverse);
++  }
++  ZZ_p& operator+=(const ZZ_p& other) { *this = *this + other; return *this; }
++  ZZ_p& operator-=(const ZZ_p& other) { *this = *this - other; return *this; }
++  ZZ_p& operator*=(const ZZ_p& other) { *this = *this * other; return *this; }
++  ZZ_p& operator/=(const ZZ_p& other) { *this = *this / other; return *this; }
++  friend bool operator==(const ZZ_p& left, const ZZ_p& right) { return left.value_ == right.value_; }
++  friend bool operator!=(const ZZ_p& left, const ZZ_p& right) { return left.value_ != right.value_; }
++  friend std::ostream& operator<<(std::ostream& stream, const ZZ_p& value) {
++    return stream << value.value_;
++  }
++private:
++  ZZ value_;
++};
++
++inline ZZ_p operator+(long left, const ZZ_p& right) { return ZZ_p(left) + right; }
++inline ZZ_p operator-(long left, const ZZ_p& right) { return ZZ_p(left) - right; }
++inline ZZ_p operator*(long left, const ZZ_p& right) { return ZZ_p(left) * right; }
++inline ZZ_p operator/(long left, const ZZ_p& right) { return ZZ_p(left) / right; }
++inline ZZ_p operator+(const ZZ_p& left, long right) { return left + ZZ_p(right); }
++inline ZZ_p operator-(const ZZ_p& left, long right) { return left - ZZ_p(right); }
++inline ZZ_p operator*(const ZZ_p& left, long right) { return left * ZZ_p(right); }
++inline ZZ_p operator/(const ZZ_p& left, long right) { return left / ZZ_p(right); }
++
++inline ZZ rep(const ZZ_p& value) { return value.value(); }
++inline ZZ_p to_ZZ_p(const ZZ& value) { return ZZ_p(value); }
++inline ZZ_p to_ZZ_p(long value) { return ZZ_p(value); }
++inline bool IsZero(const ZZ_p& value) { return IsZero(rep(value)); }
++inline bool IsOne(const ZZ_p& value) { return IsOne(rep(value)); }
++inline ZZ_p inv(const ZZ_p& value) { return ZZ_p(1) / value; }
++inline void inv(ZZ_p& out, const ZZ_p& value) { out = inv(value); }
++inline void power(ZZ_p& out, const ZZ_p& value, const ZZ& exponent) {
++  ZZ powered;
++  fmpz_powm(powered.data(), rep(value).data(), exponent.data(), flint_modulus.data());
++  out = ZZ_p(powered);
++}
++inline ZZ_p power(const ZZ_p& value, long exponent) {
++  ZZ powered;
++  fmpz_powm_ui(powered.data(), rep(value).data(), exponent, flint_modulus.data());
++  return ZZ_p(powered);
++}
++inline ZZ_p random_ZZ_p() {
++  ZZ value;
++  if (!IsZero(flint_modulus))
++    fmpz_randm(value.data(), flint_random_state.data(), flint_modulus.data());
++  return ZZ_p(value);
++}
++inline void random(ZZ_p& value) { value = random_ZZ_p(); }
++
++using zz_p = ZZ_p;
++template <class T>
++class FlintVector : public std::vector<T> {
++public:
++  using std::vector<T>::vector;
++  long length() const { return static_cast<long>(this->size()); }
++  void SetLength(long length) { this->resize(static_cast<std::size_t>(length)); }
++};
++
++using vec_ZZ_p = FlintVector<ZZ_p>;
++
++class ZZ_pContext {
++public:
++  ZZ_pContext() : modulus_(flint_modulus) {}
++  explicit ZZ_pContext(const ZZ& modulus) : modulus_(modulus) {}
++  void save() { modulus_ = flint_modulus; }
++  void restore() const { ZZ_p::init(modulus_); }
++private:
++  ZZ modulus_;
++};
++
++using ZZ_pX = FlintPolynomial<ZZ_p>;
++
++template <class T>
++class FlintMatrix {
++public:
++  FlintMatrix() = default;
++  void SetDims(long rows, long columns) {
++    rows_.assign(static_cast<std::size_t>(rows),
++                 std::vector<T>(static_cast<std::size_t>(columns)));
++  }
++  long NumRows() const { return static_cast<long>(rows_.size()); }
++  long NumCols() const { return rows_.empty() ? 0 : static_cast<long>(rows_[0].size()); }
++  std::vector<T>& operator[](long row) { return rows_[static_cast<std::size_t>(row)]; }
++  const std::vector<T>& operator[](long row) const { return rows_[static_cast<std::size_t>(row)]; }
++private:
++  std::vector<std::vector<T>> rows_;
++};
++
++using mat_ZZ = FlintMatrix<ZZ>;
++using mat_ZZ_p = FlintMatrix<ZZ_p>;
++using mat_zz_p = FlintMatrix<zz_p>;
++using mat_RR = FlintMatrix<double>;
++
++template <class Polynomial>
++struct FlintFactorPair {
++  Polynomial a;
++  long b = 0;
++};
++
++template <class Polynomial>
++inline std::ostream& operator<<(std::ostream& stream,
++                               const FlintFactorPair<Polynomial>& factor) {
++  return stream << "[" << factor.a << " " << factor.b << "]";
++}
++
++using pair_ZZX_long = FlintFactorPair<ZZX>;
++using pair_ZZ_pX_long = FlintFactorPair<ZZ_pX>;
++using vec_pair_ZZX_long = FlintVector<pair_ZZX_long>;
++using vec_pair_ZZ_pX_long = FlintVector<pair_ZZ_pX_long>;
++
++inline long deg(const ZZX& polynomial) {
++  return static_cast<long>(polynomial.rep.size()) - 1;
++}
++inline long deg(const ZZ_pX& polynomial) {
++  return static_cast<long>(polynomial.rep.size()) - 1;
++}
++inline ZZ coeff(const ZZX& polynomial, long index) {
++  return index >= 0 && index < static_cast<long>(polynomial.rep.size())
++    ? polynomial.rep[static_cast<std::size_t>(index)] : ZZ(0);
++}
++inline ZZ LeadCoeff(const ZZX& polynomial) { return coeff(polynomial, deg(polynomial)); }
++inline ZZ_p coeff(const ZZ_pX& polynomial, long index) {
++  return index >= 0 && index < static_cast<long>(polynomial.rep.size())
++    ? polynomial.rep[static_cast<std::size_t>(index)] : ZZ_p(0L);
++}
++inline ZZ_p LeadCoeff(const ZZ_pX& polynomial) {
++  return coeff(polynomial, deg(polynomial));
++}
++inline ZZ ConstTerm(const ZZX& polynomial) { return coeff(polynomial, 0); }
++inline ZZ_p ConstTerm(const ZZ_pX& polynomial) { return coeff(polynomial, 0); }
++inline void MakeMonic(ZZ_pX& polynomial) {
++  if (polynomial.rep.empty()) return;
++  const ZZ_p inverse = inv(polynomial.rep.back());
++  polynomial *= inverse;
++}
++template <class Coefficient>
++inline void divide(FlintPolynomial<Coefficient>& output,
++                   const FlintPolynomial<Coefficient>& numerator,
++                   const FlintPolynomial<Coefficient>& denominator) {
++  output = numerator / denominator;
++}
++
++template <class Coefficient>
++inline void SetCoeff(FlintPolynomial<Coefficient>& polynomial, long index,
++                     const Coefficient& coefficient = Coefficient(1)) {
++  if (index < 0) return;
++  if (polynomial.rep.size() <= static_cast<std::size_t>(index))
++    polynomial.rep.resize(static_cast<std::size_t>(index + 1));
++  polynomial.rep[static_cast<std::size_t>(index)] = coefficient;
++  polynomial.normalize();
++}
++
++template <class Coefficient, class Scalar,
++          std::enable_if_t<!std::is_same_v<std::decay_t<Scalar>, Coefficient>, int> = 0>
++inline void SetCoeff(FlintPolynomial<Coefficient>& polynomial, long index,
++                     const Scalar& coefficient) {
++  SetCoeff(polynomial, index, Coefficient(coefficient));
++}
++
++template <class Coefficient>
++inline void SetX(FlintPolynomial<Coefficient>& polynomial) {
++  polynomial.rep.assign({Coefficient(0), Coefficient(1)});
++}
++
++template <class Coefficient>
++inline FlintPolynomial<Coefficient> LeftShift(const FlintPolynomial<Coefficient>& polynomial,
++                                              long count) {
++  FlintPolynomial<Coefficient> out;
++  if (!polynomial.rep.empty()) {
++    out.rep.resize(polynomial.rep.size() + static_cast<std::size_t>(count));
++    std::copy(polynomial.rep.begin(), polynomial.rep.end(), out.rep.begin() + count);
++  }
++  return out;
++}
++
++inline ZZX diff(const ZZX& polynomial) {
++  ZZX out;
++  if (polynomial.rep.size() <= 1) return out;
++  out.rep.resize(polynomial.rep.size() - 1);
++  for (std::size_t index = 1; index < polynomial.rep.size(); ++index)
++    out.rep[index - 1] = polynomial.rep[index] * static_cast<long>(index);
++  out.normalize();
++  return out;
++}
++
++template <class Coefficient>
++inline std::ostream& output_polynomial(std::ostream& stream,
++                                      const FlintPolynomial<Coefficient>& polynomial) {
++  stream << "[";
++  for (std::size_t index = 0; index < polynomial.rep.size(); ++index) {
++    if (index) stream << " ";
++    stream << polynomial.rep[index];
++  }
++  return stream << "]";
++}
++
++inline std::ostream& operator<<(std::ostream& stream, const ZZX& polynomial) {
++  return output_polynomial(stream, polynomial);
++}
++inline std::ostream& operator<<(std::ostream& stream, const ZZ_pX& polynomial) {
++  return output_polynomial(stream, polynomial);
++}
++
++#endif
+diff --git a/libsrc/eclib/flint_convert.h b/libsrc/eclib/flint_convert.h
+new file mode 100644
+index 0000000..b655e54
+--- /dev/null
++++ b/libsrc/eclib/flint_convert.h
+@@ -0,0 +1,27 @@
++#ifndef ECLIB_FLINT_CONVERT_H
++#define ECLIB_FLINT_CONVERT_H
++
++#include "interface.h"
++
++inline void set_fmpz(fmpz_t out, int value) { fmpz_set_si(out, value); }
++inline void set_fmpz(fmpz_t out, long value) { fmpz_set_si(out, value); }
++inline void set_fmpz(fmpz_t out, const ZZ& value) { fmpz_set(out, value.data()); }
++inline void set_fmpz(fmpz_t out, const INT& value) {
++  fmpz_t temporary;
++  value.get_fmpz(temporary);
++  fmpz_set(out, temporary);
++  fmpz_clear(temporary);
++}
++
++inline ZZ ZZ_from_fmpz(const fmpz_t value) {
++  ZZ out;
++  fmpz_set(out.data(), value);
++  return out;
++}
++
++inline void set(int& out, const fmpz_t value) { out = static_cast<int>(fmpz_get_si(value)); }
++inline void set(long& out, const fmpz_t value) { out = fmpz_get_si(value); }
++inline void set(ZZ& out, const fmpz_t value) { fmpz_set(out.data(), value); }
++inline void set(INT& out, const fmpz_t value) { out = INT(const_cast<fmpz*>(value)); }
++
++#endif
+diff --git a/libsrc/eclib/gf.h b/libsrc/eclib/gf.h
+index 9f11909..8c14d51 100644
+--- a/libsrc/eclib/gf.h
++++ b/libsrc/eclib/gf.h
+@@ -27,7 +27,7 @@
+ 
+ #include "marith.h"
+ 
+-extern map<ZZ,ZZ_pContext> ZZ_pContextCache;
++extern thread_local map<ZZ,ZZ_pContext> ZZ_pContextCache;
+ 
+ void ZZ_pContext_init_or_restore(const ZZ& qq);
+ 
+@@ -69,7 +69,7 @@ inline ZZ_p root_of_unity(const galois_field& F, int n)
+   qm1/=n;
+   while(1)
+     {
+-      ZZ_p mu = NTL::random_ZZ_p(); 
++      ZZ_p mu = random_ZZ_p();
+       if(mu==to_ZZ_p(0)) continue;
+       power(mu,mu,qm1);
+       if(mu!=to_ZZ_p(1))  return mu;
+diff --git a/libsrc/eclib/interface.h b/libsrc/eclib/interface.h
+index 1c6d2b7..07e5b87 100644
+--- a/libsrc/eclib/interface.h
++++ b/libsrc/eclib/interface.h
+@@ -33,8 +33,8 @@
+ #define MPFP
+ #endif
+ 
+-#include <limits>
+ #include <iostream>
++#include <limits>
+ #include <sstream>
+ #include <fstream>
+ #include <set>
+@@ -41,11 +41,7 @@
+ #include <vector>
+ #include <map>
+ #include <algorithm>
+-#ifdef _LIBCPP_VERSION
+ #include <numeric>
+-#else
+-#include <ext/numeric>
+-#endif
+ #include <iterator>
+ 
+ #include "templates.h"
+@@ -68,51 +68,11 @@ const double LOG_10_2=0.30102999566398114L;
+ 
+ // integers and rationals
+ 
+-// All NTL includes are here, except for mat_lzz_p.h (only used in
+-// libsrc/matrix.cc) and ZZ_limbs (only used in libsrc/convert.cc)
+-#include <NTL/ZZ.h>
+-#include <NTL/ZZX.h>
+-#include <NTL/ZZXFactoring.h>
+-#include <NTL/RR.h>
+-#include <NTL/mat_RR.h>
+-#include <NTL/ZZ_p.h>
+-#include <NTL/ZZ_pX.h>
+-#include <NTL/ZZ_pXFactoring.h>
+-#include <NTL/mat_ZZ.h>
+-#include <NTL/mat_ZZ_p.h>
+-#include <NTL/mat_poly_ZZ.h>
+-#include <NTL/mat_poly_ZZ_p.h>
+-#include <NTL/LLL.h>
+-
+-// much used NTL classes and functions:
+-using NTL::bit;
+-using NTL::ZZ;
+-using NTL::ZZX;
+-using NTL::mat_ZZ;
+-using NTL::mat_RR;
+-using NTL::RR;
+-using NTL::zz_p;
+-using NTL::ZZ_p;
+-using NTL::ZZ_pContext;
+-using NTL::vec_ZZ_p;
+-using NTL::ZZ_pX;
+-using NTL::mat_zz_p;
+-using NTL::mat_ZZ_p;
+-using NTL::pair_ZZX_long;
+-using NTL::vec_pair_ZZX_long;
+-using NTL::vec_pair_ZZ_pX_long;
+-using NTL::pair_ZZ_pX_long;
+-
+-using NTL::to_ZZ;
+-using NTL::to_ZZ_p;
+-using NTL::to_RR;
+-using NTL::deg;
+-using NTL::coeff;
+-
+-// INT type is an interface to FLINT's fmpz
++// INT type is an interface to FLINT's fmpz.
+ #include "int.h"
+ // RAT type is an interface to FLINT's fmpq
+ #include "frat.h"
++#include "flint_backend.h"
+ 
+ inline int is_long(const ZZ& a) {return (a<=MAXLONG)&&(a>=MINLONG);}
+ inline int is_int(const ZZ& a) {return (a<=MAXINT)&&(a>=MININT);}
+diff --git a/libsrc/eclib/marith.h b/libsrc/eclib/marith.h
+index b3cad7b..124da90 100644
+--- a/libsrc/eclib/marith.h
++++ b/libsrc/eclib/marith.h
+@@ -125,7 +125,7 @@ public:
+   }
+ };
+ 
+-extern extra_prime_class the_extra_primes;  // The one and only instance
++extern thread_local extra_prime_class the_extra_primes;
+ 
+ void initprimes(const string& pfilename, int verb=0);
+ 
+diff --git a/libsrc/eclib/polys.h b/libsrc/eclib/polys.h
+index 2765f4d..a9db894 100644
+--- a/libsrc/eclib/polys.h
++++ b/libsrc/eclib/polys.h
+@@ -37,6 +37,9 @@ vector<ZZ_p> roots(const ZZ_pX& f);
+ vector<bigrational> roots(const vector<ZZ>& coeffs);
+ vector<bigrational> roots(const ZZX& f);
+ vector<ZZ> introots(const ZZX& f);
++vec_pair_ZZ_pX_long berlekamp(const ZZ_pX& f);
++inline vec_pair_ZZ_pX_long CanZass(const ZZ_pX& f, long = 0)
++{ return berlekamp(f); }
+ 
+ vector<ZZ> Introotscubic(const ZZ& a, const ZZ& b, const ZZ& c);
+ vector<ZZ> Introotsquartic(const ZZ& a, const ZZ& b, const ZZ& c,
+@@ -137,7 +140,7 @@ string str(const ZZX& p, const string& var="X");
+ string str(const ZZ_pX& p, const string& var="X");
+ 
+ // factor a primitive (e.g. monic) polynomial
+-NTL::vec_pair_ZZX_long factor(const ZZX& f);
++vec_pair_ZZX_long factor(const ZZX& f);
+ 
+ // display factors of a polynomial:
+ void display_factors(const ZZX& f, ostream&s = cout);
+diff --git a/libsrc/ffmod.cc b/libsrc/ffmod.cc
+index c9bfe46..158ca16 100644
+--- a/libsrc/ffmod.cc
++++ b/libsrc/ffmod.cc
+@@ -27,10 +27,10 @@
+ 
+ #include "eclib/ffmod.h"
+ 
+-galois_field ffmodq::Fq;
+-curvemodq ffmodq::E;
+-ZZ_pX ffmodq::f1;
+-ZZ_pX ffmodq::f2;
++thread_local galois_field ffmodq::Fq;
++thread_local curvemodq ffmodq::E;
++thread_local ZZ_pX ffmodq::f1;
++thread_local ZZ_pX ffmodq::f2;
+ 
+ void ffmodq::init(const curvemodq& EE)
+ {
+diff --git a/libsrc/gf.cc b/libsrc/gf.cc
+index 4c23edb..d0e610a 100644
+--- a/libsrc/gf.cc
++++ b/libsrc/gf.cc
+@@ -23,7 +23,7 @@
+  
+ #include "eclib/gf.h"
+ 
+-map<ZZ,ZZ_pContext> ZZ_pContextCache;
++thread_local map<ZZ,ZZ_pContext> ZZ_pContextCache;
+ 
+ galois_field::galois_field(void)  //dummy
+  :q(to_ZZ(2))
+diff --git a/libsrc/marith.cc b/libsrc/marith.cc
+index 55b2117..be8ae05 100644
+--- a/libsrc/marith.cc
++++ b/libsrc/marith.cc
+@@ -21,11 +21,11 @@
+ //
+ //////////////////////////////////////////////////////////////////////////
+ 
+-// We use the pari C library for factoring
++// FLINT supplies primality testing and integer factorization.
+ 
+ #include <sstream>
+ #include "eclib/marith.h"
+-#include "eclib/pari_interface.h"
++#include <flint/fmpz_factor.h>
+ 
+ // Utilities for debugging output -- for example, from gdb you can give the command
+ //   p show(a)
+@@ -309,7 +309,7 @@ void sqrt_mod_p(long & x, long a, long p) // declared in arith.h
+ // ZZ divisor lists etc
+ //
+ 
+-extra_prime_class the_extra_primes;  // The one and only instance
++thread_local extra_prime_class the_extra_primes;
+ 
+ void initprimes(const string& pfilename, int verb)
+ {
+@@ -435,21 +435,32 @@ vector<ZZ> pdivs_trial(const ZZ& number, int trace)
+ int
+ is_prime(const ZZ& n)
+ {
+-  return is_prime_via_pari(n);
++  return fmpz_is_prime(n.data());
+ }
+ 
+ vector<ZZ>
+ factor(const ZZ& n, int proof=1)
+ {
+-  vector<ZZ> plist = factor_via_pari(n).first;
++  fmpz_factor_t fac;
++  fmpz_factor_init(fac);
++  fmpz_factor(fac, n.data());
++  vector<ZZ> plist;
++  plist.reserve(static_cast<size_t>(fac->num));
++  for (slong index = 0; index < fac->num; ++index)
++    {
++      ZZ prime;
++      fmpz_set(prime.data(), fac->p + index);
++      plist.push_back(prime);
++    }
++  fmpz_factor_clear(fac);
+ 
+   if(proof)
+     for( const auto& p : plist)
+       {
+ 	if(!is_prime(p))
+ 	  {
+-	    cout<<"WARNING:  pari's factor() returned p="<<p
+-		<<" for which pari's isprime(p) FAILS!! Please report.";
++	    cout<<"WARNING: FLINT factorization returned p="<<p
++		<<" for which FLINT primality testing FAILS!! Please report.";
+ 	  }
+       }
+   return plist;
+diff --git a/libsrc/matrix.cc b/libsrc/matrix.cc
+index e450a49..8a07a7e 100644
+--- a/libsrc/matrix.cc
++++ b/libsrc/matrix.cc
+@@ -21,7 +21,7 @@
+ //
+ //////////////////////////////////////////////////////////////////////////
+ 
+-#include "eclib/convert.h"
++#include "eclib/flint_convert.h"
+ #include "eclib/linalg.h"
+ #include "eclib/polys.h"
+ 
+@@ -439,7 +439,24 @@ T Zmat<T>::trace() const
+ template<class T>
+ ZZX Zmat<T>::charpoly() const
+  {
+-   return ::charpoly(*this);
++   if (nro != nco)
++     throw std::invalid_argument("characteristic polynomial requires a square matrix");
++   fmpz_mat_t A;
++   fmpz_mat_init(A, nro, nco);
++   flint_mat_from_mat(A, *this);
++   fmpz_poly_t characteristic;
++   fmpz_poly_init(characteristic);
++   fmpz_mat_charpoly(characteristic, A);
++   ZZX answer;
++   for (slong index = 0; index < fmpz_poly_length(characteristic); ++index)
++     {
++       ZZ coefficient;
++       fmpz_poly_get_coeff_fmpz(coefficient.data(), characteristic, index);
++       SetCoeff(answer, index, coefficient);
++     }
++   fmpz_poly_clear(characteristic);
++   fmpz_mat_clear(A);
++   return answer;
+  }
+ 
+ #if(0)
+@@ -1281,7 +1298,7 @@ void flint_mat_from_mat(fmpz_mat_t& A, const Zmat<T>& M)
+   fmpz_mat_init(A, nr, nc);
+   for(long i=0; i<nr; i++)
+     for(long j=0; j<nc; j++)
+-      fmpz_set(fmpz_mat_entry(A,i,j), *to_FLINT(M(i+1,j+1)));
++      set_fmpz(fmpz_mat_entry(A,i,j), M(i+1,j+1));
+ }
+ template void flint_mat_from_mat<int>(fmpz_mat_t& A, const Zmat<int>& M);
+ template void flint_mat_from_mat<long>(fmpz_mat_t& A, const Zmat<long>& M);
+@@ -1321,7 +1338,13 @@ void mod_mat_from_mat(fmpz_mod_mat_t& A, const fmpz_mod_ctx_t& flint_modulus, co
+   long nr=M.nrows(), nc=M.ncols();
+   for(long i=0; i<nr; i++)
+     for(long j=0; j<nc; j++)
+-      fmpz_mod_mat_set_entry(A,i,j, *to_FLINT(posmod(M(i+1,j+1),pr)), flint_modulus);
++      {
++        fmpz_t entry;
++        fmpz_init(entry);
++        set_fmpz(entry, posmod(M(i+1,j+1),pr));
++        fmpz_mod_mat_set_entry(A,i,j, entry, flint_modulus);
++        fmpz_clear(entry);
++      }
+ }
+ 
+ // create flint matrix (type fmpz_mod_mat_t) copy of a Zmat<ZZ> modulo
+@@ -1371,7 +1394,7 @@ Zmat<ZZ> mat_from_mod_mat(const fmpz_mod_mat_t& A, const fmpz_mod_ctx_t& flint_m
+     for(long j=0; j<nc; j++)
+       {
+         fmpz_t Aij = {*fmpz_mod_mat_entry(A,i,j)};
+-        M(i+1,j+1) = FLINT_to_NTL(Aij);
++        M(i+1,j+1) = ZZ_from_fmpz(Aij);
+       }
+   return M;
+ }
+@@ -1422,7 +1445,7 @@ template<>
+ Zmat<ZZ> ref_mod_p(const Zmat<ZZ>& M, const ZZ& pr)
+ {
+   fmpz_mod_ctx_t flint_modulus;
+-  fmpz_mod_ctx_init(flint_modulus, *to_FLINT(pr));
++  fmpz_mod_ctx_init(flint_modulus, pr.data());
+ 
+   long nr=M.nrows(), nc=M.ncols(), rk;
+   fmpz_mod_mat_t A, R;
+@@ -1683,6 +1706,8 @@ template Zmat<long> LLL<long>(const Zmat<long>& M, Zmat<long>& U);
+ template Zmat<ZZ> LLL<ZZ>(const Zmat<ZZ>& M, Zmat<ZZ>& U);
+ template Zmat<INT> LLL<INT>(const Zmat<INT>& M, Zmat<INT>& U);
+ 
++#ifndef ECLIB_FLINT_RANK_ONLY
++
+ template<class T>
+ mat_ZZ mat_to_mat_ZZ(Zmat<T> A)
+ {
+@@ -1891,6 +1916,8 @@ long nullity(mat_ZZ A)
+   return A.NumRows()-rank(A);
+ }
+ 
++#endif
++
+ ///////////////////////////////////////////////////////////////////////////
+ 
+ // Instantiate Zmat template classes for T=int, long, ZZ, INT
+@@ -2084,4 +2111,3 @@ template long rank_via_ntl<ZZ>(const Zmat<ZZ>& M, const ZZ& pr);
+ template ZZ det_via_ntl<ZZ>(const Zmat<ZZ>& M, const ZZ& pr);
+ 
+ #endif
+-
+diff --git a/libsrc/mrank2.cc b/libsrc/mrank2.cc
+index cfe74ff..e34a189 100644
+--- a/libsrc/mrank2.cc
++++ b/libsrc/mrank2.cc
+@@ -211,10 +211,11 @@ void rank2::find_elsgens(int which, const ZZ& c, const ZZ& d)
+     {
+       cout<<"Support (length "<<ns<<"): "<<supp<<endl;
+     }
+-  if(ns>=NTL_BITS_PER_LONG)
++  constexpr long bits_per_long = std::numeric_limits<unsigned long>::digits;
++  if(ns>=bits_per_long)
+     {
+       cerr<<"Too many primes dividing discriminant!\n";
+-      cerr<<"mwrank cannot handle supports of more than "<<NTL_BITS_PER_LONG<< "primes"<<endl;
++      cerr<<"mwrank cannot handle supports of more than "<<bits_per_long<< "primes"<<endl;
+       cerr<<"Failure in find_elsgens"<<endl;
+       success = 0;
+       return;
+diff --git a/libsrc/p2points.cc b/libsrc/p2points.cc
+index 70992ee..31fe1d7 100644
+--- a/libsrc/p2points.cc
++++ b/libsrc/p2points.cc
+@@ -89,13 +89,17 @@ int eq(const P2Point&P, const P2Point&Q)
+ 
+ void P2Point::getrealcoordinates(bigfloat&x, bigfloat& y) const
+ {
+-  RR zp=to_RR(Z);  
+ #ifdef MPFP
++  RR zp=to_RR(Z);
+   x=to_RR(X)/zp;
+   y=to_RR(Y)/zp;
+ #else
+-  x=to_double(to_RR(X)/zp);
+-  y=to_double(to_RR(Y)/zp);
++  slong exponent_x, exponent_y, exponent_z;
++  const double mantissa_x = fmpz_get_d_2exp(&exponent_x, X.data());
++  const double mantissa_y = fmpz_get_d_2exp(&exponent_y, Y.data());
++  const double mantissa_z = fmpz_get_d_2exp(&exponent_z, Z.data());
++  x=std::ldexp(mantissa_x/mantissa_z, exponent_x-exponent_z);
++  y=std::ldexp(mantissa_y/mantissa_z, exponent_y-exponent_z);
+ #endif
+ #ifdef DEBUG_REALIFY
+   cout<<"realifying P="<<P<<" (NTL version)"<<endl;
+diff --git a/libsrc/eclib/timer.h b/libsrc/eclib/timer.h
+index 6eb012b..09bfa39 100644
+--- a/libsrc/eclib/timer.h
++++ b/libsrc/eclib/timer.h
+@@ -25,13 +25,6 @@
+ #ifndef _ECLIB_TIMER_H
+ #define _ECLIB_TIMER_H      1
+ 
+-// Timer header files
+-#ifdef _WIN32
+-#include <windows.h>
+-#else
+-#include <sys/time.h>
+-#endif
+-
+ #include <unordered_map>
+ 
+ #include "interface.h"
+diff --git a/libsrc/polys.cc b/libsrc/polys.cc
+index 0c200fe..d8499d0 100644
+--- a/libsrc/polys.cc
++++ b/libsrc/polys.cc
+@@ -23,6 +23,105 @@
+ 
+ #include "eclib/polys.h"
+ 
++namespace {
++
++void to_flint(fmpz_poly_t output, const ZZX& input)
++{
++  fmpz_poly_init(output);
++  for (long index = 0; index <= deg(input); ++index)
++    fmpz_poly_set_coeff_fmpz(output, index, coeff(input, index).data());
++}
++
++ZZX from_flint(const fmpz_poly_t input)
++{
++  ZZX output;
++  for (slong index = 0; index < fmpz_poly_length(input); ++index)
++    {
++      ZZ coefficient;
++      fmpz_poly_get_coeff_fmpz(coefficient.data(), input, index);
++      SetCoeff(output, index, coefficient);
++    }
++  return output;
++}
++
++void to_flint(fmpz_mod_poly_t output, const ZZ_pX& input,
++              const fmpz_mod_ctx_t context)
++{
++  fmpz_mod_poly_init(output, context);
++  for (long index = 0; index <= deg(input); ++index)
++    fmpz_mod_poly_set_coeff_fmpz(output, index, rep(coeff(input, index)).data(), context);
++}
++
++ZZ_pX from_flint(const fmpz_mod_poly_t input, const fmpz_mod_ctx_t context)
++{
++  ZZ_pX output;
++  for (slong index = 0; index < fmpz_mod_poly_length(input, context); ++index)
++    {
++      ZZ coefficient;
++      fmpz_mod_poly_get_coeff_fmpz(coefficient.data(), input, index, context);
++      SetCoeff(output, index, to_ZZ_p(coefficient));
++    }
++  return output;
++}
++
++void factor(ZZ& content, vec_pair_ZZX_long& factors, const ZZX& input)
++{
++  fmpz_poly_t polynomial;
++  to_flint(polynomial, input);
++  fmpz_poly_factor_t factorization;
++  fmpz_poly_factor_init(factorization);
++  fmpz_poly_factor(factorization, polynomial);
++  fmpz_set(content.data(), &factorization->c);
++  factors.clear();
++  factors.reserve(static_cast<size_t>(factorization->num));
++  for (slong index = 0; index < factorization->num; ++index)
++    factors.push_back({from_flint(factorization->p + index),
++                       static_cast<long>(factorization->exp[index])});
++  fmpz_poly_factor_clear(factorization);
++  fmpz_poly_clear(polynomial);
++}
++
++vec_pair_ZZ_pX_long factor_mod(const ZZ_pX& input)
++{
++  fmpz_mod_ctx_t context;
++  fmpz_mod_ctx_init(context, flint_modulus.data());
++  fmpz_mod_poly_t polynomial;
++  to_flint(polynomial, input, context);
++  fmpz_mod_poly_factor_t factorization;
++  fmpz_mod_poly_factor_init(factorization, context);
++  fmpz_mod_poly_factor(factorization, polynomial, context);
++  vec_pair_ZZ_pX_long factors;
++  factors.reserve(static_cast<size_t>(factorization->num));
++  for (slong index = 0; index < factorization->num; ++index)
++    factors.push_back({from_flint(factorization->poly + index, context),
++                       static_cast<long>(factorization->exp[index])});
++  fmpz_mod_poly_factor_clear(factorization, context);
++  fmpz_mod_poly_clear(polynomial, context);
++  fmpz_mod_ctx_clear(context);
++  return factors;
++}
++
++} // namespace
++
++ZZX GCD(const ZZX& left, const ZZX& right)
++{
++  fmpz_poly_t a, b, gcd;
++  to_flint(a, left);
++  to_flint(b, right);
++  fmpz_poly_init(gcd);
++  fmpz_poly_gcd(gcd, a, b);
++  ZZX output = from_flint(gcd);
++  fmpz_poly_clear(gcd);
++  fmpz_poly_clear(b);
++  fmpz_poly_clear(a);
++  return output;
++}
++
++vec_pair_ZZ_pX_long berlekamp(const ZZ_pX& polynomial)
++{
++  return factor_mod(polynomial);
++}
++
+ ZZ_pX reduce(const ZZX& f, const galois_field& Fq)
+ {
+   ZZ_pX fmodq;
+@@ -33,16 +132,27 @@ ZZ_pX reduce(const ZZX& f, const galois_field& Fq)
+ 
+ vector<ZZ_p> roots(const ZZ_pX& f)
+ {
+-  // make f monic:
+-  ZZ_pX f1=f;
+-  MakeMonic(f1);
+-  // reduce to distinct roots case:
+-  ZZ_pX X; SetX(X);
+-  ZZ_pX g = PowerXMod(ZZ_p::modulus(),f1)-X;
+-  vec_ZZ_p r; FindRoots(r,GCD(f1,g));
+-  vector<ZZ_p>ans;
+-  for(int i=0; i<r.length(); i++) ans.push_back(r[i]);
+-  return ans;
++  fmpz_mod_ctx_t context;
++  fmpz_mod_ctx_init(context, flint_modulus.data());
++  fmpz_mod_poly_t polynomial;
++  to_flint(polynomial, f, context);
++  fmpz_mod_poly_factor_t root_factors;
++  fmpz_mod_poly_factor_init(root_factors, context);
++  fmpz_mod_poly_roots(root_factors, polynomial, 0, context);
++  vector<ZZ_p> answer;
++  answer.reserve(static_cast<size_t>(root_factors->num));
++  for (slong index = 0; index < root_factors->num; ++index)
++    {
++      const fmpz_mod_poly_struct *factor = root_factors->poly + index;
++      ZZ root;
++      fmpz_neg(root.data(), factor->coeffs);
++      fmpz_mod_set_fmpz(root.data(), root.data(), context);
++      answer.push_back(to_ZZ_p(root));
++    }
++  fmpz_mod_poly_factor_clear(root_factors, context);
++  fmpz_mod_poly_clear(polynomial, context);
++  fmpz_mod_ctx_clear(context);
++  return answer;
+ }
+ 
+ vector<ZZ> rootsmod(const vector<ZZ>& coeffs, ZZ q)
+diff --git a/libsrc/smatrix_elim.cc b/libsrc/smatrix_elim.cc
+index c8398d7..a602172 100644
+--- a/libsrc/smatrix_elim.cc
++++ b/libsrc/smatrix_elim.cc
+@@ -24,6 +24,7 @@
+ // Original version by Luiz Figueiredo
+ 
+ #include "eclib/linalg.h"
++#include <cstring>
+ 
+ //#define TRACE_LISTS
+ //#define TRACE_FIND
+diff --git a/libsrc/subspace.cc b/libsrc/subspace.cc
+index 9a82dcb..6b18781 100644
+--- a/libsrc/subspace.cc
++++ b/libsrc/subspace.cc
+@@ -348,7 +348,7 @@ vector<long> dotperp(long a, int r)
+     {
+       mat_i m(1,r);
+       for (int j=1; j<=r; j++)
+-        m.set(1,j, NTL::bit(a,j-1));
++        m.set(1,j, bit(a,j-1));
+       subspace_i ker = pkernel(m,2); // right kernel mod 2
+       // assert (dim(ker)==r-1);
+       mat_i bas = ker.bas();
+@@ -371,7 +371,7 @@ vector<long> dotperp(const vector<long>& alist, int r)
+   mat_i m(s,r);
+   for (int i=1; i<=s; i++)
+     for (int j=1; j<=r; j++)
+-      m.set(i,j, NTL::bit(alist[i-1],j-1));
++      m.set(i,j, bit(alist[i-1],j-1));
+   subspace_i ker = pkernel(m,2); // right kernel mod 2
+   // assert (ker.dim()==r-s);
+   mat_i bas = ker.bas();
+diff --git a/libsrc/timer.cc b/libsrc/timer.cc
+index 2229175..0c95e3d 100644
+--- a/libsrc/timer.cc
++++ b/libsrc/timer.cc
+@@ -23,15 +23,21 @@
+ //////////////////////////////////////////////////////////////////////////
+  
+ #include "eclib/timer.h"
++#include <chrono>
+ 
+ #ifndef CLK_TCK
+ #define CLK_TCK	CLOCKS_PER_SEC
+ #endif
+ 
+ double starttime,stoptime;
++static double monotonic_seconds()
++{
++  using clock = std::chrono::steady_clock;
++  return std::chrono::duration<double>(clock::now().time_since_epoch()).count();
++}
+ void init_time() { ;}
+-void start_time() { starttime = NTL::GetTime();}
+-void stop_time()  { stoptime  = NTL::GetTime();}
++void start_time() { starttime = monotonic_seconds();}
++void stop_time()  { stoptime  = monotonic_seconds();}
+ void show_time(ostream& s) 
+ {
+   s<<" ("<<(stoptime-starttime)<<" seconds)" << flush; 
+@@ -301,23 +307,7 @@ double timer::average( string name ) {
+  * Accuracy varies over different systems.
+  */
+ double timer::getWallTime() {
+-#ifdef _WIN32
+-  // Windows real time clock
+-  FILETIME  tm;
+-  ULONGLONG t;
+-
+-  GetSystemTimeAsFileTime( &tm );
+-  
+-  t = ((ULONGLONG)tm.dwHighDateTime << 32) | (ULONGLONG)tm.dwLowDateTime;
+-  return (double) t / 10000000.0;
+-#else
+-  // POSIX real time clock
+-  struct timeval tm;
+-
+-  gettimeofday( &tm, NULL );
+-
+-  return (double) tm.tv_sec + (double) tm.tv_usec / 1000000.0;
+-#endif
++  return monotonic_seconds();
+ }
+ 
+ /** 
+diff --git a/libsrc/vector.cc b/libsrc/vector.cc
+index 3b354e5..b07c133 100644
+--- a/libsrc/vector.cc
++++ b/libsrc/vector.cc
+@@ -22,7 +22,6 @@
+ //////////////////////////////////////////////////////////////////////////
+  
+ #include <random>
+-#include "eclib/convert.h"
+ #include "eclib/linalg.h"
+ 
+ // Definitions of member operators and functions:
+@@ -614,11 +613,8 @@ vector<int> random_vector(size_t size, int minv, int maxv, int primitive)
+ {
+   if (size==1 && primitive==1 && minv<=1 and maxv>=1)
+     return {1};
+-  // We use static in order to instantiate the random engine and the
+-  // distribution once only.  It may provoke some thread-safety
+-  // issues.
+   std::uniform_int_distribution<int> distribution(minv, maxv);
+-  static std::default_random_engine generator;
++  static thread_local std::default_random_engine generator;
+ 
+   vector<int> v(size);
+   int cont = 0;
+@@ -639,4 +635,3 @@ template class Zvec<int>;
+ template class Zvec<long>;
+ template class Zvec<ZZ>;
+ template class Zvec<INT>;
+-
+diff --git a/libsrc/version.cc b/libsrc/version.cc
+index 0fb0388..8f2954e 100644
+--- a/libsrc/version.cc
++++ b/libsrc/version.cc
+@@ -44,9 +44,9 @@ void show_version(ostream& os)
+ {
+   os << "eclib version " << VERSION << ", ";
+ #ifdef NO_MPFP
+-  os << "using NTL ZZs but no multiprecision floating point";
++  os << "using FLINT integers and machine floating point";
+ #else
+-  os << "using NTL ZZs and NTL real and complex multiprecision floating point";
++  os << "using FLINT integers and multiprecision floating point";
+ #endif
+   os << endl;
+ }

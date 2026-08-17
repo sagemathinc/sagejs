@@ -26,3 +26,9 @@ not at least as durable as a major forge release.
 Changing an archive requires a normal reviewed source commit updating its
 version and checksum. Do not replace a release asset under an existing name
 without also changing the recorded digest and explaining why.
+
+The FLINT addon additionally downloads an immutable GitHub archive of eclib
+commit `8dca7f18acedf7c2283a5d0e689c269f8258c981`, verifies its SHA-256 digest,
+and applies the tracked FLINT-only rank patch. GitHub's commit-addressed source
+is the canonical location; `SAGEJS_ECLIB_TARBALL` supports an independently
+obtained local copy for offline and release builds.
