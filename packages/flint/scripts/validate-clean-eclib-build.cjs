@@ -64,7 +64,13 @@ function main() {
     }
   }
 
-  const environment = { ...process.env, SAGEJS_NATIVE_PREBUILT: "0" };
+  const environment = {
+    ...process.env,
+    SAGEJS_NATIVE_PREBUILT: "0",
+    // vcpkg otherwise restores user-level binary archives even when its
+    // managed checkout and install prefix are both brand new.
+    VCPKG_BINARY_SOURCES: "clear",
+  };
   run(process.execPath, [join(__dirname, "build.cjs")], { env: environment });
   run(process.execPath, ["--test", "test/eclib-rank.cjs"], {
     env: environment,

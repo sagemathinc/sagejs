@@ -62,12 +62,12 @@ From a fresh worktree with no `packages/flint/.native` or
 pnpm --dir packages/flint validate:eclib:clean
 ```
 
-The command disables native dependency bundles, downloads verified source
-archives into the new worktree, builds the complete dependency prefix and
-addon, runs the focused eclib suite, and inspects the addon's imported
-libraries for PARI or NTL. It supports Linux x64/arm64, macOS arm64, and native
-Windows x64 using the same platform-specific dependency paths as release
-builds.
+The command disables native dependency bundles and vcpkg's user-level binary
+cache, downloads verified source archives into the new worktree, builds the
+complete dependency prefix and addon, runs the focused eclib suite, and
+inspects the addon's imported libraries for PARI or NTL. It supports Linux
+x64/arm64, macOS arm64, and native Windows x64 using the same platform-specific
+dependency paths as release builds.
 
 ## Benchmark
 
