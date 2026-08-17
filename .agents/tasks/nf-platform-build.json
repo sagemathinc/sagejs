@@ -42,11 +42,27 @@
       "commit": "0e8c027ba2945399b0a0e1a9bc084f7855ff1fae",
       "workspace_fingerprint": "d620c91330fb634ff1b8bbf56d8f366515d3c107fd64a23a8debdb85d93dbd8e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint/test/unix-build-deps-source.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.132,
+      "started_at": "2026-08-17T23:15:59.300Z",
+      "commit": "5f8dce178a874ce9ee443f41d7812e61f59a0b41",
+      "workspace_fingerprint": "0c9250c859211294fff1a4038a1ee4ab0f8333e0d537734b6374bd1736406d20",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Fresh Linux x64 dependency assembly originally failed because smalljac's undeclared prime.o target used GNU make's implicit rule without the managed GMP include directory. The change supplies that directory through CPPFLAGS while retaining INCLUDES for smalljac's explicit rules and preserves the existing CFLAGS. A complete clean dependency rebuild on bench-1 then compiled smalljac, the FLINT addon, and all 365 generated FFI adapters. Focused public maximal-order exactness and the direct number-field resource lifecycle passed on bench-1, bench-arm, and native Windows x64; Linux arm64 and Windows were unaffected by the x64-only smalljac path.",
+    "risks": [
+      "No macOS arm64 VM was available, so that required platform remains an external-CI validation gap.",
+      "The focused remote platform receipts used maximal-order base 56e2e239; the only subsequent main-1 change before this lane was generated reference metadata at 0e8c027b."
+    ],
+    "next_steps": [
+      "Retain the macOS arm64 native dependency build in external CI.",
+      "Remove the temporary pinned VM worktrees after any immediate follow-up resource validation."
+    ]
   }
 }
