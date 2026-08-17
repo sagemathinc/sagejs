@@ -4,7 +4,7 @@
   "id": "sage-curve-correctness",
   "title": "Correct Sage curve sampling semantics",
   "lane": "graphics",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Fix constant plots, segmented discontinuities, exclusions and pole detection, fill semantics, imaginary tolerance, and true z-order while preserving stable PlotSpec intent and Sage 10.9 differential behavior.",
   "base_commit": "00a84bf556eacf9689d330253d51152231e11168",
@@ -36,13 +36,64 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm test:baselib:strict",
-    "pnpm test:integration"
+    "node --test test/graphics-curve-semantics.cjs",
+    "node bench/graphics-curve-sampling.cjs --check",
+    "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/graphics-curve-semantics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.449,
+      "started_at": "2026-08-17T07:40:01.696Z",
+      "commit": "35fdfa66fab513e864044dbd674f38cbc6146a3a",
+      "workspace_fingerprint": "af5d0d58705610051e266e108204a7e0eb3978505e36ba9e4cb2324f248e7d99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/graphics-curve-semantics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.44,
+      "started_at": "2026-08-17T07:40:08.489Z",
+      "commit": "35fdfa66fab513e864044dbd674f38cbc6146a3a",
+      "workspace_fingerprint": "af5d0d58705610051e266e108204a7e0eb3978505e36ba9e4cb2324f248e7d99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.465,
+      "started_at": "2026-08-17T07:40:10.689Z",
+      "commit": "35fdfa66fab513e864044dbd674f38cbc6146a3a",
+      "workspace_fingerprint": "af5d0d58705610051e266e108204a7e0eb3978505e36ba9e4cb2324f248e7d99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/graphics-curve-sampling.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.353,
+      "started_at": "2026-08-17T07:40:35.752Z",
+      "commit": "35fdfa66fab513e864044dbd674f38cbc6146a3a",
+      "workspace_fingerprint": "af5d0d58705610051e266e108204a7e0eb3978505e36ba9e4cb2324f248e7d99",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented strict ordinary-Python Sage curve sampling and planning, a public sage.plot.plot wrapper, exact Sage 10.9 fixtures, segmented PlotSpec lowering, structured diagnostics, fill semantics, imaginary-tolerance handling, explicit sample guards, true z-order, and a phase-separated 10k/100k benchmark. Focused compiled and native-disabled suites cover constants, nonfinite midpoints, explicit exclusions, detected tan poles, endpoint singularities, fill-to-axis and fill-between-curves, symbolic and callable functions, initial points, empty lists, provenance, option rejection, and z-order independent of legend order.",
+    "risks": [
+      "The isolated branch intentionally contains cherry-picked PlotSpec and primitive dependencies, so parallel:check reports those dependency-owned files as unclaimed; integrate through the primitive lane's clean superset rather than cherry-picking this branch wholesale.",
+      "The 100,000-point PlotSpec materialization median is about 7.9 seconds and only narrowly passes the temporary 8-second budget; the integration lane owns the planned flat-coordinate materialization fast path.",
+      "architecture:check currently stops at the centrally owned plot-spec lazy-package size budget (65,784 bytes over a 50,000-byte cap). The full integration tier was interrupted after widespread stale native-cache failures caused by concurrent builds; its actionable plotting failures are the centrally owned frontend surface snapshot and a primitive fixture missing default zorder=2.",
+      "Linux x64 is the only platform exercised in this lane; required Linux arm64, native Windows x64, and macOS arm64 remain integration/CI validation."
+    ],
+    "next_steps": [
+      "Integrate curve-only follow-up 35fdfa66 through the primitive lane's clean post-root chain; do not import this branch's duplicate dependency history.",
+      "Raise or repartition the central plot-spec package budget, refresh the plotting surface snapshot, and update the primitive default-zorder fixture.",
+      "Apply the integration-owned flat-coordinate PlotSpec fast path, then rerun the focused benchmark and broad integration tier from a quiescent primary build."
+    ]
   }
 }
