@@ -1,0 +1,121 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-om-stress",
+  "title": "Higher OM stress matrix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend the largest shared fail-closed higher-order OM and MaxMin boundary with exact scalable stress, lattice, certificate, and performance evidence",
+  "base_commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-maxmin.cjs",
+    "test/fixtures/number-field-om-maxmin.json",
+    "bench/number-field-om-maxmin.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/2405.13577"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath via /home/user/bin/sagelite: discriminants, index, and maximal-order basis",
+      "PARI/GP nfinit: discriminants and exact index",
+      "Hecke 0.39.21 at eab7e5566e56d8864fe9cd7b895811ab9df2fe32: discriminant, index, and basis matrix"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-om-maxmin.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm parallel:check",
+    "pnpm test:native",
+    "node bench/number-field-om-maxmin.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.294,
+      "started_at": "2026-08-17T23:13:13.159Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.958,
+      "started_at": "2026-08-17T23:13:36.027Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.036,
+      "started_at": "2026-08-17T23:13:57.711Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.738,
+      "started_at": "2026-08-17T23:14:05.500Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.719,
+      "started_at": "2026-08-17T23:14:17.800Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.249,
+      "started_at": "2026-08-17T23:14:23.120Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "d6fa5b818d0507e6eabe1a52f3df9095061ddbb4b394cdcab3d4a63dfc60c5ca",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extends the bounded binary OM lane to a nonlinear first residual sibling plus several terminal higher sides sharing a degree-raised representative. The GMN Section 5.5 degree-12 example now yields an inspectable three-branch type trace, exact index 39, deterministic terminal quotient selection, and a certified triangular lattice. CPython and Sage.js validate seven translated generators and reject corrupted basis/index evidence.",
+    "risks": [
+      "The bounded higher residual coefficient map still supports only binary linear terminal residual factors of lattice length one.",
+      "Dynamic Sage.js OM is slower than the native maximal-overorder path on the new degree-12 case, so branched higher quotient trees remain explicitly ineligible for automatic selection."
+    ],
+    "next_steps": [
+      "Generalize higher residual arithmetic to nonlinear extension fields and recursive representative refinement.",
+      "Source-transparently compile measured polynomial and closure-check loops before reconsidering automatic selection.",
+      "Run broad native and platform tiers after integration on main-1."
+    ]
+  }
+}

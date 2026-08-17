@@ -71,6 +71,10 @@ for case in cases:
             for level in result.type_tree.types[0].levels
             if not level.optimized_away
         ],
+        "branch_slopes": [
+            [list(level.slope.to_pair()) for level in branch.levels]
+            for branch in result.type_tree.types
+        ],
         "level_index_evidence": [
             [
                 [
@@ -104,6 +108,8 @@ for case in cases:
         item["common_rows"] = [list(row) for row in certificate.common_denominator_numerators]
         item["maxmin_branch_count"] = len(certificate.maxmin.branch_order)
         item["maxmin_maximality_checked"] = certificate.maxmin.maximality_checked
+        item["selection_kind"] = certificate.maxmin.selection_kind
+        item["basis_kind"] = certificate.basis_kind
     answer.append(item)
 
 zero = RationalValue(0)
@@ -170,6 +176,15 @@ function checkWitness(output) {
       );
       assert.deepEqual(actual.active_slopes, expected.expected_active_slopes);
     }
+    if (expected.expected_branch_slopes !== undefined) {
+      assert.deepEqual(actual.branch_slopes, expected.expected_branch_slopes);
+      assert.deepEqual(
+        actual.level_index_evidence.map((branch) =>
+          branch.map(([contribution]) => contribution),
+        ),
+        expected.expected_level_index_contributions,
+      );
+    }
     assert.ok(
       actual.residual_field_degrees.every(
         (degree) => degree === expected.expected_residual_field_degree,
@@ -187,6 +202,10 @@ function checkWitness(output) {
       assert.deepEqual(actual.basis, expected.expected_basis);
       assert.equal(actual.maxmin_branch_count, expected.expected_type_count ?? 1);
       assert.equal(actual.maxmin_maximality_checked, true);
+      if (expected.expected_selection_kind !== undefined) {
+        assert.equal(actual.selection_kind, expected.expected_selection_kind);
+        assert.equal(actual.basis_kind, expected.expected_basis_kind);
+      }
       assert.deepEqual(actual.validation, {
         valid: true,
         contains_equation_order: true,
@@ -208,7 +227,8 @@ function checkWitness(output) {
             .some(
               ([index, optimized, evidence]) =>
                 (index === 0 && optimized) ||
-                evidence.startsWith("gmn-theorem-3.3-quotient-index="),
+                evidence.startsWith("gmn-theorem-3.3-quotient-index=") ||
+                evidence.startsWith("gmn-terminal-side;"),
             ),
         );
       }
@@ -314,6 +334,47 @@ if unsupported.complete or unsupported.incomplete_states() != ("higher-residual-
     raise AssertionError("unsupported higher residue was not rejected explicitly")
 if not validate_type_tree(unsupported).valid:
     raise AssertionError("the unsupported higher certificate did not validate")
+gmn_polynomial = (832, -256, -288, 256, -80, 128, 80, 32, 60, 0, 14, 0, 1)
+gmn = regular_local_basis(
+    gmn_polynomial,
+    2,
+    local_discriminant_valuation=97,
+)
+last = gmn.certificate.basis[-1]
+corrupted_basis = gmn.certificate.basis[:-1] + (
+    TriangularBasisElement(
+        last.degree,
+        last.numerator,
+        last.denominator_exponent - 1,
+        last.denominator // 2,
+        RationalValue(last.denominator_exponent - 1),
+    ),
+)
+gmn_validation = validate_triangular_basis(
+    gmn_polynomial,
+    2,
+    gmn.type_tree,
+    corrupted_basis,
+    39,
+)
+if gmn_validation.valid or gmn_validation.local_index_matches:
+    raise AssertionError("corrupted higher terminal quotient index was accepted")
+tree = gmn.type_tree
+corrupted_tree = type(tree)(
+    tree.polynomial,
+    tree.prime,
+    tree.initial_factors,
+    tree.types,
+    tree.expected_index_valuation - 1,
+    tree.complete,
+    tree.precision,
+    tree.max_enumerated_candidates,
+    tree.max_representative_refinements,
+    tree.max_type_depth,
+    tree.certificate_id,
+)
+if validate_type_tree(corrupted_tree).valid:
+    raise AssertionError("corrupted higher polygon index evidence was accepted")
 try:
     build_om_type_tree((-8, 0, 1), 4)
 except OMDomainError:
@@ -416,6 +477,93 @@ print(json.dumps(answer))
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [
       [2, true, 9],
+    ]);
+  }
+});
+
+test("OM stress matrix is stable under equivalent translated generators", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_maxmin import regular_local_basis
+
+def binomial(n, k):
+    answer = 1
+    for index in range(1, k + 1):
+        answer = answer * (n - k + index) // index
+    return answer
+
+def translate(polynomial, offset):
+    answer = [0] * len(polynomial)
+    for degree, coefficient in enumerate(polynomial):
+        for target in range(degree + 1):
+            answer[target] += (
+                coefficient
+                * binomial(degree, target)
+                * offset ** (degree - target)
+            )
+    return tuple(answer)
+
+families = (
+    (
+        (832, -256, -288, 256, -80, 128, 80, 32, 60, 0, 14, 0, 1),
+        97,
+        39,
+        tuple(range(-3, 4)),
+        "gmn-terminal-quotients",
+    ),
+    (
+        tuple([-(3 * 2 ** 16)] + [0] * 15 + [1]),
+        304,
+        120,
+        (-1, 0, 1),
+        None,
+    ),
+)
+answer = []
+for polynomial, discriminant_valuation, expected_index, offsets, selection_kind in families:
+    identifiers = []
+    for offset in offsets:
+        result = regular_local_basis(
+            translate(polynomial, offset),
+            2,
+            local_discriminant_valuation=discriminant_valuation,
+            differential_evidence=selection_kind is not None,
+        )
+        if result.status != "complete" or result.certificate is None:
+            raise AssertionError((offset, result.reason))
+        if (
+            result.certificate.local_index_valuation != expected_index
+            or not result.certificate.validation.valid
+            or result.selector.auto_selectable
+        ):
+            raise AssertionError((offset, result.certificate.validation))
+        if (
+            selection_kind is not None
+            and result.certificate.maxmin.selection_kind != selection_kind
+        ):
+            raise AssertionError((offset, result.certificate.maxmin.selection_kind))
+        identifiers.append(result.type_tree.certificate_id)
+    if len(set(identifiers)) != len(identifiers):
+        raise AssertionError("translated generators reused a type certificate")
+    answer.append([len(offsets), expected_index])
+print(json.dumps(answer))
+`;
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [
+      [7, 39],
+      [3, 120],
     ]);
   }
 });

@@ -26,13 +26,17 @@ from .om_types import (
     Polynomial,
     RationalValue,
     build_om_type_tree,
+    higher_newton_polygon,
+    maclane_integer_valuation,
     maclane_valuation,
     modular_divmod,
+    newton_polygon,
     normalize_polynomial,
     phi_quotients,
     polynomial_degree,
     polynomial_divmod_monic,
     polynomial_multiply,
+    polynomial_power,
     representative_from_level,
     validate_type_tree,
 )
@@ -70,6 +74,7 @@ class MaxMinCandidate(ImmutableOMRecord):
 
 @dataclass
 class MaxMinCertificate(ImmutableOMRecord):
+    selection_kind: str
     branch_order: tuple[str, ...]
     candidates: tuple[MaxMinCandidate, ...]
     terminal_multi_index: tuple[int, ...]
@@ -242,6 +247,7 @@ def maxmin_select(
         )
         indices[selected] += 1
     provisional = MaxMinCertificate(
+        "stainsby-maxmin",
         tuple(table.branch_id for table in tables),
         tuple(candidates),
         tuple(indices),
@@ -257,6 +263,7 @@ def maxmin_select(
         max_combinations=max_combinations,
     )
     return MaxMinCertificate(
+        provisional.selection_kind,
         provisional.branch_order,
         provisional.candidates,
         provisional.terminal_multi_index,
@@ -464,12 +471,28 @@ def selector_metrics(
     else:
         recommendation = "round2-or-round4"
         reason = "bounded input is too small to justify OM dispatch overhead"
+    higher_keys = tuple(
+        branch.levels[-1].key_polynomial
+        for branch in tree.types
+        if len(branch.levels) > 1
+    )
+    has_branched_higher_quotients = False
+    for left_index, key in enumerate(higher_keys):
+        for other in higher_keys[left_index + 1 :]:
+            if key == other:
+                has_branched_higher_quotients = True
+                break
+        if has_branched_higher_quotients:
+            break
     auto_selectable = (
         differential_evidence
         and tree.complete
         and recommendation == "om-maxmin-candidate"
+        and not has_branched_higher_quotients
     )
-    if recommendation == "om-maxmin-candidate" and not differential_evidence:
+    if has_branched_higher_quotients:
+        reason += "; branched higher quotients await crossover evidence"
+    elif recommendation == "om-maxmin-candidate" and not differential_evidence:
         reason += "; auto-selection awaits integrated differential evidence"
     return OMSelectorMetrics(
         degree,
@@ -697,6 +720,171 @@ def _bounded_branch_table(
     return LocalNumeratorTable(branch.branch_id, tuple(numerators), tuple(valuations))
 
 
+def _higher_terminal_quotient_selection(
+    tree: OMTypeTree,
+) -> MaxMinCertificate | None:
+    """Select GMN terminal-side quotients for one branched binary type.
+
+    This is the bounded quotient-basis construction of GMN Section 5.5.  It
+    applies when a linear initial type has both terminal first-order branches
+    and at least two terminal second-order sides sharing one degree-raising
+    representative.  The theorem's certified valuation bound is attached to
+    every candidate, the maximal candidate of each triangular degree is
+    selected deterministically, and the resulting lattice is then checked
+    independently for containment, multiplication closure, and exact index.
+    """
+    if (
+        len(tree.initial_factors) != 1
+        or polynomial_degree(tree.initial_factors[0].polynomial) != 1
+    ):
+        return None
+    higher = tuple(branch for branch in tree.types if len(branch.levels) == 2)
+    direct = tuple(branch for branch in tree.types if len(branch.levels) == 1)
+    if len(higher) < 2 or not direct:
+        return None
+    higher_key = higher[0].levels[-1].key_polynomial
+    prior_levels = higher[0].levels[:-1]
+    if any(
+        branch.levels[-1].key_polynomial != higher_key
+        or tuple(
+            (level.key_polynomial, level.slope, level.residual_factor)
+            for level in branch.levels[:-1]
+        )
+        != tuple(
+            (level.key_polynomial, level.slope, level.residual_factor)
+            for level in prior_levels
+        )
+        for branch in higher
+    ):
+        return None
+    first_key = prior_levels[-1].key_polynomial
+    if polynomial_degree(first_key) != 1:
+        return None
+    sides = higher_newton_polygon(
+        tree.polynomial,
+        tree.prime,
+        higher_key,
+        prior_levels,
+    )
+    if len(sides) != len(higher):
+        return None
+    higher_slopes = tuple(branch.levels[-1].slope for branch in higher)
+    if tuple(side.slope for side in sides) != higher_slopes:
+        return None
+    degree = polynomial_degree(tree.polynomial)
+    first_quotients = phi_quotients(tree.polynomial, first_key)
+    higher_quotients = phi_quotients(tree.polynomial, higher_key)
+    pools: list[list[tuple[Polynomial, RationalValue]]] = [
+        [] for _index in range(degree)
+    ]
+    first_sides = newton_polygon(tree.polynomial, tree.prime, first_key)
+    if not first_sides:
+        return None
+    first_key_value = maclane_integer_valuation(first_key, tree.prime, ())
+    if first_key_value is None:
+        return None
+    direct_degree = sum(branch.branch_degree for branch in direct)
+    for candidate_degree in range(direct_degree):
+        divisions = degree - candidate_degree
+        quotient_index = divisions - 1
+        if quotient_index < 0 or quotient_index >= len(first_quotients):
+            return None
+        containing = tuple(
+            side
+            for side in first_sides
+            if side.left.abscissa <= divisions <= side.right.abscissa
+        )
+        if len(containing) != 1:
+            return None
+        ordinate = containing[0].ordinate_at(divisions)
+        bound = ordinate - divisions * first_key_value
+        pools[candidate_degree].append((first_quotients[quotient_index], bound))
+    base_degree = polynomial_degree(higher_key)
+    base_numerators = tuple(
+        polynomial_power(first_key, exponent) for exponent in range(base_degree)
+    )
+    previous_value = maclane_integer_valuation(
+        higher_key,
+        tree.prime,
+        prior_levels,
+    )
+    if previous_value is None:
+        return None
+    previous_ramification = 1
+    for level in prior_levels:
+        if not level.optimized_away:
+            previous_ramification *= level.ramification_index
+    for side in sides:
+        for quotient_number in range(
+            side.left.abscissa + 1,
+            side.right.abscissa + 1,
+        ):
+            quotient_index = quotient_number - 1
+            if quotient_index < 0 or quotient_index >= len(higher_quotients):
+                return None
+            quotient = higher_quotients[quotient_index]
+            for base in base_numerators:
+                candidate = polynomial_multiply(quotient, base)
+                candidate_degree = polynomial_degree(candidate)
+                if candidate_degree < 0 or candidate_degree >= degree:
+                    return None
+                base_value = maclane_valuation(base, tree.prime, prior_levels)
+                if base_value is None:
+                    return None
+                ordinate = side.ordinate_at(quotient_number)
+                quotient_bound = (
+                    ordinate - quotient_number * previous_value
+                ) / previous_ramification
+                pools[candidate_degree].append((candidate, quotient_bound + base_value))
+    candidates: list[MaxMinCandidate] = []
+    comparisons = 0
+    for candidate_degree, pool in enumerate(pools):
+        unique_values: list[tuple[Polynomial, RationalValue]] = []
+        for item in pool:
+            if item not in unique_values:
+                unique_values.append(item)
+        unique = tuple(unique_values)
+        if not unique:
+            return None
+        best: MaxMinCandidate | None = None
+        for source_index, (numerator, certified_bound) in enumerate(unique):
+            if polynomial_degree(numerator) != candidate_degree:
+                return None
+            values = [certified_bound for _branch in tree.types]
+            minimum = certified_bound
+            selected_branch = 0
+            candidate = MaxMinCandidate(
+                candidate_degree,
+                (source_index,),
+                numerator,
+                tuple(values),
+                minimum,
+                selected_branch,
+            )
+            comparisons += 1
+            if (
+                best is None
+                or best.minimum < candidate.minimum
+                or (
+                    best.minimum == candidate.minimum
+                    and candidate.numerator < best.numerator
+                )
+            ):
+                best = candidate
+        if best is None:
+            return None
+        candidates.append(best)
+    return MaxMinCertificate(
+        "gmn-terminal-quotients",
+        tuple(branch.branch_id for branch in tree.types),
+        tuple(candidates),
+        (),
+        comparisons,
+        True,
+        (),
+    )
+
+
 def regular_local_basis(
     polynomial: Polynomial,
     prime: int,
@@ -739,11 +927,16 @@ def regular_local_basis(
             _not_applicable_result(tree, metrics, message),
         )
     try:
-        tables = tuple(
-            _bounded_branch_table(tree, branch_index)
-            for branch_index in range(len(tree.types))
-        )
-        maxmin = maxmin_select(tables)
+        terminal_selection = _higher_terminal_quotient_selection(tree)
+        if terminal_selection is None:
+            tables = tuple(
+                _bounded_branch_table(tree, branch_index)
+                for branch_index in range(len(tree.types))
+            )
+            maxmin = maxmin_select(tables)
+        else:
+            tables = ()
+            maxmin = terminal_selection
     except (OMDomainError, ArithmeticError) as error:
         message = "bounded quotient/MaxMin construction stopped: " + str(error)
         return LocalBasisResult(
@@ -796,7 +989,11 @@ def regular_local_basis(
         tree.expected_index_valuation,
         common_denominator,
         tuple(common_rows),
-        "certified-triangular-p-integral",
+        (
+            "certified-higher-terminal-quotients"
+            if maxmin.selection_kind == "gmn-terminal-quotients"
+            else "certified-triangular-p-integral"
+        ),
         validation,
     )
     if not validation.valid:
@@ -858,6 +1055,7 @@ def regular_local_basis(
             "multiplication_closed": validation.multiplication_closed,
             "locally_maximal": validation.locally_maximal,
             "maxmin_maximality_checked": maxmin.maximality_checked,
+            "maxmin_selection_kind": maxmin.selection_kind,
             "maxmin_branch_count": len(maxmin.branch_order),
             "maxmin_comparison_count": maxmin.comparison_count,
             "selector": _selector_evidence(metrics),

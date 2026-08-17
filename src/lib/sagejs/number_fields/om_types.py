@@ -720,6 +720,30 @@ def polygon_index(sides: tuple[NewtonSide, ...]) -> int:
     return total
 
 
+def relative_polygon_side_indices(
+    sides: tuple[NewtonSide, ...],
+) -> tuple[int, ...]:
+    """Return the Montes index contribution assigned to each higher side.
+
+    Higher polygon indices count integral points below the polygon and strictly
+    above the horizontal line through its final point.  Assigning each lattice
+    abscissa to its containing side makes the evidence additive even when a
+    higher type branches through several slopes.
+    """
+    if not sides:
+        return ()
+    baseline = sides[-1].right.ordinate
+    answer: list[int] = []
+    for side in sides:
+        contribution = 0
+        for abscissa in range(side.left.abscissa + 1, side.right.abscissa + 1):
+            relative = side.ordinate_at(abscissa) - baseline
+            if relative.numerator > 0:
+                contribution += relative.floor()
+        answer.append(contribution)
+    return tuple(answer)
+
+
 def residual_polynomial(
     expansion: tuple[Polynomial, ...],
     side: NewtonSide,
@@ -1020,6 +1044,33 @@ def _ramification_product(levels: tuple[OMLevel, ...]) -> int:
     return product
 
 
+def _residual_degree_product(levels: tuple[OMLevel, ...]) -> int:
+    product = 1
+    for level in _active_levels(levels):
+        product *= level.residue_degree
+    return product
+
+
+def _level_with_index(level: OMLevel, contribution: int, evidence: str) -> OMLevel:
+    return OMLevel(
+        level.order,
+        level.key_polynomial,
+        level.key_value,
+        level.slope,
+        level.residual_field_modulus,
+        level.residual_polynomial,
+        level.residual_factor,
+        level.ramification_index,
+        level.residue_degree,
+        level.multiplicity,
+        contribution,
+        level.representative_precision,
+        level.representative_step,
+        level.optimized_away,
+        evidence,
+    )
+
+
 def _higher_quotient_index(
     polynomial: Polynomial,
     prime: int,
@@ -1069,23 +1120,23 @@ def _analyze_binary_linear_higher_key(
     polynomial: Polynomial,
     prime: int,
     initial_factor: ModularFactor,
-    factor_index: int,
+    parent_branch_id: str,
     representative: Polynomial,
     prior_levels: tuple[OMLevel, ...],
-    expected_factor_index: int,
+    expected_branch_degree: int,
     maximum_valuation: int,
     *,
     max_type_depth: int,
 ) -> tuple[tuple[OMType, ...], int]:
-    """Certify one degree-raising binary type with linear higher residue.
+    """Certify degree-raising binary types with linear higher residues.
 
-    In this bounded domain the residue fields at every level are `F_2`, and a
-    side of lattice length one has the unique nonzero monic linear residual
-    polynomial `y+1`.  Thus no unimplemented higher residual coefficient map is
-    hidden by this shortcut.  Quotient denominators must independently recover
-    the full Ore index before the branch is declared complete.
+    In this bounded domain the residue fields at every level are `F_2`, and
+    every side of lattice length one has the unique nonzero monic linear
+    residual polynomial `y+1`.  Thus no unimplemented higher residual
+    coefficient map is hidden by this shortcut.  Multiple terminal sides are
+    retained as separate branches, with exact weighted Montes index evidence.
     """
-    prefix = "f" + str(factor_index) + "o" + str(len(prior_levels) + 1)
+    prefix = parent_branch_id + "o" + str(len(prior_levels) + 1)
     factor_degree = polynomial_degree(initial_factor.polynomial)
     active = _active_levels(prior_levels)
     if len(prior_levels) >= max_type_depth:
@@ -1096,68 +1147,97 @@ def _analyze_binary_linear_higher_key(
         state = "higher-residual-extension-unsupported"
     else:
         sides = higher_newton_polygon(polynomial, prime, representative, active)
-        if len(sides) != 1:
-            state = "higher-multiple-sides-unsupported"
-        elif sides[0].lattice_length() != 1:
+        if not sides:
+            state = "higher-no-negative-side"
+        elif any(side.lattice_length() != 1 for side in sides):
             state = "higher-residual-degree-unsupported"
         else:
-            side = sides[0]
             previous_value = maclane_integer_valuation(representative, prime, active)
             if previous_value is None:
                 raise ArithmeticError("a higher representative has infinite value")
             previous_ramification = _ramification_product(active)
-            quotient_index = _higher_quotient_index(
-                polynomial,
-                prime,
-                representative,
-                side,
-                active,
+            previous_residue_degree = _residual_degree_product(active)
+            index_weight = factor_degree * previous_residue_degree
+            side_indices = relative_polygon_side_indices(sides)
+            branch_degrees = tuple(
+                factor_degree
+                * previous_ramification
+                * previous_residue_degree
+                * (side.right.abscissa - side.left.abscissa)
+                for side in sides
             )
-            if quotient_index != expected_factor_index:
-                state = "higher-quotient-index-mismatch"
-            else:
-                key_value = RationalValue(
-                    side.ramification_index * previous_value + side.height,
-                    side.ramification_index * previous_ramification,
-                )
-                higher_level = OMLevel(
-                    len(active) + 1,
-                    representative,
-                    key_value,
-                    side.slope,
-                    (0, 1),
-                    ((1,), (1,)),
-                    ((1,), (1,)),
-                    side.ramification_index,
-                    1,
-                    1,
-                    0,
-                    maximum_valuation + len(prior_levels) + 1,
-                    len(prior_levels),
-                    False,
-                    "gmn-theorem-3.3-quotient-index=" + str(quotient_index),
-                )
-                branch_degree = (
-                    factor_degree * previous_ramification * side.ramification_index
-                )
-                if branch_degree == polynomial_degree(polynomial):
-                    return (
-                        (
-                            OMType(
-                                prefix + "s0r0",
-                                prefix,
-                                prime,
-                                initial_factor.polynomial,
-                                initial_factor.multiplicity,
-                                prior_levels + (higher_level,),
-                                branch_degree,
-                                True,
-                                "complete",
+            if sum(branch_degrees) == expected_branch_degree:
+                branches: list[OMType] = []
+                for side_index, (side, branch_degree, side_index_value) in enumerate(
+                    zip(sides, branch_degrees, side_indices, strict=True)
+                ):
+                    branch_levels = prior_levels
+                    if side_index > 0 and branch_levels:
+                        branch_levels = branch_levels[:-1] + (
+                            _level_with_index(
+                                branch_levels[-1],
+                                0,
+                                "shared-first-order-branch",
                             ),
-                        ),
-                        expected_factor_index,
+                        )
+                    weighted_index = index_weight * side_index_value
+                    if len(sides) == 1:
+                        quotient_index = _higher_quotient_index(
+                            polynomial,
+                            prime,
+                            representative,
+                            side,
+                            active,
+                        )
+                        index_evidence = (
+                            "gmn-theorem-3.3-quotient-index="
+                            + str(quotient_index)
+                            + ";montes-higher-polygon-index="
+                            + str(weighted_index)
+                        )
+                    else:
+                        index_evidence = (
+                            "gmn-terminal-side;montes-higher-polygon-index="
+                            + str(weighted_index)
+                        )
+                    key_value = RationalValue(
+                        side.ramification_index * previous_value + side.height,
+                        side.ramification_index * previous_ramification,
                     )
-                state = "higher-local-degree-mismatch"
+                    higher_level = OMLevel(
+                        len(active) + 1,
+                        representative,
+                        key_value,
+                        side.slope,
+                        (0, 1),
+                        ((1,), (1,)),
+                        ((1,), (1,)),
+                        side.ramification_index,
+                        1,
+                        1,
+                        weighted_index,
+                        maximum_valuation + len(prior_levels) + 1,
+                        len(prior_levels),
+                        False,
+                        index_evidence,
+                    )
+                    branches.append(
+                        OMType(
+                            prefix + "s" + str(side_index) + "r0",
+                            prefix,
+                            prime,
+                            initial_factor.polynomial,
+                            initial_factor.multiplicity,
+                            branch_levels + (higher_level,),
+                            branch_degree,
+                            True,
+                            "complete",
+                        )
+                    )
+                return tuple(branches), sum(
+                    index_weight * value for value in side_indices
+                )
+            state = "higher-local-degree-mismatch"
     return (
         (
             OMType(
@@ -1167,12 +1247,12 @@ def _analyze_binary_linear_higher_key(
                 initial_factor.polynomial,
                 initial_factor.multiplicity,
                 prior_levels,
-                polynomial_degree(polynomial),
+                expected_branch_degree,
                 False,
                 state,
             ),
         ),
-        expected_factor_index,
+        0,
     )
 
 
@@ -1306,16 +1386,20 @@ def _analyze_bounded_key(
                 "ore-first-order-index",
             )
             if state == "requires-degree-raising-representative":
-                return _analyze_binary_linear_higher_key(
+                higher_branches, higher_index = _analyze_binary_linear_higher_key(
                     polynomial,
                     prime,
                     initial_factor,
-                    factor_index,
+                    prefix + "s0r0",
                     representative,
                     prior_levels + (level,),
-                    factor_degree * polygon_index(sides),
+                    branch_degree,
                     maximum_valuation,
                     max_type_depth=max_type_depth,
+                )
+                return (
+                    higher_branches,
+                    factor_degree * polygon_index(sides) + higher_index,
                 )
             return (
                 (
@@ -1335,6 +1419,7 @@ def _analyze_bounded_key(
             )
 
     branches: list[OMType] = []
+    higher_index_contribution = 0
     for side_index, (side, residual, residual_factors) in enumerate(residual_data):
         branch_prefix = prefix + "s" + str(side_index)
         for residual_index, residual_factor in enumerate(residual_factors):
@@ -1363,6 +1448,28 @@ def _analyze_bounded_key(
                 * residual_degree
                 * residual_factor.multiplicity
             )
+            if residual_factor.multiplicity > 1 and residual_degree == 1:
+                representative = representative_from_residual_factor(
+                    key,
+                    side,
+                    residual_factor.polynomial,
+                    prime,
+                )
+                if polynomial_degree(representative) > polynomial_degree(key):
+                    higher_branches, higher_index = _analyze_binary_linear_higher_key(
+                        polynomial,
+                        prime,
+                        initial_factor,
+                        branch_prefix + "r" + str(residual_index),
+                        representative,
+                        prior_levels + (level,),
+                        branch_degree,
+                        maximum_valuation,
+                        max_type_depth=max_type_depth,
+                    )
+                    branches.extend(higher_branches)
+                    higher_index_contribution += higher_index
+                    continue
             branches.append(
                 OMType(
                     branch_prefix + "r" + str(residual_index),
@@ -1378,7 +1485,10 @@ def _analyze_bounded_key(
                     else "requires-degree-raising-representative",
                 )
             )
-    return tuple(branches), factor_degree * polygon_index(sides)
+    return (
+        tuple(branches),
+        factor_degree * polygon_index(sides) + higher_index_contribution,
+    )
 
 
 def build_om_type_tree(
