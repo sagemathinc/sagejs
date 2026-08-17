@@ -1,0 +1,3159 @@
+{
+  "schema_version": 1,
+  "generated_by": "tools/foreign/plotting-surface.cjs",
+  "policy": {
+    "classifications": [
+      "faithful",
+      "translated",
+      "unsupported",
+      "extension"
+    ],
+    "statement": "Inventory actual parser/runtime evidence; generic grammar recognition alone never establishes plotting support.",
+    "proprietary_runtime_dependencies": false
+  },
+  "sources": [
+    {
+      "path": "tools/wolfram/frontend.ts",
+      "sha256": "80b5ff21a5f779f7ce51938b91036883f1f2017bd1e89ea12efb61f395d06d6b"
+    },
+    {
+      "path": "src/lib/wolfram.py",
+      "sha256": "7f20af74a2fef60fe3294d6b2a8aff40ec6704ab2ad29b59f8a58411bb4e738e"
+    },
+    {
+      "path": "tools/matlab/frontend.ts",
+      "sha256": "6b2ef8a8a8062aee7672135ce779c5cf2172f809b1bcd1d5acbca78998b4b398"
+    },
+    {
+      "path": "src/lib/matlab.py",
+      "sha256": "9778c75c5232e2f044d6ab522f6e7393571fe090eaf30ba5826b17a446ce230c"
+    },
+    {
+      "path": "tools/kernel.ts",
+      "sha256": "5584f9932fda818455a32dd865035d7f3a07eeaf1a3d90002aa01f3d484051cb"
+    },
+    {
+      "path": "test/graphics.cjs",
+      "sha256": "29ea1a2c72c777e2101c730833b0818f6a21ca81e1de8e596869c9d4f9cd487c"
+    }
+  ],
+  "summary": {
+    "total_entries": 105,
+    "wolfram": {
+      "translated": 57,
+      "unsupported": 20
+    },
+    "matlab": {
+      "translated": 1,
+      "unsupported": 27
+    }
+  },
+  "frontends": {
+    "wolfram": {
+      "parser_plot_heads": [
+        "ContourPlot",
+        "ContourPlot3D",
+        "DensityPlot",
+        "ListLinePlot",
+        "ListPlot",
+        "ListPlot3D",
+        "ParametricPlot",
+        "ParametricPlot3D",
+        "Plot",
+        "Plot3D",
+        "PolarPlot",
+        "RegionPlot",
+        "RevolutionPlot3D",
+        "SphericalPlot3D",
+        "StreamPlot",
+        "VectorPlot",
+        "VectorPlot3D"
+      ],
+      "parser_graphics_heads": [
+        "Arrow",
+        "Circle",
+        "Cone",
+        "Cuboid",
+        "Cylinder",
+        "Directive",
+        "Disk",
+        "Graphics",
+        "Graphics3D",
+        "GrayLevel",
+        "Hue",
+        "Line",
+        "Opacity",
+        "Point",
+        "PointSize",
+        "Polygon",
+        "RGBColor",
+        "Rectangle",
+        "Sphere",
+        "Style",
+        "Text",
+        "Thickness",
+        "Torus"
+      ],
+      "parser_plot_options": [
+        "AspectRatio",
+        "Axes",
+        "AxesLabel",
+        "ColorFunction",
+        "Contours",
+        "Filling",
+        "Frame",
+        "ImageSize",
+        "Joined",
+        "MaxRecursion",
+        "Mesh",
+        "Opacity",
+        "PlotLabel",
+        "PlotPoints",
+        "PlotRange",
+        "PlotStyle"
+      ],
+      "runtime_exports": [
+        {
+          "name": "Arrow",
+          "implementation": "wolfram_arrow"
+        },
+        {
+          "name": "Circle",
+          "implementation": "wolfram_circle"
+        },
+        {
+          "name": "Cone",
+          "implementation": "cone"
+        },
+        {
+          "name": "Cuboid",
+          "implementation": "cuboid"
+        },
+        {
+          "name": "Cylinder",
+          "implementation": "cylinder"
+        },
+        {
+          "name": "Dimensions",
+          "implementation": "dimensions"
+        },
+        {
+          "name": "Directive",
+          "implementation": "directive"
+        },
+        {
+          "name": "Disk",
+          "implementation": "wolfram_disk"
+        },
+        {
+          "name": "FactorInteger",
+          "implementation": "factor_integer"
+        },
+        {
+          "name": "Graphics",
+          "implementation": "graphics"
+        },
+        {
+          "name": "Graphics3D",
+          "implementation": "graphics3d"
+        },
+        {
+          "name": "GrayLevel",
+          "implementation": "gray_level"
+        },
+        {
+          "name": "Head",
+          "implementation": "head"
+        },
+        {
+          "name": "Hue",
+          "implementation": "hue_color"
+        },
+        {
+          "name": "ImageSize",
+          "implementation": "image_size"
+        },
+        {
+          "name": "Length",
+          "implementation": "length"
+        },
+        {
+          "name": "Line",
+          "implementation": "wolfram_line"
+        },
+        {
+          "name": "Opacity",
+          "implementation": "opacity"
+        },
+        {
+          "name": "Point",
+          "implementation": "wolfram_point"
+        },
+        {
+          "name": "PointSize",
+          "implementation": "point_size"
+        },
+        {
+          "name": "Polygon",
+          "implementation": "wolfram_polygon"
+        },
+        {
+          "name": "Prime",
+          "implementation": "prime"
+        },
+        {
+          "name": "Range",
+          "implementation": "wolfram_range"
+        },
+        {
+          "name": "Rectangle",
+          "implementation": "wolfram_rectangle"
+        },
+        {
+          "name": "RGBColor",
+          "implementation": "rgb_color"
+        },
+        {
+          "name": "Sphere",
+          "implementation": "wolfram_sphere"
+        },
+        {
+          "name": "Style",
+          "implementation": "style"
+        },
+        {
+          "name": "Table",
+          "implementation": "table"
+        },
+        {
+          "name": "Text",
+          "implementation": "wolfram_text"
+        },
+        {
+          "name": "Thickness",
+          "implementation": "thickness"
+        },
+        {
+          "name": "Torus",
+          "implementation": "torus"
+        }
+      ]
+    },
+    "matlab": {
+      "parser_call_model": "Generic function_call syntax plus one plotting-specific plot(x, y) lowering",
+      "parser_plot_heads": [
+        "plot"
+      ],
+      "runtime_exports": [
+        "ALL",
+        "call_or_index",
+        "class_name",
+        "colon",
+        "ldivide",
+        "mldivide",
+        "mpower",
+        "mrdivide",
+        "mtimes",
+        "numel",
+        "power",
+        "rdivide",
+        "set_index",
+        "size",
+        "times"
+      ],
+      "plotting_runtime_exports": [],
+      "session_model": {
+        "shared_module_namespace_across_cells": true,
+        "persistent_figure_axes_state": false,
+        "graphics_handles": false,
+        "evidence": [
+          "tools/kernel.ts",
+          "tools/matlab/frontend.ts",
+          "src/lib/matlab.py"
+        ]
+      }
+    }
+  },
+  "entries": [
+    {
+      "id": "matlab.axes-operation.colormap",
+      "frontend": "matlab",
+      "qualified_name": "colormap",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "colormap(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.grid",
+      "frontend": "matlab",
+      "qualified_name": "grid",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "grid on/off",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "MATLAB command syntax with arguments is explicitly rejected, and no grid-state adapter exists.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.legend",
+      "frontend": "matlab",
+      "qualified_name": "legend",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "legend(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.title",
+      "frontend": "matlab",
+      "qualified_name": "title",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "title(text)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.view",
+      "frontend": "matlab",
+      "qualified_name": "view",
+      "dimension": "3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "view(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.xlabel",
+      "frontend": "matlab",
+      "qualified_name": "xlabel",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "xlabel(text)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic call grammar lowers xlabel(...) through an unresolved name, producing NameError rather than an axes label.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.xlim",
+      "frontend": "matlab",
+      "qualified_name": "xlim",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "xlim(limits)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.ylabel",
+      "frontend": "matlab",
+      "qualified_name": "ylabel",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "ylabel(text)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.ylim",
+      "frontend": "matlab",
+      "qualified_name": "ylim",
+      "dimension": "2d-or-3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "ylim(limits)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.zlabel",
+      "frontend": "matlab",
+      "qualified_name": "zlabel",
+      "dimension": "3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "zlabel(text)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.axes-operation.zlim",
+      "frontend": "matlab",
+      "qualified_name": "zlim",
+      "dimension": "3d",
+      "kind": "axes-operation",
+      "signature_or_syntax": "zlim(limits)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.handle-update.set",
+      "frontend": "matlab",
+      "qualified_name": "set",
+      "dimension": "2d-or-3d",
+      "kind": "handle-update",
+      "signature_or_syntax": "set(handle, property, value, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.bar",
+      "frontend": "matlab",
+      "qualified_name": "bar",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "bar(data, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.contour",
+      "frontend": "matlab",
+      "qualified_name": "contour",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "contour(X, Y, Z, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.handle.Property",
+      "frontend": "matlab",
+      "qualified_name": "handle.Property",
+      "dimension": "2d-or-3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "handle.Property",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "Tree-sitter recognizes field_expression syntax, but the MATLAB AST builder explicitly rejects that node type; graphics-handle property access is absent.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.histogram",
+      "frontend": "matlab",
+      "qualified_name": "histogram",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "histogram(data, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.imagesc",
+      "frontend": "matlab",
+      "qualified_name": "imagesc",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "imagesc(data, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.mesh",
+      "frontend": "matlab",
+      "qualified_name": "mesh",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "mesh(X, Y, Z, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.plot",
+      "frontend": "matlab",
+      "qualified_name": "plot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "plot(x, y)",
+      "source_authority": [
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "line",
+      "translation_or_reason": "Exactly two arguments are explicitly lowered to a Sage.js line graphic; LineSpec and MATLAB figure/axes/handle state are not implied.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.plot.LineSpec",
+      "frontend": "matlab",
+      "qualified_name": "plot.LineSpec",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "plot(x, y, LineSpec)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "Only the exact two-argument plot(x, y) form is special-cased; a LineSpec becomes a generic call/index expression and fails rather than being silently accepted.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.scatter",
+      "frontend": "matlab",
+      "qualified_name": "scatter",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "scatter(x, y, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.plot-function.surf",
+      "frontend": "matlab",
+      "qualified_name": "surf",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "surf(X, Y, Z, ...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.axes",
+      "frontend": "matlab",
+      "qualified_name": "axes",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "axes(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.figure",
+      "frontend": "matlab",
+      "qualified_name": "figure",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "figure(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.hold",
+      "frontend": "matlab",
+      "qualified_name": "hold",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "hold on/off",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "MATLAB command syntax with arguments is explicitly rejected, and no persistent figure/axes hold state exists.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.nexttile",
+      "frontend": "matlab",
+      "qualified_name": "nexttile",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "nexttile(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.subplot",
+      "frontend": "matlab",
+      "qualified_name": "subplot",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "subplot(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "matlab.session-state.tiledlayout",
+      "frontend": "matlab",
+      "qualified_name": "tiledlayout",
+      "dimension": "2d-or-3d",
+      "kind": "session-state",
+      "signature_or_syntax": "tiledlayout(...)",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/matlab/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.composition.Legended",
+      "frontend": "wolfram",
+      "qualified_name": "Legended",
+      "dimension": "2d-or-3d",
+      "kind": "composition",
+      "signature_or_syntax": "Legended[graphic, legend]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.composition.Show",
+      "frontend": "wolfram",
+      "qualified_name": "Show",
+      "dimension": "2d-or-3d",
+      "kind": "composition",
+      "signature_or_syntax": "Show[graphics...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "show",
+      "translation_or_reason": "The parser lowers Show directly to the shared Sage.js graphics composition entry point.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Arrow",
+      "frontend": "wolfram",
+      "qualified_name": "Arrow",
+      "dimension": "2d-or-3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Arrow[{start, end}]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Arrow",
+      "lowering_target": "_wolfram.Arrow",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Circle",
+      "frontend": "wolfram",
+      "qualified_name": "Circle",
+      "dimension": "2d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Circle[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Circle",
+      "lowering_target": "_wolfram.Circle",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Cone",
+      "frontend": "wolfram",
+      "qualified_name": "Cone",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Cone[{start, end}, radius]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Cone",
+      "lowering_target": "_wolfram.Cone",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Cuboid",
+      "frontend": "wolfram",
+      "qualified_name": "Cuboid",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Cuboid[{{x0,y0,z0},{x1,y1,z1}}] with equal side lengths",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Cuboid",
+      "lowering_target": "_wolfram.Cuboid",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Cuboid.non_cubic",
+      "frontend": "wolfram",
+      "qualified_name": "Cuboid.non_cubic",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Cuboid[{{x0,y0,z0},{x1,y1,z1}}] with unequal side lengths",
+      "source_authority": [
+        "src/lib/wolfram.py",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The parser and Cuboid runtime adapter exist, but the runtime deliberately raises NotImplementedError for unequal side lengths.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Cylinder",
+      "frontend": "wolfram",
+      "qualified_name": "Cylinder",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Cylinder[{start, end}, radius]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Cylinder",
+      "lowering_target": "_wolfram.Cylinder",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Disk",
+      "frontend": "wolfram",
+      "qualified_name": "Disk",
+      "dimension": "2d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Disk[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Disk",
+      "lowering_target": "_wolfram.Disk",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Graphics",
+      "frontend": "wolfram",
+      "qualified_name": "Graphics",
+      "dimension": "2d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Graphics[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Graphics",
+      "lowering_target": "_wolfram.Graphics",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Graphics3D",
+      "frontend": "wolfram",
+      "qualified_name": "Graphics3D",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Graphics3D[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Graphics3D",
+      "lowering_target": "_wolfram.Graphics3D",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Line",
+      "frontend": "wolfram",
+      "qualified_name": "Line",
+      "dimension": "2d-or-3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Line[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Line",
+      "lowering_target": "_wolfram.Line",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Point",
+      "frontend": "wolfram",
+      "qualified_name": "Point",
+      "dimension": "2d-or-3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Point[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Point",
+      "lowering_target": "_wolfram.Point",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Polygon",
+      "frontend": "wolfram",
+      "qualified_name": "Polygon",
+      "dimension": "2d-or-3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Polygon[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Polygon",
+      "lowering_target": "_wolfram.Polygon",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Rectangle",
+      "frontend": "wolfram",
+      "qualified_name": "Rectangle",
+      "dimension": "2d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Rectangle[lower, upper]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Rectangle",
+      "lowering_target": "_wolfram.Rectangle",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Sphere",
+      "frontend": "wolfram",
+      "qualified_name": "Sphere",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Sphere[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Sphere",
+      "lowering_target": "_wolfram.Sphere",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Text",
+      "frontend": "wolfram",
+      "qualified_name": "Text",
+      "dimension": "2d-or-3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Text[value, position]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Text",
+      "lowering_target": "_wolfram.Text",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.graphics-primitive.Torus",
+      "frontend": "wolfram",
+      "qualified_name": "Torus",
+      "dimension": "3d",
+      "kind": "graphics-primitive",
+      "signature_or_syntax": "Torus[center, {minor, major}]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Torus",
+      "lowering_target": "_wolfram.Torus",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ArrayPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ArrayPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ArrayPlot[array, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.BarChart",
+      "frontend": "wolfram",
+      "qualified_name": "BarChart",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "BarChart[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ComplexPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ComplexPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ComplexPlot[f, {z, zmin, zmax}, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ContourPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ContourPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ContourPlot[expr, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "contour_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ContourPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "ContourPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ContourPlot3D[expr, {x, xmin, xmax}, {y, ymin, ymax}, {z, zmin, zmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "implicit_plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.DensityPlot",
+      "frontend": "wolfram",
+      "qualified_name": "DensityPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "DensityPlot[expr, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "density_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.Histogram",
+      "frontend": "wolfram",
+      "qualified_name": "Histogram",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "Histogram[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListContourPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ListContourPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListContourPlot[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListDensityPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ListDensityPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListDensityPlot[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListLinePlot",
+      "frontend": "wolfram",
+      "qualified_name": "ListLinePlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListLinePlot[data, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "list_plot(plotjoined=True)",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListLinePlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "ListLinePlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListLinePlot3D[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ListPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListPlot[data, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "list_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "ListPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListPlot3D[data, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "list_plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ListPointPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "ListPointPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ListPointPlot3D[data, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.LogLinearPlot",
+      "frontend": "wolfram",
+      "qualified_name": "LogLinearPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "LogLinearPlot[expr, {x, xmin, xmax}, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.LogLogPlot",
+      "frontend": "wolfram",
+      "qualified_name": "LogLogPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "LogLogPlot[expr, {x, xmin, xmax}, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.LogPlot",
+      "frontend": "wolfram",
+      "qualified_name": "LogPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "LogPlot[expr, {x, xmin, xmax}, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.MatrixPlot",
+      "frontend": "wolfram",
+      "qualified_name": "MatrixPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "MatrixPlot[matrix, options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ParametricPlot",
+      "frontend": "wolfram",
+      "qualified_name": "ParametricPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ParametricPlot[{x(t), y(t)}, {t, tmin, tmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "parametric_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.ParametricPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "ParametricPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "ParametricPlot3D[coordinates, {u, umin, umax}, optional second range, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "parametric_plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.Plot",
+      "frontend": "wolfram",
+      "qualified_name": "Plot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "Plot[expr, {x, xmin, xmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.Plot3D",
+      "frontend": "wolfram",
+      "qualified_name": "Plot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "Plot3D[expr, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.PlotLegends",
+      "frontend": "wolfram",
+      "qualified_name": "PlotLegends",
+      "dimension": "2d-or-3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "PlotLegends -> specification",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.PlotTheme",
+      "frontend": "wolfram",
+      "qualified_name": "PlotTheme",
+      "dimension": "2d-or-3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "PlotTheme -> theme",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.PolarPlot",
+      "frontend": "wolfram",
+      "qualified_name": "PolarPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "PolarPlot[r(t), {t, tmin, tmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "polar_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.RegionPlot",
+      "frontend": "wolfram",
+      "qualified_name": "RegionPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "RegionPlot[predicate, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "region_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.RegionPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "RegionPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "RegionPlot3D[predicate, ranges..., options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.RevolutionPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "RevolutionPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "RevolutionPlot3D[curve, {t, tmin, tmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "revolution_plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.SphericalPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "SphericalPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "SphericalPlot3D[r, {u, umin, umax}, {v, vmin, vmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "spherical_plot3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.StreamPlot",
+      "frontend": "wolfram",
+      "qualified_name": "StreamPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "StreamPlot[{vx, vy}, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "streamline_plot",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.StreamPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "StreamPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "StreamPlot3D[field, ranges..., options...]",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "This planned Wolfram plotting construct has no explicit plotting lowerer/runtime adapter yet.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.VectorPlot",
+      "frontend": "wolfram",
+      "qualified_name": "VectorPlot",
+      "dimension": "2d",
+      "kind": "plot-function",
+      "signature_or_syntax": "VectorPlot[{vx, vy}, {x, xmin, xmax}, {y, ymin, ymax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plot_vector_field",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-function.VectorPlot3D",
+      "frontend": "wolfram",
+      "qualified_name": "VectorPlot3D",
+      "dimension": "3d",
+      "kind": "plot-function",
+      "signature_or_syntax": "VectorPlot3D[{vx, vy, vz}, {x, xmin, xmax}, {y, ymin, ymax}, {z, zmin, zmax}, options...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plot_vector_field3d",
+      "translation_or_reason": "Parser lowering translates this supported syntax to the shared Sage.js sampler and Plotly graphics pipeline.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.AspectRatio",
+      "frontend": "wolfram",
+      "qualified_name": "AspectRatio",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "AspectRatio -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "aspect_ratio",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Axes",
+      "frontend": "wolfram",
+      "qualified_name": "Axes",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Axes -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "axes",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.AxesLabel",
+      "frontend": "wolfram",
+      "qualified_name": "AxesLabel",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "AxesLabel -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "axes_labels",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.ColorFunction",
+      "frontend": "wolfram",
+      "qualified_name": "ColorFunction",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "ColorFunction -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "cmap",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Contours",
+      "frontend": "wolfram",
+      "qualified_name": "Contours",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Contours -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "contours",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Epilog",
+      "frontend": "wolfram",
+      "qualified_name": "Epilog",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Epilog -> primitives",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic rule syntax parses, but plot-option lowering has no Epilog mapping and currently ignores it.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Filling",
+      "frontend": "wolfram",
+      "qualified_name": "Filling",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Filling -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "fill",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Frame",
+      "frontend": "wolfram",
+      "qualified_name": "Frame",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Frame -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "frame",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.ImageSize",
+      "frontend": "wolfram",
+      "qualified_name": "ImageSize",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "ImageSize -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "figsize",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Joined",
+      "frontend": "wolfram",
+      "qualified_name": "Joined",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Joined -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plotjoined",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.MaxRecursion",
+      "frontend": "wolfram",
+      "qualified_name": "MaxRecursion",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "MaxRecursion -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "adaptive_recursion",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Mesh",
+      "frontend": "wolfram",
+      "qualified_name": "Mesh",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Mesh -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "mesh",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Opacity",
+      "frontend": "wolfram",
+      "qualified_name": "Opacity",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Opacity -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "opacity",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.PlotLabel",
+      "frontend": "wolfram",
+      "qualified_name": "PlotLabel",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "PlotLabel -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "title",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.PlotPoints",
+      "frontend": "wolfram",
+      "qualified_name": "PlotPoints",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "PlotPoints -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "plot_points",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.PlotRange",
+      "frontend": "wolfram",
+      "qualified_name": "PlotRange",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "PlotRange -> {ymin,ymax} or {{xmin,xmax},{ymin,ymax}}",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "xmin/xmax/ymin/ymax",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.PlotStyle",
+      "frontend": "wolfram",
+      "qualified_name": "PlotStyle",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "PlotStyle -> value",
+      "source_authority": [
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": null,
+      "lowering_target": "color",
+      "translation_or_reason": "This option has an explicit parser mapping to a Sage.js/Plotly option; other Wolfram options are not claimed.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.plot-option.Prolog",
+      "frontend": "wolfram",
+      "qualified_name": "Prolog",
+      "dimension": "2d-or-3d",
+      "kind": "plot-option",
+      "signature_or_syntax": "Prolog -> primitives",
+      "source_authority": [
+        "agents/sage-2d-plotting-coverage-plan.md",
+        "tools/wolfram/frontend.ts"
+      ],
+      "dependencies": [],
+      "classification": "unsupported",
+      "support_state": "emerging-gap",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": false,
+      "runtime_export": null,
+      "lowering_target": null,
+      "translation_or_reason": "The generic rule syntax parses, but plot-option lowering has no Prolog mapping and currently ignores it.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.Directive",
+      "frontend": "wolfram",
+      "qualified_name": "Directive",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "Directive[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Directive",
+      "lowering_target": "_wolfram.Directive",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.GrayLevel",
+      "frontend": "wolfram",
+      "qualified_name": "GrayLevel",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "GrayLevel[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "GrayLevel",
+      "lowering_target": "_wolfram.GrayLevel",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.Hue",
+      "frontend": "wolfram",
+      "qualified_name": "Hue",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "Hue[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Hue",
+      "lowering_target": "_wolfram.Hue",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [],
+      "plotly_tests": [],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.Opacity",
+      "frontend": "wolfram",
+      "qualified_name": "Opacity",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "Opacity[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Opacity",
+      "lowering_target": "_wolfram.Opacity",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.PointSize",
+      "frontend": "wolfram",
+      "qualified_name": "PointSize",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "PointSize[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "PointSize",
+      "lowering_target": "_wolfram.PointSize",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.RGBColor",
+      "frontend": "wolfram",
+      "qualified_name": "RGBColor",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "RGBColor[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "RGBColor",
+      "lowering_target": "_wolfram.RGBColor",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.Style",
+      "frontend": "wolfram",
+      "qualified_name": "Style",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "Style[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Style",
+      "lowering_target": "_wolfram.Style",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    },
+    {
+      "id": "wolfram.style-directive.Thickness",
+      "frontend": "wolfram",
+      "qualified_name": "Thickness",
+      "dimension": "2d-or-3d",
+      "kind": "style-directive",
+      "signature_or_syntax": "Thickness[...]",
+      "source_authority": [
+        "tools/wolfram/frontend.ts",
+        "src/lib/wolfram.py"
+      ],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "grammar_recognized": true,
+      "plotting_lowerer_recognized": true,
+      "runtime_export": "Thickness",
+      "lowering_target": "_wolfram.Thickness",
+      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
+      "plotly_tests": [
+        "test/graphics.cjs"
+      ],
+      "visual_tests": [],
+      "platform_status": "not-assessed",
+      "performance_status": "not-assessed"
+    }
+  ]
+}
