@@ -208,6 +208,13 @@ function nativeMathBuildProfile(options = {}) {
   if (effective === PORTABLE_PROFILE && arch === "x64") {
     gmpConfigure.push("--enable-fat");
   }
+  const openBlasTarget = effective === PORTABLE_PROFILE
+    ? arch === "x64"
+      ? "PRESCOTT"
+      : arch === "arm64"
+        ? "ARMV8"
+        : null
+    : null;
   const identity = stableJson({
     abi: {
       arch,
@@ -242,6 +249,7 @@ function nativeMathBuildProfile(options = {}) {
         build: "threaded-cblas-dynamic-v1",
         cflags: commonCFlags,
         dynamicArch: true,
+        target: openBlasTarget,
       },
     },
     compilers: { c: compiler, cxx: cxxCompiler },

@@ -54,6 +54,7 @@ test("portable math builds remain the default and retain fat GMP", () => {
   assert.equal(selected.effectiveProfile, PORTABLE_PROFILE);
   assert.equal(selected.cpu, null);
   assert.ok(selected.buildOptions.gmp.configure.includes("--enable-fat"));
+  assert.equal(selected.buildOptions.openblas.target, "PRESCOTT");
   assert.ok(!selected.buildOptions.flint.cflags.includes("-march=native"));
   assert.equal(
     selected.fingerprint,
@@ -65,6 +66,15 @@ test("portable math builds remain the default and retain fat GMP", () => {
     } }),
     /must be portable or cpu-native/,
   );
+});
+
+test("portable ARM64 OpenBLAS keeps common objects at the ARMv8 baseline", () => {
+  const selected = profile({
+    arch: "arm64",
+    compiler: compiler({ target: "aarch64-unknown-linux-gnu" }),
+  });
+  assert.equal(selected.buildOptions.openblas.dynamicArch, true);
+  assert.equal(selected.buildOptions.openblas.target, "ARMV8");
 });
 
 test("cpu-native builds tune GMP and FLINT without uniform fat binaries", () => {
@@ -81,6 +91,7 @@ test("cpu-native builds tune GMP and FLINT without uniform fat binaries", () => 
   assert.ok(selected.buildOptions.gmp.cflags.includes("-march=native"));
   assert.ok(selected.buildOptions.flint.cflags.includes("-march=native"));
   assert.equal(selected.buildOptions.flint.fftSmall, "auto-detect");
+  assert.equal(selected.buildOptions.openblas.target, null);
 });
 
 test("native profile fingerprints cover CPU, ABI, compiler, versions, and options", () => {

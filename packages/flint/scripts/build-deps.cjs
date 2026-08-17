@@ -371,6 +371,13 @@ function buildOpenBlas(source) {
     "DYNAMIC_ARCH=1",
     "CFLAGS=-O3 -fPIC",
   ];
+  // DYNAMIC_ARCH controls the optimized kernels, but OpenBLAS still tunes its
+  // dispatcher and other common objects for the build host unless TARGET is
+  // explicit. Those objects execute before dispatch and must use the oldest
+  // CPU supported by each portable artifact.
+  if (mathBuildOptions.openblas.target) {
+    options.push(`TARGET=${mathBuildOptions.openblas.target}`);
+  }
   if (process.arch === "x64") {
     options.push(
       "DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL ZEN",
