@@ -152,6 +152,7 @@ const integration = [
   "test/dashboard-examples.cjs",
   "test/jupyter-kernelspec.cjs",
   "test/graphics.cjs",
+  "test/graphics-plot-misc.cjs",
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",
   "test/approximate-polynomial.cjs",

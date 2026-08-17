@@ -1,0 +1,1 @@
+"""Sage-compatible plotting namespace."""
