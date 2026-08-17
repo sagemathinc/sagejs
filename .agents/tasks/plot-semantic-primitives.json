@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-semantic-primitives",
+  "title": "PlotSpec semantic primitive integration",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate lazy semantic PlotSpec payloads and stable layer IDs for Sage.js 2D and 3D line, point, and text primitives while preserving current Plotly rendering.",
+  "base_commit": "5da86e0eaabf2291414187f01c7a2a87966b871d",
+  "claims": [
+    "src/baselib/graphics.py",
+    "src/baselib/graphics3d.py",
+    "test/graphics.cjs",
+    "test/graphics3d.cjs"
+  ],
+  "dependencies": [
+    "plot-spec-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing normalized Plotly traces and Sage semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
