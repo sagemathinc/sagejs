@@ -8,9 +8,10 @@ inverse either succeeds as a unit or returns a certified factor of `q`.
 The first executable slice handles an equation order.  It can discover a
 zero-divisor split, construct the composite Dedekind overorder, and certify
 that local work is complete when the new discriminant is coprime to `q`.
-If another multiplier-ring cycle is required, the result says `enlarged`
-instead of claiming local maximality.  The generic cycle driver can then
-continue with a later order adapter.
+For a nonidentity order, the same module executes the tame q-radical and
+multiplier-ring cycle using canonical integer HNF lattices.  Every modular
+elimination uses unit pivots or returns a factor of `q`; no composite modulus
+is silently promoted to a field.
 
 The implementation is ordinary CPython source and uses only exact integer
 arithmetic.  It was derived from Hecke's GPL-licensed
@@ -449,8 +450,8 @@ def _dedekind_overorder_basis(
 class BuchmannLenstraResult:
     """One fail-closed composite local step.
 
-    States are `complete`, `enlarged`, `split`, `stalled`, and
-    `certification-error`.  Only `complete` asserts local maximality.
+    States are `complete`, `enlarged`, `split`, `stalled`, `resource-error`,
+    and `certification-error`.  Only `complete` asserts local maximality.
     """
 
     def __init__(
@@ -470,6 +471,7 @@ class BuchmannLenstraResult:
             "enlarged",
             "split",
             "stalled",
+            "resource-error",
             "certification-error",
         ):
             raise ValueError("unknown Buchmann--Lenstra result state")
@@ -505,10 +507,15 @@ class BuchmannLenstraResult:
         `enlarged` is deliberately `not-applicable`: it is useful progress,
         but it is not a local-maximality assertion.
         """
+        algorithm = (
+            "buchmann-lenstra"
+            if self.evidence.get("stage") == "q-radical-multiplier-cycle"
+            else "dedekind"
+        )
         if self.state == "split":
             return LocalOrderResult(
                 "split",
-                "dedekind",
+                algorithm,
                 self.component,
                 split=self.split,
                 evidence=self.evidence,
@@ -517,7 +524,7 @@ class BuchmannLenstraResult:
         if self.state == "complete":
             return LocalOrderResult(
                 "complete",
-                "dedekind",
+                algorithm,
                 self.component,
                 basis=self.basis,
                 index=self.index,
@@ -525,14 +532,15 @@ class BuchmannLenstraResult:
                 evidence=self.evidence,
                 message=self.message,
             )
-        common_state = (
-            "certification-error"
-            if self.state == "certification-error"
-            else "not-applicable"
-        )
+        if self.state == "certification-error":
+            common_state = "certification-error"
+        elif self.state == "resource-error":
+            common_state = "resource-error"
+        else:
+            common_state = "not-applicable"
         return LocalOrderResult(
             common_state,
-            "dedekind",
+            algorithm,
             self.component,
             basis=self.basis,
             index=self.index,
@@ -552,8 +560,7 @@ def buchmann_lenstra_overorder(
     """Run the equation-order composite Dedekind/BL local slice.
 
     Coefficients are low-to-high and the polynomial must be monic.  A
-    non-identity `basis` currently returns `stalled`; this explicit hook is
-    where the general radical/multiplier adapter resumes the BL cycle.
+    nonidentity `basis` enters the exact q-radical/multiplier-ring cycle.
     """
     coefficients = [int(value) for value in polynomial_coefficients]
     if len(coefficients) < 2 or coefficients[-1] != 1:
@@ -567,23 +574,19 @@ def buchmann_lenstra_overorder(
             evidence={"refused_state": component.state},
         )
     degree = len(coefficients) - 1
-    if (
-        basis is not None
-        and basis.canonical_key()
-        != OrderBasis(
-            [
-                [1 if row == column else 0 for column in range(degree)]
-                for row in range(degree)
-            ],
-            1,
-        ).canonical_key()
-    ):
-        return BuchmannLenstraResult(
-            "stalled",
+    identity_basis = OrderBasis(
+        [
+            [1 if row == column else 0 for column in range(degree)]
+            for row in range(degree)
+        ],
+        1,
+    )
+    if basis is not None and basis.canonical_key() != identity_basis.canonical_key():
+        return buchmann_lenstra_general_overorder(
+            coefficients,
             component,
-            basis=basis,
-            message="general-order radical/multiplier adapter required",
-            evidence={"next_stage": "q-radical-multiplier-cycle"},
+            basis,
+            equation_discriminant=equation_discriminant,
         )
     data = _composite_dedekind_data(coefficients, modulus)
     if data["status"] == "split":
@@ -599,17 +602,10 @@ def buchmann_lenstra_overorder(
         else int(equation_discriminant)
     )
     if data["status"] == "complete":
-        identity = OrderBasis(
-            [
-                [1 if row == column else 0 for column in range(degree)]
-                for row in range(degree)
-            ],
-            1,
-        )
         return BuchmannLenstraResult(
             "complete",
             component,
-            basis=identity,
+            basis=identity_basis,
             index=1,
             discriminant=equation_disc,
             evidence={
@@ -681,6 +677,20 @@ def check_buchmann_lenstra_result(
 ) -> bool:
     """Independently check a split, enlargement, or completed local result."""
     coefficients = [int(value) for value in polynomial_coefficients]
+    if result.evidence.get("stage") == "q-radical-multiplier-cycle":
+        events = result.evidence.get("events", [])
+        if not events or "basis" not in events[0]:
+            return False
+        try:
+            starting_basis = OrderBasis.from_dict(events[0]["basis"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        return check_buchmann_lenstra_general_result(
+            coefficients,
+            starting_basis,
+            result,
+            equation_discriminant=polynomial_discriminant(coefficients),
+        )
     if result.state == "split":
         if result.split is None:
             return False
@@ -694,7 +704,7 @@ def check_buchmann_lenstra_result(
             return False
         return _gcd(coefficient, split.source) in (split.left, split.right)
     if result.state not in ("complete", "enlarged") or result.basis is None:
-        return result.state in ("stalled", "certification-error")
+        return result.state in ("stalled", "resource-error", "certification-error")
     basis = result.basis
     degree = len(coefficients) - 1
     if basis.degree != degree or result.discriminant is None:
@@ -844,10 +854,863 @@ def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
     return True
 
 
+def _fraction_vector_times_matrix(
+    vector: list[tuple[int, int]], matrix: list[list[tuple[int, int]]]
+) -> list[tuple[int, int]]:
+    columns = len(matrix[0]) if matrix else 0
+    answer: list[tuple[int, int]] = []
+    for column in range(columns):
+        value = (0, 1)
+        for row in range(len(vector)):
+            value = _fraction_add(
+                value, _fraction_multiply(vector[row], matrix[row][column])
+            )
+        answer.append(value)
+    return answer
+
+
+def _order_multiplication_table(
+    coefficients: list[int], basis: OrderBasis
+) -> list[list[list[int]]]:
+    """Return the exact integral multiplication table in `basis`."""
+    inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
+    rows = [[(entry, basis.denominator) for entry in row] for row in basis.numerator]
+    table: list[list[list[int]]] = []
+    for left in rows:
+        products: list[list[int]] = []
+        for right in rows:
+            coordinates = _fraction_vector_times_matrix(
+                _rational_product(left, right, coefficients), inverse
+            )
+            if any(value[1] != 1 for value in coordinates):
+                raise ArithmeticError("the supplied basis is not closed")
+            products.append([value[0] for value in coordinates])
+        table.append(products)
+    return table
+
+
+def _order_index(basis: OrderBasis) -> int:
+    determinant = abs(basis.determinant_numerator)
+    denominator_power = basis.denominator**basis.degree
+    if determinant == 0 or denominator_power % determinant != 0:
+        raise ArithmeticError("an order basis has a nonintegral equation-order index")
+    return denominator_power // determinant
+
+
+def _order_discriminant(equation_discriminant: int, basis: OrderBasis) -> int:
+    index = _order_index(basis)
+    square = index * index
+    if equation_discriminant % square != 0:
+        raise ArithmeticError("an order index square does not divide the discriminant")
+    return equation_discriminant // square
+
+
+def _trace_matrix_from_table(table: list[list[list[int]]]) -> list[list[int]]:
+    degree = len(table)
+    trace_vector = [
+        sum(table[basis_index][column][column] for column in range(degree))
+        for basis_index in range(degree)
+    ]
+    return [
+        [
+            sum(
+                table[left][right][coordinate] * trace_vector[coordinate]
+                for coordinate in range(degree)
+            )
+            for right in range(degree)
+        ]
+        for left in range(degree)
+    ]
+
+
+def _modular_kernel_with_split(rows: list[list[int]], modulus: int) -> dict[str, Any]:
+    """Compute a free right kernel, or expose a nonunit pivot divisor."""
+    if not rows:
+        return {"state": "kernel", "rows": []}
+    columns = len(rows[0])
+    matrix = [[entry % modulus for entry in row] for row in rows]
+    for row in matrix:
+        if len(row) != columns:
+            raise ValueError("modular matrix rows must have a common length")
+    pivot_columns: list[int] = []
+    pivot_row = 0
+    for column in range(columns):
+        unit_row = -1
+        split_row = -1
+        split_divisor = 1
+        for row in range(pivot_row, len(matrix)):
+            entry = matrix[row][column]
+            if entry == 0:
+                continue
+            divisor = _gcd(entry, modulus)
+            if divisor == 1:
+                unit_row = row
+                break
+            if divisor != modulus:
+                split_row = row
+                split_divisor = divisor
+        if unit_row < 0:
+            if split_row >= 0:
+                return {
+                    "state": "split",
+                    "divisor": split_divisor,
+                    "evidence": {
+                        "operation": "composite-modular-elimination",
+                        "coefficient": matrix[split_row][column],
+                        "row": split_row,
+                        "column": column,
+                    },
+                }
+            continue
+        matrix[pivot_row], matrix[unit_row] = (
+            matrix[unit_row],
+            matrix[pivot_row],
+        )
+        inverse = _modular_inverse(matrix[pivot_row][column], modulus)
+        matrix[pivot_row] = [value * inverse % modulus for value in matrix[pivot_row]]
+        for row in range(len(matrix)):
+            if row == pivot_row:
+                continue
+            scalar = matrix[row][column]
+            if scalar:
+                matrix[row] = [
+                    (matrix[row][entry] - scalar * matrix[pivot_row][entry]) % modulus
+                    for entry in range(columns)
+                ]
+        pivot_columns.append(column)
+        pivot_row += 1
+        if pivot_row == len(matrix):
+            break
+    free_columns = [column for column in range(columns) if column not in pivot_columns]
+    kernel: list[list[int]] = []
+    for free in free_columns:
+        vector = [0 for _column in range(columns)]
+        vector[free] = 1
+        for row, pivot in enumerate(pivot_columns):
+            vector[pivot] = -matrix[row][free] % modulus
+        kernel.append(vector)
+    return {
+        "state": "kernel",
+        "rows": kernel,
+        "rank": len(pivot_columns),
+        "free_rank": len(kernel),
+    }
+
+
+def _split_from_divisor(
+    component: DiscriminantComponent,
+    divisor: int,
+    evidence: dict[str, Any],
+) -> ComponentSplit:
+    factor = _gcd(component.value, divisor)
+    if factor in (1, component.value):
+        raise ArithmeticError("a modular obstruction did not split its component")
+    return ComponentSplit(
+        component.value,
+        factor,
+        component.value // factor,
+        evidence,
+    )
+
+
+class _CompositeIdeal:
+    def __init__(self, rows: list[list[int]]) -> None:
+        self.rows = _row_hnf(rows)
+
+
+def _q_radical_by_trace(table: list[list[list[int]]], modulus: int) -> dict[str, Any]:
+    degree = len(table)
+    small_factor = 1
+    for value in range(2, degree + 1):
+        small_factor = _gcd(modulus, small_factor * value)
+    if small_factor not in (1, modulus):
+        return {
+            "state": "split",
+            "divisor": small_factor,
+            "evidence": {
+                "operation": "tame-degree-factor",
+                "coefficient": small_factor,
+            },
+        }
+    if small_factor == modulus:
+        return {
+            "state": "resource-error",
+            "message": "trace radical requires a component tame at the order degree",
+        }
+    kernel = _modular_kernel_with_split(_trace_matrix_from_table(table), modulus)
+    if kernel["state"] != "kernel":
+        return kernel
+    generators: list[list[int]] = []
+    for index in range(degree):
+        row = [0 for _column in range(degree)]
+        row[index] = modulus
+        generators.append(row)
+    generators.extend(kernel["rows"])
+    ideal = _CompositeIdeal(generators)
+    trivial = ideal.rows == generators[:degree]
+    return {
+        "state": "ideal",
+        "ideal": ideal,
+        "trivial": trivial,
+        "kernel_rank": len(kernel["rows"]),
+        "trace_matrix": _trace_matrix_from_table(table),
+    }
+
+
+def _integer_coordinates_in_rows(vector: list[int], rows: list[list[int]]) -> list[int]:
+    inverse = _inverse_fraction_matrix(rows, 1)
+    coordinates = _fraction_vector_times_matrix(
+        [(entry, 1) for entry in vector], inverse
+    )
+    if any(value[1] != 1 for value in coordinates):
+        raise ArithmeticError("ideal containment has nonintegral coordinates")
+    return [value[0] for value in coordinates]
+
+
+def _coordinate_product(
+    left: list[int], right: list[int], table: list[list[list[int]]]
+) -> list[int]:
+    degree = len(table)
+    answer = [0 for _coordinate in range(degree)]
+    for left_index, left_value in enumerate(left):
+        if left_value == 0:
+            continue
+        for right_index, right_value in enumerate(right):
+            if right_value == 0:
+                continue
+            scalar = left_value * right_value
+            for coordinate in range(degree):
+                answer[coordinate] += (
+                    scalar * table[left_index][right_index][coordinate]
+                )
+    return answer
+
+
+def _enlarge_order_basis(
+    basis: OrderBasis, kernel_rows: list[list[int]], modulus: int
+) -> OrderBasis:
+    degree = basis.degree
+    generators = [[modulus * entry for entry in row] for row in basis.numerator]
+    for kernel in kernel_rows:
+        generators.append(
+            [
+                sum(
+                    kernel[basis_index] * basis.numerator[basis_index][coordinate]
+                    for basis_index in range(degree)
+                )
+                for coordinate in range(degree)
+            ]
+        )
+    return OrderBasis(_row_hnf(generators), basis.denominator * modulus, canonical=True)
+
+
+def _multiplier_ring_step(
+    basis: OrderBasis,
+    ideal: _CompositeIdeal,
+    table: list[list[list[int]]],
+    modulus: int,
+) -> dict[str, Any]:
+    degree = basis.degree
+    equations: list[list[int]] = []
+    for ideal_row in ideal.rows:
+        relative_products: list[list[int]] = []
+        for order_index in range(degree):
+            basis_vector = [0 for _coordinate in range(degree)]
+            basis_vector[order_index] = 1
+            relative_products.append(
+                _integer_coordinates_in_rows(
+                    _coordinate_product(basis_vector, ideal_row, table), ideal.rows
+                )
+            )
+        for coordinate in range(degree):
+            equations.append(
+                [
+                    relative_products[order_index][coordinate]
+                    for order_index in range(degree)
+                ]
+            )
+    kernel = _modular_kernel_with_split(equations, modulus)
+    if kernel["state"] != "kernel":
+        return kernel
+    if not kernel["rows"]:
+        return {"state": "same", "kernel_rank": 0}
+    enlarged = _enlarge_order_basis(basis, kernel["rows"], modulus)
+    if enlarged.canonical_key() == basis.canonical_key():
+        return {"state": "same", "kernel_rank": len(kernel["rows"])}
+    return {
+        "state": "enlarged",
+        "basis": enlarged,
+        "kernel_rows": kernel["rows"],
+        "kernel_rank": len(kernel["rows"]),
+    }
+
+
+def _ideal_multiply(
+    left: _CompositeIdeal,
+    right: _CompositeIdeal,
+    table: list[list[list[int]]],
+) -> _CompositeIdeal:
+    return _CompositeIdeal(
+        [
+            _coordinate_product(left_row, right_row, table)
+            for left_row in left.rows
+            for right_row in right.rows
+        ]
+    )
+
+
+def _ideal_add_integer(ideal: _CompositeIdeal, value: int) -> _CompositeIdeal:
+    degree = len(ideal.rows)
+    generators = [list(row) for row in ideal.rows]
+    for index in range(degree):
+        row = [0 for _column in range(degree)]
+        row[index] = value
+        generators.append(row)
+    return _CompositeIdeal(generators)
+
+
+def _colon_freeness(
+    ideal: _CompositeIdeal,
+    table: list[list[list[int]]],
+    modulus: int,
+) -> dict[str, Any]:
+    degree = len(table)
+    equations: list[list[int]] = []
+    for ideal_row in ideal.rows:
+        products = []
+        for order_index in range(degree):
+            unit = [0 for _coordinate in range(degree)]
+            unit[order_index] = 1
+            products.append(_coordinate_product(unit, ideal_row, table))
+        for coordinate in range(degree):
+            equations.append([products[index][coordinate] for index in range(degree)])
+    kernel = _modular_kernel_with_split(equations, modulus)
+    if kernel["state"] != "kernel":
+        return kernel
+    return {
+        "state": "free",
+        "quotient_rank": len(kernel["rows"]),
+        "kernel_rows": kernel["rows"],
+    }
+
+
+def _minor_indices(size: int, count: int) -> list[list[int]]:
+    answer: list[list[int]] = []
+
+    def visit(start: int, selected: list[int]) -> None:
+        if len(selected) == count:
+            answer.append(list(selected))
+            return
+        remaining = count - len(selected)
+        for value in range(start, size - remaining + 1):
+            selected.append(value)
+            visit(value + 1, selected)
+            selected.pop()
+
+    visit(0, [])
+    return answer
+
+
+def _smith_diagonal_by_minors(
+    matrix: list[list[int]], max_minors: int
+) -> dict[str, Any]:
+    degree = len(matrix)
+    previous = 1
+    diagonal: list[int] = []
+    visited = 0
+    for size in range(1, degree + 1):
+        row_sets = _minor_indices(degree, size)
+        column_sets = _minor_indices(degree, size)
+        divisor = 0
+        for row_set in row_sets:
+            for column_set in column_sets:
+                visited += 1
+                if visited > max_minors:
+                    return {
+                        "state": "resource-error",
+                        "message": "Smith-minor bound exhausted",
+                        "minors": visited,
+                    }
+                minor = [
+                    [matrix[row][column] for column in column_set] for row in row_set
+                ]
+                divisor = _gcd(divisor, _bareiss_determinant(minor))
+        if divisor == 0 or divisor % previous != 0:
+            return {
+                "state": "certification-error",
+                "message": "relation matrix has invalid determinantal divisors",
+                "minors": visited,
+            }
+        diagonal.append(divisor // previous)
+        previous = divisor
+    return {"state": "ok", "diagonal": diagonal, "minors": visited}
+
+
+def _relation_freeness(
+    containing: _CompositeIdeal,
+    contained: _CompositeIdeal,
+    modulus: int,
+    max_minors: int,
+) -> dict[str, Any]:
+    coordinates = [
+        _integer_coordinates_in_rows(row, containing.rows) for row in contained.rows
+    ]
+    smith = _smith_diagonal_by_minors(coordinates, max_minors)
+    if smith["state"] != "ok":
+        return smith
+    for value in smith["diagonal"]:
+        divisor = _gcd(modulus, value)
+        if divisor not in (1, modulus):
+            return {
+                "state": "split",
+                "divisor": divisor,
+                "evidence": {
+                    "operation": "relation-smith-divisor",
+                    "coefficient": value,
+                    "smith_diagonal": smith["diagonal"],
+                    "minors": smith["minors"],
+                },
+            }
+    return {
+        "state": "free",
+        "smith_diagonal": smith["diagonal"],
+        "minors": smith["minors"],
+    }
+
+
+def _integer_nth_root(value: int, exponent: int) -> int:
+    low = 0
+    high = 1 << ((value.bit_length() + exponent - 1) // exponent)
+    while low + 1 < high:
+        middle = (low + high) // 2
+        if middle**exponent <= value:
+            low = middle
+        else:
+            high = middle
+    return low
+
+
+def _perfect_power_at_height(value: int, exponent: int) -> int | None:
+    root = _integer_nth_root(value, exponent)
+    return root if root > 1 and root**exponent == value else None
+
+
+def perfect_power_component_split(
+    component: DiscriminantComponent, exponent: int
+) -> ComponentSplit | None:
+    """Return exact BL perfect-power control evidence at one height."""
+    if exponent < 2:
+        raise ValueError("a perfect-power height must be at least two")
+    root = _perfect_power_at_height(component.value, exponent)
+    if root is None:
+        return None
+    return ComponentSplit(
+        component.value,
+        root,
+        component.value // root,
+        {
+            "operation": "perfect-power-height",
+            "coefficient": root,
+            "base": root,
+            "exponent": exponent,
+        },
+    )
+
+
+def _general_result(
+    state: str,
+    component: DiscriminantComponent,
+    basis: OrderBasis,
+    equation_discriminant: int,
+    events: list[dict[str, Any]],
+    *,
+    split: ComponentSplit | None = None,
+    message: str | None = None,
+    evidence: dict[str, Any] | None = None,
+) -> BuchmannLenstraResult:
+    details = {
+        "stage": "q-radical-multiplier-cycle",
+        "events": events,
+        "locally_maximal": state == "complete",
+        "certificate": "component-coprime-to-order-discriminant"
+        if state == "complete"
+        else "bounded-general-cycle",
+    }
+    if evidence is not None:
+        details.update(evidence)
+    return BuchmannLenstraResult(
+        state,
+        component,
+        basis=basis if state in ("complete", "enlarged") else None,
+        index=_order_index(basis),
+        discriminant=_order_discriminant(equation_discriminant, basis),
+        split=split,
+        evidence=details,
+        message=message,
+    )
+
+
+def buchmann_lenstra_general_overorder(
+    polynomial_coefficients: list[int],
+    component: DiscriminantComponent,
+    basis: OrderBasis,
+    *,
+    equation_discriminant: int | None = None,
+    max_steps: int = 128,
+    max_degree: int = 16,
+    max_minors: int = 100000,
+) -> BuchmannLenstraResult:
+    """Execute the bounded tame BL cycle on a canonical nonidentity order."""
+    coefficients = [int(value) for value in polynomial_coefficients]
+    degree = len(coefficients) - 1
+    if degree < 1 or coefficients[-1] != 1 or basis.degree != degree:
+        raise ValueError("the polynomial and order basis must have the same degree")
+    if degree > max_degree:
+        return BuchmannLenstraResult(
+            "resource-error",
+            component,
+            message="Buchmann--Lenstra dynamic degree bound exceeded",
+            evidence={"degree": degree, "max_degree": max_degree},
+        )
+    if max_steps < 1 or max_minors < 1:
+        raise ValueError("Buchmann--Lenstra resource bounds must be positive")
+    if component.state not in ("composite", "unresolved-coprime-component"):
+        return BuchmannLenstraResult(
+            "certification-error",
+            component,
+            message="general Buchmann--Lenstra requires a composite component",
+        )
+    equation_disc = (
+        polynomial_discriminant(coefficients)
+        if equation_discriminant is None
+        else int(equation_discriminant)
+    )
+    if not _basis_defines_order(coefficients, basis):
+        return BuchmannLenstraResult(
+            "certification-error",
+            component,
+            message="the supplied nonidentity basis does not define an order",
+        )
+    current = basis
+    modulus = component.base
+    events: list[dict[str, Any]] = []
+    steps = 0
+    while steps < max_steps:
+        discriminant = _order_discriminant(equation_disc, current)
+        active = _gcd(abs(discriminant), modulus)
+        events.append(
+            {
+                "sequence": len(events),
+                "stage": "component-reduction",
+                "q": active,
+                "index": _order_index(current),
+                "discriminant": discriminant,
+                "basis": current.to_dict(),
+            }
+        )
+        if active == 1:
+            return _general_result(
+                "complete",
+                component,
+                current,
+                equation_disc,
+                events,
+                evidence={
+                    "remaining_component_gcd": 1,
+                    "enlargement_count": sum(
+                        1 for event in events if event["stage"] == "multiplier-ring"
+                    ),
+                },
+            )
+        if active != modulus:
+            split = _split_from_divisor(
+                component,
+                active,
+                {
+                    "operation": "component-discriminant-gcd",
+                    "coefficient": discriminant,
+                    "gcd": active,
+                },
+            )
+            return _general_result(
+                "split",
+                component,
+                current,
+                equation_disc,
+                events,
+                split=split,
+                evidence={"split_stage": "component-reduction"},
+            )
+        table = _order_multiplication_table(coefficients, current)
+        radical = _q_radical_by_trace(table, active)
+        steps += 1
+        if radical["state"] == "split":
+            split = _split_from_divisor(
+                component, int(radical["divisor"]), radical["evidence"]
+            )
+            return _general_result(
+                "split",
+                component,
+                current,
+                equation_disc,
+                events,
+                split=split,
+                evidence={"split_stage": "q-radical"},
+            )
+        if radical["state"] != "ideal":
+            return _general_result(
+                "resource-error",
+                component,
+                current,
+                equation_disc,
+                events,
+                message=str(radical.get("message", "q-radical failed")),
+            )
+        events.append(
+            {
+                "sequence": len(events),
+                "stage": "q-radical",
+                "q": active,
+                "kernel_rank": radical["kernel_rank"],
+                "ideal_hnf": radical["ideal"].rows,
+                "trace_matrix": radical["trace_matrix"],
+            }
+        )
+        if radical["trivial"]:
+            return _general_result(
+                "complete",
+                component,
+                current,
+                equation_disc,
+                events,
+                evidence={
+                    "certificate": "trivial-q-radical",
+                    "remaining_component_gcd": active,
+                },
+            )
+        ideal = radical["ideal"]
+        multiplier = _multiplier_ring_step(current, ideal, table, active)
+        if multiplier["state"] == "split":
+            split = _split_from_divisor(
+                component, int(multiplier["divisor"]), multiplier["evidence"]
+            )
+            return _general_result(
+                "split",
+                component,
+                current,
+                equation_disc,
+                events,
+                split=split,
+                evidence={"split_stage": "multiplier-ring"},
+            )
+        if multiplier["state"] == "enlarged":
+            enlarged = multiplier["basis"]
+            if not _basis_defines_order(coefficients, enlarged):
+                return _general_result(
+                    "certification-error",
+                    component,
+                    current,
+                    equation_disc,
+                    events,
+                    message="multiplier-ring lattice is not an order",
+                )
+            events.append(
+                {
+                    "sequence": len(events),
+                    "stage": "multiplier-ring",
+                    "q": active,
+                    "kernel_rows": multiplier["kernel_rows"],
+                    "from_index": _order_index(current),
+                    "to_index": _order_index(enlarged),
+                    "basis": enlarged.to_dict(),
+                }
+            )
+            current = enlarged
+            continue
+        if multiplier["state"] != "same":
+            return _general_result(
+                "resource-error",
+                component,
+                current,
+                equation_disc,
+                events,
+                message=str(multiplier.get("message", "multiplier-ring failed")),
+            )
+        colon = _colon_freeness(ideal, table, active)
+        if colon["state"] == "split":
+            split = _split_from_divisor(
+                component, int(colon["divisor"]), colon["evidence"]
+            )
+            return _general_result(
+                "split",
+                component,
+                current,
+                equation_disc,
+                events,
+                split=split,
+                evidence={"split_stage": "colon-freeness"},
+            )
+        if colon["state"] != "free":
+            return _general_result(
+                "resource-error",
+                component,
+                current,
+                equation_disc,
+                events,
+                message="colon freeness could not be certified",
+            )
+        events.append(
+            {
+                "sequence": len(events),
+                "stage": "colon-freeness",
+                "q": active,
+                "quotient_rank": colon["quotient_rank"],
+                "kernel_rows": colon["kernel_rows"],
+            }
+        )
+        ideal_one = ideal
+        ideal_two = _ideal_multiply(ideal, ideal, table)
+        ideal_three = _ideal_multiply(ideal_two, ideal, table)
+        for height in range(2, degree + 1):
+            if steps >= max_steps:
+                break
+            left = _ideal_multiply(
+                _ideal_add_integer(ideal_one, active),
+                _ideal_add_integer(ideal_three, active),
+                table,
+            )
+            middle = _ideal_add_integer(ideal_two, active)
+            right = _ideal_multiply(middle, middle, table)
+            steps += 1
+            equal = left.rows == right.rows
+            events.append(
+                {
+                    "sequence": len(events),
+                    "stage": "power-freeness",
+                    "height": height,
+                    "equal": equal,
+                    "left_hnf": left.rows,
+                    "right_hnf": right.rows,
+                }
+            )
+            if not equal:
+                relation = _relation_freeness(left, right, active, max_minors)
+                if relation["state"] == "split":
+                    split = _split_from_divisor(
+                        component,
+                        int(relation["divisor"]),
+                        relation["evidence"],
+                    )
+                    return _general_result(
+                        "split",
+                        component,
+                        current,
+                        equation_disc,
+                        events,
+                        split=split,
+                        evidence={"split_stage": "power-freeness"},
+                    )
+                if relation["state"] != "free":
+                    return _general_result(
+                        "resource-error",
+                        component,
+                        current,
+                        equation_disc,
+                        events,
+                        message=str(
+                            relation.get("message", "relation freeness failed")
+                        ),
+                    )
+                root = _perfect_power_at_height(active, height)
+                if root is not None:
+                    split = _split_from_divisor(
+                        component,
+                        root,
+                        {
+                            "operation": "perfect-power-height",
+                            "coefficient": root,
+                            "base": root,
+                            "exponent": height,
+                            "smith_diagonal": relation["smith_diagonal"],
+                        },
+                    )
+                    return _general_result(
+                        "split",
+                        component,
+                        current,
+                        equation_disc,
+                        events,
+                        split=split,
+                        evidence={"split_stage": "perfect-power"},
+                    )
+                return _general_result(
+                    "resource-error",
+                    component,
+                    current,
+                    equation_disc,
+                    events,
+                    message="stable BL relation needs further factor discovery",
+                    evidence={"relation_smith": relation["smith_diagonal"]},
+                )
+            ideal_one, ideal_two, ideal_three = (
+                ideal_two,
+                ideal_three,
+                _ideal_multiply(ideal_three, ideal, table),
+            )
+        return _general_result(
+            "resource-error",
+            component,
+            current,
+            equation_disc,
+            events,
+            message="Buchmann--Lenstra freeness cycle exhausted its bound",
+        )
+    return _general_result(
+        "resource-error",
+        component,
+        current,
+        equation_disc,
+        events,
+        message="Buchmann--Lenstra multiplier cycle exhausted its bound",
+    )
+
+
+def check_buchmann_lenstra_general_result(
+    polynomial_coefficients: list[int],
+    starting_basis: OrderBasis,
+    result: BuchmannLenstraResult,
+    *,
+    equation_discriminant: int | None = None,
+    max_steps: int = 128,
+    max_degree: int = 16,
+    max_minors: int = 100000,
+) -> bool:
+    """Replay the bounded general cycle and compare all certificate evidence."""
+    replay = buchmann_lenstra_general_overorder(
+        polynomial_coefficients,
+        result.component,
+        starting_basis,
+        equation_discriminant=equation_discriminant,
+        max_steps=max_steps,
+        max_degree=max_degree,
+        max_minors=max_minors,
+    )
+    if replay.to_dict() != result.to_dict():
+        return False
+    if result.basis is not None and not _basis_defines_order(
+        [int(value) for value in polynomial_coefficients], result.basis
+    ):
+        return False
+    return True
+
+
 __all__ = [
     "BuchmannLenstraResult",
+    "buchmann_lenstra_general_overorder",
     "buchmann_lenstra_overorder",
+    "check_buchmann_lenstra_general_result",
     "check_buchmann_lenstra_result",
+    "perfect_power_component_split",
     "polynomial_discriminant",
     "polynomial_gcd_with_split",
 ]

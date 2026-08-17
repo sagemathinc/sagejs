@@ -49,8 +49,37 @@ common `LocalOrderResult` as `not-applicable`, so orchestration cannot mistake
 progress for a proof. `check_buchmann_lenstra_result` replays structural,
 index, discriminant, and local-coprimality checks.
 
-The present concrete arithmetic adapter is limited to the equation-order
-composite Dedekind step. A nonidentity input basis returns `stalled` with the
-integration hook `q-radical-multiplier-cycle`; the generic Buchmann--Lenstra
-cycle driver supplies that later adapter. This limitation is explicit rather
-than silently sending a composite modulus to a prime-only Round-2 routine.
+## General-order cycle
+
+A nonidentity `OrderBasis` now enters a concrete tame Buchmann--Lenstra cycle:
+
+1. build its exact integral multiplication table and trace matrix;
+2. compute the q-radical kernel over `ZZ/qZZ` using unit pivots only;
+3. construct `(I:I)` as the kernel of the multiplier equations and enlarge
+   the absolute power-basis lattice by integer row HNF;
+4. repeat until the component is coprime to the new discriminant;
+5. when the multiplier ring is stable, check colon freeness, ideal-power
+   relations, Smith determinantal divisors, and the BL perfect-power height.
+
+Every nonunit modular pivot returns a `ComponentSplit`. Each enlargement event
+records the radical HNF, kernel rows, old and new total equation-order indices,
+and the resulting canonical basis. `check_buchmann_lenstra_general_result`
+replays the bounded cycle and compares all evidence before accepting it.
+
+The dynamic implementation has explicit `max_steps`, `max_degree`, and
+`max_minors` bounds. Exhausting one returns `resource-error`; it never converts
+an unresolved composite into a prime-local request. The frozen quadratic
+conductor example starts from the nonidentity order
+
+```text
+Z + 35^2 sqrt(2) Z
+```
+
+and requires two multiplier-ring enlargements, with total equation-order
+indices `35 -> 1225 -> 42875`, before the discriminant becomes `8`.
+
+The integration hook is `buchmann_lenstra_overorder(..., basis=current_basis)`;
+it dispatches to `buchmann_lenstra_general_overorder` automatically. The
+maximal-order engine remains responsible for restarting exact split children
+and choosing a separate factor-discovery policy after a bounded
+`resource-error`.

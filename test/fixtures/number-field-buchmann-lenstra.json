@@ -37,5 +37,42 @@
     "expected_left_factor": "3",
     "expected_right_factor": "5",
     "expected_step": 1
+  },
+  "general_multi_enlargement": {
+    "component": "35",
+    "coefficients_low_to_high": ["-3676531250", "0", "1"],
+    "starting_basis": {
+      "numerator": [["35", "0"], ["0", "1"]],
+      "denominator": "35"
+    },
+    "expected_enlargements": 2,
+    "expected_index": "42875",
+    "expected_discriminant": "8",
+    "expected_basis": {
+      "numerator": [["42875", "0"], ["0", "1"]],
+      "denominator": "42875"
+    }
+  },
+  "general_trace_split": {
+    "component": "49",
+    "coefficients_low_to_high": ["-7", "0", "0", "1"],
+    "expected_left_factor": "7",
+    "expected_right_factor": "7",
+    "expected_stage": "q-radical"
+  },
+  "general_freeness": {
+    "component": "65",
+    "coefficients_low_to_high": ["-65", "0", "1"],
+    "starting_basis": {
+      "numerator": [["2", "0"], ["1", "1"]],
+      "denominator": "2"
+    },
+    "expected_stages": [
+      "component-reduction",
+      "q-radical",
+      "colon-freeness",
+      "power-freeness"
+    ],
+    "expected_message": "stable BL relation needs further factor discovery"
   }
 }

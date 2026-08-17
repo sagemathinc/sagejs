@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-bl-general",
+  "title": "General composite Buchmann-Lenstra cycle",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the real bounded nonidentity-order Buchmann-Lenstra q-radical, multiplier-ring, freeness, and perfect-power cycle with replayable evidence",
+  "base_commit": "86184c56f978519ed9ded3814adc54530944167f",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "test/number-field-buchmann-lenstra.cjs",
+    "test/fixtures/number-field-buchmann-lenstra.json",
+    "docs/number-field-buchmann-lenstra.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/MaxOrd/MaxOrd.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.144,
+      "started_at": "2026-08-17T21:25:50.150Z",
+      "commit": "86184c56f978519ed9ded3814adc54530944167f",
+      "workspace_fingerprint": "885fd117ff7c6a61b60bc5b904fbfc9085c0f522216e53cc762e689fb5a96a57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.04,
+      "started_at": "2026-08-17T21:25:53.005Z",
+      "commit": "86184c56f978519ed9ded3814adc54530944167f",
+      "workspace_fingerprint": "885fd117ff7c6a61b60bc5b904fbfc9085c0f522216e53cc762e689fb5a96a57",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implements a real bounded general-order Buchmann-Lenstra adapter over canonical OrderBasis lattices: tame trace q-radicals, unit-or-split modular kernels, multiplier-ring HNF enlargements, colon and power freeness, Smith-minor obstructions, perfect-power evidence, and deterministic independent replay. A Sage-checked nonidentity quadratic fixture requires two multiplier enlargements before reaching the maximal order.",
+    "risks": [
+      "The trace-radical path deliberately returns resource-error when the unresolved component is not tame at the order degree; small-prime or wild local solvers must handle that branch.",
+      "Smith evidence uses an explicit minor-count bound and returns resource-error rather than attempting unbounded high-degree work.",
+      "The bootstrapped native addon is absent in this bounded worktree, so native/public-engine tests fail before arithmetic execution with missing sagejs_flint.node; focused dynamic CPython/Sage.js, strict, and architecture checks pass."
+    ],
+    "next_steps": [
+      "The integration engine can call buchmann_lenstra_overorder with its current nonidentity OrderBasis; no maximal_order_engine.py change is required for dispatch.",
+      "Restart split results on their exact ComponentSplit children and route bounded resource-error results back to certified factor discovery.",
+      "Run public engine and native suites in the bootstrapped integration worktree."
+    ]
+  }
+}
