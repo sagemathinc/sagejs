@@ -70,7 +70,41 @@ export function createTaskEvaluator({
 
   const callableCache = new Map<string, (...args: unknown[]) => unknown>();
 
+  function ensureCallableModule(callable: CallableSpec): void {
+    const moduleName = callable.module;
+    const authorized = Reflect.get(
+      globalThis,
+      "__sagejs_precompiled_task_modules__",
+    );
+    if (
+      !Array.isArray(authorized) ||
+      typeof moduleName !== "string" ||
+      moduleName === "__main__" ||
+      moduleName === "__multiprocessing__"
+    ) return;
+    const registry = Reflect.get(globalThis, "ρσ_modules") as
+      | Record<string, unknown>
+      | undefined;
+    const baselib = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    ) as Record<string, unknown> | undefined;
+    if (
+      (registry && Object.hasOwn(registry, moduleName)) ||
+      (baselib && Object.hasOwn(baselib, moduleName))
+    ) return;
+    const loader = Reflect.get(globalThis, "__sagejs_load_module__");
+    if (typeof loader !== "function") {
+      throw new Error("precompiled multiprocessing module loader is unavailable");
+    }
+    // The loader owns the exact allowlist and returns Python ImportError for
+    // unknown module identities. Do this before creating a namespace from
+    // serialized source so an uncompiled module cannot bypass the boundary.
+    Reflect.apply(loader, undefined, [moduleName]);
+  }
+
   function reconstruct(callable: CallableSpec): (...args: unknown[]) => unknown {
+    ensureCallableModule(callable);
     const bindings = callable.bindings ?? {};
     const names = Object.keys(bindings);
     const moduleGlobals = callable.moduleGlobals ?? {};
