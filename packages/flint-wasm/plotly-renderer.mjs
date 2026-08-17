@@ -1,5 +1,7 @@
 export const PLOTLY_MIME = "application/vnd.plotly.v1+json";
 
+const BROWSER_IMAGE_FORMATS = ["png", "jpeg", "webp", "svg"];
+
 /**
  * Render a Sage.js rich display with an existing Plotly.js implementation.
  *
@@ -45,18 +47,110 @@ export async function renderSageDisplay(
 }
 
 function imageFormat(filename, explicitFormat) {
-  let format = String(
-    explicitFormat ??
-      String(filename).split(".").pop() ??
-      "png",
-  ).toLowerCase();
+  const name = String(filename);
+  const extension = name.includes(".") ? name.split(".").pop() : undefined;
+  let format = String(explicitFormat ?? (extension || "png")).toLowerCase();
   if (format === "jpg") format = "jpeg";
-  if (!["png", "jpeg", "webp", "svg"].includes(format)) {
+  if (!BROWSER_IMAGE_FORMATS.includes(format)) {
     throw new Error(
       `unsupported browser graphics format ${JSON.stringify(format)}`,
     );
   }
   return format;
+}
+
+function percentEncodedBytes(value) {
+  const bytes = [];
+  let plain = "";
+  const flushPlain = () => {
+    if (!plain) return;
+    for (const value of new TextEncoder().encode(plain)) bytes.push(value);
+    plain = "";
+  };
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== "%") {
+      plain += value[index];
+      continue;
+    }
+    flushPlain();
+    if (
+      index + 2 >= value.length ||
+      !/^[0-9a-f]{2}$/i.test(value.slice(index + 1, index + 3))
+    ) {
+      throw new TypeError("image data URL contains an invalid percent escape");
+    }
+    bytes.push(Number.parseInt(value.slice(index + 1, index + 3), 16));
+    index += 2;
+  }
+  flushPlain();
+  return new Uint8Array(bytes);
+}
+
+function imageDataUrlBytes(url) {
+  if (typeof url !== "string" || !url.startsWith("data:")) {
+    throw new TypeError("Plotly image export did not return a data URL");
+  }
+  const separator = url.indexOf(",");
+  if (separator < 0) {
+    throw new TypeError("Plotly image data URL has no payload separator");
+  }
+  const metadata = url.slice(5, separator);
+  const payload = url.slice(separator + 1);
+  if (!payload) throw new TypeError("Plotly image data URL has an empty payload");
+  const isBase64 = metadata
+    .split(";")
+    .some((value) => value.toLowerCase() === "base64");
+  if (!isBase64) return percentEncodedBytes(payload);
+
+  const encodedBytes = percentEncodedBytes(payload);
+  for (const value of encodedBytes) {
+    if (value > 0x7f) {
+      throw new TypeError("base64 image data URL contains a non-ASCII byte");
+    }
+  }
+  let encoded = new TextDecoder().decode(encodedBytes);
+  encoded = encoded.replace(/[\t\n\f\r ]/g, "");
+  if (
+    encoded.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) ||
+    (encoded.indexOf("=") >= 0 && encoded.indexOf("=") < encoded.length - 2)
+  ) {
+    throw new TypeError("image data URL contains invalid base64");
+  }
+  if (typeof globalThis.atob !== "function") {
+    throw new Error("base64 decoding is unavailable in this environment");
+  }
+  let decoded;
+  try {
+    decoded = globalThis.atob(encoded);
+  } catch {
+    throw new TypeError("image data URL contains invalid base64");
+  }
+  const answer = new Uint8Array(decoded.length);
+  for (let index = 0; index < decoded.length; index += 1) {
+    answer[index] = decoded.charCodeAt(index);
+  }
+  return answer;
+}
+
+/**
+ * Report whether this browser has the Plotly operations needed for image export.
+ */
+export function browserGraphicsExportCapabilities(
+  plotly = globalThis.Plotly,
+) {
+  const missing = [];
+  if (!plotly || typeof plotly.react !== "function") missing.push("react");
+  if (!plotly || typeof plotly.toImage !== "function") missing.push("toImage");
+  const available = missing.length === 0;
+  return {
+    backend: "plotly-browser",
+    available,
+    formats: available ? [...BROWSER_IMAGE_FORMATS] : [],
+    dataUrl: available,
+    bytes: available,
+    missing,
+  };
 }
 
 /**
@@ -88,6 +182,19 @@ export async function sageDisplayToImage(
     if (typeof plotly.purge === "function") plotly.purge(element);
     element.remove();
   }
+}
+
+/**
+ * Render a rich display offscreen and return its encoded image bytes.
+ */
+export async function sageDisplayToImageBytes(
+  display,
+  options = {},
+  plotly = globalThis.Plotly,
+) {
+  return imageDataUrlBytes(
+    await sageDisplayToImage(display, options, plotly),
+  );
 }
 
 /**
