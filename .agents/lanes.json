@@ -57,6 +57,7 @@
         "tools/chromium-discovery.ts",
         "tools/plotly-image-renderer.ts",
         "tools/plotly-renderer-client.ts",
+        "tools/plotly-renderer-worker.ts",
         "scripts/plotting/",
         "PLOTTING.md"
       ],
