@@ -1045,6 +1045,36 @@
       "commit": "46a7596470a34e7df383b505cf6f9218926ba4fc",
       "workspace_fingerprint": "3a34d174cd3ef13c7692f7f8715dc6dc3cd14ad945061556118a0b264f18ccc4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/portable-source-paths.cjs test/module-cache.cjs test/runtime-cache.cjs test/sea-windows-virtual-path.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.256,
+      "started_at": "2026-08-17T07:16:53.044Z",
+      "commit": "6384dfe2f4a67c8fd08b3d30c13081607edb8c64",
+      "workspace_fingerprint": "eee4413d202013a3ddf658e1e50217ee31ad2e3c5ca2ab25a175f6f70e3a427e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.215,
+      "started_at": "2026-08-17T07:17:17.972Z",
+      "commit": "6384dfe2f4a67c8fd08b3d30c13081607edb8c64",
+      "workspace_fingerprint": "eee4413d202013a3ddf658e1e50217ee31ad2e3c5ca2ab25a175f6f70e3a427e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.216,
+      "started_at": "2026-08-17T07:17:20.046Z",
+      "commit": "6384dfe2f4a67c8fd08b3d30c13081607edb8c64",
+      "workspace_fingerprint": "eee4413d202013a3ddf658e1e50217ee31ad2e3c5ca2ab25a175f6f70e3a427e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
