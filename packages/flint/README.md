@@ -118,6 +118,33 @@ coordinates are wrapped without repeating their potentially huge GCD. The
 ordinary Python implementation remains the readable correctness fallback and
 the differential-test oracle.
 
+Elliptic curves over `QQ` also expose 2-descent rank bounds, the 2-Selmer rank,
+and independent rational points found during descent and the initial search.
+This code is the rank/descent source closure from John Cremona's
+[eclib](https://github.com/JohnCremona/eclib), pinned at commit
+`8dca7f18acedf7c2283a5d0e689c269f8258c981` and carried under
+GPL-2.0-or-later. The dependency build verifies the upstream archive and
+applies `patches/eclib-flint-rank.patch`. That patch replaces eclib's NTL
+integer, modular-polynomial, and linear-algebra layer with FLINT, replaces its
+PARI point-count call with direct finite-field counting, and makes modular
+contexts and caches thread-local. Only the required eclib sources are compiled
+into this addon; no eclib, NTL, or PARI library is linked.
+
+The public `rank_data()` result distinguishes lower and upper bounds and marks
+whether they coincide. `rank()` refuses to present an unresolved interval as
+an exact rank. `found_points()` (and `gens(proof=False)`) returns the
+independent points found by descent and search without claiming that their
+subgroup is saturated. `gens()` and `saturated_gens()` request eclib's
+automatic saturation, require coincident rank bounds, and return a proven
+Mordell--Weil basis modulo torsion; failure to prove either fact raises an
+`ArithmeticError`. `rank_data(saturate=True)` exposes the saturation index and
+any unresolved primes explicitly. Exact descent and local solubility
+arithmetic uses FLINT; eclib's `NO_MPFP` machine-floating path is used only for
+height/search heuristics. Calls reset their deterministic random state and
+restore their thread-local modulus before returning. See
+[`bench/ELLIPTIC-RANK.md`](../../bench/ELLIPTIC-RANK.md) for oracle coverage,
+limitations, and representative timings.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as
@@ -175,7 +202,9 @@ rather than adding it to the factor list.
 The native package is validated on x86-64 and arm64 Linux, Apple Silicon
 macOS, and x86-64 Windows. Linux and macOS download SHA-256-verified GMP 6.3.0,
 MPFR 4.2.2, MPC 1.4.1, OpenBLAS 0.3.33, and FLINT 3.6.0 and build
-position-independent static libraries. Linux x64 additionally builds
+position-independent static libraries. The same build also downloads the
+SHA-256-verified pinned eclib source archive and applies the FLINT-only rank
+patch on every platform. Linux x64 additionally builds
 `ffpoly` 1.2.7 and smalljac 4.1.3.
 Windows uses a pinned vcpkg baseline to build static GMP 6.3.0, MPFR 4.2.2,
 MPC 1.3.1, OpenBLAS 0.3.33, FLINT 3.6.0, and pthreads4w with the dynamic MSVC

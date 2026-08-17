@@ -258,6 +258,15 @@
       "prefixes": []
     },
     {
+      "id": "elliptic-curves-descent",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 12000,
+      "depends_on": ["core-runtime", "arithmetic", "elliptic-curves"],
+      "files": ["src/lib/sagejs_elliptic_descent.py"],
+      "prefixes": []
+    },
+    {
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",

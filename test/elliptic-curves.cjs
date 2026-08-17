@@ -191,6 +191,52 @@ test("elliptic-curve coefficients, labels, and bundled Cremona data", async () =
   }
 });
 
+test("FLINT-backed 2-descent exposes rank bounds, Selmer rank, and points", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([0,1,1,-2,0])",
+            "F = EllipticCurve([0,0,1,-7,6])",
+            "T = EllipticCurve([0,0,0,-1,0])",
+            "R = EllipticCurve([0,0,QQ(1)/2,-7,6])",
+            "D = F.rank_data()",
+            "S = F.rank_data(saturate=True)",
+            "[E.rank(), E.rank_bounds(), E.two_selmer_rank(),",
+            " E.found_points(), E.gens(), E.gens(proof=False),",
+            " D, S['saturation_proven'], S['saturation_index'], S['generators'],",
+            " T.rank_bounds(), T.two_selmer_rank(), T.gens(),",
+            " R.rank_bounds(), R.gens()]",
+          ].join("\n"),
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "[2, (2, 2), 2, ((0 : -1 : 1), (-1 : 1 : 1)), " +
+        "((0 : -1 : 1), (-1 : 1 : 1)), " +
+        "((0 : -1 : 1), (-1 : 1 : 1)), " +
+        "{'rank_lower_bound': 3, 'rank_upper_bound': 3, " +
+        "'two_selmer_rank': 3, 'certain': True, " +
+        "'found_points': ((1 : -1 : 1), (-2 : 3 : 1), (-7/4 : 25/8 : 1)), " +
+        "'saturation_attempted': False, 'saturation_proven': False, " +
+        "'saturation_index': None, 'unsaturated_primes': (), " +
+        "'generators': None, 'full_mordell_weil_basis': False}, " +
+        "True, 1, ((1 : -1 : 1), (-2 : 3 : 1), (-7/4 : 25/8 : 1)), " +
+        "(0, 0), 2, (), (2, 2), " +
+        "((1 : -1/2 : 1), (-11/4 : 15/8 : 1))]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "EllipticCurve(GF(5), [0,0,1,-1,0]).rank_bounds()",
+      ),
+      /only implemented over QQ/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("native integral elliptic coefficient sweep", async () => {
   const session = await createSage();
   try {

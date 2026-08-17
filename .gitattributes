@@ -17,3 +17,6 @@ src/baselib/sagejs/ffi/*.py linguist-generated=true
 src/baselib/sagejs/ffi/__init__.py -linguist-generated
 architecture/native-boundaries.json linguist-generated=true
 architecture/native-exports.json linguist-generated=true
+
+# Source patches retain upstream context whitespace for exact application.
+packages/flint/patches/*.patch -whitespace

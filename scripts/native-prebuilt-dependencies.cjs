@@ -14,6 +14,7 @@ const {
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
@@ -37,7 +38,7 @@ const schema = "sagejs.native-dependency-bundle-v1";
 // in the bundle identity so the already-built, verified archives retain their
 // content keys, while downloads use the replacement immutable catalog.
 const bundleSeries = "native-dependencies-1";
-const catalogRelease = "native-dependencies-4";
+const catalogRelease = "native-dependencies-5";
 const packages = Object.freeze(["flint", "fflas", "graph", "m4ri"]);
 const supportedTargets = new Set([
   "linux-x64",
@@ -350,6 +351,30 @@ function installBundleArchive(repositoryRoot, archive, expectedDigest, options =
   }
 }
 
+function installBundlePath(repositoryRoot, input, options = {}) {
+  const source = resolve(input);
+  const archive = statSync(source).isDirectory()
+    ? (() => {
+        const archives = readdirSync(source)
+          .filter((name) => name.endsWith(".tar.gz"))
+          .map((name) => join(source, name));
+        if (archives.length !== 1) {
+          throw new Error(
+            `expected exactly one native dependency archive in ${source}, ` +
+              `found ${archives.length}`,
+          );
+        }
+        return archives[0];
+      })()
+    : source;
+  const sidecar = `${archive}.sha256`;
+  if (!existsSync(sidecar)) {
+    throw new Error(`native dependency archive has no checksum sidecar: ${sidecar}`);
+  }
+  const digest = parseDigest(readFileSync(sidecar, "utf8"), basename(archive));
+  return installBundleArchive(repositoryRoot, archive, digest, options);
+}
+
 function lstatExists(filename) {
   try {
     lstatSync(filename);
@@ -442,6 +467,11 @@ async function main() {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
+  if (command === "install-archive" && argument) {
+    const result = installBundlePath(root, argument);
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
   if (command === "identity" && argument === undefined) {
     process.stdout.write(`${JSON.stringify({
       asset: assetName(root),
@@ -450,7 +480,10 @@ async function main() {
     }, null, 2)}\n`);
     return;
   }
-  throw new Error("usage: native-prebuilt-dependencies.cjs install|identity|pack OUTPUT");
+  throw new Error(
+    "usage: native-prebuilt-dependencies.cjs " +
+      "install|identity|pack OUTPUT|install-archive ARCHIVE_OR_DIRECTORY",
+  );
 }
 
 module.exports = {
@@ -461,6 +494,7 @@ module.exports = {
   createBundle,
   identityInputs,
   installBundleArchive,
+  installBundlePath,
   installPrebuiltDependencies,
   packages,
   packageTargets,
