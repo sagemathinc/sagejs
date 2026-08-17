@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "references": [
+      "Guardia-Montes-Nart, Higher Newton polygons and integral bases, arXiv:0902.3428v3",
+      "Poteaux-Weimann, Fast Integral Bases Computation, arXiv:2405.13577v1"
+    ],
+    "oracle_families": [
+      "PARI/Sage",
+      "independent Sage.js closure/index checker"
+    ],
+    "sage_command": "/home/user/bin/sagelite"
+  },
+  "cases": [
+    {
+      "name": "scaled quadratic Eisenstein generator",
+      "polynomial": [-8, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": 32,
+      "local_discriminant_valuation": 5,
+      "expected_status": "complete",
+      "expected_index_valuation": 1,
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 1}
+      ],
+      "sage_basis": ["1", "1/2*a"]
+    },
+    {
+      "name": "scaled cubic Eisenstein generator",
+      "polynomial": [-16, 0, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": -6912,
+      "local_discriminant_valuation": 8,
+      "expected_status": "complete",
+      "expected_index_valuation": 3,
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 1},
+        {"numerator": [0, 0, 1], "denominator_exponent": 2}
+      ],
+      "sage_basis": ["1", "1/2*a", "1/4*a^2"]
+    },
+    {
+      "name": "scaled quartic Eisenstein generator",
+      "polynomial": [-32, 0, 0, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": -8388608,
+      "local_discriminant_valuation": 23,
+      "expected_status": "complete",
+      "expected_index_valuation": 6,
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 1},
+        {"numerator": [0, 0, 1], "denominator_exponent": 2},
+        {"numerator": [0, 0, 0, 1], "denominator_exponent": 3}
+      ],
+      "sage_basis": ["1", "1/2*a", "1/4*a^2", "1/8*a^3"]
+    },
+    {
+      "name": "irregular quadratic requires refinement",
+      "polynomial": [-12, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": 48,
+      "local_discriminant_valuation": 4,
+      "expected_status": "incomplete",
+      "expected_index_valuation": 1,
+      "expected_incomplete_state": "requires-higher-order-representative",
+      "sage_basis": ["1", "1/2*a"]
+    }
+  ]
+}
