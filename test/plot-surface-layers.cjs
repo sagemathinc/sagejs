@@ -67,6 +67,7 @@ from sagejs.plotting.surface_layers import (
     layer_payload,
     lower_3d_geometry_layer,
     lower_3d_geometry_payload,
+    normalize_surface_style,
     polygon_layer,
     rectangular_surface_layer,
     triangular_mesh_layer,
@@ -115,6 +116,7 @@ assert surface.metadata["scene"]["bounds"] == {
 }
 assert surface.metadata["scene"]["camera_target"] == [0.5, 1.0, 1.5]
 assert surface.source_intent["expression"] == "x + y"
+assert surface.metadata["style_decisions"]["status"] == "supported"
 surface_trace = lower_3d_geometry_layer(surface)[0]
 assert surface_trace["type"] == "surface"
 assert surface_trace["colorscale"] == [[0, "steelblue"], [1, "steelblue"]]
@@ -161,6 +163,21 @@ assert polygon.metadata["scene"]["degenerate_axes"] == ["z"]
 polygon_trace = lower_3d_geometry_layer(polygon)[0]
 assert polygon_trace["facecolor"] == ["red", "red"]
 assert polygon_trace["opacity"] == 0.5
+
+translated_color = polygon_layer(
+    [(0, 0, 0), (1, 0, 0), (0, 1, 0)], style={"color": (1, 0, 0)}
+)
+assert translated_color.style["color"] == "#ff0000"
+assert translated_color.metadata["style_decisions"]["status"] == "translated"
+color_decisions = [
+    item for item in translated_color.metadata["style_decisions"]["options"]
+    if item["option"] == "color"
+]
+assert len(color_decisions) == 1
+assert color_decisions[0]["status"] == "translated"
+unsupported_style = normalize_surface_style({"material": {"shininess": 20}})
+assert unsupported_style.status == "unsupported"
+assert [item.option for item in unsupported_style.options if item.status == "unsupported"] == ["shininess"]
 
 # Every failure here is an intentional capability boundary, not a fallback.
 invalid = (

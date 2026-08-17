@@ -19,6 +19,7 @@ from typing import Any, cast
 
 from ._json import JSONValue, materialize_object
 from .model import PlotLayer, make_layer
+from .styles import NormalizedStyle, OptionResult, normalize_color, normalize_opacity
 
 MAX_SURFACE_SAMPLES = 1_000_000
 MAX_MESH_VERTICES = 1_000_000
@@ -66,106 +67,145 @@ def _nonnegative_limit(value: Any, name: str) -> int:
     return value
 
 
-def _opacity(value: Any) -> float:
-    answer = _finite_number(value, "opacity")
-    if answer < 0 or answer > 1:
-        raise ValueError("opacity must be between 0 and 1")
-    return answer
-
-
-def _color(value: Any, name: str = "color") -> str:
-    if isinstance(value, str):
-        answer = value.strip()
-        if answer == "":
-            raise ValueError(name + " must not be empty")
-        return answer
-    components = _sequence(value, name)
-    if len(components) not in (3, 4):
-        raise ValueError(name + " must have three RGB or four RGBA components")
-    normalized = [_finite_number(item, name + " component") for item in components]
-    for component in normalized:
-        if component < 0 or component > 1:
-            raise ValueError(name + " components must be between 0 and 1")
-    channels = [int(normalized[index] * 255 + 0.5) for index in range(3)]
-    if len(normalized) == 3:
-        return (
-            "rgb("
-            + str(channels[0])
-            + ","
-            + str(channels[1])
-            + ","
-            + str(channels[2])
-            + ")"
-        )
-    return (
-        "rgba("
-        + str(channels[0])
-        + ","
-        + str(channels[1])
-        + ","
-        + str(channels[2])
-        + ","
-        + str(normalized[3])
-        + ")"
-    )
-
-
 def _style_mapping(value: Mapping[str, Any] | None) -> dict[str, Any]:
     if value is None:
         return {}
     return dict(value)
 
 
-def _reject_unknown_keys(
+def _unknown_keys(
     value: Mapping[str, Any], allowed: Sequence[str], name: str
-) -> None:
+) -> list[OptionResult]:
+    results: list[OptionResult] = []
     for key in value:
         if not isinstance(key, str):
             raise TypeError(name + " must contain only string keys")
         if key not in allowed:
-            raise ValueError("unsupported " + name + " option: " + key)
+            results.append(
+                OptionResult(
+                    key,
+                    "unsupported",
+                    value[key],
+                    None,
+                    "Unsupported " + name + " option: " + key + ".",
+                )
+            )
+    return results
 
 
-def _material(value: Any) -> dict[str, JSONValue]:
+def _reject_unknown_keys(
+    value: Mapping[str, Any], allowed: Sequence[str], name: str
+) -> None:
+    unknown = _unknown_keys(value, allowed, name)
+    if unknown:
+        message = unknown[0].to_dict()["message"]
+        raise ValueError(str(message))
+
+
+def _material(value: Any) -> tuple[dict[str, JSONValue], list[OptionResult]]:
     if value is None:
-        return {}
+        return {}, []
     if not isinstance(value, Mapping):
-        raise TypeError("material must be a mapping")
-    _reject_unknown_keys(value, _MATERIAL_KEYS, "material")
+        return {}, [
+            OptionResult(
+                "material",
+                "unsupported",
+                value,
+                None,
+                "Material must be a mapping of Plotly lighting coefficients.",
+            )
+        ]
     answer: dict[str, JSONValue] = {}
+    results = _unknown_keys(value, _MATERIAL_KEYS, "material")
     for key in _MATERIAL_KEYS:
         if key in value:
-            numeric = _finite_number(value[key], "material " + key)
-            if numeric < 0 or numeric > 1:
-                raise ValueError("material " + key + " must be between 0 and 1")
-            answer[key] = numeric
-    return answer
+            try:
+                numeric = _finite_number(value[key], "material " + key)
+            except (TypeError, ValueError):
+                numeric = -1
+            if 0 <= numeric <= 1:
+                answer[key] = numeric
+                results.append(
+                    OptionResult("material." + key, "supported", value[key], numeric)
+                )
+            else:
+                results.append(
+                    OptionResult(
+                        "material." + key,
+                        "unsupported",
+                        value[key],
+                        None,
+                        "Material " + key + " must be between 0 and 1.",
+                    )
+                )
+    return answer, results
 
 
-def _light_position(value: Any) -> dict[str, JSONValue]:
+def _light_position(value: Any) -> tuple[dict[str, JSONValue], OptionResult]:
     if value is None:
-        return {}
-    if isinstance(value, Mapping):
-        if len(value) == 0:
-            return {}
-        _reject_unknown_keys(value, ("x", "y", "z"), "light_position")
-        if set(value) != {"x", "y", "z"}:
-            raise ValueError("light_position must contain x, y, and z")
-        coordinates = [value["x"], value["y"], value["z"]]
-    else:
-        coordinates = _sequence(value, "light_position")
-        if len(coordinates) != 3:
-            raise ValueError("light_position must have three coordinates")
-    return {
-        "x": _finite_number(coordinates[0], "light_position x"),
-        "y": _finite_number(coordinates[1], "light_position y"),
-        "z": _finite_number(coordinates[2], "light_position z"),
-    }
+        return {}, OptionResult("light_position", "supported", value, {})
+    try:
+        if isinstance(value, Mapping):
+            if len(value) == 0:
+                return {}, OptionResult("light_position", "supported", value, {})
+            _reject_unknown_keys(value, ("x", "y", "z"), "light_position")
+            if set(value) != {"x", "y", "z"}:
+                raise ValueError("light_position must contain x, y, and z")
+            coordinates = [value["x"], value["y"], value["z"]]
+        else:
+            coordinates = _sequence(value, "light_position")
+            if len(coordinates) != 3:
+                raise ValueError("light_position must have three coordinates")
+        answer: dict[str, JSONValue] = {
+            "x": _finite_number(coordinates[0], "light_position x"),
+            "y": _finite_number(coordinates[1], "light_position y"),
+            "z": _finite_number(coordinates[2], "light_position z"),
+        }
+        return answer, OptionResult("light_position", "supported", value, answer)
+    except (TypeError, ValueError):
+        return {}, OptionResult(
+            "light_position",
+            "unsupported",
+            value,
+            None,
+            "Light position must contain three finite x, y, and z coordinates.",
+        )
+
+
+def _surface_color(value: Any, option: str = "color") -> OptionResult:
+    if isinstance(value, str) and value.strip().lower() == "steelblue":
+        return OptionResult(option, "supported", value, "steelblue")
+    return normalize_color(value, option)
+
+
+def _bool_option(value: Any, option: str) -> OptionResult:
+    if isinstance(value, bool):
+        return OptionResult(option, "supported", value, value)
+    return OptionResult(
+        option,
+        "unsupported",
+        value,
+        None,
+        option + " must be a bool.",
+    )
+
+
+def _require_supported_style(style: NormalizedStyle) -> dict[str, JSONValue]:
+    if style.status == "unsupported":
+        messages: list[str] = []
+        for option in style.options:
+            if option.status != "unsupported":
+                continue
+            record = option.to_dict()
+            message = record["message"]
+            messages.append(str(message) if message is not None else option.option)
+        raise ValueError("; ".join(messages))
+    return style.value
 
 
 def normalize_surface_style(
     style: Mapping[str, Any] | None = None,
-) -> dict[str, JSONValue]:
+) -> NormalizedStyle:
     """Return a strict Plotly surface style.
 
     Unknown keys and invalid values fail closed.  Numeric Sage RGB(A) tuples
@@ -173,42 +213,93 @@ def normalize_surface_style(
     translation in provenance when needed.
     """
     source = _style_mapping(style)
-    _reject_unknown_keys(source, _SURFACE_STYLE_KEYS, "surface style")
-    return {
-        "color": _color(source.get("color", "steelblue")),
-        "colorbar": bool(source.get("colorbar", False)),
-        "light_position": _light_position(source.get("light_position")),
-        "material": _material(source.get("material")),
-        "opacity": _opacity(source.get("opacity", 1)),
-    }
+    options = _unknown_keys(source, _SURFACE_STYLE_KEYS, "surface style")
+    color = _surface_color(source.get("color", "steelblue"))
+    opacity = normalize_opacity(source.get("opacity", 1))
+    colorbar = _bool_option(source.get("colorbar", False), "colorbar")
+    light_position, light_result = _light_position(source.get("light_position"))
+    material, material_results = _material(source.get("material"))
+    options.extend([color, opacity, colorbar, light_result])
+    options.extend(material_results)
+    color_value = color.value if isinstance(color.value, str) else "steelblue"
+    opacity_value = opacity.value if isinstance(opacity.value, (int, float)) else 1.0
+    colorbar_value = colorbar.value if isinstance(colorbar.value, bool) else False
+    return NormalizedStyle(
+        "surface",
+        {
+            "color": color_value,
+            "colorbar": colorbar_value,
+            "light_position": light_position,
+            "material": material,
+            "opacity": opacity_value,
+        },
+        options,
+    )
 
 
 def normalize_mesh_style(
     style: Mapping[str, Any] | None = None,
     *,
     face_count: int,
-) -> dict[str, JSONValue]:
+) -> NormalizedStyle:
     """Return a strict Plotly triangular-mesh style."""
     source = _style_mapping(style)
-    _reject_unknown_keys(source, _MESH_STYLE_KEYS, "mesh style")
+    options = _unknown_keys(source, _MESH_STYLE_KEYS, "mesh style")
     face_colors: list[JSONValue] = []
     if "face_colors" in source:
-        values = _sequence(source["face_colors"], "face_colors")
+        try:
+            values = _sequence(source["face_colors"], "face_colors")
+        except TypeError:
+            values = []
+            options.append(
+                OptionResult(
+                    "face_colors",
+                    "unsupported",
+                    source["face_colors"],
+                    None,
+                    "Face colors must be a sequence.",
+                )
+            )
         if len(values) not in (0, face_count):
-            raise ValueError("face_colors must contain one color for every face")
-        for index in range(len(values)):
-            face_colors.append(_color(values[index], "face_colors"))
-    flat_shading = source.get("flat_shading", True)
-    if not isinstance(flat_shading, bool):
-        raise TypeError("flat_shading must be a bool")
-    return {
-        "color": _color(source.get("color", (0, 0, 1))),
-        "face_colors": face_colors,
-        "flat_shading": flat_shading,
-        "light_position": _light_position(source.get("light_position")),
-        "material": _material(source.get("material")),
-        "opacity": _opacity(source.get("opacity", 1)),
-    }
+            options.append(
+                OptionResult(
+                    "face_colors",
+                    "unsupported",
+                    source["face_colors"],
+                    None,
+                    "Face colors must contain one color for every face.",
+                )
+            )
+        elif len(values) > 0:
+            for index in range(len(values)):
+                result = _surface_color(
+                    values[index], "face_colors[" + str(index) + "]"
+                )
+                options.append(result)
+                if isinstance(result.value, str):
+                    face_colors.append(result.value)
+    color = _surface_color(source.get("color", (0, 0, 1)))
+    opacity = normalize_opacity(source.get("opacity", 1))
+    flat_shading = _bool_option(source.get("flat_shading", True), "flat_shading")
+    light_position, light_result = _light_position(source.get("light_position"))
+    material, material_results = _material(source.get("material"))
+    options.extend([color, opacity, flat_shading, light_result])
+    options.extend(material_results)
+    color_value = color.value if isinstance(color.value, str) else "#0000ff"
+    opacity_value = opacity.value if isinstance(opacity.value, (int, float)) else 1.0
+    flat_value = flat_shading.value if isinstance(flat_shading.value, bool) else True
+    return NormalizedStyle(
+        "mesh3d",
+        {
+            "color": color_value,
+            "face_colors": face_colors,
+            "flat_shading": flat_value,
+            "light_position": light_position,
+            "material": material,
+            "opacity": opacity_value,
+        },
+        options,
+    )
 
 
 def _grid(
@@ -453,6 +544,8 @@ def rectangular_surface_layer(
     sample_count = len(points)
     rows = len(xgrid)
     columns = len(xgrid[0])
+    normalized_style = normalize_surface_style(style)
+    style_value = _require_supported_style(normalized_style)
     generated_metadata = {
         "geometry": "rectangular-grid",
         "resource": {
@@ -461,6 +554,7 @@ def rectangular_surface_layer(
         },
         "scene": _scene_metadata(points),
         "semantic": True,
+        "style_decisions": normalized_style.to_dict(),
     }
     return make_layer(
         kind="surface",
@@ -470,7 +564,7 @@ def rectangular_surface_layer(
         source_intent=_source_intent(
             source_intent, "Surface3d", "sampled-rectangular-surface"
         ),
-        style=normalize_surface_style(style),
+        style=style_value,
         visibility=visibility,
         legend={"show": legend_label is not None, "label": legend_label},
         metadata=_merged_metadata(metadata, generated_metadata),
@@ -496,6 +590,8 @@ def triangular_mesh_layer(
     normalized_triangles = _triangle_indices(
         triangles, normalized_vertices, max_triangles
     )
+    normalized_style = normalize_mesh_style(style, face_count=len(normalized_triangles))
+    style_value = _require_supported_style(normalized_style)
     generated_metadata = {
         "geometry": "indexed-triangular-mesh",
         "resource": {
@@ -504,6 +600,7 @@ def triangular_mesh_layer(
         },
         "scene": _scene_metadata(normalized_vertices),
         "semantic": True,
+        "style_decisions": normalized_style.to_dict(),
     }
     return make_layer(
         kind="mesh",
@@ -513,7 +610,7 @@ def triangular_mesh_layer(
         source_intent=_source_intent(
             source_intent, "IndexFaceSet", "indexed-triangular-mesh"
         ),
-        style=normalize_mesh_style(style, face_count=len(normalized_triangles)),
+        style=style_value,
         visibility=visibility,
         legend={"show": legend_label is not None, "label": legend_label},
         metadata=_merged_metadata(metadata, generated_metadata),
@@ -596,6 +693,8 @@ def polygon_layer(
     dropped, _normal = _polygon_projection(vertices)
     _strictly_convex(vertices, dropped)
     triangles = [[0, index, index + 1] for index in range(1, len(vertices) - 1)]
+    normalized_style = normalize_mesh_style(style, face_count=1)
+    style_value = _require_supported_style(normalized_style)
     generated_metadata = {
         "geometry": "convex-planar-polygon",
         "resource": {
@@ -604,6 +703,7 @@ def polygon_layer(
         },
         "scene": _scene_metadata(vertices),
         "semantic": True,
+        "style_decisions": normalized_style.to_dict(),
     }
     return make_layer(
         kind="polygon",
@@ -611,7 +711,7 @@ def polygon_layer(
         ordinal=ordinal,
         namespace=namespace,
         source_intent=_source_intent(source_intent, "polygon3d", "planar-polygon"),
-        style=normalize_mesh_style(style, face_count=1),
+        style=style_value,
         visibility=visibility,
         legend={"show": legend_label is not None, "label": legend_label},
         metadata=_merged_metadata(metadata, generated_metadata),
@@ -667,7 +767,7 @@ def _lower_surface(layer: PlotLayer) -> dict[str, JSONValue]:
     shape = data.get("shape")
     if shape != [len(xgrid), len(xgrid[0])]:
         raise ValueError("surface shape metadata does not match its grids")
-    style = normalize_surface_style(layer.style)
+    style = _require_supported_style(normalize_surface_style(layer.style))
     trace: dict[str, JSONValue] = {
         "type": "surface",
         "x": cast(JSONValue, xgrid),
@@ -698,7 +798,9 @@ def _lower_mesh(layer: PlotLayer) -> dict[str, JSONValue]:
         MAX_MESH_TRIANGLES,
     )
     face_count = 1 if layer.kind == "polygon" else len(triangles)
-    style = normalize_mesh_style(layer.style, face_count=face_count)
+    style = _require_supported_style(
+        normalize_mesh_style(layer.style, face_count=face_count)
+    )
     trace: dict[str, JSONValue] = {
         "type": "mesh3d",
         "x": [point[0] for point in vertices],
