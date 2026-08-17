@@ -46,6 +46,7 @@
     "src/lib/sage/graphs/graph.py",
     "src/lib/sage/graphs/graph_generators.py",
     "src/lib/sage/graphs/graph_database.py",
+    "src/lib/sage/graphs/pq_trees.py",
     "src/lib/sage/plot/__init__.py",
     "src/lib/sage/plot/misc.py",
     "src/lib/conway_polynomials/__init__.py",

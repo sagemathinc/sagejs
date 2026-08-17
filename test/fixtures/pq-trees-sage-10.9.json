@@ -1,0 +1,340 @@
+{
+  "provenance": {
+    "sageVersion": "10.9",
+    "sourceCommit": "686dc1a8d420c2e0aabadd4f602d9a0aa4690c50",
+    "sourcePath": "src/sage/graphs/pq_trees.py",
+    "sourceSha256": "3f22f502e2f2947faed90631c7be065df755db7b5c7a8d9a1a24c88325c7c582",
+    "passingDoctests": 90
+  },
+  "facts": {
+    "constraints": {
+      "pImpossible": {
+        "message": "Impossible",
+        "status": "exception",
+        "type": "ValueError"
+      },
+      "pStatuses": [
+        [
+          1,
+          true
+        ],
+        [
+          1,
+          true
+        ],
+        [
+          1,
+          true
+        ]
+      ],
+      "qImpossible": {
+        "message": "Impossible",
+        "status": "exception",
+        "type": "ValueError"
+      }
+    },
+    "construction": {
+      "duplicateChildCount": 2,
+      "duplicateOrdering": [
+        [
+          1,
+          2
+        ],
+        [
+          3
+        ]
+      ],
+      "setIdentityPreserved": true
+    },
+    "flatten": [
+      "P",
+      [
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          2,
+          9
+        ]
+      ]
+    ],
+    "nested": {
+      "afterReverse": [
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "before": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          2,
+          9
+        ]
+      ]
+    },
+    "p": {
+      "cardinalityAfter": 1440,
+      "cardinalityBefore": 5040,
+      "orderings": [
+        [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            1
+          ],
+          [
+            3
+          ],
+          [
+            2
+          ]
+        ],
+        [
+          [
+            2
+          ],
+          [
+            1
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            2
+          ],
+          [
+            3
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      "status": [
+        1,
+        true
+      ]
+    },
+    "q": {
+      "cardinality": 2,
+      "orderings": [
+        [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      "status": [
+        1,
+        false
+      ],
+      "treeAfterConstraint": [
+        "Q",
+        [
+          [
+            2,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      ]
+    },
+    "reorder": {
+      "allValuesContiguous": true,
+      "identitySetPreserved": true,
+      "impossible": {
+        "message": "Impossible",
+        "status": "exception",
+        "type": "ValueError"
+      },
+      "oneIdentity": true,
+      "output": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          2,
+          3,
+          4
+        ],
+        [
+          3,
+          4,
+          5
+        ]
+      ],
+      "twoIdentity": true,
+      "zero": []
+    },
+    "simplify": {
+      "invalid": {
+        "message": "Exactly one of left or right must be specified",
+        "status": "exception",
+        "type": "ValueError"
+      },
+      "pRight": [
+        [
+          "P",
+          [
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        ],
+        [
+          "P",
+          [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              5
+            ]
+          ]
+        ]
+      ],
+      "qRight": [
+        [
+          2,
+          4
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          5
+        ]
+      ]
+    }
+  },
+  "exhaustiveInvariant": {
+    "allMatched": true,
+    "cases": 98,
+    "groundSetSize": 3,
+    "maximumFamilySize": 4,
+    "rejected": 6,
+    "satisfiable": 92
+  }
+}
