@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import random
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -44,7 +43,7 @@ def _real_float(value: Any, imaginary_tolerance: float) -> float:
         real_part = float(_part(value, "real"))
         imaginary_part = float(_part(value, "imag"))
         if abs(imaginary_part) >= imaginary_tolerance:
-            raise ValueError("plot function returned a non-real value")
+            raise ValueError("plot function returned a non-real value") from None
         answer = real_part
     if not math.isfinite(answer):
         raise ArithmeticError("plot function returned a non-finite value")
@@ -195,8 +194,16 @@ def generate_plot_points(
     x_values = [minimum + delta * index for index in range(count)]
     x_values[-1] = maximum
     if randomize:
+        # A local deterministic generator avoids importing the Sage.js
+        # runtime's top-level `random` compatibility module when this strict
+        # mathematical module is executed by ordinary CPython. Randomization
+        # here only breaks sampling-grid aliasing; reproducibility is more
+        # useful than ambient process-global entropy.
+        state = 0x9E3779B9
         for index in range(1, count - 1):
-            x_values[index] += delta * (random.random() - 0.5)
+            state = (1664525 * state + 1013904223) & 0xFFFFFFFF
+            unit = state / 4294967296.0
+            x_values[index] += delta * (unit - 0.5)
     # Sage only treats a list as initial points, but accepting any ordinary
     # sequence is a harmless extension and is useful to non-Sage frontends.
     if initial_points is not None:

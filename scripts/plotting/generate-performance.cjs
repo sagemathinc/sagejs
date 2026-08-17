@@ -45,6 +45,25 @@ const document = {
       platforms: ["cpython", "sagejs-native-disabled"],
     },
     {
+      id: "sage-curve-sample-and-spec-100k",
+      stage: "mathematical-sampling-and-semantic-construction",
+      scale: { points: 100000, repetitions: 3 },
+      budgets: {
+        setup_ms: 1000,
+        sampling_ms: 8000,
+        plotspec_ms: 8000,
+        lowering_ms: 8000,
+        maximum_evaluations: 1000000,
+      },
+      command: "node bench/graphics-curve-sampling.cjs --check",
+      evidence: [
+        "bench/graphics-curve-sampling.cjs",
+        "test/graphics-curve-semantics.cjs",
+        "docs/sage-compatibility/plotting/oracle/plot-curves.json",
+      ],
+      platforms: ["sagejs-compiled", "sagejs-native-disabled"],
+    },
+    {
       id: "field-grid-materialization",
       stage: "mathematical-sampling",
       scale: { scalar_samples: 160000, vector_samples: 10000 },
@@ -65,10 +84,12 @@ const document = {
     {
       id: "surface-semantic-lowering",
       stage: "3d-semantic-construction-and-lowering",
-      scale: { authority: "oracle/surface-layers.json" },
-      budgets: { process_timeout_seconds: 120 },
-      command: "node --test test/plot-surface-layers.cjs",
+      scale: { grid: [300, 300], samples: 90000 },
+      budgets: { plotspec_seconds: 8, process_timeout_seconds: 120 },
+      command: "node bench/sage-plot3d-plotspec.cjs",
       evidence: [
+        "bench/sage-plot3d-plotspec.cjs",
+        "test/sage-plot3d-plotspec.cjs",
         "test/plot-surface-layers.cjs",
         "docs/sage-compatibility/plotting/oracle/surface-layers.json",
       ],

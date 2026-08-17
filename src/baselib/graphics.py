@@ -717,6 +717,12 @@ def _plot_spec_layer(
         for name in context:
             if name not in source_intent:
                 source_intent.__setitem__(name, context.__getitem__(name))
+            elif name == "expression" and context.__getitem__(
+                name
+            ) != source_intent.__getitem__(name):
+                source_intent.__setitem__(
+                    "frontend_expression", context.__getitem__(name)
+                )
     if ordered_options is not None and len(ordered_options):
         source_intent.__setitem__(
             "ordered_options", _plot_spec_json_value(ordered_options)
@@ -1964,6 +1970,10 @@ class Graphics:
                 self._show_legend = bool(value)
             self._extra_kwds[key] = value
 
+    def _set_extra_kwd(self, name: str, value: Any) -> None:
+        """Set one frontend option across strict-module call boundaries."""
+        self.set_extra_kwds({name: value})
+
     def get_extra_kwds(self) -> dict[str, Any]:
         return _copy_options(self._extra_kwds)
 
@@ -2481,6 +2491,13 @@ class Graphics:
             data=traces,
             layout=layout,
             config=config,
+        )
+
+    def matplotlib(self, *args: Any, **options: Any) -> Any:
+        """Reject Sage's Matplotlib backend boundary with useful alternatives."""
+        raise NotImplementedError(
+            "Sage.js uses Plotly rather than Matplotlib. "
+            'Use plotly(), save("figure.html"), or save("figure.png").'
         )
 
     def spec(self) -> Any:
@@ -3731,6 +3748,13 @@ class MultiGraphics:
             data=traces,
             layout=layout,
             config=_native_record(displaylogo=False, responsive=True),
+        )
+
+    def matplotlib(self, *args: Any, **options: Any) -> Any:
+        """Reject Sage's Matplotlib backend boundary with useful alternatives."""
+        raise NotImplementedError(
+            "Sage.js uses Plotly rather than Matplotlib. "
+            'Use plotly(), save("figure.html"), or save("figure.png").'
         )
 
     def _rich_repr_(self) -> Any:

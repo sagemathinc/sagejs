@@ -11139,27 +11139,16 @@
       ],
       "dependencies": [],
       "classification": "unsupported",
-      "support_state": "not-advertised",
-      "translation_or_reason": "This exact qualified Sage entry is not part of the evidence-backed Sage.js plotting surface for this release. Use an advertised Plotly-backed constructor from this matrix, revise its PlotSpec, or apply a validated Plotly override. The entry remains unsupported until its exact import and semantics have focused executable tests.",
-      "semantic_tests": [],
+      "support_state": "deliberate-renderer-boundary",
+      "translation_or_reason": "Sage.js is Plotly-native and deliberately does not return Matplotlib objects. The method raises an actionable NotImplementedError; use plotly(), PlotSpec inspection, save(\"figure.html\"), or configured browser-assisted static export instead.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
       "plotly_tests": [],
       "visual_tests": [],
-      "platform_status": "not-assessed",
-      "performance_status": "not-assessed",
-      "evidence_debt": [
-        {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
-        },
-        {
-          "code": "platform-evidence-missing",
-          "detail": "Platform behavior has not been assessed for this entry."
-        },
-        {
-          "code": "performance-evidence-missing",
-          "detail": "Performance and resource behavior have not been assessed."
-        }
-      ]
+      "platform_status": "all-supported-platforms",
+      "performance_status": "not-applicable",
+      "evidence_debt": []
     },
     {
       "id": "sage.method.sage.plot.graphics.Graphics.plot",
@@ -11979,27 +11968,16 @@
       ],
       "dependencies": [],
       "classification": "unsupported",
-      "support_state": "not-advertised",
-      "translation_or_reason": "This exact qualified Sage entry is not part of the evidence-backed Sage.js plotting surface for this release. Use an advertised Plotly-backed constructor from this matrix, revise its PlotSpec, or apply a validated Plotly override. The entry remains unsupported until its exact import and semantics have focused executable tests.",
-      "semantic_tests": [],
+      "support_state": "deliberate-renderer-boundary",
+      "translation_or_reason": "Sage.js is Plotly-native and deliberately does not return Matplotlib objects. The method raises an actionable NotImplementedError; use plotly(), PlotSpec inspection, save(\"figure.html\"), or configured browser-assisted static export instead.",
+      "semantic_tests": [
+        "test/graphics.cjs"
+      ],
       "plotly_tests": [],
       "visual_tests": [],
-      "platform_status": "not-assessed",
-      "performance_status": "not-assessed",
-      "evidence_debt": [
-        {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
-        },
-        {
-          "code": "platform-evidence-missing",
-          "detail": "Platform behavior has not been assessed for this entry."
-        },
-        {
-          "code": "performance-evidence-missing",
-          "detail": "Performance and resource behavior have not been assessed."
-        }
-      ]
+      "platform_status": "all-supported-platforms",
+      "performance_status": "not-applicable",
+      "evidence_debt": []
     },
     {
       "id": "sage.method.sage.plot.multigraphics.MultiGraphics.plot",

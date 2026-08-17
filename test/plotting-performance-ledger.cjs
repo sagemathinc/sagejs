@@ -20,7 +20,7 @@ test("plotting performance ledger is generated and evidence-backed", () => {
   generator.main(["--check"]);
   const document = JSON.parse(readFileSync(path, "utf8"));
   assert.equal(document.schema_version, 1);
-  assert.equal(document.workloads.length, 8);
+  assert.equal(document.workloads.length, 9);
   assert.equal(
     new Set(document.workloads.map(({ id }) => id)).size,
     document.workloads.length,

@@ -1985,6 +1985,10 @@ class Graphics3d:
         for key in keywords:
             self._extra_kwds[key] = keywords[key]
 
+    def _set_extra_kwd(self, name: str, value: Any) -> None:
+        """Set one frontend option across strict-module call boundaries."""
+        self.set_extra_kwds({name: value})
+
     def get_extra_kwds(self) -> dict[str, Any]:
         return _g3d_copy_options(self._extra_kwds)
 

@@ -374,6 +374,15 @@ def _with_plot_context(
     )
 
 
+def _apply_graphics_options(graphic: Any, options: dict[str, Any]) -> None:
+    """Apply detached frontend options without passing a mapping boundary."""
+    if hasattr(graphic, "_set_extra_kwd"):
+        for name in options:
+            graphic._set_extra_kwd(name, options[name])
+    elif len(options) and hasattr(graphic, "set_extra_kwds"):
+        graphic.set_extra_kwds(options)
+
+
 def graphics(
     items: Any,
     option_records: list[dict[str, Any]] | None = None,
@@ -383,8 +392,13 @@ def graphics(
     graphic = _combine_graphics(items)
     records = option_records if option_records is not None else []
     translated, ordered, diagnostics, events = _translate_options("Graphics", records)
-    if len(translated) and hasattr(graphic, "set_extra_kwds"):
-        graphic.set_extra_kwds(translated)
+    # Wolfram `Graphics` defaults to coordinate axes being hidden, unlike the
+    # Sage `Graphics` object used as its implementation substrate.  Make the
+    # frontend default explicit so omitting `Axes` does not silently acquire
+    # Sage semantics.  An explicit `Axes -> True` in `records` wins above.
+    if "axes" not in translated:
+        translated["axes"] = False
+    _apply_graphics_options(graphic, translated)
     if intent is None:
         return graphic
     return _with_plot_context(graphic, "Graphics", intent, ordered, diagnostics, events)
@@ -399,8 +413,7 @@ def graphics3d(
     graphic = _combine_graphics(items)
     records = option_records if option_records is not None else []
     translated, ordered, diagnostics, events = _translate_options("Graphics3D", records)
-    if len(translated) and hasattr(graphic, "set_extra_kwds"):
-        graphic.set_extra_kwds(translated)
+    _apply_graphics_options(graphic, translated)
     if intent is None:
         return graphic
     return _with_plot_context(

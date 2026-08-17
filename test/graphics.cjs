@@ -924,6 +924,15 @@ async function main() {
 
     assert.equal((await session.evaluate("line2d is line")).repr, "True");
     assert.equal((await session.evaluate("point2d is point")).repr, "True");
+    for (const source of [
+      "g.matplotlib()",
+      "multi_graphics([g]).matplotlib()",
+    ]) {
+      await assert.rejects(
+        session.evaluate(source),
+        /Sage\.js uses Plotly rather than Matplotlib.*save\("figure\.html"\).*save\("figure\.png"\)/s,
+      );
+    }
     assert.match(
       (await session.evaluate("histogram.__doc__")).repr,
       /Compute and draw a histogram/,

@@ -512,7 +512,7 @@
         "path_count": 6,
         "text_count": 1,
         "image_count": 0,
-        "byte_length": 3293
+        "byte_length": 3897
       },
       "png": {
         "signature_hex": "89504e470d0a1a0a",
@@ -520,7 +520,7 @@
         "height": 600,
         "bit_depth": 8,
         "color_type": 6,
-        "byte_length": 21689
+        "byte_length": 21536
       }
     },
     {

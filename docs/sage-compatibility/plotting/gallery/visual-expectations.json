@@ -674,7 +674,7 @@
           "layer-0"
         ],
         "layer_kinds": [
-          "plotly-trace"
+          "surface"
         ],
         "trace_types": [
           "surface"

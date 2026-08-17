@@ -87,7 +87,11 @@ test("Wolfram plots retain PlotSpec context and diagnose ignored options", {
   assert.equal(spec.layers[0].source_intent.frontend, "wolfram");
   assert.equal(spec.layers[0].source_intent.head, "Plot");
   assert.equal(spec.layers[0].source_intent.ranges[0], "{x,0,Pi}");
-  assert.match(spec.layers[0].source_intent.expression, /^Plot\[Sin\[x\]/);
+  assert.equal(spec.layers[0].source_intent.expression, "sin(x)");
+  assert.match(
+    spec.layers[0].source_intent.frontend_expression,
+    /^Plot\[Sin\[x\]/,
+  );
 
   const ordered = spec.layers[0].source_intent.ordered_options;
   assert.deepEqual(ordered.map(({ name }) => name), [
@@ -174,4 +178,27 @@ test("Wolfram Show preserves child IDs and lexical directive scope", {
   assert.equal(solidSpec.provenance.constructor, "Graphics3D");
   assert.equal(solidSpec.layers[0].source_intent.head, "Graphics3D");
   assert.equal(solidSpec.diagnostics[0].details.option, "Lighting");
+});
+
+test("Wolfram Graphics preserves its Axes default and explicit override", {
+  timeout: 60_000,
+}, async () => {
+  await session.evaluate("g = Graphics[{Line[{{0,0},{1,1}}]}];", {
+    language: "wolfram",
+  });
+  const hidden = await plotSpec(session);
+  assert.equal(hidden.axes_or_scene.xaxis.visible, false);
+  assert.equal(hidden.axes_or_scene.yaxis.visible, false);
+
+  await session.evaluate(
+    "g = Graphics[{Line[{{0,0},{1,1}}]},Axes->True];",
+    { language: "wolfram" },
+  );
+  const shown = await plotSpec(session);
+  assert.equal(shown.axes_or_scene.xaxis.visible, true);
+  assert.equal(shown.axes_or_scene.yaxis.visible, true);
+  assert.equal(
+    shown.layers[0].source_intent.ordered_options[0].translation.target,
+    "axes",
+  );
 });

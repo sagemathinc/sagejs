@@ -263,9 +263,15 @@
       "modules": ["sagejs.plotting"],
       "files": [
         "src/lib/sage/plot/__init__.py",
+        "src/lib/sage/plot/arrow.py",
         "src/lib/sage/plot/contour_plot.py",
         "src/lib/sage/plot/density_plot.py",
-        "src/lib/sage/plot/plot_field.py"
+        "src/lib/sage/plot/line.py",
+        "src/lib/sage/plot/plot.py",
+        "src/lib/sage/plot/plot_field.py",
+        "src/lib/sage/plot/point.py",
+        "src/lib/sage/plot/polygon.py",
+        "src/lib/sage/plot/text.py"
       ],
       "prefixes": ["src/lib/sagejs/plotting/"]
     },

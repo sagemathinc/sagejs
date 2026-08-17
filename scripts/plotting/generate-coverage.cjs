@@ -189,6 +189,25 @@ function evidenceDebt(entry) {
 }
 
 function sageClassification(qualifiedName, kind, dimension) {
+  if (
+    qualifiedName === "sage.plot.graphics.Graphics.matplotlib" ||
+    qualifiedName === "sage.plot.multigraphics.MultiGraphics.matplotlib"
+  ) {
+    return {
+      classification: "unsupported",
+      support_state: "deliberate-renderer-boundary",
+      translation_or_reason:
+        "Sage.js is Plotly-native and deliberately does not return Matplotlib " +
+        "objects. The method raises an actionable NotImplementedError; use " +
+        "plotly(), PlotSpec inspection, save(\"figure.html\"), or configured " +
+        "browser-assisted static export instead.",
+      semantic_tests: ["test/graphics.cjs"],
+      plotly_tests: [],
+      visual_tests: [],
+      platform_status: "all-supported-platforms",
+      performance_status: "not-applicable",
+    };
+  }
   if (PLOT_MISC_FAITHFUL.has(qualifiedName)) {
     return {
       classification: "faithful",

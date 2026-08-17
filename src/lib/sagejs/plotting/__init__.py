@@ -39,6 +39,13 @@ from .composition import (
     qualified_layer_id,
     stable_panel_id,
 )
+from .curve_sampling import (
+    MAX_CURVE_SAMPLES,
+    adaptive_refinement,
+    generate_plot_points,
+    sample_curve_segments,
+    split_curve_segments,
+)
 from .diagnostics import (
     Diagnostic,
     diagnostic_definition,
@@ -76,6 +83,19 @@ from .model import (
     make_layer,
     next_layer_id,
     stable_layer_id,
+)
+from .sage_curves import build_fill_polygons, normalize_curve_options, plan_curve
+from .sage_primitives2d import (
+    allowed_options,
+    arrow_render_plan,
+    hue_rgb,
+    line_render_plan,
+    marker_symbol,
+    normalized_color,
+    point_render_plan,
+    polygon_render_plan,
+    text_render_plan,
+    validate_options,
 )
 from .styles import (
     NormalizedStyle,
@@ -194,4 +214,22 @@ __all__ = [
     "vector_field_layer",
     "field_plot_spec",
     "implicit_field_layer",
+    "MAX_CURVE_SAMPLES",
+    "adaptive_refinement",
+    "allowed_options",
+    "arrow_render_plan",
+    "build_fill_polygons",
+    "generate_plot_points",
+    "hue_rgb",
+    "line_render_plan",
+    "marker_symbol",
+    "normalize_curve_options",
+    "normalized_color",
+    "plan_curve",
+    "point_render_plan",
+    "polygon_render_plan",
+    "sample_curve_segments",
+    "split_curve_segments",
+    "text_render_plan",
+    "validate_options",
 ]
