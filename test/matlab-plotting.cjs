@@ -137,7 +137,7 @@ test("MATLAB plotting state persists across cells with stable live handles", asy
 
     const repeated = await evaluateMatlab(
       session,
-      "plot([0 1],[1 2],'r--o',[0 1],[2 1],'b:','LineWidth',5)",
+      "handles = plot([0 1],[1 2],'r--o',[0 1],[2 1],'b:','LineWidth',5); handles",
     );
     assert.equal(repeated.display?.data.data.length, 2);
     assert.deepEqual(
@@ -151,6 +151,14 @@ test("MATLAB plotting state persists across cells with stable live handles", asy
     assert.deepEqual(
       repeated.display?.data.data.map((trace) => trace.line.color),
       ["#d62728", "#1f77b4"],
+    );
+    assert.equal(
+      (await evaluateMatlab(session, "handles(1).Color")).repr,
+      "'#d62728'",
+    );
+    assert.equal(
+      (await evaluateMatlab(session, "get(handles(2),'HandleId')")).repr,
+      "'matlab.line-4'",
     );
 
     await evaluateMatlab(session, "temporary = plot([4 5]);");
