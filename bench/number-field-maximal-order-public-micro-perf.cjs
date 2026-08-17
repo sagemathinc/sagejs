@@ -3,7 +3,7 @@
 
 const { createHash } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const { existsSync, readFileSync } = require("node:fs");
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
 const { cpus, platform, release, arch } = require("node:os");
 const { join } = require("node:path");
 
@@ -11,8 +11,13 @@ const root = process.env.SAGEJS_BENCH_ROOT || join(__dirname, "..");
 const { createSage } = require(join(root, "dist", "tools", "kernel.js"));
 const sampleIndex = process.argv.indexOf("--samples");
 const samples = sampleIndex < 0 ? 21 : Number(process.argv[sampleIndex + 1]);
+const outputIndex = process.argv.indexOf("--output");
+const outputPath = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 if (!Number.isInteger(samples) || samples < 3) {
   throw new Error("--samples must be an integer of at least 3");
+}
+if (outputIndex >= 0 && !outputPath) {
+  throw new Error("--output requires a path");
 }
 
 function median(values) {
@@ -256,8 +261,25 @@ async function main() {
       "The 2 ms gate applies to fresh uncached field objects after lazy loading. " +
       "Post-return basis materialization is separate. Exclusive wrapped stages and " +
       "the control residual explain the warm public total without moving work into field construction.",
+    recommended_boundary: {
+      name: "certified maximal-order analysis resource",
+      input:
+        "one immutable packed integral polynomial with scale; field construction remains outside and does no maximal-order work",
+      computation:
+        "one native call performs discriminant decomposition, local selection, and HNF local-order construction and returns compact proof data",
+      certification:
+        "an independently implemented packed-integer checker verifies containment, one, closure, discriminant/index, and every local/composite witness before acceptance",
+      materialization:
+        "one conversion of the certified HNF into NumberFieldOrder; retain only the existing per-field result identity cache",
+      constraint:
+        "do not memoize orders across fields, move work into constructors, trust the construction kernel as its own certificate, or weaken corruption rejection",
+      evidence:
+        "the current decomposition, native-resource, certification, and dynamic materialization boundaries each consume a material fraction of a 2 ms total budget",
+    },
   };
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  const serialized = `${JSON.stringify(report, null, 2)}\n`;
+  if (outputPath !== null) writeFileSync(outputPath, serialized);
+  process.stdout.write(serialized);
 }
 
 main().catch((error) => {
