@@ -1,0 +1,136 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-themes-style-core",
+  "title": "Shared Plotly-native themes and styles",
+  "lane": "graphics",
+  "status": "review",
+  "owner": "user",
+  "objective": "Define deterministic notebook, presentation, publication, dark, and high-contrast plotting themes with colorblind-conscious palettes, normalized line/marker/text/fill style contracts, and JSON-safe Plotly defaults shared by 2D, 3D, and all frontends.",
+  "base_commit": "31d14b23db2b72195471c7a95570d154702ee6fb",
+  "claims": [
+    "src/lib/sagejs/plotting/themes.py",
+    "src/lib/sagejs/plotting/styles.py",
+    "docs/sage-compatibility/plotting/themes.json",
+    "test/plot-themes.cjs"
+  ],
+  "dependencies": [
+    "plot-agent-api"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Theme registry fixtures, contrast checks, and CPython/Sage.js differential Plotly defaults"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/plot-themes.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/plot-themes.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.776,
+      "started_at": "2026-08-17T06:14:36.724Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "39df00e6b62920253ad1c8412e3ab479fe405b0c78f7096fd59b4b30f6e6a911",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.252,
+      "started_at": "2026-08-17T06:15:07.429Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "39df00e6b62920253ad1c8412e3ab479fe405b0c78f7096fd59b4b30f6e6a911",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.633,
+      "started_at": "2026-08-17T06:15:32.759Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "39df00e6b62920253ad1c8412e3ab479fe405b0c78f7096fd59b4b30f6e6a911",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 174.499,
+      "started_at": "2026-08-17T06:16:05.009Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "39df00e6b62920253ad1c8412e3ab479fe405b0c78f7096fd59b4b30f6e6a911",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plot-themes.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.675,
+      "started_at": "2026-08-17T06:23:01.255Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "69ea2c3d5b71d6251d6054c678f4c7347f75242373996f89375a29239ff9d47c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.81,
+      "started_at": "2026-08-17T06:23:14.966Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "69ea2c3d5b71d6251d6054c678f4c7347f75242373996f89375a29239ff9d47c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.822,
+      "started_at": "2026-08-17T06:23:27.538Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "69ea2c3d5b71d6251d6054c678f4c7347f75242373996f89375a29239ff9d47c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 131.662,
+      "started_at": "2026-08-17T06:23:52.582Z",
+      "commit": "a47c66527d3b3a731eb91f35dde31f3a10413214",
+      "workspace_fingerprint": "69ea2c3d5b71d6251d6054c678f4c7347f75242373996f89375a29239ff9d47c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added five deterministic, immutable/copy-safe Plotly-native themes (notebook, presentation, publication, dark, and high-contrast), strict supported/translated/unsupported line/marker/fill/text option normalization, the full Plotly CSS named-color table, WCAG-like contrast metrics, synchronized checked documentation, and focused tests with byte-exact CPython/Sage.js differential output plus installed Plotly 3.7 schema and Chromium rendering checks for 2D scatter, surface, and mesh traces.",
+    "risks": [
+      "The broad integration receipt fails in this lane because optional native FLINT headers, generated FFI manifests, compiled kernels, and packages/flint/build/Release/sagejs_flint.node are not provisioned; 172 of 413 tests pass and the failures are unrelated to this pure-Python plotting slice.",
+      "The real Plotly rendering portion of the focused test skips on hosts without Chrome or Chromium, while deterministic differential, documentation, style-outcome, copy-safety, and contrast checks continue to run.",
+      "Themes configure hover labels and responsive Plotly interactions but cannot by themselves guarantee keyboard navigation, focus order, or screen-reader semantics; the checked documentation states this boundary explicitly."
+    ],
+    "next_steps": [
+      "The integration lane should export selected theme/style APIs from sagejs.plotting, add themes.py and styles.py to the central Pyright strict-module list, and add test/plot-themes.cjs to the central test manifest.",
+      "Unified lowering should merge theme layout/config/trace defaults before user PlotSpec overrides so explicit plot options remain authoritative.",
+      "Downstream semantic layer planners can retain OptionResult.to_dict() decisions in provenance and fail only when a decision has status unsupported."
+    ]
+  }
+}

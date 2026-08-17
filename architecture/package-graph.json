@@ -258,7 +258,7 @@
       "id": "plot-spec",
       "layer": 2,
       "startup": "lazy",
-      "max_source_bytes": 100000,
+      "max_source_bytes": 250000,
       "depends_on": ["core-runtime", "python-stdlib"],
       "modules": ["sagejs.plotting"],
       "files": [],
