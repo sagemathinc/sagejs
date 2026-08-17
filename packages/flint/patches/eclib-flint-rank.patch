@@ -792,6 +792,18 @@ index 1c6d2b7..07e5b87 100644
  #include <sstream>
  #include <fstream>
  #include <set>
+@@ -41,11 +41,7 @@
+ #include <vector>
+ #include <map>
+ #include <algorithm>
+-#ifdef _LIBCPP_VERSION
+ #include <numeric>
+-#else
+-#include <ext/numeric>
+-#endif
+ #include <iterator>
+ 
+ #include "templates.h"
 @@ -68,51 +68,11 @@ const double LOG_10_2=0.30102999566398114L;
  
  // integers and rationals
