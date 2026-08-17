@@ -1,17 +1,11 @@
 {
   "name": "@sagemath/sagejs-linux-arm64",
   "version": "0.2.0",
-  "description": "Sage.js native executables for Linux arm64",
+  "description": "Private workspace version anchor for Sage.js Linux arm64",
+  "private": true,
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sagemathinc/sagejs.git"
-  },
-  "os": ["linux"],
-  "cpu": ["arm64"],
-  "libc": ["glibc"],
-  "files": ["bin", "licenses", "LICENSE", "README.md"],
-  "publishConfig": {
-    "access": "public"
   }
 }

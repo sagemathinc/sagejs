@@ -13,8 +13,8 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 64,
-    "declared-ffi": 398,
+    "classified-native-file": 65,
+    "declared-ffi": 400,
     "declared-ffi-resource": 27,
     "napi-export": 293,
     "runtime-intrinsic": 136,
@@ -4405,6 +4405,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:number_field_order_maximal_at_primes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_maximal_at_primes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderMaximalAtPrimes",
+      "symbol": "sagejs_number_field_order_maximal_at_primes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_pmaximal",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_pmaximal",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderPmaximal",
+      "symbol": "sagejs_number_field_order_pmaximal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:igraph:canonical_permutation",
       "kind": "declared-ffi",
       "path": "ffi/igraph.ffi.json",
@@ -7830,6 +7852,14 @@
       "path": "packages/flint/include/sagejs/nmod_matrix_ffi.h",
       "disposition": "external-library-bridge",
       "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/number_field_order_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
+      "disposition": "mathematical-algorithm",
+      "review_status": "audited",
       "lane": "integration"
     },
     {

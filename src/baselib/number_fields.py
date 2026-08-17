@@ -10,6 +10,9 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 
+_nf_flint_ffi_cache = runtime.undefined
+_nf_maximal_order_module_cache = runtime.undefined
+
 
 def _untyped(value: Any) -> Any:
     return value
@@ -20,6 +23,26 @@ def _nf_global(name: str) -> Any:
     if value is runtime.undefined:
         raise RuntimeError(name + " is not available in this runtime")
     return value
+
+
+def _nf_flint_ffi() -> Any:
+    global _nf_flint_ffi_cache
+    if _nf_flint_ffi_cache is runtime.undefined:
+        _nf_flint_ffi_cache = __import__(
+            "sagejs.ffi.flint",
+            fromlist=["flint"],
+        )
+    return _nf_flint_ffi_cache
+
+
+def _nf_maximal_order_module() -> Any:
+    global _nf_maximal_order_module_cache
+    if _nf_maximal_order_module_cache is runtime.undefined:
+        _nf_maximal_order_module_cache = __import__(
+            "sagejs.number_fields.maximal_order",
+            fromlist=["maximal_order"],
+        )
+    return _nf_maximal_order_module_cache
 
 
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
@@ -1095,18 +1118,6 @@ def _nf_lcm(left: Any, right: Any) -> Any:
     return runtime.native_mul(quotient, right)
 
 
-def _nf_valuation(value: Any, prime: int) -> int:
-    value = runtime.integer_bigint(value)
-    if value < 0:
-        value = -value
-    divisor = runtime.bigint(prime)
-    valuation = 0
-    while value and value % divisor == 0:
-        value //= divisor
-        valuation += 1
-    return valuation
-
-
 def _nf_coordinates(
     element: NumberFieldElement,
     degree: int,
@@ -1251,74 +1262,6 @@ def _nf_order_closure(
         if missing is runtime.undefined:
             return basis_rows
         basis_rows = _nf_canonical_lattice(basis_rows + [missing], degree)
-
-
-def _nf_projective_vectors(
-    kernel_rows: list[list[int]],
-    prime: int,
-) -> Any:
-    dimension = len(kernel_rows)
-    ambient_degree = len(kernel_rows[0]) if dimension else 0
-    for leading in range(dimension):
-        tail_length = dimension - leading - 1
-        total = prime**tail_length
-        for encoded in range(total):
-            coefficients = [0 for _index in range(dimension)]
-            coefficients[leading] = 1
-            remaining = encoded
-            for index in range(leading + 1, dimension):
-                coefficients[index] = remaining % prime
-                remaining //= prime
-            vector = [0 for _index in range(ambient_degree)]
-            for row_index in range(dimension):
-                coefficient = coefficients[row_index]
-                if coefficient:
-                    for column in range(ambient_degree):
-                        vector[column] = (
-                            vector[column]
-                            + coefficient * kernel_rows[row_index][column]
-                        ) % prime
-            yield vector
-
-
-def _nf_enlarge_order_at_prime(
-    order: NumberFieldOrder,
-    prime: int,
-) -> Any:
-    field = order.number_field()
-    basis = order.basis()
-    trace_rows = _nf_trace_matrix(field, basis)
-    integer_rows = []
-    for row in trace_rows:
-        integer_row = []
-        for value in row:
-            if value._denominator != 1:
-                raise ArithmeticError(
-                    "an integral order has a nonintegral trace pairing"
-                )
-            integer_row.append(value._numerator)
-        integer_rows.append(integer_row)
-    residue_matrix = _nf_global("matrix")(_nf_global("GF")(prime), integer_rows)
-    kernel = residue_matrix.right_kernel_matrix()
-    kernel_rows = [
-        [runtime.number(value.lift()) for value in row] for row in kernel.rows()
-    ]
-    if len(kernel_rows) == 0:
-        return None
-    for vector in _nf_projective_vectors(kernel_rows, prime):
-        numerator = field.zero()
-        for index in range(field.degree()):
-            if vector[index]:
-                numerator += field(vector[index]) * basis[index]
-        candidate = numerator / prime
-        if candidate in order:
-            continue
-        if not _nf_is_integral(field, candidate):
-            continue
-        rows = order._basis_rows + [_nf_coordinates(candidate, field.degree())]
-        closed_rows = _nf_order_closure(field, rows)
-        return NumberFieldOrder(field, closed_rows, False)
-    return None
 
 
 class NumberFieldIdeal:
@@ -1492,10 +1435,18 @@ class NumberFieldOrder(sage.Parent):
         field: NumberFieldParent,
         rows: list[list[Any]],
         is_maximal: bool,
+        check_closure: bool = True,
     ) -> None:
         self._field = field
-        self._basis_rows = _nf_order_closure(field, rows)
+        if check_closure:
+            self._basis_rows = _nf_order_closure(field, rows)
+        else:
+            # Multiplier rings are orders by construction. Canonicalizing the
+            # proven-closed lattice avoids repeating all n^2 products after
+            # every local Round-2 enlargement.
+            self._basis_rows = _nf_canonical_lattice(rows, field.degree())
         self._is_maximal = is_maximal
+        self._discriminant_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
 
@@ -1531,13 +1482,16 @@ class NumberFieldOrder(sage.Parent):
         )
 
     def discriminant(self) -> Any:
+        if self._discriminant_cache is not runtime.undefined:
+            return self._discriminant_cache
         trace_matrix = _nf_global("matrix")(
             sage.QQ, _nf_trace_matrix(self._field, self.basis())
         )
         value = trace_matrix.determinant()
         if value._denominator != 1:
             raise ArithmeticError("an order has nonintegral discriminant")
-        return runtime.normalize_integer(value._numerator)
+        self._discriminant_cache = runtime.normalize_integer(value._numerator)
+        return self._discriminant_cache
 
     def is_maximal(self) -> bool:
         return self._is_maximal
@@ -1704,6 +1658,12 @@ class NumberFieldParent(sage.Parent):
                 rows.append(_nf_coordinates(power, self.degree()))
                 power *= integral_generator
             self._equation_order_cache = NumberFieldOrder(self, rows, False)
+            equation_polynomial = (
+                _nf_maximal_order_module().integral_equation_polynomial(self)
+            )
+            self._equation_order_cache._discriminant_cache = (
+                equation_polynomial.discriminant()
+            )
         return self._equation_order_cache
 
     def order(self, *generators: Any) -> NumberFieldOrder:
@@ -1724,31 +1684,40 @@ class NumberFieldParent(sage.Parent):
             return self._maximal_order_cache
         order = self.equation_order()
         discriminant = runtime.integer_bigint(order.discriminant())
+        word_primes = []
+        large_primes = []
         for prime_value, exponent_value in sage.factor(abs(discriminant)):
             exponent = runtime.number(exponent_value)
             if exponent < 2:
                 continue
             prime = runtime.normalize_integer(prime_value)
-            if runtime.jstype(prime) != "number":
-                raise NotImplementedError(
-                    "maximal-order trace-radical enumeration currently "
-                    "requires machine-sized discriminant primes"
+            if runtime.jstype(prime) == "number":
+                word_primes.append(prime)
+            else:
+                large_primes.append(prime)
+        if len(word_primes):
+            native_available = True
+            try:
+                _nf_flint_ffi()
+            except Exception:
+                native_available = False
+            if not native_available:
+                for prime in word_primes:
+                    if not _nf_maximal_order_module().equation_order_is_p_maximal(
+                        self, prime
+                    ):
+                        order = _nf_maximal_order_module().p_maximal_overorder_dynamic(
+                            order, prime
+                        )
+            else:
+                order = _nf_maximal_order_module().maximal_overorder_native(
+                    order, word_primes
                 )
-            while (
-                _nf_valuation(
-                    runtime.integer_bigint(order.discriminant()),
-                    prime,
+        for prime in large_primes:
+            if not _nf_maximal_order_module().equation_order_is_p_maximal(self, prime):
+                order = _nf_maximal_order_module().p_maximal_overorder_dynamic(
+                    order, prime
                 )
-                >= 2
-            ):
-                enlarged = _nf_enlarge_order_at_prime(order, prime)
-                if enlarged is None:
-                    break
-                if abs(enlarged.discriminant()) >= abs(order.discriminant()):
-                    raise ArithmeticError(
-                        "an order enlargement did not lower the discriminant"
-                    )
-                order = enlarged
         order._is_maximal = True
         self._maximal_order_cache = order
         return order

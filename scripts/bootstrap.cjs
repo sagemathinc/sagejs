@@ -70,7 +70,10 @@ function smoke(command, args, label) {
   if (result.error) throw result.error;
   if (result.status !== 0) {
     process.stderr.write(result.stderr || "");
-    throw new Error(`${label} smoke test exited with status ${result.status}`);
+    const termination = result.signal
+      ? `signal ${result.signal}`
+      : `status ${result.status}`;
+    throw new Error(`${label} smoke test exited with ${termination}`);
   }
   const answer = result.stdout.trim();
   if (answer !== "2 * 1013") {

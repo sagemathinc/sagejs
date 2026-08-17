@@ -36,6 +36,7 @@ flint = Library(
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
+        "sagejs/number_field_order_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
     link_windows=["flint.lib", "openblas.lib", "pthreadVC3.lib"],
@@ -9737,3 +9738,61 @@ def fmpz_mod_polynomial_serialize(
 def fmpz_mod_polynomial_deserialize(
     source: FlintByteRegion,
 ) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderPmaximal",
+    symbol="sagejs_number_field_order_pmaximal",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("multiplication_table", sagejs_fmpz_matrix_t),
+        in_("prime", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid local number-field order data",
+    ),
+    wasm=True,
+)
+def number_field_order_pmaximal(
+    multiplication_table: FmpzMatrix,
+    prime: uint64,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderMaximalAtPrimes",
+    symbol="sagejs_number_field_order_maximal_at_primes",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("multiplication_table", sagejs_fmpz_matrix_t),
+        in_(
+            "prime_inputs",
+            uint64_t_ptr,
+            packed_slice(
+                data="primes",
+                length="prime_count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("prime_count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid local number-field order data",
+    ),
+    wasm=True,
+)
+def number_field_order_maximal_at_primes(
+    multiplication_table: FmpzMatrix,
+    primes: UInt64Buffer,
+    prime_count: uint64,
+) -> FmpqMatrix: ...

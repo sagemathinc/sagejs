@@ -23,7 +23,23 @@ for (const directory of nativePackages) {
     rootPackage.version,
     `${manifest.name} version must match @sagemath/sagejs`,
   );
-  assert.equal(manifest.private, undefined, `${manifest.name} must be publishable`);
+  assert.equal(
+    manifest.private,
+    true,
+    `${manifest.name} workspace anchor must not be published directly`,
+  );
+  // These directories only give `workspace:*` a version to rewrite when the
+  // root package is packed.  The release builder creates the real platform
+  // tarballs and adds their `os`, `cpu`, `libc`, `bin`, and `files` metadata.
+  // Keeping the anchors platform-neutral prevents pnpm from warning about
+  // every foreign workspace package during an ordinary source install.
+  for (const field of ["os", "cpu", "libc", "bin", "files", "publishConfig"]) {
+    assert.equal(
+      manifest[field],
+      undefined,
+      `${manifest.name} workspace anchor must not define ${field}`,
+    );
+  }
   names.push(manifest.name);
 }
 assert.deepEqual(

@@ -115,7 +115,9 @@ test("quadratic NumberField presentations use native class groups", async () => 
   }
 });
 
-test("maximal orders use exact trace-radical enlargements", async () => {
+test("maximal orders use exact Round-2 multiplier-ring enlargements", async () => {
+  // The final two defining polynomials are LMFDB 3.1.431.1 and
+  // 5.1.17161.1; both have defining-order index 2.
   const session = await createSage();
   try {
     assert.equal(
@@ -125,7 +127,8 @@ test("maximal orders use exact trace-radical enlargements", async () => {
             "R.<x> = QQ[]",
             "polys = [x^3+x^2-2*x+8, x^3+5*x^2-x+3, " +
               "x^3+8*x^2+5*x-1, x^3+15*x^2-9*x+13, " +
-              "x^4+x^3-11*x^2+3*x-12, 2*x^3+x+1]",
+              "x^4+x^3-11*x^2+3*x-12, 2*x^3+x+1, " +
+              "x^3-x-8, x^5-x^4+2*x^3-x^2+x+2]",
             "answer = []",
             "for f in polys:",
             "    K = NumberField(f, 'a')",
@@ -142,7 +145,132 @@ test("maximal orders use exact trace-radical enlargements", async () => {
         "(-5292, [[1/6, 1/3, 1/6], [0, 1, 0], [0, 0, 1]], True), " +
         "(-588204, [[1, 0, 0, 0], [0, 1, 0, 0], " +
         "[0, 0, 1/3, 2/3], [0, 0, 0, 1]], True), " +
-        "(-116, [[1, 0, 0], [0, 2, 0], [0, 0, 2]], True)]",
+        "(-116, [[1, 0, 0], [0, 2, 0], [0, 0, 2]], True), " +
+        "(-431, [[1, 0, 0], [0, 1/2, 1/2], [0, 0, 1]], True), " +
+        "(17161, [[1, 0, 0, 0, 0], [0, 1/2, 0, 0, 1/2], " +
+        "[0, 0, 1, 0, 0], [0, 0, 0, 1, 0], " +
+        "[0, 0, 0, 0, 1]], True)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "from sagejs.number_fields.maximal_order import " +
+              "p_maximal_overorder_dynamic",
+            "L = NumberField(x^5-x^4+2*x^3-x^2+x+2, 'b')",
+            "D = p_maximal_overorder_dynamic(L.equation_order(), 2)",
+            "[D.discriminant(), [v.list() for v in D.basis()]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[17161, [[1, 0, 0, 0, 0], [0, 1/2, 0, 0, 1/2], " +
+        "[0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Dedekind's criterion quickly certifies a ramified equation order", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "from sagejs.number_fields.maximal_order import " +
+              "prime_polynomial_radical",
+            "S.<y> = GF(2)[]",
+            "T.<z> = GF(3)[]",
+            "[prime_polynomial_radical(y^3+y^2, 2), " +
+              "prime_polynomial_radical((z+1)^3*(z^2+1)^2, 3)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[y^2 + y, z^3 + z^2 + z + 1]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "K.<a> = NumberField(x^7 - 2*x + 3)",
+            "O = K.maximal_order()",
+            "[O.basis(), O.discriminant(), O.is_maximal()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[1, a, a^2, a^3, a^4, a^5, a^6], -594390879, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("historical PARI Round-4 regressions have exact integral bases", async () => {
+  // PARI's src/test/in/round4 regressions #2510 and #1710. These frozen
+  // oracles exercise indices 2^18*7^4 and 2^9*3^10*5^5*11^10.
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "polys = [x^8-56*x^6+840*x^4-3136*x^2+3136, " +
+              "x^10-29080*x^5-25772600]",
+            "answer = []",
+            "for f in polys:",
+            "    O = NumberField(f, 'a').maximal_order()",
+            "    answer.append((O.discriminant(), " +
+              "[b.list() for b in O.basis()]))",
+            "answer",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(2084850211225600, [[1, 0, 0, 0, 0, 0, 0, 0], " +
+        "[0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 1/2, 0, 0, 0, 0, 0], " +
+        "[0, 0, 0, 1/4, 0, 0, 0, 0], [0, 0, 0, 0, 1/56, 0, 0, 0], " +
+        "[0, 0, 0, 0, 0, 1/56, 0, 0], [0, 0, 0, 0, 0, 0, 1/112, 0], " +
+        "[0, 0, 0, 0, 0, 0, 0, 1/224]]), " +
+        "(551496736222216254722000000000000000000, " +
+        "[[1/1089, 0, 0, 0, 0, 907/10890, 0, 0, 0, 0], " +
+        "[0, 1/1089, 0, 0, 0, 0, 907/10890, 0, 0, 0], " +
+        "[0, 0, 1/1089, 0, 0, 0, 0, 145/4356, 0, 0], " +
+        "[0, 0, 0, 1/1089, 0, 0, 0, 0, 145/4356, 0], " +
+        "[0, 0, 0, 0, 1/2178, 0, 0, 0, 0, 907/21780], " +
+        "[0, 0, 0, 0, 0, 1/10, 0, 0, 0, 0], " +
+        "[0, 0, 0, 0, 0, 0, 1/10, 0, 0, 0], " +
+        "[0, 0, 0, 0, 0, 0, 0, 1/20, 0, 0], " +
+        "[0, 0, 0, 0, 0, 0, 0, 0, 1/20, 0], " +
+        "[0, 0, 0, 0, 0, 0, 0, 0, 0, 1/20]])]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("maximal orders certify discriminant primes beyond machine range", async () => {
+  // Adapted from SageMath's maximal_order tests: the two large ramified
+  // primes exercise the arbitrary-prime Dedekind fallback.
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "p = 10000000000000000000009",
+            "q = 100000000000000000000117",
+            "K.<a> = NumberField(x^3-p*q)",
+            "O = K.maximal_order()",
+            "[O.basis(), O.discriminant()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[1/3*a^2 + 1/3*a + 1/3, a, a^2], " +
+        "-3000000000000000000012420000000000000000019172700000000000000" +
+        "013078260000000000000003326427]",
     );
   } finally {
     await session.close();
