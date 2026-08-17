@@ -3583,7 +3583,9 @@ def text(
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
     _option_update(defaults, options)
+    text_fontsize = _option_get(defaults, "fontsize", 10)
     graphics_options = _graphics_options(defaults)
+    defaults["fontsize"] = text_fontsize
     _sage_primitive_plan("text_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)

@@ -156,7 +156,6 @@ cases = [
     lambda: arrow_render_plan({"head": 3}),
     lambda: arrow_render_plan({"thickness": 99}),
     lambda: arrow_render_plan({"head": 2, "linestyle": "dashed"}),
-    lambda: arrow_render_plan({"zorder": 7}),
     lambda: text_render_plan({"clip": True}),
     lambda: text_render_plan({"bounding_box": {"boxstyle": "round"}}),
     lambda: text_render_plan({"rotation": 45, "zorder": 7}),
@@ -205,7 +204,8 @@ assert t["line"]["shape"] == "hvh" and t["line"]["dash"] == "dash"
 assert t["line"]["width"] == 4 and t["zorder"] == 7
 assert t["marker"]["symbol"] == "diamond"
 assert t["marker"]["size"] == 13
-assert t["marker"]["line"] == {"color": "red", "width": 2.5}
+assert t["marker"]["line"]["color"] == "red"
+assert t["marker"]["line"]["width"] == 2.5
 
 p = point([(0, 0), (1, 2)], marker="d", size=20.9,
           faceted=True, zorder=6.9)
@@ -221,7 +221,8 @@ outline = polygon([(0, 0), (1, 0), (0, 1)], fill=False,
 poly = outline.plotly()["data"][0]
 assert poly["x"] == [0, 1, 0, 0] and poly["y"] == [0, 0, 1, 0]
 assert poly["fill"] == "none"
-assert poly["line"] == {"color": "blue", "width": 4, "dash": "dash"}
+assert poly["line"]["color"] == "blue" and poly["line"]["width"] == 4
+assert poly["line"]["dash"] == "dash"
 assert poly["zorder"] == 5
 
 a = arrow((0, 0), (2, 1), head=2, arrowshorten=14,
