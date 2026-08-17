@@ -80,10 +80,10 @@
     "risks": [
       "Vector 008 remains a measured performance debt: optimization reduced the power-basis kernel from about 19.98s to 15.36s and the strict public wrapper from 22.27s to 17.72s on the shared Linux x64 host.",
       "Multiple modular primary components and higher-residue-field root matching remain explicit unsupported boundaries delegated to Round 2.",
-      "Vector 010 passes the former ramification-degree-decrease and finite-field-root boundaries but does not complete within 240 seconds. Calls 1-40 finish in about 3.2s; attempted call 46 receives a 70,585-bit rational-coordinate input, isolating coefficient growth after residual composition."
+      "Vector 010 passes the former ramification-degree-decrease and finite-field-root boundaries but still does not complete within 180 seconds. Precision-bounded beta representatives lower the limit-45 maximum from 70,585 to 8,097 coordinate bits and total from 147,655 to 79,649; the next repeated residue-beta exact charpoly remains above 30 seconds."
     ],
     "next_steps": [
-      "Profile and source-transparently compile the post-root-matching characteristic-polynomial stage that bounds vector 010.",
+      "Implement PARI-style modular characteristic polynomials for the repeated residue-beta stage that still bounds vector 010 after representative growth is controlled.",
       "Move repeated exact characteristic-polynomial work toward the source-transparent native boundary; a single degree-32 probe measured about 217ms.",
       "Integrate the public dispatcher/selector separately through the shared integration lane."
     ]

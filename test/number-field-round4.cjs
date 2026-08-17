@@ -193,6 +193,8 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
     const normalized = result.repr.replaceAll("'", '"').replace("(true,", "[true,");
     assert.match(normalized, /characteristic_polynomial_calls/);
     assert.match(result.repr, /True/);
+    assert.match(result.repr, /progress-reused-uniformizer/);
+    assert.match(result.repr, new RegExp(record.remaining_bound_label));
     assert.match(
       result.repr,
       new RegExp(`'characteristic_polynomial_calls': ${record.attempted_calls}`),

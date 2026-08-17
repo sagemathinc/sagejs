@@ -57,10 +57,11 @@
       "characteristic_polynomial_call_limit": 45,
       "attempted_calls": 46,
       "cache_hits": 1,
-      "input_coefficient_bits_total": 147655,
-      "max_input_coefficient_bits": 70585,
+      "input_coefficient_bits_total": 79649,
+      "max_input_coefficient_bits": 8097,
       "max_denominator_bits": 12,
-      "expected_status": "diagnostic-fail-closed"
+      "expected_status": "diagnostic-fail-closed",
+      "remaining_bound_label": "residue-beta"
     }
   ]
 }
