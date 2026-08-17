@@ -139,6 +139,11 @@ assert coprime_decomposition([72, 50]) == [2, 9, 25]
 assert primality_status(97)[0] == PROVEN_PRIME
 for pseudoprime in [341, 561, 3215031751]:
     assert primality_status(pseudoprime)[0] == COMPOSITE
+for nonprime in [-7, 0, 1]:
+    assert prove_prime(nonprime) is None
+    nonprime_state = new_prime_proof_state(nonprime)
+    assert nonprime_state["status"] == "composite"
+    assert check_prime_proof_state(nonprime_state)
 
 large_prime = 18446744073709551653
 assert primality_status(large_prime)[0] == PROBABLE_PRIME
@@ -148,6 +153,192 @@ assert check_prime_certificate(large_proof)
 corrupt_proof = dict(large_proof)
 corrupt_proof["factored_part"] += 1
 assert not check_prime_certificate(corrupt_proof)
+cyclic_proof = {"kind": "pocklington", "prime": large_prime}
+cyclic_proof["factors"] = [
+    {"prime": large_prime, "exponent": 1, "certificate": cyclic_proof}
+]
+cyclic_proof["witnesses"] = []
+cyclic_proof["factored_part"] = large_prime
+assert not check_prime_certificate(cyclic_proof)
+
+# Exact corpus blocker: pari-round4-vector-168.  A deliberately tiny first
+# budget must return a valid resumable checkpoint, never a probable-prime
+# claim.  Resuming that same checkpoint must produce an independently checked
+# deterministic certificate for the formerly unproved support prime.
+round4_168_polynomial = [
+    -1467437, 2351580, 6350523, -9102293, -3106271,
+    9023194, -4481430, 797843, -39793, 1,
+]
+round4_168_prime = 1732299231618007792631498567
+round4_168_state = new_prime_proof_state(round4_168_prime)
+resume_prime_proof(
+    round4_168_state,
+    prime_proof_budget(
+        trial_divisions=3, rho_steps=7, witness_trials=1,
+        max_recursion_depth=64, rho_bit_limit=256,
+    ),
+)
+assert round4_168_state["status"] == "resource-exhausted"
+assert check_prime_proof_state(round4_168_state)
+assert round4_168_state["certificate"] is None
+resume_prime_proof(
+    round4_168_state,
+    prime_proof_budget(
+        trial_divisions=30000, rho_steps=100000, witness_trials=1024,
+        max_recursion_depth=64, rho_bit_limit=256,
+    ),
+)
+assert round4_168_state["status"] == "complete"
+assert check_prime_proof_state(round4_168_state)
+assert check_prime_certificate(round4_168_state["certificate"])
+round4_168_decomposition = decompose_discriminant(
+    round4_168_polynomial, round4_168_prime, small_prime_bound=47,
+    proof_work=500000,
+)
+assert round4_168_decomposition["certified"]
+assert check_decomposition_certificate(round4_168_decomposition)
+assert round4_168_decomposition["components"][0]["evidence"] == round4_168_state["certificate"]
+
+# Exact same-class blocker: pari-round4-vector-250.  Its unresolved support is
+# composite, but each factor emitted by the external corpus oracle must receive
+# its own deterministic certificate before the decomposition is certified.
+round4_250_polynomial = [
+    -18433878713, 23835146496, 46833416626, -91476357427,
+    29078205681, 23102811288, -14798379535, 1922958558, -885599, 1,
+]
+round4_250_support = 53971155942437379054403765484033096990861743
+round4_250_primes = [366221, 147373187071296782692428248199947837483]
+round4_250_proofs = {}
+for round4_250_prime in round4_250_primes:
+    round4_250_proof = prove_prime(round4_250_prime, 500000)
+    assert round4_250_proof is not None
+    assert check_prime_certificate(round4_250_proof)
+    round4_250_proofs[round4_250_prime] = round4_250_proof
+round4_250_decomposition = decompose_discriminant(
+    round4_250_polynomial, round4_250_support,
+    hints=[round4_250_primes[0]], small_prime_bound=47, proof_work=500000,
+)
+for round4_250_prime in round4_250_primes:
+    round4_250_decomposition = certify_decomposition_component(
+        round4_250_decomposition,
+        round4_250_prime,
+        round4_250_proofs[round4_250_prime],
+    )
+assert round4_250_decomposition["certified"]
+assert [entry["base"] for entry in round4_250_decomposition["components"]] == round4_250_primes
+assert check_decomposition_certificate(round4_250_decomposition)
+
+# Remaining same-class failures found by the full PARI round-4 sweep.  The
+# expected support split is frozen corpus evidence; this test performs no eager
+# factorization and independently certifies every resulting prime.
+round4_additional = [
+    (
+        "pari-round4-vector-285",
+        [
+            33502771, 811733712, -6580536485, 14635813347, -14501253063,
+            7055600862, -1587001214, 120356183, -129121, 1,
+        ],
+        14084755575021082833695060810014260859,
+        [140363, 100345216153979915174904075931793],
+    ),
+    (
+        "pari-round4-vector-314",
+        [
+            -85980663233, 246541089532, 668167599734, -20329193443,
+            -535328756625, -51279535173, 154966313561, 10623466568,
+            -15580412921, 1,
+        ],
+        9240552257684428109612188325937456907,
+        [82655773, 111795606311544967459347193159],
+    ),
+    (
+        "pari-round4-vector-365",
+        [
+            -4708346837, -17022201300, -12801064069, 10047668573,
+            9157180447, -1948890582, -1477944460, 155219491, -660365, 1,
+        ],
+        213927298754036334134720476248118715456251,
+        [213927298754036334134720476248118715456251],
+    ),
+]
+for round4_id, round4_polynomial, round4_support, round4_primes in round4_additional:
+    assert round4_polynomial[-1] == 1 and round4_id.startswith("pari-round4-vector-")
+    round4_decomposition = decompose_discriminant(
+        round4_polynomial,
+        round4_support,
+        hints=round4_primes[:-1],
+        small_prime_bound=47,
+        proof_work=500000,
+    )
+    for round4_prime in round4_primes:
+        round4_proof = prove_prime(round4_prime, 500000)
+        assert round4_proof is not None
+        assert check_prime_certificate(round4_proof)
+        round4_decomposition = certify_decomposition_component(
+            round4_decomposition, round4_prime, round4_proof,
+        )
+    assert round4_decomposition["certified"]
+    assert [entry["base"] for entry in round4_decomposition["components"]] == round4_primes
+    assert check_decomposition_certificate(round4_decomposition)
+
+# This strong pseudoprime survives every preliminary base.  It must be rejected
+# by explicit evidence, and when it occurs inside a true prime's n-1 the proof
+# and direct-factor branches must make progress together until completion.
+strong_pseudoprime = 3317044064679887385961981
+assert primality_status(strong_pseudoprime)[0] == PROBABLE_PRIME
+pseudoprime_state = prove_prime_resumable(
+    strong_pseudoprime,
+    prime_proof_budget(
+        trial_divisions=30000, rho_steps=100000, witness_trials=1024,
+        max_recursion_depth=64, rho_bit_limit=256,
+    ),
+)
+assert pseudoprime_state["status"] == "composite"
+assert pseudoprime_state["composite_evidence"]["kind"] == "fermat-witness"
+assert check_prime_proof_state(pseudoprime_state)
+
+prime_with_pseudoprime_branch = 159218115104634594526175089
+branch_state = new_prime_proof_state(prime_with_pseudoprime_branch)
+for _resume in range(8):
+    resume_prime_proof(
+        branch_state,
+        prime_proof_budget(
+            trial_divisions=20000, rho_steps=500000, witness_trials=1024,
+            max_recursion_depth=64, rho_bit_limit=256,
+        ),
+    )
+    assert check_prime_proof_state(branch_state)
+    if branch_state["status"] == "complete":
+        break
+assert branch_state["status"] == "complete"
+assert check_prime_certificate(branch_state["certificate"])
+
+# A discovered local divisor replaces just that branch; already certified
+# siblings survive unchanged and no complete residual factorization is needed.
+branch_decomposition = decompose_discriminant(
+    None, 9*1009*1013, small_prime_bound=3, rho_steps=0,
+    prove_large_primes=False,
+)
+branch_split = split_decomposition_component(
+    branch_decomposition, 1009*1013, 1009, reason="test-local-obstruction",
+)
+assert branch_split["restart"]["retired"] == 1009*1013
+assert branch_split["restart"]["preserved"] == [9]
+assert [entry["value"] for entry in branch_split["restart"]["children"]] == [1009, 1013]
+assert [entry["value"] for entry in branch_split["decomposition"]["components"]] == [9, 1009, 1013]
+assert [entry["value"] for entry in branch_decomposition["components"]] == [9, 1009*1013]
+assert check_decomposition_certificate(branch_split["decomposition"])
+
+proof_split_state = new_prime_proof_state(1009*1013 + 1)
+proof_split = apply_prime_proof_factor_split(
+    proof_split_state, 1009*1013, 1009,
+)
+assert proof_split["children"] == [1009, 1013]
+assert check_prime_proof_state(proof_split_state)
+corrupt_state = dict(proof_split_state)
+corrupt_state["pending"] = [dict(entry) for entry in proof_split_state["pending"]]
+corrupt_state["pending"][0]["value"] += 1
+assert not check_prime_proof_state(corrupt_state)
 
 split = polynomial_gcd_mod_composite([1, 0, 1], [1, 3], 15)
 assert split["status"] == "split" and split["divisor"] == 3
