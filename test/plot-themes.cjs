@@ -176,6 +176,7 @@ assert color_channels("#fff") == (1.0, 1.0, 1.0, 1.0)
 
 style_cases = {
     "hex": normalize_color("#AbC").to_dict(),
+    "css_name": normalize_color("SteelBlue").to_dict(),
     "tuple": normalize_color((0, 0.5, 1)).to_dict(),
     "bad_color": normalize_color(object()).to_dict(),
     "bad_rgb": normalize_color("rgb(nope)").to_dict(),
@@ -197,6 +198,14 @@ style_cases = {
 }
 assert style_cases["hex"]["status"] == "supported"
 assert style_cases["hex"]["value"] == "#aabbcc"
+assert style_cases["css_name"]["status"] == "supported"
+assert style_cases["css_name"]["value"] == "steelblue"
+assert color_channels("steelblue") == (
+    70 / 255,
+    130 / 255,
+    180 / 255,
+    1.0,
+)
 assert style_cases["tuple"]["status"] == "translated"
 assert style_cases["tuple"]["value"] == "#0080ff"
 assert style_cases["bad_color"]["status"] == "unsupported"
