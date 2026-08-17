@@ -40,7 +40,17 @@
     {
       "id": "graphics",
       "description": "Two- and three-dimensional graphics and rendering",
-      "allowed_claims": ["src/baselib/graphics.py", "src/baselib/graphics3d.py", "PLOTTING.md"],
+      "allowed_claims": [
+        "src/baselib/graphics.py",
+        "src/baselib/graphics3d.py",
+        "src/lib/sage/plot/",
+        "src/lib/sage/plot3d/",
+        "src/lib/sagejs/plotting/",
+        "packages/flint-wasm/plotly-renderer.mjs",
+        "packages/flint-wasm/plotly-renderer.d.ts",
+        "scripts/plotting/",
+        "PLOTTING.md"
+      ],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:integration"]
     },
     {
@@ -52,7 +62,18 @@
     {
       "id": "polyglot",
       "description": "Magma, Maple, MATLAB, Wolfram, and foreign-language frontends",
-      "allowed_claims": ["tools/foreign/", "tools/magma/", "tools/maple/", "tools/matlab/", "tools/wolfram/", "FOREIGN-LANGUAGES.md", "MAGMA.md", "POLYGLOT.md"],
+      "allowed_claims": [
+        "tools/foreign/",
+        "tools/magma/",
+        "tools/maple/",
+        "tools/matlab/",
+        "tools/wolfram/",
+        "src/lib/matlab.py",
+        "src/lib/wolfram.py",
+        "FOREIGN-LANGUAGES.md",
+        "MAGMA.md",
+        "POLYGLOT.md"
+      ],
       "required_checks": ["pnpm build", "pnpm test:integration", "pnpm bench:polyglot"]
     },
     {
