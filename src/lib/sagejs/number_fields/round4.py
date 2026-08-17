@@ -833,6 +833,132 @@ def _single_characteristic_branch(
     return factors[0], multiplicities[0]
 
 
+def _quotient_polynomial_product(
+    left: list[Any],
+    right: list[Any],
+    modulus_polynomial: list[Any],
+    prime: Any,
+) -> list[Any]:
+    _quotient, remainder = _poly_divmod_mod(
+        _poly_mul(left, right),
+        modulus_polynomial,
+        prime,
+    )
+    return remainder
+
+
+def _quotient_polynomial_power(
+    base: list[Any],
+    exponent: int,
+    modulus_polynomial: list[Any],
+    prime: Any,
+) -> list[Any]:
+    answer: list[Any] = [1]
+    power = _poly_mod(base, prime)
+    remaining = exponent
+    while remaining:
+        if remaining % 2:
+            answer = _quotient_polynomial_product(
+                answer,
+                power,
+                modulus_polynomial,
+                prime,
+            )
+        remaining //= 2
+        if remaining:
+            power = _quotient_polynomial_product(
+                power,
+                power,
+                modulus_polynomial,
+                prime,
+            )
+    return answer
+
+
+def _quotient_polynomial_evaluate(
+    polynomial: list[Any],
+    value: list[Any],
+    modulus_polynomial: list[Any],
+    prime: Any,
+) -> list[Any]:
+    answer: list[Any] = [0]
+    for coefficient in reversed(polynomial):
+        answer = _quotient_polynomial_product(
+            answer,
+            value,
+            modulus_polynomial,
+            prime,
+        )
+        answer = _poly_mod(_poly_add(answer, [coefficient]), prime)
+    return answer
+
+
+def _bounded_residue_roots(
+    polynomial: list[Any],
+    residue_modulus: list[Any],
+    prime: Any,
+) -> list[list[Any]]:
+    """Find one residue root and its Frobenius orbit, or fail closed.
+
+    This is the source-transparent counterpart of PARI's `FpX_ffisom` for
+    the modest residue fields encountered by the public deep-primary corpus.
+    Enumeration is deliberately bounded; larger fields retain the named
+    unsupported boundary until the native finite-field isomorphism is wired
+    to this ordinary-Python specification.
+    """
+    residue_degree = _poly_degree(residue_modulus)
+    if polynomial == residue_modulus:
+        first_root = [0, 1]
+    else:
+        if prime > 65536:
+            raise Round4Unsupported(
+                "higher-residue-field root matching exceeds the bounded search"
+            )
+        prime_number = runtime.number(prime)
+        field_size = 1
+        for _index in range(residue_degree):
+            field_size *= prime_number
+            if field_size > 65536:
+                raise Round4Unsupported(
+                    "higher-residue-field root matching exceeds the bounded search"
+                )
+        first_root = []
+        found = False
+        for code in range(field_size):
+            remaining = code
+            candidate = []
+            for _index in range(residue_degree):
+                candidate.append(remaining % prime_number)
+                remaining //= prime_number
+            candidate = _trim(candidate)
+            value = _quotient_polynomial_evaluate(
+                polynomial,
+                candidate,
+                residue_modulus,
+                prime,
+            )
+            if _poly_degree(value) < 0:
+                first_root = candidate
+                found = True
+                break
+        if not found:
+            raise Round4InvariantError(
+                "an expected finite-field embedding supplied no residue root"
+            )
+    roots = []
+    root = first_root
+    for _index in range(_poly_degree(polynomial)):
+        if root not in roots:
+            roots.append(root)
+        root = _quotient_polynomial_power(
+            root,
+            runtime.number(prime),
+            residue_modulus,
+            prime,
+        )
+    return roots
+
+
 def _power_basis_rows(field: Any, generator: Any) -> list[list[Any]]:
     degree = field.degree()
     rows = []
@@ -975,22 +1101,50 @@ def _round4_residue_refinement(
                 candidate_residue_degree,
             )
 
-        if residue_degree != 1 or gamma_residue_degree != 1:
+        if residue_degree % gamma_residue_degree != 0:
             raise Round4Unsupported(
-                "higher-residue-field root matching is not implemented"
+                "incomparable residue degrees require recursive testb2 composition"
             )
-        root = -gamma_factor[0]
-        error_element = gamma - root
-        error_characteristic = _integral_characteristic_polynomial(
-            field,
-            error_element,
-        )
-        if error_characteristic is None:
-            raise Round4InvariantError("a Round-4 residue error is not integral")
-        error_numerator, error_ramification = _vstar_characteristic(
-            error_characteristic,
-            prime,
-        )
+        if residue_degree == 1:
+            residue_roots = [[-gamma_factor[0]]]
+        else:
+            residue_roots = _bounded_residue_roots(
+                gamma_factor,
+                nu,
+                prime,
+            )
+        error_element = None
+        error_characteristic = None
+        error_numerator = 0
+        error_ramification = 1
+        residue_root_element = None
+        for residue_root in residue_roots:
+            root_element = _evaluate_polynomial_element(residue_root, phi)
+            trial_error = gamma - root_element
+            trial_characteristic = _integral_characteristic_polynomial(
+                field,
+                trial_error,
+            )
+            if trial_characteristic is None:
+                continue
+            trial_factor, _trial_multiplicity = _single_characteristic_branch(
+                trial_characteristic,
+                prime,
+            )
+            if trial_factor != [0, 1]:
+                continue
+            error_element = trial_error
+            error_characteristic = trial_characteristic
+            residue_root_element = root_element
+            error_numerator, error_ramification = _vstar_characteristic(
+                error_characteristic,
+                prime,
+            )
+            break
+        if error_element is None or residue_root_element is None:
+            raise Round4Unsupported(
+                "no conjugate residue root has positive local valuation"
+            )
         if ramification_degree % error_ramification != 0:
             error_uniformizer, error_exponent, error_prime_exponent = (
                 _round4_uniformizer(
@@ -1085,7 +1239,7 @@ def _round4_residue_refinement(
                 new_ramification,
                 candidate_residue_degree,
             )
-        correction = root * prime**quotient
+        correction = residue_root_element * prime**quotient
         if remainder:
             correction *= nu_at_phi**remainder
         beta -= correction
@@ -1121,6 +1275,7 @@ def round4_primary_power_basis(
     phi = field.gen()
     nu = list(plan.irreducible_factors[0])
     ramification_degree = 0
+    previous_uniformizer: Any | None = None
     stages: list[Round4Stage] = []
     search_precision = max(
         3,
@@ -1139,7 +1294,42 @@ def round4_primary_power_basis(
             prime,
         )
         if candidate_ramification < ramification_degree:
-            raise Round4InvariantError("the Round-4 ramification degree decreased")
+            # PARI's `getprime` rejects this uninteresting candidate and
+            # `progress` translates phi by the last accepted prime element.
+            # Replacing E by the smaller value would be mathematically wrong;
+            # retaining this explicit state transition is essential on wild
+            # primary inputs such as round4 vector 010.
+            if previous_uniformizer is None:
+                raise Round4InvariantError(
+                    "Round-4 has no accepted prime element to reject an E decrease"
+                )
+            phi = _p_adic_reduce_element(
+                field,
+                phi + previous_uniformizer,
+                prime,
+                search_precision,
+            )
+            characteristic = _integral_characteristic_polynomial(field, phi)
+            if characteristic is None:
+                raise Round4InvariantError(
+                    "the translated Round-4 generator is not integral"
+                )
+            nu, multiplicity = _single_characteristic_branch(
+                characteristic,
+                prime,
+            )
+            stages.append(
+                Round4Stage(
+                    "power-basis-reuse-uniformizer",
+                    {
+                        "iteration": iteration,
+                        "retained_ramification_degree": ramification_degree,
+                        "rejected_ramification_degree": candidate_ramification,
+                        "multiplicity": multiplicity,
+                    },
+                )
+            )
+            continue
         uniformizer, beta_exponent, prime_exponent = _round4_uniformizer(
             beta,
             numerator,
@@ -1157,6 +1347,7 @@ def round4_primary_power_basis(
                 "the Round-4 prime element did not certify as integral"
             )
         ramification_degree = candidate_ramification
+        previous_uniformizer = uniformizer
         stages.append(
             Round4Stage(
                 "power-basis-ramification",

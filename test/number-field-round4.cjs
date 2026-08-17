@@ -165,6 +165,32 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
   }
 });
 
+test("bounded residue matching returns a complete Frobenius root orbit", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "from sagejs.number_fields.round4 import _bounded_residue_roots, _quotient_polynomial_evaluate, _quotient_polynomial_power",
+            "polynomial = [1, 1, 1]",
+            "modulus = [1, 1, 0, 0, 1]",
+            "roots = _bounded_residue_roots(polynomial, modulus, 2)",
+            "assert roots == [[0, 1, 1], [1, 1, 1]]",
+            "assert all(_quotient_polynomial_evaluate(polynomial, root, modulus, 2) == [0] for root in roots)",
+            "assert _quotient_polynomial_power(roots[0], 2, modulus, 2) == roots[1]",
+            "assert _quotient_polynomial_power(roots[1], 2, modulus, 2) == roots[0]",
+            "roots",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[0, 1, 1], [1, 1, 1]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("Round-4 and Round-2 agree on deterministic randomized low-degree fields", async () => {
   const session = await createSage();
   try {
