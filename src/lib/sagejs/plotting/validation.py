@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ._json import JSONValue, canonical_json
 from .diagnostics import Diagnostic
 from .inspection import (
@@ -8,7 +10,6 @@ from .inspection import (
     provided_alt_text,
     semantic_coordinates,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .model import PlotLayer, PlotSpec
