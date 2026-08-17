@@ -23,11 +23,14 @@ import time
 
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 from sagejs.number_fields.buchmann_lenstra import (
+    buchmann_lenstra_general_overorder,
     buchmann_lenstra_overorder,
+    check_buchmann_lenstra_general_result,
     check_buchmann_lenstra_result,
+    perfect_power_component_split,
     polynomial_gcd_with_split,
 )
-from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent
+from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent, OrderBasis
 
 fixtures = json.loads(${JSON.stringify(JSON.stringify(fixture))})
 case = fixtures["t8_2pow32"]
@@ -87,12 +90,108 @@ refused = buchmann_lenstra_overorder(
 assert refused.state == "certification-error"
 assert "requires a composite component" in refused.message
 
+general = fixtures["general_multi_enlargement"]
+general_coefficients = [int(value) for value in general["coefficients_low_to_high"]]
+general_basis = OrderBasis(
+    [[int(value) for value in row] for row in general["starting_basis"]["numerator"]],
+    int(general["starting_basis"]["denominator"]),
+)
+general_component = DiscriminantComponent(int(general["component"]), "composite")
+general_result = buchmann_lenstra_overorder(
+    general_coefficients,
+    general_component,
+    basis=general_basis,
+)
+assert general_result.state == "complete"
+assert general_result.index == int(general["expected_index"])
+assert general_result.discriminant == int(general["expected_discriminant"])
+assert general_result.basis is not None
+assert general_result.basis.numerator == [
+    [int(value) for value in row] for row in general["expected_basis"]["numerator"]
+]
+assert general_result.basis.denominator == int(general["expected_basis"]["denominator"])
+general_events = general_result.evidence["events"]
+assert sum(event["stage"] == "multiplier-ring" for event in general_events) == general["expected_enlargements"]
+assert [
+    (event["from_index"], event["to_index"])
+    for event in general_events if event["stage"] == "multiplier-ring"
+] == [(35, 1225), (1225, 42875)]
+assert check_buchmann_lenstra_general_result(
+    general_coefficients, general_basis, general_result
+)
+assert check_buchmann_lenstra_result(general_coefficients, general_result)
+assert general_result.to_local_result().algorithm == "buchmann-lenstra"
+saved_to_index = general_events[2]["to_index"]
+general_events[2]["to_index"] = saved_to_index + 1
+assert not check_buchmann_lenstra_general_result(
+    general_coefficients, general_basis, general_result
+)
+general_events[2]["to_index"] = saved_to_index
+
+trace_split_case = fixtures["general_trace_split"]
+trace_coefficients = [int(value) for value in trace_split_case["coefficients_low_to_high"]]
+trace_basis = OrderBasis([[1, 0, 0], [0, 1, 0], [0, 0, 1]], 1)
+trace_result = buchmann_lenstra_general_overorder(
+    trace_coefficients,
+    DiscriminantComponent(int(trace_split_case["component"]), "composite"),
+    trace_basis,
+)
+assert trace_result.state == "split"
+assert trace_result.split is not None
+assert trace_result.split.left == int(trace_split_case["expected_left_factor"])
+assert trace_result.split.right == int(trace_split_case["expected_right_factor"])
+assert trace_result.evidence["split_stage"] == trace_split_case["expected_stage"]
+assert trace_result.split.evidence["operation"] == "composite-modular-elimination"
+assert check_buchmann_lenstra_general_result(
+    trace_coefficients, trace_basis, trace_result
+)
+
+freeness_case = fixtures["general_freeness"]
+freeness_coefficients = [int(value) for value in freeness_case["coefficients_low_to_high"]]
+freeness_basis = OrderBasis(
+    [[int(value) for value in row] for row in freeness_case["starting_basis"]["numerator"]],
+    int(freeness_case["starting_basis"]["denominator"]),
+)
+freeness_result = buchmann_lenstra_general_overorder(
+    freeness_coefficients,
+    DiscriminantComponent(int(freeness_case["component"]), "composite"),
+    freeness_basis,
+)
+assert freeness_result.state == "resource-error"
+assert freeness_result.message == freeness_case["expected_message"]
+assert [event["stage"] for event in freeness_result.evidence["events"]] == freeness_case["expected_stages"]
+assert freeness_result.evidence["events"][-1]["equal"] is False
+assert check_buchmann_lenstra_general_result(
+    freeness_coefficients, freeness_basis, freeness_result
+)
+
+power_split = perfect_power_component_split(
+    DiscriminantComponent(49, "composite"), 2
+)
+assert power_split is not None
+assert power_split.left == 7 and power_split.right == 7
+assert power_split.evidence["operation"] == "perfect-power-height"
+assert perfect_power_component_split(DiscriminantComponent(50, "composite"), 2) is None
+
+bounded = buchmann_lenstra_general_overorder(
+    general_coefficients,
+    general_component,
+    general_basis,
+    max_degree=1,
+)
+assert bounded.state == "resource-error"
+assert "degree bound" in bounded.message
+
 print(json.dumps({
     "state": result.state,
     "index": str(result.index),
     "discriminant": str(result.discriminant),
     "basis": result.basis.to_dict(),
     "split": split.to_dict(),
+    "general": general_result.to_dict(),
+    "general_trace_split": trace_result.to_dict(),
+    "general_freeness": freeness_result.to_dict(),
+    "power_split": power_split.to_dict(),
     "elapsed_ns": elapsed_ns,
 }, sort_keys=True))
 `;
