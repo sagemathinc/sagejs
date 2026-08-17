@@ -942,23 +942,45 @@ async function lowerSource(source, filename, options = {}) {
     loweredDefinitions[index],
     filename,
   ));
+  const selectedForeignLibraryIds = new Set();
+  for (const fn of selected) {
+    for (const dependency of fn.foreignDependencies || []) {
+      const separator = dependency.indexOf("@");
+      if (separator > 0) {
+        selectedForeignLibraryIds.add(dependency.slice(0, separator));
+      }
+    }
+    for (const resource of fn.foreignResources || []) {
+      if (resource.library?.id) {
+        selectedForeignLibraryIds.add(resource.library.id);
+      }
+    }
+  }
+  const importedForeignLibraries = [
+    ...foreignResources.values(),
+    ...foreignFunctions.values(),
+  ];
   return {
     version: IR_VERSION,
     records: Array.from(records.values()),
     functions: selected,
     foreignLibraries: Array.from(new Map(
-      Array.from(foreignFunctions.values(), (foreign) => [
-        foreign.library.id,
-        {
-          id: foreign.library.id,
-          declarationHash: foreign.declarationHash,
-          declarationIdentity: `${foreign.library.id}@${foreign.declarationHash}`,
-          pythonModule: foreign.library.python_module,
-          dynamic: foreign.library.dynamic,
-          native: foreign.library.native,
-          resources: foreign.resources,
-        },
-      ]),
+      importedForeignLibraries
+        .filter((foreign) => selectedForeignLibraryIds.has(foreign.library.id))
+        .map((foreign) => [
+          foreign.library.id,
+          {
+            id: foreign.library.id,
+            declarationHash: foreign.declarationHash ??
+              foreign.declaration_identity.split("@")[1],
+            declarationIdentity: foreign.declarationIdentity ??
+              foreign.declaration_identity,
+            pythonModule: foreign.library.python_module,
+            dynamic: foreign.library.dynamic,
+            native: foreign.library.native,
+            resources: foreign.resources ?? [foreign],
+          },
+        ]),
     ).values()).sort((left, right) => left.id.localeCompare(right.id)),
     callGraph: Object.fromEntries(
       selected.map((fn) => [fn.name, fn.dependencies || []]),

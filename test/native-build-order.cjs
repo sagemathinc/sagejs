@@ -10,7 +10,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { dirname, join, relative } = require("node:path");
+const { dirname, join, relative, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
@@ -26,6 +26,54 @@ const {
   bootstrapBuildPlan,
   executeBuildPhase,
 } = require("../scripts/bootstrap.cjs");
+const {
+  functionsWithoutUnavailableLibraries,
+  unavailableOptionalLibrary,
+} = require("../scripts/build-production-native-kernels.cjs");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+
+test("production kernels omit only functions needing an unavailable optional library", () => {
+  const functions = ["flint_part", "m4ri_part", "portable_part"];
+  const libraries = new Map([
+    ["flint_part", ["flint"]],
+    ["m4ri_part", ["flint", "m4ri"]],
+    ["portable_part", []],
+  ]);
+  assert.deepEqual(
+    functionsWithoutUnavailableLibraries(
+      functions,
+      libraries,
+      new Set(["m4ri"]),
+    ),
+    ["flint_part", "portable_part"],
+  );
+  assert.equal(
+    unavailableOptionalLibrary(
+      new Error("m4ri declared native library libm4ri.a: ENOENT"),
+    ),
+    true,
+  );
+  assert.equal(unavailableOptionalLibrary(new Error("compiler crashed")), false);
+});
+
+test("selected native functions retain only foreign libraries they use", async () => {
+  const sourcePath = resolve(
+    repositoryRoot,
+    "src/lib/sagejs/linear_algebra/sparse_random_public.py",
+  );
+  const source = readFileSync(sourcePath, "utf8");
+  const flint = await lowerSource(source, sourcePath, {
+    functions: ["sparse_random_fmpz"],
+  });
+  const m4ri = await lowerSource(source, sourcePath, {
+    functions: ["sparse_random_m4ri"],
+  });
+  assert.deepEqual(
+    flint.foreignLibraries.map((library) => library.id),
+    ["flint"],
+  );
+  assert.deepEqual(m4ri.foreignLibraries.map((library) => library.id), ["m4ri"]);
+});
 
 test("a fresh FLINT build establishes the compiler before addon and FFI stages", () => {
   assert.deepEqual(

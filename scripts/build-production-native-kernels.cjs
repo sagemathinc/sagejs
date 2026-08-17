@@ -12,7 +12,11 @@ const {
 const { createHash } = require("node:crypto");
 const { join, relative, resolve } = require("node:path");
 
-const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+const {
+  compileKernel,
+  foreignCompilationInputs,
+} = require("../tools/native-kernel/compiler.cjs");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = resolve(__dirname, "..");
 const manifestPath = join(root, "architecture", "native-kernels.json");
@@ -61,6 +65,54 @@ function sourceKey(source) {
   return source.slice(prefix.length);
 }
 
+function unavailableOptionalLibrary(error) {
+  const message = String(error?.message ?? error);
+  return /(?:ENOENT|ENOTDIR|does not resolve)/.test(message);
+}
+
+function functionsWithoutUnavailableLibraries(
+  functions,
+  librariesByFunction,
+  unavailable,
+) {
+  return functions.filter((name) =>
+    !(librariesByFunction.get(name) ?? []).some((library) =>
+      unavailable.has(library)
+    )
+  );
+}
+
+async function availableProductionFunctions(kernel, source, sourcePath) {
+  const optional = new Set(kernel.optional_foreign_libraries ?? []);
+  if (optional.size === 0) return kernel.functions;
+
+  const librariesByFunction = new Map();
+  const libraries = new Map();
+  for (const name of kernel.functions) {
+    const ir = await lowerSource(source, sourcePath, { functions: [name] });
+    const ids = (ir.foreignLibraries ?? []).map((library) => library.id);
+    librariesByFunction.set(name, ids);
+    for (const library of ir.foreignLibraries ?? []) {
+      if (optional.has(library.id)) libraries.set(library.id, library);
+    }
+  }
+
+  const unavailable = new Set();
+  for (const [id, library] of libraries) {
+    try {
+      foreignCompilationInputs({ foreignLibraries: [library] });
+    } catch (error) {
+      if (!unavailableOptionalLibrary(error)) throw error;
+      unavailable.add(id);
+    }
+  }
+  return functionsWithoutUnavailableLibraries(
+    kernel.functions,
+    librariesByFunction,
+    unavailable,
+  );
+}
+
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -85,13 +137,29 @@ async function main() {
   for (const kernel of production) {
     const absoluteSource = join(root, kernel.source);
     const logicalSource = sourceKey(kernel.source);
+    const source = readFileSync(absoluteSource, "utf8");
+    const functions = await availableProductionFunctions(
+      kernel,
+      source,
+      absoluteSource,
+    );
+    const skippedFunctions = kernel.functions.filter(
+      (name) => !functions.includes(name),
+    );
+    if (functions.length === 0) {
+      process.stdout.write(
+        `skipped ${kernel.id}: optional native dependencies unavailable\n`,
+      );
+      continue;
+    }
     const compiled = await compileKernel({
       sourcePath: absoluteSource,
       sourceKey: logicalSource,
       cacheRoot: options.cacheRoot,
+      functions,
     });
     const actualFunctions = compiled.ir.functions.map((fn) => fn.name);
-    const missingFunctions = kernel.functions.filter(
+    const missingFunctions = functions.filter(
       (name) => !actualFunctions.includes(name),
     );
     if (missingFunctions.length !== 0) {
@@ -113,7 +181,8 @@ async function main() {
     });
     process.stdout.write(
       `${compiled.cached ? "cached" : "built"} ${kernel.id} ` +
-        `(${actualFunctions.length} functions)\n`,
+        `(${actualFunctions.length} functions` +
+        `${skippedFunctions.length === 0 ? "" : `; skipped ${skippedFunctions.join(", ")}`})\n`,
     );
   }
 
@@ -167,7 +236,15 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  availableProductionFunctions,
+  functionsWithoutUnavailableLibraries,
+  unavailableOptionalLibrary,
+};
