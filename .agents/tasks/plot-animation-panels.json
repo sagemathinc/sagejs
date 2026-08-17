@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-animation-panels",
+  "title": "Semantic animation and panel boundaries",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement immutable bounded PlotSpec animation frames with deterministic Plotly controls, explicit resource and export capability boundaries, and validated reuse of PanelComposition2D",
+  "base_commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+  "claims": [
+    "src/lib/sagejs/plotting/animation.py",
+    "docs/sage-compatibility/plotting/animation.json",
+    "test/plot-animation-panels.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md",
+    "src/lib/sagejs/plotting/composition.py"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and Sage.js differential JSON witnesses",
+      "Plotly.js browser validation and Chromium smoke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/plot-animation-panels.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/plot-animation-panels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.691,
+      "started_at": "2026-08-17T07:06:03.072Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "13bea0da66cb87c820a00a6f26eb97b1791a450e122866333eeefca6f241baf6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.853,
+      "started_at": "2026-08-17T07:06:34.164Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "13bea0da66cb87c820a00a6f26eb97b1791a450e122866333eeefca6f241baf6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.508,
+      "started_at": "2026-08-17T07:06:57.846Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "13bea0da66cb87c820a00a6f26eb97b1791a450e122866333eeefca6f241baf6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
