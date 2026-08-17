@@ -39,3 +39,15 @@ test("standalone cache includes static dependencies and packages", () => {
     assert(BASELIB_STANDALONE_CACHE_MODULES.includes(name), name);
   }
 });
+
+test("standalone cache includes the lazy semantic plotting package", () => {
+  assert(BASELIB_STANDALONE_MODULES.includes("sagejs.plotting"));
+  for (const name of [
+    "sagejs.plotting",
+    "sagejs.plotting._json",
+    "sagejs.plotting.diagnostics",
+    "sagejs.plotting.model",
+  ]) {
+    assert(BASELIB_STANDALONE_CACHE_MODULES.includes(name), name);
+  }
+});

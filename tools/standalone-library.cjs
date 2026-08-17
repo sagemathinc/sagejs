@@ -135,6 +135,7 @@ const BASELIB_STANDALONE_MODULES = Object.freeze([
     ...BUILTINS_STANDALONE_MODULES,
     ...MATRIX_STANDALONE_MODULES,
     ...POLYNOMIAL_STANDALONE_MODULES,
+    "sagejs.plotting",
   ]),
 ]);
 

@@ -255,11 +255,21 @@
       "prefixes": []
     },
     {
+      "id": "plot-spec",
+      "layer": 2,
+      "startup": "lazy",
+      "max_source_bytes": 50000,
+      "depends_on": ["core-runtime", "python-stdlib"],
+      "modules": ["sagejs.plotting"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/plotting/"]
+    },
+    {
       "id": "graphics",
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 320000,
-      "depends_on": ["core-runtime", "arithmetic", "symbolics"],
+      "depends_on": ["core-runtime", "arithmetic", "symbolics", "plot-spec"],
       "files": ["src/baselib/graphics.py", "src/baselib/graphics3d.py"],
       "prefixes": []
     },
