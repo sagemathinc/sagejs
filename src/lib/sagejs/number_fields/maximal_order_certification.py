@@ -20,110 +20,120 @@ from sagejs.number_fields.discriminant_components import (
 )
 
 
-def _normalize_fraction(numerator: int, denominator: int) -> tuple[int, int]:
-    if denominator == 0:
-        raise ZeroDivisionError("a certificate contains a zero denominator")
-    top = int(numerator)
-    bottom = int(denominator)
-    if bottom < 0:
-        top = -top
-        bottom = -bottom
-    common = integer_gcd(top, bottom)
-    return top // common, bottom // common
+def _scaled_integral_inverse(
+    rows: list[list[int]], scale: int
+) -> list[list[int]] | None:
+    """Return `scale * rows^-1` when it is integral.
 
+    Lower-triangular row-HNF uses exact forward substitution.  The general
+    fallback uses fraction-free Gauss--Jordan elimination to turn `[rows | I]`
+    into `[det(rows) I | adj(rows)]`.  Both paths avoid normalizing a rational
+    number after every scalar operation.  A `None` result covers both a
+    singular matrix and a nonintegral scaled inverse.
 
-def _add(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
-    return _normalize_fraction(
-        left[0] * right[1] + right[0] * left[1], left[1] * right[1]
-    )
-
-
-def _subtract(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
-    return _normalize_fraction(
-        left[0] * right[1] - right[0] * left[1], left[1] * right[1]
-    )
-
-
-def _multiply(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
-    return _normalize_fraction(left[0] * right[0], left[1] * right[1])
-
-
-def _divide(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
-    return _normalize_fraction(left[0] * right[1], left[1] * right[0])
-
-
-def _inverse_matrix(rows: list[list[int]]) -> list[list[tuple[int, int]]] | None:
+    This is not a probabilistic or algorithm-produced shortcut: every Bareiss
+    division is checked and every entry of the claimed integral inverse is
+    reconstructed from the input matrix.
+    """
     degree = len(rows)
     if degree == 0 or any(len(row) != degree for row in rows):
         return None
-    augmented = []
+    lower_triangular = all(
+        int(rows[row][column]) == 0
+        for row in range(degree)
+        for column in range(row + 1, degree)
+    )
+    if lower_triangular:
+        # Certified order bases are emitted in lower row-HNF.  Forward
+        # substitution computes d*B^-1 directly, so its intermediate values
+        # remain at the size of the result instead of growing to det(B).
+        answer = [[0 for _column in range(degree)] for _row in range(degree)]
+        for row in range(degree):
+            diagonal = int(rows[row][row])
+            if diagonal == 0:
+                return None
+            for column in range(degree):
+                numerator = int(scale) if row == column else 0
+                for index in range(row):
+                    numerator -= int(rows[row][index]) * answer[index][column]
+                if numerator % diagonal != 0:
+                    return None
+                answer[row][column] = numerator // diagonal
+        return answer
+
+    augmented: list[list[int]] = []
     for row_index in range(degree):
-        row = [_normalize_fraction(value, 1) for value in rows[row_index]]
-        row.extend(
-            [
-                _normalize_fraction(1 if row_index == column else 0, 1)
-                for column in range(degree)
-            ]
-        )
+        row = [int(value) for value in rows[row_index]]
+        row.extend([1 if row_index == column else 0 for column in range(degree)])
         augmented.append(row)
+    previous_pivot = 1
     for column in range(degree):
         pivot = column
-        while pivot < degree and augmented[pivot][column][0] == 0:
+        while pivot < degree and augmented[pivot][column] == 0:
             pivot += 1
         if pivot == degree:
             return None
         if pivot != column:
             augmented[pivot], augmented[column] = augmented[column], augmented[pivot]
-        scale = augmented[column][column]
-        for index in range(2 * degree):
-            augmented[column][index] = _divide(augmented[column][index], scale)
+        pivot_value = augmented[column][column]
         for row_index in range(degree):
             if row_index == column:
                 continue
             factor = augmented[row_index][column]
-            if factor[0] == 0:
-                continue
             for index in range(2 * degree):
-                augmented[row_index][index] = _subtract(
-                    augmented[row_index][index],
-                    _multiply(factor, augmented[column][index]),
+                if index == column:
+                    continue
+                numerator = (
+                    pivot_value * augmented[row_index][index]
+                    - factor * augmented[column][index]
                 )
-    return [row[degree:] for row in augmented]
+                if numerator % previous_pivot != 0:
+                    raise ArithmeticError(
+                        "fraction-free inverse division was not exact"
+                    )
+                augmented[row_index][index] = numerator // previous_pivot
+            augmented[row_index][column] = 0
+        previous_pivot = pivot_value
 
-
-def _row_coordinates(
-    row: list[int], inverse: list[list[tuple[int, int]]]
-) -> list[tuple[int, int]]:
-    degree = len(inverse)
+    determinant = augmented[0][0]
+    if determinant == 0 or any(
+        augmented[index][index] != determinant for index in range(degree)
+    ):
+        raise ArithmeticError("fraction-free inverse has inconsistent diagonal")
     answer = []
-    for column in range(degree):
-        value = (0, 1)
-        for index in range(degree):
-            value = _add(value, _multiply((int(row[index]), 1), inverse[index][column]))
-        answer.append(value)
+    for row_index in range(degree):
+        row = []
+        for column in range(degree):
+            numerator = int(scale) * augmented[row_index][degree + column]
+            if numerator % determinant != 0:
+                return None
+            row.append(numerator // determinant)
+        answer.append(row)
     return answer
 
 
-def _power_basis_product(
-    left: list[int], right: list[int], defining_polynomial: list[int]
+def _sparse_power_basis_product(
+    left_support: list[tuple[int, int]],
+    right_support: list[tuple[int, int]],
+    polynomial_support: list[tuple[int, int]],
+    degree: int,
 ) -> list[int]:
-    degree = len(defining_polynomial) - 1
-    if degree < 1 or defining_polynomial[-1] != 1:
-        raise ValueError("the checker needs a monic low-to-high defining polynomial")
+    """Multiply prepared sparse vectors modulo a monic polynomial."""
     product = [0 for _index in range(2 * degree - 1)]
-    for left_index in range(degree):
-        for right_index in range(degree):
-            product[left_index + right_index] += int(left[left_index]) * int(
-                right[right_index]
-            )
-    exponent = len(product) - 1
+    largest_exponent = 0
+    for left_index, left_value in left_support:
+        for right_index, right_value in right_support:
+            exponent = left_index + right_index
+            product[exponent] += left_value * right_value
+            if exponent > largest_exponent:
+                largest_exponent = exponent
+    exponent = largest_exponent
     while exponent >= degree:
         leading = product[exponent]
         if leading:
-            for index in range(degree):
-                product[exponent - degree + index] -= leading * int(
-                    defining_polynomial[index]
-                )
+            offset = exponent - degree
+            for index, coefficient in polynomial_support:
+                product[offset + index] -= leading * coefficient
         exponent -= 1
     return product[:degree]
 
@@ -135,8 +145,14 @@ def check_order_lattice(
 ) -> dict[str, Any]:
     """Recompute nonsingularity, equation-order containment, and closure."""
     denominator = int(basis_denominator)
-    degree = len(defining_polynomial) - 1
-    if denominator < 1 or len(basis_numerator) != degree:
+    coefficients = [int(value) for value in defining_polynomial]
+    degree = len(coefficients) - 1
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or denominator < 1
+        or len(basis_numerator) != degree
+    ):
         return {"valid": False, "reason": "basis-shape"}
     rows = [[int(value) for value in row] for row in basis_numerator]
     if denominator == 1 and all(
@@ -148,27 +164,58 @@ def check_order_lattice(
         # by construction.  This is a proof shortcut, not a trusted algorithm
         # flag: shape, monicity, and every identity entry were checked here.
         return {"valid": True, "reason": "checked-equation-power-basis"}
-    inverse = _inverse_matrix(rows)
-    if inverse is None:
-        return {"valid": False, "reason": "singular-basis"}
+    # The equation order is contained in the row lattice B/d precisely when
+    # A = d*B^-1 is integral.  Compute A directly with fraction-free integer
+    # elimination rather than constructing and repeatedly normalizing n^2
+    # rational pairs.
+    scaled_inverse = _scaled_integral_inverse(rows, denominator)
+    if scaled_inverse is None:
+        return {"valid": False, "reason": "equation-order-not-contained"}
 
-    # e_i is in the row lattice B/d precisely when d*e_i*B^-1 is integral.
-    for basis_index in range(degree):
-        standard = [0 for _index in range(degree)]
-        standard[basis_index] = denominator
-        coordinates = _row_coordinates(standard, inverse)
-        if any(value[1] != 1 for value in coordinates):
-            return {"valid": False, "reason": "equation-order-not-contained"}
+    # For d=1, integrality of B^-1 and B itself imply det(B) is a unit.  The
+    # candidate lattice is therefore exactly the equation order, whose closure
+    # follows from the independently checked monic defining polynomial.
+    if denominator == 1:
+        return {"valid": True, "reason": "checked-equation-order-lattice"}
 
     # The product of numerator rows represents product/d^2.  It belongs to
-    # B/d exactly when its B-coordinates are divisible by d.
-    for left in rows:
-        for right in rows:
-            product = _power_basis_product(left, right, defining_polynomial)
-            coordinates = _row_coordinates(product, inverse)
-            for value in coordinates:
-                reduced = _normalize_fraction(value[0], value[1] * denominator)
-                if reduced[1] != 1:
+    # B/d exactly when product*(d*B^-1) is divisible by d^2.  Commutativity
+    # means only the upper triangle of pairs needs checking.
+    denominator_squared = denominator * denominator
+    row_supports = [
+        [
+            (column, rows[row][column])
+            for column in range(degree)
+            if rows[row][column] != 0
+        ]
+        for row in range(degree)
+    ]
+    polynomial_support = [
+        (index, coefficients[index])
+        for index in range(degree)
+        if coefficients[index] != 0
+    ]
+    inverse_column_supports = [
+        [
+            (row, scaled_inverse[row][column])
+            for row in range(degree)
+            if scaled_inverse[row][column] != 0
+        ]
+        for column in range(degree)
+    ]
+    for left_index in range(degree):
+        for right_index in range(left_index, degree):
+            product = _sparse_power_basis_product(
+                row_supports[left_index],
+                row_supports[right_index],
+                polynomial_support,
+                degree,
+            )
+            for column in range(degree):
+                coordinate_numerator = 0
+                for index, inverse_value in inverse_column_supports[column]:
+                    coordinate_numerator += product[index] * inverse_value
+                if coordinate_numerator % denominator_squared != 0:
                     return {"valid": False, "reason": "not-multiplicatively-closed"}
     return {"valid": True, "reason": "checked"}
 
