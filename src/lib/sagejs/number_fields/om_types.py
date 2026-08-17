@@ -1,10 +1,10 @@
 """Bounded Ore--MacLane arithmetic and inspectable type certificates.
 
-This module implements the complete first-order, `p`-regular slice of the
-Ore--MacLane algorithm over `ZZ[x]`.  It deliberately stops, with an explicit
-certificate state, when higher residual-field arithmetic or representative
-refinement is required.  No incomplete type is ever reported as a maximality
-proof.
+This module implements a bounded, certified Ore--MacLane slice over `ZZ[x]`.
+It includes first-order residual arithmetic over arbitrary small finite residue
+fields and same-degree representative optimization.  It deliberately stops,
+with an explicit certificate state, when a degree-raising higher type is
+required.  No incomplete type is ever reported as a maximality proof.
 
 Polynomials are immutable tuples of integer coefficients in ascending order.
 The implementation is ordinary CPython source and has no native/runtime
@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from typing import TypeAlias
 
 Polynomial: TypeAlias = tuple[int, ...]
+ResidueElement: TypeAlias = Polynomial
+ResidualPolynomial: TypeAlias = tuple[ResidueElement, ...]
 
 
 class OMDomainError(ValueError):
@@ -324,6 +326,117 @@ def _mod_polynomial(polynomial: Polynomial, prime: int) -> Polynomial:
     return normalize_polynomial(tuple(value % prime for value in polynomial))
 
 
+def _residue_normalize(
+    value: ResidueElement,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidueElement:
+    _quotient, remainder = modular_divmod(value, modulus, prime)
+    return _mod_polynomial(remainder, prime)
+
+
+def _residue_subtract(
+    left: ResidueElement,
+    right: ResidueElement,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidueElement:
+    return _residue_normalize(polynomial_subtract(left, right), prime, modulus)
+
+
+def _residue_multiply(
+    left: ResidueElement,
+    right: ResidueElement,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidueElement:
+    return _residue_normalize(polynomial_multiply(left, right), prime, modulus)
+
+
+def _residue_power(
+    value: ResidueElement,
+    exponent: int,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidueElement:
+    if exponent < 0:
+        raise ValueError("a residue exponent must be nonnegative")
+    result: ResidueElement = (1,)
+    power = _residue_normalize(value, prime, modulus)
+    remaining = exponent
+    while remaining:
+        if remaining % 2:
+            result = _residue_multiply(result, power, prime, modulus)
+        remaining //= 2
+        if remaining:
+            power = _residue_multiply(power, power, prime, modulus)
+    return result
+
+
+def _residue_inverse(
+    value: ResidueElement,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidueElement:
+    """Invert by the finite-field identity `a^(q-2)`.
+
+    The modulus has already been certified irreducible by the initial modular
+    factorization.  Exponentiation is compact, deterministic, and independent
+    from the trial-factorization code used below.
+    """
+    value = _residue_normalize(value, prime, modulus)
+    if value == (0,):
+        raise ZeroDivisionError("zero has no residue-field inverse")
+    field_size = prime ** polynomial_degree(modulus)
+    return _residue_power(value, field_size - 2, prime, modulus)
+
+
+def _residual_normalize(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    values = [
+        _residue_normalize(coefficient, prime, modulus) for coefficient in polynomial
+    ]
+    while len(values) > 1 and values[-1] == (0,):
+        values.pop()
+    if not values:
+        values.append((0,))
+    return tuple(values)
+
+
+def _residual_divmod(
+    dividend: ResidualPolynomial,
+    divisor: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> tuple[ResidualPolynomial, ResidualPolynomial]:
+    divisor = _residual_normalize(divisor, prime, modulus)
+    if divisor == ((0,),):
+        raise ZeroDivisionError("residual polynomial division by zero")
+    remainder = list(_residual_normalize(dividend, prime, modulus))
+    divisor_degree = len(divisor) - 1
+    inverse = _residue_inverse(divisor[-1], prime, modulus)
+    if len(remainder) - 1 < divisor_degree:
+        return ((0,),), tuple(remainder)
+    quotient: list[ResidueElement] = [(0,)] * (len(remainder) - divisor_degree)
+    while len(remainder) - 1 >= divisor_degree and remainder != [(0,)]:
+        shift = len(remainder) - 1 - divisor_degree
+        leading = _residue_multiply(remainder[-1], inverse, prime, modulus)
+        quotient[shift] = leading
+        for index, value in enumerate(divisor):
+            product = _residue_multiply(leading, value, prime, modulus)
+            remainder[index + shift] = _residue_subtract(
+                remainder[index + shift], product, prime, modulus
+            )
+        while len(remainder) > 1 and remainder[-1] == (0,):
+            remainder.pop()
+    return _residual_normalize(tuple(quotient), prime, modulus), _residual_normalize(
+        tuple(remainder), prime, modulus
+    )
+
+
 def _mod_inverse(value: int, prime: int) -> int:
     value %= prime
     if value == 0:
@@ -371,6 +484,12 @@ def modular_divmod(
 @dataclass
 class ModularFactor(ImmutableOMRecord):
     polynomial: Polynomial
+    multiplicity: int
+
+
+@dataclass
+class ResidualFactor(ImmutableOMRecord):
+    polynomial: ResidualPolynomial
     multiplicity: int
 
 
@@ -424,6 +543,87 @@ def factor_mod_prime(
         degree += 1
     if polynomial_degree(remaining) > 0:
         factors.append(ModularFactor(remaining, 1))
+    return tuple(factors)
+
+
+def _residue_elements(prime: int, modulus: Polynomial) -> Iterator[ResidueElement]:
+    degree = polynomial_degree(modulus)
+    for encoded in range(prime**degree):
+        coefficients = []
+        value = encoded
+        for _index in range(degree):
+            coefficients.append(value % prime)
+            value //= prime
+        yield normalize_polynomial(coefficients)
+
+
+def _monic_residual_polynomials(
+    degree: int,
+    prime: int,
+    modulus: Polynomial,
+) -> Iterator[ResidualPolynomial]:
+    elements = tuple(_residue_elements(prime, modulus))
+    count = len(elements) ** degree
+    for encoded in range(count):
+        coefficients: list[ResidueElement] = []
+        value = encoded
+        for _index in range(degree):
+            coefficients.append(elements[value % len(elements)])
+            value //= len(elements)
+        coefficients.append((1,))
+        yield tuple(coefficients)
+
+
+def factor_residual_polynomial(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+    *,
+    max_enumerated_candidates: int = 200_000,
+) -> tuple[ResidualFactor, ...]:
+    """Factor a bounded monic polynomial over `F_p[x]/(modulus)`.
+
+    This exhaustive implementation is deliberately bounded.  It makes the
+    mathematical residual-extension path executable in ordinary Python while
+    larger fields remain an explicit future FLINT `fq` acceleration domain.
+    """
+    modulus = _mod_polynomial(modulus, prime)
+    if polynomial_degree(modulus) <= 0 or modulus[-1] != 1:
+        raise OMDomainError("a residual field modulus must be monic")
+    remaining = _residual_normalize(polynomial, prime, modulus)
+    if remaining == ((0,),) or remaining[-1] != (1,):
+        raise OMDomainError("bounded residual factorization requires monic input")
+    field_size = prime ** polynomial_degree(modulus)
+    factors: list[ResidualFactor] = []
+    used = 0
+    degree = 1
+    while 2 * degree <= len(remaining) - 1:
+        count = field_size**degree
+        used += count
+        if used > max_enumerated_candidates:
+            raise OMResourceError(
+                "bounded residual factorization candidate limit exceeded"
+            )
+        for candidate in _monic_residual_polynomials(degree, prime, modulus):
+            multiplicity = 0
+            while len(remaining) - 1 >= degree:
+                quotient, remainder = _residual_divmod(
+                    remaining, candidate, prime, modulus
+                )
+                if remainder != ((0,),):
+                    break
+                remaining = quotient
+                multiplicity += 1
+            if multiplicity:
+                factors.append(ResidualFactor(candidate, multiplicity))
+        degree += 1
+    if len(remaining) - 1 > 0:
+        leading_inverse = _residue_inverse(remaining[-1], prime, modulus)
+        remaining = tuple(
+            _residue_multiply(value, leading_inverse, prime, modulus)
+            for value in remaining
+        )
+        factors.append(ResidualFactor(remaining, 1))
     return tuple(factors)
 
 
@@ -512,31 +712,15 @@ def polygon_index(sides: tuple[NewtonSide, ...]) -> int:
     return total
 
 
-def _evaluate_mod(polynomial: Polynomial, value: int, prime: int) -> int:
-    answer = 0
-    for coefficient in reversed(polynomial):
-        answer = (answer * value + coefficient) % prime
-    return answer
-
-
 def residual_polynomial(
     expansion: tuple[Polynomial, ...],
     side: NewtonSide,
     prime: int,
     key: Polynomial,
-) -> Polynomial:
-    """Compute a first residual polynomial for a linear residue key.
-
-    Coefficients for nonlinear residue keys live in an extension field.  That
-    arithmetic belongs to the FLINT residual-field integration lane and is
-    rejected explicitly here.
-    """
-    if polynomial_degree(key) != 1:
-        raise OMDomainError(
-            "bounded residual factorization supports linear residue keys only"
-        )
-    residue_root = (-key[0]) % prime
-    coefficients: list[int] = []
+) -> ResidualPolynomial:
+    """Compute the first residual polynomial over `F_p[x]/(key mod p)`."""
+    modulus = _mod_polynomial(key, prime)
+    coefficients: list[ResidueElement] = []
     step = side.ramification_index
     for abscissa in range(side.left.abscissa, side.right.abscissa + 1, step):
         expected = side.ordinate_at(abscissa)
@@ -545,12 +729,40 @@ def residual_polynomial(
         coefficient = expansion[abscissa] if abscissa < len(expansion) else (0,)
         valuation = coefficient_valuation(coefficient, prime)
         if valuation is None or valuation != expected.numerator:
-            coefficients.append(0)
+            coefficients.append((0,))
             continue
         scale = prime**valuation
         primitive = tuple(value // scale for value in coefficient)
-        coefficients.append(_evaluate_mod(primitive, residue_root, prime))
-    return _mod_polynomial(tuple(coefficients), prime)
+        coefficients.append(_residue_normalize(primitive, prime, modulus))
+    return _residual_normalize(tuple(coefficients), prime, modulus)
+
+
+def representative_from_residual_factor(
+    key: Polynomial,
+    side: NewtonSide,
+    factor: ResidualPolynomial,
+    prime: int,
+) -> Polynomial:
+    """Lift a first residual factor to its canonical next representative.
+
+    For a side of slope `-h/e` and residual factor
+    `psi(y)=sum psi_j*y^j`, the lift is
+    `sum p^((f-j)h) * lift(psi_j) * key^(j*e)`.  The bounded type builder uses
+    this representative automatically only when its degree equals the current
+    key degree; degree-raising higher types remain explicit and fail closed.
+    """
+    factor = _residual_normalize(factor, prime, _mod_polynomial(key, prime))
+    residual_degree = len(factor) - 1
+    result: Polynomial = (0,)
+    for index, coefficient in enumerate(factor):
+        scale = prime ** ((residual_degree - index) * side.height)
+        lifted = tuple(scale * value for value in coefficient)
+        term = polynomial_multiply(
+            lifted,
+            polynomial_power(key, index * side.ramification_index),
+        )
+        result = polynomial_add(result, term)
+    return normalize_polynomial(result)
 
 
 @dataclass
@@ -559,13 +771,34 @@ class OMLevel(ImmutableOMRecord):
     key_polynomial: Polynomial
     key_value: RationalValue
     slope: RationalValue
-    residual_polynomial: Polynomial
-    residual_factor: Polynomial
+    residual_field_modulus: Polynomial
+    residual_polynomial: ResidualPolynomial
+    residual_factor: ResidualPolynomial
     ramification_index: int
     residue_degree: int
     multiplicity: int
     index_contribution: int
     representative_precision: int
+    representative_step: int
+    optimized_away: bool
+
+
+def representative_from_level(level: OMLevel, prime: int) -> Polynomial:
+    """Reconstruct the canonical next representative recorded by `level`."""
+    height = -level.slope.numerator
+    if height <= 0:
+        raise OMDomainError("a representative requires a negative Newton slope")
+    residual_degree = len(level.residual_factor) - 1
+    result: Polynomial = (0,)
+    for index, coefficient in enumerate(level.residual_factor):
+        scale = prime ** ((residual_degree - index) * height)
+        lifted = tuple(scale * value for value in coefficient)
+        term = polynomial_multiply(
+            lifted,
+            polynomial_power(level.key_polynomial, index * level.ramification_index),
+        )
+        result = polynomial_add(result, term)
+    return normalize_polynomial(result)
 
 
 @dataclass
@@ -590,6 +823,8 @@ class OMTypeTree(ImmutableOMRecord):
     expected_index_valuation: int
     complete: bool
     precision: int
+    max_enumerated_candidates: int
+    max_representative_refinements: int
     certificate_id: str
 
     def incomplete_states(self) -> tuple[str, ...]:
@@ -604,6 +839,8 @@ def _certificate_text(
     factors: tuple[ModularFactor, ...],
     types: tuple[OMType, ...],
     index: int,
+    max_enumerated_candidates: int,
+    max_representative_refinements: int,
 ) -> str:
     factor_text = ";".join(
         ",".join(str(value) for value in factor.polynomial)
@@ -611,14 +848,41 @@ def _certificate_text(
         + str(factor.multiplicity)
         for factor in factors
     )
-    type_text = ";".join(
-        branch.branch_id
-        + ":"
-        + branch.refinement_state
-        + ":"
-        + str(branch.branch_degree)
-        for branch in types
-    )
+    type_parts = []
+    for branch in types:
+        level_parts = []
+        for level in branch.levels:
+            residual = "/".join(
+                ",".join(str(value) for value in coefficient)
+                for coefficient in level.residual_polynomial
+            )
+            factor = "/".join(
+                ",".join(str(value) for value in coefficient)
+                for coefficient in level.residual_factor
+            )
+            level_parts.append(
+                ",".join(str(value) for value in level.key_polynomial)
+                + "@"
+                + str(level.slope.numerator)
+                + "/"
+                + str(level.slope.denominator)
+                + "@"
+                + residual
+                + "@"
+                + factor
+                + "@"
+                + ("optimized" if level.optimized_away else "active")
+            )
+        type_parts.append(
+            branch.branch_id
+            + ":"
+            + branch.refinement_state
+            + ":"
+            + str(branch.branch_degree)
+            + ":"
+            + "~".join(level_parts)
+        )
+    type_text = ";".join(type_parts)
     return (
         ",".join(str(value) for value in polynomial)
         + "|"
@@ -629,6 +893,10 @@ def _certificate_text(
         + type_text
         + "|"
         + str(index)
+        + "|"
+        + str(max_enumerated_candidates)
+        + "|"
+        + str(max_representative_refinements)
     )
 
 
@@ -644,16 +912,210 @@ def stable_certificate_id(text: str) -> str:
     for _index in range(16):
         encoded = digits[value % 16] + encoded
         value //= 16
-    return "om1-" + encoded
+    return "om2-" + encoded
 
 
-def build_first_order_type_tree(
+def _analyze_bounded_key(
+    polynomial: Polynomial,
+    prime: int,
+    initial_factor: ModularFactor,
+    factor_index: int,
+    key: Polynomial,
+    prior_levels: tuple[OMLevel, ...],
+    maximum_valuation: int,
+    *,
+    max_enumerated_candidates: int,
+    max_representative_refinements: int,
+) -> tuple[tuple[OMType, ...], int]:
+    """Analyze one initial factor, optimizing same-degree representatives."""
+    expansion = phi_adic_expansion(polynomial, key)
+    sides = newton_polygon(polynomial, prime, key)
+    factor_degree = polynomial_degree(initial_factor.polynomial)
+    prefix = "f" + str(factor_index)
+    if prior_levels:
+        prefix += "o" + str(len(prior_levels) + 1)
+    if not sides:
+        complete = initial_factor.multiplicity == 1 and not prior_levels
+        return (
+            (
+                OMType(
+                    prefix,
+                    "root" if not prior_levels else prefix + "-refinement",
+                    prime,
+                    initial_factor.polynomial,
+                    initial_factor.multiplicity,
+                    prior_levels,
+                    factor_degree,
+                    complete,
+                    "complete" if complete else "no-negative-side",
+                ),
+            ),
+            0,
+        )
+
+    residual_data: list[
+        tuple[NewtonSide, ResidualPolynomial, tuple[ResidualFactor, ...]]
+    ] = []
+    for side in sides:
+        residual = residual_polynomial(expansion, side, prime, key)
+        factors = factor_residual_polynomial(
+            residual,
+            prime,
+            _mod_polynomial(key, prime),
+            max_enumerated_candidates=max_enumerated_candidates,
+        )
+        residual_data.append((side, residual, factors))
+
+    # An e=f=1 residual factor has another representative of the same degree.
+    # Replacing the key is an OM optimization step, not a new index increment.
+    # Restricting this automatic step to a unique side/factor prevents an
+    # optimization intended for one branch from silently consuming siblings.
+    if len(residual_data) == 1:
+        side, residual, factors = residual_data[0]
+        if (
+            len(factors) == 1
+            and factors[0].multiplicity > 1
+            and side.ramification_index == 1
+            and len(factors[0].polynomial) == 2
+        ):
+            repeated = factors[0]
+            representative = representative_from_residual_factor(
+                key, side, repeated.polynomial, prime
+            )
+            if (
+                polynomial_degree(representative) == polynomial_degree(key)
+                and representative != key
+                and len(prior_levels) < max_representative_refinements
+            ):
+                level = OMLevel(
+                    1,
+                    key,
+                    -side.slope,
+                    side.slope,
+                    _mod_polynomial(key, prime),
+                    residual,
+                    repeated.polynomial,
+                    side.ramification_index,
+                    len(repeated.polynomial) - 1,
+                    repeated.multiplicity,
+                    0,
+                    maximum_valuation + len(prior_levels) + 1,
+                    len(prior_levels),
+                    True,
+                )
+                return _analyze_bounded_key(
+                    polynomial,
+                    prime,
+                    initial_factor,
+                    factor_index,
+                    representative,
+                    prior_levels + (level,),
+                    maximum_valuation,
+                    max_enumerated_candidates=max_enumerated_candidates,
+                    max_representative_refinements=max_representative_refinements,
+                )
+            state = (
+                "representative-refinement-bound"
+                if len(prior_levels) >= max_representative_refinements
+                else "requires-degree-raising-representative"
+            )
+            branch_degree = (
+                factor_degree
+                * side.ramification_index
+                * (len(repeated.polynomial) - 1)
+                * repeated.multiplicity
+            )
+            level = OMLevel(
+                1,
+                key,
+                -side.slope,
+                side.slope,
+                _mod_polynomial(key, prime),
+                residual,
+                repeated.polynomial,
+                side.ramification_index,
+                len(repeated.polynomial) - 1,
+                repeated.multiplicity,
+                factor_degree * polygon_index((side,)),
+                maximum_valuation + len(prior_levels) + 1,
+                len(prior_levels),
+                False,
+            )
+            return (
+                (
+                    OMType(
+                        prefix + "s0r0",
+                        prefix,
+                        prime,
+                        initial_factor.polynomial,
+                        initial_factor.multiplicity,
+                        prior_levels + (level,),
+                        branch_degree,
+                        False,
+                        state,
+                    ),
+                ),
+                factor_degree * polygon_index(sides),
+            )
+
+    branches: list[OMType] = []
+    for side_index, (side, residual, residual_factors) in enumerate(residual_data):
+        branch_prefix = prefix + "s" + str(side_index)
+        for residual_index, residual_factor in enumerate(residual_factors):
+            residual_degree = len(residual_factor.polynomial) - 1
+            complete = residual_factor.multiplicity == 1
+            level = OMLevel(
+                1,
+                key,
+                -side.slope,
+                side.slope,
+                _mod_polynomial(key, prime),
+                residual,
+                residual_factor.polynomial,
+                side.ramification_index,
+                residual_degree,
+                residual_factor.multiplicity,
+                factor_degree * polygon_index((side,)) if residual_index == 0 else 0,
+                maximum_valuation + len(prior_levels) + 1,
+                len(prior_levels),
+                False,
+            )
+            branch_degree = (
+                factor_degree
+                * side.ramification_index
+                * residual_degree
+                * residual_factor.multiplicity
+            )
+            branches.append(
+                OMType(
+                    branch_prefix + "r" + str(residual_index),
+                    branch_prefix,
+                    prime,
+                    initial_factor.polynomial,
+                    initial_factor.multiplicity,
+                    prior_levels + (level,),
+                    branch_degree,
+                    complete,
+                    "complete"
+                    if complete
+                    else "requires-degree-raising-representative",
+                )
+            )
+    return tuple(branches), factor_degree * polygon_index(sides)
+
+
+def build_om_type_tree(
     polynomial: Polynomial,
     prime: int,
     *,
     max_enumerated_candidates: int = 200_000,
+    max_representative_refinements: int = 8,
 ) -> OMTypeTree:
-    """Build and certify the bounded first-order OM type tree."""
+    """Build the bounded residual-extension/optimized-representative tree."""
+    if max_enumerated_candidates < 1:
+        raise ValueError("the modular factorization bound must be positive")
+    if max_representative_refinements < 0:
+        raise ValueError("the representative refinement bound must be nonnegative")
     polynomial = normalize_polynomial(polynomial)
     degree = polynomial_degree(polynomial)
     if degree <= 0 or polynomial[-1] != 1:
@@ -673,94 +1135,19 @@ def build_first_order_type_tree(
         if valuation is not None:
             maximum_valuation = max(maximum_valuation, valuation)
     for factor_index, factor in enumerate(initial):
-        key = factor.polynomial
-        lift = normalize_polynomial(tuple(int(value) for value in key))
-        expansion = phi_adic_expansion(polynomial, lift)
-        sides = newton_polygon(polynomial, prime, lift)
-        factor_degree = polynomial_degree(key)
-        index += factor_degree * polygon_index(sides)
-        if not sides:
-            branches.append(
-                OMType(
-                    "f" + str(factor_index),
-                    "root",
-                    prime,
-                    key,
-                    factor.multiplicity,
-                    (),
-                    factor_degree,
-                    factor.multiplicity == 1,
-                    "complete" if factor.multiplicity == 1 else "no-negative-side",
-                )
-            )
-            continue
-        for side_index, side in enumerate(sides):
-            branch_prefix = "f" + str(factor_index) + "s" + str(side_index)
-            if factor_degree != 1:
-                level = OMLevel(
-                    1,
-                    lift,
-                    -side.slope,
-                    side.slope,
-                    (0,),
-                    (0,),
-                    side.ramification_index,
-                    factor_degree,
-                    factor.multiplicity,
-                    factor_degree * polygon_index((side,)),
-                    maximum_valuation + 1,
-                )
-                branches.append(
-                    OMType(
-                        branch_prefix,
-                        "f" + str(factor_index),
-                        prime,
-                        key,
-                        factor.multiplicity,
-                        (level,),
-                        factor_degree * (side.right.abscissa - side.left.abscissa),
-                        False,
-                        "residual-extension-unsupported",
-                    )
-                )
-                continue
-            residual = residual_polynomial(expansion, side, prime, lift)
-            residual_factors = factor_mod_prime(
-                residual,
-                prime,
-                max_enumerated_candidates=max_enumerated_candidates,
-            )
-            for residual_index, residual_factor in enumerate(residual_factors):
-                residual_degree = polynomial_degree(residual_factor.polynomial)
-                complete = residual_factor.multiplicity == 1
-                level = OMLevel(
-                    1,
-                    lift,
-                    -side.slope,
-                    side.slope,
-                    residual,
-                    residual_factor.polynomial,
-                    side.ramification_index,
-                    residual_degree,
-                    residual_factor.multiplicity,
-                    factor_degree * polygon_index((side,)),
-                    maximum_valuation + 1,
-                )
-                branches.append(
-                    OMType(
-                        branch_prefix + "r" + str(residual_index),
-                        branch_prefix,
-                        prime,
-                        key,
-                        factor.multiplicity,
-                        (level,),
-                        factor_degree * side.ramification_index * residual_degree,
-                        complete,
-                        "complete"
-                        if complete
-                        else "requires-higher-order-representative",
-                    )
-                )
+        factor_branches, factor_index_contribution = _analyze_bounded_key(
+            polynomial,
+            prime,
+            factor,
+            factor_index,
+            normalize_polynomial(tuple(int(value) for value in factor.polynomial)),
+            (),
+            maximum_valuation,
+            max_enumerated_candidates=max_enumerated_candidates,
+            max_representative_refinements=max_representative_refinements,
+        )
+        branches.extend(factor_branches)
+        index += factor_index_contribution
     branch_tuple = tuple(branches)
     complete_degree = sum(branch.branch_degree for branch in branch_tuple)
     complete = (
@@ -768,7 +1155,19 @@ def build_first_order_type_tree(
         and all(branch.complete for branch in branch_tuple)
         and complete_degree == degree
     )
-    text = _certificate_text(polynomial, prime, initial, branch_tuple, index)
+    precision = maximum_valuation + 1
+    for branch in branch_tuple:
+        for level in branch.levels:
+            precision = max(precision, level.representative_precision)
+    text = _certificate_text(
+        polynomial,
+        prime,
+        initial,
+        branch_tuple,
+        index,
+        max_enumerated_candidates,
+        max_representative_refinements,
+    )
     return OMTypeTree(
         polynomial,
         prime,
@@ -776,7 +1175,9 @@ def build_first_order_type_tree(
         branch_tuple,
         index,
         complete,
-        maximum_valuation + 1,
+        precision,
+        max_enumerated_candidates,
+        max_representative_refinements,
         stable_certificate_id(text),
     )
 
@@ -793,7 +1194,12 @@ def validate_type_tree(tree: OMTypeTree) -> TypeTreeValidation:
     """Independently recompute a type tree and compare every stable invariant."""
     failures: list[str] = []
     try:
-        recomputed = build_first_order_type_tree(tree.polynomial, tree.prime)
+        recomputed = build_om_type_tree(
+            tree.polynomial,
+            tree.prime,
+            max_enumerated_candidates=tree.max_enumerated_candidates,
+            max_representative_refinements=tree.max_representative_refinements,
+        )
     except (OMDomainError, OMResourceError, ArithmeticError) as error:
         return TypeTreeValidation(False, False, (str(error),), "")
     if tree.initial_factors != recomputed.initial_factors:
@@ -804,6 +1210,12 @@ def validate_type_tree(tree: OMTypeTree) -> TypeTreeValidation:
         failures.append("Ore index contribution differs")
     if tree.precision != recomputed.precision:
         failures.append("representative precision differs")
+    if (
+        tree.max_enumerated_candidates != recomputed.max_enumerated_candidates
+        or tree.max_representative_refinements
+        != recomputed.max_representative_refinements
+    ):
+        failures.append("deterministic work bounds differ")
     if tree.certificate_id != recomputed.certificate_id:
         failures.append("certificate identifier differs")
     if tree.complete != recomputed.complete:
@@ -825,14 +1237,18 @@ __all__ = [
     "OMResourceError",
     "OMType",
     "OMTypeTree",
+    "ResidualFactor",
+    "ResidualPolynomial",
+    "ResidueElement",
     "ImmutableOMRecord",
     "Polynomial",
     "RationalValue",
     "TypeTreeValidation",
     "augmented_valuation",
-    "build_first_order_type_tree",
+    "build_om_type_tree",
     "coefficient_valuation",
     "factor_mod_prime",
+    "factor_residual_polynomial",
     "gauss_valuation",
     "lower_newton_polygon",
     "modular_divmod",
@@ -849,6 +1265,8 @@ __all__ = [
     "polynomial_power",
     "polynomial_subtract",
     "residual_polynomial",
+    "representative_from_residual_factor",
+    "representative_from_level",
     "stable_certificate_id",
     "validate_type_tree",
 ]
