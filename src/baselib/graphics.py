@@ -281,7 +281,8 @@ class FastCallablePlotWrapper:
 
     def __call__(self, *args: Any) -> float:
         try:
-            value = self._ff(*args)
+            native_args = [runtime.number(arg) for arg in args]
+            value = self._ff(*native_args)
             if runtime.jstype(value) == "number":
                 return float(value)
             if runtime.jstype(value) not in ("object", "function"):
@@ -5206,10 +5207,17 @@ def _curve_diagnostics(values: Sequence[Any]) -> list[Any]:
     plotting = __import__("sagejs.plotting", fromlist=["Diagnostic"])
     answer = []
     for value in values:
+        get_method = runtime.reflect.get(value, "get")
+        if runtime.jstype(get_method) == "function":
+            code = value.get("code")
+            details = value.get("details", {})
+        else:
+            code = _option_get(value, "code")
+            details = _option_get(value, "details", {})
         answer.append(
             plotting.Diagnostic(
-                str(value.get("code")),
-                details=value.get("details", {}),
+                str(code),
+                details=details,
             ).to_dict()
         )
     return answer
