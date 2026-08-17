@@ -672,6 +672,7 @@ def _element_characteristic_polynomial(
     field: Any,
     element: Any,
     metrics: dict[str, Any] | None = None,
+    metric_label: str = "unspecified",
 ) -> list[Any]:
     """Return the exact regular-representation characteristic polynomial.
 
@@ -707,6 +708,13 @@ def _element_characteristic_polynomial(
             metrics["max_denominator_bits"],
             denominator_bits,
         )
+        metrics["characteristic_polynomial_inputs"].append(
+            {
+                "label": metric_label,
+                "coefficient_bits": input_bits,
+                "denominator_bits": denominator_bits,
+            }
+        )
         call_limit = metrics.get("characteristic_polynomial_call_limit")
         if (
             call_limit is not None
@@ -735,6 +743,7 @@ def _integral_characteristic_polynomial(
     element: Any,
     cache: dict[Any, list[Any]] | None = None,
     metrics: dict[str, Any] | None = None,
+    metric_label: str = "unspecified",
 ) -> list[Any] | None:
     key = None
     if cache is not None:
@@ -747,7 +756,12 @@ def _integral_characteristic_polynomial(
             if metrics is not None:
                 metrics["characteristic_polynomial_cache_hits"] += 1
             return list(cached)
-    coefficients = _element_characteristic_polynomial(field, element, metrics)
+    coefficients = _element_characteristic_polynomial(
+        field,
+        element,
+        metrics,
+        metric_label,
+    )
     answer = []
     for coefficient in coefficients:
         if coefficient._denominator != 1:
@@ -1045,11 +1059,16 @@ def _round4_residue_refinement(
     degree = field.degree()
     residue_degree = _poly_degree(nu)
     nu_at_phi = _evaluate_polynomial_element(nu, phi)
-    beta = nu_at_phi**ramification_degree
     # A degree-sized structural window is the inexpensive first attempt.  The
     # exact closure/fixed-point checks below make this safe: insufficient
     # precision cannot be reported as a maximal order.
     precision = max(3, min(discriminant_valuation + 2, 2 * degree + 1))
+    beta = _p_adic_reduce_element(
+        field,
+        nu_at_phi**ramification_degree,
+        prime,
+        precision,
+    )
     bound = 2 * discriminant_valuation + 2 * degree + 4
     refinements = []
     for iteration in range(bound):
@@ -1058,6 +1077,7 @@ def _round4_residue_refinement(
             beta,
             characteristic_cache,
             characteristic_metrics,
+            "residue-beta",
         )
         if beta_characteristic is None:
             raise Round4InvariantError("Round-4 beta ceased to be integral")
@@ -1080,6 +1100,7 @@ def _round4_residue_refinement(
             gamma,
             characteristic_cache,
             characteristic_metrics,
+            "residue-gamma",
         )
         used_minimum_valuation = False
         if gamma_characteristic is None:
@@ -1101,6 +1122,7 @@ def _round4_residue_refinement(
                 gamma,
                 characteristic_cache,
                 characteristic_metrics,
+                "residue-gamma-minimum-valuation",
             )
             used_minimum_valuation = True
         if gamma_characteristic is None:
@@ -1141,6 +1163,7 @@ def _round4_residue_refinement(
                 candidate,
                 characteristic_cache,
                 characteristic_metrics,
+                "residue-degree-composition",
             )
             if candidate_characteristic is None:
                 raise Round4Unsupported(
@@ -1198,6 +1221,7 @@ def _round4_residue_refinement(
                 trial_error,
                 characteristic_cache,
                 characteristic_metrics,
+                "residue-root-error",
             )
             if trial_characteristic is None:
                 continue
@@ -1240,6 +1264,7 @@ def _round4_residue_refinement(
                     error_uniformizer,
                     characteristic_cache,
                     characteristic_metrics,
+                    "residue-error-uniformizer",
                 )
                 is None
             ):
@@ -1281,6 +1306,7 @@ def _round4_residue_refinement(
                 candidate,
                 characteristic_cache,
                 characteristic_metrics,
+                "ramification-composition",
             )
             if candidate_characteristic is None:
                 raise Round4Unsupported("the testc2 generator is not integral")
@@ -1320,7 +1346,12 @@ def _round4_residue_refinement(
         correction = residue_root_element * prime**quotient
         if remainder:
             correction *= nu_at_phi**remainder
-        beta -= correction
+        beta = _p_adic_reduce_element(
+            field,
+            beta - correction,
+            prime,
+            precision,
+        )
     raise Round4Unsupported("the Round-4 beta refinement exceeded its proved bound")
 
 
@@ -1361,6 +1392,7 @@ def round4_primary_power_basis(
     characteristic_metrics.setdefault("input_coefficient_bits_total", 0)
     characteristic_metrics.setdefault("max_input_coefficient_bits", 0)
     characteristic_metrics.setdefault("max_denominator_bits", 0)
+    characteristic_metrics.setdefault("characteristic_polynomial_inputs", [])
     characteristic_cache: dict[Any, list[Any]] = {}
     phi = field.gen()
     nu = list(plan.irreducible_factors[0])
@@ -1379,6 +1411,7 @@ def round4_primary_power_basis(
             beta,
             characteristic_cache,
             characteristic_metrics,
+            "progress-beta",
         )
         if beta_characteristic is None:
             raise Round4InvariantError(
@@ -1409,6 +1442,7 @@ def round4_primary_power_basis(
                 phi,
                 characteristic_cache,
                 characteristic_metrics,
+                "progress-reused-uniformizer",
             )
             if characteristic is None:
                 raise Round4InvariantError(
@@ -1448,6 +1482,7 @@ def round4_primary_power_basis(
                 uniformizer,
                 characteristic_cache,
                 characteristic_metrics,
+                "progress-uniformizer",
             )
             is None
         ):
@@ -1480,6 +1515,7 @@ def round4_primary_power_basis(
                 phi,
                 characteristic_cache,
                 characteristic_metrics,
+                "progress-generator-update",
             )
             if characteristic is None:
                 raise Round4InvariantError(
