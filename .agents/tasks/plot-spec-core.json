@@ -4,7 +4,7 @@
   "id": "plot-spec-core",
   "title": "Create the semantic PlotSpec core",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement a minimal strict-Python versioned PlotSpec model, stable layer IDs, deterministic serialization, provenance, structured diagnostics, and checked schemas without yet changing Graphics or Graphics3d",
   "base_commit": "167c94e5f1ed1c33fa7f08ea195b321a88f942f2",
