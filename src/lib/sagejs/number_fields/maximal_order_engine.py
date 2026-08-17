@@ -24,8 +24,13 @@ from sagejs.number_fields.buchmann_lenstra import (
     check_buchmann_lenstra_result,
 )
 from sagejs.number_fields.discriminant_components import (
+    certify_decomposition_component,
     check_decomposition_certificate,
+    check_prime_proof_state,
     decompose_discriminant,
+    prime_proof_budget,
+    prove_prime_resumable,
+    split_decomposition_component,
 )
 from sagejs.number_fields.maximal_order_certification import (
     certify_global_order,
@@ -483,71 +488,80 @@ def _replace_composite_by_certified_primes(
         "component-factorization-fallback",
         {"component_bits": support.bit_length()},
     )
-    replacements = []
+    factors: list[tuple[int, int]] = []
     for prime_value, multiplicity_value in sage.factor(support):
         prime = _exact_integer(prime_value)
         multiplicity = int(multiplicity_value)
-        prime_certificate = decompose_discriminant(None, prime)
-        prime_components = prime_certificate["components"]
-        if (
-            len(prime_components) != 1
-            or prime_components[0]["state"] != "proven-prime"
-            or int(prime_components[0]["base"]) != prime
-        ):
-            raise ArithmeticError(
-                "fallback factorization returned a prime without a proof"
-            )
-        exponent = multiplicity * outer_exponent
-        replacements.append(
-            {
-                "value": prime**exponent,
-                "state": "proven-prime",
-                "base": prime,
-                "exponent": exponent,
-                "evidence": prime_components[0]["evidence"],
-            }
-        )
-    if not replacements:
+        factors.append((prime, multiplicity))
+    if not factors:
         raise ArithmeticError("fallback component factorization was empty")
-    position = -1
-    for index, component in enumerate(decomposition["components"]):
-        if component is record:
-            position = index
-            break
-    if position < 0:
-        for index, component in enumerate(decomposition["components"]):
-            if (
-                int(component["value"]) == int(record["value"])
-                and int(component["base"]) == support
-                and int(component["exponent"]) == outer_exponent
-            ):
-                position = index
+
+    # Install every known factor by splitting only the affected residual
+    # branch.  Previously completed siblings and their evidence stay intact.
+    for prime, _multiplicity in factors[:-1]:
+        targets = [
+            component
+            for component in decomposition["components"]
+            if int(component["value"]) % prime == 0 and int(component["value"]) != prime
+        ]
+        if len(targets) != 1:
+            raise ArithmeticError("fallback factor has no unique residual branch")
+        split = split_decomposition_component(
+            decomposition,
+            int(targets[0]["value"]),
+            prime,
+            reason="component-factorization-fallback",
+        )
+        updated = split["decomposition"]
+        decomposition.clear()
+        decomposition.update(updated)
+
+    proof_budget = prime_proof_budget(
+        trial_divisions=30_000,
+        rho_steps=100_000,
+        witness_trials=1_024,
+        max_recursion_depth=64,
+        rho_bit_limit=256,
+    )
+    for prime, multiplicity in factors:
+        proof_state = None
+        for _resume in range(32):
+            proof_state = prove_prime_resumable(
+                prime,
+                proof_budget,
+                proof_state,
+            )
+            if not check_prime_proof_state(proof_state):
+                raise ArithmeticError("resumable prime proof checkpoint is invalid")
+            if proof_state["status"] == "complete":
                 break
-    if position < 0:
-        raise ArithmeticError("fallback component is absent from its decomposition")
-    remaining = list(decomposition["components"])
-    remaining.pop(position)
-    decomposition["components"] = sorted(
-        remaining + replacements,
-        key=lambda component: int(component["value"]),
-    )
-    decomposition["events"].append(
-        {
-            "kind": "component-factorization-fallback",
-            "parent": int(record["value"]),
-            "children": [int(component["value"]) for component in replacements],
-        }
-    )
-    decomposition["certified"] = all(
-        component["state"] == "proven-prime"
-        for component in decomposition["components"]
-    )
+            if proof_state["status"] == "composite":
+                raise ArithmeticError("fallback factorization returned a composite")
+        if proof_state is None or proof_state["status"] != "complete":
+            raise ArithmeticError("fallback prime proof exhausted its resume bound")
+        expected_exponent = multiplicity * outer_exponent
+        matches = [
+            component
+            for component in decomposition["components"]
+            if int(component["base"]) == prime
+            and int(component["exponent"]) == expected_exponent
+        ]
+        if len(matches) != 1:
+            raise ArithmeticError("fallback prime branch has the wrong multiplicity")
+        updated = certify_decomposition_component(
+            decomposition,
+            int(matches[0]["value"]),
+            proof_state["certificate"],
+        )
+        decomposition.clear()
+        decomposition.update(updated)
+
     if not check_decomposition_certificate(decomposition, require_proven=False):
         raise ArithmeticError("fallback component refinement failed certification")
     trace.end(
         token,
         "complete",
-        {"prime_count": len(replacements)},
+        {"prime_count": len(factors), "proof_mode": "resumable-deterministic"},
     )
 
 
