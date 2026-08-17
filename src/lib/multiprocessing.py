@@ -178,6 +178,22 @@ def cpu_count():
     return os.cpu_count()
 
 
+def worker_module_available(name):
+    """Return whether `name` can be loaded by lightweight workers.
+
+    The check is exact and read-only. It is false when the host has no worker
+    capability, the optional precompiled graph is absent, or its manifest or
+    named module resource does not validate. Callers can therefore select a
+    deterministic sequential fallback before creating a pool.
+    """
+    if not isinstance(name, str):
+        return False
+    try:
+        return bool(_host_call("multiprocessingWorkerModuleAvailable", name))
+    except Exception:
+        return False
+
+
 def _apply_call(func, args, kwds):
     """Worker-side adapter for `Pool.apply` keyword arguments."""
     return func(*args, **kwds)

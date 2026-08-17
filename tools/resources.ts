@@ -24,6 +24,10 @@ const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
+const TASK_RUNTIME_MODULE_MANIFEST = "task-runtime-modules.json";
+const TASK_RUNTIME_MODULE_SCHEMA = "sagejs.task-runtime-modules/v1";
+const PRECOMPILED_MODULE_FILENAME =
+  "__sagejs_precompiled_module_filename__";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const FLINT_FFI_ASSET = "native/sagejs_flint_ffi.node";
 const FLINT_FFI_MANIFEST_ASSET = "native/sagejs_flint_ffi_manifest.json";
@@ -266,9 +270,300 @@ export function readRuntimeBootstrapCachedData(
 }
 
 export function readTaskRuntimeSource(fallbackFilename: string): string {
-  return isSea()
+  const runtimeSource = isSea()
     ? assetText(TASK_RUNTIME_ASSET)
     : readResourceText(fallbackFilename);
+  const cacheDirectory = taskRuntimeModuleCacheDirectory(
+    join(dirname(fallbackFilename), "..", "lazy-module-cache"),
+  );
+  let manifestText: string;
+  try {
+    manifestText = readResourceText(
+      join(cacheDirectory, TASK_RUNTIME_MODULE_MANIFEST),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
+    // Ordinary development builds do not promise the optional precompiled
+    // worker graph. Keep self-contained ``__main__`` callables working; the
+    // public scheduler treats an absent graph as a capability miss and uses
+    // its deterministic sequential path.
+    return runtimeSource;
+  }
+  const loaderSource = taskRuntimeModuleLoaderSource(
+    cacheDirectory,
+    manifestText,
+  );
+  return `${runtimeSource}\n${loaderSource}`;
+}
+
+interface TaskRuntimeModuleRecord {
+  resource: string;
+  version: string;
+  signature: string;
+  mode: "python";
+  filename: string;
+}
+
+interface TaskRuntimeModuleManifest {
+  schema: string;
+  roots: string[];
+  modules: Record<string, TaskRuntimeModuleRecord>;
+}
+
+interface PrecompiledTaskModule {
+  version: string;
+  signature: string;
+  mode: "python";
+  module: string;
+  javascriptTemplate: string;
+}
+
+const pythonModuleNamePattern =
+  /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+
+function taskRuntimeModuleCacheDirectory(fallbackDirectory?: string): string {
+  return process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
+    precompiledLazyModuleCacheDirectory(
+      fallbackDirectory ?? join(__dirname, "..", "lazy-module-cache"),
+    );
+}
+
+/** Return whether an exact module has a validated worker-runtime resource. */
+export function hasPrecompiledTaskModule(
+  name: string,
+  fallbackDirectory?: string,
+): boolean {
+  if (!pythonModuleNamePattern.test(name)) return false;
+  try {
+    const cacheDirectory = taskRuntimeModuleCacheDirectory(fallbackDirectory);
+    const manifest = JSON.parse(readResourceText(
+      join(cacheDirectory, TASK_RUNTIME_MODULE_MANIFEST),
+    )) as TaskRuntimeModuleManifest;
+    if (
+      manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
+      manifest.modules === null ||
+      typeof manifest.modules !== "object" ||
+      Array.isArray(manifest.modules) ||
+      !Object.hasOwn(manifest.modules, name)
+    ) return false;
+    const record = manifest.modules[name];
+    const expectedResource = `${name.replaceAll(".", "-")}.json`;
+    if (
+      record === null ||
+      typeof record !== "object" ||
+      record.resource !== expectedResource ||
+      typeof record.version !== "string" ||
+      typeof record.signature !== "string" ||
+      record.mode !== "python" ||
+      typeof record.filename !== "string" ||
+      !record.filename.startsWith("/__sagejs_task_modules__/")
+    ) return false;
+    const cached = JSON.parse(readResourceText(
+      join(cacheDirectory, record.resource),
+    )) as PrecompiledTaskModule;
+    return (
+      cached?.version === record.version &&
+      cached.signature === record.signature &&
+      cached.mode === record.mode &&
+      cached.module === name &&
+      typeof cached.javascriptTemplate === "string" &&
+      cached.javascriptTemplate.includes(
+        JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+      )
+    );
+  } catch (_error) {
+    return false;
+  }
+}
+
+function taskRuntimeModuleLoaderSource(
+  cacheDirectory: string,
+  manifestText: string,
+): string {
+  const manifest = JSON.parse(manifestText) as TaskRuntimeModuleManifest;
+  if (
+    manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
+    !Array.isArray(manifest.roots) ||
+    manifest.modules === null ||
+    typeof manifest.modules !== "object" ||
+    Array.isArray(manifest.modules)
+  ) {
+    throw new Error("invalid precompiled multiprocessing module manifest");
+  }
+  for (const root of manifest.roots) {
+    if (
+      typeof root !== "string" ||
+      !pythonModuleNamePattern.test(root) ||
+      !Object.hasOwn(manifest.modules, root)
+    ) {
+      throw new Error("invalid precompiled multiprocessing module root");
+    }
+  }
+
+  const sources: Record<string, { filename: string; source: string }> =
+    Object.create(null);
+  for (const name of Object.keys(manifest.modules).sort()) {
+    const record = manifest.modules[name];
+    const expectedResource = `${name.replaceAll(".", "-")}.json`;
+    if (
+      !pythonModuleNamePattern.test(name) ||
+      record === null ||
+      typeof record !== "object" ||
+      record.resource !== expectedResource ||
+      typeof record.version !== "string" ||
+      typeof record.signature !== "string" ||
+      record.mode !== "python" ||
+      typeof record.filename !== "string" ||
+      !record.filename.startsWith("/__sagejs_task_modules__/")
+    ) {
+      throw new Error(
+        `invalid precompiled multiprocessing module record ${name}`,
+      );
+    }
+    const cached = JSON.parse(readResourceText(
+      join(cacheDirectory, record.resource),
+    )) as PrecompiledTaskModule;
+    if (
+      cached?.version !== record.version ||
+      cached.signature !== record.signature ||
+      cached.mode !== record.mode ||
+      cached.module !== name ||
+      typeof cached.javascriptTemplate !== "string" ||
+      !cached.javascriptTemplate.includes(
+        JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+      )
+    ) {
+      throw new Error(
+        `invalid precompiled multiprocessing module resource ${name}`,
+      );
+    }
+    sources[name] = {
+      filename: record.filename,
+      source: cached.javascriptTemplate.replaceAll(
+        JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+        JSON.stringify(record.filename),
+      ),
+    };
+  }
+
+  // This source executes only inside the isolated worker realm after its
+  // compact baselib is installed. The embedded mapping is the complete
+  // authority: no module name is converted to a host filesystem path.
+  return `;(() => {
+  const records = Object.freeze(${JSON.stringify(sources)});
+  const registry = globalThis.\u03c1\u03c3_modules;
+  const baselib = globalThis.__sagejs_baselib_modules__;
+  const own = (object, name) =>
+    object !== null && typeof object === "object" &&
+    Object.prototype.hasOwnProperty.call(object, name);
+  if (registry === null || typeof registry !== "object") {
+    throw new Error("multiprocessing module registry is unavailable");
+  }
+  const loading = new Set();
+  const modulePattern = /^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+  const imported = (name) => {
+    if (own(registry, name)) return Reflect.get(registry, name);
+    if (own(baselib, name)) return Reflect.get(baselib, name);
+    return undefined;
+  };
+  const importError = (name) => {
+    const message = "No module named '" + name + "'";
+    const ImportErrorClass = Reflect.get(globalThis, "ImportError");
+    if (typeof ImportErrorClass === "function") {
+      return Reflect.construct(ImportErrorClass, [message]);
+    }
+    const error = new Error(message);
+    error.name = "ImportError";
+    return error;
+  };
+  const load = (name) => {
+    if (typeof name !== "string" || !modulePattern.test(name)) {
+      throw new TypeError("invalid multiprocessing module name " + JSON.stringify(name));
+    }
+    const existing = imported(name);
+    if (existing !== undefined) return existing;
+    const record = Reflect.get(records, name);
+    if (record === undefined) throw importError(name);
+    if (loading.has(name)) return Reflect.get(registry, name);
+
+    const separator = name.lastIndexOf(".");
+    const parentName = separator < 0 ? "" : name.slice(0, separator);
+    const childName = separator < 0 ? "" : name.slice(separator + 1);
+    const parent = parentName ? load(parentName) : undefined;
+    const namespace = Object.create(null);
+    Reflect.set(registry, name, namespace);
+    if (parent !== undefined && childName) {
+      Reflect.set(parent, childName, namespace);
+    }
+    loading.add(name);
+    const previous = Reflect.get(
+      globalThis,
+      "__sagejs_current_module_namespace__",
+    );
+    Reflect.set(
+      globalThis,
+      "__sagejs_current_module_namespace__",
+      namespace,
+    );
+    try {
+      const runtimeRequire = Reflect.get(
+        globalThis,
+        "__sagejs_runtime_require__",
+      );
+      if (typeof runtimeRequire !== "function") {
+        throw new Error("multiprocessing runtime module compiler is unavailable");
+      }
+      const vm = Reflect.apply(runtimeRequire, undefined, ["node:vm"]);
+      const runInThisContext = Reflect.get(vm, "runInThisContext");
+      Reflect.apply(runInThisContext, vm, [record.source, {
+        filename: record.filename,
+      }]);
+    } catch (error) {
+      Reflect.deleteProperty(registry, name);
+      if (parent !== undefined && childName) {
+        Reflect.deleteProperty(parent, childName);
+      }
+      throw error;
+    } finally {
+      loading.delete(name);
+      if (previous === undefined) {
+        Reflect.deleteProperty(
+          globalThis,
+          "__sagejs_current_module_namespace__",
+        );
+      } else {
+        Reflect.set(
+          globalThis,
+          "__sagejs_current_module_namespace__",
+          previous,
+        );
+      }
+    }
+    if (!own(registry, name)) {
+      throw new Error("multiprocessing module " + name + " did not register itself");
+    }
+    return Reflect.get(registry, name);
+  };
+  const proxy = new Proxy(registry, {
+    get(target, property, receiver) {
+      if (Reflect.has(target, property)) {
+        return Reflect.get(target, property, receiver);
+      }
+      if (typeof property === "string" && modulePattern.test(property)) {
+        if (own(baselib, property)) return Reflect.get(baselib, property);
+        return load(property);
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  Reflect.set(globalThis, "\u03c1\u03c3_modules", proxy);
+  Reflect.set(globalThis, "__sagejs_load_module__", load);
+  Reflect.set(
+    globalThis,
+    "__sagejs_precompiled_task_modules__",
+    Object.freeze(Object.keys(records)),
+  );
+})();`;
 }
 
 export function readPlotlySource(fallbackFilename: string): string {
