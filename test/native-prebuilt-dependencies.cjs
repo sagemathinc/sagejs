@@ -22,6 +22,7 @@ const {
   createBundle,
   identityInputs,
   installBundleArchive,
+  installBundlePath,
   packageTargets,
   packages,
   parseDigest,
@@ -53,7 +54,7 @@ function fixture() {
 }
 
 test("native dependency assets have stable platform and source identities", () => {
-  assert.equal(catalogRelease, "native-dependencies-4");
+  assert.equal(catalogRelease, "native-dependencies-5");
   const workflow = readFileSync(
     join(repositoryRoot, ".github", "workflows", "native-dependencies.yml"),
     "utf8",
@@ -96,7 +97,7 @@ test("verified native dependency bundles relocate all package prefixes", () => {
       rmSync(target, { force: true, recursive: true });
     }
     assert.equal(
-      installBundleArchive(directory, packed.archive, packed.digest).status,
+      installBundlePath(directory, output).status,
       "installed",
     );
     for (const packageId of packages) {
