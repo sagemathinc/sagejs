@@ -33,6 +33,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration",
     "node --test test/graphics.cjs",
     "node --test test/graphics3d.cjs"
   ],
