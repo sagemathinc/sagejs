@@ -234,6 +234,7 @@ failures = (
     lambda: AxisSettings(scale="symlog"),
     lambda: AxisSettings(range=(0, 1)),
     lambda: AxisSettings(tick_mode="array", tick_values=(1, 2), tick_labels=("one",)),
+    lambda: AnnotationSettings("bad-reference", "bad", 0, 0, x_reference="y"),
     lambda: PanelComposition2D(1, 1, [left, Panel2D("overlap", left_spec, 0, 0)]),
 )
 for fail in failures:

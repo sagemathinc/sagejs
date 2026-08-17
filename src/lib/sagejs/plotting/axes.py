@@ -450,15 +450,15 @@ class AnnotationSettings:
             raise TypeError("annotation ID must be a nonempty string")
         if not isinstance(text, str):
             raise TypeError("annotation text must be a string")
-        for reference, name in (
-            (x_reference, "x_reference"),
-            (y_reference, "y_reference"),
+        for reference, name, supported in (
+            (x_reference, "x_reference", ("x", "paper")),
+            (y_reference, "y_reference", ("y", "paper")),
         ):
             if not isinstance(reference, str) or reference == "":
                 raise TypeError("annotation " + name + " must be a nonempty string")
-            if reference not in ("x", "y", "paper"):
+            if reference not in supported:
                 raise UnsupportedPresentationError(
-                    "annotation " + name, reference, ("x", "y", "paper")
+                    "annotation " + name, reference, supported
                 )
         if not isinstance(show_arrow, bool):
             raise TypeError("annotation show_arrow must be a bool")
