@@ -430,6 +430,15 @@ test("task evaluators load only validated precompiled module resources", () => {
           mode: cache.mode,
           filename: "/__sagejs_task_modules__/worker_fixture.py",
         },
+        // This valid mapping intentionally has no resource file. Loading the
+        // used fixture must not touch unrelated graph entries at startup.
+        unused_fixture: {
+          resource: "unused_fixture.json",
+          version: cache.version,
+          signature: cache.signature,
+          mode: cache.mode,
+          filename: "/__sagejs_task_modules__/unused_fixture.py",
+        },
       },
     }),
   );

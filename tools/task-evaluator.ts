@@ -4,6 +4,7 @@ import { runInThisContext } from "node:vm";
 import { installNodeHost } from "./host";
 import type { SageLanguageMode } from "./kernel-evaluator";
 import {
+  installPrecompiledTaskModuleLoader,
   readResourceBytes,
   readTaskRuntimeSource,
   runtimeRequire,
@@ -55,6 +56,7 @@ export function createTaskEvaluator({
     readTaskRuntimeSource(join(libraryPath, "task-runtime.js")),
     { filename: "<multiprocessing-baselib>" },
   );
+  installPrecompiledTaskModuleLoader();
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__multiprocessing__"; show_js = false;');
 

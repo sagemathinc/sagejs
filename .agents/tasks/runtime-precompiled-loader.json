@@ -11,6 +11,7 @@
   "claims": [
     ".agents/lanes.json",
     "tools/resources.ts",
+    "tools/task-evaluator.ts",
     "tools/host.ts",
     "src/lib/multiprocessing.py",
     "scripts/build-lazy-module-cache.cjs",
@@ -45,7 +46,7 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "Added a fail-closed resource manifest and lazy loader for build-precompiled multiprocessing modules, an exact read-only capability query, portable virtual filenames, and focused synthetic loader/rejection coverage. Ordinary builds without the optional graph retain self-contained Pool behavior and report the module capability as false.",
+    "summary": "Added a fail-closed resource manifest and genuinely on-demand loader for build-precompiled multiprocessing modules, an exact read-only capability query, portable virtual filenames, and focused synthetic loader/rejection coverage. Workers read only the manifest at startup and fetch an exact validated module resource on first import. Ordinary builds without the optional graph retain self-contained Pool behavior and report the module capability as false.",
     "risks": [
       "The declared nf-maxorder-public-worker dependency is not yet committed on this base, so the real local_parallel_worker graph and x^2-8 Pool integration require validation after integration.",
       "The full multiprocessing test passed 9 of 10 cases here; its advanced elliptic case requires the optional FLINT addon, which this isolated worktree does not have installed."
