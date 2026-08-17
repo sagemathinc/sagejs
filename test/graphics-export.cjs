@@ -9,40 +9,18 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const { execFileSync } = require("node:child_process");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const {
+  testExportCapabilities,
+} = require("./graphics-export-capabilities.cjs");
 
 function pythonString(value) {
   return JSON.stringify(value);
 }
 
-function hasChromium() {
-  if (
-    process.env.SAGEJS_CHROMIUM_PATH ||
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
-    process.env.BROWSER_PATH
-  ) {
-    return true;
-  }
-  const utility = process.platform === "win32" ? "where" : "which";
-  for (const command of [
-    "chromium",
-    "chromium-browser",
-    "google-chrome",
-    "google-chrome-stable",
-  ]) {
-    try {
-      execFileSync(utility, [command], { stdio: "ignore" });
-      return true;
-    } catch {
-      // Try the next conventional executable name.
-    }
-  }
-  return false;
-}
-
 async function main() {
+  const exportCapabilities = testExportCapabilities();
   const directory = mkdtempSync(join(tmpdir(), "sagejs-graphics-export-"));
   const session = await createSage();
   try {
@@ -84,7 +62,7 @@ async function main() {
       "surface",
     );
 
-    if (hasChromium()) {
+    if (exportCapabilities.formats.png.available) {
       const pngFilename = join(directory, "prime.png");
       await session.evaluate(
         `g.save(${pythonString(pngFilename)}, width=320, height=240)`,

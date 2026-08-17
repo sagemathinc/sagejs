@@ -1,6 +1,17 @@
 import { writeFileSync } from "fs";
 import { extname, join, resolve } from "path";
 import { spawnSync } from "child_process";
+import { discoverChromium } from "./chromium-discovery";
+import {
+  createNodeGraphicsExportCapabilities,
+  GRAPHICS_EXPORT_LIMITS,
+  GraphicsExportCapabilities,
+  GraphicsExportError,
+  GraphicsImageOptions,
+  normalizeGraphicsExportFormat,
+  requireGraphicsExportFormat,
+  validateGraphicsImageRequest,
+} from "./graphics-export-contract";
 import { isSingleExecutable, readPlotlySource } from "./resources";
 
 export const PLOTLY_MIME = "application/vnd.plotly.v1+json";
@@ -10,12 +21,7 @@ interface PlotlyDisplay {
   data: unknown;
 }
 
-interface GraphicsSaveOptions {
-  width?: unknown;
-  height?: unknown;
-  scale?: unknown;
-  format?: unknown;
-}
+type GraphicsSaveOptions = GraphicsImageOptions;
 
 let plotlySource: string | undefined;
 
@@ -50,31 +56,6 @@ function figureFromGraphic(graphic: unknown): unknown {
     throw new TypeError("graphics object did not produce a Plotly figure");
   }
   return Reflect.get(display, "data");
-}
-
-function numericOption(
-  options: GraphicsSaveOptions,
-  name: "width" | "height" | "scale",
-): number | undefined {
-  const value = options?.[name];
-  if (value === undefined || value === null) return undefined;
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) {
-    throw new TypeError(`${name} must be a positive number`);
-  }
-  return number;
-}
-
-function imageOptions(
-  options: GraphicsSaveOptions,
-  format: string,
-): Record<string, number | string> {
-  const answer: Record<string, number | string> = { format };
-  for (const name of ["width", "height", "scale"] as const) {
-    const value = numericOption(options, name);
-    if (value !== undefined) answer[name] = value;
-  }
-  return answer;
 }
 
 function standaloneHtml(figure: unknown): string {
@@ -121,31 +102,101 @@ function renderImage(
   figure: unknown,
   format: string,
   options: GraphicsSaveOptions,
+  capabilities: GraphicsExportCapabilities,
 ): Buffer {
-  if (isSingleExecutable()) {
-    throw new Error(
-      "PNG/SVG graphics export is not yet bundled into the single " +
-        "executable; save as HTML or JSON, or use the npm distribution",
-    );
-  }
-  const helper = join(__dirname, "plotly-image-renderer.js");
-  const input = stringify({
+  requireGraphicsExportFormat(format, capabilities);
+  const discovery = discoverChromium();
+  const preliminary = validateGraphicsImageRequest(figure, format, options, 0);
+  let input = stringify({ figure, options: preliminary });
+  const validated = validateGraphicsImageRequest(
     figure,
-    options: imageOptions(options, format),
-  });
+    format,
+    options,
+    Buffer.byteLength(input),
+  );
+  input = stringify({ figure, options: validated });
+  validateGraphicsImageRequest(
+    figure,
+    format,
+    options,
+    Buffer.byteLength(input),
+  );
+  const helper = join(__dirname, "plotly-image-renderer.js");
   const rendered = spawnSync(process.execPath, [helper], {
     input,
-    maxBuffer: 128 * 1024 * 1024,
+    maxBuffer: GRAPHICS_EXPORT_LIMITS.max_output_bytes,
+    timeout: GRAPHICS_EXPORT_LIMITS.timeout_ms,
+    env: discovery.executablePath
+      ? { ...process.env, SAGEJS_CHROMIUM_PATH: discovery.executablePath }
+      : process.env,
   });
-  if (rendered.error) throw rendered.error;
+  if (rendered.error) {
+    const code = (rendered.error as NodeJS.ErrnoException).code;
+    if (code === "ETIMEDOUT") {
+      throw new GraphicsExportError(
+        "SAGEJS_GRAPHICS_EXPORT_TIMEOUT",
+        `Static ${format.toUpperCase()} export exceeded the ${GRAPHICS_EXPORT_LIMITS.timeout_ms} ms renderer limit; reduce the plot size or save as HTML or JSON.`,
+        {
+          format,
+          alternatives: ["html", "json"],
+          capabilities,
+          cause: rendered.error,
+        },
+      );
+    }
+    if (code === "ENOBUFS") {
+      throw new GraphicsExportError(
+        "SAGEJS_GRAPHICS_EXPORT_LIMIT",
+        `Static ${format.toUpperCase()} output exceeded the ${GRAPHICS_EXPORT_LIMITS.max_output_bytes}-byte renderer limit; reduce dimensions or scale, or save as HTML or JSON.`,
+        {
+          format,
+          alternatives: ["html", "json"],
+          capabilities,
+          cause: rendered.error,
+        },
+      );
+    }
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_RENDER_FAILED",
+      `Static ${format.toUpperCase()} export could not start: ${rendered.error.message} Save as HTML or JSON, or verify the configured browser.`,
+      {
+        format,
+        alternatives: ["html", "json"],
+        capabilities,
+        cause: rendered.error,
+      },
+    );
+  }
   if (rendered.status !== 0) {
     const detail = rendered.stderr.toString("utf8").trim();
-    throw new Error(
-      detail ||
-        `Plotly image renderer exited with status ${rendered.status}`,
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_RENDER_FAILED",
+      `Static ${format.toUpperCase()} export failed: ${
+        detail || `Plotly image renderer exited with status ${rendered.status}`
+      } Save as HTML or JSON, or verify the configured browser.`,
+      {
+        format,
+        alternatives: ["html", "json"],
+        capabilities,
+      },
+    );
+  }
+  if (rendered.stdout.length > GRAPHICS_EXPORT_LIMITS.max_output_bytes) {
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_EXPORT_LIMIT",
+      `Static ${format.toUpperCase()} output exceeded the ${GRAPHICS_EXPORT_LIMITS.max_output_bytes}-byte renderer limit; reduce dimensions or scale, or save as HTML or JSON.`,
+      { format, alternatives: ["html", "json"], capabilities },
     );
   }
   return rendered.stdout;
+}
+
+/** Report Node graphics-export capabilities without launching a browser. */
+export function nodeGraphicsExportCapabilities(): GraphicsExportCapabilities {
+  return createNodeGraphicsExportCapabilities(
+    discoverChromium(),
+    isSingleExecutable(),
+  );
 }
 
 export function saveGraphic(
@@ -155,25 +206,33 @@ export function saveGraphic(
 ): unknown {
   const filename = resolve(String(filenameValue));
   const figure = figureFromGraphic(graphic);
-  let format = String(options?.format ?? extname(filename).slice(1))
-    .toLowerCase();
-  if (format === "jpg") format = "jpeg";
+  const format = normalizeGraphicsExportFormat(
+    options?.format ?? extname(filename).slice(1),
+  );
+  const capabilities = nodeGraphicsExportCapabilities();
   if (!format) {
-    throw new Error(
-      "graphics filename must have an extension or specify format",
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_FORMAT_UNSUPPORTED",
+      "Graphics filename must have an extension or specify format; use PNG, JPEG, WebP, SVG, HTML, or JSON.",
+      {
+        alternatives: ["png", "jpeg", "webp", "svg", "html", "json"],
+        capabilities,
+      },
     );
   }
+  requireGraphicsExportFormat(format, capabilities);
 
   if (format === "json") {
     writeFileSync(filename, `${stringify(figure, 2)}\n`);
-  } else if (format === "html" || format === "htm") {
+  } else if (format === "html") {
     writeFileSync(filename, standaloneHtml(figure));
   } else if (["png", "jpeg", "webp", "svg"].includes(format)) {
-    writeFileSync(filename, renderImage(figure, format, options));
+    writeFileSync(filename, renderImage(figure, format, options, capabilities));
   } else {
-    throw new Error(
-      `unsupported graphics format ${JSON.stringify(format)}; ` +
-        "use png, jpeg, webp, svg, html, or json",
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_FORMAT_UNSUPPORTED",
+      `Unsupported graphics format ${JSON.stringify(format)}. Use PNG, JPEG, WebP, SVG, HTML, or JSON.`,
+      { format, capabilities },
     );
   }
   return graphic;

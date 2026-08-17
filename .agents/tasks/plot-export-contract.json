@@ -1,0 +1,150 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-export-contract",
+  "title": "Define graphics export capabilities",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a versioned JSON-safe Node graphics export capability contract, portable Chromium discovery, bounded resource validation, stable actionable error codes, and focused tests while preserving browser-free JSON/HTML export",
+  "base_commit": "c8c66113105d496f38aa3908d855419839940c4c",
+  "claims": [
+    "tools/graphics-export.ts",
+    "tools/graphics-export-contract.ts",
+    "tools/chromium-discovery.ts",
+    "test/graphics-export.cjs",
+    "test/graphics-export-capabilities.cjs",
+    "PLOTTING.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md",
+    "Plotly.js 3.7.0 and playwright-core 1.62.0"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Focused capability/error tests and current Graphics save behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm exec tsc --project tsconfig.json --noEmit",
+    "node test/graphics-export-capabilities.cjs",
+    "node test/graphics-export.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:integration",
+    "pnpm test:integration -- --test-name-pattern=graphics-export.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec tsc --project tsconfig.json --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.962,
+      "started_at": "2026-08-17T05:22:27.628Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "f94f6c71d5a641a77ed573bd67c2302feaeb6890ef61f9a9ca12a6776e0f231f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.138,
+      "started_at": "2026-08-17T05:22:35.074Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "f94f6c71d5a641a77ed573bd67c2302feaeb6890ef61f9a9ca12a6776e0f231f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.34,
+      "started_at": "2026-08-17T05:22:36.010Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "f94f6c71d5a641a77ed573bd67c2302feaeb6890ef61f9a9ca12a6776e0f231f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.412,
+      "started_at": "2026-08-17T05:22:43.897Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "f94f6c71d5a641a77ed573bd67c2302feaeb6890ef61f9a9ca12a6776e0f231f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration -- --test-name-pattern=graphics-export.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.861,
+      "started_at": "2026-08-17T05:24:35.761Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "c96d31d7389a5dba441a8101eaf1dd8efebaeab5f57293483d3229c6818a20c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --project tsconfig.json --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1,
+      "started_at": "2026-08-17T05:24:52.719Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "c96d31d7389a5dba441a8101eaf1dd8efebaeab5f57293483d3229c6818a20c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.145,
+      "started_at": "2026-08-17T05:24:54.473Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "c96d31d7389a5dba441a8101eaf1dd8efebaeab5f57293483d3229c6818a20c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics-export.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.974,
+      "started_at": "2026-08-17T05:24:59.206Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "c96d31d7389a5dba441a8101eaf1dd8efebaeab5f57293483d3229c6818a20c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.102,
+      "started_at": "2026-08-17T05:25:07.286Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "c96d31d7389a5dba441a8101eaf1dd8efebaeab5f57293483d3229c6818a20c1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a versioned JSON-safe Node export capability contract, portable Chrome/Chromium/Edge discovery, stable actionable export errors, bounded static-image request/output/timeout validation, and focused browser-present, browser-missing, SEA, Windows-discovery, and limit tests. JSON and self-contained HTML remain browser-free; real Chromium PNG export passes.",
+    "risks": [
+      "Capability discovery verifies an executable path without launching it, so an incompatible or broken browser may still fail later with SAGEJS_GRAPHICS_RENDER_FAILED.",
+      "The unfiltered integration tier requires optional native development artifacts absent from this lightweight worktree and failed in unrelated FLINT/native tests; the focused graphics-export integration tier passes."
+    ],
+    "next_steps": [
+      "Register test/graphics-export-capabilities.cjs in test/node-test-manifest.cjs from the integration lane.",
+      "Replace the one-browser-per-image helper with the separately planned persistent bounded renderer worker.",
+      "Expose this host contract through the planned Sage-facing export_capabilities API."
+    ]
+  }
+}
