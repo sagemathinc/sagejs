@@ -179,6 +179,16 @@ unsupported_style = normalize_surface_style({"material": {"shininess": 20}})
 assert unsupported_style.status == "unsupported"
 assert [item.option for item in unsupported_style.options if item.status == "unsupported"] == ["shininess"]
 
+# Degeneracy checks are relative to geometry scale, not an absolute cutoff.
+tiny_triangle = triangular_mesh_layer(
+    [(0, 0, 0), (1e-9, 0, 0), (0, 1e-9, 0)], [[0, 1, 2]]
+)
+assert tiny_triangle.metadata["resource"]["triangle_count"] == 1
+tiny_polygon = polygon_layer(
+    [(0, 0, 0), (1e-9, 0, 0), (1e-9, 1e-9, 0), (0, 1e-9, 0)]
+)
+assert tiny_polygon.metadata["resource"]["triangle_count"] == 2
+
 # Every failure here is an intentional capability boundary, not a fallback.
 invalid = (
     lambda: rectangular_surface_layer(
