@@ -595,7 +595,9 @@ class MatlabLineHandle(MatlabGraphicsHandle):
         return {
             "color": self._color,
             "width": self._line_width,
-            "dash": _LINE_DASH[self._line_style],
+            "dash": (
+                "none" if self._line_style == "none" else _LINE_DASH[self._line_style]
+            ),
             "opacity": 1.0,
             "marker": _MARKERS[self._marker],
             "marker_size": self._marker_size,
@@ -604,7 +606,7 @@ class MatlabLineHandle(MatlabGraphicsHandle):
     def _trace(self, show_legend: bool) -> dict[str, Any]:
         marker = _MARKERS[self._marker]
         has_line = self._line_style != "none"
-        mode = "lines" if has_line else "markers"
+        mode = "lines" if has_line or marker is None else "markers"
         if has_line and marker is not None:
             mode = "lines+markers"
         trace: dict[str, Any] = {
@@ -616,7 +618,7 @@ class MatlabLineHandle(MatlabGraphicsHandle):
             "visible": self._visible,
             "line": {
                 "color": self._color,
-                "width": self._line_width,
+                "width": self._line_width if has_line else 0,
                 "dash": _LINE_DASH[self._line_style],
             },
             "showlegend": show_legend and self._visible,
@@ -652,6 +654,7 @@ class MatlabAxesHandle(MatlabGraphicsHandle):
         self._ylim: list[float] | None = None
         self._grid = False
         self._legend_visible = False
+        self._color_index = 0
 
     def __repr__(self) -> str:
         return "MATLAB Axes handle " + self._handle_id
@@ -673,6 +676,7 @@ class MatlabAxesHandle(MatlabGraphicsHandle):
         self._ylim = None
         self._grid = False
         self._legend_visible = False
+        self._color_index = 0
 
     def _get_property(self, name: str) -> Any:
         key = _property_key(name)
@@ -930,6 +934,7 @@ class MatlabGraphicsSession:
         self._figures: dict[int, MatlabFigure] = {}
         self._current_figure: MatlabFigure | None = None
         self._next_figure_number = 1
+        self._next_figure_ordinal = 0
         self._next_axes_ordinal = 0
         self._next_line_ordinal = 0
 
@@ -941,7 +946,9 @@ class MatlabGraphicsSession:
         if number < 1:
             raise ValueError("MATLAB figure numbers must be positive integers")
         self._next_figure_number = max(self._next_figure_number, number + 1)
-        figure_handle = MatlabFigure(self, "matlab.figure-" + str(number), number)
+        handle_id = "matlab.figure-" + str(self._next_figure_ordinal)
+        self._next_figure_ordinal += 1
+        figure_handle = MatlabFigure(self, handle_id, number)
         self._figures[number] = figure_handle
         self._current_figure = figure_handle
         return figure_handle
@@ -1014,7 +1021,8 @@ class MatlabGraphicsSession:
         y_data: list[Any],
     ) -> MatlabLineHandle:
         handle_id = "matlab.line-" + str(self._next_line_ordinal)
-        color = _COLOR_ORDER[self._next_line_ordinal % len(_COLOR_ORDER)]
+        color = _COLOR_ORDER[axes_handle._color_index % len(_COLOR_ORDER)]
+        axes_handle._color_index += 1
         self._next_line_ordinal += 1
         line_handle = MatlabLineHandle(
             self,
