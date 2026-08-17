@@ -54,3 +54,18 @@ node --test test/plotting-sage-surface.cjs
 The checked-in artifact is therefore useful in ordinary Sage.js CI, while
 regeneration remains an explicit oracle operation on a machine with the pinned
 Sage installation.
+
+## Performance contract
+
+`performance.json` is the product-wide workload and budget ledger. It points to
+the executable regression or benchmark that owns every ceiling; it deliberately
+does not check in host-specific timing observations. The gallery has a smaller
+delegated performance contract for browser layout and image export.
+
+Regenerate and validate the product ledger with:
+
+```sh
+node scripts/plotting/generate-performance.cjs
+node scripts/plotting/generate-performance.cjs --check
+node --test test/plotting-performance-ledger.cjs
+```
