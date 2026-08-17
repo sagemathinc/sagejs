@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-frontend-surface",
+  "title": "Inventory multilingual plotting frontends",
+  "lane": "polyglot",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Generate and validate the current Wolfram and MATLAB plotting syntax/runtime surface, classify implemented and emerging operations, and produce the pinned frontend-surface artifact",
+  "base_commit": "78356afa3162d102143d9d0a63f7bef6afc9ec6a",
+  "claims": [
+    "tools/foreign/plotting-surface.cjs",
+    "docs/sage-compatibility/plotting/frontend-surface.json",
+    "test/plotting-frontend-surface.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md",
+    "src/lib/wolfram.py and src/lib/matlab.py"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Parser/runtime export inventories and focused generated-artifact tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:integration",
+    "node --test test/plotting-frontend-surface.cjs",
+    "pnpm bench:polyglot"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 244.406,
+      "started_at": "2026-08-17T05:06:05.359Z",
+      "commit": "6e2de1d904ef483c74d8559154e17a81f7890ccc",
+      "workspace_fingerprint": "58d2e67d49d2cbaa93a8136df094dd565e5276a80843cab31cee196c2db62fdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:polyglot",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.56,
+      "started_at": "2026-08-17T05:10:14.290Z",
+      "commit": "6e2de1d904ef483c74d8559154e17a81f7890ccc",
+      "workspace_fingerprint": "58d2e67d49d2cbaa93a8136df094dd565e5276a80843cab31cee196c2db62fdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plotting-frontend-surface.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.246,
+      "started_at": "2026-08-17T05:10:42.551Z",
+      "commit": "6e2de1d904ef483c74d8559154e17a81f7890ccc",
+      "workspace_fingerprint": "58d2e67d49d2cbaa93a8136df094dd565e5276a80843cab31cee196c2db62fdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 179.253,
+      "started_at": "2026-08-17T05:10:47.070Z",
+      "commit": "6e2de1d904ef483c74d8559154e17a81f7890ccc",
+      "workspace_fingerprint": "58d2e67d49d2cbaa93a8136df094dd565e5276a80843cab31cee196c2db62fdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 251.361,
+      "started_at": "2026-08-17T05:20:15.835Z",
+      "commit": "10a54b84fe3e12c413c462c4c81946c3943c2a55",
+      "workspace_fingerprint": "3e1e53927f516a252339c69e9f72ffd1e010116d0909c5a17d629e40e0780fd6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plotting-frontend-surface.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.276,
+      "started_at": "2026-08-17T05:24:31.832Z",
+      "commit": "10a54b84fe3e12c413c462c4c81946c3943c2a55",
+      "workspace_fingerprint": "3e1e53927f516a252339c69e9f72ffd1e010116d0909c5a17d629e40e0780fd6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:polyglot",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.741,
+      "started_at": "2026-08-17T05:24:32.855Z",
+      "commit": "10a54b84fe3e12c413c462c4c81946c3943c2a55",
+      "workspace_fingerprint": "3e1e53927f516a252339c69e9f72ffd1e010116d0909c5a17d629e40e0780fd6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a deterministic schema-v1 multilingual plotting inventory generated from the actual Wolfram and MATLAB lowerers, runtime adapters, persistent-session contract, and existing graphics evidence. The 105 records classify 57 Wolfram translations and 20 explicit Wolfram gaps, plus MATLAB's exact plot(x,y) translation and 27 unsupported/emerging state, syntax, plotting, layout, and handle operations. Generic call grammar recognition is kept separate from plotting-specific lowering so unsupported names are never advertised as working. The generated artifact hashes every source input and --check fails on drift.",
+    "risks": [
+      "The artifact is exhaustive for current explicit plotting lowerers/runtime mappings and the plan's first target catalog, but it is not an exhaustive inventory of every plotting name in the full proprietary Wolfram or MATLAB products.",
+      "The full pnpm test:integration receipt ran 404 tests and failed 233 because this lightweight worktree has no optional FLINT/FFLAS/igraph/m4ri addons or production kernels; graphics and polyglot kernel tests consequently fail during native package loading before exercising this source-only inventory.",
+      "test/plotting-frontend-surface.cjs is intentionally not registered in the shared test/node-test-manifest.cjs because that central file is outside this lane's claim; test:changed therefore also reports the expected manifest gap."
+    ],
+    "next_steps": [
+      "Integration lane: register test/plotting-frontend-surface.cjs in the unit runner tier alongside the other plotting tests.",
+      "Coverage classifier: consume grammar_recognized, plotting_lowerer_recognized, support_state, and evidence fields rather than treating every parsed call as support.",
+      "MATLAB implementation priority: introduce figure/axes state and handles, then LineSpec, hold/grid, labels/limits/legend, scatter, surf/mesh, and layouts.",
+      "Wolfram implementation priority: add legends/themes and Prolog/Epilog with explicit option handling, then charts, logarithmic plots, list fields, and remaining 3D regions/streams."
+    ]
+  }
+}
