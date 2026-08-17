@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import math
+import typing
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, TypeGuard
+from typing import Any, TypeGuard
 
 from ._json import JSONValue, materialize_json
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .model import PlotLayer, PlotSpec
 
 _AXES = ("x", "y", "z")

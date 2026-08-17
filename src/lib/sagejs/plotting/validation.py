@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import typing
 
 from ._json import JSONValue, canonical_json
 from .diagnostics import Diagnostic
@@ -11,7 +11,7 @@ from .inspection import (
     semantic_coordinates,
 )
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .model import PlotLayer, PlotSpec
 
 _AXES = ("x", "y", "z")

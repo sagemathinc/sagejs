@@ -51,7 +51,7 @@ for (const relativePath of strictModules) {
   if (source.includes("runtime.")) {
     assert.match(
       source,
-      /^import sagejs\.runtime as _?runtime$/m,
+      /^\s*import sagejs\.runtime as _?runtime$/m,
       `${relativePath} must use the readable runtime namespace`,
     );
   }

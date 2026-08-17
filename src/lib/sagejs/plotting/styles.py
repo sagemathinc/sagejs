@@ -539,13 +539,10 @@ def _string_option(value: Any, option: str, label: str) -> OptionResult:
     return _unsupported(option, value, label + " must be a nonempty string.")
 
 
-Normalizer = Callable[[Any, str], OptionResult]
-
-
 def _normalize_style(
     kind: str,
     options: Mapping[str, Any],
-    normalizers: Mapping[str, Normalizer],
+    normalizers: Mapping[str, Callable[[Any, str], OptionResult]],
 ) -> NormalizedStyle:
     if not isinstance(options, Mapping):
         raise TypeError(kind + " style must be a mapping")
