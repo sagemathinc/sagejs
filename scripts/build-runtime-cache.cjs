@@ -6,11 +6,11 @@ const {
   rmSync,
   writeFileSync,
 } = require("node:fs");
-const { join, relative } = require("node:path");
+const { join } = require("node:path");
 const { Script } = require("node:vm");
 
 const root = join(__dirname, "..");
-const outputDirectory = join(root, "dist", "runtime-cache");
+const outputDirectory = join("dist", "runtime-cache");
 
 function cacheScript(source, filename, outputFilename) {
   const script = new Script(source, {
@@ -23,14 +23,15 @@ function cacheScript(source, filename, outputFilename) {
 }
 
 async function main() {
+process.chdir(root);
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
 
-const compilerFilename = join(root, "dist", "compiler", "compiler.js");
+const compilerFilename = join("dist", "compiler", "compiler.js");
 const compilerSource = readFileSync(compilerFilename, "utf8");
 const compilerCacheSize = cacheScript(
   compilerSource,
-  relative(root, compilerFilename),
+  compilerFilename,
   join(outputDirectory, "compiler.bin"),
 );
 

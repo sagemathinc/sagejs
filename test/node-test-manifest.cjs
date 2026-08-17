@@ -55,6 +55,7 @@ const unit = [
   "test/browser-compiler-frontend.cjs",
   "test/parallel-development.cjs",
   "test/performance-budget-cleanup.cjs",
+  "test/portable-source-paths.cjs",
   "test/package-graph.cjs",
   "test/architecture-policy.cjs",
   "test/generated-classification.cjs",

@@ -1,13 +1,14 @@
 "use strict";
 
 const {
-  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
+  writeFileSync,
 } = require("node:fs");
-const { join } = require("node:path");
+const { join, relative } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
   BASELIB_STANDALONE_CACHE_MODULES,
@@ -91,7 +92,21 @@ for (const { name, sourceFilename } of modules) {
     temporaryDirectory,
     compilerCacheFilename(sourceFilename),
   );
-  copyFileSync(generated, join(outputDirectory, precompiledCacheFilename(name)));
+  const cached = JSON.parse(readFileSync(generated, "utf8"));
+  if (cached.filename_policy !== null) {
+    throw new Error(
+      `precompiled cache ${name} must retain a null filename policy`,
+    );
+  }
+  const stableFilename = relative(root, sourceFilename).replaceAll("\\", "/");
+  if (!stableFilename.startsWith("src/lib/")) {
+    throw new Error(`precompiled cache ${name} has a non-library source path`);
+  }
+  cached.filename = stableFilename;
+  writeFileSync(
+    join(outputDirectory, precompiledCacheFilename(name)),
+    JSON.stringify(cached),
+  );
 }
 
 rmSync(temporaryDirectory, { recursive: true, force: true });
