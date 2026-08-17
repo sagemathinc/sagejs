@@ -4,7 +4,7 @@
   "id": "plot-frontend-surface",
   "title": "Inventory multilingual plotting frontends",
   "lane": "polyglot",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate and validate the current Wolfram and MATLAB plotting syntax/runtime surface, classify implemented and emerging operations, and produce the pinned frontend-surface artifact",
   "base_commit": "78356afa3162d102143d9d0a63f7bef6afc9ec6a",
