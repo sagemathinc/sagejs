@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-p2-kernel-perf",
+  "title": "P2 native resource parity and performance",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_p2_kernel_perf",
+  "objective": "Audit and safely optimize the direct polynomial-to-order native P2 resource, with exact six-case cross-oracle kernel benchmarks and sanitizer/resource receipts",
+  "base_commit": "321e2344c31b92625342d7af4ccb248316dd69ce",
+  "claims": [
+    "src/lib/sagejs/number_fields/order_resource.py",
+    "test/number-field-order-resource-python.cjs",
+    "bench/number-field-order-resource.cjs",
+    "bench/number-field-order-resource-witness.c"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "dynamic Python exact basis",
+      "PARI nfbasis",
+      "Hecke maximal_order core"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -23,6 +23,21 @@ test("strict Python decodes and owns the direct number-field order resource", as
       "[r.complete, r.status, r.fallback_prime == p, r.resolved_primes]",
     ].join("\n"));
     assert.equal(fallback.repr, "[False, 1, True, 0]");
+
+    const noStatusAccessor = await session.evaluate([
+      "import sagejs.ffi.flint as flint",
+      "saved_status_accessor = flint.number_field_order_resource_status",
+      "def forbidden_status_accessor(resource):",
+      "    raise AssertionError('the compact payload already carries its status')",
+      "flint.number_field_order_resource_status = forbidden_status_accessor",
+      "try:",
+      "    r = native_order_from_polynomial([-5, 0, 1], [2])",
+      "    answer = [r.complete, r.status, r.index]",
+      "finally:",
+      "    flint.number_field_order_resource_status = saved_status_accessor",
+      "answer",
+    ].join("\n"));
+    assert.equal(noStatusAccessor.repr, "[True, 0, 2]");
   } finally {
     await session.close();
   }
