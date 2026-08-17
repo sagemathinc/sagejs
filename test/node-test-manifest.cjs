@@ -157,6 +157,7 @@ const integration = [
   "test/graphics-plot-misc.cjs",
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",
+  "test/plotting-frontend-surface.cjs",
   "test/approximate-polynomial.cjs",
   "test/bytes.cjs",
   "test/exact-polynomial-resources.cjs",
