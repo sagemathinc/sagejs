@@ -1,0 +1,5821 @@
+{
+  "schema_version": 1,
+  "product": "sagejs-plotly-gallery",
+  "renderer": {
+    "target": "Plotly",
+    "package": "plotly.js-dist-min",
+    "version": "3.7.0"
+  },
+  "scope": {
+    "statement": "These fixtures exercise the checked semantic PlotSpec and Plotly lowering APIs. Their source fields name the equivalent Sage constructors; Sage frontend syntax remains covered by focused frontend tests.",
+    "dimensions": [
+      2,
+      3
+    ],
+    "themes": [
+      "notebook",
+      "presentation",
+      "publication",
+      "dark",
+      "high-contrast"
+    ],
+    "sage_layer_kinds": [
+      "line",
+      "point",
+      "text",
+      "surface"
+    ]
+  },
+  "placeholders": [
+    {
+      "frontend": "wolfram",
+      "classification": "pending-integration",
+      "intended_equivalence": [
+        "sage-semantic-2d",
+        "sage-semantic-3d"
+      ],
+      "reason": "The Wolfram PlotSpec adapter is being integrated on its own claimed branch; this gallery must not fabricate evidence before it lands."
+    },
+    {
+      "frontend": "matlab",
+      "classification": "pending-integration",
+      "intended_equivalence": [
+        "sage-semantic-2d",
+        "sage-semantic-3d"
+      ],
+      "reason": "The stateful MATLAB plotting adapter is being integrated on its own claimed branch; this gallery must not fabricate evidence before it lands."
+    }
+  ],
+  "fixtures": [
+    {
+      "alt_text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin.",
+      "bounds": {
+        "x": [
+          -2,
+          2
+        ],
+        "y": [
+          0,
+          4
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 4.548363604249587,
+        "categorical_on_plot": [
+          4.956098884177936,
+          3.6961418531441685,
+          4.777724573396758,
+          5.0697057109831904,
+          7.306717011754239,
+          4.643602781145922,
+          5.811271999217541,
+          9.308988204974085
+        ],
+        "foreground_on_paper": 14.67911847763172,
+        "foreground_on_plot": 14.029874741046042,
+        "grid_on_plot": 1.2946511740833526
+      },
+      "dimension": 2,
+      "frontend": "sage",
+      "id": "sage-semantic-2d-notebook",
+      "layer_contrast": [
+        4.956098884177936,
+        3.6961418531441685,
+        14.029874741046042
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "xaxis": {
+            "autorange": false,
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "title": {
+              "text": "x"
+            }
+          },
+          "yaxis": {
+            "autorange": false,
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "title": {
+              "text": "y"
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 2,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                -2,
+                -1,
+                0,
+                1,
+                2
+              ],
+              "y": [
+                4,
+                1,
+                0,
+                1,
+                4
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "y = x^2",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 5,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line",
+              "expression": "y=x^2",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#0072b2",
+              "dash": "solid",
+              "opacity": 1,
+              "width": 2
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                -1,
+                0,
+                1
+              ],
+              "y": [
+                1,
+                0,
+                1
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "samples",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 3,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#d55e00",
+              "opacity": 1,
+              "size": 9,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0
+              ],
+              "text": "minimum"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#1f2937",
+              "font_size": 14,
+              "opacity": 1,
+              "position": "top center"
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line + point + text",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {},
+          "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "notebook",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#0072b2",
+              "dash": "solid",
+              "width": 2
+            },
+            "mode": "lines",
+            "name": "y = x^2",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -2,
+              -1,
+              0,
+              1,
+              2
+            ],
+            "y": [
+              4,
+              1,
+              0,
+              1,
+              4
+            ]
+          },
+          {
+            "marker": {
+              "color": "#d55e00",
+              "size": 9,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "samples",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -1,
+              0,
+              1
+            ],
+            "y": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "hoverinfo": "skip",
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "minimum"
+            ],
+            "textfont": {
+              "color": "#1f2937",
+              "size": 14
+            },
+            "textposition": "top center",
+            "type": "scatter",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#0072b2",
+            "#d55e00",
+            "#007f5f",
+            "#a64d79",
+            "#6a3d9a",
+            "#8c6d1f",
+            "#006d77",
+            "#444444"
+          ],
+          "font": {
+            "color": "#1f2937",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#64748b",
+            "font": {
+              "color": "#1f2937",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 14
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#d7dee8",
+            "borderwidth": 1,
+            "font": {
+              "color": "#1f2937",
+              "size": 14
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 56,
+            "l": 64,
+            "pad": 4,
+            "r": 32,
+            "t": 48
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#f8fafc",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#f8fafc",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.45,
+                "y": 1.45,
+                "z": 1.2
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "zerolinecolor": "#d7dee8"
+            },
+            "yaxis": {
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "zerolinecolor": "#d7dee8"
+            },
+            "zaxis": {
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "zerolinecolor": "#d7dee8"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "x"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#d7dee8"
+          },
+          "yaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "y"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#d7dee8"
+          }
+        }
+      },
+      "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+      "theme": "notebook",
+      "title": "Sage semantic 2D primitives",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin.",
+      "bounds": {
+        "x": [
+          -2,
+          2
+        ],
+        "y": [
+          0,
+          4
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 7.242510935504382,
+        "categorical_on_plot": [
+          4.956098884177936,
+          3.6961418531441685,
+          4.777724573396758,
+          5.0697057109831904,
+          7.306717011754239,
+          4.643602781145922,
+          5.811271999217541,
+          9.308988204974085
+        ],
+        "foreground_on_paper": 17.73971700407407,
+        "foreground_on_plot": 16.955105845628285,
+        "grid_on_plot": 1.4190352179009549
+      },
+      "dimension": 2,
+      "frontend": "sage",
+      "id": "sage-semantic-2d-presentation",
+      "layer_contrast": [
+        4.956098884177936,
+        3.6961418531441685,
+        16.955105845628285
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "xaxis": {
+            "autorange": false,
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "title": {
+              "text": "x"
+            }
+          },
+          "yaxis": {
+            "autorange": false,
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "title": {
+              "text": "y"
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 2,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                -2,
+                -1,
+                0,
+                1,
+                2
+              ],
+              "y": [
+                4,
+                1,
+                0,
+                1,
+                4
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "y = x^2",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 5,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line",
+              "expression": "y=x^2",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#0072b2",
+              "dash": "solid",
+              "opacity": 1,
+              "width": 2
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                -1,
+                0,
+                1
+              ],
+              "y": [
+                1,
+                0,
+                1
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "samples",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 3,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#d55e00",
+              "opacity": 1,
+              "size": 9,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0
+              ],
+              "text": "minimum"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#111827",
+              "font_size": 14,
+              "opacity": 1,
+              "position": "top center"
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line + point + text",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {},
+          "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "presentation",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#0072b2",
+              "dash": "solid",
+              "width": 2
+            },
+            "mode": "lines",
+            "name": "y = x^2",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -2,
+              -1,
+              0,
+              1,
+              2
+            ],
+            "y": [
+              4,
+              1,
+              0,
+              1,
+              4
+            ]
+          },
+          {
+            "marker": {
+              "color": "#d55e00",
+              "size": 9,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "samples",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -1,
+              0,
+              1
+            ],
+            "y": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "hoverinfo": "skip",
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "minimum"
+            ],
+            "textfont": {
+              "color": "#111827",
+              "size": 14
+            },
+            "textposition": "top center",
+            "type": "scatter",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#0072b2",
+            "#d55e00",
+            "#007f5f",
+            "#a64d79",
+            "#6a3d9a",
+            "#8c6d1f",
+            "#006d77",
+            "#444444"
+          ],
+          "font": {
+            "color": "#111827",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 20
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#475569",
+            "font": {
+              "color": "#111827",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 20
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#cbd5e1",
+            "borderwidth": 1,
+            "font": {
+              "color": "#111827",
+              "size": 20
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "h"
+          },
+          "margin": {
+            "b": 70,
+            "l": 78,
+            "pad": 4,
+            "r": 42,
+            "t": 64
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#f8fafc",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#f8fafc",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.5,
+                "y": 1.5,
+                "z": 1.25
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "zerolinecolor": "#cbd5e1"
+            },
+            "yaxis": {
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "zerolinecolor": "#cbd5e1"
+            },
+            "zaxis": {
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "zerolinecolor": "#cbd5e1"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "x"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#cbd5e1"
+          },
+          "yaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "y"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#cbd5e1"
+          }
+        }
+      },
+      "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+      "theme": "presentation",
+      "title": "Sage semantic 2D primitives",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin.",
+      "bounds": {
+        "x": [
+          -2,
+          2
+        ],
+        "y": [
+          0,
+          4
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 12.63465434445799,
+        "categorical_on_plot": [
+          21,
+          7.136725946213922,
+          7.446306804851021,
+          7.351622312743854,
+          9.64164763514408,
+          9.846022961414068,
+          7.480385929261575,
+          9.114421861537426
+        ],
+        "foreground_on_paper": 21,
+        "foreground_on_plot": 21,
+        "grid_on_plot": 1.482266131414131
+      },
+      "dimension": 2,
+      "frontend": "sage",
+      "id": "sage-semantic-2d-publication",
+      "layer_contrast": [
+        21,
+        7.136725946213922,
+        21
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "xaxis": {
+            "autorange": false,
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "title": {
+              "text": "x"
+            }
+          },
+          "yaxis": {
+            "autorange": false,
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "title": {
+              "text": "y"
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 2,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                -2,
+                -1,
+                0,
+                1,
+                2
+              ],
+              "y": [
+                4,
+                1,
+                0,
+                1,
+                4
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "y = x^2",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 5,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line",
+              "expression": "y=x^2",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "dash": "solid",
+              "opacity": 1,
+              "width": 2
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                -1,
+                0,
+                1
+              ],
+              "y": [
+                1,
+                0,
+                1
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "samples",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 3,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#005a9c",
+              "opacity": 1,
+              "size": 9,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0
+              ],
+              "text": "minimum"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "font_size": 14,
+              "opacity": 1,
+              "position": "top center"
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line + point + text",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {},
+          "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "publication",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#000000",
+              "dash": "solid",
+              "width": 2
+            },
+            "mode": "lines",
+            "name": "y = x^2",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -2,
+              -1,
+              0,
+              1,
+              2
+            ],
+            "y": [
+              4,
+              1,
+              0,
+              1,
+              4
+            ]
+          },
+          {
+            "marker": {
+              "color": "#005a9c",
+              "size": 9,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "samples",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -1,
+              0,
+              1
+            ],
+            "y": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "hoverinfo": "skip",
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "minimum"
+            ],
+            "textfont": {
+              "color": "#000000",
+              "size": 14
+            },
+            "textposition": "top center",
+            "type": "scatter",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#000000",
+            "#005a9c",
+            "#9c2f00",
+            "#00633f",
+            "#7a1f5c",
+            "#5b2c83",
+            "#704f00",
+            "#164e63"
+          ],
+          "font": {
+            "color": "#000000",
+            "family": "STIX Two Text, Georgia, serif",
+            "size": 12
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#333333",
+            "font": {
+              "color": "#000000",
+              "family": "STIX Two Text, Georgia, serif",
+              "size": 12
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#d4d4d4",
+            "borderwidth": 1,
+            "font": {
+              "color": "#000000",
+              "size": 12
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 50,
+            "l": 58,
+            "pad": 4,
+            "r": 24,
+            "t": 36
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#ffffff",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#ffffff",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.35,
+                "y": 1.35,
+                "z": 1.15
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "zerolinecolor": "#d4d4d4"
+            },
+            "yaxis": {
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "zerolinecolor": "#d4d4d4"
+            },
+            "zaxis": {
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "zerolinecolor": "#d4d4d4"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "x"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#d4d4d4"
+          },
+          "yaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "y"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#d4d4d4"
+          }
+        }
+      },
+      "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+      "theme": "publication",
+      "title": "Sage semantic 2D primitives",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin.",
+      "bounds": {
+        "x": [
+          -2,
+          2
+        ],
+        "y": [
+          0,
+          4
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 11.948333368856327,
+        "categorical_on_plot": [
+          7.687910521670582,
+          8.451731509762796,
+          8.74008372165472,
+          7.451696969912823,
+          9.165923495599783,
+          12.302956277514099,
+          10.369248546490146,
+          17.73971700407407
+        ],
+        "foreground_on_paper": 18.095148740806835,
+        "foreground_on_plot": 16.955105845628285,
+        "grid_on_plot": 1.7131967759970916
+      },
+      "dimension": 2,
+      "frontend": "sage",
+      "id": "sage-semantic-2d-dark",
+      "layer_contrast": [
+        7.687910521670582,
+        8.451731509762796,
+        16.955105845628285
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "xaxis": {
+            "autorange": false,
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "title": {
+              "text": "x"
+            }
+          },
+          "yaxis": {
+            "autorange": false,
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "title": {
+              "text": "y"
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 2,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                -2,
+                -1,
+                0,
+                1,
+                2
+              ],
+              "y": [
+                4,
+                1,
+                0,
+                1,
+                4
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "y = x^2",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 5,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line",
+              "expression": "y=x^2",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#56b4e9",
+              "dash": "solid",
+              "opacity": 1,
+              "width": 2
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                -1,
+                0,
+                1
+              ],
+              "y": [
+                1,
+                0,
+                1
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "samples",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 3,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#f0a33a",
+              "opacity": 1,
+              "size": 9,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0
+              ],
+              "text": "minimum"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#f8fafc",
+              "font_size": 14,
+              "opacity": 1,
+              "position": "top center"
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line + point + text",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {},
+          "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "dark",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#56b4e9",
+              "dash": "solid",
+              "width": 2
+            },
+            "mode": "lines",
+            "name": "y = x^2",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -2,
+              -1,
+              0,
+              1,
+              2
+            ],
+            "y": [
+              4,
+              1,
+              0,
+              1,
+              4
+            ]
+          },
+          {
+            "marker": {
+              "color": "#f0a33a",
+              "size": 9,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "samples",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -1,
+              0,
+              1
+            ],
+            "y": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "hoverinfo": "skip",
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "minimum"
+            ],
+            "textfont": {
+              "color": "#f8fafc",
+              "size": 14
+            },
+            "textposition": "top center",
+            "type": "scatter",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#56b4e9",
+            "#f0a33a",
+            "#4ecb9c",
+            "#e78ac3",
+            "#cab2d6",
+            "#ffd166",
+            "#8dd3c7",
+            "#ffffff"
+          ],
+          "font": {
+            "color": "#f8fafc",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "hoverlabel": {
+            "bgcolor": "#1e293b",
+            "bordercolor": "#cbd5e1",
+            "font": {
+              "color": "#f8fafc",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 14
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#0b1020",
+            "bordercolor": "#334155",
+            "borderwidth": 1,
+            "font": {
+              "color": "#f8fafc",
+              "size": 14
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 56,
+            "l": 64,
+            "pad": 4,
+            "r": 32,
+            "t": 48
+          },
+          "paper_bgcolor": "#0b1020",
+          "plot_bgcolor": "#111827",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#111827",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.45,
+                "y": 1.45,
+                "z": 1.2
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "zerolinecolor": "#334155"
+            },
+            "yaxis": {
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "zerolinecolor": "#334155"
+            },
+            "zaxis": {
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "zerolinecolor": "#334155"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "x"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#334155"
+          },
+          "yaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "y"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#334155"
+          }
+        }
+      },
+      "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+      "theme": "dark",
+      "title": "Sage semantic 2D primitives",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin.",
+      "bounds": {
+        "x": [
+          -2,
+          2
+        ],
+        "y": [
+          0,
+          4
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 21,
+        "categorical_on_plot": [
+          21,
+          7.136725946213922,
+          7.446306804851021,
+          7.351622312743854,
+          9.64164763514408,
+          9.846022961414068,
+          7.480385929261575,
+          9.114421861537426
+        ],
+        "foreground_on_paper": 21,
+        "foreground_on_plot": 21,
+        "grid_on_plot": 5.74183648145415
+      },
+      "dimension": 2,
+      "frontend": "sage",
+      "id": "sage-semantic-2d-high-contrast",
+      "layer_contrast": [
+        21,
+        7.136725946213922,
+        21
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A parabola y equals x squared from negative two to two, with three highlighted samples and its minimum labeled at the origin."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "xaxis": {
+            "autorange": false,
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "title": {
+              "text": "x"
+            }
+          },
+          "yaxis": {
+            "autorange": false,
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "title": {
+              "text": "y"
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 2,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                -2,
+                -1,
+                0,
+                1,
+                2
+              ],
+              "y": [
+                4,
+                1,
+                0,
+                1,
+                4
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "y = x^2",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 5,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line",
+              "expression": "y=x^2",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "dash": "solid",
+              "opacity": 1,
+              "width": 2
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                -1,
+                0,
+                1
+              ],
+              "y": [
+                1,
+                0,
+                1
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "samples",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 3,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#005a9c",
+              "opacity": 1,
+              "size": 9,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0
+              ],
+              "text": "minimum"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "font_size": 14,
+              "opacity": 1,
+              "position": "top center"
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line + point + text",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {},
+          "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "high-contrast",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#000000",
+              "dash": "solid",
+              "width": 2
+            },
+            "mode": "lines",
+            "name": "y = x^2",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -2,
+              -1,
+              0,
+              1,
+              2
+            ],
+            "y": [
+              4,
+              1,
+              0,
+              1,
+              4
+            ]
+          },
+          {
+            "marker": {
+              "color": "#005a9c",
+              "size": 9,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "samples",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter",
+            "x": [
+              -1,
+              0,
+              1
+            ],
+            "y": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "hoverinfo": "skip",
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "minimum"
+            ],
+            "textfont": {
+              "color": "#000000",
+              "size": 14
+            },
+            "textposition": "top center",
+            "type": "scatter",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#000000",
+            "#005a9c",
+            "#9c2f00",
+            "#00633f",
+            "#7a1f5c",
+            "#5b2c83",
+            "#704f00",
+            "#164e63"
+          ],
+          "font": {
+            "color": "#000000",
+            "family": "Atkinson Hyperlegible, Arial, sans-serif",
+            "size": 16
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#000000",
+            "font": {
+              "color": "#000000",
+              "family": "Atkinson Hyperlegible, Arial, sans-serif",
+              "size": 16
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#666666",
+            "borderwidth": 1,
+            "font": {
+              "color": "#000000",
+              "size": 16
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 64,
+            "l": 72,
+            "pad": 4,
+            "r": 40,
+            "t": 54
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#ffffff",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#ffffff",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.5,
+                "y": 1.5,
+                "z": 1.25
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "zerolinecolor": "#666666"
+            },
+            "yaxis": {
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "zerolinecolor": "#666666"
+            },
+            "zaxis": {
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "zerolinecolor": "#666666"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "range": [
+              -2.2,
+              2.2
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "x"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#666666"
+          },
+          "yaxis": {
+            "automargin": true,
+            "autorange": false,
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "range": [
+              -0.4,
+              4.4
+            ],
+            "showgrid": true,
+            "showticklabels": true,
+            "tickangle": 0,
+            "tickmode": "auto",
+            "ticks": "outside",
+            "title": {
+              "text": "y"
+            },
+            "type": "linear",
+            "zeroline": true,
+            "zerolinecolor": "#666666"
+          }
+        }
+      },
+      "source": "line([(-2,4),..., (2,4)]) + point([(-1,1),(0,0),(1,1)]) + text('minimum',(0,0))",
+      "theme": "high-contrast",
+      "title": "Sage semantic 2D primitives",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled.",
+      "bounds": {
+        "x": [
+          -1,
+          1
+        ],
+        "y": [
+          -1,
+          1
+        ],
+        "z": [
+          0,
+          1
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 4.548363604249587,
+        "categorical_on_plot": [
+          4.956098884177936,
+          3.6961418531441685,
+          4.777724573396758,
+          5.0697057109831904,
+          7.306717011754239,
+          4.643602781145922,
+          5.811271999217541,
+          9.308988204974085
+        ],
+        "foreground_on_paper": 14.67911847763172,
+        "foreground_on_plot": 14.029874741046042,
+        "grid_on_plot": 1.2946511740833526
+      },
+      "dimension": 3,
+      "frontend": "sage",
+      "id": "sage-semantic-3d-notebook",
+      "layer_contrast": [
+        3.6961418531441685,
+        4.956098884177936,
+        14.029874741046042,
+        3.400566828105062
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "scene": {
+            "aspectmode": "data",
+            "xaxis": {
+              "title": {
+                "text": "x"
+              }
+            },
+            "yaxis": {
+              "title": {
+                "text": "y"
+              }
+            },
+            "zaxis": {
+              "title": {
+                "text": "z"
+              }
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 3,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.38268343236508984,
+                6.123233995736766e-17,
+                -0.3826834323650897,
+                -0.7071067811865475,
+                -0.9238795325112867,
+                -1,
+                -0.9238795325112868,
+                -0.7071067811865477,
+                -0.38268343236509034,
+                -1.8369701987210297e-16,
+                0.38268343236509,
+                0.7071067811865474,
+                0.9238795325112865,
+                1
+              ],
+              "y": [
+                0,
+                0.3826834323650898,
+                0.7071067811865475,
+                0.9238795325112867,
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.3826834323650899,
+                1.2246467991473532e-16,
+                -0.38268343236508967,
+                -0.7071067811865475,
+                -0.9238795325112865,
+                -1,
+                -0.9238795325112866,
+                -0.7071067811865477,
+                -0.3826834323650904,
+                -2.4492935982947064e-16
+              ],
+              "z": [
+                0,
+                0.0625,
+                0.125,
+                0.1875,
+                0.25,
+                0.3125,
+                0.375,
+                0.4375,
+                0.5,
+                0.5625,
+                0.625,
+                0.6874999999999999,
+                0.75,
+                0.8125000000000001,
+                0.875,
+                0.9374999999999999,
+                1
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "helix",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 17,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line3d",
+              "expression": "(cos(t),sin(t),t/(2*pi))",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#d55e00",
+              "opacity": 1,
+              "width": 6
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                0
+              ],
+              "y": [
+                0
+              ],
+              "z": [
+                0
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "origin",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 1,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#0072b2",
+              "opacity": 1,
+              "size": 7,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "text": "origin"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#1f2937",
+              "font_size": 14,
+              "opacity": 1
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "shape": [
+                3,
+                3
+              ],
+              "x": [
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ]
+              ],
+              "y": [
+                [
+                  -1,
+                  -1,
+                  -1
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "z": [
+                [
+                  0,
+                  0.25,
+                  0
+                ],
+                [
+                  0.25,
+                  0.5,
+                  0.25
+                ],
+                [
+                  0,
+                  0.25,
+                  0
+                ]
+              ]
+            },
+            "id": "layer-3",
+            "kind": "surface",
+            "legend": {
+              "label": null,
+              "show": false
+            },
+            "metadata": {
+              "geometry": "rectangular-grid",
+              "resource": {
+                "sample_count": 9,
+                "triangle_count": 8
+              },
+              "scene": {
+                "bounds": {
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    1
+                  ],
+                  "z": [
+                    0,
+                    0.5
+                  ]
+                },
+                "camera_target": [
+                  0,
+                  0,
+                  0.25
+                ],
+                "degenerate_axes": [],
+                "extent": [
+                  2,
+                  2,
+                  0.5
+                ],
+                "recommended_aspect_ratio": {
+                  "x": 1,
+                  "y": 1,
+                  "z": 0.25
+                }
+              },
+              "semantic": true,
+              "style_decisions": {
+                "kind": "surface",
+                "options": [
+                  {
+                    "input": "#007f5f",
+                    "message": null,
+                    "option": "color",
+                    "status": "supported",
+                    "value": "#007f5f"
+                  },
+                  {
+                    "input": 0.8,
+                    "message": null,
+                    "option": "opacity",
+                    "status": "supported",
+                    "value": 0.8
+                  },
+                  {
+                    "input": false,
+                    "message": null,
+                    "option": "colorbar",
+                    "status": "supported",
+                    "value": false
+                  },
+                  {
+                    "input": null,
+                    "message": null,
+                    "option": "light_position",
+                    "status": "supported",
+                    "value": {}
+                  }
+                ],
+                "status": "supported",
+                "value": {
+                  "color": "#007f5f",
+                  "colorbar": false,
+                  "light_position": {},
+                  "material": {},
+                  "opacity": 0.8
+                }
+              }
+            },
+            "source_intent": {
+              "constructor": "Surface3d",
+              "expression": "0.5-(x^2+y^2)/4",
+              "frontend": "sage",
+              "representation": "sampled-rectangular-surface"
+            },
+            "style": {
+              "color": "#007f5f",
+              "colorbar": false,
+              "light_position": {},
+              "material": {},
+              "opacity": 0.8
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line3d + point3d + text3d + parametric_plot3d",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {
+            "helix_points": 17,
+            "surface_shape": [
+              3,
+              3
+            ]
+          },
+          "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "notebook",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#d55e00",
+              "width": 6
+            },
+            "mode": "lines",
+            "name": "helix",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.38268343236508984,
+              6.123233995736766e-17,
+              -0.3826834323650897,
+              -0.7071067811865475,
+              -0.9238795325112867,
+              -1,
+              -0.9238795325112868,
+              -0.7071067811865477,
+              -0.38268343236509034,
+              -1.8369701987210297e-16,
+              0.38268343236509,
+              0.7071067811865474,
+              0.9238795325112865,
+              1
+            ],
+            "y": [
+              0,
+              0.3826834323650898,
+              0.7071067811865475,
+              0.9238795325112867,
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.3826834323650899,
+              1.2246467991473532e-16,
+              -0.38268343236508967,
+              -0.7071067811865475,
+              -0.9238795325112865,
+              -1,
+              -0.9238795325112866,
+              -0.7071067811865477,
+              -0.3826834323650904,
+              -2.4492935982947064e-16
+            ],
+            "z": [
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375,
+              0.5,
+              0.5625,
+              0.625,
+              0.6874999999999999,
+              0.75,
+              0.8125000000000001,
+              0.875,
+              0.9374999999999999,
+              1
+            ]
+          },
+          {
+            "marker": {
+              "color": "#0072b2",
+              "size": 7,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "origin",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "origin"
+            ],
+            "textfont": {
+              "color": "#1f2937",
+              "size": 14
+            },
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "colorscale": [
+              [
+                0,
+                "#007f5f"
+              ],
+              [
+                1,
+                "#007f5f"
+              ]
+            ],
+            "lighting": {
+              "ambient": 0.65,
+              "diffuse": 0.75,
+              "fresnel": 0.1,
+              "roughness": 0.7,
+              "specular": 0.2
+            },
+            "lightposition": {
+              "x": 100,
+              "y": 200,
+              "z": 300
+            },
+            "opacity": 0.8,
+            "showlegend": false,
+            "showscale": false,
+            "type": "surface",
+            "x": [
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ]
+            ],
+            "y": [
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                1
+              ]
+            ],
+            "z": [
+              [
+                0,
+                0.25,
+                0
+              ],
+              [
+                0.25,
+                0.5,
+                0.25
+              ],
+              [
+                0,
+                0.25,
+                0
+              ]
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#0072b2",
+            "#d55e00",
+            "#007f5f",
+            "#a64d79",
+            "#6a3d9a",
+            "#8c6d1f",
+            "#006d77",
+            "#444444"
+          ],
+          "font": {
+            "color": "#1f2937",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#64748b",
+            "font": {
+              "color": "#1f2937",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 14
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#d7dee8",
+            "borderwidth": 1,
+            "font": {
+              "color": "#1f2937",
+              "size": 14
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 56,
+            "l": 64,
+            "pad": 4,
+            "r": 32,
+            "t": 48
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#f8fafc",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#f8fafc",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.45,
+                "y": 1.45,
+                "z": 1.2
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "autorange": true,
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "x"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d7dee8"
+            },
+            "yaxis": {
+              "autorange": true,
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "y"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d7dee8"
+            },
+            "zaxis": {
+              "autorange": true,
+              "color": "#64748b",
+              "gridcolor": "#d7dee8",
+              "linecolor": "#64748b",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "z"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d7dee8"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "zerolinecolor": "#d7dee8"
+          },
+          "yaxis": {
+            "automargin": true,
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "zerolinecolor": "#d7dee8"
+          }
+        }
+      },
+      "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+      "theme": "notebook",
+      "title": "Sage semantic 3D primitives and surface",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled.",
+      "bounds": {
+        "x": [
+          -1,
+          1
+        ],
+        "y": [
+          -1,
+          1
+        ],
+        "z": [
+          0,
+          1
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 7.242510935504382,
+        "categorical_on_plot": [
+          4.956098884177936,
+          3.6961418531441685,
+          4.777724573396758,
+          5.0697057109831904,
+          7.306717011754239,
+          4.643602781145922,
+          5.811271999217541,
+          9.308988204974085
+        ],
+        "foreground_on_paper": 17.73971700407407,
+        "foreground_on_plot": 16.955105845628285,
+        "grid_on_plot": 1.4190352179009549
+      },
+      "dimension": 3,
+      "frontend": "sage",
+      "id": "sage-semantic-3d-presentation",
+      "layer_contrast": [
+        3.6961418531441685,
+        4.956098884177936,
+        16.955105845628285,
+        3.400566828105062
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "scene": {
+            "aspectmode": "data",
+            "xaxis": {
+              "title": {
+                "text": "x"
+              }
+            },
+            "yaxis": {
+              "title": {
+                "text": "y"
+              }
+            },
+            "zaxis": {
+              "title": {
+                "text": "z"
+              }
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 3,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.38268343236508984,
+                6.123233995736766e-17,
+                -0.3826834323650897,
+                -0.7071067811865475,
+                -0.9238795325112867,
+                -1,
+                -0.9238795325112868,
+                -0.7071067811865477,
+                -0.38268343236509034,
+                -1.8369701987210297e-16,
+                0.38268343236509,
+                0.7071067811865474,
+                0.9238795325112865,
+                1
+              ],
+              "y": [
+                0,
+                0.3826834323650898,
+                0.7071067811865475,
+                0.9238795325112867,
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.3826834323650899,
+                1.2246467991473532e-16,
+                -0.38268343236508967,
+                -0.7071067811865475,
+                -0.9238795325112865,
+                -1,
+                -0.9238795325112866,
+                -0.7071067811865477,
+                -0.3826834323650904,
+                -2.4492935982947064e-16
+              ],
+              "z": [
+                0,
+                0.0625,
+                0.125,
+                0.1875,
+                0.25,
+                0.3125,
+                0.375,
+                0.4375,
+                0.5,
+                0.5625,
+                0.625,
+                0.6874999999999999,
+                0.75,
+                0.8125000000000001,
+                0.875,
+                0.9374999999999999,
+                1
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "helix",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 17,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line3d",
+              "expression": "(cos(t),sin(t),t/(2*pi))",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#d55e00",
+              "opacity": 1,
+              "width": 6
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                0
+              ],
+              "y": [
+                0
+              ],
+              "z": [
+                0
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "origin",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 1,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#0072b2",
+              "opacity": 1,
+              "size": 7,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "text": "origin"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#111827",
+              "font_size": 14,
+              "opacity": 1
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "shape": [
+                3,
+                3
+              ],
+              "x": [
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ]
+              ],
+              "y": [
+                [
+                  -1,
+                  -1,
+                  -1
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "z": [
+                [
+                  0,
+                  0.25,
+                  0
+                ],
+                [
+                  0.25,
+                  0.5,
+                  0.25
+                ],
+                [
+                  0,
+                  0.25,
+                  0
+                ]
+              ]
+            },
+            "id": "layer-3",
+            "kind": "surface",
+            "legend": {
+              "label": null,
+              "show": false
+            },
+            "metadata": {
+              "geometry": "rectangular-grid",
+              "resource": {
+                "sample_count": 9,
+                "triangle_count": 8
+              },
+              "scene": {
+                "bounds": {
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    1
+                  ],
+                  "z": [
+                    0,
+                    0.5
+                  ]
+                },
+                "camera_target": [
+                  0,
+                  0,
+                  0.25
+                ],
+                "degenerate_axes": [],
+                "extent": [
+                  2,
+                  2,
+                  0.5
+                ],
+                "recommended_aspect_ratio": {
+                  "x": 1,
+                  "y": 1,
+                  "z": 0.25
+                }
+              },
+              "semantic": true,
+              "style_decisions": {
+                "kind": "surface",
+                "options": [
+                  {
+                    "input": "#007f5f",
+                    "message": null,
+                    "option": "color",
+                    "status": "supported",
+                    "value": "#007f5f"
+                  },
+                  {
+                    "input": 0.8,
+                    "message": null,
+                    "option": "opacity",
+                    "status": "supported",
+                    "value": 0.8
+                  },
+                  {
+                    "input": false,
+                    "message": null,
+                    "option": "colorbar",
+                    "status": "supported",
+                    "value": false
+                  },
+                  {
+                    "input": null,
+                    "message": null,
+                    "option": "light_position",
+                    "status": "supported",
+                    "value": {}
+                  }
+                ],
+                "status": "supported",
+                "value": {
+                  "color": "#007f5f",
+                  "colorbar": false,
+                  "light_position": {},
+                  "material": {},
+                  "opacity": 0.8
+                }
+              }
+            },
+            "source_intent": {
+              "constructor": "Surface3d",
+              "expression": "0.5-(x^2+y^2)/4",
+              "frontend": "sage",
+              "representation": "sampled-rectangular-surface"
+            },
+            "style": {
+              "color": "#007f5f",
+              "colorbar": false,
+              "light_position": {},
+              "material": {},
+              "opacity": 0.8
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line3d + point3d + text3d + parametric_plot3d",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {
+            "helix_points": 17,
+            "surface_shape": [
+              3,
+              3
+            ]
+          },
+          "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "presentation",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#d55e00",
+              "width": 6
+            },
+            "mode": "lines",
+            "name": "helix",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.38268343236508984,
+              6.123233995736766e-17,
+              -0.3826834323650897,
+              -0.7071067811865475,
+              -0.9238795325112867,
+              -1,
+              -0.9238795325112868,
+              -0.7071067811865477,
+              -0.38268343236509034,
+              -1.8369701987210297e-16,
+              0.38268343236509,
+              0.7071067811865474,
+              0.9238795325112865,
+              1
+            ],
+            "y": [
+              0,
+              0.3826834323650898,
+              0.7071067811865475,
+              0.9238795325112867,
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.3826834323650899,
+              1.2246467991473532e-16,
+              -0.38268343236508967,
+              -0.7071067811865475,
+              -0.9238795325112865,
+              -1,
+              -0.9238795325112866,
+              -0.7071067811865477,
+              -0.3826834323650904,
+              -2.4492935982947064e-16
+            ],
+            "z": [
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375,
+              0.5,
+              0.5625,
+              0.625,
+              0.6874999999999999,
+              0.75,
+              0.8125000000000001,
+              0.875,
+              0.9374999999999999,
+              1
+            ]
+          },
+          {
+            "marker": {
+              "color": "#0072b2",
+              "size": 7,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "origin",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "origin"
+            ],
+            "textfont": {
+              "color": "#111827",
+              "size": 14
+            },
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "colorscale": [
+              [
+                0,
+                "#007f5f"
+              ],
+              [
+                1,
+                "#007f5f"
+              ]
+            ],
+            "lighting": {
+              "ambient": 0.65,
+              "diffuse": 0.75,
+              "fresnel": 0.1,
+              "roughness": 0.7,
+              "specular": 0.2
+            },
+            "lightposition": {
+              "x": 100,
+              "y": 200,
+              "z": 300
+            },
+            "opacity": 0.8,
+            "showlegend": false,
+            "showscale": false,
+            "type": "surface",
+            "x": [
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ]
+            ],
+            "y": [
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                1
+              ]
+            ],
+            "z": [
+              [
+                0,
+                0.25,
+                0
+              ],
+              [
+                0.25,
+                0.5,
+                0.25
+              ],
+              [
+                0,
+                0.25,
+                0
+              ]
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#0072b2",
+            "#d55e00",
+            "#007f5f",
+            "#a64d79",
+            "#6a3d9a",
+            "#8c6d1f",
+            "#006d77",
+            "#444444"
+          ],
+          "font": {
+            "color": "#111827",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 20
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#475569",
+            "font": {
+              "color": "#111827",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 20
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#cbd5e1",
+            "borderwidth": 1,
+            "font": {
+              "color": "#111827",
+              "size": 20
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "h"
+          },
+          "margin": {
+            "b": 70,
+            "l": 78,
+            "pad": 4,
+            "r": 42,
+            "t": 64
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#f8fafc",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#f8fafc",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.5,
+                "y": 1.5,
+                "z": 1.25
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "autorange": true,
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "x"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#cbd5e1"
+            },
+            "yaxis": {
+              "autorange": true,
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "y"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#cbd5e1"
+            },
+            "zaxis": {
+              "autorange": true,
+              "color": "#475569",
+              "gridcolor": "#cbd5e1",
+              "linecolor": "#475569",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "z"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#cbd5e1"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "zerolinecolor": "#cbd5e1"
+          },
+          "yaxis": {
+            "automargin": true,
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "zerolinecolor": "#cbd5e1"
+          }
+        }
+      },
+      "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+      "theme": "presentation",
+      "title": "Sage semantic 3D primitives and surface",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled.",
+      "bounds": {
+        "x": [
+          -1,
+          1
+        ],
+        "y": [
+          -1,
+          1
+        ],
+        "z": [
+          0,
+          1
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 12.63465434445799,
+        "categorical_on_plot": [
+          21,
+          7.136725946213922,
+          7.446306804851021,
+          7.351622312743854,
+          9.64164763514408,
+          9.846022961414068,
+          7.480385929261575,
+          9.114421861537426
+        ],
+        "foreground_on_paper": 21,
+        "foreground_on_plot": 21,
+        "grid_on_plot": 1.482266131414131
+      },
+      "dimension": 3,
+      "frontend": "sage",
+      "id": "sage-semantic-3d-publication",
+      "layer_contrast": [
+        7.136725946213922,
+        21,
+        21,
+        4.8782330457669785
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "scene": {
+            "aspectmode": "data",
+            "xaxis": {
+              "title": {
+                "text": "x"
+              }
+            },
+            "yaxis": {
+              "title": {
+                "text": "y"
+              }
+            },
+            "zaxis": {
+              "title": {
+                "text": "z"
+              }
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 3,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.38268343236508984,
+                6.123233995736766e-17,
+                -0.3826834323650897,
+                -0.7071067811865475,
+                -0.9238795325112867,
+                -1,
+                -0.9238795325112868,
+                -0.7071067811865477,
+                -0.38268343236509034,
+                -1.8369701987210297e-16,
+                0.38268343236509,
+                0.7071067811865474,
+                0.9238795325112865,
+                1
+              ],
+              "y": [
+                0,
+                0.3826834323650898,
+                0.7071067811865475,
+                0.9238795325112867,
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.3826834323650899,
+                1.2246467991473532e-16,
+                -0.38268343236508967,
+                -0.7071067811865475,
+                -0.9238795325112865,
+                -1,
+                -0.9238795325112866,
+                -0.7071067811865477,
+                -0.3826834323650904,
+                -2.4492935982947064e-16
+              ],
+              "z": [
+                0,
+                0.0625,
+                0.125,
+                0.1875,
+                0.25,
+                0.3125,
+                0.375,
+                0.4375,
+                0.5,
+                0.5625,
+                0.625,
+                0.6874999999999999,
+                0.75,
+                0.8125000000000001,
+                0.875,
+                0.9374999999999999,
+                1
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "helix",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 17,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line3d",
+              "expression": "(cos(t),sin(t),t/(2*pi))",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#005a9c",
+              "opacity": 1,
+              "width": 6
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                0
+              ],
+              "y": [
+                0
+              ],
+              "z": [
+                0
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "origin",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 1,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "opacity": 1,
+              "size": 7,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "text": "origin"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "font_size": 14,
+              "opacity": 1
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "shape": [
+                3,
+                3
+              ],
+              "x": [
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ]
+              ],
+              "y": [
+                [
+                  -1,
+                  -1,
+                  -1
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "z": [
+                [
+                  0,
+                  0.25,
+                  0
+                ],
+                [
+                  0.25,
+                  0.5,
+                  0.25
+                ],
+                [
+                  0,
+                  0.25,
+                  0
+                ]
+              ]
+            },
+            "id": "layer-3",
+            "kind": "surface",
+            "legend": {
+              "label": null,
+              "show": false
+            },
+            "metadata": {
+              "geometry": "rectangular-grid",
+              "resource": {
+                "sample_count": 9,
+                "triangle_count": 8
+              },
+              "scene": {
+                "bounds": {
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    1
+                  ],
+                  "z": [
+                    0,
+                    0.5
+                  ]
+                },
+                "camera_target": [
+                  0,
+                  0,
+                  0.25
+                ],
+                "degenerate_axes": [],
+                "extent": [
+                  2,
+                  2,
+                  0.5
+                ],
+                "recommended_aspect_ratio": {
+                  "x": 1,
+                  "y": 1,
+                  "z": 0.25
+                }
+              },
+              "semantic": true,
+              "style_decisions": {
+                "kind": "surface",
+                "options": [
+                  {
+                    "input": "#007f5f",
+                    "message": null,
+                    "option": "color",
+                    "status": "supported",
+                    "value": "#007f5f"
+                  },
+                  {
+                    "input": 0.8,
+                    "message": null,
+                    "option": "opacity",
+                    "status": "supported",
+                    "value": 0.8
+                  },
+                  {
+                    "input": false,
+                    "message": null,
+                    "option": "colorbar",
+                    "status": "supported",
+                    "value": false
+                  },
+                  {
+                    "input": null,
+                    "message": null,
+                    "option": "light_position",
+                    "status": "supported",
+                    "value": {}
+                  }
+                ],
+                "status": "supported",
+                "value": {
+                  "color": "#007f5f",
+                  "colorbar": false,
+                  "light_position": {},
+                  "material": {},
+                  "opacity": 0.8
+                }
+              }
+            },
+            "source_intent": {
+              "constructor": "Surface3d",
+              "expression": "0.5-(x^2+y^2)/4",
+              "frontend": "sage",
+              "representation": "sampled-rectangular-surface"
+            },
+            "style": {
+              "color": "#9c2f00",
+              "colorbar": false,
+              "light_position": {},
+              "material": {},
+              "opacity": 0.8
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line3d + point3d + text3d + parametric_plot3d",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {
+            "helix_points": 17,
+            "surface_shape": [
+              3,
+              3
+            ]
+          },
+          "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "publication",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#005a9c",
+              "width": 6
+            },
+            "mode": "lines",
+            "name": "helix",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.38268343236508984,
+              6.123233995736766e-17,
+              -0.3826834323650897,
+              -0.7071067811865475,
+              -0.9238795325112867,
+              -1,
+              -0.9238795325112868,
+              -0.7071067811865477,
+              -0.38268343236509034,
+              -1.8369701987210297e-16,
+              0.38268343236509,
+              0.7071067811865474,
+              0.9238795325112865,
+              1
+            ],
+            "y": [
+              0,
+              0.3826834323650898,
+              0.7071067811865475,
+              0.9238795325112867,
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.3826834323650899,
+              1.2246467991473532e-16,
+              -0.38268343236508967,
+              -0.7071067811865475,
+              -0.9238795325112865,
+              -1,
+              -0.9238795325112866,
+              -0.7071067811865477,
+              -0.3826834323650904,
+              -2.4492935982947064e-16
+            ],
+            "z": [
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375,
+              0.5,
+              0.5625,
+              0.625,
+              0.6874999999999999,
+              0.75,
+              0.8125000000000001,
+              0.875,
+              0.9374999999999999,
+              1
+            ]
+          },
+          {
+            "marker": {
+              "color": "#000000",
+              "size": 7,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "origin",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "origin"
+            ],
+            "textfont": {
+              "color": "#000000",
+              "size": 14
+            },
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "colorscale": [
+              [
+                0,
+                "#9c2f00"
+              ],
+              [
+                1,
+                "#9c2f00"
+              ]
+            ],
+            "lighting": {
+              "ambient": 0.65,
+              "diffuse": 0.75,
+              "fresnel": 0.1,
+              "roughness": 0.7,
+              "specular": 0.2
+            },
+            "lightposition": {
+              "x": 100,
+              "y": 200,
+              "z": 300
+            },
+            "opacity": 0.8,
+            "showlegend": false,
+            "showscale": false,
+            "type": "surface",
+            "x": [
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ]
+            ],
+            "y": [
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                1
+              ]
+            ],
+            "z": [
+              [
+                0,
+                0.25,
+                0
+              ],
+              [
+                0.25,
+                0.5,
+                0.25
+              ],
+              [
+                0,
+                0.25,
+                0
+              ]
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#000000",
+            "#005a9c",
+            "#9c2f00",
+            "#00633f",
+            "#7a1f5c",
+            "#5b2c83",
+            "#704f00",
+            "#164e63"
+          ],
+          "font": {
+            "color": "#000000",
+            "family": "STIX Two Text, Georgia, serif",
+            "size": 12
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#333333",
+            "font": {
+              "color": "#000000",
+              "family": "STIX Two Text, Georgia, serif",
+              "size": 12
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#d4d4d4",
+            "borderwidth": 1,
+            "font": {
+              "color": "#000000",
+              "size": 12
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 50,
+            "l": 58,
+            "pad": 4,
+            "r": 24,
+            "t": 36
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#ffffff",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#ffffff",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.35,
+                "y": 1.35,
+                "z": 1.15
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "autorange": true,
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "x"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d4d4d4"
+            },
+            "yaxis": {
+              "autorange": true,
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "y"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d4d4d4"
+            },
+            "zaxis": {
+              "autorange": true,
+              "color": "#333333",
+              "gridcolor": "#d4d4d4",
+              "linecolor": "#333333",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "z"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#d4d4d4"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "zerolinecolor": "#d4d4d4"
+          },
+          "yaxis": {
+            "automargin": true,
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "zerolinecolor": "#d4d4d4"
+          }
+        }
+      },
+      "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+      "theme": "publication",
+      "title": "Sage semantic 3D primitives and surface",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled.",
+      "bounds": {
+        "x": [
+          -1,
+          1
+        ],
+        "y": [
+          -1,
+          1
+        ],
+        "z": [
+          0,
+          1
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 11.948333368856327,
+        "categorical_on_plot": [
+          7.687910521670582,
+          8.451731509762796,
+          8.74008372165472,
+          7.451696969912823,
+          9.165923495599783,
+          12.302956277514099,
+          10.369248546490146,
+          17.73971700407407
+        ],
+        "foreground_on_paper": 18.095148740806835,
+        "foreground_on_plot": 16.955105845628285,
+        "grid_on_plot": 1.7131967759970916
+      },
+      "dimension": 3,
+      "frontend": "sage",
+      "id": "sage-semantic-3d-dark",
+      "layer_contrast": [
+        8.451731509762796,
+        7.687910521670582,
+        16.955105845628285,
+        6.005233226239598
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "scene": {
+            "aspectmode": "data",
+            "xaxis": {
+              "title": {
+                "text": "x"
+              }
+            },
+            "yaxis": {
+              "title": {
+                "text": "y"
+              }
+            },
+            "zaxis": {
+              "title": {
+                "text": "z"
+              }
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 3,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.38268343236508984,
+                6.123233995736766e-17,
+                -0.3826834323650897,
+                -0.7071067811865475,
+                -0.9238795325112867,
+                -1,
+                -0.9238795325112868,
+                -0.7071067811865477,
+                -0.38268343236509034,
+                -1.8369701987210297e-16,
+                0.38268343236509,
+                0.7071067811865474,
+                0.9238795325112865,
+                1
+              ],
+              "y": [
+                0,
+                0.3826834323650898,
+                0.7071067811865475,
+                0.9238795325112867,
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.3826834323650899,
+                1.2246467991473532e-16,
+                -0.38268343236508967,
+                -0.7071067811865475,
+                -0.9238795325112865,
+                -1,
+                -0.9238795325112866,
+                -0.7071067811865477,
+                -0.3826834323650904,
+                -2.4492935982947064e-16
+              ],
+              "z": [
+                0,
+                0.0625,
+                0.125,
+                0.1875,
+                0.25,
+                0.3125,
+                0.375,
+                0.4375,
+                0.5,
+                0.5625,
+                0.625,
+                0.6874999999999999,
+                0.75,
+                0.8125000000000001,
+                0.875,
+                0.9374999999999999,
+                1
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "helix",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 17,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line3d",
+              "expression": "(cos(t),sin(t),t/(2*pi))",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#f0a33a",
+              "opacity": 1,
+              "width": 6
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                0
+              ],
+              "y": [
+                0
+              ],
+              "z": [
+                0
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "origin",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 1,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#56b4e9",
+              "opacity": 1,
+              "size": 7,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "text": "origin"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#f8fafc",
+              "font_size": 14,
+              "opacity": 1
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "shape": [
+                3,
+                3
+              ],
+              "x": [
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ]
+              ],
+              "y": [
+                [
+                  -1,
+                  -1,
+                  -1
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "z": [
+                [
+                  0,
+                  0.25,
+                  0
+                ],
+                [
+                  0.25,
+                  0.5,
+                  0.25
+                ],
+                [
+                  0,
+                  0.25,
+                  0
+                ]
+              ]
+            },
+            "id": "layer-3",
+            "kind": "surface",
+            "legend": {
+              "label": null,
+              "show": false
+            },
+            "metadata": {
+              "geometry": "rectangular-grid",
+              "resource": {
+                "sample_count": 9,
+                "triangle_count": 8
+              },
+              "scene": {
+                "bounds": {
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    1
+                  ],
+                  "z": [
+                    0,
+                    0.5
+                  ]
+                },
+                "camera_target": [
+                  0,
+                  0,
+                  0.25
+                ],
+                "degenerate_axes": [],
+                "extent": [
+                  2,
+                  2,
+                  0.5
+                ],
+                "recommended_aspect_ratio": {
+                  "x": 1,
+                  "y": 1,
+                  "z": 0.25
+                }
+              },
+              "semantic": true,
+              "style_decisions": {
+                "kind": "surface",
+                "options": [
+                  {
+                    "input": "#007f5f",
+                    "message": null,
+                    "option": "color",
+                    "status": "supported",
+                    "value": "#007f5f"
+                  },
+                  {
+                    "input": 0.8,
+                    "message": null,
+                    "option": "opacity",
+                    "status": "supported",
+                    "value": 0.8
+                  },
+                  {
+                    "input": false,
+                    "message": null,
+                    "option": "colorbar",
+                    "status": "supported",
+                    "value": false
+                  },
+                  {
+                    "input": null,
+                    "message": null,
+                    "option": "light_position",
+                    "status": "supported",
+                    "value": {}
+                  }
+                ],
+                "status": "supported",
+                "value": {
+                  "color": "#007f5f",
+                  "colorbar": false,
+                  "light_position": {},
+                  "material": {},
+                  "opacity": 0.8
+                }
+              }
+            },
+            "source_intent": {
+              "constructor": "Surface3d",
+              "expression": "0.5-(x^2+y^2)/4",
+              "frontend": "sage",
+              "representation": "sampled-rectangular-surface"
+            },
+            "style": {
+              "color": "#4ecb9c",
+              "colorbar": false,
+              "light_position": {},
+              "material": {},
+              "opacity": 0.8
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line3d + point3d + text3d + parametric_plot3d",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {
+            "helix_points": 17,
+            "surface_shape": [
+              3,
+              3
+            ]
+          },
+          "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "dark",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#f0a33a",
+              "width": 6
+            },
+            "mode": "lines",
+            "name": "helix",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.38268343236508984,
+              6.123233995736766e-17,
+              -0.3826834323650897,
+              -0.7071067811865475,
+              -0.9238795325112867,
+              -1,
+              -0.9238795325112868,
+              -0.7071067811865477,
+              -0.38268343236509034,
+              -1.8369701987210297e-16,
+              0.38268343236509,
+              0.7071067811865474,
+              0.9238795325112865,
+              1
+            ],
+            "y": [
+              0,
+              0.3826834323650898,
+              0.7071067811865475,
+              0.9238795325112867,
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.3826834323650899,
+              1.2246467991473532e-16,
+              -0.38268343236508967,
+              -0.7071067811865475,
+              -0.9238795325112865,
+              -1,
+              -0.9238795325112866,
+              -0.7071067811865477,
+              -0.3826834323650904,
+              -2.4492935982947064e-16
+            ],
+            "z": [
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375,
+              0.5,
+              0.5625,
+              0.625,
+              0.6874999999999999,
+              0.75,
+              0.8125000000000001,
+              0.875,
+              0.9374999999999999,
+              1
+            ]
+          },
+          {
+            "marker": {
+              "color": "#56b4e9",
+              "size": 7,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "origin",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "origin"
+            ],
+            "textfont": {
+              "color": "#f8fafc",
+              "size": 14
+            },
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "colorscale": [
+              [
+                0,
+                "#4ecb9c"
+              ],
+              [
+                1,
+                "#4ecb9c"
+              ]
+            ],
+            "lighting": {
+              "ambient": 0.8,
+              "diffuse": 0.65,
+              "fresnel": 0.15,
+              "roughness": 0.8,
+              "specular": 0.15
+            },
+            "lightposition": {
+              "x": 100,
+              "y": 200,
+              "z": 300
+            },
+            "opacity": 0.8,
+            "showlegend": false,
+            "showscale": false,
+            "type": "surface",
+            "x": [
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ]
+            ],
+            "y": [
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                1
+              ]
+            ],
+            "z": [
+              [
+                0,
+                0.25,
+                0
+              ],
+              [
+                0.25,
+                0.5,
+                0.25
+              ],
+              [
+                0,
+                0.25,
+                0
+              ]
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#56b4e9",
+            "#f0a33a",
+            "#4ecb9c",
+            "#e78ac3",
+            "#cab2d6",
+            "#ffd166",
+            "#8dd3c7",
+            "#ffffff"
+          ],
+          "font": {
+            "color": "#f8fafc",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "hoverlabel": {
+            "bgcolor": "#1e293b",
+            "bordercolor": "#cbd5e1",
+            "font": {
+              "color": "#f8fafc",
+              "family": "Inter, system-ui, sans-serif",
+              "size": 14
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#0b1020",
+            "bordercolor": "#334155",
+            "borderwidth": 1,
+            "font": {
+              "color": "#f8fafc",
+              "size": 14
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 56,
+            "l": 64,
+            "pad": 4,
+            "r": 32,
+            "t": 48
+          },
+          "paper_bgcolor": "#0b1020",
+          "plot_bgcolor": "#111827",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#111827",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.45,
+                "y": 1.45,
+                "z": 1.2
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "autorange": true,
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "x"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#334155"
+            },
+            "yaxis": {
+              "autorange": true,
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "y"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#334155"
+            },
+            "zaxis": {
+              "autorange": true,
+              "color": "#cbd5e1",
+              "gridcolor": "#334155",
+              "linecolor": "#cbd5e1",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "z"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#334155"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "zerolinecolor": "#334155"
+          },
+          "yaxis": {
+            "automargin": true,
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "zerolinecolor": "#334155"
+          }
+        }
+      },
+      "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+      "theme": "dark",
+      "title": "Sage semantic 3D primitives and surface",
+      "validation_codes": []
+    },
+    {
+      "alt_text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled.",
+      "bounds": {
+        "x": [
+          -1,
+          1
+        ],
+        "y": [
+          -1,
+          1
+        ],
+        "z": [
+          0,
+          1
+        ]
+      },
+      "classification": "translated",
+      "contrast": {
+        "axis_on_plot": 21,
+        "categorical_on_plot": [
+          21,
+          7.136725946213922,
+          7.446306804851021,
+          7.351622312743854,
+          9.64164763514408,
+          9.846022961414068,
+          7.480385929261575,
+          9.114421861537426
+        ],
+        "foreground_on_paper": 21,
+        "foreground_on_plot": 21,
+        "grid_on_plot": 5.74183648145415
+      },
+      "dimension": 3,
+      "frontend": "sage",
+      "id": "sage-semantic-3d-high-contrast",
+      "layer_contrast": [
+        7.136725946213922,
+        21,
+        21,
+        4.8782330457669785
+      ],
+      "plot_spec": {
+        "animation": {},
+        "annotations": [
+          {
+            "kind": "alt_text",
+            "text": "A three-dimensional orange helix rises one turn above a translucent green sampled surface; the blue origin is labeled."
+          }
+        ],
+        "axes_or_scene": {
+          "coordinate_system": "cartesian",
+          "scene": {
+            "aspectmode": "data",
+            "xaxis": {
+              "title": {
+                "text": "x"
+              }
+            },
+            "yaxis": {
+              "title": {
+                "text": "y"
+              }
+            },
+            "zaxis": {
+              "title": {
+                "text": "z"
+              }
+            }
+          }
+        },
+        "diagnostics": [],
+        "dimension": 3,
+        "interactions": {},
+        "layers": [
+          {
+            "data": {
+              "x": [
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.38268343236508984,
+                6.123233995736766e-17,
+                -0.3826834323650897,
+                -0.7071067811865475,
+                -0.9238795325112867,
+                -1,
+                -0.9238795325112868,
+                -0.7071067811865477,
+                -0.38268343236509034,
+                -1.8369701987210297e-16,
+                0.38268343236509,
+                0.7071067811865474,
+                0.9238795325112865,
+                1
+              ],
+              "y": [
+                0,
+                0.3826834323650898,
+                0.7071067811865475,
+                0.9238795325112867,
+                1,
+                0.9238795325112867,
+                0.7071067811865476,
+                0.3826834323650899,
+                1.2246467991473532e-16,
+                -0.38268343236508967,
+                -0.7071067811865475,
+                -0.9238795325112865,
+                -1,
+                -0.9238795325112866,
+                -0.7071067811865477,
+                -0.3826834323650904,
+                -2.4492935982947064e-16
+              ],
+              "z": [
+                0,
+                0.0625,
+                0.125,
+                0.1875,
+                0.25,
+                0.3125,
+                0.375,
+                0.4375,
+                0.5,
+                0.5625,
+                0.625,
+                0.6874999999999999,
+                0.75,
+                0.8125000000000001,
+                0.875,
+                0.9374999999999999,
+                1
+              ]
+            },
+            "id": "layer-0",
+            "kind": "line",
+            "legend": {
+              "label": "helix",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 17,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "line3d",
+              "expression": "(cos(t),sin(t),t/(2*pi))",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#005a9c",
+              "opacity": 1,
+              "width": 6
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "x": [
+                0
+              ],
+              "y": [
+                0
+              ],
+              "z": [
+                0
+              ]
+            },
+            "id": "layer-1",
+            "kind": "point",
+            "legend": {
+              "label": "origin",
+              "show": true
+            },
+            "metadata": {
+              "sample_count": 1,
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "point3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "opacity": 1,
+              "size": 7,
+              "symbol": "circle"
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "text": "origin"
+            },
+            "id": "layer-2",
+            "kind": "text",
+            "legend": {},
+            "metadata": {
+              "semantic": true
+            },
+            "source_intent": {
+              "constructor": "text3d",
+              "frontend": "sage"
+            },
+            "style": {
+              "color": "#000000",
+              "font_size": 14,
+              "opacity": 1
+            },
+            "visibility": true
+          },
+          {
+            "data": {
+              "shape": [
+                3,
+                3
+              ],
+              "x": [
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ],
+                [
+                  -1,
+                  0,
+                  1
+                ]
+              ],
+              "y": [
+                [
+                  -1,
+                  -1,
+                  -1
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "z": [
+                [
+                  0,
+                  0.25,
+                  0
+                ],
+                [
+                  0.25,
+                  0.5,
+                  0.25
+                ],
+                [
+                  0,
+                  0.25,
+                  0
+                ]
+              ]
+            },
+            "id": "layer-3",
+            "kind": "surface",
+            "legend": {
+              "label": null,
+              "show": false
+            },
+            "metadata": {
+              "geometry": "rectangular-grid",
+              "resource": {
+                "sample_count": 9,
+                "triangle_count": 8
+              },
+              "scene": {
+                "bounds": {
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    1
+                  ],
+                  "z": [
+                    0,
+                    0.5
+                  ]
+                },
+                "camera_target": [
+                  0,
+                  0,
+                  0.25
+                ],
+                "degenerate_axes": [],
+                "extent": [
+                  2,
+                  2,
+                  0.5
+                ],
+                "recommended_aspect_ratio": {
+                  "x": 1,
+                  "y": 1,
+                  "z": 0.25
+                }
+              },
+              "semantic": true,
+              "style_decisions": {
+                "kind": "surface",
+                "options": [
+                  {
+                    "input": "#007f5f",
+                    "message": null,
+                    "option": "color",
+                    "status": "supported",
+                    "value": "#007f5f"
+                  },
+                  {
+                    "input": 0.8,
+                    "message": null,
+                    "option": "opacity",
+                    "status": "supported",
+                    "value": 0.8
+                  },
+                  {
+                    "input": false,
+                    "message": null,
+                    "option": "colorbar",
+                    "status": "supported",
+                    "value": false
+                  },
+                  {
+                    "input": null,
+                    "message": null,
+                    "option": "light_position",
+                    "status": "supported",
+                    "value": {}
+                  }
+                ],
+                "status": "supported",
+                "value": {
+                  "color": "#007f5f",
+                  "colorbar": false,
+                  "light_position": {},
+                  "material": {},
+                  "opacity": 0.8
+                }
+              }
+            },
+            "source_intent": {
+              "constructor": "Surface3d",
+              "expression": "0.5-(x^2+y^2)/4",
+              "frontend": "sage",
+              "representation": "sampled-rectangular-surface"
+            },
+            "style": {
+              "color": "#9c2f00",
+              "colorbar": false,
+              "light_position": {},
+              "material": {},
+              "opacity": 0.8
+            },
+            "visibility": true
+          }
+        ],
+        "plotly_overrides": {},
+        "provenance": {
+          "approximations": [],
+          "constructor": "line3d + point3d + text3d + parametric_plot3d",
+          "frontend": "sage",
+          "metadata": {},
+          "ranges": [],
+          "sampling": {
+            "helix_points": 17,
+            "surface_shape": [
+              3,
+              3
+            ]
+          },
+          "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+          "source_language": "sage",
+          "transforms": [],
+          "translation_events": []
+        },
+        "schema_version": 1,
+        "theme": "high-contrast",
+        "viewport": {
+          "responsive": true
+        }
+      },
+      "plotly": {
+        "config": {
+          "displayModeBar": true,
+          "displaylogo": false,
+          "doubleClick": "reset+autosize",
+          "responsive": true,
+          "scrollZoom": true
+        },
+        "data": [
+          {
+            "line": {
+              "color": "#005a9c",
+              "width": 6
+            },
+            "mode": "lines",
+            "name": "helix",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.38268343236508984,
+              6.123233995736766e-17,
+              -0.3826834323650897,
+              -0.7071067811865475,
+              -0.9238795325112867,
+              -1,
+              -0.9238795325112868,
+              -0.7071067811865477,
+              -0.38268343236509034,
+              -1.8369701987210297e-16,
+              0.38268343236509,
+              0.7071067811865474,
+              0.9238795325112865,
+              1
+            ],
+            "y": [
+              0,
+              0.3826834323650898,
+              0.7071067811865475,
+              0.9238795325112867,
+              1,
+              0.9238795325112867,
+              0.7071067811865476,
+              0.3826834323650899,
+              1.2246467991473532e-16,
+              -0.38268343236508967,
+              -0.7071067811865475,
+              -0.9238795325112865,
+              -1,
+              -0.9238795325112866,
+              -0.7071067811865477,
+              -0.3826834323650904,
+              -2.4492935982947064e-16
+            ],
+            "z": [
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375,
+              0.5,
+              0.5625,
+              0.625,
+              0.6874999999999999,
+              0.75,
+              0.8125000000000001,
+              0.875,
+              0.9374999999999999,
+              1
+            ]
+          },
+          {
+            "marker": {
+              "color": "#000000",
+              "size": 7,
+              "symbol": "circle"
+            },
+            "mode": "markers",
+            "name": "origin",
+            "opacity": 1,
+            "showlegend": true,
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "mode": "text",
+            "opacity": 1,
+            "showlegend": false,
+            "text": [
+              "origin"
+            ],
+            "textfont": {
+              "color": "#000000",
+              "size": 14
+            },
+            "type": "scatter3d",
+            "x": [
+              0
+            ],
+            "y": [
+              0
+            ],
+            "z": [
+              0
+            ]
+          },
+          {
+            "colorscale": [
+              [
+                0,
+                "#9c2f00"
+              ],
+              [
+                1,
+                "#9c2f00"
+              ]
+            ],
+            "lighting": {
+              "ambient": 0.75,
+              "diffuse": 0.8,
+              "fresnel": 0.05,
+              "roughness": 0.85,
+              "specular": 0.1
+            },
+            "lightposition": {
+              "x": 100,
+              "y": 200,
+              "z": 300
+            },
+            "opacity": 0.8,
+            "showlegend": false,
+            "showscale": false,
+            "type": "surface",
+            "x": [
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                1
+              ]
+            ],
+            "y": [
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                1
+              ]
+            ],
+            "z": [
+              [
+                0,
+                0.25,
+                0
+              ],
+              [
+                0.25,
+                0.5,
+                0.25
+              ],
+              [
+                0,
+                0.25,
+                0
+              ]
+            ]
+          }
+        ],
+        "layout": {
+          "autosize": true,
+          "colorway": [
+            "#000000",
+            "#005a9c",
+            "#9c2f00",
+            "#00633f",
+            "#7a1f5c",
+            "#5b2c83",
+            "#704f00",
+            "#164e63"
+          ],
+          "font": {
+            "color": "#000000",
+            "family": "Atkinson Hyperlegible, Arial, sans-serif",
+            "size": 16
+          },
+          "hoverlabel": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#000000",
+            "font": {
+              "color": "#000000",
+              "family": "Atkinson Hyperlegible, Arial, sans-serif",
+              "size": 16
+            },
+            "namelength": 48
+          },
+          "legend": {
+            "bgcolor": "#ffffff",
+            "bordercolor": "#666666",
+            "borderwidth": 1,
+            "font": {
+              "color": "#000000",
+              "size": 16
+            },
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+            "orientation": "v"
+          },
+          "margin": {
+            "b": 64,
+            "l": 72,
+            "pad": 4,
+            "r": 40,
+            "t": 54
+          },
+          "paper_bgcolor": "#ffffff",
+          "plot_bgcolor": "#ffffff",
+          "scene": {
+            "aspectmode": "data",
+            "bgcolor": "#ffffff",
+            "camera": {
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "eye": {
+                "x": 1.5,
+                "y": 1.5,
+                "z": 1.25
+              },
+              "up": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+              }
+            },
+            "xaxis": {
+              "autorange": true,
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "x"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#666666"
+            },
+            "yaxis": {
+              "autorange": true,
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "y"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#666666"
+            },
+            "zaxis": {
+              "autorange": true,
+              "color": "#000000",
+              "gridcolor": "#666666",
+              "linecolor": "#000000",
+              "showgrid": true,
+              "showticklabels": true,
+              "tickangle": 0,
+              "tickmode": "auto",
+              "ticks": "outside",
+              "title": {
+                "text": "z"
+              },
+              "type": "linear",
+              "zeroline": true,
+              "zerolinecolor": "#666666"
+            }
+          },
+          "xaxis": {
+            "automargin": true,
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "zerolinecolor": "#666666"
+          },
+          "yaxis": {
+            "automargin": true,
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "zerolinecolor": "#666666"
+          }
+        }
+      },
+      "source": "line3d(helix) + point3d((0,0,0)) + text3d('origin',(0,0,0)) + parametric_plot3d(surface)",
+      "theme": "high-contrast",
+      "title": "Sage semantic 3D primitives and surface",
+      "validation_codes": []
+    }
+  ]
+}
