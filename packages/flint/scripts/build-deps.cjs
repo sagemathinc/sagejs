@@ -310,7 +310,14 @@ function extract(archive, dependency) {
   const source = join(sources, `${dependency.name}-${dependency.version}`);
   rmSync(source, { recursive: true, force: true });
   mkdirSync(source, { recursive: true });
-  run("tar", ["xf", archive, "-C", source, "--strip-components=1"]);
+  // An absolute Windows archive path such as `D:\\...` is parsed by tar as
+  // the remote archive syntax `host:file`. Run in the archive directory so
+  // that the archive operand itself is unambiguously local on every host.
+  run(
+    "tar",
+    ["xf", basename(archive), "-C", source, "--strip-components=1"],
+    { cwd: dirname(archive) },
+  );
   return source;
 }
 
