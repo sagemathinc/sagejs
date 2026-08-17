@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-polygons",
+  "title": "Nf Maxorder Polygons",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement Hecke-informed Dedekind criterion, first-order Newton polygons, residual regularity, local index evidence, and multiplier-ring fallback planning from P3",
+  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_polygons.py",
+    "test/number-field-local-polygons.cjs",
+    "test/fixtures/number-field-local-polygons.json",
+    "bench/number-field-local-polygons.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/MaxOrd"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Hecke",
+      "GP/PARI",
+      "existing Round-2 implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Committed e9c637e4 implements stable strict-Python Dedekind and first-order Newton-polygon stages, residual regularity over finite extensions, canonical local enlargement lattices, typed shared-contract mapping, conservative ComponentSplit handling, multiplier-ring fallback plans, frozen Sage/PARI/Hecke fixtures, and performance guards. Focused tests, strict Python, architecture, and benchmark ceilings pass.",
+    "risks": [
+      "The first-order path deliberately returns not-applicable for irregular residual polynomials; integration must execute the existing p-radical/multiplier-ring fallback from the supplied partial basis.",
+      "The repository-wide native suite is red on inherited stale FFI/native ratchets for number_field_order_pmaximal and number_field_order_maximal_at_primes; this lane adds no native boundary and its focused checks are green."
+    ],
+    "next_steps": [
+      "Cherry-pick e9c637e4 after the shared maximal_order_contracts commit and route proven-prime local components through analyze_local_component.",
+      "When LocalOrderResult.state is not-applicable, start Round 2 from the returned partial OrderBasis and append multiplier_ring_iteration_plan evidence to the global trace.",
+      "Resolve the integration branch's shared FFI/native artifact ratchet before rerunning pnpm test:native."
+    ]
+  }
+}
