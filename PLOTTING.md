@@ -145,6 +145,35 @@ Single-executable builds embed the Plotly bundle for HTML output; their static
 PNG/SVG helper is not bundled yet, so use HTML/JSON or the npm distribution
 when running an SEA artifact.
 
+Node embeddings can inspect the renderer without launching a browser:
+
+```js
+import {
+  nodeGraphicsExportCapabilities,
+} from "./dist/tools/graphics-export.js";
+
+const capabilities = nodeGraphicsExportCapabilities();
+console.log(capabilities.formats.svg.available);
+```
+
+The result is versioned, JSON-safe, and reports each format's media type,
+backend, delivery mechanism, animation behavior, caveats, unavailability
+reason, and resource limits. It deliberately does not disclose the discovered
+browser path. JSON and self-contained HTML are always available in Node;
+static image formats report unavailable when Chrome, Chromium, or Edge cannot
+be found or when Sage.js is running as a single executable.
+
+Static image jobs are rejected before Chromium starts if a dimension exceeds
+8192 pixels, scale exceeds 4, rendered size exceeds 64 million pixels, or the
+serialized request exceeds 64 MiB. Renderer execution is limited to 30
+seconds and 64 MiB of output. Failures use stable `SAGEJS_GRAPHICS_*` codes and
+name HTML and JSON as browser-free fallbacks.
+
+Browser discovery supports Chrome, Chromium, and Edge on Linux, macOS, and
+Windows. An explicitly configured `SAGEJS_CHROMIUM_PATH` is authoritative: a
+missing configured path produces an actionable capability failure instead of
+silently selecting a different browser.
+
 Browser embeddings can provide `onGraphicsSave` when creating their session.
 The bundled demo uses this callback and `downloadSageDisplay()` to turn
 `g.save('plot.png')` into a browser download:
