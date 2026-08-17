@@ -77,6 +77,55 @@ test(
   },
 );
 
+test(
+  "mixed support keeps word primes native and certifies only the exact fallback",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(
+        [
+          "from sagejs.number_fields.maximal_order_certification import check_order_lattice",
+          "from sagejs.number_fields.maximal_order_engine import _basis_from_order",
+          "import sagejs.number_fields.local_polygons as polygons",
+          "p = 18446744073709551629",
+          "q = 3",
+          "coefficients = [-2*(p*q)^2, 0, 1]",
+          "original_factor = polygons.factor_mod_prime",
+          "factor_primes = []",
+          "def arbitrary_only_factor(coefficients, prime):",
+          "    factor_primes.append(prime)",
+          "    if prime <= 18446744073709551615:",
+          "        raise AssertionError('word prime escaped the native batch')",
+          "    return original_factor(coefficients, prime)",
+          "polygons.factor_mod_prime = arbitrary_only_factor",
+          "R.<x> = QQ[]",
+          "K.<a> = NumberField(R(coefficients))",
+          "O = K.maximal_order(trace=True)",
+          "polygons.factor_mod_prime = original_factor",
+          "basis = _basis_from_order(O, 1)",
+          "lattice = check_order_lattice(coefficients, basis.numerator, basis.denominator)",
+          "corrupt_numerator = [list(row) for row in basis.numerator]",
+          "corrupt_numerator[-1][0] = corrupt_numerator[-1][0] + 1",
+          "corrupt = check_order_lattice(coefficients, corrupt_numerator, basis.denominator)",
+          "events = O.maximal_order_trace()['events']",
+          "native = [event for event in events if event['stage'] == 'native-local-orders'][0]",
+          "partition = [event for event in events if event['stage'] == 'local-capability-partition'][0]",
+          "stages = [event['stage'] for event in events]",
+          "certificate = O.maximality_certificate()",
+          "[factor_primes, O.basis(), O.discriminant(), O.is_maximal(), certificate['certified'], sorted([w['prime'] for w in certificate['local_witnesses']]), native['details']['resolved_prime_count'], native['details']['deferred_arbitrary_prime_count'], native['details']['capability_partitioned'], partition['details']['native_word_primes'], partition['details']['exact_fallback_primes'], 'arbitrary-prime-local-order' in stages, 'round2-local-order' in stages, lattice['valid'], corrupt['valid']]",
+        ].join("\n"),
+      );
+      assert.equal(
+        result.repr,
+        "[[18446744073709551629], [1, 1/55340232221128654887*a], 8, True, True, [2, 3, 18446744073709551629], 2, 1, True, [2, 3], [18446744073709551629], True, False, True, False]",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
 test("the public fallback uses canonical jobs and preserves forced equivalence", async () => {
   const session = await createSage();
   try {
