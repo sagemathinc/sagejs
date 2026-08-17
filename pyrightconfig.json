@@ -36,25 +36,19 @@
     "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
     "src/lib/sage/__init__.py",
-<<<<<<< HEAD
     "src/lib/sage/rings/__init__.py",
     "src/lib/sage/rings/puiseux_series_ring.py",
     "src/lib/sage/rings/puiseux_series_ring_element.py",
-=======
     "src/lib/sage/databases/__init__.py",
     "src/lib/sage/databases/conway.py",
->>>>>>> main
     "src/lib/sage/graphs/__init__.py",
     "src/lib/sage/graphs/digraph.py",
     "src/lib/sage/graphs/graph.py",
     "src/lib/sage/graphs/graph_generators.py",
     "src/lib/sage/graphs/graph_database.py",
-<<<<<<< HEAD
     "src/lib/sage/plot/__init__.py",
     "src/lib/sage/plot/misc.py",
-=======
     "src/lib/conway_polynomials/__init__.py",
->>>>>>> main
     "src/lib/sagejs_elliptic_advanced.py",
     "src/lib/sagejs/__init__.py",
     "src/lib/sagejs/javascript.py",
