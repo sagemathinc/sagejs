@@ -69,7 +69,7 @@ def _theme_document(name: str) -> dict[str, JSONValue]:
         # notebook fallback keeps this lowering usable during staged merges.
         if name != "notebook":
             raise ValueError("plot theme is not installed: " + name)
-        return {"layout": {}, "config": {}}
+        return {"layout": {}, "config": {}, "trace_defaults": {}}
     get_theme = getattr(themes, "get_theme")
     theme = get_theme(name)
     document = theme.to_dict()
@@ -239,6 +239,24 @@ def lower_layer(layer: PlotLayer, dimension: int) -> list[dict[str, JSONValue]]:
     raise ValueError("plot dimension must be 2 or 3")
 
 
+def _apply_trace_defaults(
+    trace: Mapping[str, Any],
+    defaults: Mapping[str, Any],
+) -> dict[str, JSONValue]:
+    """Merge portable theme defaults beneath one explicit Plotly trace."""
+    answer = materialize_object(trace, "$.trace")
+    for field in ("line", "marker"):
+        default = defaults.get(field)
+        explicit = answer.get(field)
+        if isinstance(default, Mapping) and isinstance(explicit, Mapping):
+            answer[field] = _merge_objects(default, explicit)
+    trace_type = answer.get("type")
+    typed_default = defaults.get(trace_type) if isinstance(trace_type, str) else None
+    if isinstance(typed_default, Mapping):
+        answer = _merge_objects(typed_default, answer)
+    return answer
+
+
 def _presentation_annotations(spec: PlotSpec) -> list[dict[str, JSONValue]]:
     document = spec.to_dict()
     raw = document["annotations"]
@@ -274,8 +292,13 @@ def lower_plot_spec(spec: PlotSpec) -> dict[str, JSONValue]:
     theme = _theme_document(spec.theme)
     theme_layout = theme.get("layout", {})
     theme_config = theme.get("config", {})
-    if not isinstance(theme_layout, Mapping) or not isinstance(theme_config, Mapping):
-        raise TypeError("theme layout and config must be mappings")
+    theme_trace_defaults = theme.get("trace_defaults", {})
+    if (
+        not isinstance(theme_layout, Mapping)
+        or not isinstance(theme_config, Mapping)
+        or not isinstance(theme_trace_defaults, Mapping)
+    ):
+        raise TypeError("theme layout, config, and trace_defaults must be mappings")
     layout = materialize_object(theme_layout, "$.theme.layout")
     config = _merge_objects(
         {"displaylogo": False, "responsive": True},
@@ -315,5 +338,11 @@ def lower_plot_spec(spec: PlotSpec) -> dict[str, JSONValue]:
 
     traces: list[JSONValue] = []
     for layer in spec.layers:
-        traces.extend(lower_layer(layer, spec.dimension))
+        lowered = lower_layer(layer, spec.dimension)
+        if legacy_complete:
+            traces.extend(lowered)
+        else:
+            traces.extend(
+                _apply_trace_defaults(trace, theme_trace_defaults) for trace in lowered
+            )
     return {"data": traces, "layout": layout, "config": config}

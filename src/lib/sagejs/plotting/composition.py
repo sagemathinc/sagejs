@@ -106,7 +106,9 @@ class Panel2D:
 
     @property
     def spec(self) -> PlotSpec:
-        return PlotSpec.from_dict(self._spec.to_dict())
+        # PlotSpec is itself immutable-by-interface, so returning this stable
+        # value avoids copying every coordinate during presentation lowering.
+        return self._spec
 
     @property
     def row(self) -> int:
@@ -208,18 +210,7 @@ class PanelComposition2D:
 
     @property
     def panels(self) -> tuple[Panel2D, ...]:
-        return tuple(
-            Panel2D(
-                panel.id,
-                panel.spec,
-                panel.row,
-                panel.column,
-                row_span=panel.row_span,
-                column_span=panel.column_span,
-                title=panel.title,
-            )
-            for panel in self._panels
-        )
+        return self._panels
 
     @property
     def horizontal_gap(self) -> float:
