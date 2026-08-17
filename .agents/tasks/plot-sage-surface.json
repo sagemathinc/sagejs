@@ -1,0 +1,117 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-sage-surface",
+  "title": "Pin the Sage plotting surface",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate and validate exhaustive pinned Sage 10.9.post1 2D and 3D plotting surface artifacts with source hashes and documented classifications ready for the product coverage ledger",
+  "base_commit": "f6995c514a0c29fda6815009856a537d36c112ed",
+  "claims": [
+    "scripts/plotting/generate-sage-surface.py",
+    "docs/sage-compatibility/plotting/sage-surface.json",
+    "docs/sage-compatibility/plotting/README.md",
+    "test/plotting-sage-surface.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post1 installed via /home/user/bin/sagelite",
+    "https://doc.sagemath.org/html/en/reference/plotting/"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Installed Sage 10.9.post1 module and documentation introspection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/plotting-sage-surface.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/plotting-sage-surface.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.136,
+      "started_at": "2026-08-17T05:10:42.214Z",
+      "commit": "48b1f5f045855d75a1e5989392aadd709e51067c",
+      "workspace_fingerprint": "d45383659f081a7b638665f1558d8529d8b92645e3d02aec8f02e7cea937d0c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.744,
+      "started_at": "2026-08-17T05:10:46.803Z",
+      "commit": "48b1f5f045855d75a1e5989392aadd709e51067c",
+      "workspace_fingerprint": "d45383659f081a7b638665f1558d8529d8b92645e3d02aec8f02e7cea937d0c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 179.699,
+      "started_at": "2026-08-17T05:11:13.807Z",
+      "commit": "48b1f5f045855d75a1e5989392aadd709e51067c",
+      "workspace_fingerprint": "d45383659f081a7b638665f1558d8529d8b92645e3d02aec8f02e7cea937d0c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.912,
+      "started_at": "2026-08-17T05:14:33.066Z",
+      "commit": "f6995c514a0c29fda6815009856a537d36c112ed",
+      "workspace_fingerprint": "fcc6133369170c119f83862fdcc38daa4ac98aff6ffcbc0b845e63388cefe6da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plotting-sage-surface.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.138,
+      "started_at": "2026-08-17T05:15:16.775Z",
+      "commit": "f6995c514a0c29fda6815009856a537d36c112ed",
+      "workspace_fingerprint": "fcc6133369170c119f83862fdcc38daa4ac98aff6ffcbc0b845e63388cefe6da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.106,
+      "started_at": "2026-08-17T05:15:17.679Z",
+      "commit": "f6995c514a0c29fda6815009856a537d36c112ed",
+      "workspace_fingerprint": "fcc6133369170c119f83862fdcc38daa4ac98aff6ffcbc0b845e63388cefe6da",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated the deterministic SageMath 10.9.post1 plotting authority surface: 49 documented modules (31 2D and 18 3D), 121 module-local public functions, 88 module-local public classes, 328 directly declared public methods, complete signatures, and per-module SHA-256 evidence. Added regeneration documentation and a Sage-independent focused structural test.",
+    "risks": [
+      "The Sagelite wheel omits Cython .pyx sources, so 7 compiled-module hashes explicitly cover the installed Linux x64 extension binaries and will differ across platform builds.",
+      "The callable surface intentionally excludes constants, data attributes, private names, protocol methods beginning with an underscore, and inherited-method duplication; later ledgers should add a separately defined artifact if those categories become product requirements.",
+      "The full integration attempt recorded 170 passes, 233 failures, and 1 skip because this worktree has no FLINT/FFLAS addons, headers, generated manifests, or production native artifacts. Root integration must rerun it in the provisioned main worktree; the inventory-focused test, strict gate, and architecture gate pass here."
+    ],
+    "next_steps": [
+      "Add test/plotting-sage-surface.cjs to the shared Node test manifest and classify sage-surface.json as generated in the integration lane, whose claims own those registries.",
+      "Consume schema_version 1 from the coverage-classifier lane, preserving qualified_name as the stable join key and sha256_scope when reporting source provenance.",
+      "Run the full integration suite from the provisioned root worktree with FLINT/FFLAS addons and native artifacts available."
+    ]
+  }
+}
