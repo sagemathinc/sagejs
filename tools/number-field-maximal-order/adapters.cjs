@@ -116,6 +116,7 @@ class JsonWorkerAdapter {
       field_discriminant: payload.field_discriminant,
       certified: payload.certified,
       factorization: payload.factorization,
+      profiling_only: boundary === "factor-discovery",
     };
   }
 

@@ -139,6 +139,15 @@ def check_order_lattice(
     if denominator < 1 or len(basis_numerator) != degree:
         return {"valid": False, "reason": "basis-shape"}
     rows = [[int(value) for value in row] for row in basis_numerator]
+    if denominator == 1 and all(
+        rows[row][column] == (1 if row == column else 0)
+        for row in range(degree)
+        for column in range(degree)
+    ):
+        # A monic integral defining polynomial makes the power basis an order
+        # by construction.  This is a proof shortcut, not a trusted algorithm
+        # flag: shape, monicity, and every identity entry were checked here.
+        return {"valid": True, "reason": "checked-equation-power-basis"}
     inverse = _inverse_matrix(rows)
     if inverse is None:
         return {"valid": False, "reason": "singular-basis"}

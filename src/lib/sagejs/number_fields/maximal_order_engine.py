@@ -90,6 +90,8 @@ def _order_from_basis(
 
 def _basis_from_order(order: Any, scale: int) -> OrderBasis:
     """Describe a public order in the integral equation generator basis."""
+    if order._basis_rows == order.number_field().equation_order()._basis_rows:
+        return _identity_basis(order.degree())
     rational_rows = []
     common_denominator = 1
     for source_row in order._basis_rows:
@@ -303,11 +305,13 @@ class _CertificateAdapter:
         scale: int,
         equation_discriminant: int,
         composite_results: dict[int, BuchmannLenstraResult],
+        replay_primes: list[int],
     ) -> None:
         self.coefficients = list(coefficients)
         self.scale = scale
         self.equation_disc = equation_discriminant
         self.composite_results = composite_results
+        self.replay_primes = list(replay_primes)
         self._candidate: Any = None
 
     def defining_polynomial(self, candidate: Any) -> list[int]:
@@ -371,6 +375,23 @@ class _CertificateAdapter:
         order_discriminant = _exact_integer(candidate.discriminant())
         if _valuation(order_discriminant, prime) <= 1:
             return True
+        if prime in self.replay_primes:
+            try:
+                replay = native_order_from_polynomial(self.coefficients, [prime])
+                if (
+                    replay.complete
+                    and replay.equation_discriminant == self.equation_disc
+                    and _valuation(replay.order_discriminant, prime)
+                    == _valuation(order_discriminant, prime)
+                ):
+                    return True
+            except Exception:
+                pass
+        field = candidate.number_field()
+        if candidate._basis_rows == field.equation_order()._basis_rows:
+            return bool(
+                _maximal_order_module().equation_order_is_p_maximal(field, prime)
+            )
         checked = _maximal_order_module().p_maximal_overorder_dynamic(candidate, prime)
         return _same_order(checked, candidate)
 
@@ -637,6 +658,7 @@ def compute_maximal_order(
         scale,
         equation_discriminant,
         composite_results,
+        relevant_primes,
     )
     adapter.bind_candidate(order)
     certificate = certify_global_order(

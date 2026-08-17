@@ -206,6 +206,7 @@
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
+    "bench:number-field-maximal-orders": "node tools/number-field-maximal-order/cli.cjs run",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
     "bench:modular-symbols:checkpoints": "node bench/modsym-checkpoint-pipeline.cjs",
