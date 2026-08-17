@@ -31,6 +31,7 @@ import {
   baselibStandaloneImportPrelude,
   standaloneRuntimeRequirePrelude,
 } from "./standalone-library.cjs";
+const { createPortableSourcePaths } = require("./portable-source-paths.cjs");
 
 // TODO
 type Parsed = any;
@@ -93,6 +94,7 @@ export default async function Compile({
     execute?: boolean;
     stats?: boolean;
     filename_for_stdin?: string;
+    portable_sagejs_paths?: boolean;
     comments?: string;
     sage?: boolean;
     magma?: boolean;
@@ -108,6 +110,9 @@ export default async function Compile({
   lib_path: string;
 }): Promise<void> {
   const PyLang = createCompiler();
+  const portableSources = argv.portable_sagejs_paths
+    ? createPortableSourcePaths(src_path, "src")
+    : undefined;
   const pythonFrontend = await createPythonCompilerFrontend(
     PyLang,
     argv.sage ? "sage" : "python",
@@ -151,6 +156,12 @@ export default async function Compile({
       filename,
       basedir: filename !== "<stdin>" ? dirname(filename) : undefined,
       libdir: join(src_path, "lib"),
+      ...(portableSources
+        ? {
+            logicalize_filename: portableSources.logicalize,
+            filename_policy: portableSources.policy,
+          }
+        : {}),
       import_dirs: getImportDirs(argv.import_path),
       discard_asserts: argv.discard_asserts,
       module_cache_dir,

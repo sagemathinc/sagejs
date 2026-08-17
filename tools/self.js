@@ -15,8 +15,9 @@ var {
   analyzeBaselibModules,
   moduleId: baselibModuleId,
 } = require("./baselib-modules.cjs");
+var { createPortableSourcePaths } = require("./portable-source-paths.cjs");
 
-async function compile_baselib(PyLang, src_path) {
+async function compile_baselib(PyLang, src_path, portableSources) {
   let supportsPythonOrdering = false;
   try {
     // The immutable stage-zero compiler predates this independently
@@ -50,14 +51,17 @@ async function compile_baselib(PyLang, src_path) {
   try {
     const modules = items.map(function (fname) {
       var ast;
-      var raw = fs.readFileSync(
-        path.join(src_path, "baselib", fname),
-        "utf-8",
-      );
+      var sourceFilename = path.join(src_path, "baselib", fname);
+      var raw = fs.readFileSync(sourceFilename, "utf-8");
       try {
         ast = (frontend ? frontend.parse : PyLang.parse)(raw, {
-          filename: fname,
+          // Preserve the immutable stage-zero compiler's historical short
+          // baselib names.  Every converged current-frontend pass uses the
+          // physical/logical split below.
+          filename: frontend ? sourceFilename : fname,
           basedir: path.join(src_path, "baselib"),
+          logicalize_filename: portableSources.logicalize,
+          filename_policy: portableSources.policy,
           intrinsic_package_shells: true,
           // Baselib classes implement Python objects, so extracting a method
           // from an instance must retain that instance as ``self``.
@@ -115,8 +119,10 @@ async function compile_baselib(PyLang, src_path) {
       const runtimePath = path.join(src_path, "baselib", runtimeFilename);
       const raw = fs.readFileSync(runtimePath, "utf-8");
       const ast = frontend.parse(raw, {
-        filename: runtimeFilename,
+        filename: runtimePath,
         basedir: path.dirname(runtimePath),
+        logicalize_filename: portableSources.logicalize,
+        filename_policy: portableSources.policy,
         intrinsic_package_shells: true,
         scoped_flags: { bound_methods: true },
         compiler_bootstrap: true,
@@ -328,6 +334,7 @@ function check_for_changes(base_path, src_path, signatures) {
   var compiler_files = [
     module.filename,
     path.join(base_path, "tools", "baselib-modules.cjs"),
+    path.join(base_path, "tools", "portable-source-paths.cjs"),
     path.join(base_path, "tools", "compiler.ts"),
     path.join(base_path, "tools", "runtime-bootstrap.ts"),
   ];
@@ -374,7 +381,12 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
   var t1 = new Date().getTime();
   var PyLang = createCompiler();
   var output_options, profiler, cpu_profile;
-  var compiled_baselib = await compile_baselib(PyLang, src_path);
+  var portableSources = createPortableSourcePaths(src_path, "src");
+  var compiled_baselib = await compile_baselib(
+    PyLang,
+    src_path,
+    portableSources,
+  );
   var out_path = lib_path;
   try {
     fs.mkdirSync(out_path);
@@ -413,6 +425,8 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
       filename: file,
       basedir: path.dirname(file),
       libdir: path.join(src_path, "lib"),
+      logicalize_filename: portableSources.logicalize,
+      filename_policy: portableSources.policy,
       compiler_bootstrap: true,
     });
   }
