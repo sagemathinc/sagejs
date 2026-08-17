@@ -74,3 +74,30 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
     await session.close();
   }
 });
+
+test("forced local algorithms remain differential and certified", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R.<x> = QQ[]",
+        "summaries = []",
+        "for algorithm in ['round2', 'polygon', 'round4', 'native']:",
+        "    K.<a> = NumberField(x^3 + x^2 - 2*x + 8)",
+        "    O = K.maximal_order(algorithm=algorithm, trace=True)",
+        "    summaries.append((algorithm, O.basis(), O.discriminant(), O.is_maximal(), O.maximal_order_trace()['events'][1]['stage']))",
+        "K.<a> = NumberField(x^2 - 8)",
+        "O = K.maximal_order(algorithm='om-maxmin', trace=True)",
+        "summaries.append(('om-maxmin', O.basis(), O.discriminant(), O.is_maximal(), O.maximal_order_trace()['events'][1]['details']['used_algorithm']))",
+        "summaries",
+      ].join("\n"),
+    );
+    assert.match(result.repr, /\('round2'.*\[1, 1\/2\*a\^2 \+ 1\/2\*a, a\^2\], -503, True/);
+    assert.match(result.repr, /\('polygon'.*'selected-local-order'/);
+    assert.match(result.repr, /\('round4'.*'selected-local-order'/);
+    assert.match(result.repr, /\('native'.*'native-local-orders'/);
+    assert.match(result.repr, /\('om-maxmin', \[1, 1\/2\*a\], 8, True, 'om-maxmin'\)/);
+  } finally {
+    await session.close();
+  }
+});

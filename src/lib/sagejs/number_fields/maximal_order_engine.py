@@ -176,6 +176,124 @@ def _same_order(left: Any, right: Any) -> bool:
     return left._basis_rows == right._basis_rows
 
 
+def _merge_orders(field: Any, left: Any, right: Any) -> Any:
+    if left._basis_rows == field.equation_order()._basis_rows:
+        return right
+    if right._basis_rows == field.equation_order()._basis_rows:
+        return left
+    return NumberFieldOrder(
+        field,
+        list(left._basis_rows) + list(right._basis_rows),
+        False,
+        True,
+    )
+
+
+def _forced_local_order(
+    field: Any,
+    coefficients: list[int],
+    scale: int,
+    equation_order: Any,
+    equation_discriminant: int,
+    prime: int,
+    algorithm: str,
+) -> tuple[Any, str, dict[str, Any]]:
+    """Run one inspectable local algorithm with a certified Round-2 fallback."""
+    local_valuation = _valuation(equation_discriminant, prime)
+    if algorithm == "round2":
+        return (
+            _maximal_order_module().p_maximal_overorder_dynamic(equation_order, prime),
+            "round2",
+            {"selection": "forced"},
+        )
+    if algorithm == "round4":
+        module = __import__("sagejs.number_fields.round4", fromlist=["round4"])
+        result = module.modified_round4_local_order(
+            equation_order,
+            prime,
+            "dynamic-round2",
+            False,
+        )
+        return (
+            result.order,
+            result.certificate.algorithm,
+            {
+                "selection": "forced",
+                "fallback_reason": result.certificate.fallback_reason,
+                "local_index_valuation": result.certificate.local_index_valuation,
+            },
+        )
+    component = DiscriminantComponent(
+        prime,
+        "proven-prime",
+        evidence={"source": "certified public decomposition"},
+    )
+    if algorithm == "polygon":
+        module = __import__(
+            "sagejs.number_fields.local_polygons",
+            fromlist=["local_polygons"],
+        )
+        result = module.analyze_local_component(
+            coefficients,
+            component,
+            local_valuation,
+            equation_discriminant,
+        )
+        if result.state == "complete" and result.basis is not None:
+            discriminant = (
+                equation_discriminant // (result.index * result.index)
+                if result.discriminant is None
+                else int(result.discriminant)
+            )
+            return (
+                _order_from_basis(field, result.basis, scale, discriminant),
+                "polygon",
+                {"selection": "forced", "fallback": False},
+            )
+        return (
+            _maximal_order_module().p_maximal_overorder_dynamic(equation_order, prime),
+            "round2",
+            {
+                "selection": "forced-polygon",
+                "fallback": True,
+                "reason": result.message,
+            },
+        )
+    if algorithm == "om-maxmin":
+        module = __import__(
+            "sagejs.number_fields.om_maxmin",
+            fromlist=["om_maxmin"],
+        )
+        result = module.regular_local_basis(
+            tuple(coefficients),
+            prime,
+            local_discriminant_valuation=local_valuation,
+            differential_evidence=True,
+        )
+        if result.status == "complete" and result.order_basis is not None:
+            discriminant = equation_discriminant // (
+                result.local_result.index * result.local_result.index
+            )
+            return (
+                _order_from_basis(field, result.order_basis, scale, discriminant),
+                "om-maxmin",
+                {
+                    "selection": "forced",
+                    "certificate_id": result.type_tree.certificate_id,
+                },
+            )
+        return (
+            _maximal_order_module().p_maximal_overorder_dynamic(equation_order, prime),
+            "round2",
+            {
+                "selection": "forced-om-maxmin",
+                "fallback": True,
+                "reason": result.reason,
+            },
+        )
+    raise ValueError("unknown forced local algorithm")
+
+
 class _CertificateAdapter:
     """Independent checker adapter closed over one candidate and its evidence."""
 
@@ -304,8 +422,18 @@ def compute_maximal_order(
     trace_enabled: bool = False,
 ) -> Any:
     """Compute and certify a global or explicitly local maximal order."""
-    if algorithm not in ("auto", "round2", "native"):
-        raise ValueError("algorithm must be 'auto', 'round2', or 'native'")
+    if algorithm not in (
+        "auto",
+        "round2",
+        "native",
+        "polygon",
+        "round4",
+        "om-maxmin",
+    ):
+        raise ValueError(
+            "algorithm must be 'auto', 'native', 'round2', 'polygon', "
+            "'round4', or 'om-maxmin'"
+        )
     requested = _normalize_requested_primes(requested_primes)
     trace = MaximalOrderTrace(trace_enabled)
     coefficients, scale = _integral_polynomial_data(field)
@@ -417,12 +545,7 @@ def compute_maximal_order(
                     # generated by their two lattices.  Closure is recomputed
                     # here; the global certificate then checks it again from
                     # the resulting canonical basis.
-                    order = NumberFieldOrder(
-                        field,
-                        list(order._basis_rows) + list(prime_order._basis_rows),
-                        False,
-                        True,
-                    )
+                    order = _merge_orders(field, order, prime_order)
                 current_basis = _basis_from_order(order, scale)
                 used_native = True
                 trace.end(
@@ -444,7 +567,7 @@ def compute_maximal_order(
             if algorithm == "native":
                 raise
 
-    if not used_native:
+    if not used_native and algorithm in ("auto", "native", "round2"):
         for prime in relevant_primes:
             token = trace.begin("round2-local-order", {"prime": prime})
             order = _maximal_order_module().p_maximal_overorder_dynamic(order, prime)
@@ -454,6 +577,26 @@ def compute_maximal_order(
                 "complete",
                 {"order_discriminant": _exact_integer(order.discriminant())},
             )
+    elif not used_native:
+        for prime in relevant_primes:
+            token = trace.begin(
+                "selected-local-order",
+                {"prime": prime, "requested_algorithm": algorithm},
+            )
+            local_order, used_algorithm, details = _forced_local_order(
+                field,
+                coefficients,
+                scale,
+                equation_order,
+                equation_discriminant,
+                prime,
+                algorithm,
+            )
+            order = _merge_orders(field, order, local_order)
+            current_basis = _basis_from_order(order, scale)
+            details["used_algorithm"] = used_algorithm
+            details["order_discriminant"] = _exact_integer(order.discriminant())
+            trace.end(token, "complete", details)
 
     order_discriminant = _exact_integer(order.discriminant())
     index = _index_from_discriminants(equation_discriminant, order_discriminant)
