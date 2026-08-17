@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-gallery-quality",
+  "title": "Deterministic plotting gallery evidence",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate and validate a compact cross-dimensional Sage plotting gallery with semantic, geometry, responsive, contrast, alt-text, SVG/PNG, and performance evidence plus explicit Wolfram/MATLAB placeholders and a human-review protocol",
+  "base_commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+  "claims": [
+    "docs/sage-compatibility/plotting/gallery/",
+    "scripts/plotting/generate-gallery.cjs",
+    "test/plot-gallery-quality.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md",
+    "docs/sage-compatibility/plotting/themes.json"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Checked deterministic PlotSpec/Plotly fixtures and structural SVG/PNG rendering evidence",
+      "WCAG contrast thresholds and responsive viewport invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node scripts/plotting/generate-gallery.cjs --skip-render",
+    "node scripts/plotting/generate-gallery.cjs --render",
+    "node --test test/plot-gallery-quality.cjs",
+    "pnpm architecture:check",
+    "pnpm test:changed",
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
