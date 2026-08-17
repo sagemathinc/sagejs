@@ -89,17 +89,22 @@ def perfect_power_data(value: int) -> tuple[int, int]:
     number = int(value)
     if number in (-1, 0, 1):
         return number, 1
-    magnitude = abs(number)
-    maximum = magnitude.bit_length()
-    for exponent in range(maximum, 1, -1):
-        if number < 0 and exponent % 2 == 0:
+    base = abs(number)
+    total_exponent = 1
+    # It is enough to extract prime exponents: every exponent greater than
+    # one has a prime divisor.  Repeating each extraction recovers its full
+    # valuation, so `total_exponent` is maximal without trying every integer
+    # up to the bit length.  Negative integers can only have odd exponents.
+    for exponent in _small_primes(base.bit_length()):
+        if number < 0 and exponent == 2:
             continue
-        root = _integer_nth_root(magnitude, exponent)
-        if root**exponent == magnitude:
-            if number < 0:
-                root = -root
-            return root, exponent
-    return number, 1
+        while base > 1:
+            root = _integer_nth_root(base, exponent)
+            if root**exponent != base:
+                break
+            base = root
+            total_exponent *= exponent
+    return (-base if number < 0 else base), total_exponent
 
 
 def _small_primes(bound: int) -> list[int]:

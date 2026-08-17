@@ -110,6 +110,29 @@ assert perfect_power_data(2**60) == (2, 60)
 assert perfect_power_data(3**12) == (3, 12)
 assert perfect_power_data(12) == (12, 1)
 assert perfect_power_data(-343) == (-7, 3)
+def slow_perfect_power(value):
+    if value in (-1, 0, 1):
+        return (value, 1)
+    magnitude = abs(value)
+    def slow_root(exponent):
+        low = 1
+        high = 1 << ((magnitude.bit_length() + exponent - 1) // exponent)
+        while low <= high:
+            middle = (low + high) // 2
+            if middle**exponent <= magnitude:
+                low = middle + 1
+            else:
+                high = middle - 1
+        return high
+    for exponent in range(magnitude.bit_length(), 1, -1):
+        if value < 0 and exponent % 2 == 0:
+            continue
+        root = slow_root(exponent)
+        if root**exponent == magnitude:
+            return (-root if value < 0 else root, exponent)
+    return (value, 1)
+for perfect_power_probe in range(-500, 501):
+    assert perfect_power_data(perfect_power_probe) == slow_perfect_power(perfect_power_probe)
 assert coprime_decomposition([12, 18]) == [2, 3]
 assert coprime_decomposition([72, 50]) == [2, 9, 25]
 
