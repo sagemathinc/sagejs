@@ -149,6 +149,18 @@ index 23ff793..e063bdd 100644
    static void init(const curvemodq& EE); // set Fq, E, f1, f2
  
    // data defining one element of th function field:
+diff --git a/libsrc/eclib/flinterface.h b/libsrc/eclib/flinterface.h
+index eac37a7..888ea1e 100644
+--- a/libsrc/eclib/flinterface.h
++++ b/libsrc/eclib/flinterface.h
+@@ -42,7 +42,6 @@
+ 
+ #include <flint/nmod.h>
+ #include <flint/nmod_mat.h>
+-#include <flint/profiler.h>
+ 
+ typedef unsigned int hlimb_t;
+ 
 diff --git a/libsrc/eclib/flint_backend.h b/libsrc/eclib/flint_backend.h
 new file mode 100644
 index 0000000..1836a1d
@@ -1137,11 +1149,29 @@ index 70992ee..31fe1d7 100644
  #endif
  #ifdef DEBUG_REALIFY
    cout<<"realifying P="<<P<<" (NTL version)"<<endl;
+diff --git a/libsrc/eclib/timer.h b/libsrc/eclib/timer.h
+index 6eb012b..09bfa39 100644
+--- a/libsrc/eclib/timer.h
++++ b/libsrc/eclib/timer.h
+@@ -25,13 +25,6 @@
+ #ifndef _ECLIB_TIMER_H
+ #define _ECLIB_TIMER_H      1
+ 
+-// Timer header files
+-#ifdef _WIN32
+-#include <windows.h>
+-#else
+-#include <sys/time.h>
+-#endif
+-
+ #include <unordered_map>
+ 
+ #include "interface.h"
 diff --git a/libsrc/polys.cc b/libsrc/polys.cc
-index 0c200fe..2e5d0b9 100644
+index 0c200fe..d8499d0 100644
 --- a/libsrc/polys.cc
 +++ b/libsrc/polys.cc
-@@ -23,6 +23,104 @@
+@@ -23,6 +23,105 @@
  
  #include "eclib/polys.h"
  
@@ -1197,7 +1227,8 @@ index 0c200fe..2e5d0b9 100644
 +  factors.clear();
 +  factors.reserve(static_cast<size_t>(factorization->num));
 +  for (slong index = 0; index < factorization->num; ++index)
-+    factors.push_back({from_flint(factorization->p + index), factorization->exp[index]});
++    factors.push_back({from_flint(factorization->p + index),
++                       static_cast<long>(factorization->exp[index])});
 +  fmpz_poly_factor_clear(factorization);
 +  fmpz_poly_clear(polynomial);
 +}
@@ -1215,7 +1246,7 @@ index 0c200fe..2e5d0b9 100644
 +  factors.reserve(static_cast<size_t>(factorization->num));
 +  for (slong index = 0; index < factorization->num; ++index)
 +    factors.push_back({from_flint(factorization->poly + index, context),
-+                       factorization->exp[index]});
++                       static_cast<long>(factorization->exp[index])});
 +  fmpz_mod_poly_factor_clear(factorization, context);
 +  fmpz_mod_poly_clear(polynomial, context);
 +  fmpz_mod_ctx_clear(context);
@@ -1246,7 +1277,7 @@ index 0c200fe..2e5d0b9 100644
  ZZ_pX reduce(const ZZX& f, const galois_field& Fq)
  {
    ZZ_pX fmodq;
-@@ -33,16 +131,27 @@ ZZ_pX reduce(const ZZX& f, const galois_field& Fq)
+@@ -33,16 +132,27 @@ ZZ_pX reduce(const ZZX& f, const galois_field& Fq)
  
  vector<ZZ_p> roots(const ZZ_pX& f)
  {
@@ -1319,7 +1350,7 @@ index 9a82dcb..6b18781 100644
    // assert (ker.dim()==r-s);
    mat_i bas = ker.bas();
 diff --git a/libsrc/timer.cc b/libsrc/timer.cc
-index 2229175..8d9acfc 100644
+index 2229175..0c95e3d 100644
 --- a/libsrc/timer.cc
 +++ b/libsrc/timer.cc
 @@ -23,15 +23,21 @@
@@ -1346,6 +1377,31 @@ index 2229175..8d9acfc 100644
  void show_time(ostream& s) 
  {
    s<<" ("<<(stoptime-starttime)<<" seconds)" << flush; 
+@@ -301,23 +307,7 @@ double timer::average( string name ) {
+  * Accuracy varies over different systems.
+  */
+ double timer::getWallTime() {
+-#ifdef _WIN32
+-  // Windows real time clock
+-  FILETIME  tm;
+-  ULONGLONG t;
+-
+-  GetSystemTimeAsFileTime( &tm );
+-  
+-  t = ((ULONGLONG)tm.dwHighDateTime << 32) | (ULONGLONG)tm.dwLowDateTime;
+-  return (double) t / 10000000.0;
+-#else
+-  // POSIX real time clock
+-  struct timeval tm;
+-
+-  gettimeofday( &tm, NULL );
+-
+-  return (double) tm.tv_sec + (double) tm.tv_usec / 1000000.0;
+-#endif
++  return monotonic_seconds();
+ }
+ 
+ /** 
 diff --git a/libsrc/vector.cc b/libsrc/vector.cc
 index 3b354e5..b07c133 100644
 --- a/libsrc/vector.cc
