@@ -1075,6 +1075,16 @@
       "commit": "6384dfe2f4a67c8fd08b3d30c13081607edb8c64",
       "workspace_fingerprint": "eee4413d202013a3ddf658e1e50217ee31ad2e3c5ca2ab25a175f6f70e3a427e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/portable-source-paths.cjs test/module-cache.cjs test/runtime-cache.cjs test/sea-windows-virtual-path.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.784,
+      "started_at": "2026-08-17T07:20:46.828Z",
+      "commit": "9fa92df4911ccec87e228be2c9715bbaf31bde56",
+      "workspace_fingerprint": "3b37c1710163fa6f6d7413c6a188ca75d73646473b37120ce400b4f82e192857",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
