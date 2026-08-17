@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Replace Wolfram and MATLAB plotting gallery placeholders with deterministic frontend-produced PlotSpec and Plotly fixtures plus structural responsive, accessibility, static export, and performance evidence",
-  "base_commit": "2b8d3c29af4708e041ced3fa71881be4d922fe31",
+  "base_commit": "8a2e2ce80f505d1b080b161804ec64c68b639414",
   "claims": [
     "docs/sage-compatibility/plotting/gallery/",
     "scripts/plotting/generate-gallery.cjs",
@@ -43,10 +43,70 @@
     "pnpm test:baselib:strict",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node scripts/plotting/generate-gallery.cjs --skip-render",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.186,
+      "started_at": "2026-08-17T08:00:05.128Z",
+      "commit": "d84b6224536e497dd10ea4141101ea31bde8fbbc",
+      "workspace_fingerprint": "f5fda3b285d127d1ac4b9eeea02e45629f024a485bcf8dafb71aecc19a6a33fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/plotting/generate-gallery.cjs --render",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.756,
+      "started_at": "2026-08-17T08:00:09.065Z",
+      "commit": "d84b6224536e497dd10ea4141101ea31bde8fbbc",
+      "workspace_fingerprint": "f5fda3b285d127d1ac4b9eeea02e45629f024a485bcf8dafb71aecc19a6a33fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plot-gallery-quality.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.924,
+      "started_at": "2026-08-17T08:00:27.592Z",
+      "commit": "d84b6224536e497dd10ea4141101ea31bde8fbbc",
+      "workspace_fingerprint": "f5fda3b285d127d1ac4b9eeea02e45629f024a485bcf8dafb71aecc19a6a33fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.724,
+      "started_at": "2026-08-17T08:00:54.560Z",
+      "commit": "d84b6224536e497dd10ea4141101ea31bde8fbbc",
+      "workspace_fingerprint": "f5fda3b285d127d1ac4b9eeea02e45629f024a485bcf8dafb71aecc19a6a33fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.674,
+      "started_at": "2026-08-17T08:01:02.020Z",
+      "commit": "d84b6224536e497dd10ea4141101ea31bde8fbbc",
+      "workspace_fingerprint": "f5fda3b285d127d1ac4b9eeea02e45629f024a485bcf8dafb71aecc19a6a33fa",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replaced all Wolfram/MATLAB pending placeholders with 3 live frontend-produced fixtures, for 13 gallery fixtures total. The generator executes createSage.evaluate, captures actual PlotSpec/Plotly output and provenance, checks contrast and semantic bounds, records responsive Chromium geometry plus representative SVG/PNG structure, and keeps output compact without raster blobs or pixel hashes. Wolfram Axes->False is explicit and asserted in the rendered layout. Focused deterministic generation, live Chromium, architecture, and strict-baselib receipts pass on rebased main-2 at 8a2e2ce8.",
+    "risks": [
+      "Wolfram and MATLAB currently generate useful semantic descriptions but do not attach explicit alt_text annotations; the fixtures intentionally retain PLOT_ALT_TEXT_MISSING.",
+      "Plotly's rendered DOM still lacks an accessible name, and visual aesthetics/keyboard behavior remain part of the documented human review protocol.",
+      "The Wolfram 3D frontend currently exposes a raw plotly-trace layer, so its bounds evidence is derived from the actual Plotly coordinate grids rather than semantic PlotSpec bounds.",
+      "Static export and live responsive evidence were recorded on linux-x64; the lane does not claim cross-platform Chromium execution."
+    ],
+    "next_steps": [
+      "Run the broad pnpm test:integration tier in the root integration lane; it is intentionally not duplicated in this narrow evidence lane.",
+      "Promote foreign-frontend generated descriptions into explicit PlotSpec annotations and attach accessible naming in the renderer before claiming complete screen-reader support.",
+      "Use the documented human review protocol for a plotting release or Plotly/theme/default change."
+    ]
   }
 }
