@@ -529,7 +529,7 @@ def hensel_refine_primary_factors(
     if len(irreducible_factors) == 0 or len(irreducible_factors) != len(multiplicities):
         raise ValueError("factor and multiplicity vectors must be nonempty")
     primary_factors = []
-    for factor, multiplicity in zip(irreducible_factors, multiplicities):
+    for factor, multiplicity in zip(irreducible_factors, multiplicities, strict=True):
         if multiplicity < 1:
             raise ValueError("factor multiplicities must be positive")
         primary_factors.append(_poly_mod(_poly_pow(factor, multiplicity), prime))
@@ -545,7 +545,7 @@ def hensel_refine_primary_factors(
         polynomial_coefficients, modulus
     ):
         raise Round4InvariantError("the refined factors do not multiply correctly")
-    for refined_factor, primary_factor in zip(refined, primary_factors):
+    for refined_factor, primary_factor in zip(refined, primary_factors, strict=True):
         if _poly_mod(refined_factor, prime) != primary_factor:
             raise Round4InvariantError("a refined factor changed its primary branch")
     return refined
@@ -651,7 +651,9 @@ def round4_selector_metrics(
     height = _coefficient_bits(polynomial_coefficients)
     repeated_degree = sum(
         degree_value * max(0, multiplicity - 1)
-        for degree_value, multiplicity in zip(factor_degrees, factor_multiplicities)
+        for degree_value, multiplicity in zip(
+            factor_degrees, factor_multiplicities, strict=True
+        )
     )
     round2_work = degree * degree * degree * max(1, discriminant_valuation // 2)
     round4_work = degree * degree * required_precision + sum(
