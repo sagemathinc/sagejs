@@ -21,6 +21,8 @@ def _runtime_type_name(value: Any) -> str:
 def size(value: Any) -> tuple[int, ...]:
     """Return MATLAB-style dimensions without copying a shared object."""
 
+    if _runtime_type_name(value) == "MatlabHandleList":
+        return (1, len(value))
     if hasattr(value, "shape"):
         return tuple(int(dimension) for dimension in value.shape)
     if isinstance(value, (list, tuple, str)):
@@ -211,6 +213,12 @@ def _scalar_indices(
 def call_or_index(value: Any, *items: Any) -> Any:
     if callable(value):
         return value(*items)
+    if _runtime_type_name(value) == "MatlabHandleList":
+        if len(items) != 1:
+            raise NotImplementedError(
+                "MATLAB handle vectors currently support one scalar index"
+            )
+        return value[_integer_index(items[0]) - 1]
     if isinstance(value, (list, tuple, str)):
         if len(items) != 1 or items[0] is ALL or hasattr(items[0], "tolist"):
             raise NotImplementedError(
