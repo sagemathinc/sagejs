@@ -1743,6 +1743,10 @@ test("typed FFI imports lower to declared host-isolated calls", async () => {
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);
+  assert.equal(
+    ir.foreignLibraries[0].declarationIdentity,
+    `flint@${ir.foreignLibraries[0].declarationHash}`,
+  );
   assert.deepEqual(ir.callGraph, {
     flint_word_is_prime: [],
     flint_integer_gcd: [],
@@ -1911,7 +1915,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert 'invalid dynamic FFI resource argument' in str(error)",
+      "    assert 'wrong FFI resource type' in str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
