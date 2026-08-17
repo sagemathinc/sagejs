@@ -243,6 +243,7 @@ class Round4PowerBasisResult:
         local_index: Any,
         stages: list[Round4Stage],
         verification_algorithm: str,
+        characteristic_metrics: dict[str, Any],
     ) -> None:
         self.order = order
         self.generator_coefficients = generator_coefficients
@@ -251,6 +252,7 @@ class Round4PowerBasisResult:
         self.local_index = local_index
         self.stages = stages
         self.verification_algorithm = verification_algorithm
+        self.characteristic_metrics = characteristic_metrics
 
     def as_dict(self) -> dict[str, Any]:
         numerator, denominator = _basis_hnf_evidence(self.order)
@@ -262,6 +264,7 @@ class Round4PowerBasisResult:
             "basis_numerator": numerator,
             "basis_denominator": denominator,
             "verification_algorithm": self.verification_algorithm,
+            "characteristic_polynomial_metrics": dict(self.characteristic_metrics),
             "stages": [stage.as_dict() for stage in self.stages],
         }
 
@@ -668,6 +671,7 @@ def _factor_sort_key(record: tuple[list[Any], int]) -> tuple[int, str]:
 def _element_characteristic_polynomial(
     field: Any,
     element: Any,
+    metrics: dict[str, Any] | None = None,
 ) -> list[Any]:
     """Return the exact regular-representation characteristic polynomial.
 
@@ -677,14 +681,48 @@ def _element_characteristic_polynomial(
     with its dynamic fallback. The result is in ascending coefficient order.
     """
     degree = field.degree()
+    if metrics is not None:
+        input_bits = 0
+        denominator_bits = 0
+        for coefficient in element.list():
+            numerator = abs(coefficient._numerator)
+            denominator = coefficient._denominator
+            numerator_size = 0
+            denominator_size = 0
+            while numerator:
+                numerator //= 2
+                numerator_size += 1
+            while denominator:
+                denominator //= 2
+                denominator_size += 1
+            input_bits += numerator_size + denominator_size
+            denominator_bits = max(denominator_bits, denominator_size)
+        metrics["characteristic_polynomial_calls"] += 1
+        metrics["input_coefficient_bits_total"] += input_bits
+        metrics["max_input_coefficient_bits"] = max(
+            metrics["max_input_coefficient_bits"],
+            input_bits,
+        )
+        metrics["max_denominator_bits"] = max(
+            metrics["max_denominator_bits"],
+            denominator_bits,
+        )
+        call_limit = metrics.get("characteristic_polynomial_call_limit")
+        if (
+            call_limit is not None
+            and metrics["characteristic_polynomial_calls"] > call_limit
+        ):
+            raise Round4Unsupported(
+                "the diagnostic characteristic-polynomial call limit was reached"
+            )
     columns = []
-    power = field.one()
+    product = element
+    generator = field.gen()
     for _column in range(degree):
-        product = element * power
         column = list(product.list())
         column += [sage.QQ(0) for _index in range(degree - len(column))]
         columns.append(column)
-        power *= field.gen()
+        product *= generator
     rows = []
     for row_index in range(degree):
         rows.append([columns[column][row_index] for column in range(degree)])
@@ -695,13 +733,28 @@ def _element_characteristic_polynomial(
 def _integral_characteristic_polynomial(
     field: Any,
     element: Any,
+    cache: dict[Any, list[Any]] | None = None,
+    metrics: dict[str, Any] | None = None,
 ) -> list[Any] | None:
-    coefficients = _element_characteristic_polynomial(field, element)
+    key = None
+    if cache is not None:
+        key = tuple(
+            (coefficient._numerator, coefficient._denominator)
+            for coefficient in element.list()
+        )
+        cached = cache.get(key)
+        if cached is not None:
+            if metrics is not None:
+                metrics["characteristic_polynomial_cache_hits"] += 1
+            return list(cached)
+    coefficients = _element_characteristic_polynomial(field, element, metrics)
     answer = []
     for coefficient in coefficients:
         if coefficient._denominator != 1:
             return None
         answer.append(coefficient._numerator)
+    if cache is not None and key is not None:
+        cache[key] = list(answer)
     return answer
 
 
@@ -979,6 +1032,8 @@ def _round4_residue_refinement(
     prime: Any,
     discriminant_valuation: int,
     stages: list[Round4Stage],
+    characteristic_cache: dict[Any, list[Any]],
+    characteristic_metrics: dict[str, Any],
 ) -> tuple[Any, list[Any], int, int]:
     """Increase the residue degree by Ford--Letard beta refinement.
 
@@ -998,7 +1053,12 @@ def _round4_residue_refinement(
     bound = 2 * discriminant_valuation + 2 * degree + 4
     refinements = []
     for iteration in range(bound):
-        beta_characteristic = _integral_characteristic_polynomial(field, beta)
+        beta_characteristic = _integral_characteristic_polynomial(
+            field,
+            beta,
+            characteristic_cache,
+            characteristic_metrics,
+        )
         if beta_characteristic is None:
             raise Round4InvariantError("Round-4 beta ceased to be integral")
         norm = beta_characteristic[0]
@@ -1015,7 +1075,12 @@ def _round4_residue_refinement(
         if remainder:
             gamma /= nu_at_phi**remainder
         gamma = _p_adic_reduce_element(field, gamma, prime, precision)
-        gamma_characteristic = _integral_characteristic_polynomial(field, gamma)
+        gamma_characteristic = _integral_characteristic_polynomial(
+            field,
+            gamma,
+            characteristic_cache,
+            characteristic_metrics,
+        )
         used_minimum_valuation = False
         if gamma_characteristic is None:
             local_numerator, local_denominator = _vstar_characteristic(
@@ -1031,7 +1096,12 @@ def _round4_residue_refinement(
             if remainder:
                 gamma /= nu_at_phi**remainder
             gamma = _p_adic_reduce_element(field, gamma, prime, precision)
-            gamma_characteristic = _integral_characteristic_polynomial(field, gamma)
+            gamma_characteristic = _integral_characteristic_polynomial(
+                field,
+                gamma,
+                characteristic_cache,
+                characteristic_metrics,
+            )
             used_minimum_valuation = True
         if gamma_characteristic is None:
             raise Round4Unsupported(
@@ -1069,6 +1139,8 @@ def _round4_residue_refinement(
             candidate_characteristic = _integral_characteristic_polynomial(
                 field,
                 candidate,
+                characteristic_cache,
+                characteristic_metrics,
             )
             if candidate_characteristic is None:
                 raise Round4Unsupported(
@@ -1124,6 +1196,8 @@ def _round4_residue_refinement(
             trial_characteristic = _integral_characteristic_polynomial(
                 field,
                 trial_error,
+                characteristic_cache,
+                characteristic_metrics,
             )
             if trial_characteristic is None:
                 continue
@@ -1164,6 +1238,8 @@ def _round4_residue_refinement(
                 _integral_characteristic_polynomial(
                     field,
                     error_uniformizer,
+                    characteristic_cache,
+                    characteristic_metrics,
                 )
                 is None
             ):
@@ -1203,6 +1279,8 @@ def _round4_residue_refinement(
             candidate_characteristic = _integral_characteristic_polynomial(
                 field,
                 candidate,
+                characteristic_cache,
+                characteristic_metrics,
             )
             if candidate_characteristic is None:
                 raise Round4Unsupported("the testc2 generator is not integral")
@@ -1251,12 +1329,16 @@ def round4_primary_power_basis(
     prime: Any,
     plan: Round4LocalPlan | None = None,
     verify: bool = True,
+    characteristic_metrics: dict[str, Any] | None = None,
 ) -> Round4PowerBasisResult:
     """Find a `p`-maximal locally monogenic order by modified Round 4.
 
     Construction uses only the exact Ford--Letard power-basis stages.  When
     `verify` is true, Round 2 is run *afterward* as an independent fixed-point
-    checker; it does not supply the returned lattice or generator.
+    checker; it does not supply the returned lattice or generator.  A supplied
+    `characteristic_metrics` dictionary is updated in place even when the
+    search fails closed.  Setting its `characteristic_polynomial_call_limit`
+    key provides a deterministic diagnostic bound.
     """
     field = order.number_field()
     maximal_order = _maximal_order_module()
@@ -1272,6 +1354,14 @@ def round4_primary_power_basis(
             "the primary power-basis search requires one modular primary component"
         )
     degree = field.degree()
+    if characteristic_metrics is None:
+        characteristic_metrics = {}
+    characteristic_metrics.setdefault("characteristic_polynomial_calls", 0)
+    characteristic_metrics.setdefault("characteristic_polynomial_cache_hits", 0)
+    characteristic_metrics.setdefault("input_coefficient_bits_total", 0)
+    characteristic_metrics.setdefault("max_input_coefficient_bits", 0)
+    characteristic_metrics.setdefault("max_denominator_bits", 0)
+    characteristic_cache: dict[Any, list[Any]] = {}
     phi = field.gen()
     nu = list(plan.irreducible_factors[0])
     ramification_degree = 0
@@ -1284,7 +1374,12 @@ def round4_primary_power_basis(
     progress_bound = 2 * plan.discriminant_valuation + 2 * degree + 4
     for iteration in range(progress_bound):
         beta = _evaluate_polynomial_element(nu, phi)
-        beta_characteristic = _integral_characteristic_polynomial(field, beta)
+        beta_characteristic = _integral_characteristic_polynomial(
+            field,
+            beta,
+            characteristic_cache,
+            characteristic_metrics,
+        )
         if beta_characteristic is None:
             raise Round4InvariantError(
                 "a Round-4 characteristic prime candidate is not integral"
@@ -1309,7 +1404,12 @@ def round4_primary_power_basis(
                 prime,
                 search_precision,
             )
-            characteristic = _integral_characteristic_polynomial(field, phi)
+            characteristic = _integral_characteristic_polynomial(
+                field,
+                phi,
+                characteristic_cache,
+                characteristic_metrics,
+            )
             if characteristic is None:
                 raise Round4InvariantError(
                     "the translated Round-4 generator is not integral"
@@ -1342,7 +1442,15 @@ def round4_primary_power_basis(
             prime,
             search_precision,
         )
-        if _integral_characteristic_polynomial(field, uniformizer) is None:
+        if (
+            _integral_characteristic_polynomial(
+                field,
+                uniformizer,
+                characteristic_cache,
+                characteristic_metrics,
+            )
+            is None
+        ):
             raise Round4Unsupported(
                 "the Round-4 prime element did not certify as integral"
             )
@@ -1367,7 +1475,12 @@ def round4_primary_power_basis(
                 prime,
                 search_precision,
             )
-            characteristic = _integral_characteristic_polynomial(field, phi)
+            characteristic = _integral_characteristic_polynomial(
+                field,
+                phi,
+                characteristic_cache,
+                characteristic_metrics,
+            )
             if characteristic is None:
                 raise Round4InvariantError(
                     "the updated Round-4 generator is not integral"
@@ -1388,6 +1501,8 @@ def round4_primary_power_basis(
                 prime,
                 plan.discriminant_valuation,
                 stages,
+                characteristic_cache,
+                characteristic_metrics,
             )
         if ramification_degree * residue_degree != degree:
             continue
@@ -1474,6 +1589,7 @@ def round4_primary_power_basis(
                         "nested local orders: power basis at p and input order away from p"
                     ),
                     "p_maximality_verifier": verification_algorithm,
+                    "characteristic_polynomial_metrics": dict(characteristic_metrics),
                 },
             )
         )
@@ -1485,6 +1601,7 @@ def round4_primary_power_basis(
             local_index,
             stages,
             verification_algorithm,
+            dict(characteristic_metrics),
         )
     raise Round4Unsupported("the Round-4 power-basis progress loop exceeded its bound")
 

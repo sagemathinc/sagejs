@@ -63,14 +63,24 @@
       "commit": "c303c87e46013405b25c42f1ac256c6ee90fa9f8",
       "workspace_fingerprint": "68af4a3abaa07e26d564cfb764a5ce04ef8dbf23b733977bf91af45c5167f9e1",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.439,
+      "started_at": "2026-08-17T22:33:04.775Z",
+      "commit": "0bd7bdf895e1624cc3443265fbc3a65bbab6f2ef",
+      "workspace_fingerprint": "acbe362cd93d6f941a807a2765826b2b1ff9e3f8afb7ee6b9e7fa9d2e37478a6",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Correctness checkpoint: an ordinary-Python Ford--Letard power-basis search now handles PARI #2510 and vector 008 without constructive Round-2 fallback. Exact E*F, p-local containment, p-power denominators/index, discriminant change, canonical HNF, and stable stage evidence fail closed; Round 2 remains an optional independent verifier.",
+    "summary": "An ordinary-Python Ford--Letard power-basis search handles PARI #2510 and vector 008 without constructive Round-2 fallback. Exact E*F, p-local containment, p-power denominators/index, discriminant change, canonical HNF, and stable stage evidence fail closed. Incremental regular-representation assembly and exact-coordinate memoization reduce deep-primary cost while deterministic metrics expose calls and input sizes.",
     "risks": [
-      "Vector 008 remains a measured performance debt: about 20.0s in the power-basis kernel and 22.3s through the strict public wrapper on the shared Linux x64 host.",
+      "Vector 008 remains a measured performance debt: optimization reduced the power-basis kernel from about 19.98s to 15.36s and the strict public wrapper from 22.27s to 17.72s on the shared Linux x64 host.",
       "Multiple modular primary components and higher-residue-field root matching remain explicit unsupported boundaries delegated to Round 2.",
-      "Vector 010 now passes the former ramification-degree-decrease and finite-field-root boundaries, but did not complete within a 240-second direct strict run; its next exact characteristic-polynomial stage remains a performance bound."
+      "Vector 010 passes the former ramification-degree-decrease and finite-field-root boundaries but does not complete within 240 seconds. Calls 1-40 finish in about 3.2s; attempted call 46 receives a 70,585-bit rational-coordinate input, isolating coefficient growth after residual composition."
     ],
     "next_steps": [
       "Profile and source-transparently compile the post-root-matching characteristic-polynomial stage that bounds vector 010.",

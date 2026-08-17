@@ -124,6 +124,7 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
           `'local_index': ${record.local_index}, ` +
           `'local_index_valuation': ${record.local_index_valuation}, ` +
           `'local_output_discriminant': ${record.local_output_discriminant}, ` +
+          `'characteristic_polynomial_metrics': ${JSON.stringify(record.characteristic_polynomial_metrics)}, ` +
           `'required_power_stages': ${JSON.stringify(record.required_power_stages)}` +
           `}`,
       )
@@ -153,6 +154,12 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
         "    assert final['local_index'] == case['local_index']",
         "    assert final['p_maximality_verifier'] == 'ford-letard-ef-degree-certificate'",
         "    assert final['closure_witness'].startswith('nested local orders')",
+        "    metrics = final['characteristic_polynomial_metrics']",
+        "    expected_metrics = case['characteristic_polynomial_metrics']",
+        "    assert metrics['characteristic_polynomial_calls'] == expected_metrics['calls']",
+        "    assert metrics['characteristic_polynomial_cache_hits'] == expected_metrics['cache_hits']",
+        "    assert metrics['max_input_coefficient_bits'] == expected_metrics['max_input_coefficient_bits']",
+        "    assert metrics['max_denominator_bits'] == expected_metrics['max_denominator_bits']",
         "    answer.append((case['id'], names, final['output_discriminant']))",
         "answer",
       ].join("\n"),
@@ -160,6 +167,52 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
     assert.match(result.repr, /pari-2510-p2/);
     assert.match(result.repr, /pari-round4-vector-008-p2/);
     assert.match(result.repr, /power-basis-ramification-composition/);
+  } finally {
+    await session.close();
+  }
+});
+
+test("vector 010 fails closed at its measured coefficient-growth boundary", async () => {
+  const record = primaryFixture.diagnostic_cases[0];
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R.<x> = ZZ[]",
+        "from sagejs.number_fields.round4 import round4_primary_power_basis, Round4Unsupported",
+        `K = NumberField(R([${record.coefficients.join(",")}]), 'a')`,
+        `metrics = {'characteristic_polynomial_call_limit': ${record.characteristic_polynomial_call_limit}}`,
+        "failed_closed = False",
+        "try:",
+        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
+        "except Round4Unsupported as error:",
+        "    failed_closed = 'diagnostic' in str(error)",
+        "(failed_closed, metrics)",
+      ].join("\n"),
+    );
+    const normalized = result.repr.replaceAll("'", '"').replace("(true,", "[true,");
+    assert.match(normalized, /characteristic_polynomial_calls/);
+    assert.match(result.repr, /True/);
+    assert.match(
+      result.repr,
+      new RegExp(`'characteristic_polynomial_calls': ${record.attempted_calls}`),
+    );
+    assert.match(
+      result.repr,
+      new RegExp(`'characteristic_polynomial_cache_hits': ${record.cache_hits}`),
+    );
+    assert.match(
+      result.repr,
+      new RegExp(`'input_coefficient_bits_total': ${record.input_coefficient_bits_total}`),
+    );
+    assert.match(
+      result.repr,
+      new RegExp(`'max_input_coefficient_bits': ${record.max_input_coefficient_bits}`),
+    );
+    assert.match(
+      result.repr,
+      new RegExp(`'max_denominator_bits': ${record.max_denominator_bits}`),
+    );
   } finally {
     await session.close();
   }
@@ -185,6 +238,69 @@ test("bounded residue matching returns a complete Frobenius root orbit", async (
         )
       ).repr,
       "[[0, 1, 1], [1, 1, 1]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("incremental regular representations equal direct multiplication matrices", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "from sagejs.number_fields.round4 import _element_characteristic_polynomial",
+            "checked = 0",
+            "for f in [x^2+x+1, x^3-x+1, x^5-x+1, x^8-2]:",
+            "    K = NumberField(f, 'a')",
+            "    a = K.gen()",
+            "    element = 3 + 2*a - a^2 + a^(K.degree()-1)",
+            "    columns = []",
+            "    power = K.one()",
+            "    for column_index in range(K.degree()):",
+            "        column = list((element*power).list())",
+            "        column += [QQ(0) for j in range(K.degree()-len(column))]",
+            "        columns.append(column)",
+            "        power *= a",
+            "    rows = [[columns[column][row] for column in range(K.degree())] for row in range(K.degree())]",
+            "    direct = list(matrix(QQ, rows).charpoly().list())",
+            "    assert _element_characteristic_polynomial(K, element) == direct",
+            "    checked += 1",
+            "checked",
+          ].join("\n"),
+        )
+      ).repr,
+      "4",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("characteristic diagnostics survive a fail-closed call bound", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = ZZ[]",
+            "from sagejs.number_fields.round4 import round4_primary_power_basis, Round4Unsupported",
+            "K = NumberField(x^8-56*x^6+840*x^4-3136*x^2+3136, 'a')",
+            "metrics = {'characteristic_polynomial_call_limit': 1}",
+            "failed_closed = False",
+            "try:",
+            "    round4_primary_power_basis(K.equation_order(), 2, verify=False, characteristic_metrics=metrics)",
+            "except Round4Unsupported as error:",
+            "    failed_closed = 'diagnostic' in str(error)",
+            "(failed_closed, metrics['characteristic_polynomial_calls'] == 2, metrics['max_input_coefficient_bits'] > 0)",
+          ].join("\n"),
+        )
+      ).repr,
+      "(True, True, True)",
     );
   } finally {
     await session.close();

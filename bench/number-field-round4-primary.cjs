@@ -43,8 +43,9 @@ async function main() {
         "    started = time.perf_counter()",
         "    plan = round4.round4_local_plan(f, prime)",
         "    plan_ms = 1000*(time.perf_counter()-started)",
+        "    characteristic_metrics = {}",
         "    started = time.perf_counter()",
-        "    power = round4.round4_primary_power_basis(E, prime, plan, False)",
+        "    power = round4.round4_primary_power_basis(E, prime, plan, False, characteristic_metrics)",
         "    kernel_ms = 1000*(time.perf_counter()-started)",
         "    phi = K._from_coefficients(power.generator_coefficients)",
         "    started = time.perf_counter()",
@@ -55,7 +56,7 @@ async function main() {
         "    public = round4.modified_round4_local_order(K2.equation_order(), prime, strict=True)",
         "    public_ms = 1000*(time.perf_counter()-started)",
         "    assert public.order.discriminant() == expected_discriminant",
-        "    answer.append({'id': name, 'plan_ms': plan_ms, 'power_basis_kernel_ms': kernel_ms, 'characteristic_polynomial_probe_ms': characteristic_polynomial_probe_ms, 'public_strict_ms': public_ms, 'characteristic_polynomial_calls_lower_bound': len(power.stages), 'local_index': str(power.local_index)})",
+        "    answer.append({'id': name, 'plan_ms': plan_ms, 'power_basis_kernel_ms': kernel_ms, 'characteristic_polynomial_probe_ms': characteristic_polynomial_probe_ms, 'public_strict_ms': public_ms, 'characteristic_polynomial_metrics': characteristic_metrics, 'local_index': str(power.local_index)})",
         "answer",
       ].join("\n"),
     );
@@ -63,7 +64,7 @@ async function main() {
       schema: 1,
       units: "milliseconds",
       mode: extended ? "extended" : "quick",
-      note: "The characteristic-polynomial probe isolates one exact regular-representation call; the power-basis kernel makes several such calls according to its stable stage trace.",
+      note: "The characteristic-polynomial probe isolates one exact regular-representation call; the search-local metrics report exact calls, cache hits, and rational-coordinate input sizes.",
       cases: JSON.parse(evaluated.repr.replaceAll("'", '"')),
     };
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
