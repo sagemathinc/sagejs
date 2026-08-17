@@ -34,6 +34,7 @@ async function main() {
       opacity: 1,
       showlegend: true,
       name: "diagonal",
+      zorder: 2,
     });
     assert.equal(composed.display?.data.data[1].mode, "markers");
     assert.equal(composed.display?.data.data[1].marker.color, "black");
@@ -98,7 +99,7 @@ async function main() {
     assert.equal(
       (await session.evaluate("polygon([(0,0),(1,0),(0,1)]).spec().layers[0].kind"))
         .repr,
-      "'plotly-trace'",
+      "'polygon'",
     );
 
     await session.evaluate(
