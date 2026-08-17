@@ -34,12 +34,52 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
+    "pnpm architecture:check",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/plot-agent-api.cjs test/plot-spec-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.893,
+      "started_at": "2026-08-17T05:42:19.672Z",
+      "commit": "88537bee8ae53a67b3280ec8800c581ea2e3fb64",
+      "workspace_fingerprint": "364a962c8e4fd078abeb0c41a47a25d4add77e95fcf620623f4468becb03af06",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.857,
+      "started_at": "2026-08-17T05:42:30.277Z",
+      "commit": "88537bee8ae53a67b3280ec8800c581ea2e3fb64",
+      "workspace_fingerprint": "364a962c8e4fd078abeb0c41a47a25d4add77e95fcf620623f4468becb03af06",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.884,
+      "started_at": "2026-08-17T05:42:54.892Z",
+      "commit": "88537bee8ae53a67b3280ec8800c581ea2e3fb64",
+      "workspace_fingerprint": "364a962c8e4fd078abeb0c41a47a25d4add77e95fcf620623f4468becb03af06",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added renderer-independent immutable PlotSpec inspection, stable layer selection and detached data access, finite 2D/3D line/point/text bounds, structured and natural descriptions, generated alt text, conservative registered validation, functional layer/spec revision, themes, and controlled JSON-safe Plotly layout/config overrides. The native-disabled differential witness matches CPython exactly and the existing PlotSpec core tests remain green.",
+    "risks": [
+      "The plot-spec package is 49,956 bytes under a 50,000-byte lazy-source budget. This bounded lane preserves the gate, but the integration lane should raise the reviewed lazy budget before exporting or adding further PlotSpec modules instead of forcing future code into the remaining 44 bytes.",
+      "Materialized non-finite values and intentional JSON null gaps are both represented as None by the version-1 schema, so validation conservatively reports null coordinate entries as non-finite/missing gaps rather than claiming their original source cause.",
+      "The graphics lane requires a full integration-tier receipt before review. This isolated worktree has no optional native generation in the shared cache, so its build explicitly skipped FLINT, FFLAS, igraph, and M4RI adapters; the focused native-disabled differential, strict, and architecture receipts pass, while final full-tier validation remains with the native-capable integration workspace."
+    ],
+    "next_steps": [
+      "Register inspection.py and validation.py in the central strict-Python configuration and plot-agent-api.cjs in the central test manifest.",
+      "Increase the plot-spec lazy package source budget deliberately before integrating additional plotting-agent or composition APIs.",
+      "Run pnpm test:integration after central registration in the native-capable integration workspace, then mark this contract complete."
+    ]
   }
 }
