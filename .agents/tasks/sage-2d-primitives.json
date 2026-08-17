@@ -10,19 +10,28 @@
   "base_commit": "31d14b23db2b72195471c7a95570d154702ee6fb",
   "claims": [
     "src/lib/sagejs/plotting/sage_primitives2d.py",
+    "src/lib/sagejs/plotting/curve_sampling.py",
+    "src/lib/sagejs/plotting/sage_curves.py",
     "src/lib/sage/plot/line.py",
     "src/lib/sage/plot/point.py",
     "src/lib/sage/plot/polygon.py",
     "src/lib/sage/plot/arrow.py",
     "src/lib/sage/plot/text.py",
+    "src/lib/sage/plot/plot.py",
     "src/baselib/graphics.py",
+    "src/baselib/graphics3d.py",
     "test/graphics-primitives2d.cjs",
     "test/graphics.cjs",
+    "test/graphics-curve-semantics.cjs",
+    "test/graphics3d.cjs",
     "docs/sage-compatibility/plotting/oracle/primitives2d.json",
+    "docs/sage-compatibility/plotting/oracle/plot-curves.json",
+    "bench/graphics-curve-sampling.cjs",
     "bench/graphics-primitives2d.cjs"
   ],
   "dependencies": [
-    "plot-semantic-primitives"
+    "plot-semantic-primitives",
+    "sage-curve-correctness"
   ],
   "references": [
     "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/line.html",
@@ -46,7 +55,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm build",
     "pnpm test:baselib:strict",
+    "node --test test/graphics-primitives2d.cjs",
     "pnpm test:integration"
   ],
   "runs": [],
