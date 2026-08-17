@@ -54,11 +54,13 @@ const dependency = {
   archive: process.env.SAGEJS_IGRAPH_TARBALL,
 };
 
-function igraphLtoSetting(platform = process.platform) {
-  // MSVC's /GL archives contain compiler intermediate representation rather
-  // than ordinary COFF objects. The generated FFI adapter is linked with
-  // clang-cl/lld-link, which cannot consume those archive members.
-  return platform === "win32" ? "OFF" : "ON";
+function igraphLtoSetting(_platform = process.platform) {
+  // Portable static archives must contain ordinary machine-code objects.
+  // GCC and Clang LTO archives contain compiler-version-specific intermediate
+  // representation, and MSVC /GL archives likewise cannot be linked by the
+  // clang-cl/lld-link adapter toolchain. Cross-machine prebuilds therefore
+  // disable LTO on every platform.
+  return "OFF";
 }
 
 function expectedStamp(platform = process.platform) {

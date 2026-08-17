@@ -37,7 +37,7 @@ const schema = "sagejs.native-dependency-bundle-v1";
 // in the bundle identity so the already-built, verified archives retain their
 // content keys, while downloads use the replacement immutable catalog.
 const bundleSeries = "native-dependencies-1";
-const catalogRelease = "native-dependencies-2";
+const catalogRelease = "native-dependencies-3";
 const packages = Object.freeze(["flint", "fflas", "graph", "m4ri"]);
 const supportedTargets = new Set([
   "linux-x64",
