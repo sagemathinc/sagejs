@@ -80,7 +80,8 @@ export function createTaskEvaluator({
       !Array.isArray(authorized) ||
       typeof moduleName !== "string" ||
       moduleName === "__main__" ||
-      moduleName === "__multiprocessing__"
+      moduleName === "__multiprocessing__" ||
+      moduleName === "multiprocessing"
     ) return;
     const registry = Reflect.get(globalThis, "ρσ_modules") as
       | Record<string, unknown>
