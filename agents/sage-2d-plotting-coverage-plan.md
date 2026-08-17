@@ -1,430 +1,698 @@
-# Plan for complete Sage 2D plotting coverage
+# Sage.js plotting: Plotly-native, multilingual, and agent-first
 
-## Objective
+## Product vision
 
-Make Sage.js implement the complete documented, user-visible SageMath 10.9
-2D plotting contract, with differential evidence against Sage for every public
-operation and option family.
+Build the plotting system that Sage.js actually needs:
 
-This is a worthwhile project and it can be executed systematically. It is not
-a single feature extraction: Sage 2D plotting is a subsystem containing core
-graphics objects, primitives, numerical sampling, colors, composition,
-animation, export, and renderer behavior. The first task is therefore to turn
-“100% coverage” into a versioned ledger whose completion can be measured.
+> A Sage-shaped, Plotly-native, multilingual plotting platform designed for
+> agents to create, understand, refine, and present beautiful mathematical
+> graphics to humans.
 
-The reference target is the locally installed SageMath `10.9.post1`. The Sage
-2D graphics reference and the installed source/docstrings are the authorities:
+This is more exciting and more useful than mechanically cloning Sage plotting.
+Sage remains our deepest compatibility reference and provides an excellent
+mathematical API, but it is one frontend rather than the definition of the
+entire product. Wolfram Language and MATLAB frontends should feed the same
+plotting platform. Agents should be able to inspect and modify a plot as
+structured mathematical intent, not merely receive an opaque image.
 
-- <https://doc.sagemath.org/html/en/reference/plotting/>
-- <https://doc.sagemath.org/html/en/reference/plotting/genindex-all.html>
+Plotly is the rendering target. We should exploit its interaction, browser
+portability, declarative figures, and attractive defaults instead of hiding it
+behind a false Matplotlib abstraction.
 
-## What “100%” means
+The project succeeds when Sage users feel at home, Wolfram and MATLAB programs
+produce natural results, agents can reason reliably about plots, and the
+graphics shown to humans are clear, interactive, and good-looking.
 
-Sage.js may claim complete coverage only when every in-scope ledger entry is
-green in all of these dimensions:
+## Guiding decisions
 
-1. **Import surface** — documented modules, public functions, classes,
-   aliases, methods, attributes, signatures, defaults, and module identities.
-2. **Semantic behavior** — accepted inputs, coercions, option normalization,
-   return types, primitive composition, mutation, equality where defined,
-   warnings, and exception types/messages where users can observe them.
-3. **Numerical behavior** — sampling, adaptive refinement, exclusions,
-   discontinuities, complex-value handling, interpolation, grids, and
-   deterministic behavior under fixed random seeds.
-4. **Rendering behavior** — all documented visual properties are represented
-   by the Sage.js renderer. Images need perceptual and geometric equivalence,
-   not byte identity with Matplotlib.
-5. **Display and export** — notebook display, HTML, PNG, SVG, supported vector
-   or animation formats, sizing, transparency, and save/show behavior.
-6. **Integration behavior** — plots produced by graphs, matrices, symbolic
-   expressions, lists, and objects implementing `_plot_` or `plot` protocols.
-7. **Portability and performance** — correct dynamic fallbacks on supported
-   platforms and bounded performance on representative workloads.
+### 1. Sage is a frontend and compatibility authority, not the architecture
 
-“A function with the right name exists” is not coverage. A feature is partial
-until its complete option and error contract has differential tests.
+SageMath 10.9.post1 is the pinned reference for the Sage-facing API. We will
+systematically inventory every documented Sage 2D and 3D plotting feature, but
+we will classify each feature instead of promising literal imitation.
 
-### Renderer-specific boundary
+Every Sage ledger entry receives exactly one status:
 
-Literal identity with Matplotlib objects or pixel-for-pixel output is neither
-portable nor a useful Sage.js contract. Nevertheless, documented methods such
-as `Graphics.matplotlib()` must remain in the ledger. Each must be implemented
-with equivalent observable behavior or kept red; it cannot silently be
-excluded while the project claims 100%.
+- **faithful** — Sage.js has the same meaningful user-visible behavior;
+- **translated** — Sage intent is preserved through a Plotly-native behavior;
+- **unsupported** — the feature is deliberately rejected with an actionable
+  explanation;
+- **extension** — Sage.js provides useful behavior beyond Sage.
 
-Where Plotly cannot express a Sage feature, the project should add a
-deterministic SVG/canvas renderer or a small render-neutral scene layer rather
-than distort the Sage API. An incompatibility may be documented, but any such
-incompatibility prevents an unqualified “100% Sage coverage” claim.
+One hundred percent classification is a hard requirement. One hundred percent
+literal compatibility is not.
 
-## Initial baseline
+There must be no vague partial category at project completion. A supported
+feature is tested and documented; an unsupported feature says why and offers
+the nearest useful alternative.
 
-The installed Sage package contains 30 relevant `sage.plot` modules after
-excluding the `sage.plot.all` aggregator and the separate 3D package. The 2D
-reference also includes `sage.graphs.graph_plot`.
+### 2. Plotly is the rendering target
 
-The surface includes these major groups:
+We are not building a general multi-renderer framework. The shared semantic
+model should lower cleanly and intentionally to Plotly figures.
 
-- general: `graphics`, `primitive`, `plot`, `colors`, `animate`, and
-  `multigraphics`;
-- function/data plots: `complex_plot`, `contour_plot`, `density_plot`,
-  `plot_field`, `streamline_plot`, `scatter_plot`, `step`, `histogram`, and
-  `bar_chart`;
-- object plots: graph plotting and `matrix_plot`;
-- shapes: `arc`, `arrow`, `bezier_path`, `circle`, `disk`, `ellipse`, `line`,
-  `point`, `polygon`, `text`, and the three hyperbolic-geometry modules;
-- infrastructure: `misc` and the public helpers in `plot` and `colors`.
+When Sage behavior does not map directly to Plotly:
 
-Sage.js already has substantial implementations in `src/baselib/graphics.py`,
-including most top-level constructors, numerical plots, colors, composition,
-animation, hyperbolic shapes, and Plotly display. Commit `0458618d` completed
-the reviewed `sage.plot.misc` helper cluster. This is a strong starting point,
-but the existing registration metadata correctly describes the subsystem as
-partial: most implementations have not been audited option-by-option, most
-documented `sage.plot.*` module paths do not yet exist, and rendering coverage
-is not yet measured against a complete oracle.
+1. Look for a mathematically honest Plotly construction.
+2. Prefer an attractive translated result over a visually exact but awkward
+   emulation.
+3. If the approximation would be misleading or ugly, reject it clearly.
+4. Do not build another renderer just to reproduce an obscure
+   Matplotlib-specific option.
 
-The current monolithic file is an implementation inventory, not proof of
-compatibility. This project should expect many fixes to be small and a few
-renderer/composition gaps to be architectural.
+Plotly JSON is the portable render representation, but it is not sufficient as
+the sole internal model: after lowering a circle to points or a mathematical
+function to samples, an agent still needs to know the original intent.
 
-## Durable project artifacts
+### 3. Matplotlib is not a Sage.js dependency
 
-Create a checked-in `docs/sage-compatibility/plot2d/` area containing:
+Matplotlib-specific behavior is an implementation boundary, analogous to Sage
+objects exposing methods for GAP-backed internals.
 
-- `surface.json` — the complete public surface with a pinned Sage version and
-  source hashes;
-- `coverage.json` — one record per operation, method, option family, protocol,
-  and output capability;
-- `schema.json` — a fail-closed schema for the ledger;
-- `oracle/` — compact Sage-generated semantic fixtures;
-- `render-cases/` — deterministic scene descriptions and image references;
-- `performance.json` — comparable benchmark definitions and budgets;
-- `README.md` — how to regenerate and validate every artifact.
+For compatibility-sensitive entry points such as Graphics.matplotlib(), prefer
+an explicit failure:
 
-Each coverage record should contain at least:
+    NotImplementedError:
+    Sage.js uses Plotly rather than Matplotlib.
+    Use plotly(), save("figure.html"), or save("figure.png").
 
-```text
-id
-sage_module
-qualified_name
-kind
-signature
-source_hash
-documented_examples
-option_families
-dependencies
-semantic_status
-render_status
-platform_status
-tests
-known_differences
-```
+This is more useful than a generic missing-attribute error and does not pretend
+that Sage.js can return a Matplotlib object. Such an entry is classified as
+unsupported with a documented Plotly alternative.
 
-Allowed status values should be `missing`, `partial`, `matches`, and
-`not-applicable`. `not-applicable` requires a written scope rule; it is not a
-way to hide unsupported behavior.
+### 4. Two-dimensional and three-dimensional plotting share one platform
+
+Develop 2D and 3D architecture together:
+
+- semantic plot specification;
+- colors, themes, labels, legends, and annotations;
+- composition and animation;
+- Plotly configuration;
+- display and export;
+- provenance, validation, and agent inspection;
+- Sage, Wolfram, and MATLAB adapters.
+
+Maintain separate 2D and 3D compatibility ledgers and implementation queues.
+Do not require completion of every 2D edge case before improving 3D, and do not
+duplicate the shared foundations.
+
+Vertical slices should deliberately cross dimensions: points and lines, then
+function plots and surfaces, then fields, composition, animation, and export.
+
+### 5. Agents are primary authors; humans are primary viewers
+
+Agents will usually make plots in order to explain something to a human. The
+API must therefore optimize both sides:
+
+- structured and inspectable for the agent;
+- attractive, responsive, and interactive for the human;
+- deterministic enough to test and revise;
+- explicit about provenance, sampling, approximations, and warnings;
+- easy to serialize, attach, compare, and refine.
+
+The agent should not have to infer a plot from pixels after creating it.
+
+## Architecture
+
+The intended flow is:
+
+    Sage API ─────────┐
+    Wolfram API ──────┼──> PlotSpec ──> Plotly figure ──> display/export
+    MATLAB API ───────┘       │
+                              ├──> inspect/describe/data
+                              ├──> validate/diagnostics
+                              └──> revise/serialize/provenance
+
+### PlotSpec
+
+Introduce a versioned semantic PlotSpec that records enough intent for agents,
+frontends, testing, and rendering without aspiring to be renderer-neutral.
+
+An initial schema should include:
+
+    schema_version
+    dimension
+    layers
+      id
+      kind
+      source_intent
+      data_or_sampler
+      style
+      visibility
+      legend
+      metadata
+    axes_or_scene
+    viewport
+    theme
+    annotations
+    interactions
+    animation
+    provenance
+    diagnostics
+    plotly_overrides
+
+Important properties:
+
+- stable layer IDs;
+- deterministic serialization;
+- explicit 2D or 3D dimension;
+- preservation of mathematical source intent and sampled data;
+- JSON-safe materialized form for storage and transport;
+- lazy or callable state confined to a pre-serialization construction phase;
+- validated Plotly escape hatches;
+- schema evolution rules from the beginning.
+
+PlotSpec should be modest. It is not a replacement for Plotly's complete
+schema. It preserves high-level intent, organizes layers, and provides one
+controlled lowering boundary to Plotly.
+
+### Incremental migration
+
+The existing Graphics, Graphics3d, primitive classes, Wolfram mappings, and
+Plotly generation are valuable production code. Do not rewrite them wholesale.
+
+Migrate through vertical slices:
+
+1. Teach an existing primitive to describe itself as a PlotSpec layer.
+2. Lower that layer to the same Plotly output produced today.
+3. Add inspection and validation.
+4. Move composition through PlotSpec.
+5. Retire duplicated direct-Plotly paths only after differential tests pass.
+
+The first slice should include 2D line/point/text and 3D line/point/text. It
+will reveal whether the schema is appropriately small before harder plots are
+committed to it.
+
+## The agent-facing API
+
+Preserve familiar Sage constructors such as plot(), line(), point(), plot3d(),
+and parametric_plot3d(). Add a small, coherent agent-facing interface to the
+resulting graphics objects.
+
+### Inspection
+
+- spec() — return the semantic PlotSpec;
+- plotly() — return the lowered Plotly figure;
+- describe() — concise natural-language and structured summary;
+- data() — expose sampled or supplied data by stable layer ID;
+- bounds() — report computed domain and range bounds;
+- diagnostics() — return machine-readable warnings and quality observations;
+- provenance() — report expressions, source language, ranges, sampling
+  settings, transforms, and approximations.
+
+### Validation
+
+validate() should detect conditions useful to both agents and humans:
+
+- empty or entirely non-finite data;
+- clipped or invisible layers;
+- logarithmic scales with invalid values;
+- unreadable foreground/background contrast;
+- duplicated or ambiguous legends;
+- labels that are likely to overlap;
+- extreme sample counts or output sizes;
+- a 3D camera or aspect ratio that hides meaningful structure;
+- unsupported options that were ignored or translated;
+- rasterization in an otherwise vector export.
+
+Diagnostics must have stable codes, severity, affected layer IDs, explanatory
+text, and suggested repairs.
+
+### Revision
+
+Agents should be able to revise a plot without reconstructing it from scratch:
+
+- select a layer by stable ID;
+- change style, label, visibility, sampling, or range;
+- add or remove annotations;
+- choose a theme;
+- request a lower-cost preview or higher-quality final render;
+- clone a plot while retaining provenance;
+- apply a validated Plotly override when the high-level API is insufficient.
+
+The functional composition style should remain natural. Mutating helpers may
+exist when their state behavior is explicit and serializable.
+
+### Communication
+
+Support automatically generated alt text and a structured summary suitable for
+an agent response. A useful description should identify:
+
+- plot type and dimensionality;
+- expressions or data sources;
+- domains and ranges;
+- significant extrema, discontinuities, or non-finite regions when known;
+- layer colors and legend labels;
+- interactive affordances;
+- any approximation or warning.
+
+## Frontend strategy
+
+### Sage
+
+Use Sage's public plotting API as the most complete mathematical frontend.
+Preserve familiar constructors, composition, options, numerical semantics, and
+object plotting protocols where they are meaningful outside Matplotlib.
+
+The Sage ledger remains exhaustive across:
+
+- documented modules and imports;
+- functions, classes, aliases, methods, signatures, and defaults;
+- accepted inputs, coercions, outputs, warnings, and errors;
+- numerical sampling and generated geometry;
+- composition, animation, display, and export;
+- 2D-to-3D conversion;
+- graph, matrix, symbolic, and other object integrations.
+
+Renderer-specific entries may be translated or unsupported, but never omitted
+from the ledger.
+
+### Wolfram Language / Mathematica
+
+Wolfram plotting is expression-oriented. Preserve the structure of Graphics
+and Graphics3D, primitive lists, nested style directives, option scoping, and
+symbolic plotting intent in PlotSpec.
+
+Grow coverage around:
+
+- Plot, ParametricPlot, PolarPlot, ListPlot, and their 3D counterparts;
+- ContourPlot, DensityPlot, RegionPlot, VectorPlot, StreamPlot, and surfaces;
+- Graphics and Graphics3D primitives;
+- Show, styling directives, legends, axes, plot ranges, and themes;
+- Wolfram option precedence and symbolic evaluation semantics.
+
+Do not force every Wolfram construct through a fictional Sage call. Both
+frontends should share lower-level samplers and PlotSpec layers while retaining
+their own option and evaluation rules.
+
+Official Wolfram behavior can be captured as compact offline fixtures where a
+licensed oracle is available. It must not become a Sage.js runtime dependency.
+
+### MATLAB
+
+MATLAB plotting is more stateful: figures, axes, current objects, hold state,
+plot handles, and command sequences matter.
+
+Build a MATLAB adapter above PlotSpec that models:
+
+- figure and axes state;
+- plot, scatter, bar, histogram, contour, imagesc, surf, mesh, and related
+  commands;
+- hold on/off and replacement versus addition;
+- labels, titles, legends, limits, grids, views, and colormaps;
+- handle-based property updates;
+- subplot/tiled layout;
+- 2D and 3D data orientation conventions.
+
+The shared mathematical samplers and Plotly lowerer should remain stateless.
+MATLAB session state belongs in the frontend adapter and produces updated
+PlotSpecs.
+
+MATLAB itself must not be a runtime dependency. Reference fixtures may come
+from documented behavior or offline oracle runs.
+
+## Visual quality
+
+Sage compatibility does not excuse unattractive output. Sage.js should often
+look better by default.
+
+Create first-party themes:
+
+- notebook;
+- presentation;
+- publication;
+- dark;
+- high-contrast/accessibility.
+
+Quality rules should cover:
+
+- sensible responsive dimensions;
+- colorblind-conscious palettes;
+- readable typography and mathematical labels;
+- restrained grids and backgrounds;
+- uncluttered legends;
+- good hover templates;
+- suitable line widths and marker sizes;
+- stable camera defaults for 3D;
+- graceful behavior for dense data;
+- touch and keyboard accessibility where Plotly supports it.
+
+Maintain a curated visual gallery across 2D, 3D, Sage, Wolfram, and MATLAB.
+Automated geometry and image checks protect regressions; periodic human review
+judges whether the defaults actually look good.
+
+## Export strategy
+
+Plotly renders in a browser, so static export should reflect that reality
+instead of disguising it.
+
+### Always available
+
+- Plotly JSON;
+- standalone or embeddable interactive HTML;
+- notebook rich display;
+- semantic PlotSpec JSON;
+- data and provenance export.
+
+These paths must not require Chromium.
+
+### In an existing browser
+
+Use Plotly.toImage and the Plotly modebar for PNG, JPEG, WebP, and SVG. The
+browser is already the rendering engine, so no additional headless process is
+needed.
+
+Add a frontend bridge that can return rendered bytes to the kernel or agent
+when the surrounding notebook/browser environment supports it. This is the
+preferred static-export path in CoCalc and other interactive environments.
+
+### In headless Node
+
+Static image export is an optional capability backed by Chromium:
+
+- discover an installed compatible browser;
+- use a persistent worker rather than starting Chromium per image;
+- batch multiple export jobs;
+- cache the local Plotly and MathJax assets;
+- operate fully offline;
+- enforce time, memory, page, and output-size limits;
+- shut down and recover cleanly after renderer failure;
+- support Windows x64 as a first-class target.
+
+PNG, JPEG, WebP, and SVG are initial formats. PDF should be added only after a
+tested browser-print or conversion path meets quality expectations. WebGL
+content in vector output must be identified as rasterized.
+
+Static export must not make Chromium a dependency of core mathematics or
+interactive plotting.
+
+### Capability discovery
+
+Provide a machine-readable export_capabilities() result. When save() cannot
+satisfy a requested format, return an actionable error describing:
+
+- why the capability is unavailable;
+- which formats work without a browser;
+- whether an existing interactive browser can perform the export;
+- how to configure a local Chromium executable;
+- how an agent can fall back to HTML or Plotly JSON.
+
+## Coverage and evidence
+
+Replace a binary compatibility percentage with a generated product matrix.
+
+Create a checked-in docs/sage-compatibility/plotting/ area containing:
+
+- sage-surface.json — pinned Sage 2D and 3D public inventory;
+- frontend-surface.json — supported Wolfram and MATLAB constructs;
+- coverage.json — faithful/translated/unsupported/extension classification;
+- plotspec.schema.json — semantic model schema;
+- diagnostics.json — stable validation codes;
+- oracle/ — compact semantic reference fixtures;
+- gallery/ — canonical plots and visual expectations;
+- performance.json — comparable workloads and budgets;
+- README.md — regeneration and validation commands.
+
+Each coverage record should identify:
+
+    id
+    frontend
+    qualified_name
+    dimension
+    kind
+    signature_or_syntax
+    source_authority
+    dependencies
+    classification
+    translation_or_reason
+    semantic_tests
+    plotly_tests
+    visual_tests
+    platform_status
+    performance_status
+
+The generated report should answer both:
+
+- How much of Sage is faithful, translated, or unsupported?
+- How capable is the Sage.js plotting product independent of Sage?
+
+## Test strategy
+
+### Layer 1 — frontend and semantics
+
+Test imports, syntax lowering, signatures, option precedence, coercions,
+warnings, errors, composition, and state transitions.
+
+Use differential Sage 10.9 oracles for Sage-facing behavior. Use offline
+Wolfram/MATLAB reference fixtures where available, but do not require
+proprietary systems at test or runtime.
+
+### Layer 2 — PlotSpec
+
+Compare stable semantic intent before rendering:
+
+- layer kinds and IDs;
+- source expressions or data;
+- ranges and sample settings;
+- normalized styles;
+- axes/scenes;
+- annotations and legends;
+- provenance and diagnostics.
+
+This is the most valuable layer for agent correctness.
+
+### Layer 3 — Plotly lowering
+
+Validate generated figures against the supported Plotly schema and test:
+
+- trace types and values;
+- layout and configuration;
+- finite masks and geometry;
+- subplots and scenes;
+- animation frames;
+- hover and selection metadata;
+- valid JSON serialization.
+
+### Layer 4 — rendering
+
+Compare in this order:
+
+1. semantic PlotSpec;
+2. Plotly trace/layout data;
+3. geometry and layout measurements;
+4. SVG structure where stable;
+5. perceptual raster output.
+
+Screenshots are the last oracle, not the first.
+
+### Layer 5 — environments
+
+Test:
+
+- Node without a browser;
+- Node with Chromium;
+- notebook/browser rendering;
+- native-disabled mathematical fallbacks;
+- Linux, macOS, and Windows x64;
+- representative mobile/responsive viewports.
+
+## Performance and safety
+
+Benchmark boundaries separately:
+
+- symbolic compilation and setup;
+- numerical sampling;
+- adaptive refinement;
+- grid and field computation;
+- PlotSpec construction;
+- Plotly lowering and JSON size;
+- browser render;
+- warm and cold static export;
+- peak memory and transfer size.
+
+Representative workloads must cover large lines/scatters, discontinuous
+functions, dense grids, complex plots, vector/stream fields, meshes, surfaces,
+graph plots, animation, and multi-panel layouts.
+
+Agent-generated plots need explicit resource budgets. Validation should warn or
+refuse before an accidental million-point SVG, enormous symbolic grid, or
+unbounded animation consumes the session.
+
+Every mathematical optimization must retain a correct dynamic fallback.
 
 ## Work packages
 
-### P0 — Freeze and enumerate the contract
+### P0 — Product contract and exhaustive inventories
 
-1. Pin SageMath `10.9.post1` and hash every relevant installed source module.
-2. Enumerate the module index, `sage.plot.all`, documented public objects,
-   class methods/attributes, function signatures, aliases, option dictionaries,
-   and examples.
-3. Record APIs imported from adjacent modules, especially graph plotting,
-   matrices, symbolic expressions, rich representation, and 3D conversion.
-4. Compare that inventory mechanically with Sage.js globals, module paths,
-   stubs, tests, and registered documentation.
-5. Generate the first red/yellow/green coverage report.
+1. Pin and hash Sage 10.9.post1 plotting sources.
+2. Generate separate Sage 2D and 3D public-surface ledgers.
+3. Inventory current Sage.js graphics, Graphics3d, exports, tests, Wolfram
+   mappings, and MATLAB plotting support.
+4. Classify Matplotlib/backend-specific APIs explicitly.
+5. Produce the first faithful/translated/unsupported gap report.
 
-Acceptance: the ledger is reproducible and fails CI if a target disappears,
-an entry lacks evidence, or Sage.js claims an undocumented match.
+Acceptance: every target entry is reproducible and classified; CI fails on
+untracked surface changes.
 
-### P1 — Oracle and differential harness
+### P1 — PlotSpec vertical slice
 
-Build one reusable harness rather than a test script per function.
+1. Define the minimal versioned schema.
+2. Implement 2D and 3D point, line, and text layers.
+3. Preserve current Plotly output through the new lowering boundary.
+4. Add stable IDs, provenance, serialization, and schema validation.
+5. Verify Sage and Wolfram construction paths.
 
-The Sage side must capture:
+Acceptance: the slice round-trips through PlotSpec with no visual or semantic
+regression and proves that the schema is not over-designed.
 
-- normalized `repr`, type, module, signature, and options;
-- primitive count, primitive type, normalized option dictionaries, and bounds;
-- sampled coordinate/value arrays and finite/NaN masks;
-- exceptions and warnings;
-- normalized scene geometry before Matplotlib rendering;
-- fixed-size PNG/SVG output for selected rendering cases.
+### P2 — Agent inspection, validation, and revision
 
-The Sage.js side must produce the same normalized record. Comparisons should
-support exact values, binary64 tolerances, unordered metadata, geometric
-tolerances, and perceptual image thresholds as appropriate.
+Implement spec(), describe(), data(), bounds(), diagnostics(), provenance(),
+validate(), layer selection, themes, and controlled Plotly overrides.
 
-Acceptance: a single command runs an individual ledger entry or the complete
-2D compatibility suite, and oracle regeneration is deterministic.
+Acceptance: an agent can create, inspect, diagnose, modify, serialize, and
+render the P1 plots without analyzing pixels.
 
-### P2 — Public module layout and API identity
+### P3 — Shared style, axes, composition, and interaction
 
-Create ordinary strict Python modules under `src/lib/sage/plot/` for every
-documented module. Initially they may expose reviewed baselib implementations;
-over time, move coherent mathematical logic into those modules.
+Unify colors, colormaps, opacity, line/marker/fill styles, text, axes, scenes,
+scales, ticks, grids, legends, annotations, subplots, responsive behavior,
+hover, selection, and camera settings.
 
-Cover:
+Acceptance: the shared behavior works across 2D/3D and all active frontends.
 
-- all documented imports and aliases;
-- class `__module__`, `repr`, and inheritance relationships;
-- signatures, keyword-only behavior, defaults, `.options`, and `.reset()`;
-- decorators and protocol entry points used by Sage objects;
-- `sage.plot.all` and top-level Sage namespace exports.
+### P4 — Sage 2D mathematical coverage
 
-Acceptance: every import and introspection ledger entry matches Sage.
+Audit and classify:
 
-### P3 — Core graphics and primitive contract
+- core Graphics and GraphicPrimitive behavior;
+- shapes and data primitives;
+- plot, parametric, polar, list, and log plots;
+- adaptive sampling, exclusions, poles, fill, and imaginary tolerance;
+- contour, density, implicit, region, matrix, complex, vector, slope, and
+  streamline plots;
+- hyperbolic plots;
+- graph and mathematical-object integration.
 
-Audit `GraphicPrimitive` and `Graphics` before polishing leaf constructors.
-This layer controls every downstream result.
+Acceptance: every Sage 2D entry is classified and every faithful or translated
+entry has semantic, PlotSpec, and rendering evidence.
 
-Cover:
+### P5 — Sage 3D mathematical coverage
 
-- construction, indexing, iteration, length, addition, multiplication, and
-  primitive ownership;
-- min/max data, axes ranges, aspect ratio, legends, labels, ticks, gridlines,
-  frames, clipping, z-order, and extra keywords;
-- show/save option routing and precedence;
-- primitive base methods, allowed options, option validation, and 2D-to-3D
-  conversion;
-- `_plot_`, `_rich_repr_`, and object plotting dispatch;
-- stable, render-neutral scene serialization for differential testing.
+Audit and classify:
 
-Decision gate: determine whether the current Plotly-shaped primitive records
-can represent the full contract. If not, introduce a backend-neutral scene IR
-with Plotly and deterministic SVG adapters before adding more special cases.
+- Graphics3d and transformations;
+- points, lines, polygons, text, arrows, and curves;
+- surfaces, parametric plots, implicit plots, revolution, and list plots;
+- meshes, textures, colors, opacity, aspect ratios, frames, and cameras;
+- vector fields and supported mathematical-object conversions;
+- composition, animation, and WebGL limitations.
 
-Acceptance: core object and option suites pass before leaf modules are marked
-complete.
+Acceptance mirrors P4 with a separate 3D report.
 
-### P4 — Colors, styles, text, axes, and legends
+### P6 — Wolfram plotting frontend
 
-Port and audit the complete `colors` module and all cross-cutting presentation
-semantics:
+Expand expression-oriented 2D and 3D plotting, primitives, directives, Show,
+options, ranges, themes, and symbolic evaluation. Route through PlotSpec
+without erasing Wolfram intent.
 
-- `Color`, `ColorsDict`, colormaps, color parsing, conversions, arithmetic,
-  named colors, `hue`, `rainbow`, and helpers;
-- line/marker/fill styles, opacity, thickness, dashes, and z-order;
-- fonts, mathematical text, alignment, rotation, bounding boxes, and text
-  colors;
-- axes, scales, logarithmic bases, ticks, tick formatters, labels, titles,
-  legends, and gridline style/placement.
+Acceptance: the documented supported Wolfram subset is exhaustive, classified,
+and tested end-to-end.
 
-Acceptance: option matrices and canonical rendered examples match within the
-defined semantic and visual tolerances.
+### P7 — MATLAB plotting frontend
 
-### P5 — Shapes and data primitives
+Add the stateful figure/axes/handle layer and a useful first plotting surface
+across 2D, 3D, layout, styling, and updates.
 
-Audit each primitive module independently:
+Acceptance: representative MATLAB plotting sessions behave naturally and
+produce the same PlotSpec/Plotly platform results as equivalent Sage/Wolfram
+plots.
 
-- line, point, polygon, arrow, circle, ellipse, arc, disk, Bezier path, text;
-- bar chart, histogram, scatter plot, and step plot;
-- aliases such as `line2d`, `point2d`, `points`, `polygon2d`, and `arrow2d`;
-- degenerate inputs, iterators, numeric rings, complex inputs, NaN/infinity,
-  option conflicts, and exact error behavior;
-- every documented primitive method, including 3D conversion where present.
+### P8 — Display, export, and animation
 
-Acceptance: every module is green independently of high-level `plot()`.
+Implement browser-assisted export, persistent headless export, capability
+discovery, offline assets, format validation, animation, arrays, insets, and
+multi-panel output.
 
-### P6 — Function plotting and numerical sampling
-
-Treat this as mathematical infrastructure, not renderer code.
+Acceptance: JSON/HTML always work; supported static formats work in interactive
+and configured headless environments; failures are explicit and actionable.
 
-Cover:
+### P9 — Visual excellence and accessibility
 
-- `plot`, `parametric_plot`, `polar_plot`, list plots, and logarithmic wrappers;
-- `generate_plot_points`, adaptive refinement, randomization, initial points,
-  exclusions, pole detection, fill modes, baselines, and multiple functions;
-- callable expressions, ordinary callables, symbolic functions, constants,
-  fast-callable compilation, imaginary tolerance, and failed evaluations;
-- ranges with and without variables, reversed ranges, exact endpoints, and
-  coercion from Sage numeric parents;
-- dispatch to objects implementing plotting protocols.
+Ship first-party themes, the curated gallery, responsive defaults, contrast
+validation, alt text, good hover behavior, camera defaults, and human review.
 
-Benchmarks must separate setup/compilation, per-point evaluation, adaptive
-refinement, and renderer conversion. Optimize only measured bottlenecks while
-retaining a correct dynamic fallback.
-
-Acceptance: sampled geometry and discontinuity behavior match the Sage oracle
-over a curated corpus plus randomized differential cases.
-
-### P7 — Grid, field, and complex plots
-
-Audit the higher-dimensional numerical 2D plots:
-
-- contour, density, implicit, and region plots;
-- matrix plots, including sparse/dense matrices, subdivisions, and colorbars;
-- vector and slope fields;
-- streamline integration, seeds, density, and boundary behavior;
-- complex domain coloring, colormaps, contours, interpolation, and invalid
-  values.
-
-These should share tested grid-evaluation and color-mapping infrastructure
-rather than independently sampling expressions.
-
-Acceptance: numerical grids, derived geometry, color normalization, legends,
-and representative images match.
-
-### P8 — Hyperbolic plots and mathematical-object integration
-
-Cover hyperbolic arcs, polygons, triangles, regular polygons, supported models,
-model conversions, boundary cases, and errors. Then audit:
-
-- `sage.graphs.graph_plot`, graph layout/options, labels, loops, multiedges,
-  directed edges, and graph object dispatch;
-- matrix object plotting;
-- any documented plotting methods on adjacent Sage objects included by the 2D
-  reference or reachable through the generic plotting protocol.
-
-Acceptance: both direct constructors and object methods produce matching
-primitive/scene results.
-
-### P9 — MultiGraphics, graphics arrays, animation, display, and export
-
-Cover:
-
-- `MultiGraphics`, insets, positioning, append/index behavior, and layout;
-- `GraphicsArray`, dimensions, composition, and shared show/save options;
-- `Animation`, frame operations, concatenation, slicing, GIF/APNG/HTML behavior,
-  frame options, and cleanup;
-- notebook rich display and standalone HTML;
-- PNG and SVG at minimum, plus every other format documented as supported;
-- dimensions, DPI, transparency, backgrounds, bounding boxes, and fonts.
-
-Acceptance: semantic object tests pass, export files are valid and
-deterministic where promised, and browser rendering passes fixed-viewport
-visual regression tests.
-
-### P10 — Long-tail closure and documentation
-
-1. Run all plotting reference examples and doctests through the differential
-   harness.
-2. Add property-based cases for coordinates, ranges, colors, and option
-   combinations.
-3. Resolve every `partial` ledger record; do not close the project with an
-   unexplained skip list.
-4. Replace current “partial” documentation metadata with exact compatibility
-   notes derived from the ledger.
-5. Publish the coverage report, performance results, renderer differences,
-   and regeneration commands.
-
-Acceptance: the fail-closed coverage report contains no `missing` or `partial`
-records and all release gates pass.
-
-## Per-operation execution loop
-
-Use the same loop for every ledger entry:
-
-1. Read the Sage 10.9 documentation, source, tests, and related protocols.
-2. Capture a compact Sage oracle covering normal, boundary, invalid, and
-   composition cases.
-3. Measure current Sage.js behavior before editing and classify the exact gap.
-4. Implement ordinary CPython-parseable Python first. Use existing native
-   compilation only for a measured mathematical hot path.
-5. Add focused semantic tests, scene comparisons, and visual tests where the
-   operation renders.
-6. Benchmark comparable in-process boundaries when performance matters.
-7. Run strict typing, architecture checks, native-disabled fallback tests,
-   graphics integration tests, and the applicable cross-platform CI matrix.
-8. Mark a ledger item `matches` only after all linked evidence is green.
-
-Commits should be coherent by module or shared dependency. Avoid giant
-“complete plotting” commits that make regressions impossible to localize.
-
-## Testing strategy
-
-### Semantic tiers
-
-- **Tier A: import/introspection** — fast tests for the complete public surface.
-- **Tier B: primitive records** — exact normalized options, geometry, bounds,
-  composition, warnings, and errors.
-- **Tier C: numerical differential** — Sage/Sage.js arrays and adaptive paths.
-- **Tier D: render differential** — deterministic SVG structure and perceptual
-  PNG comparisons at fixed fonts, size, DPI, locale, and seed.
-- **Tier E: integration** — notebooks, export, animation, graph/matrix objects,
-  and browser display.
-
-Every leaf API needs Tier A and B. Numerical plots also need Tier C; anything
-with visual-only behavior needs Tier D; display/export APIs need Tier E.
-
-### Visual comparison rules
-
-Do not use screenshots as the only oracle. Compare, in order:
-
-1. semantic scene/primitive data;
-2. geometry and layout measurements;
-3. SVG structure where deterministic;
-4. perceptual raster output.
-
-This makes failures explainable and avoids accepting a numerically incorrect
-plot merely because two images look similar.
-
-## Performance and resource gates
-
-Maintain representative workloads for:
-
-- primitive construction and large point lists;
-- adaptive scalar plots with smooth and discontinuous functions;
-- large grid contour/density/complex plots;
-- vector fields and streamline integration;
-- graph and matrix plots;
-- composition, serialization, and PNG/SVG export.
-
-Record setup time, evaluation time, render conversion, total time, peak memory,
-and output size separately. Initial acceptance should require bounded scaling
-and no major regression from the pre-change Sage.js baseline. Sage comparisons
-must use identical in-process boundaries before reporting a speed ratio.
-
-## Proposed sequencing and estimates
-
-The ordering should follow shared dependencies, not the apparent simplicity of
-leaf function names:
-
-1. P0–P1: ledger and harness;
-2. P2–P4: modules, core objects, and presentation semantics;
-3. P5–P6: primitives and scalar/function sampling;
-4. P7–P8: grids, fields, complex plots, and object integrations;
-5. P9: composition, animation, display, and export;
-6. P10: exhaustive closure.
-
-An initial planning envelope is 30–60 engineering days because much production
-code already exists but the audit surface is broad and renderer gaps may
-require shared infrastructure. P0 will replace this rough estimate with counts
-and dependency-based ranges. Parallel implementation can shorten elapsed time
-only after P0–P3 stabilize the ledger, oracle format, and core scene contract.
+Acceptance: canonical output is not merely correct—it is presentation-ready.
+
+### P10 — Closure, optimization, and documentation
+
+1. Resolve every unclassified or ambiguous entry.
+2. Run all supported examples and randomized differential cases.
+3. Fix measured performance and resource cliffs.
+4. Publish frontend coverage and capability reports.
+5. Document migrations, translations, unsupported backend details, and agent
+   workflows.
+
+Acceptance: no ledger ambiguity, all product gates green, and claims are
+generated from evidence.
+
+## Execution order
+
+Start with the shared architecture, then grow in vertical slices:
+
+1. P0 inventory and classification;
+2. P1 PlotSpec proof across 2D and 3D;
+3. P2 agent API;
+4. P3 shared presentation and composition;
+5. P4/P5 Sage mathematical coverage;
+6. P6/P7 Wolfram and MATLAB frontends;
+7. P8 export and animation closure;
+8. P9/P10 visual quality and final closure.
+
+P8 receives an early prototype during P1 because export constraints can affect
+the schema and display boundary. Its exhaustive hardening remains later.
+
+An initial envelope is 45–90 engineering days. The scope is broader than the
+original Sage-only plan, but the existing 2D, 3D, Plotly, export, and Wolfram
+implementations provide substantial leverage. P0 should replace this estimate
+with dependency-based ranges.
+
+Parallel implementation becomes safe only after P0–P3 stabilize the ledger,
+PlotSpec, and shared contracts.
 
 ## Immediate next actions
 
-1. Add the machine-readable surface extractor for Sage 10.9.
-2. Generate the first `surface.json` and coverage report.
-3. Inventory every public `Graphics` and `GraphicPrimitive` method before
-   assigning leaf-module status.
-4. Build the normalized primitive/scene oracle format using line, point, text,
-   and `plot()` as representative cases.
-5. Decide the scene-IR/render-backend architecture based on documented features
-   that current Plotly records cannot represent.
-6. Complete one vertical slice—`sage.plot.line` including module imports,
-   primitive behavior, options, composition, rendering, export, and 3D
-   conversion—to validate the harness and completion rules.
-7. Re-estimate the remaining work from the generated dependency graph, then
-   execute the packages in the order above.
+1. Generate the Sage 2D and 3D surface inventories.
+2. Inventory current Wolfram plotting and explicitly record MATLAB as an
+   emerging frontend.
+3. Write the first coverage classifier with the four product statuses.
+4. Design the smallest PlotSpec capable of representing current 2D/3D
+   line/point/text output without loss.
+5. Add stable layer IDs and provenance to that vertical slice.
+6. Implement spec(), describe(), and validate() for the slice.
+7. Prototype browser-returned PNG/SVG bytes and a warm Chromium export worker.
+8. Build a small cross-language gallery showing equivalent Sage, Wolfram, and
+   eventually MATLAB plots.
+9. Review the schema and API after real agent use before migrating complex
+   plots.
 
-## Final completion gate
+## Completion gate
 
-The project is complete only when:
+The first complete Sage.js plotting platform release requires:
 
-- the pinned public surface is fully represented in the ledger;
-- no record is `missing` or `partial`;
-- all documented examples pass or have an explicitly approved change to the
-  target contract;
-- semantic, numerical, rendering, display, and export suites pass;
-- native-disabled and supported-platform tests pass;
-- performance/resource budgets pass;
-- the generated report can substantiate the “100%” claim without relying on
-  manual interpretation.
+- every pinned Sage 2D and 3D entry classified;
+- every advertised Sage, Wolfram, and MATLAB feature tested;
+- no silent ignored options or ambiguous partial support;
+- a stable, serializable PlotSpec;
+- agent inspection, diagnostics, provenance, revision, and alt text;
+- attractive responsive 2D and 3D Plotly output;
+- dependency-free JSON/HTML export;
+- reliable browser and optional headless static export;
+- native-disabled and supported-platform correctness;
+- bounded performance and resource use;
+- generated coverage and capability documentation.
+
+The success metric is not that Sage.js secretly became Matplotlib. It is that
+Sage.js became the best environment for an agent to create mathematical plots
+that humans genuinely want to look at.
 
