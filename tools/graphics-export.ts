@@ -1,10 +1,8 @@
 import { writeFileSync } from "fs";
-import { extname, join, resolve } from "path";
-import { spawnSync } from "child_process";
+import { extname, resolve } from "path";
 import { discoverChromium } from "./chromium-discovery";
 import {
   createNodeGraphicsExportCapabilities,
-  GRAPHICS_EXPORT_LIMITS,
   GraphicsExportCapabilities,
   GraphicsExportError,
   GraphicsImageOptions,
@@ -12,6 +10,7 @@ import {
   requireGraphicsExportFormat,
   validateGraphicsImageRequest,
 } from "./graphics-export-contract";
+import { SynchronousPlotlyRenderer } from "./plotly-renderer-client";
 import { isSingleExecutable, readPlotlySource } from "./resources";
 
 export const PLOTLY_MIME = "application/vnd.plotly.v1+json";
@@ -24,6 +23,9 @@ interface PlotlyDisplay {
 type GraphicsSaveOptions = GraphicsImageOptions;
 
 let plotlySource: string | undefined;
+let imageRenderer: SynchronousPlotlyRenderer | undefined;
+let imageRendererExecutable: string | undefined;
+let lifecycleHooksInstalled = false;
 
 function jsonReplacer(_key: string, value: unknown): unknown {
   if (typeof value !== "bigint") return value;
@@ -121,74 +123,27 @@ function renderImage(
     options,
     Buffer.byteLength(input),
   );
-  const helper = join(__dirname, "plotly-image-renderer.js");
-  const rendered = spawnSync(process.execPath, [helper], {
-    input,
-    maxBuffer: GRAPHICS_EXPORT_LIMITS.max_output_bytes,
-    timeout: GRAPHICS_EXPORT_LIMITS.timeout_ms,
-    env: discovery.executablePath
-      ? { ...process.env, SAGEJS_CHROMIUM_PATH: discovery.executablePath }
-      : process.env,
-  });
-  if (rendered.error) {
-    const code = (rendered.error as NodeJS.ErrnoException).code;
-    if (code === "ETIMEDOUT") {
-      throw new GraphicsExportError(
-        "SAGEJS_GRAPHICS_EXPORT_TIMEOUT",
-        `Static ${format.toUpperCase()} export exceeded the ${GRAPHICS_EXPORT_LIMITS.timeout_ms} ms renderer limit; reduce the plot size or save as HTML or JSON.`,
-        {
-          format,
-          alternatives: ["html", "json"],
-          capabilities,
-          cause: rendered.error,
-        },
-      );
-    }
-    if (code === "ENOBUFS") {
-      throw new GraphicsExportError(
-        "SAGEJS_GRAPHICS_EXPORT_LIMIT",
-        `Static ${format.toUpperCase()} output exceeded the ${GRAPHICS_EXPORT_LIMITS.max_output_bytes}-byte renderer limit; reduce dimensions or scale, or save as HTML or JSON.`,
-        {
-          format,
-          alternatives: ["html", "json"],
-          capabilities,
-          cause: rendered.error,
-        },
-      );
-    }
-    throw new GraphicsExportError(
-      "SAGEJS_GRAPHICS_RENDER_FAILED",
-      `Static ${format.toUpperCase()} export could not start: ${rendered.error.message} Save as HTML or JSON, or verify the configured browser.`,
-      {
-        format,
-        alternatives: ["html", "json"],
-        capabilities,
-        cause: rendered.error,
-      },
-    );
+  const executablePath = discovery.executablePath!;
+  if (!imageRenderer || imageRendererExecutable !== executablePath) {
+    imageRenderer?.dispose();
+    imageRenderer = new SynchronousPlotlyRenderer({ executablePath });
+    imageRendererExecutable = executablePath;
   }
-  if (rendered.status !== 0) {
-    const detail = rendered.stderr.toString("utf8").trim();
-    throw new GraphicsExportError(
-      "SAGEJS_GRAPHICS_RENDER_FAILED",
-      `Static ${format.toUpperCase()} export failed: ${
-        detail || `Plotly image renderer exited with status ${rendered.status}`
-      } Save as HTML or JSON, or verify the configured browser.`,
-      {
-        format,
-        alternatives: ["html", "json"],
-        capabilities,
-      },
-    );
+  try {
+    return imageRenderer.render(input);
+  } catch (error) {
+    if (!(error instanceof GraphicsExportError)) throw error;
+    const prefix = `[${error.code}] `;
+    const detail = error.message.startsWith(prefix)
+      ? error.message.slice(prefix.length)
+      : error.message;
+    throw new GraphicsExportError(error.code, detail, {
+      format,
+      alternatives: ["html", "json"],
+      capabilities,
+      cause: error,
+    });
   }
-  if (rendered.stdout.length > GRAPHICS_EXPORT_LIMITS.max_output_bytes) {
-    throw new GraphicsExportError(
-      "SAGEJS_GRAPHICS_EXPORT_LIMIT",
-      `Static ${format.toUpperCase()} output exceeded the ${GRAPHICS_EXPORT_LIMITS.max_output_bytes}-byte renderer limit; reduce dimensions or scale, or save as HTML or JSON.`,
-      { format, alternatives: ["html", "json"], capabilities },
-    );
-  }
-  return rendered.stdout;
 }
 
 /** Report Node graphics-export capabilities without launching a browser. */
@@ -238,6 +193,31 @@ export function saveGraphic(
   return graphic;
 }
 
-export function installNodeGraphicsSaveHook(): void {
+/** Close the lazy Chromium renderer and release its worker thread. */
+export function disposeNodeGraphicsRenderer(): void {
+  imageRenderer?.dispose();
+  imageRenderer = undefined;
+  imageRendererExecutable = undefined;
+}
+
+function installRendererLifecycleHooks(): void {
+  if (lifecycleHooksInstalled) return;
+  lifecycleHooksInstalled = true;
+  process.once("beforeExit", disposeNodeGraphicsRenderer);
+  process.once("exit", () => {
+    imageRenderer?.terminateNow();
+    imageRenderer = undefined;
+    imageRendererExecutable = undefined;
+  });
+}
+
+export function installNodeGraphicsSaveHook(): () => void {
+  installRendererLifecycleHooks();
   global.__sagejs_graphics_save_hook__ = saveGraphic;
+  return () => {
+    if (global.__sagejs_graphics_save_hook__ === saveGraphic) {
+      delete global.__sagejs_graphics_save_hook__;
+    }
+    disposeNodeGraphicsRenderer();
+  };
 }

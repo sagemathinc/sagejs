@@ -63,15 +63,25 @@ async function main() {
     );
 
     if (exportCapabilities.formats.png.available) {
-      const pngFilename = join(directory, "prime.png");
-      await session.evaluate(
-        `g.save(${pythonString(pngFilename)}, width=320, height=240)`,
+      const pngFilenames = [0, 1, 2].map((index) =>
+        join(directory, `prime-${index}.png`),
       );
-      const png = readFileSync(pngFilename);
+      await session.evaluate(
+        pngFilenames
+          .map(
+            (filename) =>
+              `g.save(${pythonString(filename)}, width=320, height=240)`,
+          )
+          .join("\n"),
+      );
+      const images = pngFilenames.map((filename) => readFileSync(filename));
+      const png = images[0];
       assert.deepEqual(
         [...png.subarray(0, 8)],
         [137, 80, 78, 71, 13, 10, 26, 10],
       );
+      assert.deepEqual(images[1], png);
+      assert.deepEqual(images[2], png);
     }
     assert.equal(existsSync(jsonFilename), true);
   } finally {
