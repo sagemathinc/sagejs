@@ -385,7 +385,7 @@ def _composite_dedekind_data(coefficients: list[int], modulus: int) -> dict[str,
     obstruction = obstruction_result["gcd"]
     if obstruction == [1]:
         return {
-            "status": "stalled",
+            "status": "complete",
             "reason": "composite-dedekind-obstruction-is-one",
             "repeated_gcd": repeated,
             "squarefree_quotient": squarefree,
@@ -593,6 +593,36 @@ def buchmann_lenstra_overorder(
             split=data["split"],
             evidence={"stage": "composite-dedekind", "zero_divisor": True},
         )
+    equation_disc = (
+        polynomial_discriminant(coefficients)
+        if equation_discriminant is None
+        else int(equation_discriminant)
+    )
+    if data["status"] == "complete":
+        identity = OrderBasis(
+            [
+                [1 if row == column else 0 for column in range(degree)]
+                for row in range(degree)
+            ],
+            1,
+        )
+        return BuchmannLenstraResult(
+            "complete",
+            component,
+            basis=identity,
+            index=1,
+            discriminant=equation_disc,
+            evidence={
+                "stage": "composite-dedekind",
+                "source": "Hecke dedekind_test_composite",
+                "repeated_gcd": data["repeated_gcd"],
+                "squarefree_quotient": data["squarefree_quotient"],
+                "correction": data["correction"],
+                "obstruction": [1],
+                "locally_maximal": True,
+                "certificate": "composite-dedekind-obstruction-one",
+            },
+        )
     if data["status"] != "enlarge":
         return BuchmannLenstraResult(
             "certification-error"
@@ -608,11 +638,6 @@ def buchmann_lenstra_overorder(
         )
     overorder_basis, index = _dedekind_overorder_basis(
         coefficients, modulus, data["generator"]
-    )
-    equation_disc = (
-        polynomial_discriminant(coefficients)
-        if equation_discriminant is None
-        else int(equation_discriminant)
     )
     if equation_disc % (index * index) != 0:
         return BuchmannLenstraResult(
@@ -687,6 +712,14 @@ def check_buchmann_lenstra_result(
         return False
     remaining = _gcd(abs(result.discriminant), result.component.value)
     if result.state == "complete":
+        if result.evidence.get("certificate") == "composite-dedekind-obstruction-one":
+            replay = _composite_dedekind_data(coefficients, result.component.value)
+            return (
+                result.index == 1
+                and replay.get("status") == "complete"
+                and replay.get("reason") == "composite-dedekind-obstruction-is-one"
+                and result.evidence.get("locally_maximal") is True
+            )
         return remaining == 1 and result.evidence.get("locally_maximal") is True
     return remaining != 1 and result.evidence.get("locally_maximal") is False
 

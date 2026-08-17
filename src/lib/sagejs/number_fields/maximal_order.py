@@ -14,7 +14,6 @@ _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_field
 NumberFieldOrder = _nf_module.NumberFieldOrder
 _nf_canonical_lattice = _nf_module._nf_canonical_lattice
 _nf_coordinates = _nf_module._nf_coordinates
-_nf_flint_ffi = _nf_module._nf_flint_ffi
 _nf_global = _nf_module._nf_global
 _nf_lcm = _nf_module._nf_lcm
 _nf_trace_matrix = _nf_module._nf_trace_matrix
@@ -377,7 +376,7 @@ def maximal_overorder_native(
         for right in range(degree):
             flattened.append(table[left][right])
     table_matrix = _nf_global("matrix")(sage.ZZ, flattened)
-    ffi = _nf_flint_ffi()
+    ffi = __import__("sagejs.ffi.flint", fromlist=["flint"])
     prime_buffer = runtime.uint64_buffer(primes)
     resource = ffi.number_field_order_maximal_at_primes(
         table_matrix._integer_resource(),
