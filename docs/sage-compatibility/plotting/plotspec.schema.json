@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/plotting/plotspec-v1.json",
+  "title": "Sage.js semantic PlotSpec",
+  "description": "Version 1 materialized semantic plot document. Lazy samplers must be evaluated before validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dimension",
+    "layers",
+    "axes_or_scene",
+    "viewport",
+    "theme",
+    "annotations",
+    "interactions",
+    "animation",
+    "provenance",
+    "diagnostics",
+    "plotly_overrides"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "dimension": {
+      "enum": [2, 3]
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/layer"
+      }
+    },
+    "axes_or_scene": {
+      "type": "object"
+    },
+    "viewport": {
+      "type": "object"
+    },
+    "theme": {
+      "type": "string",
+      "minLength": 1
+    },
+    "annotations": {
+      "type": "array"
+    },
+    "interactions": {
+      "type": "object"
+    },
+    "animation": {
+      "type": "object"
+    },
+    "provenance": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    },
+    "plotly_overrides": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "source_intent",
+        "data",
+        "style",
+        "visibility",
+        "legend",
+        "metadata"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_intent": {
+          "type": "object"
+        },
+        "data": {},
+        "style": {
+          "type": "object"
+        },
+        "visibility": {
+          "type": "boolean"
+        },
+        "legend": {
+          "type": "object"
+        },
+        "metadata": {
+          "type": "object"
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "phase",
+        "layer_ids",
+        "message",
+        "suggested_repairs",
+        "details"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "PLOT_3D_CAMERA_OCCLUSION_RISK",
+            "PLOT_3D_DEGENERATE_BOUNDS",
+            "PLOT_3D_EXTREME_ASPECT",
+            "PLOT_ALT_TEXT_MISSING",
+            "PLOT_AXIS_LOG_NONPOSITIVE",
+            "PLOT_DATA_ALL_NONFINITE",
+            "PLOT_DATA_EMPTY",
+            "PLOT_DATA_PARTIAL_NONFINITE",
+            "PLOT_EXPORT_RASTERIZED_WEBGL",
+            "PLOT_LAYER_EFFECTIVELY_INVISIBLE",
+            "PLOT_LAYER_OUTSIDE_VIEW",
+            "PLOT_LEGEND_DUPLICATE_LABEL",
+            "PLOT_LEGEND_MISSING_LABEL",
+            "PLOT_OPTION_IGNORED",
+            "PLOT_OPTION_TRANSLATED",
+            "PLOT_RESOURCE_EXCESSIVE_PAYLOAD",
+            "PLOT_RESOURCE_EXCESSIVE_SAMPLES",
+            "PLOT_STYLE_COLOR_COLLISION",
+            "PLOT_STYLE_LOW_CONTRAST",
+            "PLOT_TEXT_OVERLAP_RISK"
+          ]
+        },
+        "severity": {
+          "enum": ["info", "warning", "error"]
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_repairs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

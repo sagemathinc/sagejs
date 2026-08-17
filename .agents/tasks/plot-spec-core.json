@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-spec-core",
+  "title": "Create the semantic PlotSpec core",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a minimal strict-Python versioned PlotSpec model, stable layer IDs, deterministic serialization, provenance, structured diagnostics, and checked schemas without yet changing Graphics or Graphics3d",
+  "base_commit": "167c94e5f1ed1c33fa7f08ea195b321a88f942f2",
+  "claims": [
+    "src/lib/sagejs/plotting/",
+    "docs/sage-compatibility/plotting/plotspec.schema.json",
+    "docs/sage-compatibility/plotting/diagnostics.json",
+    "test/plot-spec-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Focused PlotSpec schema, serialization, and CPython/Sage.js differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

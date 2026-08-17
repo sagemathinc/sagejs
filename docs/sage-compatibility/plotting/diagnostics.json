@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "policy": "Diagnostic codes are append-only. Retired codes remain reserved and must never be assigned a different meaning.",
+  "diagnostics": [
+    {"code":"PLOT_3D_CAMERA_OCCLUSION_RISK","severity":"info","phase":"scene","message":"The current 3D camera may hide meaningful structure.","suggested_repairs":["Rotate the scene or choose a camera preset."]},
+    {"code":"PLOT_3D_DEGENERATE_BOUNDS","severity":"warning","phase":"scene","message":"The 3D scene has a degenerate spatial extent.","suggested_repairs":["Expand a zero-width bound or use a lower-dimensional plot."]},
+    {"code":"PLOT_3D_EXTREME_ASPECT","severity":"info","phase":"scene","message":"The 3D scene has an extreme aspect ratio.","suggested_repairs":["Choose a manual aspect ratio or rescale the coordinates."]},
+    {"code":"PLOT_ALT_TEXT_MISSING","severity":"info","phase":"accessibility","message":"The plot has no useful alternative text.","suggested_repairs":["Generate or provide a concise semantic plot description."]},
+    {"code":"PLOT_AXIS_LOG_NONPOSITIVE","severity":"warning","phase":"axes","message":"A logarithmic axis received non-positive data.","suggested_repairs":["Remove non-positive values or choose a linear scale."]},
+    {"code":"PLOT_DATA_ALL_NONFINITE","severity":"warning","phase":"data","message":"Every sampled value in the plot layer is non-finite.","suggested_repairs":["Check the expression, domain, and numerical coercions."]},
+    {"code":"PLOT_DATA_EMPTY","severity":"warning","phase":"data","message":"The plot layer has no data to render.","suggested_repairs":["Provide data or adjust the sampling domain."]},
+    {"code":"PLOT_DATA_PARTIAL_NONFINITE","severity":"info","phase":"data","message":"Some sampled values are non-finite and render as gaps.","suggested_repairs":["Inspect discontinuities or restrict the domain if the gaps are unintended."]},
+    {"code":"PLOT_EXPORT_RASTERIZED_WEBGL","severity":"info","phase":"export","message":"WebGL content will be rasterized in a vector export.","suggested_repairs":["Use HTML for interactive vector-like output or accept embedded raster content."]},
+    {"code":"PLOT_LAYER_EFFECTIVELY_INVISIBLE","severity":"warning","phase":"style","message":"The plot layer is present but effectively invisible.","suggested_repairs":["Increase opacity, marker size, or line width."]},
+    {"code":"PLOT_LAYER_OUTSIDE_VIEW","severity":"warning","phase":"viewport","message":"The plot layer lies outside the visible viewport.","suggested_repairs":["Expand the viewport or revise the layer coordinates."]},
+    {"code":"PLOT_LEGEND_DUPLICATE_LABEL","severity":"info","phase":"legend","message":"More than one plot layer uses the same legend label.","suggested_repairs":["Use distinct labels or group the layers intentionally."]},
+    {"code":"PLOT_LEGEND_MISSING_LABEL","severity":"info","phase":"legend","message":"A visible legend entry has no useful label.","suggested_repairs":["Assign a concise legend label or hide the entry."]},
+    {"code":"PLOT_OPTION_IGNORED","severity":"warning","phase":"options","message":"A frontend option could not be represented and was ignored.","suggested_repairs":["Use the suggested Plotly-native alternative when available."]},
+    {"code":"PLOT_OPTION_TRANSLATED","severity":"info","phase":"options","message":"A frontend option was translated to Plotly-native behavior.","suggested_repairs":["Inspect the diagnostic details for the exact translation."]},
+    {"code":"PLOT_RESOURCE_EXCESSIVE_PAYLOAD","severity":"warning","phase":"resource","message":"The serialized plot payload is excessively large.","suggested_repairs":["Downsample, simplify geometry, or rasterize an appropriate layer."]},
+    {"code":"PLOT_RESOURCE_EXCESSIVE_SAMPLES","severity":"warning","phase":"resource","message":"The plot uses an excessive number of samples.","suggested_repairs":["Request a lower-cost preview or reduce the sampling density."]},
+    {"code":"PLOT_STYLE_COLOR_COLLISION","severity":"info","phase":"style","message":"Distinct plot layers use colors that are difficult to distinguish.","suggested_repairs":["Use a categorical palette with more separation."]},
+    {"code":"PLOT_STYLE_LOW_CONTRAST","severity":"warning","phase":"style","message":"Foreground and background colors have low contrast.","suggested_repairs":["Choose a higher-contrast color or theme."]},
+    {"code":"PLOT_TEXT_OVERLAP_RISK","severity":"info","phase":"text","message":"Text labels are likely to overlap.","suggested_repairs":["Move, shorten, or selectively hide labels."]}
+  ]
+}
