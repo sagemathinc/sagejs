@@ -407,6 +407,7 @@ test("task evaluators load only validated precompiled module resources", () => {
     module: "worker_fixture",
     javascriptTemplate: [
       'var __file__ = "__sagejs_precompiled_module_filename__";',
+      'void Reflect.get(ρσ_modules, "__name__");',
       "var fixture = function fixture(value) { return value + 1; };",
       'fixture.__module__ = "worker_fixture";',
       'fixture.__name__ = "fixture";',

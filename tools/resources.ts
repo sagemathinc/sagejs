@@ -530,9 +530,8 @@ export function installPrecompiledTaskModuleLoader(
       }
       if (
         typeof property === "string" &&
-        pythonModuleNamePattern.test(property)
+        Object.hasOwn(manifest.modules, property)
       ) {
-        if (own(baselib, property)) return Reflect.get(baselib, property);
         return load(property);
       }
       return Reflect.get(target, property, receiver);
