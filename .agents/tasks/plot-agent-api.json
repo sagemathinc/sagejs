@@ -33,8 +33,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/plot-agent-api.cjs test/plot-spec-core.cjs",
     "pnpm test:baselib:strict",
-    "pnpm test:integration"
+    "pnpm architecture:check"
   ],
   "runs": [],
   "handoff": {
