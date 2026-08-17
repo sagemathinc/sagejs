@@ -36,7 +36,8 @@
   "validation": [
     "node --test test/plot-animation-panels.cjs",
     "pnpm test:baselib:strict",
-    "pnpm architecture:check"
+    "pnpm architecture:check",
+    "pnpm test:integration"
   ],
   "runs": [
     {
@@ -71,8 +72,19 @@
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Commit 47f13fcb implements immutable, JSON-safe PlotAnimation and AnimationFrame states for PlotSpec and the existing PanelComposition2D, stable qualified layer identity, exact topology validation, hard frame/panel/layer/sample/payload/duration limits, validated timing and portable controls, deterministic Plotly frames/sliders/buttons, standalone frame selection, and explicit JSON/HTML/static/unsupported export capability boundaries. Focused tests pass differentially in CPython and Sage.js, validate 2D/3D/panel cases and failure boundaries, lower 60 frames with 30,000 plotted points under the in-process 15-second guard, and render/animate with installed Plotly 3.7 in real Chromium.",
+    "risks": [
+      "The current HTML graphics writer must call Plotly.addFrames for a payload containing frames; this lane prepares the full interactive figure but does not edit the shared exporter.",
+      "Frames intentionally materialize complete semantic states. Hard 64 MiB, 500-frame, 5,000,000-data-scalar, and one-hour caps prevent unbounded use, but a future delta encoding must preserve the same stable-ID and topology contract.",
+      "GIF, MP4, PDF, autoplay, loops, nested animations, dimensional changes, dynamic layer topology, and panel placement changes are explicit unsupported boundaries.",
+      "pnpm test:changed exercised the inherited 74-file main-2 delta and failed outside this lane in module-cache TYPE_CHECKING lowering and another worktree's symlinked native-cache state; it also correctly reported this new test absent from the central manifest. The focused suite, strict suite, architecture gate, full build, and Chromium smoke pass."
+    ],
+    "next_steps": [
+      "Cherry-pick 47f13fcb into main-2.",
+      "Add src/lib/sagejs/plotting/animation.py to pyrightconfig.json strict include and test/plot-animation-panels.cjs to the integration tier in test/node-test-manifest.cjs.",
+      "Import the animation classes, errors, constants, stable_frame_id, lowering, capability, and export preparation helpers from src/lib/sagejs/plotting/__init__.py and append them to __all__.",
+      "The plot-spec package will become roughly 242 KiB of its 250 KiB budget after integration; raise the reviewed budget to at least 300 KiB or create a deliberate animation package boundary before integrating more parallel plotting modules.",
+      "Extend the shared HTML exporter to register figure.frames with Plotly.addFrames after Plotly.newPlot, and add SAGEJS_GRAPHICS_ANIMATION_FRAME_REQUIRED plus SAGEJS_GRAPHICS_ANIMATION_FRAME_INVALID to the TypeScript graphics export error-code contract before wiring static frame selection into Graphics.save."
+    ]
   }
 }
