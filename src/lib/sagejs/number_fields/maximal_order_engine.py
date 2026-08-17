@@ -50,6 +50,8 @@ NumberFieldOrder = _nf_module.NumberFieldOrder
 _nf_lcm = _nf_module._nf_lcm
 _untyped = _nf_module._untyped
 
+_MAX_WORD_PRIME = 0xFFFFFFFFFFFFFFFF
+
 
 def _maximal_order_module() -> Any:
     return __import__(
@@ -322,6 +324,49 @@ def _forced_local_order(
             },
         )
     raise ValueError("unknown forced local algorithm")
+
+
+def _arbitrary_prime_local_order(
+    field: Any,
+    coefficients: list[int],
+    scale: int,
+    equation_discriminant: int,
+    prime: int,
+) -> tuple[Any, str, dict[str, Any]]:
+    """Use exact integer polynomial arithmetic beyond FLINT word matrices."""
+    component = DiscriminantComponent(
+        prime,
+        "proven-prime",
+        evidence={"source": "resumable deterministic prime proof"},
+    )
+    polygon_module = __import__(
+        "sagejs.number_fields.local_polygons",
+        fromlist=["local_polygons"],
+    )
+    result = polygon_module.analyze_local_component(
+        coefficients,
+        component,
+        _valuation(equation_discriminant, prime),
+        equation_discriminant,
+    )
+    if result.state != "complete" or result.basis is None:
+        raise ArithmeticError(
+            "arbitrary-prime polygon fallback did not certify a complete local order"
+        )
+    discriminant = (
+        equation_discriminant // (result.index * result.index)
+        if result.discriminant is None
+        else int(result.discriminant)
+    )
+    return (
+        _order_from_basis(field, result.basis, scale, discriminant),
+        "polygon",
+        {
+            "selection": "arbitrary-prime-exact-fallback",
+            "word_prime_cap": _MAX_WORD_PRIME,
+            "local_index": result.index,
+        },
+    )
 
 
 class _CertificateAdapter:
@@ -721,6 +766,29 @@ def compute_maximal_order(
 
     if not used_native and algorithm in ("auto", "native", "round2"):
         for prime in relevant_primes:
+            if prime > _MAX_WORD_PRIME:
+                token = trace.begin(
+                    "arbitrary-prime-local-order",
+                    {"prime": prime, "word_prime_cap": _MAX_WORD_PRIME},
+                )
+                local_order, used_algorithm, details = _arbitrary_prime_local_order(
+                    field,
+                    coefficients,
+                    scale,
+                    equation_discriminant,
+                    prime,
+                )
+                order = _merge_orders(field, order, local_order)
+                current_basis = _basis_from_order(order, scale)
+                _cache_discriminant_from_basis(
+                    order,
+                    current_basis,
+                    equation_discriminant,
+                )
+                details["used_algorithm"] = used_algorithm
+                details["order_discriminant"] = _exact_integer(order.discriminant())
+                trace.end(token, "complete", details)
+                continue
             token = trace.begin("round2-local-order", {"prime": prime})
             order = _maximal_order_module().p_maximal_overorder_dynamic(order, prime)
             current_basis = _basis_from_order(order, scale)
