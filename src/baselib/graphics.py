@@ -668,6 +668,10 @@ def _sage_primitive_plan(name: str, options: Any) -> Any:
             public_options.__setitem__(
                 str(option_name), runtime.reflect.get(options, option_name)
             )
+    if "color" in public_options:
+        if "rgbcolor" not in public_options:
+            public_options.__setitem__("rgbcolor", public_options["color"])
+        public_options.pop("color")
     planning = __import__(
         "sagejs.plotting.sage_primitives2d",
         fromlist=[name],
