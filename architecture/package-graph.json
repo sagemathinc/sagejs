@@ -74,7 +74,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 621000,
+      "max_source_bytes": 622000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -214,10 +214,11 @@
       "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 330000,
-      "depends_on": ["core-runtime", "native-integration", "linear-algebra"],
+      "depends_on": ["core-runtime", "native-integration", "linear-algebra", "python-stdlib"],
       "files": [
         "src/baselib/graph_reference_data.py",
-        "src/baselib/graphs.py"
+        "src/baselib/graphs.py",
+        "src/lib/sage/graphs/pq_trees.py"
       ],
       "prefixes": []
     },
