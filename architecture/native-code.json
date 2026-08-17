@@ -25,6 +25,13 @@
       "rationale": "Standalone handwritten-C oracle copied from p1.c for the source-transparent Heilbronn compiler pilot."
     },
     {
+      "path": "bench/number-field-order-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone six-case timing and exact-lattice witness for the direct number-field order resource. It is compiled only by the Unix cross-oracle benchmark and is not linked into Sage.js or exposed as a runtime boundary."
+    },
+    {
       "path": "bench/cowasm/buffer-landscape/c.c",
       "category": "benchmark-reference",
       "review_status": "accepted",

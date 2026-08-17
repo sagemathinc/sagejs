@@ -363,6 +363,15 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_mod_polynomial_factor_resource",
       "fmpz_mod_polynomial_roots_resource", "fmpz_mod_polynomial_format",
       "fmpz_mod_polynomial_serialize", "fmpz_mod_polynomial_deserialize",
+      "number_field_order_pmaximal",
+      "number_field_order_maximal_at_primes",
+      "number_field_order_from_polynomial_resource",
+      "number_field_order_resource_status",
+      "number_field_order_resource_degree",
+      "number_field_order_resource_supplied_primes",
+      "number_field_order_resource_resolved_primes",
+      "number_field_order_resource_native_primes",
+      "number_field_order_resource_unramified_primes",
     ],
   );
   assert.deepEqual(
@@ -370,6 +379,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     [
       "FmpzMatrix", "FmpqMatrix", "FmpzVector", "FmpqVector",
       "NmodMatrix", "FmpqValue", "FlintByteRegion",
+      "NumberFieldOrderResource",
       "FmpzPolynomial", "FmpqPolynomial", "FmpzModPolynomial",
       "FmpzModPolynomialDivisionResult", "FmpzModPolynomialXgcdResult",
       "FmpzModPolynomialFactorization", "FmpzModPolynomialRoots",
@@ -440,7 +450,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /398 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /407 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -490,7 +500,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 10,
-      flint: 355,
+      flint: 364,
       igraph: 2,
       m4ri: 26,
     }[declaration.library.id]);
@@ -546,7 +556,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 356],
+    ["../packages/flint", 365],
     ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
@@ -724,8 +734,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 398);
-  assert.equal(current.counts["declared-ffi-resource"], 27);
+  assert.equal(current.counts["declared-ffi"], 407);
+  assert.equal(current.counts["declared-ffi-resource"], 28);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>
@@ -1901,7 +1911,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert 'wrong FFI resource type' in str(error)",
+      "    assert 'invalid dynamic FFI resource argument' in str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
@@ -1929,6 +1939,12 @@ const accounted = addon.__sagejsFfiResourceExternalMemory;
 const tag = () => globalThis.__sagejs_ffi_resource_tag__;
 
 const explicit = wrapper.create(32n, 32n);
+const wrong = {
+  _ffi_borrow() {
+    return { [tag()]: { identity: "different-resource" } };
+  },
+};
+assert.throws(() => wrapper.clone(wrong), /wrong FFI resource type/);
 const explicitState = explicit.token[tag()];
 assert.ok(accounted(explicitState.handle) > 0n);
 Reflect.apply(explicitState.close, explicitState.backend, [explicitState.handle]);

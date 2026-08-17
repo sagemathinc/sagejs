@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 65,
+    "classified-native-file": 66,
     "declared-ffi": 407,
     "declared-ffi-resource": 28,
     "napi-export": 292,
@@ -7835,6 +7835,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/number-field-order-resource-witness.c",
+      "kind": "classified-native-file",
+      "path": "bench/number-field-order-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/fflas/include/sagejs/fflas_matrix_ffi.h",
