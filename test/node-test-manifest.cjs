@@ -51,6 +51,7 @@ const unit = [
 ];
 
 const integration = [
+  "test/number-field-maximal-order-contracts.cjs",
   "test/coverage-python-stdlib.cjs",
   "test/coverage-graphics3d.cjs",
   "test/coverage-graphs.cjs",
