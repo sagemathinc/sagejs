@@ -286,7 +286,7 @@ class FastCallablePlotWrapper:
                 runtime.reflect.apply(native_number, runtime.undefined, [arg])
                 for arg in args
             ]
-            value = self._ff(*native_args)
+            value = runtime.reflect.apply(self._ff, runtime.undefined, native_args)
             if runtime.jstype(value) == "number":
                 return float(value)
             if runtime.jstype(value) not in ("object", "function"):
