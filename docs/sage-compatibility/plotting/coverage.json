@@ -22,22 +22,22 @@
     }
   ],
   "summary": {
-    "total_entries": 642,
+    "total_entries": 640,
     "by_classification": {
       "faithful": 4,
-      "translated": 147,
-      "unsupported": 491,
+      "translated": 158,
+      "unsupported": 478,
       "extension": 0
     },
     "by_frontend": {
       "matlab": 28,
       "sage": 537,
-      "wolfram": 77
+      "wolfram": 75
     },
     "by_dimension": {
-      "2d": 241,
+      "2d": 240,
       "2d-or-3d": 51,
-      "3d": 350
+      "3d": 349
     }
   },
   "entries": [
@@ -90,28 +90,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "grid on/off",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "MATLAB command syntax with arguments is explicitly rejected, and no grid-state adapter exists.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "grid",
+        "lowering_target": "_matlab.grid"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -131,28 +138,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "legend(...)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "legend",
+        "lowering_target": "_matlab.legend"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -172,28 +186,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "title(text)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "title",
+        "lowering_target": "_matlab.title"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -254,28 +275,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "xlabel(text)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic call grammar lowers xlabel(...) through an unresolved name, producing NameError rather than an axes label.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "xlabel",
+        "lowering_target": "_matlab.xlabel"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -295,28 +323,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "xlim(limits)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "xlim",
+        "lowering_target": "_matlab.xlim"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -336,28 +371,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "ylabel(text)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "ylabel",
+        "lowering_target": "_matlab.ylabel"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -377,28 +419,35 @@
       "kind": "axes-operation",
       "signature_or_syntax": "ylim(limits)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "ylim",
+        "lowering_target": "_matlab.ylim"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -500,28 +549,35 @@
       "kind": "handle-update",
       "signature_or_syntax": "set(handle, property, value, ...)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "set",
+        "lowering_target": "_matlab.set"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -623,28 +679,35 @@
       "kind": "plot-function",
       "signature_or_syntax": "handle.Property",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "Tree-sitter recognizes field_expression syntax, but the MATLAB AST builder explicitly rejects that node type; graphics-handle property access is absent.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "get_property/set_property",
+        "lowering_target": "_matlab.get_property/_matlab.set_property"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -787,7 +850,8 @@
       "kind": "plot-function",
       "signature_or_syntax": "plot(x, y)",
       "source_authority": [
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
       "dependencies": [
         "Sage.js graphics",
@@ -795,27 +859,23 @@
       ],
       "classification": "translated",
       "support_state": "implemented",
-      "translation_or_reason": "Exactly two arguments are explicitly lowered to a Sage.js line graphic; LineSpec and MATLAB figure/axes/handle state are not implied.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
         "plotting_lowerer_recognized": true,
-        "runtime_export": null,
-        "lowering_target": "line"
+        "runtime_export": "plot",
+        "lowering_target": "_matlab.plot"
       },
       "evidence_debt": [
-        {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
-        },
-        {
-          "code": "plotly-evidence-missing",
-          "detail": "No focused Plotly-lowering test is linked to this supported entry."
-        },
         {
           "code": "visual-evidence-missing",
           "detail": "No stable rendering or visual-regression evidence is linked yet."
@@ -838,28 +898,35 @@
       "kind": "plot-function",
       "signature_or_syntax": "plot(x, y, LineSpec)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "Only the exact two-argument plot(x, y) form is special-cased; a LineSpec becomes a generic call/index expression and fails rather than being silently accepted.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "plot",
+        "lowering_target": "_matlab.plot"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -961,28 +1028,35 @@
       "kind": "session-state",
       "signature_or_syntax": "axes(...)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "axes",
+        "lowering_target": "_matlab.axes"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -1002,28 +1076,35 @@
       "kind": "session-state",
       "signature_or_syntax": "figure(...)",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "figure",
+        "lowering_target": "_matlab.figure"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -1043,28 +1124,35 @@
       "kind": "session-state",
       "signature_or_syntax": "hold on/off",
       "source_authority": [
-        "agents/sage-2d-plotting-coverage-plan.md",
-        "tools/matlab/frontend.ts"
+        "tools/matlab/frontend.ts",
+        "src/lib/matlab.py"
       ],
-      "dependencies": [],
-      "classification": "unsupported",
-      "support_state": "emerging-gap",
-      "translation_or_reason": "MATLAB command syntax with arguments is explicitly rejected, and no persistent figure/axes hold state exists.",
-      "semantic_tests": [],
-      "plotly_tests": [],
+      "dependencies": [
+        "Sage.js graphics",
+        "Plotly"
+      ],
+      "classification": "translated",
+      "support_state": "implemented",
+      "translation_or_reason": "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures.",
+      "semantic_tests": [
+        "test/matlab-plotting.cjs"
+      ],
+      "plotly_tests": [
+        "test/matlab-plotting.cjs"
+      ],
       "visual_tests": [],
       "platform_status": "not-assessed",
       "performance_status": "not-assessed",
       "implementation_evidence": {
         "grammar_recognized": true,
-        "plotting_lowerer_recognized": false,
-        "runtime_export": null,
-        "lowering_target": null
+        "plotting_lowerer_recognized": true,
+        "runtime_export": "hold",
+        "lowering_target": "_matlab.hold"
       },
       "evidence_debt": [
         {
-          "code": "semantic-evidence-missing",
-          "detail": "No focused executable semantic test is linked to this entry."
+          "code": "visual-evidence-missing",
+          "detail": "No stable rendering or visual-regression evidence is linked yet."
         },
         {
           "code": "platform-evidence-missing",
@@ -20701,102 +20789,6 @@
       ]
     },
     {
-      "id": "wolfram.graphics-primitive.Graphics",
-      "frontend": "wolfram",
-      "qualified_name": "Graphics",
-      "dimension": "2d",
-      "kind": "graphics-primitive",
-      "signature_or_syntax": "Graphics[...]",
-      "source_authority": [
-        "tools/wolfram/frontend.ts",
-        "src/lib/wolfram.py"
-      ],
-      "dependencies": [
-        "Sage.js graphics",
-        "Plotly"
-      ],
-      "classification": "translated",
-      "support_state": "implemented",
-      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
-      "semantic_tests": [
-        "test/graphics.cjs"
-      ],
-      "plotly_tests": [
-        "test/graphics.cjs"
-      ],
-      "visual_tests": [],
-      "platform_status": "not-assessed",
-      "performance_status": "not-assessed",
-      "implementation_evidence": {
-        "grammar_recognized": true,
-        "plotting_lowerer_recognized": true,
-        "runtime_export": "Graphics",
-        "lowering_target": "_wolfram.Graphics"
-      },
-      "evidence_debt": [
-        {
-          "code": "visual-evidence-missing",
-          "detail": "No stable rendering or visual-regression evidence is linked yet."
-        },
-        {
-          "code": "platform-evidence-missing",
-          "detail": "Platform behavior has not been assessed for this entry."
-        },
-        {
-          "code": "performance-evidence-missing",
-          "detail": "Performance and resource behavior have not been assessed."
-        }
-      ]
-    },
-    {
-      "id": "wolfram.graphics-primitive.Graphics3D",
-      "frontend": "wolfram",
-      "qualified_name": "Graphics3D",
-      "dimension": "3d",
-      "kind": "graphics-primitive",
-      "signature_or_syntax": "Graphics3D[...]",
-      "source_authority": [
-        "tools/wolfram/frontend.ts",
-        "src/lib/wolfram.py"
-      ],
-      "dependencies": [
-        "Sage.js graphics",
-        "Plotly"
-      ],
-      "classification": "translated",
-      "support_state": "implemented",
-      "translation_or_reason": "The parser emits the matching Wolfram runtime adapter, which translates to Sage.js graphics and Plotly.",
-      "semantic_tests": [
-        "test/graphics.cjs"
-      ],
-      "plotly_tests": [
-        "test/graphics.cjs"
-      ],
-      "visual_tests": [],
-      "platform_status": "not-assessed",
-      "performance_status": "not-assessed",
-      "implementation_evidence": {
-        "grammar_recognized": true,
-        "plotting_lowerer_recognized": true,
-        "runtime_export": "Graphics3D",
-        "lowering_target": "_wolfram.Graphics3D"
-      },
-      "evidence_debt": [
-        {
-          "code": "visual-evidence-missing",
-          "detail": "No stable rendering or visual-regression evidence is linked yet."
-        },
-        {
-          "code": "platform-evidence-missing",
-          "detail": "Platform behavior has not been assessed for this entry."
-        },
-        {
-          "code": "performance-evidence-missing",
-          "detail": "Performance and resource behavior have not been assessed."
-        }
-      ]
-    },
-    {
       "id": "wolfram.graphics-primitive.Line",
       "frontend": "wolfram",
       "qualified_name": "Line",
@@ -22789,12 +22781,12 @@
       ]
     },
     {
-      "id": "wolfram.plot-option.ColorFunction",
+      "id": "wolfram.plot-option.Boxed",
       "frontend": "wolfram",
-      "qualified_name": "ColorFunction",
+      "qualified_name": "Boxed",
       "dimension": "2d-or-3d",
       "kind": "plot-option",
-      "signature_or_syntax": "ColorFunction -> value",
+      "signature_or_syntax": "Boxed -> value",
       "source_authority": [
         "tools/wolfram/frontend.ts"
       ],
@@ -22814,7 +22806,7 @@
         "grammar_recognized": true,
         "plotting_lowerer_recognized": true,
         "runtime_export": null,
-        "lowering_target": "cmap"
+        "lowering_target": "frame"
       },
       "evidence_debt": [
         {

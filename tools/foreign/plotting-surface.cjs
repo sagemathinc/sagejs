@@ -161,6 +161,16 @@ function objectEntries(source, propertyName) {
   return entries;
 }
 
+function pythonStringEntries(source, variableName) {
+  const marker = `${variableName} = {`;
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, `missing ${variableName} source table`);
+  const end = source.indexOf("\n    }", start);
+  assert.notEqual(end, -1, `unterminated ${variableName} source table`);
+  return [...source.slice(start, end).matchAll(/^\s+"([A-Za-z][A-Za-z0-9]*)":\s*"([^"]+)",/gm)]
+    .map((match) => [match[1], match[2]]);
+}
+
 function pythonAliases(source) {
   return [...source.matchAll(/^([A-Z][A-Za-z0-9_]*)\s*=\s*([a-z_][A-Za-z0-9_]*)$/gm)]
     .map((match) => ({ name: match[1], implementation: match[2] }))
@@ -174,7 +184,7 @@ function wolframPlotHeads(source) {
   assert.notEqual(end, -1, "missing Wolfram iterator lowerer");
   const names = [...source.slice(start, end).matchAll(/if \(head === "([A-Za-z0-9]+)"\)/g)]
     .map((match) => match[1])
-    .filter((name) => name !== "Table");
+    .filter((name) => name !== "Table" && name !== "Show");
   for (const name of names) {
     assert.ok(WOLFRAM_SIGNATURES[name], `classify new Wolfram plotting head ${name}`);
     assert.ok(WOLFRAM_TARGETS[name], `record lowering target for Wolfram plotting head ${name}`);
@@ -246,10 +256,10 @@ function generateSurface(root = resolve(__dirname, "../..")) {
 
   const plotHeads = wolframPlotHeads(wolframFrontend);
   const graphicsHeads = objectKeys(wolframFrontend, "graphicsHeads");
-  const plotOptionEntries = objectEntries(wolframFrontend, "keywordMap");
+  const plotOptionEntries = pythonStringEntries(wolframRuntime, "keyword_map");
   const plotOptionTargets = Object.fromEntries(plotOptionEntries);
   const plotOptions = plotOptionEntries.map(([name]) => name);
-  assert.match(wolframFrontend, /name === "PlotRange"/, "PlotRange lowering disappeared");
+  assert.match(wolframRuntime, /name == "PlotRange"/, "PlotRange lowering disappeared");
   plotOptions.push("PlotRange");
   const wolframExports = pythonAliases(wolframRuntime);
   const wolframExportNames = new Set(wolframExports.map(({ name }) => name));
@@ -333,29 +343,68 @@ function generateSurface(root = resolve(__dirname, "../..")) {
     }));
   }
 
-  const matlabPlotImplemented = /name === "plot"\s*&&\s*expression\.arguments\.length === 2/.test(matlabFrontend);
-  assert.ok(matlabPlotImplemented, "MATLAB plot(x, y) special lowering disappeared");
-  assert.match(matlabFrontend, /if \(!commandName \|\| commandArguments\.length\)/, "MATLAB command rejection boundary changed");
-  assert.doesNotMatch(matlabFrontend, /case "field_expression"/, "MATLAB field/property support must be classified before advertising it");
+  const matlabDirectEntries = objectEntries(matlabFrontend, "directFunctions");
+  const matlabDirectTargets = Object.fromEntries(matlabDirectEntries);
+  assert.equal(matlabDirectTargets.plot, "_matlab.plot", "MATLAB plot lowering disappeared");
+  assert.match(matlabFrontend, /case "field_expression"/, "MATLAB field/property lowering disappeared");
+  assert.match(matlabFrontend, /hold: "_matlab\.hold"/, "MATLAB command hold lowering disappeared");
   assert.match(kernelSource, /persistent Sage\.js execution session/, "persistent session contract changed");
   const matlabExports = [...matlabRuntime.matchAll(/^def ([a-z][A-Za-z0-9_]*)\(/gm)]
     .map((match) => match[1])
     .filter((name) => !name.startsWith("_"))
     .sort();
   if (/^ALL\s*=/m.test(matlabRuntime)) matlabExports.unshift("ALL");
+  const matlabExportNames = new Set(matlabExports);
+  const matlabImplemented = new Set([
+    "plot",
+    "plot.LineSpec",
+    "figure",
+    "axes",
+    "hold",
+    "xlabel",
+    "ylabel",
+    "title",
+    "legend",
+    "xlim",
+    "ylim",
+    "grid",
+    "set",
+    "handle.Property",
+  ]);
+  const runtimeName = (name) =>
+    name === "plot.LineSpec"
+      ? "plot"
+      : name === "handle.Property"
+      ? "get_property/set_property"
+      : name;
   for (const [name, dimension, syntax] of MATLAB_TARGETS) {
-    const implemented = name === "plot" && matlabPlotImplemented;
+    const implemented = matlabImplemented.has(name);
+    const exported = runtimeName(name);
+    if (implemented && name !== "handle.Property") {
+      assert.ok(matlabExportNames.has(exported), `MATLAB runtime export ${exported} disappeared`);
+    }
     entries.push(record({
       frontend: "matlab", name, dimension,
       kind: ["figure", "axes", "hold", "subplot", "tiledlayout", "nexttile"].includes(name) ? "session-state" : name === "set" ? "handle-update" : ["xlabel", "ylabel", "zlabel", "title", "legend", "xlim", "ylim", "zlim", "grid", "view", "colormap"].includes(name) ? "axes-operation" : "plot-function",
       syntax, state: implemented ? "implemented" : "emerging-gap",
       reason: implemented
-        ? "Exactly two arguments are explicitly lowered to a Sage.js line graphic; LineSpec and MATLAB figure/axes/handle state are not implied."
+        ? "The MATLAB frontend lowers this syntax to the persistent MATLAB graphics session, which materializes stable PlotSpec layers and Plotly figures."
         : MATLAB_GAP_REASONS[name] ?? "The generic MATLAB call grammar recognizes this spelling, but there is no plotting-specific lowerer or MATLAB runtime export, so it is not advertised as working.",
-      authorities: implemented ? ["tools/matlab/frontend.ts"] : ["agents/sage-2d-plotting-coverage-plan.md", "tools/matlab/frontend.ts"],
-      target: implemented ? "line" : null,
+      authorities: implemented ? ["tools/matlab/frontend.ts", "src/lib/matlab.py"] : ["agents/sage-2d-plotting-coverage-plan.md", "tools/matlab/frontend.ts"],
+      runtimeExport: implemented ? exported : null,
+      target: implemented
+        ? name === "handle.Property"
+          ? "_matlab.get_property/_matlab.set_property"
+          : `_matlab.${exported}`
+        : null,
+      semanticTests: implemented ? ["test/matlab-plotting.cjs"] : [],
+      plotlyTests: implemented ? ["test/matlab-plotting.cjs"] : [],
     }));
   }
+
+  const plottingRuntimeExports = matlabExports.filter((name) =>
+    Object.values(matlabDirectTargets).includes(`_matlab.${name}`)
+  );
 
   entries.sort((left, right) => left.id.localeCompare(right.id));
   const counts = (frontend, classification) => entries.filter((entry) => entry.frontend === frontend && entry.classification === classification).length;
@@ -381,14 +430,14 @@ function generateSurface(root = resolve(__dirname, "../..")) {
         runtime_exports: wolframExports,
       },
       matlab: {
-        parser_call_model: "Generic function_call syntax plus one plotting-specific plot(x, y) lowering",
-        parser_plot_heads: matlabPlotImplemented ? ["plot"] : [],
+        parser_call_model: "Generic function_call syntax plus direct MATLAB graphics-session lowering, command forms, and handle property access",
+        parser_plot_heads: [...matlabImplemented].sort(),
         runtime_exports: matlabExports,
-        plotting_runtime_exports: [],
+        plotting_runtime_exports: plottingRuntimeExports,
         session_model: {
           shared_module_namespace_across_cells: true,
-          persistent_figure_axes_state: false,
-          graphics_handles: false,
+          persistent_figure_axes_state: true,
+          graphics_handles: true,
           evidence: ["tools/kernel.ts", "tools/matlab/frontend.ts", "src/lib/matlab.py"],
         },
       },

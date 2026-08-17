@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "reference": "SageMath 10.9.post1",
+  "generated_with": "/home/user/bin/sagelite",
+  "coordinate_contract": {
+    "scalar_order": "z[y_index][x_index]",
+    "vector_oracle_order": "x outer, y inner",
+    "endpoints_included": true
+  },
+  "cases": {
+    "affine_scalar_3_by_4": {
+      "function": "x + 2*y",
+      "xrange": [0.0, 2.0],
+      "yrange": [-1.0, 2.0],
+      "plot_points": [3, 4],
+      "z": [
+        [-2.0, -1.0, 0.0],
+        [0.0, 1.0, 2.0],
+        [2.0, 3.0, 4.0],
+        [4.0, 5.0, 6.0]
+      ]
+    },
+    "circle_implicit_3_by_3": {
+      "function": "x*x + y*y - 1",
+      "xrange": [-1.0, 1.0],
+      "yrange": [-1.0, 1.0],
+      "plot_points": 3,
+      "z": [[1.0, 0.0, 1.0], [0.0, -1.0, 0.0], [1.0, 0.0, 1.0]],
+      "levels": [0.0]
+    },
+    "negative_intersection_region_3_by_3": {
+      "functions": ["x", "y"],
+      "xrange": [-1.0, 1.0],
+      "yrange": [-1.0, 1.0],
+      "plot_points": 3,
+      "z": [[-1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, -1.0]]
+    },
+    "affine_vector_3_by_3": {
+      "functions": ["x + y", "x - y"],
+      "xrange": [0.0, 2.0],
+      "yrange": [-1.0, 1.0],
+      "plot_points": 3,
+      "x": [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+      "y": [-1.0, 0.0, 1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0],
+      "u": [-1.0, 0.0, 1.0, 0.0, 1.0, 2.0, 1.0, 2.0, 3.0],
+      "v": [1.0, 0.0, -1.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0]
+    },
+    "affine_slope_3_by_3": {
+      "function": "x + y",
+      "xrange": [0.0, 2.0],
+      "yrange": [-1.0, 1.0],
+      "plot_points": 3,
+      "u": [
+        0.7071067811865475,
+        1.0,
+        0.7071067811865475,
+        1.0,
+        0.7071067811865475,
+        0.4472135954999579,
+        0.7071067811865475,
+        0.4472135954999579,
+        0.31622776601683794
+      ],
+      "v": [
+        -0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.8944271909999159,
+        0.7071067811865475,
+        0.8944271909999159,
+        0.9486832980505138
+      ]
+    }
+  },
+  "defaults": {
+    "contour_plot_points": 100,
+    "contour_fill": true,
+    "density_plot_points": 25,
+    "density_cmap": "gray",
+    "density_interpolation": "catrom",
+    "implicit_plot_points": 150,
+    "implicit_levels": [0.0],
+    "region_plot_points": 100,
+    "vector_plot_points": 20
+  }
+}

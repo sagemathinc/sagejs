@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sage-2d-fields",
+  "title": "Sage 2D scalar and vector fields",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement deterministic shared rectangular-grid sampling, semantic PlotSpec layers, Plotly lowering payloads, and qualified Sage wrappers for contour, density, implicit, region, vector, and slope-field plots with explicit option outcomes and bounded resources",
+  "base_commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+  "claims": [
+    "src/lib/sagejs/plotting/grid_sampling.py",
+    "src/lib/sagejs/plotting/field_layers.py",
+    "src/lib/sage/plot/contour_plot.py",
+    "src/lib/sage/plot/density_plot.py",
+    "src/lib/sage/plot/plot_field.py",
+    "test/sage-2d-fields.cjs",
+    "docs/sage-compatibility/plotting/oracle/field-grids.json",
+    "docs/sage-compatibility/plotting/field-grids.md",
+    "bench/plot-field-grids.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post1 sage.plot.contour_plot, density_plot, and plot_field",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/contour_plot.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/density_plot.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/plot_field.html"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "/home/user/bin/sagelite pinned differential cases",
+      "CPython versus Sage.js native-disabled differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.466,
+      "started_at": "2026-08-17T07:02:04.040Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "817fc341242cce358b98c854725c815769bef16acd7dfa3ca364260283d82249",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/plotting/grid_sampling.py src/lib/sagejs/plotting/field_layers.py src/lib/sage/plot/contour_plot.py src/lib/sage/plot/density_plot.py src/lib/sage/plot/plot_field.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.391,
+      "started_at": "2026-08-17T07:02:42.605Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "817fc341242cce358b98c854725c815769bef16acd7dfa3ca364260283d82249",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/sage-2d-fields.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.307,
+      "started_at": "2026-08-17T07:02:45.810Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "817fc341242cce358b98c854725c815769bef16acd7dfa3ca364260283d82249",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/plot-field-grids.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.749,
+      "started_at": "2026-08-17T07:02:50.056Z",
+      "commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
+      "workspace_fingerprint": "817fc341242cce358b98c854725c815769bef16acd7dfa3ca364260283d82249",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

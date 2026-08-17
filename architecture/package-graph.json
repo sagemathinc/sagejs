@@ -258,10 +258,15 @@
       "id": "plot-spec",
       "layer": 2,
       "startup": "lazy",
-      "max_source_bytes": 250000,
+      "max_source_bytes": 400000,
       "depends_on": ["core-runtime", "python-stdlib"],
       "modules": ["sagejs.plotting"],
-      "files": [],
+      "files": [
+        "src/lib/sage/plot/__init__.py",
+        "src/lib/sage/plot/contour_plot.py",
+        "src/lib/sage/plot/density_plot.py",
+        "src/lib/sage/plot/plot_field.py"
+      ],
       "prefixes": ["src/lib/sagejs/plotting/"]
     },
     {
