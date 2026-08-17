@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Load the explicitly precompiled maximal-order worker module graph in lightweight multiprocessing evaluators without a parser, compiler, or arbitrary filesystem lookup, and reject unknown or uncompiled modules with Windows/SEA-safe fallback semantics",
-  "base_commit": "0e8c027ba2945399b0a0e1a9bc084f7855ff1fae",
+  "base_commit": "84f1451ad607ea4021188c7c0fc5faacb1635bcd",
   "claims": [
     ".agents/lanes.json",
     "tools/resources.ts",
@@ -44,16 +44,47 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.296,
+      "started_at": "2026-08-17T23:50:53.339Z",
+      "commit": "fa26d759b67cd249e9b2ae548d61e707acccf150",
+      "workspace_fingerprint": "68ddc5b0a0756cd63a6be375521f3d0f69c632e68e82215a5c070267ab57b7e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.455,
+      "started_at": "2026-08-17T23:51:06.247Z",
+      "commit": "fa26d759b67cd249e9b2ae548d61e707acccf150",
+      "workspace_fingerprint": "68ddc5b0a0756cd63a6be375521f3d0f69c632e68e82215a5c070267ab57b7e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 25.29,
+      "started_at": "2026-08-17T23:51:33.030Z",
+      "commit": "fa26d759b67cd249e9b2ae548d61e707acccf150",
+      "workspace_fingerprint": "68ddc5b0a0756cd63a6be375521f3d0f69c632e68e82215a5c070267ab57b7e1",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Added a fail-closed resource manifest and genuinely on-demand loader for build-precompiled multiprocessing modules, an exact read-only capability query, portable virtual filenames, and focused synthetic loader/rejection coverage. Workers read only the manifest at startup and fetch an exact validated module resource on first import. Ordinary builds without the optional graph retain self-contained Pool behavior and report the module capability as false.",
+    "summary": "Added a fail-closed resource manifest and genuinely on-demand loader for build-precompiled multiprocessing modules, an exact read-only capability query, portable virtual filenames, and focused synthetic loader/rejection coverage. Workers read only the manifest at startup and fetch an exact validated module resource on first import. The explicit maximal-order portfolio emits 33 authorized modules; its four-prime Round2 public worker run is exactly sequential-equivalent. Ordinary builds without the optional graph retain self-contained Pool behavior and report the module capability as false. Focused loader tests also pass on native Windows x64.",
     "risks": [
-      "The declared nf-maxorder-public-worker dependency is not yet committed on this base, so the real local_parallel_worker graph and x^2-8 Pool integration require validation after integration.",
-      "The full multiprocessing test passed 9 of 10 cases here; its advanced elliptic case requires the optional FLINT addon, which this isolated worktree does not have installed."
+      "The full multiprocessing test passed 9 of 10 cases here; its advanced elliptic case and several portable-tier tests require the optional FLINT addon and development headers, which this isolated worktree does not have installed.",
+      "The required architecture receipt reaches the native audit but fails on an inherited generated native-export inventory drift outside this lane's claims.",
+      "The portable tier also reports the newly inherited public-worker test is absent from the shared test-tier manifest; that manifest belongs to the arithmetic integration lane."
     ],
     "next_steps": [
-      "After integrating nf-maxorder-public-worker, run pnpm python:precompile:run and the focused public Round2 worker test.",
-      "Run the full multiprocessing suite in a prepared native worktree and exercise the emitted graph in a SEA/Windows build."
+      "Exercise the emitted task graph in a single-executable build; its resource lookup uses the same authoritative SEA asset map as other lazy caches."
     ]
   }
 }
