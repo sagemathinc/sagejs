@@ -668,6 +668,338 @@ def _factor_sort_key(record: tuple[list[Any], int]) -> tuple[int, str]:
     return _poly_degree(record[0]), str(record[0])
 
 
+def _positive_integer_bits(value: Any) -> int:
+    remaining = abs(value)
+    answer = 0
+    while remaining:
+        remaining //= 2
+        answer += 1
+    return answer
+
+
+def _integer_sqrt_ceiling(value: Any) -> Any:
+    if value < 0:
+        raise ValueError("an integer square-root input must be nonnegative")
+    if value <= 1:
+        return value
+    approximation = 1 << ((_positive_integer_bits(value) + 1) // 2)
+    while True:
+        improved = (approximation + value // approximation) // 2
+        if improved >= approximation:
+            break
+        approximation = improved
+    if approximation * approximation < value:
+        approximation += 1
+    return approximation
+
+
+def _integer_multiplication_matrix_data(
+    field: Any,
+    element: Any,
+) -> tuple[list[list[Any]], Any, list[Any]]:
+    """Return a cleared integer multiplication matrix and safe bounds.
+
+    If `B` is multiplication by `denominator*element`, the returned row
+    bounds are the ceilings of the exact Euclidean norms of the rows of `B`.
+    No floating-point estimate enters CRT reconstruction.
+    """
+    degree = field.degree()
+    coefficients = list(element.list())
+    coefficients += [sage.QQ(0) for _index in range(degree - len(coefficients))]
+    denominator = sage.ZZ(1)
+    for coefficient in coefficients:
+        denominator = _integer_lcm(denominator, coefficient._denominator)
+    defining = []
+    for coefficient in field._defining_coefficients[:-1]:
+        if coefficient._denominator != 1:
+            raise Round4Unsupported(
+                "modular characteristic reconstruction requires an integral monic equation"
+            )
+        defining.append(coefficient._numerator)
+    column = [
+        coefficient._numerator * (denominator // coefficient._denominator)
+        for coefficient in coefficients
+    ]
+    columns = []
+    for _column_index in range(degree):
+        columns.append(list(column))
+        leading = column[-1]
+        next_column = [-leading * defining[0]]
+        for index in range(1, degree):
+            next_column.append(column[index - 1] - leading * defining[index])
+        column = next_column
+    rows = [[columns[column][row] for column in range(degree)] for row in range(degree)]
+    row_bounds = []
+    for row in range(degree):
+        norm_square = sum(value * value for value in rows[row])
+        row_bounds.append(_integer_sqrt_ceiling(norm_square))
+    return rows, denominator, row_bounds
+
+
+def _characteristic_coefficient_bounds(row_bounds: list[Any]) -> list[Any]:
+    """Bound ascending characteristic coefficients by principal minors."""
+    degree = len(row_bounds)
+    elementary = [sage.ZZ(1)] + [sage.ZZ(0) for _index in range(degree)]
+    used = 0
+    for row_bound in row_bounds:
+        used += 1
+        for index in range(used, 0, -1):
+            elementary[index] += row_bound * elementary[index - 1]
+    return [elementary[degree - index] for index in range(degree + 1)]
+
+
+def _modular_integer_power(base: int, exponent: int, modulus: int) -> int:
+    answer = 1
+    power = base % modulus
+    remaining = exponent
+    while remaining:
+        if remaining % 2:
+            answer = (answer * power) % modulus
+        remaining //= 2
+        if remaining:
+            power = (power * power) % modulus
+    return answer
+
+
+def _is_prime_word(value: int) -> bool:
+    """Deterministically certify a prime below `2^30`."""
+    if value < 2:
+        return False
+    for small_prime in [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]:
+        if value == small_prime:
+            return True
+        if value % small_prime == 0:
+            return False
+    odd_part = value - 1
+    twos = 0
+    while odd_part % 2 == 0:
+        odd_part //= 2
+        twos += 1
+    for witness in [2, 3, 5, 7, 11]:
+        if witness >= value:
+            continue
+        residue = _modular_integer_power(witness, odd_part, value)
+        if residue == 1 or residue == value - 1:
+            continue
+        composite = True
+        for _index in range(twos - 1):
+            residue = (residue * residue) % value
+            if residue == value - 1:
+                composite = False
+                break
+        if composite:
+            return False
+    return True
+
+
+def _next_reconstruction_prime(candidate: int) -> tuple[int, int]:
+    current = candidate if candidate % 2 else candidate - 1
+    while current >= 2:
+        if _is_prime_word(current):
+            return current, current - 2
+        current -= 2
+    raise Round4InvariantError("the deterministic CRT prime stream was exhausted")
+
+
+def _modular_power_basis_is_cyclic(rows: list[list[Any]], prime: int) -> bool:
+    """Certify modulo `prime` that the first coordinate is cyclic."""
+    degree = len(rows)
+    vector = [1] + [0 for _index in range(degree - 1)]
+    columns = []
+    for _exponent in range(degree):
+        columns.append(list(vector))
+        vector = [
+            sum(
+                runtime.number(rows[row][column] % prime) * vector[column]
+                for column in range(degree)
+            )
+            % prime
+            for row in range(degree)
+        ]
+    matrix_rows = [
+        [columns[column][row] for column in range(degree)] for row in range(degree)
+    ]
+    rank = 0
+    for column in range(degree):
+        pivot = rank
+        while pivot < degree and matrix_rows[pivot][column] == 0:
+            pivot += 1
+        if pivot == degree:
+            continue
+        matrix_rows[rank], matrix_rows[pivot] = (
+            matrix_rows[pivot],
+            matrix_rows[rank],
+        )
+        inverse = _modular_inverse(matrix_rows[rank][column], prime)
+        for index in range(column, degree):
+            matrix_rows[rank][index] = (matrix_rows[rank][index] * inverse) % prime
+        for row in range(rank + 1, degree):
+            multiplier = matrix_rows[row][column]
+            if multiplier:
+                for index in range(column, degree):
+                    matrix_rows[row][index] = (
+                        matrix_rows[row][index] - multiplier * matrix_rows[rank][index]
+                    ) % prime
+        rank += 1
+    return rank == degree
+
+
+def _annihilates_first_coordinate(
+    rows: list[list[Any]],
+    coefficients: list[Any],
+) -> bool:
+    """Check `polynomial(B)e_0 == 0` exactly by Horner evaluation."""
+    degree = len(rows)
+    vector = [sage.ZZ(1)] + [sage.ZZ(0) for _index in range(degree - 1)]
+    for coefficient in reversed(coefficients[:-1]):
+        next_vector = []
+        for row in range(degree):
+            value = sum(rows[row][column] * vector[column] for column in range(degree))
+            if row == 0:
+                value += coefficient
+            next_vector.append(value)
+        vector = next_vector
+    return all(value == 0 for value in vector)
+
+
+def _modular_characteristic_polynomial(
+    field: Any,
+    element: Any,
+    metrics: dict[str, Any] | None = None,
+) -> list[Any]:
+    """Reconstruct an exact characteristic polynomial by bounded CRT.
+
+    The coefficient bounds are sums of Hadamard bounds for all principal
+    minors.  Once the product of independently certified word primes exceeds
+    twice the largest bound, centered reconstruction is unique over `ZZ`.
+    Reconstruction can finish earlier when the first coordinate is proved
+    cyclic modulo one CRT prime and the centered candidate annihilates it
+    exactly.  Cyclicity lifts from the finite field to `QQ`; hence that monic
+    degree-`n` annihilator is necessarily the characteristic polynomial.
+    """
+    rows, denominator, row_bounds = _integer_multiplication_matrix_data(
+        field,
+        element,
+    )
+    degree = field.degree()
+    bounds = _characteristic_coefficient_bounds(row_bounds)
+    largest_bound = max(bounds)
+    residues = [sage.ZZ(0) for _index in range(degree + 1)]
+    modulus = sage.ZZ(1)
+    candidate_prime = 1073741823
+    prime_count = 0
+    previous_centered = None
+    integer_coefficients = None
+    cyclic = False
+    certification = "coefficient-bound"
+    while integer_coefficients is None:
+        prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
+        residue_field = _nf_global("GF")(prime)
+        modular_rows = [[residue_field(value % prime) for value in row] for row in rows]
+        modular_coefficients = list(
+            _nf_global("matrix")(residue_field, modular_rows).charpoly().list()
+        )
+        modulus_mod_prime = runtime.number(modulus % prime)
+        inverse = _modular_inverse(modulus_mod_prime, prime)
+        for index, coefficient in enumerate(modular_coefficients):
+            target = runtime.number(coefficient.lift())
+            correction = (
+                (target - runtime.number(residues[index] % prime)) * inverse
+            ) % prime
+            residues[index] += modulus * correction
+        modulus *= prime
+        prime_count += 1
+        cyclic = cyclic or _modular_power_basis_is_cyclic(rows, prime)
+        if prime_count > 4096:
+            raise Round4Unsupported(
+                "exact modular characteristic reconstruction exceeded 4096 primes"
+            )
+        half_modulus = modulus // 2
+        centered_coefficients = [
+            residue - modulus if residue > half_modulus else residue
+            for residue in residues
+        ]
+        if modulus > 2 * largest_bound:
+            integer_coefficients = centered_coefficients
+        elif (
+            cyclic
+            and previous_centered == centered_coefficients
+            and _annihilates_first_coordinate(rows, centered_coefficients)
+        ):
+            integer_coefficients = centered_coefficients
+            certification = "cyclic-krylov"
+        previous_centered = centered_coefficients
+    for index, coefficient in enumerate(integer_coefficients):
+        if abs(coefficient) > bounds[index]:
+            raise Round4InvariantError(
+                "a reconstructed characteristic coefficient exceeds its bound"
+            )
+    coefficients = []
+    for index, coefficient in enumerate(integer_coefficients):
+        denominator_power = denominator ** (degree - index)
+        coefficients.append(sage.QQ(coefficient) / sage.QQ(denominator_power))
+    if metrics is not None:
+        metrics["modular_characteristic_calls"] = (
+            metrics.get("modular_characteristic_calls", 0) + 1
+        )
+        metrics["modular_characteristic_primes"] = (
+            metrics.get("modular_characteristic_primes", 0) + prime_count
+        )
+        metrics["modular_characteristic_max_bound_bits"] = max(
+            metrics.get("modular_characteristic_max_bound_bits", 0),
+            _positive_integer_bits(largest_bound),
+        )
+        metrics["modular_characteristic_max_modulus_bits"] = max(
+            metrics.get("modular_characteristic_max_modulus_bits", 0),
+            _positive_integer_bits(modulus),
+        )
+        certification_counts = metrics.get("modular_characteristic_certifications")
+        if certification_counts is None:
+            certification_counts = {}
+            metrics["modular_characteristic_certifications"] = certification_counts
+        certification_counts[certification] = (
+            certification_counts.get(certification, 0) + 1
+        )
+    return coefficients
+
+
+def _record_characteristic_input(
+    element: Any,
+    metrics: dict[str, Any],
+    metric_label: str,
+) -> None:
+    input_bits = 0
+    denominator_bits = 0
+    for coefficient in element.list():
+        numerator_size = _positive_integer_bits(coefficient._numerator)
+        denominator_size = _positive_integer_bits(coefficient._denominator)
+        input_bits += numerator_size + denominator_size
+        denominator_bits = max(denominator_bits, denominator_size)
+    metrics["characteristic_polynomial_calls"] += 1
+    metrics["input_coefficient_bits_total"] += input_bits
+    metrics["max_input_coefficient_bits"] = max(
+        metrics["max_input_coefficient_bits"], input_bits
+    )
+    metrics["max_denominator_bits"] = max(
+        metrics["max_denominator_bits"], denominator_bits
+    )
+    metrics["characteristic_polynomial_inputs"].append(
+        {
+            "label": metric_label,
+            "coefficient_bits": input_bits,
+            "denominator_bits": denominator_bits,
+        }
+    )
+    call_limit = metrics.get("characteristic_polynomial_call_limit")
+    if (
+        call_limit is not None
+        and metrics["characteristic_polynomial_calls"] > call_limit
+    ):
+        raise Round4Unsupported(
+            "the diagnostic characteristic-polynomial call limit was reached"
+        )
+
+
 def _element_characteristic_polynomial(
     field: Any,
     element: Any,
@@ -683,46 +1015,7 @@ def _element_characteristic_polynomial(
     """
     degree = field.degree()
     if metrics is not None:
-        input_bits = 0
-        denominator_bits = 0
-        for coefficient in element.list():
-            numerator = abs(coefficient._numerator)
-            denominator = coefficient._denominator
-            numerator_size = 0
-            denominator_size = 0
-            while numerator:
-                numerator //= 2
-                numerator_size += 1
-            while denominator:
-                denominator //= 2
-                denominator_size += 1
-            input_bits += numerator_size + denominator_size
-            denominator_bits = max(denominator_bits, denominator_size)
-        metrics["characteristic_polynomial_calls"] += 1
-        metrics["input_coefficient_bits_total"] += input_bits
-        metrics["max_input_coefficient_bits"] = max(
-            metrics["max_input_coefficient_bits"],
-            input_bits,
-        )
-        metrics["max_denominator_bits"] = max(
-            metrics["max_denominator_bits"],
-            denominator_bits,
-        )
-        metrics["characteristic_polynomial_inputs"].append(
-            {
-                "label": metric_label,
-                "coefficient_bits": input_bits,
-                "denominator_bits": denominator_bits,
-            }
-        )
-        call_limit = metrics.get("characteristic_polynomial_call_limit")
-        if (
-            call_limit is not None
-            and metrics["characteristic_polynomial_calls"] > call_limit
-        ):
-            raise Round4Unsupported(
-                "the diagnostic characteristic-polynomial call limit was reached"
-            )
+        _record_characteristic_input(element, metrics, metric_label)
     columns = []
     product = element
     generator = field.gen()
@@ -756,12 +1049,21 @@ def _integral_characteristic_polynomial(
             if metrics is not None:
                 metrics["characteristic_polynomial_cache_hits"] += 1
             return list(cached)
-    coefficients = _element_characteristic_polynomial(
-        field,
-        element,
-        metrics,
-        metric_label,
-    )
+    if metric_label == "residue-beta":
+        if metrics is not None:
+            _record_characteristic_input(element, metrics, metric_label)
+        coefficients = _modular_characteristic_polynomial(
+            field,
+            element,
+            metrics,
+        )
+    else:
+        coefficients = _element_characteristic_polynomial(
+            field,
+            element,
+            metrics,
+            metric_label,
+        )
     answer = []
     for coefficient in coefficients:
         if coefficient._denominator != 1:
