@@ -1,0 +1,119 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-resource",
+  "title": "Nf Maxorder Resource",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the host-neutral FLINT polynomial-to-HNF order resource boundary and standalone lifecycle/differential tests required by P2",
+  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+    "packages/flint/test/number_field_order_resource_ffi.c",
+    "test/number-field-order-resource-ffi.cjs",
+    "bench/number-field-order-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing Round-2 implementation",
+      "GP/PARI nfbasis"
+    ],
+    "exceptions": [
+      "A compact FLINT fmpz polynomial-to-HNF resource boundary requires direct ownership and storage primitives not expressible by the current typed compiler; the ordinary Python orchestration and existing Round-2 path remain the correctness fallback."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.019,
+      "started_at": "2026-08-17T19:25:26.994Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "9e7100e9a5d742ab7ecd12774f1be07b15034b566dc122a82d9bd98f34c197c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.229,
+      "started_at": "2026-08-17T19:25:29.912Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "9e7100e9a5d742ab7ecd12774f1be07b15034b566dc122a82d9bd98f34c197c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-order-resource.cjs 250",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.941,
+      "started_at": "2026-08-17T19:25:33.897Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "9e7100e9a5d742ab7ecd12774f1be07b15034b566dc122a82d9bd98f34c197c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.017,
+      "started_at": "2026-08-17T19:32:09.868Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "e3576686e22d7f97a63019ccc64a96879e95c3bc9ec73164223f7b596a00cab9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.181,
+      "started_at": "2026-08-17T19:32:12.805Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "e3576686e22d7f97a63019ccc64a96879e95c3bc9ec73164223f7b596a00cab9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-order-resource.cjs 100",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.882,
+      "started_at": "2026-08-17T19:32:16.703Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "e3576686e22d7f97a63019ccc64a96879e95c3bc9ec73164223f7b596a00cab9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a host-neutral owned number-field order resource. It accepts a sealed monic fmpz polynomial and fmpz prime-hint matrix, builds the equation-order multiplication table inside FLINT, resolves exact unramified hints (including arbitrary-size primes), runs batched word-prime Round 2 without an n^3 host transfer, and publishes canonical HNF numerator/common-denominator bytes with exact index and discriminant evidence. Ramified primes above UWORD_MAX return an explicit capability status and preserve the complete prime for the strict-Python fallback. Standalone C plus independent JS decoding cover lifecycle, sanitizer stress, frozen Sage/PARI-compatible lattices, invalid inputs, and a reproducible benchmark.",
+    "risks": [
+      "The existing Round-2 kernel still uses fmpq internally during basis changes; this boundary canonicalizes to one integer HNF only after the batch. Replacing iterative fmpq arithmetic belongs to the later local-algorithm lane.",
+      "A ramified arbitrary-size prime is intentionally capability-fallback, never silently narrowed. Central orchestration must check status before accepting the returned equation-order basis.",
+      "Architecture checks require integration-owned native-code classification/audit entries for the new header and C witness. Portable tests also require the integration-owned test runner manifest entry."
+    ],
+    "next_steps": [
+      "Add number_field_order_resource_ffi.h to flint headers and declare an owned sagejs_number_field_order_resource_t with clear sagejs_number_field_order_resource_clear, size sagejs_number_field_order_resource_allocated_bytes, and copied_bytes data/length accessors sagejs_number_field_order_resource_data/sagejs_number_field_order_resource_length (wasm=False).",
+      "Declare sagejs_number_field_order_from_polynomial_resource as an allocating Status(1) function with out resource plus borrowed FmpzPolynomial and FmpzMatrix inputs; declare the uint64 status/count accessors or decode their fixed transfer metadata. Status 0 is complete, 1 requires arbitrary-prime dynamic fallback, and 2 requires generic native fallback.",
+      "Classify the header as mixed-native audit-required (storage boundary plus direct polynomial table and Round-2 dispatch) and the standalone C witness as benchmark-reference accepted; add test/number-field-order-resource-ffi.cjs to the native test tier.",
+      "Wire ordinary strict Python orchestration so every nonzero status closes the native result and runs the existing correct dynamic Round-2 branch for the unresolved batch."
+    ]
+  }
+}
