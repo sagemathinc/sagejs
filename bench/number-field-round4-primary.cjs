@@ -49,22 +49,34 @@ async function main() {
         "    kernel_ms = 1000*(time.perf_counter()-started)",
         "    phi = K._from_coefficients(power.generator_coefficients)",
         "    started = time.perf_counter()",
-        "    round4._element_characteristic_polynomial(K, phi)",
+        "    direct_characteristic = round4._element_characteristic_polynomial(K, phi)",
         "    characteristic_polynomial_probe_ms = 1000*(time.perf_counter()-started)",
+        "    modular_probe_metrics = {}",
+        "    started = time.perf_counter()",
+        "    modular_characteristic = round4._modular_characteristic_polynomial(K, phi, modular_probe_metrics)",
+        "    modular_characteristic_polynomial_probe_ms = 1000*(time.perf_counter()-started)",
+        "    assert modular_characteristic == direct_characteristic",
         "    K2 = NumberField(f, 'b')",
         "    started = time.perf_counter()",
         "    public = round4.modified_round4_local_order(K2.equation_order(), prime, strict=True)",
         "    public_ms = 1000*(time.perf_counter()-started)",
         "    assert public.order.discriminant() == expected_discriminant",
-        "    answer.append({'id': name, 'plan_ms': plan_ms, 'power_basis_kernel_ms': kernel_ms, 'characteristic_polynomial_probe_ms': characteristic_polynomial_probe_ms, 'public_strict_ms': public_ms, 'characteristic_polynomial_metrics': characteristic_metrics, 'local_index': str(power.local_index)})",
+        "    answer.append({'id': name, 'plan_ms': plan_ms, 'power_basis_kernel_ms': kernel_ms, 'direct_characteristic_polynomial_probe_ms': characteristic_polynomial_probe_ms, 'modular_characteristic_polynomial_probe_ms': modular_characteristic_polynomial_probe_ms, 'modular_probe_metrics': modular_probe_metrics, 'public_strict_ms': public_ms, 'characteristic_polynomial_metrics': characteristic_metrics, 'local_index': str(power.local_index)})",
         "answer",
       ].join("\n"),
     );
     const report = {
-      schema: 1,
+      schema: 2,
       units: "milliseconds",
       mode: extended ? "extended" : "quick",
-      note: "The characteristic-polynomial probe isolates one exact regular-representation call; the search-local metrics report exact calls, cache hits, and rational-coordinate input sizes.",
+      provenance: {
+        algorithm: "exact modular characteristic polynomial by CRT",
+        coefficientBound:
+          "Hadamard bounds summed over characteristic principal minors",
+        earlyCertificate:
+          "finite-field cyclic Krylov witness plus exact integer annihilation",
+      },
+      note: "The paired probes compare direct exact regular-representation characteristic polynomials with bounded CRT reconstruction. Search-local metrics report exact calls, cache hits, rational-coordinate input sizes, CRT primes, bound sizes, and completion certificates.",
       cases: JSON.parse(evaluated.repr.replaceAll("'", '"')),
     };
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

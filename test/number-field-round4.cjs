@@ -160,6 +160,9 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
         "    assert metrics['characteristic_polynomial_cache_hits'] == expected_metrics['cache_hits']",
         "    assert metrics['max_input_coefficient_bits'] == expected_metrics['max_input_coefficient_bits']",
         "    assert metrics['max_denominator_bits'] == expected_metrics['max_denominator_bits']",
+        "    assert metrics['modular_characteristic_calls'] > 0",
+        "    assert metrics['modular_characteristic_primes'] >= metrics['modular_characteristic_calls']",
+        "    assert sum(metrics['modular_characteristic_certifications'].values()) == metrics['modular_characteristic_calls']",
         "    answer.append((case['id'], names, final['output_discriminant']))",
         "answer",
       ].join("\n"),
@@ -276,6 +279,68 @@ test("incremental regular representations equal direct multiplication matrices",
         )
       ).repr,
       "4",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("bounded modular characteristic reconstruction equals direct exact arithmetic", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "from sagejs.number_fields.round4 import _characteristic_coefficient_bounds, _element_characteristic_polynomial, _integer_multiplication_matrix_data, _modular_characteristic_polynomial",
+            "state = 1729",
+            "checked = 0",
+            "prime_count = 0",
+            "cyclic_certificates = 0",
+            "for f in [x^2+x+1, x^3-x+1, x^4+x+1, x^5-x+1, x^6+x+1]:",
+            "    K = NumberField(f, 'a')",
+            "    for denominator in [1, 2, 7]:",
+            "        coordinates = []",
+            "        for j in range(K.degree()):",
+            "            state = (1103515245*state + 12345) % (2^31)",
+            "            coordinates.append(QQ((state % 2001)-1000, denominator))",
+            "        element = K._from_coefficients(coordinates)",
+            "        metrics = {}",
+            "        modular = _modular_characteristic_polynomial(K, element, metrics)",
+            "        direct = _element_characteristic_polynomial(K, element)",
+            "        assert modular == direct",
+            "        rows, cleared_denominator, row_bounds = _integer_multiplication_matrix_data(K, element)",
+            "        bounds = _characteristic_coefficient_bounds(row_bounds)",
+            "        for i, coefficient in enumerate(modular):",
+            "            scaled = coefficient * cleared_denominator^(K.degree()-i)",
+            "            assert scaled.denominator() == 1",
+            "            assert abs(scaled.numerator()) <= bounds[i]",
+            "        assert metrics['modular_characteristic_calls'] == 1",
+            "        if metrics['modular_characteristic_certifications'].get('coefficient-bound', 0):",
+            "            assert metrics['modular_characteristic_max_modulus_bits'] > metrics['modular_characteristic_max_bound_bits']",
+            "        cyclic_certificates += metrics['modular_characteristic_certifications'].get('cyclic-krylov', 0)",
+            "        prime_count += metrics['modular_characteristic_primes']",
+            "        checked += 1",
+            "K = NumberField(x^4+x+1, 'b')",
+            "scalar = K(QQ(3, 2))",
+            "metrics = {}",
+            "assert _modular_characteristic_polynomial(K, scalar, metrics) == _element_characteristic_polynomial(K, scalar)",
+            "assert metrics['modular_characteristic_certifications'] == {'coefficient-bound': 1}",
+            "checked += 1",
+            "shift = 2^100",
+            "K = NumberField((x-shift)^4+2*(x-shift)+2, 'c')",
+            "shifted_generator = K.gen()-shift",
+            "metrics = {}",
+            "assert _modular_characteristic_polynomial(K, shifted_generator, metrics) == _element_characteristic_polynomial(K, shifted_generator)",
+            "assert metrics['modular_characteristic_certifications'] == {'cyclic-krylov': 1}",
+            "cyclic_certificates += 1",
+            "checked += 1",
+            "(checked, prime_count > 0, cyclic_certificates > 0)",
+          ].join("\n"),
+        )
+      ).repr,
+      "(17, True, True)",
     );
   } finally {
     await session.close();
