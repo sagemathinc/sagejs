@@ -3,8 +3,20 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
+process.env.SAGEJS_NATIVE_DISABLE = "1";
+
 const { createForeignFrontend } = require("../dist/tools/foreign");
 const { createSage } = require("../dist/tools/kernel.js");
+
+let session;
+
+test.before(async () => {
+  session = await createSage();
+});
+
+test.after(async () => {
+  await session.close();
+});
 
 async function plotSpec(session, name = "g") {
   const result = await session.evaluate([
@@ -56,134 +68,110 @@ test("Wolfram lowering preserves ordered rules and source intent", async () => {
 test("Wolfram plots retain PlotSpec context and diagnose ignored options", {
   timeout: 60_000,
 }, async () => {
-  const previousNativeDisable = process.env.SAGEJS_NATIVE_DISABLE;
-  process.env.SAGEJS_NATIVE_DISABLE = "1";
-  const session = await createSage();
-  try {
-    await session.evaluate(
-      [
-        "g = Plot[Sin[x],{x,0,Pi},PlotStyle->Red,",
-        "         PlotStyle:>Blue,PlotLegends->{\"sine\"}];",
-      ].join("\n"),
-      { language: "wolfram" },
-    );
-    const rendered = await session.evaluate("g");
-    assert.equal(rendered.display?.data.data[0].line.color, "blue");
+  await session.evaluate(
+    [
+      "g = Plot[Sin[x],{x,0,Pi},PlotStyle->Red,",
+      "         PlotStyle:>Blue,PlotLegends->{\"sine\"}];",
+    ].join("\n"),
+    { language: "wolfram" },
+  );
+  const rendered = await session.evaluate("g");
+  assert.equal(rendered.display?.data.data[0].line.color, "blue");
 
-    const spec = await plotSpec(session);
-    assert.equal(spec.provenance.frontend, "wolfram");
-    assert.equal(spec.provenance.source_language, "wolfram");
-    assert.equal(spec.provenance.constructor, "Plot");
-    assert.equal(spec.layers.length, 1);
-    assert.equal(spec.layers[0].id, "layer-0");
-    assert.equal(spec.layers[0].source_intent.frontend, "wolfram");
-    assert.equal(spec.layers[0].source_intent.head, "Plot");
-    assert.equal(spec.layers[0].source_intent.ranges[0], "{x,0,Pi}");
-    assert.match(spec.layers[0].source_intent.expression, /^Plot\[Sin\[x\]/);
+  const spec = await plotSpec(session);
+  assert.equal(spec.provenance.frontend, "wolfram");
+  assert.equal(spec.provenance.source_language, "wolfram");
+  assert.equal(spec.provenance.constructor, "Plot");
+  assert.equal(spec.layers.length, 1);
+  assert.equal(spec.layers[0].id, "layer-0");
+  assert.equal(spec.layers[0].source_intent.frontend, "wolfram");
+  assert.equal(spec.layers[0].source_intent.head, "Plot");
+  assert.equal(spec.layers[0].source_intent.ranges[0], "{x,0,Pi}");
+  assert.match(spec.layers[0].source_intent.expression, /^Plot\[Sin\[x\]/);
 
-    const ordered = spec.layers[0].source_intent.ordered_options;
-    assert.deepEqual(ordered.map(({ name }) => name), [
-      "PlotStyle",
-      "PlotStyle",
-      "PlotLegends",
-    ]);
-    assert.deepEqual(ordered.map(({ rule }) => rule), [
-      "Rule",
-      "RuleDelayed",
-      "Rule",
-    ]);
-    assert.equal(ordered[0].translation.target, "color");
-    assert.equal(ordered[2].translation.classification, "unsupported");
-    assert.equal(spec.diagnostics.length, 1);
-    assert.equal(spec.diagnostics[0].code, "PLOT_OPTION_IGNORED");
-    assert.equal(spec.diagnostics[0].details.option, "PlotLegends");
-  } finally {
-    await session.close();
-    if (previousNativeDisable === undefined) {
-      delete process.env.SAGEJS_NATIVE_DISABLE;
-    } else {
-      process.env.SAGEJS_NATIVE_DISABLE = previousNativeDisable;
-    }
-  }
+  const ordered = spec.layers[0].source_intent.ordered_options;
+  assert.deepEqual(ordered.map(({ name }) => name), [
+    "PlotStyle",
+    "PlotStyle",
+    "PlotLegends",
+  ]);
+  assert.deepEqual(ordered.map(({ rule }) => rule), [
+    "Rule",
+    "RuleDelayed",
+    "Rule",
+  ]);
+  assert.equal(ordered[0].translation.target, "color");
+  assert.equal(ordered[2].translation.classification, "unsupported");
+  assert.equal(spec.diagnostics.length, 1);
+  assert.equal(spec.diagnostics[0].code, "PLOT_OPTION_IGNORED");
+  assert.equal(spec.diagnostics[0].details.option, "PlotLegends");
 });
 
 test("Wolfram Show preserves child IDs and lexical directive scope", {
   timeout: 60_000,
 }, async () => {
-  const previousNativeDisable = process.env.SAGEJS_NATIVE_DISABLE;
-  process.env.SAGEJS_NATIVE_DISABLE = "1";
-  const session = await createSage();
-  try {
-    await session.evaluate(
-      [
-        "a = Plot[Sin[x],{x,0,Pi}];",
-        "b = Plot[Cos[x],{x,0,Pi}];",
-        "g = Show[a,b,PlotRange->{{0,Pi},{-1,1}}];",
-      ].join("\n"),
-      { language: "wolfram" },
-    );
-    const shown = await session.evaluate("g");
-    assert.equal(shown.display?.data.data.length, 2);
-    const shownSpec = await plotSpec(session);
-    assert.deepEqual(shownSpec.layers.map(({ id }) => id), [
-      "layer-0",
-      "layer-1",
-    ]);
-    assert.equal(shownSpec.provenance.frontend, "wolfram");
-    assert.equal(shownSpec.provenance.constructor, "Show");
-    assert.deepEqual(
-      shownSpec.layers.map(({ source_intent: intent }) => intent.head),
-      ["Show", "Show"],
-    );
-    assert.deepEqual(
-      shownSpec.layers.map(
-        ({ source_intent: intent }) => intent.child_context.head
-      ),
-      ["Plot", "Plot"],
-    );
+  await session.evaluate(
+    [
+      "a = Plot[Sin[x],{x,0,Pi}];",
+      "b = Plot[Cos[x],{x,0,Pi}];",
+      "g = Show[a,b,PlotRange->{{0,Pi},{-1,1}}];",
+    ].join("\n"),
+    { language: "wolfram" },
+  );
+  const shown = await session.evaluate("g");
+  assert.equal(shown.display?.data.data.length, 2);
+  const shownSpec = await plotSpec(session);
+  assert.deepEqual(shownSpec.layers.map(({ id }) => id), [
+    "layer-0",
+    "layer-1",
+  ]);
+  assert.equal(shownSpec.provenance.frontend, "wolfram");
+  assert.equal(shownSpec.provenance.constructor, "Show");
+  assert.deepEqual(
+    shownSpec.layers.map(({ source_intent: intent }) => intent.head),
+    ["Show", "Show"],
+  );
+  assert.deepEqual(
+    shownSpec.layers.map(
+      ({ source_intent: intent }) => intent.child_context.head
+    ),
+    ["Plot", "Plot"],
+  );
 
-    await session.evaluate(
-      [
-        "g = Graphics[{Red,Circle[],",
-        "    {Blue,Opacity[.4],Disk[{1,0},.5]},Circle[{2,0},.5]},",
-        "    Axes->False,FutureOption->7];",
-      ].join("\n"),
-      { language: "wolfram" },
-    );
-    const scoped = await session.evaluate("g");
-    assert.deepEqual(
-      scoped.display?.data.data.map((trace) =>
-        trace.line?.color || trace.fillcolor
-      ),
-      ["red", "blue", "red"],
-    );
-    assert.equal(scoped.display?.data.data[1].opacity, 0.4);
-    const scopedSpec = await plotSpec(session);
-    assert.equal(scopedSpec.provenance.constructor, "Graphics");
-    assert.equal(scopedSpec.diagnostics[0].code, "PLOT_OPTION_IGNORED");
-    assert.equal(scopedSpec.diagnostics[0].details.option, "FutureOption");
+  await session.evaluate(
+    [
+      "g = Graphics[{Red,Circle[],",
+      "    {Blue,Opacity[.4],Disk[{1,0},.5]},Circle[{2,0},.5]},",
+      "    Axes->False,FutureOption->7];",
+    ].join("\n"),
+    { language: "wolfram" },
+  );
+  const scoped = await session.evaluate("g");
+  assert.deepEqual(
+    scoped.display?.data.data.map((trace) =>
+      trace.line?.color || trace.fillcolor
+    ),
+    ["red", "blue", "red"],
+  );
+  assert.equal(scoped.display?.data.data[1].opacity, 0.4);
+  const scopedSpec = await plotSpec(session);
+  assert.equal(scopedSpec.provenance.constructor, "Graphics");
+  assert.equal(scopedSpec.diagnostics[0].code, "PLOT_OPTION_IGNORED");
+  assert.equal(scopedSpec.diagnostics[0].details.option, "FutureOption");
 
-    await session.evaluate(
-      [
-        "g = Graphics3D[{Red,Sphere[]},Boxed->False,",
-        "    Lighting->\"Neutral\"];",
-      ].join("\n"),
-      { language: "wolfram" },
-    );
-    const solid = await session.evaluate("g");
-    assert.equal(solid.display?.data.data[0].type, "surface");
-    assert.equal(solid.display?.data.layout.scene.xaxis.visible, false);
-    const solidSpec = await plotSpec(session);
-    assert.equal(solidSpec.dimension, 3);
-    assert.equal(solidSpec.provenance.constructor, "Graphics3D");
-    assert.equal(solidSpec.layers[0].source_intent.head, "Graphics3D");
-    assert.equal(solidSpec.diagnostics[0].details.option, "Lighting");
-  } finally {
-    await session.close();
-    if (previousNativeDisable === undefined) {
-      delete process.env.SAGEJS_NATIVE_DISABLE;
-    } else {
-      process.env.SAGEJS_NATIVE_DISABLE = previousNativeDisable;
-    }
-  }
+  await session.evaluate(
+    [
+      "g = Graphics3D[{Red,Sphere[]},Boxed->False,",
+      "    Lighting->\"Neutral\"];",
+    ].join("\n"),
+    { language: "wolfram" },
+  );
+  const solid = await session.evaluate("g");
+  assert.equal(solid.display?.data.data[0].type, "surface");
+  assert.equal(solid.display?.data.layout.scene.xaxis.visible, false);
+  const solidSpec = await plotSpec(session);
+  assert.equal(solidSpec.dimension, 3);
+  assert.equal(solidSpec.provenance.constructor, "Graphics3D");
+  assert.equal(solidSpec.layers[0].source_intent.head, "Graphics3D");
+  assert.equal(solidSpec.diagnostics[0].details.option, "Lighting");
 });

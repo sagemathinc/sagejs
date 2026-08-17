@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Route core Wolfram plotting and Graphics composition through an ordered option/provenance spine, preserve nested directive scope and stable PlotSpec intent, and diagnose every unsupported option without changing established Plotly happy paths.",
-  "base_commit": "00a84bf556eacf9689d330253d51152231e11168",
+  "base_commit": "9e6e6b5caac44440b56f72f249062e9b13c45022",
   "claims": [
     "tools/wolfram/ast.ts",
     "tools/wolfram/frontend.ts",
@@ -37,10 +37,60 @@
     "pnpm test:integration",
     "pnpm bench:polyglot"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 267.722,
+      "started_at": "2026-08-17T06:52:12.583Z",
+      "commit": "77d79ed332dba26556dbde8c2310fae09a882418",
+      "workspace_fingerprint": "ad835b46094ffff92a1d7ba3136421f198fe6be6dcf23db35cafd489209f4829",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 345.817,
+      "started_at": "2026-08-17T06:57:20.733Z",
+      "commit": "77d79ed332dba26556dbde8c2310fae09a882418",
+      "workspace_fingerprint": "ad835b46094ffff92a1d7ba3136421f198fe6be6dcf23db35cafd489209f4829",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 598.941,
+      "started_at": "2026-08-17T07:03:12.216Z",
+      "commit": "77d79ed332dba26556dbde8c2310fae09a882418",
+      "workspace_fingerprint": "ad835b46094ffff92a1d7ba3136421f198fe6be6dcf23db35cafd489209f4829",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:polyglot",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.164,
+      "started_at": "2026-08-17T07:13:27.780Z",
+      "commit": "77d79ed332dba26556dbde8c2310fae09a882418",
+      "workspace_fingerprint": "ad835b46094ffff92a1d7ba3136421f198fe6be6dcf23db35cafd489209f4829",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Wolfram Plot, Graphics, Graphics3D, and Show now lower through one ordered PlotCall spine that retains the frontend head, complete source expression, range text, filename/source span, Rule versus RuleDelayed records, and per-option translation outcomes. Runtime option translation applies deterministic last-occurrence precedence without duplicate Python keywords, emits stable PLOT_OPTION_IGNORED diagnostics for unsupported options, attaches Wolfram provenance and intent through the public Graphics/Graphics3d context hook, preserves layer IDs across Show, and treats nested color/opacity directives with lexical scope. Existing Plotly rendering stays unchanged on supported happy paths. Focused native-disabled lowering/runtime tests, existing graphics rendering, strict Python, architecture checks, the full build, and the polyglot benchmark pass.",
+    "risks": [
+      "The required broad integration receipt reports 49 failures outside this lane because the worktree intentionally lacks the complete optional native-kernel/FFLAS/igraph/m4ri publication set and because the integrated multiprocessing runtime references an undefined TYPE_CHECKING binding. Wolfram dashboard, PlotSpec core, Graphics, Graphics3d, export, and the focused Wolfram suite pass in that same workspace.",
+      "RuleDelayed is retained as explicit ordered source intent, including its span and translation event, but the current foreign frontend still evaluates its option value eagerly at the Python call boundary; true held/re-evaluated Wolfram semantics require a later evaluator lane.",
+      "Only linux-x64 was executed locally; the implementation is ordinary TypeScript and strict Python with native-disabled coverage, but the remaining declared platforms depend on CI.",
+      "The shared frontend plotting inventory must classify the newly advertised Show head; the integration lane owns that shared-file update alongside MATLAB regeneration."
+    ],
+    "next_steps": [
+      "Classify Show as supported composition in tools/foreign/plotting-surface.cjs and regenerate the shared checked plotting inventory in the central integration lane.",
+      "Build the next Wolfram plotting lane on PlotCall translation events, prioritizing high-value options and constructs without weakening stable ignored-option diagnostics.",
+      "Add a held-expression evaluator boundary before claiming full RuleDelayed reevaluation compatibility."
+    ]
   }
 }
