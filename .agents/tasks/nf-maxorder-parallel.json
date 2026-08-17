@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-parallel",
+  "title": "Nf Maxorder Parallel",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement deterministic bounded P5 local-work scheduling, canonical serialization, cancellation, CRT/HNF merge planning, and sequential-equivalence tests",
+  "base_commit": "ef0595fb8da441f20493f2036ccff338c83a2b03",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "test/number-field-local-parallel.cjs",
+    "bench/number-field-local-parallel.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sequential maximal-order implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
