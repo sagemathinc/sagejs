@@ -14,7 +14,8 @@ elimination uses unit pivots or returns a factor of `q`; no composite modulus
 is silently promoted to a field.
 
 The implementation is ordinary CPython source and uses only exact integer
-arithmetic.  It was derived from Hecke's GPL-licensed
+arithmetic.  It was derived from Hecke commit
+`eab7e5566e56d8864fe9cd7b895811ab9df2fe32`'s BSD-licensed
 `NumFieldOrd/NfOrd/MaxOrd/{MaxOrd,DedekindCriterion}.jl` implementation.
 """
 
@@ -566,13 +567,6 @@ def buchmann_lenstra_overorder(
     if len(coefficients) < 2 or coefficients[-1] != 1:
         raise ValueError("the defining polynomial must be monic")
     modulus = component.value
-    if component.state not in ("composite", "unresolved-coprime-component"):
-        return BuchmannLenstraResult(
-            "certification-error",
-            component,
-            message="Buchmann--Lenstra composite path requires a composite component",
-            evidence={"refused_state": component.state},
-        )
     degree = len(coefficients) - 1
     identity_basis = OrderBasis(
         [
@@ -582,11 +576,18 @@ def buchmann_lenstra_overorder(
         1,
     )
     if basis is not None and basis.canonical_key() != identity_basis.canonical_key():
-        return buchmann_lenstra_general_overorder(
+        return buchmann_lenstra_multiplier_cycle(
             coefficients,
             component,
             basis,
             equation_discriminant=equation_discriminant,
+        )
+    if component.state not in ("composite", "unresolved-coprime-component"):
+        return BuchmannLenstraResult(
+            "certification-error",
+            component,
+            message="Buchmann--Lenstra composite path requires a composite component",
+            evidence={"refused_state": component.state},
         )
     data = _composite_dedekind_data(coefficients, modulus)
     if data["status"] == "split":
@@ -1086,6 +1087,82 @@ def _coordinate_product(
     return answer
 
 
+def _coordinate_power_mod(
+    base: list[int],
+    exponent: int,
+    identity: list[int],
+    table: list[list[list[int]]],
+    modulus: int,
+) -> list[int]:
+    answer = [value % modulus for value in identity]
+    power = [value % modulus for value in base]
+    remaining = exponent
+    while remaining:
+        if remaining & 1:
+            answer = [
+                value % modulus for value in _coordinate_product(answer, power, table)
+            ]
+        remaining //= 2
+        if remaining:
+            power = [
+                value % modulus for value in _coordinate_product(power, power, table)
+            ]
+    return answer
+
+
+def _p_radical(
+    basis: OrderBasis,
+    table: list[list[list[int]]],
+    prime: int,
+) -> dict[str, Any]:
+    """Return the exact `p`-radical, including the wild small-prime case."""
+    degree = len(table)
+    if prime > degree:
+        result = _q_radical_by_trace(table, prime)
+        result["method"] = "trace"
+        return result
+    inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
+    identity_fractions = _fraction_vector_times_matrix(
+        [(1, 1)] + [(0, 1) for _index in range(degree - 1)], inverse
+    )
+    if any(value[1] != 1 for value in identity_fractions):
+        return {
+            "state": "certification-error",
+            "message": "the supplied basis does not contain one",
+        }
+    identity = [value[0] for value in identity_fractions]
+    exponent = prime
+    while exponent < degree:
+        exponent *= prime
+    columns = []
+    for basis_index in range(degree):
+        vector = [0 for _coordinate in range(degree)]
+        vector[basis_index] = 1
+        columns.append(_coordinate_power_mod(vector, exponent, identity, table, prime))
+    frobenius_power = [
+        [columns[column][row] for column in range(degree)] for row in range(degree)
+    ]
+    kernel = _modular_kernel_with_split(frobenius_power, prime)
+    if kernel["state"] != "kernel":
+        return kernel
+    generators: list[list[int]] = []
+    for index in range(degree):
+        row = [0 for _column in range(degree)]
+        row[index] = prime
+        generators.append(row)
+    generators.extend(kernel["rows"])
+    ideal = _CompositeIdeal(generators)
+    return {
+        "state": "ideal",
+        "ideal": ideal,
+        "trivial": ideal.rows == generators[:degree],
+        "kernel_rank": len(kernel["rows"]),
+        "method": "frobenius",
+        "frobenius_exponent": exponent,
+        "frobenius_matrix": frobenius_power,
+    }
+
+
 def _enlarge_order_basis(
     basis: OrderBasis, kernel_rows: list[list[int]], modulus: int
 ) -> OrderBasis:
@@ -1360,7 +1437,12 @@ def buchmann_lenstra_general_overorder(
     max_degree: int = 16,
     max_minors: int = 100000,
 ) -> BuchmannLenstraResult:
-    """Execute the bounded tame BL cycle on a canonical nonidentity order."""
+    """Execute the bounded BL multiplier cycle on a nonidentity order.
+
+    Composite components use Hecke's tame trace-radical and freeness path.
+    Proven primes additionally support the wild case via a sufficiently high
+    Frobenius kernel; a fixed multiplier ring then certifies `p`-maximality.
+    """
     coefficients = [int(value) for value in polynomial_coefficients]
     degree = len(coefficients) - 1
     if degree < 1 or coefficients[-1] != 1 or basis.degree != degree:
@@ -1374,11 +1456,15 @@ def buchmann_lenstra_general_overorder(
         )
     if max_steps < 1 or max_minors < 1:
         raise ValueError("Buchmann--Lenstra resource bounds must be positive")
-    if component.state not in ("composite", "unresolved-coprime-component"):
+    if component.state not in (
+        "proven-prime",
+        "composite",
+        "unresolved-coprime-component",
+    ):
         return BuchmannLenstraResult(
             "certification-error",
             component,
-            message="general Buchmann--Lenstra requires a composite component",
+            message="general Buchmann--Lenstra requires a usable local component",
         )
     equation_disc = (
         polynomial_discriminant(coefficients)
@@ -1442,7 +1528,11 @@ def buchmann_lenstra_general_overorder(
                 evidence={"split_stage": "component-reduction"},
             )
         table = _order_multiplication_table(coefficients, current)
-        radical = _q_radical_by_trace(table, active)
+        radical = (
+            _p_radical(current, table, active)
+            if component.is_proven_prime
+            else _q_radical_by_trace(table, active)
+        )
         steps += 1
         if radical["state"] == "split":
             split = _split_from_divisor(
@@ -1466,16 +1556,20 @@ def buchmann_lenstra_general_overorder(
                 events,
                 message=str(radical.get("message", "q-radical failed")),
             )
-        events.append(
-            {
-                "sequence": len(events),
-                "stage": "q-radical",
-                "q": active,
-                "kernel_rank": radical["kernel_rank"],
-                "ideal_hnf": radical["ideal"].rows,
-                "trace_matrix": radical["trace_matrix"],
-            }
-        )
+        radical_event = {
+            "sequence": len(events),
+            "stage": "q-radical",
+            "q": active,
+            "kernel_rank": radical["kernel_rank"],
+            "ideal_hnf": radical["ideal"].rows,
+            "method": radical.get("method", "trace"),
+        }
+        if "trace_matrix" in radical:
+            radical_event["trace_matrix"] = radical["trace_matrix"]
+        if "frobenius_exponent" in radical:
+            radical_event["frobenius_exponent"] = radical["frobenius_exponent"]
+            radical_event["frobenius_matrix"] = radical["frobenius_matrix"]
+        events.append(radical_event)
         if radical["trivial"]:
             return _general_result(
                 "complete",
@@ -1535,6 +1629,21 @@ def buchmann_lenstra_general_overorder(
                 equation_disc,
                 events,
                 message=str(multiplier.get("message", "multiplier-ring failed")),
+            )
+        if component.is_proven_prime:
+            return _general_result(
+                "complete",
+                component,
+                current,
+                equation_disc,
+                events,
+                evidence={
+                    "certificate": "p-radical-multiplier-fixed-point",
+                    "remaining_component_gcd": active,
+                    "enlargement_count": sum(
+                        1 for event in events if event["stage"] == "multiplier-ring"
+                    ),
+                },
             )
         colon = _colon_freeness(ideal, table, active)
         if colon["state"] == "split":
@@ -1675,6 +1784,38 @@ def buchmann_lenstra_general_overorder(
     )
 
 
+def buchmann_lenstra_multiplier_cycle(
+    polynomial_coefficients: list[int],
+    component: DiscriminantComponent,
+    basis: OrderBasis,
+    *,
+    equation_discriminant: int | None = None,
+    max_iterations: int = 128,
+    max_degree: int = 16,
+    max_minors: int = 100000,
+) -> BuchmannLenstraResult:
+    """Run the stable current-order radical/multiplier integration API.
+
+    The input and output are canonical row-HNF `OrderBasis` records in the
+    equation power basis.  This wrapper exposes the proven-prime wild-radical
+    continuation as well as the existing composite Buchmann--Lenstra cycle.
+    """
+    canonical_basis = OrderBasis(
+        _row_hnf([list(row) for row in basis.numerator]),
+        basis.denominator,
+        canonical=True,
+    )
+    return buchmann_lenstra_general_overorder(
+        polynomial_coefficients,
+        component,
+        canonical_basis,
+        equation_discriminant=equation_discriminant,
+        max_steps=max_iterations,
+        max_degree=max_degree,
+        max_minors=max_minors,
+    )
+
+
 def check_buchmann_lenstra_general_result(
     polynomial_coefficients: list[int],
     starting_basis: OrderBasis,
@@ -1707,6 +1848,7 @@ def check_buchmann_lenstra_general_result(
 __all__ = [
     "BuchmannLenstraResult",
     "buchmann_lenstra_general_overorder",
+    "buchmann_lenstra_multiplier_cycle",
     "buchmann_lenstra_overorder",
     "check_buchmann_lenstra_general_result",
     "check_buchmann_lenstra_result",
