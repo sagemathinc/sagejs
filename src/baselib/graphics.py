@@ -4873,7 +4873,7 @@ def generate_plot_points(
     initial_points: Sequence[Any] | None = None,
     excluded: bool = False,
     imaginary_tolerance: float = 1e-8,
-    sample_limit: int = 1_000_000,
+    sample_limit: int = 1000000,
 ) -> Any:
     """Sample a callable through the strict segmented curve sampler."""
     sampling = __import__(
