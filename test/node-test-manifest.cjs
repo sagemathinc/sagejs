@@ -55,6 +55,7 @@ const integration = [
   "test/number-field-maximal-order-contracts.cjs",
   "test/number-field-maximal-order-engine.cjs",
   "test/number-field-maximal-order-profiler.cjs",
+  "test/number-field-maximal-order-timeout-recovery.cjs",
   "test/number-field-discriminant-components.cjs",
   "test/number-field-buchmann-lenstra.cjs",
   "test/number-field-local-polygons.cjs",
