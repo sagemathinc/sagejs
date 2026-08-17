@@ -4,7 +4,7 @@
   "id": "plot-sage-surface",
   "title": "Pin the Sage plotting surface",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate and validate exhaustive pinned Sage 10.9.post1 2D and 3D plotting surface artifacts with source hashes and documented classifications ready for the product coverage ledger",
   "base_commit": "f6995c514a0c29fda6815009856a537d36c112ed",
