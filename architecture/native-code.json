@@ -102,6 +102,20 @@
       "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle."
     },
     {
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; arbitrary-size unsupported local work is returned intact to the strict fallback."
+    },
+    {
+      "path": "packages/flint/test/number_field_order_resource_ffi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone cross-platform lifecycle and exact-lattice witness for the direct number-field order resource boundary; it is compiled only by the focused test and is not linked into Sage.js."
+    },
+    {
       "path": "packages/flint/include/sagejs/exact_vector_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

@@ -37,6 +37,7 @@ flint = Library(
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
         "sagejs/number_field_order_ffi.h",
+        "sagejs/number_field_order_resource_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
     link_windows=["flint.lib", "openblas.lib", "pthreadVC3.lib"],
@@ -134,6 +135,23 @@ FlintByteRegion = flint.resource(
         wasm=True,
     ),
     wasm=True,
+)
+
+
+NumberFieldOrderResource = flint.resource(
+    id="number_field_order_resource",
+    abi=sagejs_number_field_order_resource_t,
+    ownership="owned",
+    close="ffiNumberFieldOrderResourceClose",
+    clear="sagejs_number_field_order_resource_clear",
+    size="sagejs_number_field_order_resource_allocated_bytes",
+    host_transfer=copied_bytes(
+        dynamic="ffiNumberFieldOrderResourceCopyBytes",
+        data="sagejs_number_field_order_resource_data",
+        length="sagejs_number_field_order_resource_length",
+        wasm=False,
+    ),
+    wasm=False,
 )
 
 
@@ -9796,3 +9814,110 @@ def number_field_order_maximal_at_primes(
     primes: UInt64Buffer,
     prime_count: uint64,
 ) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderFromPolynomialResource",
+    symbol="sagejs_number_field_order_from_polynomial_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_number_field_order_resource_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("prime_hints", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid direct number-field order input",
+    ),
+    wasm=False,
+)
+def number_field_order_from_polynomial_resource(
+    polynomial: FmpzPolynomial,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldOrderResource: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceStatus",
+    symbol="sagejs_number_field_order_resource_status",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_status(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceDegree",
+    symbol="sagejs_number_field_order_resource_degree",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_degree(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceSuppliedPrimes",
+    symbol="sagejs_number_field_order_resource_supplied_primes",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_supplied_primes(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceResolvedPrimes",
+    symbol="sagejs_number_field_order_resource_resolved_primes",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_resolved_primes(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceNativePrimes",
+    symbol="sagejs_number_field_order_resource_native_primes",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_native_primes(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderResourceUnramifiedPrimes",
+    symbol="sagejs_number_field_order_resource_unramified_primes",
+    returns=uint64_t,
+    abi=[in_("resource", sagejs_number_field_order_resource_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def number_field_order_resource_unramified_primes(
+    resource: NumberFieldOrderResource,
+) -> uint64: ...

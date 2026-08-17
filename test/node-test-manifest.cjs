@@ -61,6 +61,8 @@ const integration = [
   "test/ffi-byte-region-bulk.cjs",
   "test/ffi-resource-aggregate.cjs",
   "test/ffi-resource-finalization-bootstrap.cjs",
+  "test/number-field-order-resource-ffi.cjs",
+  "test/number-field-order-resource-python.cjs",
   "test/extension-polynomial-resource-ffi.cjs",
   "test/extension-polynomial-resource-kernels.cjs",
   "test/finite-extension-scalar-resource.cjs",

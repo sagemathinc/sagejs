@@ -21,7 +21,8 @@
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
-        "sagejs/number_field_order_ffi.h"
+        "sagejs/number_field_order_ffi.h",
+        "sagejs/number_field_order_resource_ffi.h"
       ],
       "link": {
         "unix": [
@@ -211,6 +212,39 @@
         "dynamic": true,
         "native": true,
         "wasm": true
+      }
+    },
+    {
+      "id": "number_field_order_resource",
+      "python_name": "NumberFieldOrderResource",
+      "abi_type": "sagejs_number_field_order_resource_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiNumberFieldOrderResourceClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_number_field_order_resource_clear",
+        "size_symbol": "sagejs_number_field_order_resource_allocated_bytes"
+      },
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic": {
+          "export": "ffiNumberFieldOrderResourceCopyBytes"
+        },
+        "native": {
+          "data_symbol": "sagejs_number_field_order_resource_data",
+          "length_symbol": "sagejs_number_field_order_resource_length"
+        },
+        "targets": {
+          "dynamic": true,
+          "wasm": false
+        }
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
       }
     },
     {
@@ -32230,6 +32264,442 @@
         "dynamic": true,
         "native": true,
         "wasm": true
+      }
+    },
+    {
+      "id": "number_field_order_from_polynomial_resource",
+      "python_name": "number_field_order_from_polynomial_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "prime_hints",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NumberFieldOrderResource",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderFromPolynomialResource"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_from_polynomial_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "prime_hints",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid direct number-field order input"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_status",
+      "python_name": "number_field_order_resource_status",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceStatus"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_status",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_degree",
+      "python_name": "number_field_order_resource_degree",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceDegree"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_degree",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_supplied_primes",
+      "python_name": "number_field_order_resource_supplied_primes",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceSuppliedPrimes"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_supplied_primes",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_resolved_primes",
+      "python_name": "number_field_order_resource_resolved_primes",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceResolvedPrimes"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_resolved_primes",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_native_primes",
+      "python_name": "number_field_order_resource_native_primes",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceNativePrimes"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_native_primes",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_resource_unramified_primes",
+      "python_name": "number_field_order_resource_unramified_primes",
+      "signature": {
+        "parameters": [
+          {
+            "name": "resource",
+            "type": "NumberFieldOrderResource",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderResourceUnramifiedPrimes"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_resource_unramified_primes",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "resource",
+            "abi_type": "sagejs_number_field_order_resource_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
       }
     }
   ]

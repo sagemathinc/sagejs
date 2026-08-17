@@ -37,6 +37,7 @@
     "src/baselib/zz_introspection.py",
     "src/lib/sagejs/number_fields/__init__.py",
     "src/lib/sagejs/number_fields/maximal_order_contracts.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
     "src/lib/sagejs/number_fields/maximal_order.py",
     "src/lib/sage/__init__.py",
     "src/lib/sage/rings/__init__.py",

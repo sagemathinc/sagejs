@@ -180,6 +180,29 @@
       "next": "Replace this exception with source-transparent native lowering when packed exact multiplication tables, modular kernels, and rational basis changes are expressible in the typed compiler."
     },
     {
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "lines": 482,
+      "bytes": 17680,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "sealed integral-polynomial ingress and native multiplication-table construction",
+        "canonical HNF order-basis transfer and retained-size ownership",
+        "batched word-prime Round-2 dispatch and arbitrary-prime fallback signaling"
+      ],
+      "rationale": "This removes the measured n^3 host ingress and per-entry rational egress while preserving the ordinary-Python mathematical oracle. The compact resource and transfer protocol are durable representation primitives, but the Round-2 selection should migrate to source-transparent typed Python once the compiler supports these packed FLINT operations.",
+      "fallback": "Every nonzero resource status retains the exact fallback prime and is closed before the strict ordinary-Python local solver continues; no prime is narrowed or silently accepted.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SageMath",
+        "PARI/GP",
+        "native Windows x64 witness",
+        "Linux arm64 witness"
+      ],
+      "next": "Move HNF transfer primitives into a smaller generated representation resource and compile the readable polynomial-to-local-order driver when typed FLINT polynomial and matrix resources are available."
+    },
+    {
       "path": "packages/graph/src/addon.c",
       "lines": 665,
       "bytes": 21764,
