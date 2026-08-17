@@ -85,12 +85,26 @@ async function main() {
 
     const fillAxisOracle = oracleCase("fill-to-axis").layers;
     const fillAxis = await session.evaluate(
-      "plot(x^2,(x,-1,1),plot_points=3,adaptive_recursion=0," +
-        "randomize=False,fill=True,fillcolor='red',fillalpha=.2)",
+      "fill_axis=plot(x^2,(x,-1,1),plot_points=3,adaptive_recursion=0," +
+        "randomize=False,fill=True,fillcolor='red',fillalpha=.2); fill_axis",
     );
     assert.equal(fillAxis.display?.data.data[0].fill, "toself");
-    assert.deepEqual(fillAxis.display?.data.data[0].x, fillAxisOracle[0].x);
-    assert.deepEqual(fillAxis.display?.data.data[0].y, fillAxisOracle[0].y);
+    assert.deepEqual(
+      fillAxis.display?.data.data[0].x,
+      [...fillAxisOracle[0].x, fillAxisOracle[0].x[0]],
+    );
+    assert.deepEqual(
+      fillAxis.display?.data.data[0].y,
+      [...fillAxisOracle[0].y, fillAxisOracle[0].y[0]],
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "fill_axis.spec().to_dict()['layers'][0]['data']['x']",
+        )
+      ).repr,
+      "[-1.0, -1.0, 0.0, 1.0, 1.0]",
+    );
     assert.equal(fillAxis.display?.data.data[0].fillcolor, "red");
     assert.equal(fillAxis.display?.data.data[0].opacity, 0.2);
     assert.deepEqual(fillAxis.display?.data.data[1].x, fillAxisOracle[1].x);
@@ -98,11 +112,17 @@ async function main() {
 
     const fillBetweenOracle = oracleCase("fill-between-curves").layers;
     const fillBetween = await session.evaluate(
-      "plot(x^2,(x,0,1),plot_points=3,adaptive_recursion=0," +
-        "randomize=False,fill=x,fillcolor='green',fillalpha=.25)",
+      "fill_between=plot(x^2,(x,0,1),plot_points=3,adaptive_recursion=0," +
+        "randomize=False,fill=x,fillcolor='green',fillalpha=.25); fill_between",
     );
-    assert.deepEqual(fillBetween.display?.data.data[0].x, fillBetweenOracle[0].x);
-    assert.deepEqual(fillBetween.display?.data.data[0].y, fillBetweenOracle[0].y);
+    assert.deepEqual(
+      fillBetween.display?.data.data[0].x,
+      fillBetweenOracle[0].x,
+    );
+    assert.deepEqual(
+      fillBetween.display?.data.data[0].y,
+      fillBetweenOracle[0].y,
+    );
     assert.equal(fillBetween.display?.data.data[0].fillcolor, "green");
     assert.equal(fillBetween.display?.data.data[0].opacity, 0.25);
 

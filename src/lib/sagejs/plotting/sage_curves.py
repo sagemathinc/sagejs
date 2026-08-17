@@ -131,7 +131,7 @@ def build_fill_polygons(
     if fill is False or fill is None:
         return []
     polygons: list[list[tuple[float, float]]] = []
-    if callable(fill):
+    if fill_function is None and callable(fill):
         fill_function = fill
     base = None if fill_function is not None else _fill_base(fill, segments)
     if base is None and fill_function is None:
