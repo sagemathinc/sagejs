@@ -812,6 +812,8 @@ def print_module(self, output):
                     cached = {
                         "version": get_compiler_version(),
                         "signature": self.srchash,
+                        "filename": self.filename,
+                        "filename_policy": self.filename_policy or None,
                         "classes": {},
                         "baselib": self.baselib,
                         "nonlocalvars": self.nonlocalvars,
@@ -857,7 +859,8 @@ def print_module(self, output):
                             raw = co.get()
                             cached.outputs[output_key(beautify, keep_docstrings)] = raw
                     cached_name = cache_file_name(
-                        self.filename, output.options.module_cache_dir
+                        self.source_filename or self.filename,
+                        output.options.module_cache_dir,
                     )
                     try:
                         if cached_name:

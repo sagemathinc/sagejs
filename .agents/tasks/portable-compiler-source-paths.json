@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "portable-compiler-source-paths",
+  "title": "Portable compiler source provenance",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Emit portable logical Sage.js source filenames in self-hosted compiler and distributable standalone builds while preserving physical file, diagnostic, import, and cache authority",
+  "base_commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
+  "claims": [
+    "src/ast_types.py",
+    "src/output/modules.py",
+    "tools/cli.js",
+    "tools/compile.ts",
+    "tools/portable-source-paths.cjs",
+    "tools/python/module-resolver.ts",
+    "tools/self.js",
+    "test/portable-source-paths.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Physical and logical filename split with cache-policy and outside-root regression tests",
+      "Byte-identical fixture output across distinct physical roots and no physical-root bytes in built compiler/runtime artifacts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/portable-source-paths.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.315,
+      "started_at": "2026-08-17T06:33:43.744Z",
+      "commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
+      "workspace_fingerprint": "64e514878eedd39ecd6cf960b3cbdd04e30a69c6b6399cdd17c70ea6ac4faf15",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --project tsconfig.json --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.947,
+      "started_at": "2026-08-17T06:33:50.096Z",
+      "commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
+      "workspace_fingerprint": "64e514878eedd39ecd6cf960b3cbdd04e30a69c6b6399cdd17c70ea6ac4faf15",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.681,
+      "started_at": "2026-08-17T06:33:54.920Z",
+      "commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
+      "workspace_fingerprint": "64e514878eedd39ecd6cf960b3cbdd04e30a69c6b6399cdd17c70ea6ac4faf15",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 246.72,
+      "started_at": "2026-08-17T06:34:07.803Z",
+      "commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
+      "workspace_fingerprint": "64e514878eedd39ecd6cf960b3cbdd04e30a69c6b6399cdd17c70ea6ac4faf15",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Introduces a canonical physical/logical filename split for compiler modules. Physical paths remain authoritative for source I/O, imports, diagnostics, and cache locations, while logical src/... paths feed AST/token provenance and emitted Python module metadata. Cache records bind the logical filename policy, self-hosted compiler/runtime builds opt into it, and the CLI exposes a fail-closed distributable-build flag. Focused tests cover cache reuse/rejection, main and imported metadata, outside-root and symlink escape rejection, CLI stdin identity, two-root output equality, and built compiler/runtime artifacts.",
+    "risks": [
+      "The fresh worktree has no FLINT addon or headers, so pnpm test:compiler and the broad integration/CLI tier reach existing native-dependent tests but fail only on the missing packages/flint/build/Release/sagejs_flint.node or flint/flint.h. The focused suite, full self build, TypeScript check, Python formatting check, and architecture audit pass.",
+      "scripts/build-runtime-cache.cjs is integration-owned. It still constructs the absolute compiler source filename before V8 cache serialization, which causes exactly one checkout-root occurrence in dist/runtime-cache/compiler.bin even though compiler.js is clean. A reproduced fix is to read/cache the compiler under a relative path without ever constructing that absolute filename.",
+      "Windows and two-root full release builds remain required after integration; this lane proves two-root equality for representative compiler output and scans its owned compiler/runtime artifacts on Linux."
+    ],
+    "next_steps": [
+      "In the release integration lane, opt scripts/build-task-runtime.cjs into --portable-sagejs-paths with an explicit virtual physical filename beneath src.",
+      "In the release integration lane, make scripts/build-runtime-cache.cjs create the compiler V8 cache from a relative source filename and extend the artifact regression to compiler.bin and the task runtime.",
+      "Register test/portable-source-paths.cjs in test/node-test-manifest.cjs, rebuild, and run the full Windows release proof from two fresh checkout roots after the separately gated native path-remapping work."
+    ]
+  }
+}

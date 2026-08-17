@@ -425,6 +425,15 @@ add directories to the import path.
 */
 });
 
+opt("portable_sagejs_paths", undefined, "bool", false, function () {
+  /*
+Emit source filenames under the built-in Sage.js source root as stable
+`src/...` paths. This is intended for distributable build artifacts. Every
+compiled physical source must remain inside that root; stdin builds must set
+an explicit physical --filename-for-stdin beneath it.
+*/
+});
+
 opt("cache_dir", "C", "string", "", function () {
   /*
 directory to use to store the cached files generated

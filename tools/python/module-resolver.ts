@@ -61,6 +61,15 @@ export class PythonModuleResolver {
     private readonly moduleSyntax: PythonSyntaxFrontend,
     private readonly options: Record<string, any>,
   ) {
+    const hasLogicalizer = typeof options.logicalize_filename === "function";
+    const hasFilenamePolicy =
+      typeof options.filename_policy === "string" &&
+      options.filename_policy.length > 0;
+    if (hasLogicalizer !== hasFilenamePolicy) {
+      throw new Error(
+        "logicalize_filename and filename_policy must be configured together",
+      );
+    }
     this.importedModules = options.imported_modules ?? nullObject();
     this.importingModules = options.importing_modules ?? nullObject();
     this.nextImportOrder = 0;
@@ -83,11 +92,21 @@ export class PythonModuleResolver {
 
   lowerMain(parsed: PythonSyntaxTree): any {
     const moduleId = this.options.module_id ?? "__main__";
+    const sourceFilename = this.options.source_filename ??
+      this.options.filename ?? "<input>";
     return this.lowerModule(parsed, {
       ...this.options,
       module_id: moduleId,
-      filename: this.options.filename ?? "<input>",
+      filename: this.logicalFilename(sourceFilename),
+      source_filename: sourceFilename,
     });
+  }
+
+  private logicalFilename(sourceFilename: string): string {
+    const logicalize = this.options.logicalize_filename;
+    return typeof logicalize === "function"
+      ? logicalize(sourceFilename)
+      : sourceFilename;
   }
 
   private lowerModule(
@@ -114,6 +133,8 @@ export class PythonModuleResolver {
       const shell = this.createShell({
         moduleId,
         filename: moduleOptions.filename,
+        sourceFilename: moduleOptions.source_filename,
+        filenamePolicy: moduleOptions.filename_policy,
         scopedFlags,
         importedModuleIds,
         baselib,
@@ -153,11 +174,15 @@ export class PythonModuleResolver {
         }).lowerModule(shell).ast;
       } catch (error) {
         if (error instanceof Error) {
-          error.message = `${moduleOptions.filename}:${error.message}`;
+          error.message =
+            `${moduleOptions.source_filename ?? moduleOptions.filename}:` +
+            error.message;
         }
         throw error;
       }
       ast.filename = moduleOptions.filename;
+      ast.source_filename = moduleOptions.source_filename;
+      ast.filename_policy = moduleOptions.filename_policy;
       ast.module_id = moduleId;
       ast.imported_module_ids = importedModuleIds;
       // Completion order is a dependency-first topological order for ordinary
@@ -183,12 +208,16 @@ export class PythonModuleResolver {
   private createShell({
     moduleId,
     filename,
+    sourceFilename,
+    filenamePolicy,
     scopedFlags,
     importedModuleIds,
     baselib,
   }: {
     moduleId: string;
     filename: string;
+    sourceFilename?: string;
+    filenamePolicy?: string;
     scopedFlags: Record<string, any>;
     importedModuleIds: string[];
     baselib: Record<string, boolean>;
@@ -205,6 +234,8 @@ export class PythonModuleResolver {
       exports: [],
       classes: nullObject(),
       filename,
+      source_filename: sourceFilename,
+      filename_policy: filenamePolicy,
       srchash: undefined,
       comments_after: [],
       localvars: [],
@@ -347,6 +378,8 @@ export class PythonModuleResolver {
       const shell = this.createShell({
         moduleId: key,
         filename: `<intrinsic:${key}>/__init__.py`,
+        sourceFilename: `<intrinsic:${key}>/__init__.py`,
+        filenamePolicy: undefined,
         scopedFlags: nullObject(),
         importedModuleIds: [],
         baselib: nullObject(),
@@ -407,9 +440,11 @@ export class PythonModuleResolver {
     }
 
     const sourceHash = sha1sum(found.source);
+    const logicalFilename = this.logicalFilename(found.filename);
     const cached = this.findCache(
       key,
       found.filename,
+      logicalFilename,
       sourceHash,
       moduleOptions,
     );
@@ -419,13 +454,25 @@ export class PythonModuleResolver {
       // publication until after dependencies makes A -> B -> A recurse
       // forever. Keep the temporary shell out of the final dependency order,
       // then replace it with the ordinary dependency-ordered cached stub.
-      this.importedModules[key] = this.cachedStub(key, cached, false);
+      this.importedModules[key] = this.cachedStub(
+        key,
+        cached,
+        false,
+        found.filename,
+        logicalFilename,
+      );
       let completed = false;
       try {
         for (const importedKey of cached.imported_module_ids ?? []) {
           this.ensureImported(importedKey, node, moduleOptions);
         }
-        const stub = this.cachedStub(key, cached);
+        const stub = this.cachedStub(
+          key,
+          cached,
+          true,
+          found.filename,
+          logicalFilename,
+        );
         stub.srchash = sourceHash;
         this.importedModules[key] = stub;
         completed = true;
@@ -438,7 +485,8 @@ export class PythonModuleResolver {
     const parsed = this.moduleSyntax.assertValid(found.source, found.filename);
     this.lowerModule(parsed, {
       ...moduleOptions,
-      filename: found.filename,
+      filename: logicalFilename,
+      source_filename: found.filename,
       basedir: dirname(found.filename),
       module_id: key,
       jsage: false,
@@ -474,6 +522,7 @@ export class PythonModuleResolver {
   private findCache(
     key: string,
     filename: string,
+    logicalFilename: string,
     sourceHash: string,
     moduleOptions: Record<string, any>,
   ): any | undefined {
@@ -491,6 +540,9 @@ export class PythonModuleResolver {
         if (
           candidate.version === this.compiler.get_compiler_version() &&
           candidate.signature === sourceHash &&
+          candidate.filename === logicalFilename &&
+          candidate.filename_policy ===
+            (moduleOptions.filename_policy ?? null) &&
           candidate.discard_asserts === !!moduleOptions.discard_asserts
         ) return candidate;
       } catch (_error) {}
@@ -498,12 +550,21 @@ export class PythonModuleResolver {
     return undefined;
   }
 
-  private cachedStub(key: string, cached: any, assignOrder = true): any {
+  private cachedStub(
+    key: string,
+    cached: any,
+    assignOrder = true,
+    sourceFilename?: string,
+    logicalFilename?: string,
+  ): any {
     return {
       is_cached: true,
       classes: cached.classes ?? nullObject(),
       outputs: cached.outputs ?? nullObject(),
       module_id: key,
+      filename: cached.filename ?? logicalFilename,
+      source_filename: sourceFilename,
+      filename_policy: cached.filename_policy ?? null,
       import_order: assignOrder ? this.nextImportOrder++ : -1,
       nonlocalvars: cached.nonlocalvars ?? [],
       baselib: cached.baselib ?? nullObject(),

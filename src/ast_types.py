@@ -469,7 +469,9 @@ class AST_Toplevel(AST_Scope):
         "module_id": "[string] The id of this module",
         "exports": "[SymbolDef*] list of names exported from this module",
         "classes": "[Object/S] a map of class names to AST_Class for classes defined in this module",
-        "filename": "[string] The absolute path to the file from which this module was read",
+        "filename": "[string] Stable logical source filename emitted into runtime metadata",
+        "source_filename": "[string] Private physical source filename used for build-time I/O and caches",
+        "filename_policy": "[string] Portable filename policy bound into compiled-module caches",
         "srchash": "[string] SHA1 hash of source code, used for caching",
         "comments_after": "[array] True iff there were comments before this token",
     }
