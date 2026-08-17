@@ -495,7 +495,14 @@ export function installPrecompiledTaskModuleLoader(
         JSON.stringify(PRECOMPILED_MODULE_FILENAME),
         JSON.stringify(record.filename),
       );
-      runInThisContext(source, { filename: record.filename });
+      // Each compiler-emitted module expects its ``var`` declarations to be
+      // module-local. Running raw templates at global scope lets similarly
+      // named lowered bindings in later modules overwrite earlier closures.
+      // The full runtime uses the same IIFE boundary for lazy modules.
+      runInThisContext(
+        `(function(){\n${source}\n}).call(globalThis);`,
+        { filename: record.filename },
+      );
     } catch (error) {
       Reflect.deleteProperty(registry, name);
       if (parent !== undefined && childName) {
