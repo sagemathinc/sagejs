@@ -7,6 +7,11 @@ import math
 from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias
 
+try:
+    import sagejs.runtime as _runtime
+except ImportError:  # Ordinary CPython has no Sage.js host runtime.
+    _runtime = None
+
 JSONScalar: TypeAlias = None | bool | int | float | str
 JSONValue: TypeAlias = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
 
@@ -41,6 +46,28 @@ def materialize_json(value: Any, path: str = "$") -> JSONValue:
             output[key] = materialize_json(value[key], _path_key(path, key))
         return output
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        if _runtime is not None:
+            native_scalars = _runtime.json_scalar_sequence(value)
+            if native_scalars is not None:
+                return native_scalars
+
+        # Coordinate vectors dominate real plot payloads.  Avoid one recursive
+        # Python call and one diagnostic-path allocation per scalar while still
+        # producing a detached list and normalizing non-finite values exactly as
+        # the general path does.
+        scalar_sequence: list[JSONValue] = []
+        scalar_only = True
+        for item in value:
+            if item is None or isinstance(item, (bool, int, str)):
+                scalar_sequence.append(item)
+            elif isinstance(item, float):
+                scalar_sequence.append(item if math.isfinite(item) else None)
+            else:
+                scalar_only = False
+                break
+        if scalar_only:
+            return scalar_sequence
+
         sequence: list[JSONValue] = []
         for index in range(len(value)):
             sequence.append(

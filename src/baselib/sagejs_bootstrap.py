@@ -133,6 +133,38 @@ def ρσ_native_freeze_tuple(values, prototype):
     )"""
 
 
+def ρσ_json_scalar_sequence(source):
+    """Copy a flat JSON-scalar sequence in one native host loop."""
+    return r"""%js (() => {
+        if (!ρσ_arraylike(source)) return null;
+        const length = len(source);
+        const output = new Array(length);
+        for (let index = 0; index < length; index += 1) {
+            const value = ρσ_getitem(source, index);
+            if (value === null) {
+                output[index] = null;
+                continue;
+            }
+            const kind = typeof value;
+            if (kind === "boolean" || kind === "string" || kind === "bigint") {
+                output[index] = value;
+                continue;
+            }
+            if (kind === "number") {
+                output[index] = Number.isFinite(value) ? value : null;
+                continue;
+            }
+            if (kind === "object" && _builtins_is_python_float(value)) {
+                const number = Number(value);
+                output[index] = Number.isFinite(number) ? value : null;
+                continue;
+            }
+            return null;
+        }
+        return ρσ_list_constructor(output);
+    })()"""
+
+
 def ρσ_output_write(text):
     return r"""%js (
         typeof globalThis.__sagejs_output_write__ === "function"

@@ -319,7 +319,10 @@ def make_layer(
 
 def _materialize_layer(value: PlotLayer | Mapping[str, Any]) -> PlotLayer:
     if isinstance(value, PlotLayer):
-        return PlotLayer.from_dict(value.to_dict())
+        # PlotLayer detaches constructor inputs and every public container-valued
+        # result.  Reusing that immutable-by-interface value avoids copying large
+        # coordinate arrays again when assembling a PlotSpec.
+        return value
     if isinstance(value, Mapping):
         return PlotLayer.from_dict(value)
     raise TypeError("plot layer must be a PlotLayer or mapping")

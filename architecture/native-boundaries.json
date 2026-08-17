@@ -17,7 +17,7 @@
     "declared-ffi": 398,
     "declared-ffi-resource": 27,
     "napi-export": 292,
-    "runtime-intrinsic": 136,
+    "runtime-intrinsic": 137,
     "wasm-export": 46
   },
   "boundaries": [
@@ -8588,6 +8588,14 @@
       "path": "tools/python/contract.ts",
       "export": "json",
       "symbol": "JSON",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:json_scalar_sequence",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "json_scalar_sequence",
+      "symbol": "ρσ_json_scalar_sequence",
       "disposition": "runtime-primitive"
     },
     {

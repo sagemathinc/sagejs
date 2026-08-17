@@ -154,6 +154,10 @@ line = make_layer(
     legend={"label": "sin(x)", "show": True},
     metadata={"group_path": [0, 1]},
 )
+source_coordinates = [10.0, float("nan"), 12.0]
+detached_input = make_layer("line", {"x": source_coordinates, "y": (1, 2, 3)}, ordinal=9)
+source_coordinates[0] = 99.0
+assert detached_input.data == {"x": [10.0, None, 12.0], "y": [1, 2, 3]}
 point = make_layer(
     "point",
     {"x": [1], "y": [2]},
@@ -190,6 +194,12 @@ spec = PlotSpec(
     diagnostics=[diagnostic],
     plotly_overrides={"layout": {"hovermode": "closest"}},
 )
+
+# Existing PlotLayer values are safe to reuse internally: all public
+# container-valued accessors remain detached.
+layer_view = spec.layers[0].data
+layer_view["x"][0] = 88
+assert spec.layers[0].data["x"][0] == 0
 
 materialized = spec.to_dict()
 assert materialized["layers"][0]["data"]["x"] == [0, 1, 2]
@@ -255,4 +265,42 @@ test("checked PlotSpec schema and diagnostic registry remain synchronized", () =
     assert.ok(entry.message.length > 0);
     assert.ok(entry.suggested_repairs.length > 0);
   }
+});
+
+const performanceWitness = String.raw`
+import json, time
+
+count = 100000
+points = [(float(index), float(index * index)) for index in range(count)]
+graphic = line(points)
+_ = graphic.spec()
+spec_times = []
+detach_times = []
+for _ in range(3):
+    start = time.perf_counter()
+    spec = graphic.spec()
+    middle = time.perf_counter()
+    document = spec.to_dict()
+    stop = time.perf_counter()
+    spec_times.append(middle - start)
+    detach_times.append(stop - middle)
+assert len(document["layers"][0]["data"]["x"]) == count
+print(json.dumps({
+    "points": count,
+    "spec_seconds": min(spec_times),
+    "detach_seconds": min(detach_times),
+}, sort_keys=True))
+`;
+
+test("100k-point Graphics.spec materialization remains bounded", () => {
+  const result = JSON.parse(runSagejs(performanceWitness));
+  assert.equal(result.points, 100_000);
+  assert.ok(
+    result.spec_seconds < 3,
+    `100k-point Graphics.spec took ${result.spec_seconds}s`,
+  );
+  assert.ok(
+    result.detach_seconds < 2,
+    `100k-point PlotSpec.to_dict took ${result.detach_seconds}s`,
+  );
 });
