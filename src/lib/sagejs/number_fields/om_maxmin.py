@@ -25,8 +25,8 @@ from .om_types import (
     OMTypeTree,
     Polynomial,
     RationalValue,
-    augmented_valuation,
     build_om_type_tree,
+    maclane_valuation,
     modular_divmod,
     normalize_polynomial,
     phi_quotients,
@@ -384,6 +384,7 @@ def _type_tree_trace(tree: OMTypeTree) -> list[dict[str, object]]:
                         "representative_precision": level.representative_precision,
                         "representative_step": level.representative_step,
                         "optimized_away": level.optimized_away,
+                        "index_evidence": level.index_evidence,
                     }
                     for level in branch.levels
                 ],
@@ -411,6 +412,7 @@ def _not_applicable_result(
             "expected_index_valuation": tree.expected_index_valuation,
             "max_enumerated_candidates": tree.max_enumerated_candidates,
             "max_representative_refinements": tree.max_representative_refinements,
+            "max_type_depth": tree.max_type_depth,
             "selector": _selector_evidence(metrics),
         },
         trace=_type_tree_trace(tree),
@@ -673,12 +675,10 @@ def _bounded_branch_table(
             if numerator_index == degree and branch_index == other_index:
                 row.append(None)
             elif other.levels:
-                other_level = other.levels[-1]
-                value = augmented_valuation(
+                value = maclane_valuation(
                     numerator,
                     tree.prime,
-                    other_level.key_polynomial,
-                    other_level.key_value,
+                    other.levels,
                 )
                 if value is None:
                     raise ArithmeticError(
@@ -852,6 +852,7 @@ def regular_local_basis(
             "expected_index_valuation": tree.expected_index_valuation,
             "max_enumerated_candidates": tree.max_enumerated_candidates,
             "max_representative_refinements": tree.max_representative_refinements,
+            "max_type_depth": tree.max_type_depth,
             "contains_one": validation.contains_one,
             "contains_equation_order": validation.contains_equation_order,
             "multiplication_closed": validation.multiplication_closed,
