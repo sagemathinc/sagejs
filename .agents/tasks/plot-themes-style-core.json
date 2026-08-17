@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-themes-style-core",
+  "title": "Shared Plotly-native themes and styles",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define deterministic notebook, presentation, publication, dark, and high-contrast plotting themes with colorblind-conscious palettes, normalized line/marker/text/fill style contracts, and JSON-safe Plotly defaults shared by 2D, 3D, and all frontends.",
+  "base_commit": "31d14b23db2b72195471c7a95570d154702ee6fb",
+  "claims": [
+    "src/lib/sagejs/plotting/themes.py",
+    "src/lib/sagejs/plotting/styles.py",
+    "docs/sage-compatibility/plotting/themes.json",
+    "test/plot-themes.cjs"
+  ],
+  "dependencies": [
+    "plot-agent-api"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Theme registry fixtures, contrast checks, and CPython/Sage.js differential Plotly defaults"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
