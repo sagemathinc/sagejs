@@ -80,10 +80,60 @@
       "commit": "5d8746b64501140176187f89c01c2ab17e6d6153",
       "workspace_fingerprint": "64e514878eedd39ecd6cf960b3cbdd04e30a69c6b6399cdd17c70ea6ac4faf15",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --project tsconfig.json --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.141,
+      "started_at": "2026-08-17T06:47:11.599Z",
+      "commit": "e262223efe6f9fc3b053304efeffe74f28671f48",
+      "workspace_fingerprint": "e4de2282f038f63882a5e65763302cb4195fab1acd69a2f25d4b60f229f2e305",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/portable-source-paths.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.443,
+      "started_at": "2026-08-17T06:47:18.926Z",
+      "commit": "e262223efe6f9fc3b053304efeffe74f28671f48",
+      "workspace_fingerprint": "e4de2282f038f63882a5e65763302cb4195fab1acd69a2f25d4b60f229f2e305",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.104,
+      "started_at": "2026-08-17T06:47:27.663Z",
+      "commit": "e262223efe6f9fc3b053304efeffe74f28671f48",
+      "workspace_fingerprint": "e4de2282f038f63882a5e65763302cb4195fab1acd69a2f25d4b60f229f2e305",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 302.407,
+      "started_at": "2026-08-17T06:47:56.446Z",
+      "commit": "e262223efe6f9fc3b053304efeffe74f28671f48",
+      "workspace_fingerprint": "e4de2282f038f63882a5e65763302cb4195fab1acd69a2f25d4b60f229f2e305",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/portable-source-paths.cjs test/module-cache.cjs test/runtime-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.441,
+      "started_at": "2026-08-17T06:53:09.558Z",
+      "commit": "e262223efe6f9fc3b053304efeffe74f28671f48",
+      "workspace_fingerprint": "e4de2282f038f63882a5e65763302cb4195fab1acd69a2f25d4b60f229f2e305",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Introduces a canonical physical/logical filename split for compiler modules. Physical paths remain authoritative for source I/O, imports, diagnostics, and cache locations, while logical src/... paths feed AST/token provenance and emitted Python module metadata. Cache records bind the logical filename policy, self-hosted compiler/runtime builds opt into it, and the CLI exposes a fail-closed distributable-build flag. Focused tests cover cache reuse/rejection, main and imported metadata, outside-root and symlink escape rejection, CLI stdin identity, two-root output equality, and built compiler/runtime artifacts.",
+    "summary": "Introduces a canonical physical/logical filename split for compiler modules. Physical paths remain authoritative for source I/O, imports, diagnostics, and cache locations, while logical src/... paths feed AST/token provenance and emitted Python module metadata. Portable cache records bind the logical filename policy; null-policy precompiled caches remain relocatable and are rehydrated with the current physical filename. Self-hosted compiler/runtime builds opt into portable identities, and the CLI exposes a fail-closed distributable-build flag. Focused tests cover relocated and conflicting cache policies, main and imported metadata/diagnostics, outside-root and symlink escape rejection, cross-platform prefix validation, CLI stdin and relative-file identity, two-root output equality, and built compiler/runtime artifacts.",
     "risks": [
       "The fresh worktree has no FLINT addon or headers, so pnpm test:compiler and the broad integration/CLI tier reach existing native-dependent tests but fail only on the missing packages/flint/build/Release/sagejs_flint.node or flint/flint.h. The focused suite, full self build, TypeScript check, Python formatting check, and architecture audit pass.",
       "scripts/build-runtime-cache.cjs is integration-owned. It still constructs the absolute compiler source filename before V8 cache serialization, which causes exactly one checkout-root occurrence in dist/runtime-cache/compiler.bin even though compiler.js is clean. A reproduced fix is to read/cache the compiler under a relative path without ever constructing that absolute filename.",
