@@ -1675,7 +1675,11 @@ class NumberFieldParent(sage.Parent):
             for _index in range(self.degree()):
                 rows.append(_nf_coordinates(power, self.degree()))
                 power *= integral_generator
-            self._equation_order_cache = NumberFieldOrder(self, rows, False)
+            # Powers of the integral generator form an order by construction.
+            # Canonicalize that proven-closed lattice without repeating all
+            # pairwise products; a global maximal-order certificate still
+            # checks the final candidate independently.
+            self._equation_order_cache = NumberFieldOrder(self, rows, False, False)
             equation_polynomial = (
                 _nf_maximal_order_module().integral_equation_polynomial(self)
             )

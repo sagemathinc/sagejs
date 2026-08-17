@@ -30,16 +30,19 @@ test("the public maximal-order path is lazy, certified, and cache-safe", async (
         "bad = dict(global_order.maximality_certificate())",
         "bad['order_discriminant'] = bad['order_discriminant'] + 1",
         "from sagejs.number_fields.maximal_order_certification import check_certificate",
+        "from sagejs.number_fields.maximal_order_certification import check_discriminant_coprime_component_witness",
         "bad_check = check_certificate(bad)",
+        "composite = [entry for entry in global_order.maximality_certificate()['component_certificate']['components'] if entry['state'] != 'proven-prime']",
+        "coprime_checker_regression = True if len(composite) == 0 else check_discriminant_coprime_component_witness(global_order.discriminant(), composite[0], global_order.maximality_certificate()['local_witnesses'][0])",
         "assumption_error = False",
         "try:",
         "    K.maximal_order(2, assume_maximal=True)",
         "except ValueError:",
         "    assumption_error = True",
-        "[local.is_maximal(), global_order.is_maximal(), global_order is K.ring_of_integers(), local is global_order, global_order.maximality_certificate()['certified'], bad_check['certified'], assumption_error]",
+        "[local.is_maximal(), global_order.is_maximal(), global_order is K.ring_of_integers(), local is global_order, global_order.maximality_certificate()['certified'], bad_check['certified'], assumption_error, coprime_checker_regression]",
       ].join("\n"),
     );
-    assert.equal(result.repr, "[False, True, True, False, True, False, True]");
+    assert.equal(result.repr, "[False, True, True, False, True, False, True, True]");
   } finally {
     await session.close();
   }
@@ -56,8 +59,16 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
         "K.<a> = NumberField(R(coefficients))",
         "O = K.maximal_order(trace=True)",
         "certificate = O.maximality_certificate()",
+        "from sagejs.number_fields.maximal_order_certification import check_discriminant_coprime_component_witness",
+        "component = [entry for entry in certificate['component_certificate']['components'] if entry['state'] != 'proven-prime'][0]",
+        "witness = [entry for entry in certificate['local_witnesses'] if 'component_value' in entry][0]",
+        "corrupt_witness = dict(witness)",
+        "corrupt_proof = dict(witness['proof'])",
+        "corrupt_proof['support'] = corrupt_proof['support'] * 7",
+        "corrupt_witness['proof'] = corrupt_proof",
+        "theorem_checks = [check_discriminant_coprime_component_witness(O.discriminant(), component, witness), check_discriminant_coprime_component_witness(O.discriminant(), component, corrupt_witness), check_discriminant_coprime_component_witness(component['base'], component, witness)]",
         "events = O.maximal_order_trace()['events']",
-        "[O.discriminant(), O.is_maximal(), len(O.basis()), certificate['index'], [event['stage'] for event in events], events[2]['details']['merged_composite_lattice']]",
+        "[O.discriminant(), O.is_maximal(), len(O.basis()), certificate['index'], [event['stage'] for event in events], events[2]['details']['merged_composite_lattice'], theorem_checks]",
       ].join("\n"),
     );
     const elapsed = performance.now() - started;
@@ -68,7 +79,7 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
     assert.match(result.repr, /'composite-local-order'/);
     assert.match(result.repr, /'native-local-orders'/);
     assert.match(result.repr, /'global-certification'/);
-    assert.match(result.repr, /, True\]$/);
+    assert.match(result.repr, /, True, \[True, False, False\]\]$/);
     assert.ok(elapsed < 20_000, `catastrophic public case took ${elapsed}ms`);
   } finally {
     await session.close();

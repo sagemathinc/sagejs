@@ -211,6 +211,41 @@ def make_composite_local_maximality_witness(
     }
 
 
+def check_discriminant_coprime_component_witness(
+    order_discriminant: int,
+    component: dict[str, Any],
+    witness: dict[str, Any],
+) -> bool:
+    """Check a composite local proof using discriminant coprimality.
+
+    This check assumes only that the separately checked candidate is an order
+    containing the equation order.  If its discriminant is coprime to the
+    support of an unresolved component, it is maximal at every prime in that
+    component: a proper overorder of local index divisible by `p` would divide
+    the order discriminant by `p^2`, which is impossible when `p` does not
+    divide that discriminant.
+
+    The component record remains composite throughout; no primality claim is
+    inferred from this witness.
+    """
+    if component.get("state") == PROVEN_PRIME:
+        return False
+    component_value = abs(int(component.get("value", 0)))
+    support = abs(int(component.get("base", 0)))
+    if component_value < 2 or support < 2:
+        return False
+    if abs(int(witness.get("component_value", 0))) != component_value:
+        return False
+    if witness.get("assumes_prime") is not False:
+        return False
+    proof = witness.get("proof", {})
+    if proof.get("theorem") != "order-discriminant-coprime-component":
+        return False
+    if abs(int(proof.get("support", 0))) != support:
+        return False
+    return integer_gcd(abs(int(order_discriminant)), support) == 1
+
+
 def make_maximal_order_certificate(
     defining_polynomial: list[int],
     basis_numerator: list[list[int]],
@@ -497,6 +532,7 @@ def check_certificate(
 __all__ = [
     "certify_global_order",
     "check_certificate",
+    "check_discriminant_coprime_component_witness",
     "check_maximal_order_certificate",
     "check_order_lattice",
     "make_composite_local_maximality_witness",
