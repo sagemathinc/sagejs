@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "id": "sagejs-number-field-maximal-order-profiler-v1",
+  "description": "Oracle selection, sampling, and resource policy. All mathematical case facts come from the shared certified corpus.",
+  "corpus": "test/fixtures/number-field-maximal-order-corpus.json",
+  "implementation_families": {
+    "pari-sage": {
+      "members": ["pari", "sage"],
+      "independence": "shared PARI maximal-order implementation"
+    },
+    "hecke-oscar": {
+      "members": ["hecke", "oscar"],
+      "independence": "Oscar exposes Hecke's maximal-order implementation"
+    },
+    "magma": {
+      "members": ["magma"],
+      "independence": "independent proprietary black-box oracle"
+    },
+    "sagejs": {
+      "members": ["sagejs", "sagejs-dynamic", "sagejs-native"],
+      "independence": "implementation under test with an independent exact lattice verifier"
+    }
+  },
+  "defaults": {
+    "warmups": 2,
+    "samples": 5,
+    "memory_limit_mb": 4096
+  },
+  "system_limits": {
+    "sagejs": { "memory_limit_mb": 4096 },
+    "sagejs-dynamic": { "memory_limit_mb": 4096 },
+    "sagejs-native": { "memory_limit_mb": 4096 },
+    "sage": { "memory_limit_mb": 4096 },
+    "pari": { "memory_limit_mb": 2048 },
+    "hecke": { "memory_limit_mb": 4096 },
+    "oscar": { "memory_limit_mb": 6144 },
+    "magma": { "memory_limit_mb": 4096 }
+  },
+  "profiles": {
+    "quick": {
+      "description": "One small exact case for protocol and capability checks.",
+      "case_ids": ["motivating-degree-7"],
+      "warmups": 0,
+      "samples": 1,
+      "timeout_ms": 30000,
+      "systems": {
+        "sagejs": ["warm-public"],
+        "sagejs-dynamic": ["dynamic-public"],
+        "sagejs-native": ["native-public"],
+        "sage": ["warm-public"],
+        "pari": ["nfbasis", "nfinit"],
+        "hecke": ["core"],
+        "oscar": ["warm-public"],
+        "magma": ["warm-public"]
+      }
+    },
+    "baseline": {
+      "description": "The published six-field table plus the mandatory catastrophic generator.",
+      "case_ids": [
+        "motivating-degree-7",
+        "sage-essential-discriminant",
+        "lmfdb-3.1.431.1",
+        "lmfdb-5.1.17161.1",
+        "pari-2510",
+        "pari-1710",
+        "pure-bad-generator-n8-c2pow32"
+      ],
+      "warmups": 2,
+      "samples": 5,
+      "timeout_ms": 60000,
+      "systems": {
+        "sagejs": ["warm-public", "factor-discovery"],
+        "sagejs-dynamic": ["dynamic-public"],
+        "sagejs-native": ["native-public"],
+        "sage": ["warm-public", "factor-discovery"],
+        "pari": ["nfbasis", "nfinit", "factor-discovery"],
+        "hecke": ["core"],
+        "oscar": ["warm-public"],
+        "magma": ["warm-public"]
+      }
+    },
+    "stress": {
+      "description": "Opt-in scalable families selected from the shared corpus.",
+      "case_ids": [
+        "pure-bad-generator-n32-c2pow32",
+        "pure-bad-generator-n48-c1009",
+        "pure-bad-generator-n96-c1009",
+        "pure-bad-generator-n32-c2pow128"
+      ],
+      "warmups": 1,
+      "samples": 3,
+      "timeout_ms": 180000,
+      "systems": {
+        "sagejs": ["warm-public", "factor-discovery"],
+        "sagejs-dynamic": ["dynamic-public"],
+        "sagejs-native": ["native-public"],
+        "sage": ["warm-public"],
+        "pari": ["nfbasis", "nfinit"],
+        "hecke": ["core"],
+        "oscar": ["warm-public"],
+        "magma": ["warm-public"]
+      }
+    }
+  },
+  "case_overrides": {
+    "motivating-degree-7": {
+      "inner_iterations": 100,
+      "limits": { "default": { "timeout_ms": 30000 }, "magma": { "timeout_ms": 30000 } }
+    },
+    "sage-essential-discriminant": { "inner_iterations": 100 },
+    "lmfdb-3.1.431.1": { "inner_iterations": 100 },
+    "lmfdb-5.1.17161.1": { "inner_iterations": 100 },
+    "pari-2510": { "inner_iterations": 10 },
+    "pari-1710": { "inner_iterations": 5 },
+    "pure-bad-generator-n8-c2pow32": {
+      "inner_iterations": 1,
+      "limits": {
+        "default": { "timeout_ms": 60000 },
+        "sagejs": { "timeout_ms": 10000 },
+        "sagejs-dynamic": { "timeout_ms": 10000 },
+        "sagejs-native": { "timeout_ms": 10000 },
+        "sage": { "timeout_ms": 30000 },
+        "pari": { "timeout_ms": 30000 },
+        "hecke": { "timeout_ms": 30000 },
+        "oscar": { "timeout_ms": 60000 },
+        "magma": { "timeout_ms": 180000 }
+      }
+    }
+  }
+}
