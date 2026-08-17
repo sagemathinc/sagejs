@@ -59,6 +59,7 @@ const integration = [
   "test/number-field-maximal-order-timeout-recovery.cjs",
   "test/number-field-discriminant-components.cjs",
   "test/number-field-buchmann-lenstra.cjs",
+  "test/number-field-buchmann-lenstra-fallback.cjs",
   "test/number-field-local-polygons.cjs",
   "test/number-field-local-parallel.cjs",
   "test/number-field-om-maxmin.cjs",
