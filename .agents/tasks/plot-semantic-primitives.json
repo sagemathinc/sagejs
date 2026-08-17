@@ -4,7 +4,7 @@
   "id": "plot-semantic-primitives",
   "title": "PlotSpec semantic primitive integration",
   "lane": "graphics",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate lazy semantic PlotSpec payloads and stable layer IDs for Sage.js 2D and 3D line, point, and text primitives while preserving current Plotly rendering.",
   "base_commit": "5da86e0eaabf2291414187f01c7a2a87966b871d",
@@ -33,13 +33,40 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm test:baselib:strict",
-    "pnpm test:integration"
+    "node --test test/graphics.cjs",
+    "node --test test/graphics3d.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/graphics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.961,
+      "started_at": "2026-08-17T06:35:05.936Z",
+      "commit": "59fc38c8e8f31cd9ceceff47a660c8ed30c1435a",
+      "workspace_fingerprint": "7af68737dfcc5324de4a745e16ccf16b0a9c427cd1b95d31f582448f50139a3d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/graphics3d.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.922,
+      "started_at": "2026-08-17T06:35:10.676Z",
+      "commit": "59fc38c8e8f31cd9ceceff47a660c8ed30c1435a",
+      "workspace_fingerprint": "7af68737dfcc5324de4a745e16ccf16b0a9c427cd1b95d31f582448f50139a3d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented stable semantic PlotSpec layers and exact Plotly lowering for 2D/3D line, point, and text primitives; deterministic IDs survive composition and 3D transforms, unsupported primitives use raw Plotly fallback, and matching functional frontend context hooks preserve provenance, ordered options, and structured diagnostics without changing display output. Rebuilt focused graphics and graphics3d suites pass on linux-x64.",
+    "risks": [
+      "PlotSpec materialization is intentionally separate from the hot Plotly path but remains expensive for very large data: a warmed 100k-point line spec() measured about 5.6 seconds, while plotly() measured 0.28 ms and reused both coordinate arrays by identity.",
+      "Focused runtime validation used the root worktree's ignored FLINT addon artifacts because this isolated worktree did not contain native build products; the implementation itself does not add a native dependency."
+    ],
+    "next_steps": [
+      "Optimize or cache large PlotSpec materialization in a dedicated follow-up without adding coordinate copies to ordinary plotly() rendering.",
+      "Extend the semantic layer vocabulary and lowering to the remaining 2D/3D primitives in the downstream plotting lanes."
+    ]
   }
 }
