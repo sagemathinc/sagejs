@@ -1,0 +1,87 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-axes-composition",
+  "title": "PlotSpec axes and composition foundation",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement immutable JSON-safe axis, legend, annotation, and deterministic 2D panel composition settings with Plotly lowering helpers and differential tests",
+  "base_commit": "31d14b23db2b72195471c7a95570d154702ee6fb",
+  "claims": [
+    "src/lib/sagejs/plotting/axes.py",
+    "src/lib/sagejs/plotting/composition.py",
+    "src/lib/sagejs/plotting/lowering.py",
+    "test/plot-axes-composition.cjs",
+    "docs/sage-compatibility/plotting/presentation-schema.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and Sage.js differential execution",
+      "Plotly layout semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration",
+    "node --test test/plot-axes-composition.cjs",
+    "pnpm exec pyright src/lib/sagejs/plotting/axes.py src/lib/sagejs/plotting/composition.py src/lib/sagejs/plotting/lowering.py",
+    "pnpm exec ruff check src/lib/sagejs/plotting/axes.py src/lib/sagejs/plotting/composition.py src/lib/sagejs/plotting/lowering.py"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/plot-axes-composition.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.338,
+      "started_at": "2026-08-17T06:14:16.652Z",
+      "commit": "2ac87d57d6ef9a38b7b454674700a35ce176512c",
+      "workspace_fingerprint": "3c3fef801173dc214abfb27feb41d66910c0cef88a9960e9c69510754f3dc9e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/plotting/axes.py src/lib/sagejs/plotting/composition.py src/lib/sagejs/plotting/lowering.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.627,
+      "started_at": "2026-08-17T06:14:52.121Z",
+      "commit": "2ac87d57d6ef9a38b7b454674700a35ce176512c",
+      "workspace_fingerprint": "3c3fef801173dc214abfb27feb41d66910c0cef88a9960e9c69510754f3dc9e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/plotting/axes.py src/lib/sagejs/plotting/composition.py src/lib/sagejs/plotting/lowering.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.555,
+      "started_at": "2026-08-17T06:15:25.593Z",
+      "commit": "2ac87d57d6ef9a38b7b454674700a35ce176512c",
+      "workspace_fingerprint": "3c3fef801173dc214abfb27feb41d66910c0cef88a9960e9c69510754f3dc9e2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Commit 2ac87d57 adds immutable Plotly-native axis, scene, legend, and annotation settings; one pure PlotSpec-to-Plotly lowering entry point for semantic and raw fallback layers; deterministic 2D panel domains and stable qualified layer identities; a checked presentation contract; and CPython/Sage.js differential and performance tests.",
+    "risks": [
+      "The three new strict modules add 54077 source bytes, so the existing plot-spec 100000-byte package budget is exceeded by 4034 bytes on this lane; central integration must split or deliberately raise the lazy budget alongside the concurrent theme and curve modules.",
+      "The canonical theme module was developed concurrently and is not present at this lane's base; the lowering contract was coordinated against its committed public API but needs one combined integration run.",
+      "Panel lowering intentionally rejects domain traces, nonlocal nested axis references, and raw layers that expand to multiple traces when stable one-layer/one-trace identity cannot be inferred."
+    ],
+    "next_steps": [
+      "Add axes.py, composition.py, and lowering.py to pyrightconfig.json and export the selected public names from sagejs.plotting.__init__.",
+      "Register test/plot-axes-composition.cjs in the integration manifest and account for the plotting lazy-source budget.",
+      "After the semantic Graphics and theme commits land, route Graphics.plotly() and Graphics3d.plotly() through lower_plot_spec and verify exact legacy layout/config parity plus theme-first merge behavior."
+    ]
+  }
+}
