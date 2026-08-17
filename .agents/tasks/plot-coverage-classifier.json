@@ -33,13 +33,53 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/plotting-coverage.cjs",
     "pnpm test:baselib:strict",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.02,
+      "started_at": "2026-08-17T05:24:26.828Z",
+      "commit": "ac8410b2c0e7b0dd378b975050ff36e555cc05bb",
+      "workspace_fingerprint": "05c07aa1a78b49ff8d981199af6cdde8b1b98ad68dbf7704318cd7e32c350cfd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 184.149,
+      "started_at": "2026-08-17T05:24:49.090Z",
+      "commit": "ac8410b2c0e7b0dd378b975050ff36e555cc05bb",
+      "workspace_fingerprint": "05c07aa1a78b49ff8d981199af6cdde8b1b98ad68dbf7704318cd7e32c350cfd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plotting-coverage.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.215,
+      "started_at": "2026-08-17T05:28:51.984Z",
+      "commit": "ac8410b2c0e7b0dd378b975050ff36e555cc05bb",
+      "workspace_fingerprint": "05c07aa1a78b49ff8d981199af6cdde8b1b98ad68dbf7704318cd7e32c350cfd",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generated a deterministic 642-entry product ledger from the pinned Sage 10.9.post1 and Wolfram/MATLAB frontend inventories. Every entry has exactly one faithful, translated, unsupported, or extension status; the generator preserves source authority, validates exhaustive joins and evidence paths, and records explicit per-entry semantic, Plotly, visual, platform, and performance debt. Focused regeneration tests pass and strict baselib validation passes.",
+    "risks": [
+      "The initial ledger is deliberately conservative: most exact Sage class and method semantics remain unsupported until focused evidence exists, and translated records explicitly retain parity debt.",
+      "The full integration tier fails in this worktree because FLINT headers, generated adapters, production kernels, and sagejs_flint.node are absent; the failures are unrelated to the JSON classifier.",
+      "The integration lane must register the three new plotting inventory/classifier tests in the central test manifest, which this lane was instructed not to edit."
+    ],
+    "next_steps": [
+      "Integrate both inventory dependencies before this classifier commit and add their three focused tests to the central test manifest.",
+      "Re-run the integration tier in a bootstrapped native workspace and replace the recorded failed receipt with a passing one.",
+      "Promote unsupported entries only when exact semantic, PlotSpec, Plotly, and visual evidence is added; coverage.json will then make the resulting progress measurable."
+    ]
   }
 }
