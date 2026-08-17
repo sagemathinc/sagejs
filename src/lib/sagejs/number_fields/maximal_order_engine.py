@@ -14,13 +14,16 @@ maximality evidence.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.number_fields.buchmann_lenstra import (
     BuchmannLenstraResult,
+    buchmann_lenstra_multiplier_cycle,
     buchmann_lenstra_overorder,
+    check_buchmann_lenstra_general_result,
     check_buchmann_lenstra_result,
 )
 from sagejs.number_fields.discriminant_components import (
@@ -32,6 +35,16 @@ from sagejs.number_fields.discriminant_components import (
     prove_prime_resumable,
     split_decomposition_component,
 )
+from sagejs.number_fields.local_parallel import (
+    JobPayload,
+    local_job_component,
+    local_job_key,
+    local_result_contract,
+    make_local_job,
+    make_local_result,
+    make_schedule,
+    run_local_jobs,
+)
 from sagejs.number_fields.maximal_order_certification import (
     certify_global_order,
     check_discriminant_coprime_component_witness,
@@ -42,6 +55,7 @@ from sagejs.number_fields.maximal_order_contracts import (
     DiscriminantComponent,
     MaximalOrderTrace,
     OrderBasis,
+    SelectionDecision,
 )
 from sagejs.number_fields.order_resource import native_order_from_polynomial
 
@@ -221,6 +235,287 @@ def _cache_discriminant_from_basis(
     return discriminant
 
 
+# These scale factors are intentionally conservative calibration constants,
+# not mathematical cutoffs.  They convert the stable operation-count models
+# below into scheduling microseconds.  The selector benchmark records both
+# the raw counts and measured wall times so a future tuning change is an
+# inspectable data change rather than a change in mathematical behavior.
+_SELECTOR_SCHEMA = "sagejs.number-fields/maximal-order-selection-v1"
+_SELECTOR_BENCHMARK = "bench/number-field-maximal-order-selector.cjs:v1"
+_LOCAL_SETUP_MICROS = 100_000
+_ROUND2_MICROS_PER_UNIT = 500
+_POLYGON_MICROS_PER_UNIT = 500
+_ROUND4_MICROS_PER_UNIT = 500
+_OM_MICROS_PER_UNIT = 500
+_PUBLIC_CORPUS_EVIDENCE = {
+    "successful_median_micros": 376_000,
+    "successful_p90_micros": 1_583_000,
+    "stage_total_micros": {
+        "certification": 77_840_000,
+        "decomposition": 27_820_000,
+        "native_local": 15_440_000,
+        "composite": 6_440_000,
+    },
+    "certification_dominates": True,
+    "end_to_end_parallel_crossover_measured": False,
+}
+
+
+def _coefficient_bits(coefficients: list[int]) -> int:
+    return max((abs(int(value)).bit_length() for value in coefficients), default=0)
+
+
+def _expected_basis_bytes(
+    degree: int, coefficient_bits: int, prime: int, local_valuation: int
+) -> int:
+    entry_bits = max(8, coefficient_bits + local_valuation * prime.bit_length())
+    return degree * (degree + 1) // 2 * ((entry_bits + 7) // 8 + 8)
+
+
+def _local_selection_decision(
+    coefficients: list[int],
+    equation_discriminant: int,
+    prime: int,
+    *,
+    forced_algorithm: str | None = None,
+) -> tuple[SelectionDecision, tuple[int, ...]]:
+    """Select one local solver from deterministic input-derived metrics.
+
+    Factorization here is over the finite field only; it does not factor the
+    integer discriminant.  The current portfolio keeps auto dispatch quite
+    conservative because the native global path wins every measured public
+    case.  The richer choices therefore matter on native fallback and remain
+    forceable for differential testing.
+    """
+    polygon_module = __import__(
+        "sagejs.number_fields.local_polygons",
+        fromlist=["local_polygons"],
+    )
+    factors = polygon_module.factor_mod_prime(coefficients, prime)
+    factor_degrees = [int(record["degree"]) for record in factors]
+    factor_multiplicities = [int(record["multiplicity"]) for record in factors]
+    degree = len(coefficients) - 1
+    local_valuation = _valuation(equation_discriminant, prime)
+    height = _coefficient_bits(coefficients)
+    factor_count = len(factors)
+    repeated_degree = sum(
+        factor_degree * max(0, multiplicity - 1)
+        for factor_degree, multiplicity in zip(
+            factor_degrees, factor_multiplicities, strict=True
+        )
+    )
+    output_bytes = _expected_basis_bytes(degree, height, prime, local_valuation)
+    round2_units = degree**3 * max(1, local_valuation // 2) * max(1, height)
+    polygon_units = (
+        degree * degree * (factor_count + repeated_degree + 1) * max(1, min(height, 64))
+    )
+    round4_units = degree * degree * (local_valuation + 1) * max(
+        1, min(height, 128)
+    ) + sum(value * value for value in factor_degrees)
+    om_units = degree * degree * (degree + local_valuation + 1) * (factor_count + 1)
+    round4_module = __import__(
+        "sagejs.number_fields.round4",
+        fromlist=["round4"],
+    )
+    round4_precision = round4_module.round4_required_precision(local_valuation)
+    round4_selector = round4_module.round4_selector_metrics(
+        coefficients,
+        local_valuation,
+        factor_degrees,
+        factor_multiplicities,
+        round4_precision,
+    )
+    predicted_micros = {
+        "round2": _LOCAL_SETUP_MICROS + round2_units * _ROUND2_MICROS_PER_UNIT,
+        "polygon": _LOCAL_SETUP_MICROS + polygon_units * _POLYGON_MICROS_PER_UNIT,
+        "round4": _LOCAL_SETUP_MICROS + round4_units * _ROUND4_MICROS_PER_UNIT,
+        "om-maxmin": _LOCAL_SETUP_MICROS + om_units * _OM_MICROS_PER_UNIT,
+    }
+    metrics: dict[str, Any] = {
+        "degree": degree,
+        "coefficient_bits": height,
+        "prime": prime,
+        "prime_bits": prime.bit_length(),
+        "local_discriminant_valuation": local_valuation,
+        "factor_degrees": factor_degrees,
+        "factor_multiplicities": factor_multiplicities,
+        "factor_count": factor_count,
+        "repeated_degree": repeated_degree,
+        "expected_output_entries": degree * (degree + 1) // 2,
+        "expected_output_bytes": output_bytes,
+        "predicted_micros": predicted_micros,
+        "round4_selector": round4_selector.as_dict(),
+        "auto_eligibility": {
+            "round2": {"eligible": True, "reason": "certified dynamic baseline"},
+            "polygon": {
+                "eligible": True,
+                "reason": "certified on regular first-order polygon evidence",
+            },
+            "round4": {
+                "eligible": True,
+                "reason": "certified within the Round-4 selector domain",
+            },
+            "om-maxmin": {
+                "eligible": False,
+                "reason": (
+                    "extended OM types require differential evidence and do not yet "
+                    "advertise auto_selectable"
+                ),
+            },
+        },
+        "benchmark": _SELECTOR_BENCHMARK,
+    }
+    if forced_algorithm is not None:
+        return (
+            SelectionDecision(
+                forced_algorithm,
+                "the caller forced this local algorithm for differential testing",
+                metrics,
+                forced=True,
+            ),
+            tuple(int(value) for value in coefficients),
+        )
+    if degree <= 4 and local_valuation <= 8:
+        selected = "round2"
+        reason = "tiny degree keeps Round-2 setup and certification cheapest"
+    elif (
+        factor_count > 1
+        and repeated_degree <= degree // 2
+        and local_valuation <= 8
+        and height < 128
+        and polygon_units < round2_units
+    ):
+        selected = "polygon"
+        reason = "a regular-looking split factor pattern favors Newton polygons"
+    elif round4_selector.recommendation == "round4":
+        selected = "round4"
+        reason = round4_selector.reason
+    else:
+        selected = "round2"
+        reason = (
+            "the measured local fallback favors Round 2; OM/MaxMin remains "
+            "forceable but is not auto-selectable"
+        )
+    return (
+        SelectionDecision(selected, reason, metrics),
+        tuple(int(value) for value in coefficients),
+    )
+
+
+def _local_selection_plan(
+    coefficients: list[int],
+    equation_discriminant: int,
+    primes: list[int],
+    algorithm: str,
+    *,
+    worker_capability: bool,
+    cpu_count: int | None = None,
+) -> tuple[list[JobPayload], dict[tuple[Any, ...], dict[str, Any]], tuple[Any, ...]]:
+    jobs: list[JobPayload] = []
+    decisions: dict[tuple[Any, ...], dict[str, Any]] = {}
+    forced = (
+        None
+        if algorithm == "auto"
+        else "round2"
+        if algorithm == "native"
+        else algorithm
+    )
+    for ordinal, prime in enumerate(sorted(primes)):
+        decision, factor = _local_selection_decision(
+            coefficients,
+            equation_discriminant,
+            prime,
+            forced_algorithm=forced,
+        )
+        metrics = decision.metrics
+        predicted = metrics["predicted_micros"]
+        job = make_local_job(
+            coefficients,
+            prime,
+            ordinal,
+            factor,
+            metrics["local_discriminant_valuation"],
+            predicted[decision.algorithm],
+            metrics["expected_output_bytes"],
+            algorithm=decision.algorithm,
+        )
+        jobs.append(job)
+        decisions[local_job_key(job)] = decision.to_dict()
+    schedule = make_schedule(
+        jobs,
+        cpu_count=cpu_count,
+        worker_capability=worker_capability,
+    )
+    return jobs, decisions, schedule
+
+
+def inspect_maximal_order_selection(
+    polynomial_coefficients: list[int],
+    equation_discriminant: int,
+    primes: list[int],
+    *,
+    algorithm: str = "auto",
+    worker_capability: bool = False,
+    cpu_count: int | None = None,
+) -> dict[str, Any]:
+    """Return the deterministic public selector and scheduler evidence.
+
+    `worker_capability=False` describes today's public arithmetic boundary:
+    local solvers still need a host order, which is deliberately never put in
+    a worker payload.  Passing `True` is useful for inspecting the measured
+    crossover once a pointer-free arithmetic worker is available; it never
+    changes the selector's mathematical decisions.
+    """
+    coefficients = [int(value) for value in polynomial_coefficients]
+    if len(coefficients) < 2 or coefficients[-1] != 1:
+        raise ValueError("a maximal-order selector requires a monic polynomial")
+    if algorithm not in (
+        "auto",
+        "round2",
+        "native",
+        "polygon",
+        "round4",
+        "om-maxmin",
+    ):
+        raise ValueError("unknown maximal-order algorithm")
+    local_primes = sorted({int(value) for value in primes})
+    jobs, decisions, schedule = _local_selection_plan(
+        coefficients,
+        int(equation_discriminant),
+        local_primes,
+        algorithm,
+        worker_capability=worker_capability,
+        cpu_count=cpu_count,
+    )
+    if algorithm == "auto" and local_primes:
+        primary = "native"
+        primary_reason = (
+            "the native global Round-2 resource wins the measured public corpus"
+        )
+    elif algorithm == "native":
+        primary = "native"
+        primary_reason = "the caller forced the native global algorithm"
+    elif local_primes:
+        primary = "local"
+        primary_reason = "the caller selected independently certified local work"
+    else:
+        primary = "none"
+        primary_reason = "no proven prime has square support in the discriminant"
+    ordered_decisions = [decisions[local_job_key(job)] for job in jobs]
+    return {
+        "schema": _SELECTOR_SCHEMA,
+        "primary": primary,
+        "primary_reason": primary_reason,
+        "forced": algorithm != "auto",
+        "local_decisions": ordered_decisions,
+        "schedule": schedule,
+        "parallel_arithmetic_capability": bool(worker_capability),
+        "parallel_gate": dict(_PUBLIC_CORPUS_EVIDENCE),
+        "sequential_canonical": True,
+        "benchmark": _SELECTOR_BENCHMARK,
+    }
+
+
 def _forced_local_order(
     field: Any,
     coefficients: list[int],
@@ -232,6 +527,21 @@ def _forced_local_order(
 ) -> tuple[Any, str, dict[str, Any]]:
     """Run one inspectable local algorithm with a certified Round-2 fallback."""
     local_valuation = _valuation(equation_discriminant, prime)
+
+    def round2_after_error(
+        selection: str, error: Exception
+    ) -> tuple[Any, str, dict[str, Any]]:
+        return (
+            _maximal_order_module().p_maximal_overorder_dynamic(equation_order, prime),
+            "round2",
+            {
+                "selection": selection,
+                "fallback": True,
+                "reason": str(error),
+                "exception_type": type(error).__name__,
+            },
+        )
+
     if algorithm == "round2":
         return (
             _maximal_order_module().p_maximal_overorder_dynamic(equation_order, prime),
@@ -240,12 +550,15 @@ def _forced_local_order(
         )
     if algorithm == "round4":
         module = __import__("sagejs.number_fields.round4", fromlist=["round4"])
-        result = module.modified_round4_local_order(
-            equation_order,
-            prime,
-            "dynamic-round2",
-            False,
-        )
+        try:
+            result = module.modified_round4_local_order(
+                equation_order,
+                prime,
+                "dynamic-round2",
+                False,
+            )
+        except Exception as error:
+            return round2_after_error("forced-round4", error)
         return (
             result.order,
             result.certificate.algorithm,
@@ -265,12 +578,15 @@ def _forced_local_order(
             "sagejs.number_fields.local_polygons",
             fromlist=["local_polygons"],
         )
-        result = module.analyze_local_component(
-            coefficients,
-            component,
-            local_valuation,
-            equation_discriminant,
-        )
+        try:
+            result = module.analyze_local_component(
+                coefficients,
+                component,
+                local_valuation,
+                equation_discriminant,
+            )
+        except Exception as error:
+            return round2_after_error("forced-polygon", error)
         if result.state == "complete" and result.basis is not None:
             discriminant = (
                 equation_discriminant // (result.index * result.index)
@@ -296,12 +612,15 @@ def _forced_local_order(
             "sagejs.number_fields.om_maxmin",
             fromlist=["om_maxmin"],
         )
-        result = module.regular_local_basis(
-            tuple(coefficients),
-            prime,
-            local_discriminant_valuation=local_valuation,
-            differential_evidence=True,
-        )
+        try:
+            result = module.regular_local_basis(
+                tuple(coefficients),
+                prime,
+                local_discriminant_valuation=local_valuation,
+                differential_evidence=True,
+            )
+        except Exception as error:
+            return round2_after_error("forced-om-maxmin", error)
         if result.status == "complete" and result.order_basis is not None:
             discriminant = equation_discriminant // (
                 result.local_result.index * result.local_result.index
@@ -610,6 +929,47 @@ def _replace_composite_by_certified_primes(
     )
 
 
+def _replace_component_by_certified_split(
+    decomposition: dict[str, Any],
+    record: dict[str, Any],
+    result: BuchmannLenstraResult,
+    trace: MaximalOrderTrace,
+) -> list[dict[str, Any]]:
+    """Replace one BL-split branch without factoring the parent component."""
+    if result.state != "split" or result.split is None:
+        raise ArithmeticError(
+            "a branch-local restart requires certified split evidence"
+        )
+    split = result.split
+    support = int(record["base"])
+    if split.source != support or split.left * split.right != support:
+        raise ArithmeticError("Buchmann--Lenstra split evidence has the wrong source")
+    token = trace.begin(
+        "component-split-restart",
+        {"component_bits": support.bit_length()},
+    )
+    refinement = split_decomposition_component(
+        decomposition,
+        int(record["value"]),
+        split.left,
+        reason="buchmann-lenstra-component-split",
+    )
+    updated = refinement["decomposition"]
+    decomposition.clear()
+    decomposition.update(updated)
+    children = refinement["restart"]["children"]
+    trace.end(
+        token,
+        "complete",
+        {
+            "branch_count": len(children),
+            "retired": refinement["restart"]["retired"],
+            "preserved": refinement["restart"]["preserved"],
+        },
+    )
+    return children
+
+
 def compute_maximal_order(
     field: Any,
     *,
@@ -656,9 +1016,13 @@ def compute_maximal_order(
     composite_witnesses: list[dict[str, Any]] = []
 
     if requested is None:
-        for record in decomposition["components"]:
-            if record["state"] == "proven-prime":
-                continue
+        pending_composites = [
+            record
+            for record in decomposition["components"]
+            if record["state"] != "proven-prime"
+        ]
+        while pending_composites:
+            record = pending_composites.pop(0)
             component_value = int(record["value"])
             support = int(record["base"])
             component = DiscriminantComponent(
@@ -670,14 +1034,87 @@ def compute_maximal_order(
                 "composite-local-order",
                 {"component_bits": support.bit_length()},
             )
-            result = buchmann_lenstra_overorder(
-                coefficients,
-                component,
-                basis=current_basis,
-                equation_discriminant=equation_discriminant,
-            )
+            starting_basis = current_basis
+            identity_basis = _identity_basis(field.degree())
+            if current_basis.canonical_key() == identity_basis.canonical_key():
+                result = buchmann_lenstra_overorder(
+                    coefficients,
+                    component,
+                    basis=current_basis,
+                    equation_discriminant=equation_discriminant,
+                )
+            else:
+                result = buchmann_lenstra_multiplier_cycle(
+                    coefficients,
+                    component,
+                    current_basis,
+                    equation_discriminant=equation_discriminant,
+                )
+            if result.evidence.get("stage") == "q-radical-multiplier-cycle":
+                if not check_buchmann_lenstra_general_result(
+                    coefficients,
+                    starting_basis,
+                    result,
+                    equation_discriminant=equation_discriminant,
+                ):
+                    raise ArithmeticError(
+                        "general Buchmann--Lenstra replay rejected its result"
+                    )
+            elif not check_buchmann_lenstra_result(coefficients, result):
+                raise ArithmeticError("Buchmann--Lenstra evidence failed replay")
+
+            if result.state == "enlarged" and result.basis is not None:
+                # The equation-order Dedekind step is only the first
+                # enlargement.  Restart the same component at the new lattice
+                # and let the bounded q-radical/multiplier cycle finish it.
+                current_basis = result.basis
+                if result.discriminant is None:
+                    raise ArithmeticError(
+                        "Buchmann--Lenstra enlargement omitted its discriminant"
+                    )
+                order = _order_from_basis(
+                    field,
+                    current_basis,
+                    scale,
+                    int(result.discriminant),
+                )
+                general_start = current_basis
+                result = buchmann_lenstra_multiplier_cycle(
+                    coefficients,
+                    component,
+                    general_start,
+                    equation_discriminant=equation_discriminant,
+                )
+                if not check_buchmann_lenstra_general_result(
+                    coefficients,
+                    general_start,
+                    result,
+                    equation_discriminant=equation_discriminant,
+                ):
+                    raise ArithmeticError(
+                        "general Buchmann--Lenstra replay rejected its result"
+                    )
             trace.end(token, result.state, {"index": result.index})
+            if result.state == "split":
+                replacements = _replace_component_by_certified_split(
+                    decomposition,
+                    record,
+                    result,
+                    trace,
+                )
+                pending_composites = sorted(
+                    [
+                        child
+                        for child in replacements
+                        if child["state"] != "proven-prime"
+                    ]
+                    + pending_composites,
+                    key=lambda child: int(child["value"]),
+                )
+                continue
             if result.state != "complete" or result.basis is None:
+                # Whole-component factorization is the final completeness
+                # fallback only after the bounded general cycle cannot finish.
                 _replace_composite_by_certified_primes(
                     decomposition,
                     record,
@@ -713,10 +1150,48 @@ def compute_maximal_order(
     relevant_primes = [
         prime for prime in primes if _valuation(equation_discriminant, prime) >= 2
     ]
+    primary_selection = {
+        "schema": _SELECTOR_SCHEMA,
+        "primary": (
+            "native"
+            if relevant_primes and algorithm in ("auto", "native")
+            else "local"
+            if relevant_primes
+            else "none"
+        ),
+        "reason": (
+            "the native global Round-2 resource wins the measured public corpus"
+            if relevant_primes and algorithm == "auto"
+            else "the caller forced the native global algorithm"
+            if relevant_primes and algorithm == "native"
+            else "the caller selected independently certified local work"
+            if relevant_primes
+            else "no proven prime has square support in the discriminant"
+        ),
+        "forced": algorithm != "auto",
+        "degree": field.degree(),
+        "coefficient_bits": _coefficient_bits(coefficients),
+        "prime_count": len(relevant_primes),
+        "expected_output_bytes": sum(
+            _expected_basis_bytes(
+                field.degree(),
+                _coefficient_bits(coefficients),
+                prime,
+                _valuation(equation_discriminant, prime),
+            )
+            for prime in relevant_primes
+        ),
+        "public_corpus_evidence": dict(_PUBLIC_CORPUS_EVIDENCE),
+        "benchmark": _SELECTOR_BENCHMARK,
+    }
     used_native = False
     if len(relevant_primes) and algorithm in ("auto", "native"):
         token = trace.begin(
-            "native-local-orders", {"prime_count": len(relevant_primes)}
+            "native-local-orders",
+            {
+                "prime_count": len(relevant_primes),
+                "selection": primary_selection,
+            },
         )
         try:
             native = native_order_from_polynomial(coefficients, relevant_primes)
@@ -764,13 +1239,25 @@ def compute_maximal_order(
             if algorithm == "native":
                 raise
 
-    if not used_native and algorithm in ("auto", "native", "round2"):
-        for prime in relevant_primes:
+    if not used_native and relevant_primes:
+        # The immutable scheduler owns canonical ordering, payload validation,
+        # resource evidence, and the merge plan.  Arithmetic remains
+        # sequential today: the local implementations still require the host
+        # order, which is never serialized or transferred to a worker.
+        jobs, decisions, selected_schedule = _local_selection_plan(
+            coefficients,
+            equation_discriminant,
+            relevant_primes,
+            algorithm,
+            worker_capability=False,
+        )
+        worker_details: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+        def run_local_job(job: JobPayload) -> tuple[Any, ...]:
+            started = time.perf_counter_ns()
+            component = local_job_component(job)
+            prime = component.base
             if prime > _MAX_WORD_PRIME:
-                token = trace.begin(
-                    "arbitrary-prime-local-order",
-                    {"prime": prime, "word_prime_cap": _MAX_WORD_PRIME},
-                )
                 local_order, used_algorithm, details = _arbitrary_prime_local_order(
                     field,
                     coefficients,
@@ -778,39 +1265,70 @@ def compute_maximal_order(
                     equation_discriminant,
                     prime,
                 )
-                order = _merge_orders(field, order, local_order)
-                current_basis = _basis_from_order(order, scale)
-                _cache_discriminant_from_basis(
-                    order,
-                    current_basis,
+            else:
+                local_order, used_algorithm, details = _forced_local_order(
+                    field,
+                    coefficients,
+                    scale,
+                    equation_order,
                     equation_discriminant,
+                    prime,
+                    str(job[6]),
                 )
-                details["used_algorithm"] = used_algorithm
-                details["order_discriminant"] = _exact_integer(order.discriminant())
-                trace.end(token, "complete", details)
-                continue
-            token = trace.begin("round2-local-order", {"prime": prime})
-            order = _maximal_order_module().p_maximal_overorder_dynamic(order, prime)
-            current_basis = _basis_from_order(order, scale)
-            trace.end(
-                token,
-                "complete",
-                {"order_discriminant": _exact_integer(order.discriminant())},
-            )
-    elif not used_native:
-        for prime in relevant_primes:
-            token = trace.begin(
-                "selected-local-order",
-                {"prime": prime, "requested_algorithm": algorithm},
-            )
-            local_order, used_algorithm, details = _forced_local_order(
-                field,
-                coefficients,
-                scale,
-                equation_order,
+            basis = _basis_from_order(local_order, scale)
+            local_discriminant = _cache_discriminant_from_basis(
+                local_order,
+                basis,
                 equation_discriminant,
-                prime,
-                algorithm,
+            )
+            local_index = _index_from_discriminants(
+                equation_discriminant,
+                local_discriminant,
+            )
+            elapsed_micros = max(0, (time.perf_counter_ns() - started) // 1000)
+            key = local_job_key(job)
+            selected = decisions[key]
+            details = dict(details)
+            details["used_algorithm"] = used_algorithm
+            details["selection_decision"] = selected
+            details["local_order_discriminant"] = local_discriminant
+            details["local_index"] = local_index
+            details["elapsed_micros"] = elapsed_micros
+            worker_details[key] = details
+            return make_local_result(
+                job,
+                basis.numerator,
+                basis.denominator,
+                local_index,
+                prime ** _valuation(equation_discriminant, prime),
+                (
+                    ("used-algorithm", used_algorithm),
+                    ("local-index", local_index),
+                    ("prime", prime),
+                ),
+                peak_bytes=int(job[5]),
+                elapsed_micros=elapsed_micros,
+            )
+
+        local_run = run_local_jobs(
+            jobs,
+            run_local_job,
+            worker_capability=False,
+        )
+        if local_run[1] != selected_schedule:
+            raise ArithmeticError("local scheduler selection changed during execution")
+        for payload in local_run[2]:
+            contract = local_result_contract(payload)
+            if contract.basis is None:
+                raise ArithmeticError("a completed local branch omitted its basis")
+            local_discriminant = equation_discriminant // (
+                contract.index * contract.index
+            )
+            local_order = _order_from_basis(
+                field,
+                contract.basis,
+                scale,
+                local_discriminant,
             )
             order = _merge_orders(field, order, local_order)
             current_basis = _basis_from_order(order, scale)
@@ -819,9 +1337,38 @@ def compute_maximal_order(
                 current_basis,
                 equation_discriminant,
             )
-            details["used_algorithm"] = used_algorithm
+            key = payload[1]
+            prime = int(key[1])
+            details = dict(worker_details[key])
             details["order_discriminant"] = _exact_integer(order.discriminant())
-            trace.end(token, "complete", details)
+            if details.get("selection") == "arbitrary-prime-exact-fallback":
+                event_stage = "arbitrary-prime-local-order"
+            elif algorithm in ("auto", "native", "round2"):
+                event_stage = "round2-local-order"
+            else:
+                event_stage = "selected-local-order"
+            trace.emit(
+                event_stage,
+                "complete",
+                {"prime": prime, "requested_algorithm": algorithm, **details},
+                duration_ns=int(payload[9]) * 1000,
+            )
+        trace.emit(
+            "local-schedule",
+            "complete",
+            {
+                "selection": primary_selection,
+                "schedule": local_run[1],
+                "merge_plan": local_run[3],
+                "resources": local_run[4],
+                "arithmetic_worker_capability": False,
+                "parallel_limitation": (
+                    "local solvers require a host order; native pointers and host "
+                    "identity are never transferred; certification dominates the "
+                    "public corpus and no end-to-end parallel crossover is measured"
+                ),
+            },
+        )
 
     order_discriminant = _exact_integer(order.discriminant())
     index = _index_from_discriminants(equation_discriminant, order_discriminant)
@@ -882,4 +1429,4 @@ def compute_maximal_order(
     return order
 
 
-__all__ = ["compute_maximal_order"]
+__all__ = ["compute_maximal_order", "inspect_maximal_order_selection"]
