@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sage-2d-primitives",
+  "title": "Sage 2D primitive option fidelity",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement Sage-compatible line, point, polygon, arrow, and text option semantics with explicit unsupported-option errors, correct z-order lowering, deterministic Sage 10.9 differential fixtures, and representative performance coverage",
+  "base_commit": "8a2e2ce80f505d1b080b161804ec64c68b639414",
+  "claims": [
+    "src/lib/sagejs/plotting/sage_primitives2d.py",
+    "src/lib/sagejs/plotting/curve_sampling.py",
+    "src/lib/sagejs/plotting/sage_curves.py",
+    "src/lib/sage/plot/line.py",
+    "src/lib/sage/plot/point.py",
+    "src/lib/sage/plot/polygon.py",
+    "src/lib/sage/plot/arrow.py",
+    "src/lib/sage/plot/text.py",
+    "src/lib/sage/plot/plot.py",
+    "src/baselib/graphics.py",
+    "src/baselib/graphics3d.py",
+    "test/graphics-primitives2d.cjs",
+    "test/graphics.cjs",
+    "test/graphics-curve-semantics.cjs",
+    "test/graphics3d.cjs",
+    "docs/sage-compatibility/plotting/oracle/primitives2d.json",
+    "docs/sage-compatibility/plotting/oracle/plot-curves.json",
+    "bench/graphics-curve-sampling.cjs",
+    "bench/graphics-primitives2d.cjs"
+  ],
+  "dependencies": [
+    "plot-semantic-primitives",
+    "sage-curve-correctness"
+  ],
+  "references": [
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/line.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/point.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/polygon.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/arrow.html",
+    "https://doc.sagemath.org/html/en/reference/plotting/sage/plot/text.html"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath 10.9 primitive option dictionaries and rendered primitive semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:baselib:strict",
+    "node --test test/graphics-primitives2d.cjs",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Implemented Sage-compatible line, point, polygon, arrow, and text render plans and Plotly lowering; imported and stabilized curve correctness; added differential oracles, focused compiled tests, and performance benchmarks. The native flat-coordinate materializer reduces 100k curve PlotSpec construction from seconds to about 0.27 seconds.",
+    "risks": [
+      "Annotation-only arrows and styled text deliberately reject non-default zorder because Plotly annotations cannot preserve trace z-layer semantics.",
+      "TeX path markers, text bounding_box, and text clip=True are explicit unsupported errors rather than silent losses.",
+      "The final opacity-to-alpha presentation alias is source-formatted and narrowly additive; root should include it in the post-integration build run."
+    ],
+    "next_steps": [
+      "Add strict pyright entries for sage_primitives2d.py, curve_sampling.py, sage_curves.py, and the six sage.plot wrapper modules.",
+      "Export intended public planning helpers from sagejs.plotting.__init__ and own the sage.plot wrapper exports centrally.",
+      "Register graphics-primitives2d.cjs and graphics-curve-semantics.cjs in the node test manifest.",
+      "Confirm the integrated graphics bootstrap budget remains at least 400000 bytes.",
+      "Regenerate plotting coverage/frontend surface artifacts after public exports are finalized."
+    ]
+  }
+}

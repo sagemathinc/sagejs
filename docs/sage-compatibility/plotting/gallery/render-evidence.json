@@ -1,0 +1,569 @@
+{
+  "schema_version": 1,
+  "renderer": "Plotly.toImage in locally discovered Chromium",
+  "pixel_hashes_recorded": false,
+  "responsive": [
+    {
+      "id": "sage-semantic-2d-notebook",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-2d-presentation",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-2d-publication",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-2d-dark",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-2d-high-contrast",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-3d-notebook",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-3d-presentation",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-3d-publication",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-3d-dark",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "sage-semantic-3d-high-contrast",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "wolfram-semantic-2d-notebook",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "wolfram-semantic-3d-notebook",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 7,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    },
+    {
+      "id": "matlab-semantic-2d-notebook",
+      "measurements": [
+        {
+          "viewport": "mobile",
+          "width": 360,
+          "height": 480,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "notebook",
+          "width": 800,
+          "height": 600,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        },
+        {
+          "viewport": "presentation",
+          "width": 1280,
+          "height": 720,
+          "overflow_x": 0,
+          "overflow_y": 0,
+          "modebar_buttons": 9,
+          "plotly_dom_accessible_name": null,
+          "semantic_alt_text_present": true
+        }
+      ]
+    }
+  ],
+  "static_exports": [
+    {
+      "id": "sage-semantic-2d-notebook",
+      "svg": {
+        "root_element": "svg",
+        "width": "800",
+        "height": "600",
+        "view_box": "0 0 800 600",
+        "path_count": 38,
+        "text_count": 19,
+        "image_count": 0,
+        "byte_length": 14068
+      },
+      "png": {
+        "signature_hex": "89504e470d0a1a0a",
+        "width": 800,
+        "height": 600,
+        "bit_depth": 8,
+        "color_type": 6,
+        "byte_length": 38186
+      }
+    },
+    {
+      "id": "sage-semantic-3d-notebook",
+      "svg": {
+        "root_element": "svg",
+        "width": "800",
+        "height": "600",
+        "view_box": "0 0 800 600",
+        "path_count": 2,
+        "text_count": 2,
+        "image_count": 1,
+        "byte_length": 157177
+      },
+      "png": {
+        "signature_hex": "89504e470d0a1a0a",
+        "width": 800,
+        "height": 600,
+        "bit_depth": 8,
+        "color_type": 6,
+        "byte_length": 67449
+      }
+    },
+    {
+      "id": "wolfram-semantic-2d-notebook",
+      "svg": {
+        "root_element": "svg",
+        "width": "800",
+        "height": "600",
+        "view_box": "0 0 800 600",
+        "path_count": 6,
+        "text_count": 1,
+        "image_count": 0,
+        "byte_length": 3897
+      },
+      "png": {
+        "signature_hex": "89504e470d0a1a0a",
+        "width": 800,
+        "height": 600,
+        "bit_depth": 8,
+        "color_type": 6,
+        "byte_length": 21536
+      }
+    },
+    {
+      "id": "wolfram-semantic-3d-notebook",
+      "svg": {
+        "root_element": "svg",
+        "width": "800",
+        "height": "600",
+        "view_box": "0 0 800 600",
+        "path_count": 0,
+        "text_count": 0,
+        "image_count": 1,
+        "byte_length": 70224
+      },
+      "png": {
+        "signature_hex": "89504e470d0a1a0a",
+        "width": 800,
+        "height": 600,
+        "bit_depth": 8,
+        "color_type": 6,
+        "byte_length": 25132
+      }
+    },
+    {
+      "id": "matlab-semantic-2d-notebook",
+      "svg": {
+        "root_element": "svg",
+        "width": "800",
+        "height": "600",
+        "view_box": "0 0 800 600",
+        "path_count": 24,
+        "text_count": 18,
+        "image_count": 0,
+        "byte_length": 10773
+      },
+      "png": {
+        "signature_hex": "89504e470d0a1a0a",
+        "width": 800,
+        "height": 600,
+        "bit_depth": 8,
+        "color_type": 6,
+        "byte_length": 31030
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "purpose": "Portable PlotSpec presentation and deterministic Plotly lowering contract",
+  "coordinate_semantics": {
+    "linear_range": "plotly-native-data-coordinates",
+    "log_range": "base-10-exponents",
+    "descending_range": "reversed-axis",
+    "annotation_references": ["x", "y", "paper"]
+  },
+  "axis": {
+    "scale": ["linear", "log"],
+    "autorange": [true, false, "reversed", "min", "max", "min reversed", "max reversed"],
+    "tick_mode": ["auto", "linear", "array"],
+    "range_rule": "an explicit range requires autorange=false",
+    "grid": ["showgrid", "gridcolor", "gridwidth", "zeroline"],
+    "labels": ["title.text", "ticktext", "tickformat", "tickangle"]
+  },
+  "scene": {
+    "dimension": 3,
+    "aspect_mode": ["auto", "cube", "data", "manual"],
+    "manual_rule": "aspectratio must contain positive x, y, and z values",
+    "camera": "detached-json-safe-plotly-camera"
+  },
+  "annotations": {
+    "identity": "stable semantic id removed only at Plotly lowering",
+    "alt_text": "semantic-only and not rendered as a Plotly annotation",
+    "supported": ["text", "x", "y", "xref", "yref", "showarrow", "xanchor", "yanchor", "textangle", "xshift", "yshift", "font"]
+  },
+  "legend": {
+    "orientation": ["v", "h"],
+    "trace_order": ["normal", "reversed", "grouped", "grouped+reversed"],
+    "coordinates": "plotly-paper-coordinates"
+  },
+  "composition": {
+    "kind": "panel-composition-2d",
+    "order": "row-column-panel-id",
+    "placement": "zero-based-row-and-column-with-positive-spans",
+    "overlap": "rejected",
+    "domains": "deterministic-unit-paper-domains",
+    "stable_layer_identity": "panel-id.layer-id stored as Plotly trace uid",
+    "supported_trace_coordinates": "Cartesian x/y",
+    "unsupported_trace_coordinates": "domain traces and nested nonlocal subplot references"
+  },
+  "lowering": {
+    "entry_point": "sagejs.plotting.lowering.lower_plot_spec",
+    "output": ["data", "layout", "config"],
+    "layer_kinds": ["line", "point", "text", "plotly-trace"],
+    "dimensions": [2, 3],
+    "merge_order": ["theme", "semantic-presentation", "plotly-overrides"],
+    "legacy_exactness": "a PlotSpec with both complete layout and config overrides treats them as authoritative",
+    "side_effects": "none"
+  },
+  "themes": {
+    "canonical": ["notebook", "presentation", "publication", "dark", "high-contrast"],
+    "resolution": "sagejs.plotting.themes.get_theme",
+    "unknown": "rejected"
+  },
+  "unsupported": {
+    "policy": "raise-or-diagnose-never-silently-ignore",
+    "exception": "UnsupportedPresentationError",
+    "diagnostic": "PLOT_OPTION_IGNORED",
+    "escape_hatch": "PlotSpec.plotly_overrides"
+  }
+}

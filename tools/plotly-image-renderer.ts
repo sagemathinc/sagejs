@@ -1,12 +1,12 @@
-import { execFileSync } from "child_process";
-import { existsSync } from "fs";
 import { chromium } from "playwright-core";
+import { discoverChromium } from "./chromium-discovery";
 
 interface RenderRequest {
   figure: {
     data?: unknown[];
     layout?: Record<string, unknown>;
     config?: Record<string, unknown>;
+    frames?: unknown[];
   };
   options: {
     format: "png" | "jpeg" | "webp" | "svg";
@@ -16,54 +16,11 @@ interface RenderRequest {
   };
 }
 
-function commandPath(command: string): string | undefined {
-  try {
-    const utility = process.platform === "win32" ? "where" : "which";
-    const output = execFileSync(utility, [command], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    return output.split(/\r?\n/, 1)[0] || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function chromiumPath(): string {
-  const configured = [
-    process.env.SAGEJS_CHROMIUM_PATH,
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-    process.env.BROWSER_PATH,
-  ];
-  const candidates =
-    process.platform === "darwin"
-      ? [
-          ...configured,
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-          "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        ]
-      : process.platform === "win32"
-        ? [
-            ...configured,
-            process.env.PROGRAMFILES &&
-              `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`,
-            process.env["PROGRAMFILES(X86)"] &&
-              `${process.env["PROGRAMFILES(X86)"]}\\Google\\Chrome\\Application\\chrome.exe`,
-          ]
-        : [
-            ...configured,
-            commandPath("chromium"),
-            commandPath("chromium-browser"),
-            commandPath("google-chrome"),
-            commandPath("google-chrome-stable"),
-          ];
-  for (const candidate of candidates) {
-    if (candidate && existsSync(candidate)) return candidate;
-  }
+  const discovery = discoverChromium();
+  if (discovery.executablePath) return discovery.executablePath;
   throw new Error(
-    "PNG/SVG graphics export requires Chrome or Chromium. Install Chromium " +
-      "or set SAGEJS_CHROMIUM_PATH to its executable; HTML and JSON export " +
-      "do not require a browser.",
+    "PNG/SVG graphics export requires Chrome, Chromium, or Edge. Install a browser or set SAGEJS_CHROMIUM_PATH to its executable; HTML and JSON export do not require a browser.",
   );
 }
 
@@ -101,12 +58,14 @@ async function main(): Promise<void> {
     headless: true,
   });
   try {
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       viewport: {
         width: Math.max(1, Math.ceil(width)),
         height: Math.max(1, Math.ceil(height)),
       },
     });
+    await context.route("**/*", (route) => route.abort("blockedbyclient"));
+    const page = await context.newPage();
     await page.setContent(
       '<!doctype html><html><body style="margin:0">' +
         '<div id="plot"></div></body></html>',
@@ -124,6 +83,13 @@ async function main(): Promise<void> {
           figure.layout ?? {},
           figure.config ?? {},
         );
+        if (
+          Array.isArray(figure.frames) &&
+          figure.frames.length > 0 &&
+          typeof plotly.addFrames === "function"
+        ) {
+          await plotly.addFrames(element, figure.frames);
+        }
         return plotly.toImage(element, options);
       },
       {

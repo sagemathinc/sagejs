@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-spec-core",
+  "title": "Create the semantic PlotSpec core",
+  "lane": "graphics",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Implement a minimal strict-Python versioned PlotSpec model, stable layer IDs, deterministic serialization, provenance, structured diagnostics, and checked schemas without yet changing Graphics or Graphics3d",
+  "base_commit": "167c94e5f1ed1c33fa7f08ea195b321a88f942f2",
+  "claims": [
+    "src/lib/sagejs/plotting/",
+    "docs/sage-compatibility/plotting/plotspec.schema.json",
+    "docs/sage-compatibility/plotting/diagnostics.json",
+    "test/plot-spec-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Focused PlotSpec schema, serialization, and CPython/Sage.js differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Implemented and pushed strict ordinary-Python PlotSpec, PlotLayer, and Provenance models; deterministic ordinal layer IDs and collision allocation; detached deterministic JSON materialization with Plotly-compatible null gaps; an append-only structured diagnostics model/registry; checked PlotSpec and diagnostics schemas; and focused byte-identical CPython/Sage.js differential tests. Root integrated the core as d84d4746 and resolved central ownership, strict-module, standalone-closure, and test-manifest wiring in 226f2dfc, where focused, strict, architecture, and standalone checks pass.",
+    "risks": [
+      "Ordinal IDs are stable across layer revisions, but composition code must preserve unique IDs and use next_layer_id for deterministic collision remapping.",
+      "Materialization intentionally normalizes NaN and both infinities to JSON null, so validation must diagnose the source data before or while constructing a layer when the exact non-finite category matters.",
+      "The pre-integration task branch cannot obtain its original broad pnpm test:integration receipt because package ownership and manifest wiring live in root integration commit 226f2dfc; root validation is the authoritative integrated result."
+    ],
+    "next_steps": [
+      "Build semantic point, line, and text layers in Graphics and Graphics3d using the integrated sagejs.plotting package.",
+      "Validate Plotly overrides at the lowering boundary; the core deliberately checks only that they are JSON objects.",
+      "Represent frontend grouping through source_intent and metadata initially, then add a first-class group layer only if real Sage/Wolfram/MATLAB slices demonstrate a shared need."
+    ]
+  }
+}

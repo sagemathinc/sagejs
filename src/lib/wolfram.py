@@ -4,6 +4,7 @@ import math
 from typing import Any, Callable
 
 import sagejs as sage
+import sagejs.runtime as runtime
 
 
 def _runtime_type_name(value: Any) -> str:
@@ -199,11 +200,18 @@ def style(graphic: Any, *directives: Any) -> Any:
     return _style_graphic(graphic, combined.options)
 
 
-def _combine_graphics(items: Any) -> Any:
+def _copy_style(options: dict[str, Any]) -> dict[str, Any]:
+    answer = {}
+    for name in options:
+        answer[name] = options[name]
+    return answer
+
+
+def _combine_graphics(items: Any, inherited_style: dict[str, Any] | None = None) -> Any:
     if not isinstance(items, (list, tuple)):
         return items
     result = 0
-    style = {}
+    style = _copy_style(inherited_style if inherited_style is not None else {})
     for item in items:
         if isinstance(item, str):
             style["color"] = item
@@ -214,7 +222,10 @@ def _combine_graphics(items: Any) -> Any:
                 style[name] = item.options[name]
             continue
         if isinstance(item, (list, tuple)):
-            item = _combine_graphics(item)
+            item = _combine_graphics(item, style)
+            if item != 0:
+                result = result + item
+            continue
         if item == 0:
             continue
         item = _style_graphic(item, style)
@@ -222,14 +233,256 @@ def _combine_graphics(items: Any) -> Any:
     return result
 
 
-def graphics(items: Any) -> Any:
+def _option_metadata(record: dict[str, Any], translation: dict[str, Any]) -> Any:
+    return {
+        "name": str(record["name"]),
+        "rule": str(record["rule"]),
+        "source": str(record["source"]),
+        "source_span": record["source_span"],
+        "translation": translation,
+    }
+
+
+def _plot_range_options(value: Any) -> dict[str, Any] | None:
+    if value in ("all", "automatic"):
+        return {}
+    if not isinstance(value, (list, tuple)):
+        return None
+    values = list(value)
+    if len(values) != 2:
+        return None
+    if isinstance(values[0], (list, tuple)) and isinstance(values[1], (list, tuple)):
+        xvalues = list(values[0])
+        yvalues = list(values[1])
+        if len(xvalues) != 2 or len(yvalues) != 2:
+            return None
+        return {
+            "xmin": xvalues[0],
+            "xmax": xvalues[1],
+            "ymin": yvalues[0],
+            "ymax": yvalues[1],
+        }
+    return {"ymin": values[0], "ymax": values[1]}
+
+
+def _translate_options(
+    head_name: str,
+    records: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[Any], list[Any], list[Any]]:
+    keyword_map = {
+        "AspectRatio": "aspect_ratio",
+        "Axes": "axes",
+        "AxesLabel": "axes_labels",
+        "Boxed": "frame",
+        "Contours": "contours",
+        "Filling": "fill",
+        "Frame": "frame",
+        "ImageSize": "figsize",
+        "Joined": "plotjoined",
+        "MaxRecursion": "adaptive_recursion",
+        "Mesh": "mesh",
+        "Opacity": "opacity",
+        "PlotLabel": "title",
+        "PlotPoints": "plot_points",
+        "PlotStyle": "color",
+    }
+    translated_options = {}
+    ordered_options = []
+    diagnostics = []
+    translation_events = []
+    for record in records:
+        name = str(record["name"])
+        target = keyword_map[name] if name in keyword_map else None
+        if name == "PlotRange":
+            range_options = _plot_range_options(record["value"])
+            if range_options is not None:
+                for bound in ("xmin", "xmax", "ymin", "ymax"):
+                    if bound in translated_options:
+                        del translated_options[bound]
+                for bound in range_options:
+                    translated_options[bound] = range_options[bound]
+                translation = {
+                    "option": name,
+                    "rule": str(record["rule"]),
+                    "classification": "translated",
+                    "target": "viewport",
+                }
+                ordered_options.append(_option_metadata(record, translation))
+                translation_events.append(translation)
+                continue
+        elif target is not None:
+            translated_options[target] = record["value"]
+            translation = {
+                "option": name,
+                "rule": str(record["rule"]),
+                "classification": "translated",
+                "target": target,
+            }
+            ordered_options.append(_option_metadata(record, translation))
+            translation_events.append(translation)
+            continue
+        translation = {
+            "option": name,
+            "rule": str(record["rule"]),
+            "classification": "unsupported",
+            "target": None,
+        }
+        ordered_options.append(_option_metadata(record, translation))
+        translation_events.append(translation)
+        diagnostics.append(
+            {
+                "code": "PLOT_OPTION_IGNORED",
+                "severity": "warning",
+                "phase": "options",
+                "layer_ids": [],
+                "message": "A frontend option could not be represented and was ignored.",
+                "suggested_repairs": [
+                    "Use the suggested Plotly-native alternative when available."
+                ],
+                "details": {
+                    "frontend": "wolfram",
+                    "head": head_name,
+                    "option": name,
+                    "source_span": record["source_span"],
+                },
+            }
+        )
+    return translated_options, ordered_options, diagnostics, translation_events
+
+
+def _with_plot_context(
+    graphic: Any,
+    head_name: str,
+    intent: dict[str, Any],
+    ordered_options: list[Any],
+    diagnostics: list[Any],
+    translation_events: list[Any],
+) -> Any:
+    source_intent = {}
+    for name in intent:
+        source_intent[name] = intent[name]
+    source_intent["translation_events"] = translation_events
+    return graphic.with_plot_spec_context(
+        provenance={
+            "frontend": "wolfram",
+            "source_language": "wolfram",
+            "constructor": head_name,
+        },
+        source_intent=source_intent,
+        ordered_options=ordered_options,
+        diagnostics=diagnostics,
+    )
+
+
+def _apply_graphics_options(graphic: Any, options: dict[str, Any]) -> None:
+    """Apply detached frontend options without passing a mapping boundary."""
+    if hasattr(graphic, "_set_extra_kwd"):
+        for name in options:
+            graphic._set_extra_kwd(name, options[name])
+    elif len(options) and hasattr(graphic, "set_extra_kwds"):
+        graphic.set_extra_kwds(options)
+
+
+def graphics(
+    items: Any,
+    option_records: list[dict[str, Any]] | None = None,
+    intent: dict[str, Any] | None = None,
+) -> Any:
     """Combine Wolfram two-dimensional graphics primitives."""
-    return _combine_graphics(items)
+    graphic = _combine_graphics(items)
+    records = option_records if option_records is not None else []
+    translated, ordered, diagnostics, events = _translate_options("Graphics", records)
+    # Wolfram `Graphics` defaults to coordinate axes being hidden, unlike the
+    # Sage `Graphics` object used as its implementation substrate.  Make the
+    # frontend default explicit so omitting `Axes` does not silently acquire
+    # Sage semantics.  An explicit `Axes -> True` in `records` wins above.
+    if "axes" not in translated:
+        translated["axes"] = False
+    _apply_graphics_options(graphic, translated)
+    if intent is None:
+        return graphic
+    return _with_plot_context(graphic, "Graphics", intent, ordered, diagnostics, events)
 
 
-def graphics3d(items: Any) -> Any:
+def graphics3d(
+    items: Any,
+    option_records: list[dict[str, Any]] | None = None,
+    intent: dict[str, Any] | None = None,
+) -> Any:
     """Combine Wolfram three-dimensional graphics primitives."""
-    return _combine_graphics(items)
+    graphic = _combine_graphics(items)
+    records = option_records if option_records is not None else []
+    translated, ordered, diagnostics, events = _translate_options("Graphics3D", records)
+    _apply_graphics_options(graphic, translated)
+    if intent is None:
+        return graphic
+    return _with_plot_context(
+        graphic, "Graphics3D", intent, ordered, diagnostics, events
+    )
+
+
+def _plot_target(name: str) -> Any:
+    allowed = (
+        "contour_plot",
+        "density_plot",
+        "implicit_plot3d",
+        "list_plot",
+        "list_plot3d",
+        "parametric_plot",
+        "parametric_plot3d",
+        "plot",
+        "plot3d",
+        "plot_vector_field",
+        "plot_vector_field3d",
+        "polar_plot",
+        "region_plot",
+        "revolution_plot3d",
+        "spherical_plot3d",
+        "streamline_plot",
+    )
+    if name not in allowed:
+        raise ValueError("unknown Wolfram plot target " + name)
+    return runtime.reflect.get(runtime.global_object, name)
+
+
+def plot_call(
+    target_name: str,
+    head_name: str,
+    value: Any,
+    ranges: list[Any],
+    option_records: list[dict[str, Any]],
+    intent: dict[str, Any],
+) -> Any:
+    options, ordered, diagnostics, events = _translate_options(
+        head_name, option_records
+    )
+    if head_name == "ListLinePlot" and "plotjoined" not in options:
+        options["plotjoined"] = True
+    target = _plot_target(target_name)
+    if len(ranges) == 0:
+        graphic = target(value, **options)
+    elif len(ranges) == 1:
+        graphic = target(value, ranges[0], **options)
+    elif len(ranges) == 2:
+        graphic = target(value, ranges[0], ranges[1], **options)
+    elif len(ranges) == 3:
+        graphic = target(value, ranges[0], ranges[1], ranges[2], **options)
+    else:
+        raise ValueError("Wolfram plots support at most three ranges")
+    return _with_plot_context(graphic, head_name, intent, ordered, diagnostics, events)
+
+
+def show_graphics(
+    graphics_values: list[Any],
+    option_records: list[dict[str, Any]],
+    intent: dict[str, Any],
+) -> Any:
+    if len(graphics_values) == 0:
+        raise ValueError("Show requires at least one graphic")
+    options, ordered, diagnostics, events = _translate_options("Show", option_records)
+    show_target = runtime.reflect.get(runtime.global_object, "show")
+    graphic = show_target(graphics_values[0], *graphics_values[1:], **options)
+    return _with_plot_context(graphic, "Show", intent, ordered, diagnostics, events)
 
 
 def wolfram_line(points: Any) -> Any:
@@ -442,6 +695,8 @@ def image_size(value: Any) -> Any:
 
 Graphics = graphics
 Graphics3D = graphics3d
+PlotCall = plot_call
+Show = show_graphics
 Line = wolfram_line
 Point = wolfram_point
 Polygon = wolfram_polygon

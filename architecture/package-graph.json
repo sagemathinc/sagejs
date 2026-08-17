@@ -37,7 +37,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 649000,
+      "max_source_bytes": 652000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -272,11 +272,32 @@
       "prefixes": []
     },
     {
+      "id": "plot-spec",
+      "layer": 2,
+      "startup": "lazy",
+      "max_source_bytes": 400000,
+      "depends_on": ["core-runtime", "python-stdlib"],
+      "modules": ["sagejs.plotting"],
+      "files": [
+        "src/lib/sage/plot/__init__.py",
+        "src/lib/sage/plot/arrow.py",
+        "src/lib/sage/plot/contour_plot.py",
+        "src/lib/sage/plot/density_plot.py",
+        "src/lib/sage/plot/line.py",
+        "src/lib/sage/plot/plot.py",
+        "src/lib/sage/plot/plot_field.py",
+        "src/lib/sage/plot/point.py",
+        "src/lib/sage/plot/polygon.py",
+        "src/lib/sage/plot/text.py"
+      ],
+      "prefixes": ["src/lib/sagejs/plotting/"]
+    },
+    {
       "id": "graphics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 320000,
-      "depends_on": ["core-runtime", "arithmetic", "symbolics"],
+      "max_source_bytes": 400000,
+      "depends_on": ["core-runtime", "arithmetic", "symbolics", "plot-spec"],
       "files": ["src/baselib/graphics.py", "src/baselib/graphics3d.py"],
       "prefixes": []
     },
@@ -333,7 +354,7 @@
       "id": "polyglot",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 35000,
+      "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
         "numeric-compat", "graphics"

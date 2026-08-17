@@ -459,6 +459,135 @@ class Cylindrical(_Coordinates):
         )
 
 
+def _g3d_plot_spec_json_value(value: Any) -> Any:
+    """Return ordinary JSON-safe Python data for a renderer value."""
+    if value is runtime.undefined:
+        return None
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_g3d_plot_spec_json_value(item) for item in value]
+    if isinstance(value, dict):
+        answer = dict()
+        for key in value:
+            answer.__setitem__(
+                str(key), _g3d_plot_spec_json_value(value.__getitem__(key))
+            )
+        return answer
+    if runtime.jstype(value) == "object":
+        answer = dict()
+        for key in runtime.object.keys(value):
+            answer.__setitem__(
+                str(key),
+                _g3d_plot_spec_json_value(runtime.reflect.get(value, key)),
+            )
+        return answer
+    raise TypeError("Plotly fallback value is not JSON-safe: " + str(value))
+
+
+def _g3d_plot_spec_layer(
+    payload: dict[str, Any],
+    ordinal: int,
+    source_context: Any = None,
+    ordered_options: Any = None,
+) -> Any:
+    """Materialize one lazy primitive payload as a public `PlotLayer`."""
+    plotting = __import__("sagejs.plotting", fromlist=["PlotLayer"])
+    materialized = _g3d_plot_spec_json_value(payload)
+    source_intent = materialized.get("source_intent", runtime.scope_dict({}))
+    if source_context is not None:
+        context = _g3d_plot_spec_json_value(source_context)
+        for name in context:
+            if name not in source_intent:
+                source_intent.__setitem__(name, context.__getitem__(name))
+    if ordered_options is not None and len(ordered_options):
+        source_intent.__setitem__(
+            "ordered_options", _g3d_plot_spec_json_value(ordered_options)
+        )
+
+    materialized.__setitem__("id", "layer-" + str(ordinal))
+    materialized.__setitem__("source_intent", source_intent)
+    return plotting.PlotLayer.from_dict(materialized)
+
+
+def _g3d_semantic_source_intent(
+    primitive: str,
+    source_context: Any = None,
+    ordered_options: Any = None,
+) -> dict[str, Any]:
+    """Merge frontend intent before constructing a large semantic layer."""
+    answer = {"sage_primitive": primitive}
+    if source_context is not None:
+        context = _g3d_plot_spec_json_value(source_context)
+        for name in context:
+            if name not in ("constructor", "representation") and name not in answer:
+                answer[name] = context.__getitem__(name)
+    if ordered_options is not None and len(ordered_options):
+        answer["ordered_options"] = _g3d_plot_spec_json_value(ordered_options)
+    return answer
+
+
+def _g3d_plot_spec_traces(payload: dict[str, Any]) -> list[Any]:
+    """Lower one supported semantic payload to its exact Plotly traces."""
+    kind = str(payload["kind"])
+    data = payload["data"]
+    style = payload["style"]
+    legend = payload["legend"]
+    if kind == "line":
+        trace = _g3d_native_record(
+            type="scatter3d",
+            mode="lines",
+            x=data["x"],
+            y=data["y"],
+            z=data["z"],
+            line=_g3d_native_record(
+                color=style["color"],
+                width=style["width"],
+            ),
+            opacity=style["opacity"],
+            showlegend=legend["show"],
+        )
+        if legend["label"] is not None:
+            runtime.reflect.set(trace, "name", legend["label"])
+        return [trace]
+    if kind == "point":
+        trace = _g3d_native_record(
+            type="scatter3d",
+            mode="markers",
+            x=data["x"],
+            y=data["y"],
+            z=data["z"],
+            marker=_g3d_native_record(
+                color=style["color"],
+                size=style["size"],
+                symbol=style["symbol"],
+            ),
+            opacity=style["opacity"],
+            showlegend=legend["show"],
+        )
+        if legend["label"] is not None:
+            runtime.reflect.set(trace, "name", legend["label"])
+        return [trace]
+    if kind == "text":
+        return [
+            _g3d_native_record(
+                type="scatter3d",
+                mode="text",
+                x=[data["position"][0]],
+                y=[data["position"][1]],
+                z=[data["position"][2]],
+                text=[data["text"]],
+                textfont=_g3d_native_record(
+                    color=style["color"],
+                    size=style["font_size"],
+                ),
+                opacity=style["opacity"],
+                showlegend=False,
+            )
+        ]
+    raise ValueError("unsupported semantic 3D layer kind: " + kind)
+
+
 class GraphicPrimitive3d:
     """Base class for a semantic three-dimensional graphics primitive."""
 
@@ -470,6 +599,51 @@ class GraphicPrimitive3d:
 
     def _plotly_traces(self) -> list[Any]:
         raise NotImplementedError("3D graphics primitive has no Plotly renderer")
+
+    def _plot_spec_payload(self) -> dict[str, Any]:
+        """Describe an unmigrated primitive through an honest raw fallback."""
+        return {
+            "kind": "plotly-trace",
+            "data": {
+                "traces": _g3d_plot_spec_json_value(self._plotly_traces()),
+            },
+            "source_intent": {
+                "representation": "raw-plotly-fallback",
+                "primitive": repr(self),
+            },
+            "style": {},
+            "visibility": True,
+            "legend": {},
+            "metadata": {"semantic": False},
+        }
+
+    def _raw_plot_spec_payload(self, reason: str) -> dict[str, Any]:
+        """Describe an unsupported semantic case without losing its traces."""
+        return {
+            "kind": "plotly-trace",
+            "data": {
+                "traces": _g3d_plot_spec_json_value(self._plotly_traces()),
+            },
+            "source_intent": {
+                "representation": "raw-plotly-fallback",
+                "primitive": repr(self),
+                "reason": reason,
+            },
+            "style": {},
+            "visibility": True,
+            "legend": {},
+            "metadata": {"semantic": False, "fallback_reason": reason},
+        }
+
+    def _plot_spec_layer(
+        self,
+        ordinal: int,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> Any:
+        return _g3d_plot_spec_layer(
+            self._plot_spec_payload(), ordinal, source_context, ordered_options
+        )
 
     def __repr__(self) -> str:
         return "3D graphics primitive"
@@ -528,6 +702,51 @@ def _g3d_transform_coordinates(
             + offset[2],
         ]
     )
+
+
+def _g3d_transform_plot_spec_payload(
+    payload: dict[str, Any],
+    matrix: Any,
+    offset: Any,
+    operation: str,
+) -> dict[str, Any] | None:
+    """Transform a migrated point, line, or text semantic payload."""
+    kind = str(payload["kind"])
+    if kind not in ("line", "point", "text"):
+        return None
+    data = payload["data"]
+    if kind in ("line", "point"):
+        coordinates = _g3d_transform_coordinates(
+            data["x"], data["y"], data["z"], matrix, offset
+        )
+        transformed_data = {
+            "x": coordinates[0],
+            "y": coordinates[1],
+            "z": coordinates[2],
+        }
+    else:
+        position = data["position"]
+        coordinates = _g3d_transform_coordinates(
+            position[0], position[1], position[2], matrix, offset
+        )
+        transformed_data = {
+            "text": data["text"],
+            "position": list(coordinates),
+        }
+    return {
+        "kind": kind,
+        "data": transformed_data,
+        "source_intent": {
+            "operation": operation,
+            "input": payload["source_intent"],
+            "matrix": matrix,
+            "offset": list(offset),
+        },
+        "style": payload["style"],
+        "visibility": payload["visibility"],
+        "legend": payload["legend"],
+        "metadata": payload["metadata"],
+    }
 
 
 def _g3d_flatten_numeric(values: Any) -> list[float]:
@@ -647,6 +866,17 @@ class TransformedPrimitive3d(GraphicPrimitive3d):
                 runtime.reflect.set(trace, "w", transformed_vectors[2])
         return traces
 
+    def _plot_spec_payload(self) -> dict[str, Any]:
+        transformed = _g3d_transform_plot_spec_payload(
+            self.primitive._plot_spec_payload(),
+            self.matrix,
+            self.offset,
+            "affine-transform",
+        )
+        if transformed is not None:
+            return transformed
+        return self._raw_plot_spec_payload("affine-transform-not-representable")
+
 
 class TranslatedPrimitive3d(GraphicPrimitive3d):
     """A renderer-independent translation of a 3D primitive."""
@@ -683,6 +913,17 @@ class TranslatedPrimitive3d(GraphicPrimitive3d):
                     )
         return traces
 
+    def _plot_spec_payload(self) -> dict[str, Any]:
+        transformed = _g3d_transform_plot_spec_payload(
+            self.primitive._plot_spec_payload(),
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            self.offset,
+            "translate",
+        )
+        if transformed is not None:
+            return transformed
+        return self._raw_plot_spec_payload("translation-not-representable")
+
 
 @runtime.sequence_class
 class Line3d(GraphicPrimitive3d):
@@ -718,28 +959,34 @@ class Line3d(GraphicPrimitive3d):
     __str__ = __repr__
     toString = __repr__
 
-    def _plotly_traces(self) -> list[Any]:
+    def _plot_spec_payload(self) -> dict[str, Any]:
         options = self._options
         color = _g3d_option_get(
             options, "rgbcolor", _g3d_option_get(options, "color", [0, 0, 1])
         )
         legend_label = _g3d_option_get(options, "legend_label")
-        trace = _g3d_native_record(
-            type="scatter3d",
-            mode="lines",
-            x=self.xdata,
-            y=self.ydata,
-            z=self.zdata,
-            line=_g3d_native_record(
-                color=_g3d_color_value(color),
-                width=float(_g3d_option_get(options, "thickness", 2)),
-            ),
-            opacity=float(_g3d_option_get(options, "opacity", 1)),
-            showlegend=legend_label is not None,
-        )
-        if legend_label is not None:
-            runtime.reflect.set(trace, "name", str(legend_label))
-        return [trace]
+        return {
+            "kind": "line",
+            "data": {"x": self.xdata, "y": self.ydata, "z": self.zdata},
+            "source_intent": {
+                "constructor": "line3d",
+                "representation": "normalized-primitive",
+            },
+            "style": {
+                "color": _g3d_color_value(color),
+                "width": float(_g3d_option_get(options, "thickness", 2)),
+                "opacity": float(_g3d_option_get(options, "opacity", 1)),
+            },
+            "visibility": True,
+            "legend": {
+                "show": legend_label is not None,
+                "label": None if legend_label is None else str(legend_label),
+            },
+            "metadata": {"semantic": True},
+        }
+
+    def _plotly_traces(self) -> list[Any]:
+        return _g3d_plot_spec_traces(self._plot_spec_payload())
 
 
 @runtime.sequence_class
@@ -776,29 +1023,35 @@ class Point3d(GraphicPrimitive3d):
     __str__ = __repr__
     toString = __repr__
 
-    def _plotly_traces(self) -> list[Any]:
+    def _plot_spec_payload(self) -> dict[str, Any]:
         options = self._options
         color = _g3d_option_get(
             options, "rgbcolor", _g3d_option_get(options, "color", [0, 0, 1])
         )
         legend_label = _g3d_option_get(options, "legend_label")
-        trace = _g3d_native_record(
-            type="scatter3d",
-            mode="markers",
-            x=self.xdata,
-            y=self.ydata,
-            z=self.zdata,
-            marker=_g3d_native_record(
-                color=_g3d_color_value(color),
-                size=float(_g3d_option_get(options, "size", 5)),
-                symbol=str(_g3d_option_get(options, "marker", "circle")),
-            ),
-            opacity=float(_g3d_option_get(options, "opacity", 1)),
-            showlegend=legend_label is not None,
-        )
-        if legend_label is not None:
-            runtime.reflect.set(trace, "name", str(legend_label))
-        return [trace]
+        return {
+            "kind": "point",
+            "data": {"x": self.xdata, "y": self.ydata, "z": self.zdata},
+            "source_intent": {
+                "constructor": "point3d",
+                "representation": "normalized-primitive",
+            },
+            "style": {
+                "color": _g3d_color_value(color),
+                "size": float(_g3d_option_get(options, "size", 5)),
+                "symbol": str(_g3d_option_get(options, "marker", "circle")),
+                "opacity": float(_g3d_option_get(options, "opacity", 1)),
+            },
+            "visibility": True,
+            "legend": {
+                "show": legend_label is not None,
+                "label": None if legend_label is None else str(legend_label),
+            },
+            "metadata": {"semantic": True},
+        }
+
+    def _plotly_traces(self) -> list[Any]:
+        return _g3d_plot_spec_traces(self._plot_spec_payload())
 
 
 class Mesh3d(GraphicPrimitive3d):
@@ -898,6 +1151,141 @@ class Mesh3d(GraphicPrimitive3d):
                 mesh_y.append(None)
                 mesh_z.append(None)
         return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
+
+    def _plot_spec_semantic_layer(
+        self,
+        ordinal: int,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> Any:
+        """Return a validated layer and fallback reason without recopying it."""
+        if bool(_g3d_option_get(self._options, "mesh", False)):
+            return runtime.math_tuple([None, "wireframe-companion-trace"])
+
+        all_triangles = len(self.faces) > 0
+        for face in self.faces:
+            if len(face) != 3:
+                all_triangles = False
+        single_polygon = len(self.faces) == 1 and len(self.faces[0]) >= 3
+        if not all_triangles and not single_polygon:
+            return runtime.math_tuple(
+                [None, "multi-face-polygonal-mesh-requires-explicit-triangulation"]
+            )
+
+        surface_layers = __import__(
+            "sagejs.plotting.surface_layers",
+            fromlist=[
+                "MAX_MESH_TRIANGLES",
+                "MAX_MESH_VERTICES",
+                "layer_payload",
+                "lower_3d_geometry_payload",
+                "polygon_layer",
+                "triangular_mesh_layer",
+            ],
+        )
+        if len(self.vertices) > surface_layers.MAX_MESH_VERTICES:
+            raise ValueError(
+                "mesh exceeds the vertex limit of "
+                + str(surface_layers.MAX_MESH_VERTICES)
+            )
+        if all_triangles and len(self.faces) > surface_layers.MAX_MESH_TRIANGLES:
+            raise ValueError(
+                "mesh exceeds the triangle limit of "
+                + str(surface_layers.MAX_MESH_TRIANGLES)
+            )
+
+        options = self._options
+        color = _g3d_option_get(
+            options, "color", _g3d_option_get(options, "rgbcolor", [0, 0, 1])
+        )
+        face_colors = []
+        is_face_colors = (
+            isinstance(color, (list, tuple))
+            and len(color) > 0
+            and isinstance(color[0], (str, list, tuple))
+        )
+        if is_face_colors:
+            colors = list(color)
+            if all_triangles:
+                for face_index in range(len(self.faces)):
+                    face_colors.append(colors[face_index % len(colors)])
+            else:
+                face_colors.append(colors[0])
+        style = {
+            "color": [0, 0, 1] if is_face_colors else color,
+            "face_colors": face_colors,
+            "flat_shading": bool(
+                _g3d_option_get(options, "threejs_flat_shading", True)
+            ),
+            "opacity": float(_g3d_option_get(options, "opacity", 1)),
+        }
+        legend_label = _g3d_option_get(options, "legend_label")
+        try:
+            if all_triangles:
+                layer = surface_layers.triangular_mesh_layer(
+                    self.vertices,
+                    self.faces,
+                    ordinal=ordinal,
+                    style=style,
+                    legend_label=(None if legend_label is None else str(legend_label)),
+                    source_intent=_g3d_semantic_source_intent(
+                        "Mesh3d", source_context, ordered_options
+                    ),
+                )
+            else:
+                points = [self.vertices[index] for index in self.faces[0]]
+                layer = surface_layers.polygon_layer(
+                    points,
+                    ordinal=ordinal,
+                    style=style,
+                    legend_label=(None if legend_label is None else str(legend_label)),
+                    source_intent=_g3d_semantic_source_intent(
+                        "Mesh3d", source_context, ordered_options
+                    ),
+                )
+            payload = surface_layers.layer_payload(layer, reuse_validated_layer=True)
+            surface_layers.lower_3d_geometry_payload(payload)
+            return runtime.math_tuple([payload, None])
+        except TypeError:
+            return runtime.math_tuple(
+                [None, "mesh-geometry-or-style-not-losslessly-representable"]
+            )
+        except ValueError:
+            return runtime.math_tuple(
+                [None, "mesh-geometry-or-style-not-losslessly-representable"]
+            )
+        except IndexError:
+            return runtime.math_tuple(
+                [None, "mesh-geometry-or-style-not-losslessly-representable"]
+            )
+
+    def _plot_spec_payload(self) -> dict[str, Any]:
+        """Return a guarded semantic mesh or an exact raw Plotly fallback."""
+        layer, reason = self._plot_spec_semantic_layer(0)
+        if layer is None:
+            return self._raw_plot_spec_payload(reason)
+        surface_layers = __import__(
+            "sagejs.plotting.surface_layers", fromlist=["layer_payload"]
+        )
+        return surface_layers.layer_payload(layer)
+
+    def _plot_spec_layer(
+        self,
+        ordinal: int,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> Any:
+        layer, reason = self._plot_spec_semantic_layer(
+            ordinal, source_context, ordered_options
+        )
+        if layer is not None:
+            return layer
+        return _g3d_plot_spec_layer(
+            self._raw_plot_spec_payload(reason),
+            ordinal,
+            source_context,
+            ordered_options,
+        )
 
     def _plotly_traces(self) -> list[Any]:
         xdata = [point[0] for point in self.vertices]
@@ -1037,25 +1425,28 @@ class Text3d(GraphicPrimitive3d):
     __str__ = __repr__
     toString = __repr__
 
-    def _plotly_traces(self) -> list[Any]:
+    def _plot_spec_payload(self) -> dict[str, Any]:
         options = self._options
         color = _g3d_option_get(options, "color", [0, 0, 1])
-        return [
-            _g3d_native_record(
-                type="scatter3d",
-                mode="text",
-                x=[self.position[0]],
-                y=[self.position[1]],
-                z=[self.position[2]],
-                text=[self.string],
-                textfont=_g3d_native_record(
-                    color=_g3d_color_value(color),
-                    size=float(_g3d_option_get(options, "fontsize", 14)),
-                ),
-                opacity=float(_g3d_option_get(options, "opacity", 1)),
-                showlegend=False,
-            )
-        ]
+        return {
+            "kind": "text",
+            "data": {"text": self.string, "position": list(self.position)},
+            "source_intent": {
+                "constructor": "text3d",
+                "representation": "normalized-primitive",
+            },
+            "style": {
+                "color": _g3d_color_value(color),
+                "font_size": float(_g3d_option_get(options, "fontsize", 14)),
+                "opacity": float(_g3d_option_get(options, "opacity", 1)),
+            },
+            "visibility": True,
+            "legend": {"show": False, "label": None},
+            "metadata": {"semantic": True},
+        }
+
+    def _plotly_traces(self) -> list[Any]:
+        return _g3d_plot_spec_traces(self._plot_spec_payload())
 
 
 class Arrowhead3d(GraphicPrimitive3d):
@@ -1309,6 +1700,100 @@ class Surface3d(GraphicPrimitive3d):
                 mesh_z.append(None)
         return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
 
+    def _plot_spec_semantic_layer(
+        self,
+        ordinal: int,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> Any:
+        """Return a validated layer and fallback reason without recopying it."""
+        if bool(_g3d_option_get(self._options, "mesh", False)):
+            return runtime.math_tuple([None, "wireframe-companion-trace"])
+        if bool(_g3d_option_get(self._options, "dots", False)):
+            return runtime.math_tuple([None, "dot-companion-trace"])
+
+        surface_layers = __import__(
+            "sagejs.plotting.surface_layers",
+            fromlist=[
+                "MAX_SURFACE_SAMPLES",
+                "layer_payload",
+                "lower_3d_geometry_payload",
+                "rectangular_surface_layer",
+            ],
+        )
+        row_count = len(self.xdata)
+        column_count = 0 if row_count == 0 else len(self.xdata[0])
+        sample_count = row_count * column_count
+        if sample_count > surface_layers.MAX_SURFACE_SAMPLES:
+            raise ValueError(
+                "surface exceeds the sample limit of "
+                + str(surface_layers.MAX_SURFACE_SAMPLES)
+            )
+
+        options = self._options
+        color = _g3d_option_get(options, "color", "steelblue")
+        style = {
+            "color": color,
+            "colorbar": bool(_g3d_option_get(options, "colorbar", False)),
+            "opacity": float(_g3d_option_get(options, "opacity", 1)),
+        }
+        legend_label = _g3d_option_get(options, "legend_label")
+        try:
+            layer = surface_layers.rectangular_surface_layer(
+                self.xdata,
+                self.ydata,
+                self.zdata,
+                ordinal=ordinal,
+                style=style,
+                legend_label=None if legend_label is None else str(legend_label),
+                source_intent=_g3d_semantic_source_intent(
+                    "Surface3d", source_context, ordered_options
+                ),
+            )
+            payload = surface_layers.layer_payload(layer, reuse_validated_layer=True)
+            surface_layers.lower_3d_geometry_payload(payload)
+            return runtime.math_tuple([payload, None])
+        except TypeError:
+            return runtime.math_tuple(
+                [None, "surface-geometry-or-style-not-losslessly-representable"]
+            )
+        except ValueError:
+            return runtime.math_tuple(
+                [None, "surface-geometry-or-style-not-losslessly-representable"]
+            )
+        except IndexError:
+            return runtime.math_tuple(
+                [None, "surface-geometry-or-style-not-losslessly-representable"]
+            )
+
+    def _plot_spec_payload(self) -> dict[str, Any]:
+        """Return a semantic grid only when no companion trace is required."""
+        layer, reason = self._plot_spec_semantic_layer(0)
+        if layer is None:
+            return self._raw_plot_spec_payload(reason)
+        surface_layers = __import__(
+            "sagejs.plotting.surface_layers", fromlist=["layer_payload"]
+        )
+        return surface_layers.layer_payload(layer)
+
+    def _plot_spec_layer(
+        self,
+        ordinal: int,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> Any:
+        layer, reason = self._plot_spec_semantic_layer(
+            ordinal, source_context, ordered_options
+        )
+        if layer is not None:
+            return layer
+        return _g3d_plot_spec_layer(
+            self._raw_plot_spec_payload(reason),
+            ordinal,
+            source_context,
+            ordered_options,
+        )
+
     def _plotly_traces(self) -> list[Any]:
         options = self._options
         color = _g3d_option_get(options, "color", "steelblue")
@@ -1442,8 +1927,18 @@ class Graphics3d:
 
     def __init__(self) -> None:
         self._objects: list[GraphicPrimitive3d] = []
+        self._layer_ordinals: list[int] = []
+        self._layer_source_contexts: list[Any] = []
+        self._layer_ordered_options: list[Any] = []
+        self._next_layer_ordinal = 0
         self._extra_kwds: dict[str, Any] = {}
         self._show_legend = False
+        self._plot_spec_provenance: Any = {
+            "frontend": "sagejs",
+            "source_language": "sage",
+            "constructor": "Graphics3d",
+        }
+        self._plot_spec_diagnostics: list[Any] = []
 
     def __len__(self) -> int:
         return len(self._objects)
@@ -1461,7 +1956,28 @@ class Graphics3d:
     toString = __repr__
 
     def add_primitive(self, primitive: GraphicPrimitive3d) -> None:
+        self._add_primitive_with_ordinal(primitive, None)
+
+    def _add_primitive_with_ordinal(
+        self,
+        primitive: GraphicPrimitive3d,
+        preferred_ordinal: int | None,
+        source_context: Any = None,
+        ordered_options: Any = None,
+    ) -> None:
+        ordinal = preferred_ordinal
+        if ordinal is None or ordinal in self._layer_ordinals:
+            ordinal = self._next_layer_ordinal
+            while ordinal in self._layer_ordinals:
+                ordinal += 1
         self._objects.append(primitive)
+        self._layer_ordinals.append(ordinal)
+        self._layer_source_contexts.append(source_context)
+        self._layer_ordered_options.append(
+            [] if ordered_options is None else list(ordered_options)
+        )
+        if ordinal >= self._next_layer_ordinal:
+            self._next_layer_ordinal = ordinal + 1
         if _g3d_option_get(primitive.options(), "legend_label") is not None:
             self._show_legend = True
 
@@ -1469,17 +1985,91 @@ class Graphics3d:
         for key in keywords:
             self._extra_kwds[key] = keywords[key]
 
+    def _set_extra_kwd(self, name: str, value: Any) -> None:
+        """Set one frontend option across strict-module call boundaries."""
+        self.set_extra_kwds({name: value})
+
     def get_extra_kwds(self) -> dict[str, Any]:
         return _g3d_copy_options(self._extra_kwds)
+
+    def with_plot_spec_context(
+        self,
+        provenance: Any = None,
+        source_intent: Any = None,
+        ordered_options: Any = None,
+        diagnostics: Any = None,
+    ) -> Graphics3d:
+        """Return a shallow clone carrying detached frontend PlotSpec context."""
+        answer = Graphics3d()
+        for index in range(len(self._objects)):
+            context = self._layer_source_contexts[index]
+            if source_intent is not None:
+                new_context = _g3d_plot_spec_json_value(source_intent)
+                if context is not None:
+                    new_context.__setitem__(
+                        "child_context", _g3d_plot_spec_json_value(context)
+                    )
+                context = new_context
+            options = list(self._layer_ordered_options[index])
+            if ordered_options is not None:
+                options += list(ordered_options)
+            answer._add_primitive_with_ordinal(
+                self._objects[index],
+                self._layer_ordinals[index],
+                context,
+                options,
+            )
+        answer.set_extra_kwds(self._extra_kwds)
+        answer._show_legend = self._show_legend
+        answer._plot_spec_provenance = (
+            self._plot_spec_provenance
+            if provenance is None
+            else _g3d_plot_spec_json_value(provenance)
+        )
+        answer._plot_spec_diagnostics = list(self._plot_spec_diagnostics)
+        if diagnostics is not None:
+            for diagnostic in diagnostics:
+                answer._plot_spec_diagnostics.append(
+                    _g3d_plot_spec_json_value(diagnostic)
+                )
+        return answer
 
     def __add__(self, other: object) -> Graphics3d:
         if not isinstance(other, Graphics3d):
             raise TypeError("can only add Graphics3d to Graphics3d")
         answer = Graphics3d()
-        answer._objects = self._objects + other._objects
+        for index in range(len(self._objects)):
+            answer._add_primitive_with_ordinal(
+                self._objects[index],
+                self._layer_ordinals[index],
+                self._layer_source_contexts[index],
+                self._layer_ordered_options[index],
+            )
+        for index in range(len(other._objects)):
+            answer._add_primitive_with_ordinal(
+                other._objects[index],
+                other._layer_ordinals[index],
+                other._layer_source_contexts[index],
+                other._layer_ordered_options[index],
+            )
         answer.set_extra_kwds(self._extra_kwds)
         answer.set_extra_kwds(other._extra_kwds)
         answer._show_legend = self._show_legend or other._show_legend
+        if self._plot_spec_provenance == other._plot_spec_provenance:
+            answer._plot_spec_provenance = self._plot_spec_provenance
+        else:
+            answer._plot_spec_provenance = {
+                "frontend": "sagejs",
+                "constructor": "composition",
+                "metadata": {
+                    "children": [
+                        self._plot_spec_provenance,
+                        other._plot_spec_provenance,
+                    ]
+                },
+            }
+        answer._plot_spec_diagnostics = list(self._plot_spec_diagnostics)
+        answer._plot_spec_diagnostics += list(other._plot_spec_diagnostics)
         return answer
 
     def __radd__(self, other: object) -> Graphics3d:
@@ -1514,8 +2104,15 @@ class Graphics3d:
         answer = Graphics3d()
         answer.set_extra_kwds(self._extra_kwds)
         answer._show_legend = self._show_legend
-        for primitive in self._objects:
-            answer.add_primitive(TranslatedPrimitive3d(primitive, vector))
+        for index in range(len(self._objects)):
+            answer._add_primitive_with_ordinal(
+                TranslatedPrimitive3d(self._objects[index], vector),
+                self._layer_ordinals[index],
+                self._layer_source_contexts[index],
+                self._layer_ordered_options[index],
+            )
+        answer._plot_spec_provenance = self._plot_spec_provenance
+        answer._plot_spec_diagnostics = list(self._plot_spec_diagnostics)
         return answer
 
     def transform(self, **options: Any) -> Graphics3d:
@@ -1596,8 +2193,15 @@ class Graphics3d:
         answer = Graphics3d()
         answer.set_extra_kwds(self._extra_kwds)
         answer._show_legend = self._show_legend
-        for primitive in self._objects:
-            answer.add_primitive(TransformedPrimitive3d(primitive, matrix, offset))
+        for index in range(len(self._objects)):
+            answer._add_primitive_with_ordinal(
+                TransformedPrimitive3d(self._objects[index], matrix, offset),
+                self._layer_ordinals[index],
+                self._layer_source_contexts[index],
+                self._layer_ordered_options[index],
+            )
+        answer._plot_spec_provenance = self._plot_spec_provenance
+        answer._plot_spec_diagnostics = list(self._plot_spec_diagnostics)
         return answer
 
     def scale(self, *factors: Any) -> Graphics3d:
@@ -1777,6 +2381,55 @@ class Graphics3d:
                 responsive=True,
             ),
         )
+
+    def spec(self) -> Any:
+        """Return a stable, JSON-safe semantic description of this plot."""
+        plotting = __import__("sagejs.plotting", fromlist=["PlotSpec"])
+        plot_spec_class = plotting.PlotSpec
+
+        layers = []
+        for index in range(len(self._objects)):
+            layers.append(
+                self._objects[index]._plot_spec_layer(
+                    self._layer_ordinals[index],
+                    self._layer_source_contexts[index],
+                    self._layer_ordered_options[index],
+                )
+            )
+        layout = _g3d_plot_spec_json_value(self._plotly_layout())
+        viewport = {}
+        if "width" in layout:
+            viewport["width"] = layout.__getitem__("width")
+        if "height" in layout:
+            viewport["height"] = layout.__getitem__("height")
+        scene = dict()
+        scene.__setitem__("coordinate_system", "cartesian")
+        scene.__setitem__("scene", layout.get("scene", dict()))
+        overrides = dict()
+        overrides.__setitem__("layout", layout)
+        overrides.__setitem__(
+            "config",
+            _g3d_plot_spec_json_value({"displaylogo": False, "responsive": True}),
+        )
+        record = dict()
+        record.__setitem__("schema_version", plotting.PLOTSPEC_SCHEMA_VERSION)
+        record.__setitem__("dimension", 3)
+        record.__setitem__("layers", layers)
+        record.__setitem__("axes_or_scene", scene)
+        record.__setitem__("viewport", _g3d_plot_spec_json_value(viewport))
+        record.__setitem__("theme", "notebook")
+        record.__setitem__("annotations", [])
+        record.__setitem__("interactions", dict())
+        record.__setitem__("animation", dict())
+        record.__setitem__(
+            "provenance", _g3d_plot_spec_json_value(self._plot_spec_provenance)
+        )
+        record.__setitem__(
+            "diagnostics",
+            [_g3d_plot_spec_json_value(value) for value in self._plot_spec_diagnostics],
+        )
+        record.__setitem__("plotly_overrides", overrides)
+        return plot_spec_class.from_dict(record)
 
     def _rich_repr_(self) -> Any:
         return _g3d_native_record(

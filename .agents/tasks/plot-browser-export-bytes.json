@@ -1,0 +1,97 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-browser-export-bytes",
+  "title": "Return browser-rendered image bytes",
+  "lane": "graphics",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Add browser Plotly export capability discovery and PNG/SVG/JPEG/WebP byte-return APIs with safe data-URL decoding, types, accessibility-neutral cleanup, and focused unit/browser tests",
+  "base_commit": "c8c66113105d496f38aa3908d855419839940c4c",
+  "claims": [
+    "packages/flint-wasm/plotly-renderer.mjs",
+    "packages/flint-wasm/plotly-renderer.d.ts",
+    "packages/flint-wasm/test/plotly-renderer.test.mjs",
+    "packages/flint-wasm/test/browser-smoke.mjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/sage-2d-plotting-coverage-plan.md",
+    "Plotly.toImage browser API"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Pure data URL unit vectors and real Chromium Plotly export smoke tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test packages/flint-wasm/test/plotly-renderer.test.mjs",
+    "node --check packages/flint-wasm/test/browser-smoke.mjs",
+    "node_modules/.bin/tsc --ignoreConfig --noEmit --skipLibCheck --module nodenext --moduleResolution nodenext --target es2022 --lib es2022,dom packages/flint-wasm/plotly-renderer.d.ts",
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.278,
+      "started_at": "2026-08-17T05:22:04.798Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "ea68388b0f3bad9e605b9fb2022322a959557438c75b3deded636ed7921889fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/plotly-renderer.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.14,
+      "started_at": "2026-08-17T05:22:29.188Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "ea68388b0f3bad9e605b9fb2022322a959557438c75b3deded636ed7921889fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node_modules/.bin/tsc --ignoreConfig --noEmit --skipLibCheck --module nodenext --moduleResolution nodenext --target es2022 --lib es2022,dom packages/flint-wasm/plotly-renderer.d.ts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.257,
+      "started_at": "2026-08-17T05:26:04.101Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "ea68388b0f3bad9e605b9fb2022322a959557438c75b3deded636ed7921889fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check packages/flint-wasm/test/browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "started_at": "2026-08-17T05:26:23.340Z",
+      "commit": "c8c66113105d496f38aa3908d855419839940c4c",
+      "workspace_fingerprint": "ea68388b0f3bad9e605b9fb2022322a959557438c75b3deded636ed7921889fe",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added browser Plotly export capability discovery and a Uint8Array image API for PNG, JPEG, WebP, and SVG. The decoder handles strict base64, percent-escaped base64, and byte-preserving percent-encoded payloads without Node-only Buffer APIs. Focused tests cover formats, malformed data, default PNG behavior, and cleanup; the existing Chromium smoke now verifies real Plotly PNG bytes.",
+    "risks": [
+      "The full browser-smoke command could not run locally because the pre-existing flint-wasm build expects an imported-module cache file that the current compiler no longer writes at that path; an ad hoc real Chromium plus bundled Plotly check passed with the PNG signature.",
+      "The broad integration and changed-files gates require native FLINT/FFLAS build products absent from this worktree and fail in unrelated native arithmetic tests before providing a useful renderer signal.",
+      "Decoded image output necessarily allocates a Uint8Array in addition to Plotly's data URL; a future higher-level export service should enforce output-size limits."
+    ],
+    "next_steps": [
+      "Integration should expose browserGraphicsExportCapabilities and sageDisplayToImageBytes through the planned higher-level export_capabilities/browser-to-kernel bridge without changing these low-level APIs.",
+      "Run packages/flint-wasm/test/browser-smoke.mjs in a fully provisioned CoWasm browser CI environment on Linux and Windows."
+    ]
+  }
+}

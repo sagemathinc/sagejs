@@ -1,6 +1,16 @@
 import { writeFileSync } from "fs";
-import { extname, join, resolve } from "path";
-import { spawnSync } from "child_process";
+import { extname, resolve } from "path";
+import { discoverChromium } from "./chromium-discovery";
+import {
+  createNodeGraphicsExportCapabilities,
+  GraphicsExportCapabilities,
+  GraphicsExportError,
+  GraphicsImageOptions,
+  normalizeGraphicsExportFormat,
+  requireGraphicsExportFormat,
+  validateGraphicsImageRequest,
+} from "./graphics-export-contract";
+import { SynchronousPlotlyRenderer } from "./plotly-renderer-client";
 import { isSingleExecutable, readPlotlySource } from "./resources";
 
 export const PLOTLY_MIME = "application/vnd.plotly.v1+json";
@@ -10,14 +20,12 @@ interface PlotlyDisplay {
   data: unknown;
 }
 
-interface GraphicsSaveOptions {
-  width?: unknown;
-  height?: unknown;
-  scale?: unknown;
-  format?: unknown;
-}
+type GraphicsSaveOptions = GraphicsImageOptions;
 
 let plotlySource: string | undefined;
+let imageRenderer: SynchronousPlotlyRenderer | undefined;
+let imageRendererExecutable: string | undefined;
+let lifecycleHooksInstalled = false;
 
 function jsonReplacer(_key: string, value: unknown): unknown {
   if (typeof value !== "bigint") return value;
@@ -50,31 +58,6 @@ function figureFromGraphic(graphic: unknown): unknown {
     throw new TypeError("graphics object did not produce a Plotly figure");
   }
   return Reflect.get(display, "data");
-}
-
-function numericOption(
-  options: GraphicsSaveOptions,
-  name: "width" | "height" | "scale",
-): number | undefined {
-  const value = options?.[name];
-  if (value === undefined || value === null) return undefined;
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) {
-    throw new TypeError(`${name} must be a positive number`);
-  }
-  return number;
-}
-
-function imageOptions(
-  options: GraphicsSaveOptions,
-  format: string,
-): Record<string, number | string> {
-  const answer: Record<string, number | string> = { format };
-  for (const name of ["width", "height", "scale"] as const) {
-    const value = numericOption(options, name);
-    if (value !== undefined) answer[name] = value;
-  }
-  return answer;
 }
 
 function standaloneHtml(figure: unknown): string {
@@ -121,31 +104,54 @@ function renderImage(
   figure: unknown,
   format: string,
   options: GraphicsSaveOptions,
+  capabilities: GraphicsExportCapabilities,
 ): Buffer {
-  if (isSingleExecutable()) {
-    throw new Error(
-      "PNG/SVG graphics export is not yet bundled into the single " +
-        "executable; save as HTML or JSON, or use the npm distribution",
-    );
-  }
-  const helper = join(__dirname, "plotly-image-renderer.js");
-  const input = stringify({
+  requireGraphicsExportFormat(format, capabilities);
+  const discovery = discoverChromium();
+  const preliminary = validateGraphicsImageRequest(figure, format, options, 0);
+  let input = stringify({ figure, options: preliminary });
+  const validated = validateGraphicsImageRequest(
     figure,
-    options: imageOptions(options, format),
-  });
-  const rendered = spawnSync(process.execPath, [helper], {
-    input,
-    maxBuffer: 128 * 1024 * 1024,
-  });
-  if (rendered.error) throw rendered.error;
-  if (rendered.status !== 0) {
-    const detail = rendered.stderr.toString("utf8").trim();
-    throw new Error(
-      detail ||
-        `Plotly image renderer exited with status ${rendered.status}`,
-    );
+    format,
+    options,
+    Buffer.byteLength(input),
+  );
+  input = stringify({ figure, options: validated });
+  validateGraphicsImageRequest(
+    figure,
+    format,
+    options,
+    Buffer.byteLength(input),
+  );
+  const executablePath = discovery.executablePath!;
+  if (!imageRenderer || imageRendererExecutable !== executablePath) {
+    imageRenderer?.dispose();
+    imageRenderer = new SynchronousPlotlyRenderer({ executablePath });
+    imageRendererExecutable = executablePath;
   }
-  return rendered.stdout;
+  try {
+    return imageRenderer.render(input);
+  } catch (error) {
+    if (!(error instanceof GraphicsExportError)) throw error;
+    const prefix = `[${error.code}] `;
+    const detail = error.message.startsWith(prefix)
+      ? error.message.slice(prefix.length)
+      : error.message;
+    throw new GraphicsExportError(error.code, detail, {
+      format,
+      alternatives: ["html", "json"],
+      capabilities,
+      cause: error,
+    });
+  }
+}
+
+/** Report Node graphics-export capabilities without launching a browser. */
+export function nodeGraphicsExportCapabilities(): GraphicsExportCapabilities {
+  return createNodeGraphicsExportCapabilities(
+    discoverChromium(),
+    isSingleExecutable(),
+  );
 }
 
 export function saveGraphic(
@@ -155,30 +161,63 @@ export function saveGraphic(
 ): unknown {
   const filename = resolve(String(filenameValue));
   const figure = figureFromGraphic(graphic);
-  let format = String(options?.format ?? extname(filename).slice(1))
-    .toLowerCase();
-  if (format === "jpg") format = "jpeg";
+  const format = normalizeGraphicsExportFormat(
+    options?.format ?? extname(filename).slice(1),
+  );
+  const capabilities = nodeGraphicsExportCapabilities();
   if (!format) {
-    throw new Error(
-      "graphics filename must have an extension or specify format",
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_FORMAT_UNSUPPORTED",
+      "Graphics filename must have an extension or specify format; use PNG, JPEG, WebP, SVG, HTML, or JSON.",
+      {
+        alternatives: ["png", "jpeg", "webp", "svg", "html", "json"],
+        capabilities,
+      },
     );
   }
+  requireGraphicsExportFormat(format, capabilities);
 
   if (format === "json") {
     writeFileSync(filename, `${stringify(figure, 2)}\n`);
-  } else if (format === "html" || format === "htm") {
+  } else if (format === "html") {
     writeFileSync(filename, standaloneHtml(figure));
   } else if (["png", "jpeg", "webp", "svg"].includes(format)) {
-    writeFileSync(filename, renderImage(figure, format, options));
+    writeFileSync(filename, renderImage(figure, format, options, capabilities));
   } else {
-    throw new Error(
-      `unsupported graphics format ${JSON.stringify(format)}; ` +
-        "use png, jpeg, webp, svg, html, or json",
+    throw new GraphicsExportError(
+      "SAGEJS_GRAPHICS_FORMAT_UNSUPPORTED",
+      `Unsupported graphics format ${JSON.stringify(format)}. Use PNG, JPEG, WebP, SVG, HTML, or JSON.`,
+      { format, capabilities },
     );
   }
   return graphic;
 }
 
-export function installNodeGraphicsSaveHook(): void {
+/** Close the lazy Chromium renderer and release its worker thread. */
+export function disposeNodeGraphicsRenderer(): void {
+  imageRenderer?.dispose();
+  imageRenderer = undefined;
+  imageRendererExecutable = undefined;
+}
+
+function installRendererLifecycleHooks(): void {
+  if (lifecycleHooksInstalled) return;
+  lifecycleHooksInstalled = true;
+  process.once("beforeExit", disposeNodeGraphicsRenderer);
+  process.once("exit", () => {
+    imageRenderer?.terminateNow();
+    imageRenderer = undefined;
+    imageRendererExecutable = undefined;
+  });
+}
+
+export function installNodeGraphicsSaveHook(): () => void {
+  installRendererLifecycleHooks();
   global.__sagejs_graphics_save_hook__ = saveGraphic;
+  return () => {
+    if (global.__sagejs_graphics_save_hook__ === saveGraphic) {
+      delete global.__sagejs_graphics_save_hook__;
+    }
+    disposeNodeGraphicsRenderer();
+  };
 }

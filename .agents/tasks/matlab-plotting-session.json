@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "matlab-plotting-session",
+  "title": "Stateful MATLAB plotting session",
+  "lane": "polyglot",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a session-local MATLAB figure/axes/handle model with plot, hold, labels, limits, legends, property access, command syntax, PlotSpec inspection, rich Plotly display, and isolated persistent state across cells.",
+  "base_commit": "aa4ccb62e3d889963543aac6c3661a42466bbdc5",
+  "claims": [
+    "tools/matlab/ast.ts",
+    "tools/matlab/frontend.ts",
+    "src/lib/matlab.py",
+    "test/matlab-plotting.cjs"
+  ],
+  "dependencies": [
+    "plot-semantic-primitives",
+    "plot-agent-api"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Documented MATLAB state/handle semantics and focused multi-cell PlotSpec/Plotly tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/matlab-plotting.cjs",
+    "node test/foreign-languages.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm build",
+    "pnpm test:integration",
+    "pnpm bench:polyglot"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

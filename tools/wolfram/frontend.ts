@@ -215,10 +215,14 @@ class SageLowerer {
     Plot: "plot",
     PrimePi: "prime_pi",
     Sin: "sin",
-    Show: "show",
     Sqrt: "sqrt",
     Tan: "tan",
   };
+
+  constructor(
+    private readonly source: string,
+    private readonly filename?: string,
+  ) {}
 
   program(program: WolframProgram, captureResult = false): string {
     const statements: string[] = [];
@@ -369,6 +373,10 @@ class SageLowerer {
     if (head === "ListPlot3D") {
       return this.listPlot(expression, "list_plot3d", false);
     }
+    if (head === "Graphics" || head === "Graphics3D") {
+      return this.graphicsCall(expression, head);
+    }
+    if (head === "Show") return this.showCall(expression);
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
       Circle: "Circle",
@@ -377,8 +385,6 @@ class SageLowerer {
       Cylinder: "Cylinder",
       Disk: "Disk",
       Directive: "Directive",
-      Graphics: "Graphics",
-      Graphics3D: "Graphics3D",
       GrayLevel: "GrayLevel",
       Hue: "Hue",
       Line: "Line",
@@ -422,6 +428,7 @@ class SageLowerer {
     start: string;
     stop: string;
     step: string;
+    source: string;
   } {
     const iterator = expression.arguments[index];
     if (
@@ -445,6 +452,7 @@ class SageLowerer {
       step: iterator.elements[3]
         ? this.expression(iterator.elements[3])
         : "1",
+      source: this.sourceText(iterator),
     };
   }
 
@@ -469,11 +477,14 @@ class SageLowerer {
       );
     }
     const iterator = this.iterator(expression, "Plot");
-    return `plot(${this.expression(expression.arguments[0])}, (${
-      iterator.variable
-    }, ${iterator.start}, ${iterator.stop})${
-      this.plotOptions(expression.arguments.slice(2))
-    })`;
+    return this.plotCall(
+      expression,
+      "plot",
+      "Plot",
+      this.expression(expression.arguments[0]),
+      [iterator],
+      expression.arguments.slice(2),
+    );
   }
 
   private singleRangePlot(
@@ -488,11 +499,14 @@ class SageLowerer {
       );
     }
     const iterator = this.iterator(expression, operation);
-    return `${target}(${this.expression(expression.arguments[0])}, (${
-      iterator.variable
-    }, ${iterator.start}, ${iterator.stop})${
-      this.plotOptions(expression.arguments.slice(2))
-    })`;
+    return this.plotCall(
+      expression,
+      target,
+      operation,
+      this.expression(expression.arguments[0]),
+      [iterator],
+      expression.arguments.slice(2),
+    );
   }
 
   private doubleRangePlot(
@@ -508,11 +522,14 @@ class SageLowerer {
     }
     const first = this.iterator(expression, operation, 1);
     const second = this.iterator(expression, operation, 2);
-    return `${target}(${this.expression(expression.arguments[0])}, (${
-      first.variable
-    }, ${first.start}, ${first.stop}), (${second.variable}, ${second.start}, ${
-      second.stop
-    })${this.plotOptions(expression.arguments.slice(3))})`;
+    return this.plotCall(
+      expression,
+      target,
+      operation,
+      this.expression(expression.arguments[0]),
+      [first, second],
+      expression.arguments.slice(3),
+    );
   }
 
   private tripleRangePlot(
@@ -529,13 +546,14 @@ class SageLowerer {
     const first = this.iterator(expression, operation, 1);
     const second = this.iterator(expression, operation, 2);
     const third = this.iterator(expression, operation, 3);
-    return `${target}(${this.expression(expression.arguments[0])}, (${
-      first.variable
-    }, ${first.start}, ${first.stop}), (${second.variable}, ${second.start}, ${
-      second.stop
-    }), (${third.variable}, ${third.start}, ${third.stop})${
-      this.plotOptions(expression.arguments.slice(4))
-    })`;
+    return this.plotCall(
+      expression,
+      target,
+      operation,
+      this.expression(expression.arguments[0]),
+      [first, second, third],
+      expression.arguments.slice(4),
+    );
   }
 
   private parametricPlot3d(expression: CallExpression): string {
@@ -546,7 +564,7 @@ class SageLowerer {
       );
     }
     const first = this.iterator(expression, "ParametricPlot3D", 1);
-    let ranges = `(${first.variable}, ${first.start}, ${first.stop})`;
+    const ranges = [first];
     let optionStart = 2;
     const secondCandidate = expression.arguments[2];
     if (
@@ -554,12 +572,17 @@ class SageLowerer {
       secondCandidate.elements[0]?.kind === "symbol"
     ) {
       const second = this.iterator(expression, "ParametricPlot3D", 2);
-      ranges += `, (${second.variable}, ${second.start}, ${second.stop})`;
+      ranges.push(second);
       optionStart = 3;
     }
-    return `parametric_plot3d(${
-      this.expression(expression.arguments[0])
-    }, ${ranges}${this.plotOptions(expression.arguments.slice(optionStart))})`;
+    return this.plotCall(
+      expression,
+      "parametric_plot3d",
+      "ParametricPlot3D",
+      this.expression(expression.arguments[0]),
+      ranges,
+      expression.arguments.slice(optionStart),
+    );
   }
 
   private listPlot(
@@ -573,30 +596,22 @@ class SageLowerer {
         expression.span,
       );
     }
-    const joinedOption = joined ? ", plotjoined=True" : "";
-    return `${target}(${this.expression(expression.arguments[0])}${
-      joinedOption
-    }${this.plotOptions(expression.arguments.slice(1))})`;
+    const operation = joined
+      ? "ListLinePlot"
+      : expression.head.kind === "symbol"
+      ? expression.head.name
+      : "ListPlot";
+    return this.plotCall(
+      expression,
+      target,
+      operation,
+      this.expression(expression.arguments[0]),
+      [],
+      expression.arguments.slice(1),
+    );
   }
 
-  private plotOptions(options: WolframExpression[]): string {
-    const keywordMap: Record<string, string> = {
-      AspectRatio: "aspect_ratio",
-      Axes: "axes",
-      AxesLabel: "axes_labels",
-      ColorFunction: "cmap",
-      Contours: "contours",
-      Filling: "fill",
-      Frame: "frame",
-      ImageSize: "figsize",
-      Joined: "plotjoined",
-      MaxRecursion: "adaptive_recursion",
-      Mesh: "mesh",
-      Opacity: "opacity",
-      PlotLabel: "title",
-      PlotPoints: "plot_points",
-      PlotStyle: "color",
-    };
+  private optionRecords(options: WolframExpression[]): string {
     const lowered: string[] = [];
     for (const option of options) {
       if (
@@ -604,37 +619,121 @@ class SageLowerer {
         !["->", ":>"].includes(option.operator) ||
         option.left.kind !== "symbol"
       ) {
-        continue;
+        throw new WolframSyntaxError(
+          "plot and graphics options must be Rule or RuleDelayed expressions",
+          option.span,
+        );
       }
       const name = option.left.name;
-      if (name === "PlotRange" && option.right.kind === "list") {
-        const elements = option.right.elements;
-        if (
-          elements.length === 2 &&
-          elements[0].kind === "list" &&
-          elements[1].kind === "list"
-        ) {
-          const xvalues = elements[0].elements;
-          const yvalues = elements[1].elements;
-          if (xvalues.length === 2 && yvalues.length === 2) {
-            lowered.push(`xmin=${this.expression(xvalues[0])}`);
-            lowered.push(`xmax=${this.expression(xvalues[1])}`);
-            lowered.push(`ymin=${this.expression(yvalues[0])}`);
-            lowered.push(`ymax=${this.expression(yvalues[1])}`);
-          }
-        } else if (elements.length === 2) {
-          lowered.push(`ymin=${this.expression(elements[0])}`);
-          lowered.push(`ymax=${this.expression(elements[1])}`);
-        }
-        continue;
-      }
-      const keyword = keywordMap[name];
-      if (!keyword) continue;
       let value = this.expression(option.right);
       if (name === "ImageSize") value = `_wolfram.ImageSize(${value})`;
-      lowered.push(`${keyword}=${value}`);
+      lowered.push(`{"name": ${this.stringLiteral(name)}, "rule": ${
+        this.stringLiteral(option.operator === ":>" ? "RuleDelayed" : "Rule")
+      }, "value": ${value}, "source": ${
+        this.stringLiteral(this.sourceText(option))
+      }, "source_span": ${this.spanLiteral(option.span)}}`);
     }
-    return lowered.length ? `, ${lowered.join(", ")}` : "";
+    return `[${lowered.join(", ")}]`;
+  }
+
+  private plotCall(
+    expression: CallExpression,
+    target: string,
+    operation: string,
+    value: string,
+    ranges: Array<{
+      variable: string;
+      start: string;
+      stop: string;
+      step: string;
+      source: string;
+    }>,
+    options: WolframExpression[],
+  ): string {
+    const loweredRanges = ranges.map((range) =>
+      `(${range.variable}, ${range.start}, ${range.stop})`
+    );
+    return `_wolfram.PlotCall(${this.stringLiteral(target)}, ${
+      this.stringLiteral(operation)
+    }, ${value}, [${loweredRanges.join(", ")}], ${
+      this.optionRecords(options)
+    }, ${this.intentLiteral(expression, operation, ranges)})`;
+  }
+
+  private graphicsCall(expression: CallExpression, operation: string): string {
+    if (!expression.arguments.length) {
+      throw new WolframSyntaxError(
+        `${operation} currently requires primitives`,
+        expression.span,
+      );
+    }
+    const items = this.expression(expression.arguments[0]);
+    return `_wolfram.${operation}(${items}, ${
+      this.optionRecords(expression.arguments.slice(1))
+    }, ${this.intentLiteral(expression, operation)})`;
+  }
+
+  private showCall(expression: CallExpression): string {
+    const graphics: WolframExpression[] = [];
+    const options: WolframExpression[] = [];
+    for (const argument of expression.arguments) {
+      if (
+        argument.kind === "binary" &&
+        ["->", ":>"].includes(argument.operator) &&
+        argument.left.kind === "symbol"
+      ) {
+        options.push(argument);
+      } else {
+        graphics.push(argument);
+      }
+    }
+    if (!graphics.length) {
+      throw new WolframSyntaxError(
+        "Show requires at least one graphic",
+        expression.span,
+      );
+    }
+    return `_wolfram.Show([${
+      graphics.map((graphic) => this.expression(graphic)).join(", ")
+    }], ${this.optionRecords(options)}, ${
+      this.intentLiteral(expression, "Show")
+    })`;
+  }
+
+  private sourceText(expression: WolframExpression): string {
+    return this.source.slice(
+      expression.span.start.offset,
+      expression.span.end.offset,
+    );
+  }
+
+  private stringLiteral(value: string): string {
+    return JSON.stringify(value);
+  }
+
+  private spanLiteral(span: SourceSpan): string {
+    return `{"start": {"line": ${span.start.line}, "column": ${
+      span.start.column
+    }, "offset": ${span.start.offset}}, "end": {"line": ${
+      span.end.line
+    }, "column": ${span.end.column}, "offset": ${span.end.offset}}}`;
+  }
+
+  private intentLiteral(
+    expression: WolframExpression,
+    head: string,
+    ranges: Array<{ source: string }> = [],
+  ): string {
+    const filename = this.filename === undefined
+      ? "None"
+      : this.stringLiteral(this.filename);
+    return `{"frontend": "wolfram", "head": ${
+      this.stringLiteral(head)
+    }, "expression": ${this.stringLiteral(this.sourceText(expression))}, "ranges": [${
+      ranges.map((range) => this.stringLiteral(range.source)).join(", ")
+    }], "filename": ${
+      filename
+    }, "source_span": ${this.spanLiteral(expression.span)}}`;
   }
 
   private expression(expression: WolframExpression): string {
@@ -648,18 +747,18 @@ class SageLowerer {
           Brown: "'brown'",
           Cyan: "'cyan'",
           E: "e",
-          False: "False",
+          False: "0",
           Gray: "'gray'",
           Green: "'green'",
           Magenta: "'magenta'",
-          None: "False",
+          None: "0",
           Null: "None",
           Orange: "'orange'",
           Pi: "pi",
           Pink: "'pink'",
           Purple: "'purple'",
           Red: "'red'",
-          True: "True",
+          True: "1",
           White: "'white'",
           Yellow: "'yellow'",
         };
@@ -765,7 +864,10 @@ export function createWolframFrontend(): Promise<ForeignFrontend> {
         const last = ast.body.at(-1);
         return {
           ast,
-          source: new SageLowerer().program(ast, options.captureResult),
+          source: new SageLowerer(source, options.filename).program(
+            ast,
+            options.captureResult,
+          ),
           hasResult: options.captureResult &&
             last !== undefined &&
             last.kind !== "suppressed" &&

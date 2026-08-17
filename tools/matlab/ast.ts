@@ -26,6 +26,12 @@ export interface CallExpression extends NodeBase {
   arguments: MatlabExpression[];
 }
 
+export interface FieldExpression extends NodeBase {
+  kind: "field";
+  object: MatlabExpression;
+  fields: string[];
+}
+
 export interface RangeExpression extends NodeBase {
   kind: "range";
   start: MatlabExpression;
@@ -55,6 +61,7 @@ export type MatlabExpression =
   | LiteralExpression
   | MatrixExpression
   | CallExpression
+  | FieldExpression
   | RangeExpression
   | AllExpression
   | UnaryExpression
@@ -73,9 +80,17 @@ export interface ExpressionStatement extends NodeBase {
   suppressOutput: boolean;
 }
 
+export interface CommandStatement extends NodeBase {
+  kind: "command";
+  name: string;
+  arguments: string[];
+  suppressOutput: boolean;
+}
+
 export type MatlabStatement =
   | AssignmentStatement
-  | ExpressionStatement;
+  | ExpressionStatement
+  | CommandStatement;
 
 export interface MatlabProgram extends NodeBase {
   kind: "program";

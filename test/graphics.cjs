@@ -34,6 +34,7 @@ async function main() {
       opacity: 1,
       showlegend: true,
       name: "diagonal",
+      zorder: 2,
     });
     assert.equal(composed.display?.data.data[1].mode, "markers");
     assert.equal(composed.display?.data.data[1].marker.color, "black");
@@ -48,6 +49,116 @@ async function main() {
       "Line defined by 2 points",
     );
     assert.equal((await session.evaluate("g[0][1]")).repr, "(1.0, 1.0)");
+
+    await session.evaluate(
+      [
+        "semantic = g + text('origin', (0, 0), fontsize=16)",
+        "semantic_spec = semantic.spec()",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("semantic_spec.dimension")).repr,
+      "2",
+    );
+    assert.equal(
+      (await session.evaluate("[layer.id for layer in semantic_spec.layers]"))
+        .repr,
+      "['layer-0', 'layer-1', 'layer-2']",
+    );
+    assert.equal(
+      (await session.evaluate("[layer.kind for layer in semantic_spec.layers]"))
+        .repr,
+      "['line', 'point', 'text']",
+    );
+    assert.equal(
+      (await session.evaluate("semantic_spec.layers[0].data['x']")).repr,
+      "[0.0, 1.0]",
+    );
+    assert.equal(
+      (await session.evaluate("semantic_spec.layers[0].style['color']")).repr,
+      "'red'",
+    );
+    assert.equal(
+      (await session.evaluate("semantic_spec.layers[2].data['text']")).repr,
+      "'origin'",
+    );
+    assert.equal(
+      (await session.evaluate("semantic.spec().to_json() == semantic.spec().to_json()"))
+        .repr,
+      "True",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "base = line([(0,0),(1,0)]); " +
+            "[layer.id for layer in (base + base).spec().layers]",
+        )
+      ).repr,
+      "['layer-0', 'layer-1']",
+    );
+    assert.equal(
+      (await session.evaluate("polygon([(0,0),(1,0),(0,1)]).spec().layers[0].kind"))
+        .repr,
+      "'polygon'",
+    );
+
+    await session.evaluate(
+      [
+        "frontend_diagnostic = {",
+        "  'code': 'PLOT_OPTION_IGNORED',",
+        "  'severity': 'warning',",
+        "  'phase': 'options',",
+        "  'layer_ids': ['layer-0'],",
+        "  'message': 'Frame was not represented.',",
+        "  'suggested_repairs': ['Use axes=True.'],",
+        "  'details': {'option': 'Frame', 'source_span': [7, 20]},",
+        "}",
+        "tagged = semantic.with_plot_spec_context(",
+        "  provenance={'frontend':'wolfram','source_language':'wolfram','constructor':'Show'},",
+        "  source_intent={'frontend':'wolfram','head':'Show','expression':'Show[...]'},",
+        "  ordered_options=[{'name':'Frame','rule':'Rule','source':'Frame->True'}],",
+        "  diagnostics=[frontend_diagnostic],",
+        ")",
+        "tagged_spec = tagged.spec()",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("tagged_spec.provenance['frontend']")).repr,
+      "'wolfram'",
+    );
+    assert.equal(
+      (await session.evaluate("tagged_spec.layers[0].source_intent['head']")).repr,
+      "'Show'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "tagged_spec.layers[0].source_intent['ordered_options'][0]['name']",
+        )
+      ).repr,
+      "'Frame'",
+    );
+    assert.equal(
+      (await session.evaluate("tagged_spec.diagnostics[0].details['option']"))
+        .repr,
+      "'Frame'",
+    );
+    assert.equal(
+      (await session.evaluate("semantic.spec().provenance['frontend']")).repr,
+      "'sagejs'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "[layer.id for layer in tagged.spec().layers] == " +
+            "[layer.id for layer in tagged.spec().layers]",
+        )
+      ).repr,
+      "True",
+    );
+    const taggedDisplay = await session.evaluate("tagged");
+    const semanticDisplay = await session.evaluate("semantic");
+    assert.deepEqual(taggedDisplay.display, semanticDisplay.display);
 
     const sampled = await session.evaluate(
       [
@@ -813,6 +924,15 @@ async function main() {
 
     assert.equal((await session.evaluate("line2d is line")).repr, "True");
     assert.equal((await session.evaluate("point2d is point")).repr, "True");
+    for (const source of [
+      "g.matplotlib()",
+      "multi_graphics([g]).matplotlib()",
+    ]) {
+      await assert.rejects(
+        session.evaluate(source),
+        /Sage\.js uses Plotly rather than Matplotlib.*save\("figure\.html"\).*save\("figure\.png"\)/s,
+      );
+    }
     assert.match(
       (await session.evaluate("histogram.__doc__")).repr,
       /Compute and draw a histogram/,

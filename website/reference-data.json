@@ -11073,16 +11073,16 @@
         "name": "AffineSpace",
         "qualified": "AffineSpace",
         "path": "src/baselib/polynomial.py",
-        "line": 4249,
+        "line": 4787,
         "excerpt": {
-          "start_line": 4237,
+          "start_line": 4775,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Space of dimension \"\n            + str(self._dimension)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    dimension: int,\n    base: sage.Parent,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"\n    Construct affine space with the requested coordinate names.\n\n    ### Example\n\n    ```sage\n    sage: A = AffineSpace(2, QQ, 'xy')\n    sage: A"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
-          "line": 4260,
+          "line": 4798,
           "source": "A = AffineSpace(2, QQ, 'xy')",
           "want": "",
           "tags": [],
@@ -11098,7 +11098,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
-          "line": 4261,
+          "line": 4799,
           "source": "A",
           "want": "Affine Space of dimension 2 over Rational Field\n",
           "tags": [],
@@ -11114,7 +11114,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
-          "line": 4263,
+          "line": 4801,
           "source": "A.gens()",
           "want": "(x, y)\n",
           "tags": [],
@@ -11183,9 +11183,9 @@
         "name": "animate",
         "qualified": "animate",
         "path": "src/baselib/graphics.py",
-        "line": 3044,
+        "line": 4038,
         "excerpt": {
-          "start_line": 3032,
+          "start_line": 4026,
           "text": "        \"\"\"Save an animated HTML/JSON file through the host graphics hook.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef animate(frames: Any, **options: Any) -> Animation:\n    r\"\"\"\n    Animate an iterable of Sage graphics or plottable symbolic objects.\n\n    The optional `delay` is measured in hundredths of a second, matching\n    SageMath.  `iterations=0` denotes unrestricted interactive replay.\n    \"\"\"\n    return Animation(frames, **options)\n\n\n@runtime.sequence_class\nclass GraphicsArray:\n    \"\"\"A rectangular array of independently rendered graphics objects.\"\"\""
         }
       },
@@ -11243,9 +11243,9 @@
         "name": "arc",
         "qualified": "arc",
         "path": "src/baselib/graphics.py",
-        "line": 2119,
+        "line": 3088,
         "excerpt": {
-          "start_line": 2107,
+          "start_line": 3076,
           "text": "    fill = bool(_option_pop(options, \"fill\", False))\n    if _option_has(options, \"rgbcolor\"):\n        options[\"color\"] = _option_get(options, \"rgbcolor\")\n    elif fill and _option_has(options, \"facecolor\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    elif not fill and _option_has(options, \"edgecolor\"):\n        options[\"color\"] = _option_pop(options, \"edgecolor\")\n    if fill:\n        return polygon(points[:-1], **options)\n    return line(points, **options)\n\n\ndef arc(\n    center: Any,\n    r1: Any,\n    r2: Any = None,\n    angle: Any = 0.0,\n    sector: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a circular or elliptical arc over an angular sector.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    if r2 is None:"
         }
       },
@@ -11303,10 +11303,10 @@
         "name": "arrow",
         "qualified": "arrow",
         "path": "src/baselib/graphics.py",
-        "line": 2442,
+        "line": 3411,
         "excerpt": {
-          "start_line": 2430,
-          "text": "        ) / denominator_norm\n        vertices.append(\n            runtime.math_tuple(\n                [\n                    center_point[0] + center_point[1] * real_part,\n                    center_point[1] * imaginary_part,\n                ]\n            )\n        )\n    return hyperbolic_polygon(vertices, model=\"UHP\", **options)\n\n\ndef arrow(\n    tailpoint: Any,\n    headpoint: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a directed line segment from `tailpoint` to `headpoint`.\"\"\"\n    options = _copy_options(options)\n    tail = _point_pair(tailpoint)\n    head = _point_pair(headpoint)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,"
+          "start_line": 3399,
+          "text": "        ) / denominator_norm\n        vertices.append(\n            runtime.math_tuple(\n                [\n                    center_point[0] + center_point[1] * real_part,\n                    center_point[1] * imaginary_part,\n                ]\n            )\n        )\n    return hyperbolic_polygon(vertices, model=\"UHP\", **options)\n\n\ndef arrow(\n    tailpoint: Any,\n    headpoint: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a directed line segment from `tailpoint` to `headpoint`.\"\"\"\n    options = _copy_options(options)\n    tail = _point_pair(tailpoint)\n    head = _point_pair(headpoint)\n    defaults = {\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 2,\n        \"zorder\": 2,"
         }
       },
       "examples": []
@@ -11406,9 +11406,9 @@
         "name": "arrow3d",
         "qualified": "arrow3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2071,
+        "line": 2724,
         "excerpt": {
-          "start_line": 2059,
+          "start_line": 2712,
           "text": "    if _g3d_option_has(options, \"alpha\") and not _g3d_option_has(options, \"opacity\"):\n        options[\"opacity\"] = _g3d_option_pop(options, \"alpha\")\n    if _g3d_option_has(options, \"rgbcolor\") and not _g3d_option_has(options, \"color\"):\n        options[\"color\"] = _g3d_option_pop(options, \"rgbcolor\")\n    _g3d_option_update(defaults, options)\n    graphics_options = _g3d_graphics_options(defaults)\n    graphic = Graphics3d()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Text3d(str(string), _g3d_point(position), defaults))\n    return graphic\n\n\ndef arrow3d(\n    start: Any,\n    end: Any,\n    width: Any = 1,\n    radius: Any = None,\n    head_radius: Any = None,\n    head_len: Any = None,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw an arrow from `start` to `end` in three dimensions.\"\"\"\n    start_point = _g3d_point(start)\n    end_point = _g3d_point(end)\n    if start_point == end_point:"
         }
       },
@@ -11459,9 +11459,9 @@
         "name": "axes",
         "qualified": "Graphics.axes",
         "path": "src/baselib/graphics.py",
-        "line": 1251,
+        "line": 2106,
         "excerpt": {
-          "start_line": 1239,
+          "start_line": 2094,
           "text": "    def set_aspect_ratio(self, ratio: Any) -> None:\n        if ratio in (\"auto\", \"automatic\"):\n            self._extra_kwds[\"aspect_ratio\"] = \"automatic\"\n            return\n        numeric_ratio = float(ratio)\n        if numeric_ratio <= 0:\n            raise ValueError(\"the aspect ratio must be positive or 'automatic'\")\n        self._extra_kwds[\"aspect_ratio\"] = numeric_ratio\n\n    def aspect_ratio(self) -> Any:\n        return _option_get(self._extra_kwds, \"aspect_ratio\", \"automatic\")\n\n    def axes(self, show: Any = runtime.undefined) -> bool:\n        if show is runtime.undefined:\n            return bool(_option_get(self._extra_kwds, \"axes\", True))\n        self._extra_kwds[\"axes\"] = bool(show)\n        return bool(show)\n\n    def _axis_bound(self, name: str, value: Any) -> Any:\n        if value is not runtime.undefined:\n            self._extra_kwds[name] = float(value)\n            return float(value)\n        if _option_has(self._extra_kwds, name):\n            return _option_get(self._extra_kwds, name)\n        axis = \"xdata\" if name[0] == \"x\" else \"ydata\""
         }
       },
@@ -11519,9 +11519,9 @@
         "name": "bar_chart",
         "qualified": "bar_chart",
         "path": "src/baselib/graphics.py",
-        "line": 2506,
+        "line": 3482,
         "excerpt": {
-          "start_line": 2494,
+          "start_line": 3470,
           "text": "        Point(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\npoints = point\n\n\ndef bar_chart(values: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a vertical bar chart.\"\"\"\n    options = _copy_options(options)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()"
         }
       },
@@ -11579,9 +11579,9 @@
         "name": "bezier_path",
         "qualified": "bezier_path",
         "path": "src/baselib/graphics.py",
-        "line": 2191,
+        "line": 3160,
         "excerpt": {
-          "start_line": 2179,
+          "start_line": 3148,
           "text": "            next_points.append(\n                (\n                    (1.0 - parameter) * points[index][0]\n                    + parameter * points[index + 1][0],\n                    (1.0 - parameter) * points[index][1]\n                    + parameter * points[index + 1][1],\n                )\n            )\n        points = next_points\n    return points[0]\n\n\ndef bezier_path(path: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Return the Bézier path described by Sage's list-of-curves format.\n\n    The first curve contains both endpoints. Each later curve inherits its\n    first endpoint from the preceding curve and supplies zero, one, or two\n    control points followed by its new endpoint.\n    \"\"\"\n    curves = [list(curve) for curve in path]\n    if len(curves) == 0 or len(curves[0]) < 2:\n        raise ValueError(\"a Bezier path needs an initial curve and endpoints\")\n    count = int(_option_pop(options, \"plot_points\", 25))\n    if count < 2:"
         }
       },
@@ -11632,16 +11632,16 @@
         "name": "bezier3d",
         "qualified": "bezier3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2104,
+        "line": 2757,
         "excerpt": {
-          "start_line": 2092,
+          "start_line": 2745,
           "text": "    if head_len is not None:\n        options[\"head_len\"] = float(head_len)\n    graphic = line3d([start_point, end_point], **options)\n    head_options = _g3d_copy_options(options)\n    if _g3d_option_has(head_options, \"rgbcolor\") and not _g3d_option_has(\n        head_options, \"color\"\n    ):\n        head_options[\"color\"] = _g3d_option_get(head_options, \"rgbcolor\")\n    graphic.add_primitive(Arrowhead3d(start_point, end_point, head_options))\n    return graphic\n\n\ndef bezier3d(path: Any, **options: Any) -> Graphics3d:\n    r\"\"\"\n    Draw a three-dimensional Bézier path.\n\n    The first curve contains both endpoints. Later curves inherit their\n    starting point from the previous curve. Each curve may have zero, one,\n    or two control points, matching Sage's `bezier3d` path convention.\n\n    ### Examples\n\n    ```sage\n    sage: path = [[(0,0,0), (.5,.1,.2), (.75,3,-1), (1,1,0)],\n    ....:         [(.5,1,.2), (1,.5,0)], [(.7,.2,.5)]]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics3d.py#dd36051673d700fc-e3b0c44298fc1c14",
-          "line": 2115,
+          "line": 2768,
           "source": "path = [[(0,0,0), (.5,.1,.2), (.75,3,-1), (1,1,0)],\n        [(.5,1,.2), (1,.5,0)], [(.7,.2,.5)]]",
           "want": "",
           "tags": [],
@@ -11657,7 +11657,7 @@
         },
         {
           "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
-          "line": 2117,
+          "line": 2770,
           "source": "bezier3d(path, color='green')",
           "want": "Graphics3d Object\n",
           "tags": [],
@@ -11725,9 +11725,9 @@
         "name": "circle",
         "qualified": "circle",
         "path": "src/baselib/graphics.py",
-        "line": 2027,
+        "line": 2996,
         "excerpt": {
-          "start_line": 2015,
+          "start_line": 2984,
           "text": "        \"#00ff00\",\n        \"#00ffff\",\n        \"#0000ff\",\n        \"#ff00ff\",\n        \"#ff0000\",\n    ],\n}\ncolormaps = Colormaps(_COLORMAP_VALUES)\nfor _colormap_name in _COLORMAP_VALUES:\n    colormaps[_colormap_name] = _option_get(_COLORMAP_VALUES, _colormap_name)\n\n\ndef circle(\n    center: Any,\n    radius: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a circle centered at `center` with the given radius.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    coordinates = _point_pair(center)\n    numeric_radius = float(radius)\n    if numeric_radius < 0:\n        raise ValueError(\"circle radius must be nonnegative\")"
         }
       },
@@ -11838,16 +11838,16 @@
         "name": "complex_plot",
         "qualified": "complex_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4458,
+        "line": 5541,
         "excerpt": {
-          "start_line": 4446,
+          "start_line": 5529,
           "text": "        \"interpolation\": \"catrom\",\n        \"colorbar\": False,\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef complex_plot(\n    function_value: Any,\n    x_range: Any,\n    y_range: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    cmap: Any = None,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n    **options: Any,\n) -> Graphics:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
-          "line": 4481,
+          "line": 5564,
           "source": "complex_plot(lambda z: z^5 + z - 1 + 1/z,\n             (-3, 3), (-3, 3))",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -11917,16 +11917,16 @@
         "name": "complex_to_cmap_rgb",
         "qualified": "complex_to_cmap_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 3779,
+        "line": 4773,
         "excerpt": {
-          "start_line": 3767,
+          "start_line": 4761,
           "text": "    dark_rate: float,\n) -> list[float]:\n    \"\"\"Apply Sage's smooth or HLS contour lightness adjustment.\"\"\"\n    if contoured or tiled:\n        hue_value, lightness, saturation = Color(rgb).hls()\n        lightness = max(0.0, min(1.0, lightness + float(dark_rate) * delta))\n        return list(_hls_to_rgb(hue_value, lightness, saturation))\n    if delta >= 0:\n        return [(1.0 - delta) * float(component) + delta for component in rgb]\n    return [(1.0 + delta) * float(component) for component in rgb]\n\n\ndef complex_to_cmap_rgb(\n    z_values: Any,\n    cmap: Any = \"turbo\",\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"Convert complex values to RGB using a Sage-compatible colormap.\n\n    The argument selects a point in the colormap and the magnitude controls"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#46152e6532be6dff-f73279a4a86d135a",
-          "line": 3800,
+          "line": 4794,
           "source": "complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]",
           "want": "[0.0, 0.0, 0.0]\n",
           "tags": [],
@@ -11942,7 +11942,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4d2343fcf039e18a-4e07408562bedb8b",
-          "line": 3802,
+          "line": 4796,
           "source": "len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])",
           "want": "3\n",
           "tags": [],
@@ -12011,16 +12011,16 @@
         "name": "complex_to_rgb",
         "qualified": "complex_to_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 3617,
+        "line": 4611,
         "excerpt": {
-          "start_line": 3605,
+          "start_line": 4599,
           "text": "        return [\n            bottom + (hue_value - 4.0) * (top - bottom),\n            bottom,\n            top,\n        ]\n    return [\n        top,\n        bottom,\n        bottom + (6.0 - hue_value) * (top - bottom),\n    ]\n\n\ndef complex_to_rgb(\n    z_values: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"\n    Convert a rectangular grid of complex values to Sage domain colors.\n\n    Argument determines hue. Magnitude determines lightness, either smoothly"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#9289b0a4b0fd8aa0-e3b0c44298fc1c14",
-          "line": 3635,
+          "line": 4629,
           "source": "colors = complex_to_rgb([[0, 1, 10]])[0]",
           "want": "",
           "tags": [],
@@ -12036,7 +12036,7 @@
         },
         {
           "id": "src/baselib/graphics.py#890cc4163e199259-739ef7d6d304c0a4",
-          "line": 3636,
+          "line": 4630,
           "source": "len(colors), colors[0], len(colors[1])",
           "want": "(3, [0.0, 0.0, 0], 3)\n",
           "tags": [],
@@ -12104,9 +12104,9 @@
         "name": "contour_plot",
         "qualified": "contour_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4406,
+        "line": 5489,
         "excerpt": {
-          "start_line": 4394,
+          "start_line": 5477,
           "text": "        for index in range(len(primitive.xdata)):\n            theta = primitive.xdata[index]\n            radius = primitive.ydata[index]\n            points.append(\n                (radius * runtime.math.cos(theta), radius * runtime.math.sin(theta))\n            )\n        primitive_options = primitive.options()\n        answer = answer + line(points, **primitive_options)\n    answer.set_extra_kwds(radial.get_extra_kwds())\n    return answer\n\n\ndef contour_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sampled scalar function as a filled contour grid.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 50)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -12157,9 +12157,9 @@
         "name": "cube",
         "qualified": "cube",
         "path": "src/baselib/graphics3d.py",
-        "line": 2536,
+        "line": 3189,
         "excerpt": {
-          "start_line": 2524,
+          "start_line": 3177,
           "text": "    square_root_two = runtime.math.sqrt(2.0)\n    square_root_six = runtime.math.sqrt(6.0)\n    vertices = [\n        [0, 0, 1],\n        [2 * square_root_two / 3, 0, -1 / 3],\n        [-square_root_two / 3, square_root_six / 3, -1 / 3],\n        [-square_root_two / 3, -square_root_six / 3, -1 / 3],\n    ]\n    faces = [[0, 1, 2], [1, 3, 2], [0, 2, 3], [0, 3, 1]]\n    return _solid_mesh(vertices, faces, center, size, **options)\n\n\ndef cube(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    color: Any = None,\n    frame_thickness: Any = 0,\n    frame_color: Any = None,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a cube centered at `center` with side length `size`.\"\"\"\n    vertices = [\n        [-0.5, -0.5, -0.5],\n        [-0.5, -0.5, 0.5],\n        [-0.5, 0.5, -0.5],"
         }
       },
@@ -12209,16 +12209,16 @@
         "name": "Curve",
         "qualified": "Curve",
         "path": "src/baselib/polynomial.py",
-        "line": 4409,
+        "line": 4947,
         "excerpt": {
-          "start_line": 4397,
+          "start_line": 4935,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Plane Curve over \"\n            + str(self._polynomial._parent.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> AffinePlaneCurve:\n    \"\"\"\n    Construct an affine plane curve from a multivariate polynomial.\n\n    ### Example\n\n    ```sage\n    sage: x, y = AffineSpace(2, QQ, 'xy').gens()\n    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\n    sage: C.irreducible_components()\n    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^3 + y^3 - 1]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
-          "line": 4416,
+          "line": 4954,
           "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
           "want": "",
           "tags": [],
@@ -12234,7 +12234,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
-          "line": 4417,
+          "line": 4955,
           "source": "C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))",
           "want": "",
           "tags": [],
@@ -12250,7 +12250,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
-          "line": 4418,
+          "line": 4956,
           "source": "C.irreducible_components()",
           "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n",
           "tags": [],
@@ -12311,9 +12311,9 @@
         "name": "cylindrical_plot3d",
         "qualified": "cylindrical_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2861,
+        "line": 3514,
         "excerpt": {
-          "start_line": 2849,
+          "start_line": 3502,
           "text": ") -> Graphics3d:\n    \"\"\"Plot a radial function in spherical coordinates.\"\"\"\n    transformation = Spherical(\"radius\", [\"azimuth\", \"inclination\"])\n    return plot3d(\n        function_value,\n        urange,\n        vrange,\n        transformation=transformation,\n        **options,\n    )\n\n\ndef cylindrical_plot3d(\n    function_value: Any,\n    urange: Any,\n    vrange: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Plot a radial function in cylindrical coordinates.\"\"\"\n    transformation = Cylindrical(\"radius\", [\"azimuth\", \"height\"])\n    return plot3d(\n        function_value,\n        urange,\n        vrange,\n        transformation=transformation,"
         }
       },
@@ -12371,9 +12371,9 @@
         "name": "density_plot",
         "qualified": "density_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4432,
+        "line": 5515,
         "excerpt": {
-          "start_line": 4420,
+          "start_line": 5503,
           "text": "        \"colorbar\": True,\n        \"cmap\": \"Viridis\",\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef density_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the values of a function of two variables as a color density.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 25)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -13371,9 +13371,9 @@
         "name": "disk",
         "qualified": "disk",
         "path": "src/baselib/graphics.py",
-        "line": 2144,
+        "line": 3113,
         "excerpt": {
-          "start_line": 2132,
+          "start_line": 3101,
           "text": "        r2 = r1\n    if sector is None:\n        sector = (0.0, 2.0 * runtime.math.PI)\n    count = int(_option_pop(options, \"plot_points\", 75))\n    if count < 2:\n        raise ValueError(\"arc plot_points must be at least 2\")\n    return line(\n        _ellipse_points(center, r1, r2, angle, sector, count),\n        **options,\n    )\n\n\ndef disk(\n    center: Any,\n    radius: Any,\n    angle: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a filled or outlined circular/elliptical sector.\"\"\"\n    options = _copy_options(options)\n    coordinates = _point_pair(center)\n    if isinstance(radius, (list, tuple)):\n        if len(radius) != 2:\n            raise ValueError(\"disk radius must be a number or a pair\")\n        r1 = radius[0]"
         }
       },
@@ -13424,9 +13424,9 @@
         "name": "dodecahedron",
         "qualified": "dodecahedron",
         "path": "src/baselib/graphics3d.py",
-        "line": 2694,
+        "line": 3347,
         "excerpt": {
-          "start_line": 2682,
+          "start_line": 3335,
           "text": "def _cross_product(left: Any, right: Any) -> list[float]:\n    return [\n        left[1] * right[2] - left[2] * right[1],\n        left[2] * right[0] - left[0] * right[2],\n        left[0] * right[1] - left[1] * right[0],\n    ]\n\n\ndef _dot_product(left: Any, right: Any) -> float:\n    return left[0] * right[0] + left[1] * right[1] + left[2] * right[2]\n\n\ndef dodecahedron(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a regular dodecahedron centered at `center`.\"\"\"\n    geometry = _icosahedron_geometry()\n    ico_vertices = geometry[0]\n    ico_faces = geometry[1]\n    vertices = []\n    for face in ico_faces:\n        centroid = [\n            sum(ico_vertices[index][coordinate] for index in face) / 3.0"
         }
       },
@@ -13773,9 +13773,9 @@
         "name": "ellipse",
         "qualified": "ellipse",
         "path": "src/baselib/graphics.py",
-        "line": 2092,
+        "line": 3061,
         "excerpt": {
-          "start_line": 2080,
+          "start_line": 3049,
           "text": "        parameter = start + (end - start) * index / count\n        local_x = radius1 * runtime.math.cos(parameter)\n        local_y = radius2 * runtime.math.sin(parameter)\n        points.append(\n            (\n                coordinates[0] + local_x * cosine_rotation - local_y * sine_rotation,\n                coordinates[1] + local_x * sine_rotation + local_y * cosine_rotation,\n            )\n        )\n    return points\n\n\ndef ellipse(\n    center: Any,\n    r1: Any,\n    r2: Any,\n    angle: Any = 0,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return an optionally rotated ellipse centered at `(x, y)`.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    count = int(_option_pop(options, \"plot_points\", 100))\n    if count < 4:"
         }
       },
@@ -14024,9 +14024,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2512,
+        "line": 2522,
         "excerpt": {
-          "start_line": 2500,
+          "start_line": 2510,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
@@ -14077,9 +14077,9 @@
         "name": "frame_labels",
         "qualified": "frame_labels",
         "path": "src/baselib/graphics3d.py",
-        "line": 2320,
+        "line": 2973,
         "excerpt": {
-          "start_line": 2308,
+          "start_line": 2961,
           "text": "        [3, 7],\n        [4, 5],\n        [4, 6],\n        [5, 7],\n        [6, 7],\n    ]\n    answer = Graphics3d()\n    for edge in edges:\n        answer = answer + line3d([vertices[edge[0]], vertices[edge[1]]], **options)\n    return answer\n\n\ndef frame_labels(\n    lower_left: Any,\n    upper_right: Any,\n    label_lower_left: Any,\n    label_upper_right: Any,\n    eps: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw Sage-style endpoint and midpoint labels around a 3D frame.\"\"\"\n    lower = _g3d_point(lower_left)\n    upper = _g3d_point(upper_right)\n    label_lower = _g3d_point(label_lower_left)\n    label_upper = _g3d_point(label_upper_right)"
         }
       },
@@ -14129,9 +14129,9 @@
         "name": "frame3d",
         "qualified": "frame3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2287,
+        "line": 2940,
         "excerpt": {
-          "start_line": 2275,
+          "start_line": 2928,
           "text": "    if _g3d_option_has(options, \"color\"):\n        defaults[\"colors\"] = _g3d_option_pop(options, \"color\")\n    _g3d_option_update(defaults, options)\n    graphics_options = _g3d_graphics_options(defaults)\n    graphic = Graphics3d()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        VectorField3d(points, scaled_vectors, scaled_magnitudes, defaults)\n    )\n    return graphic\n\n\ndef frame3d(\n    lower_left: Any,\n    upper_right: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw the twelve edges of an axis-aligned three-dimensional frame.\"\"\"\n    lower = _g3d_point(lower_left)\n    upper = _g3d_point(upper_right)\n    vertices = []\n    for xvalue in (lower[0], upper[0]):\n        for yvalue in (lower[1], upper[1]):\n            for zvalue in (lower[2], upper[2]):\n                vertices.append(runtime.math_tuple([xvalue, yvalue, zvalue]))"
         }
       },
@@ -14191,16 +14191,16 @@
         "name": "GF",
         "qualified": "GF",
         "path": "src/baselib/finite_fields.py",
-        "line": 983,
+        "line": 1030,
         "excerpt": {
-          "start_line": 971,
-          "text": "        modulus_coefficients,\n        prime_field,\n        element_type,\n        coefficients is not None,\n    )\n    _extension_fields.set(key, field)\n    conversion = _field_coercion(field)\n    runtime.coercion_model.register(sage.ZZ, field, conversion)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
+          "start_line": 1018,
+          "text": "        modulus_coefficients,\n        prime_field,\n        element_type,\n        explicit_modulus,\n    )\n    _extension_fields.set(key, field)\n    conversion = _field_coercion(field)\n    runtime.coercion_model.register(sage.ZZ, field, conversion)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
-          "line": 999,
+          "line": 1046,
           "source": "GF(7)",
           "want": "Finite Field of size 7\n",
           "tags": [],
@@ -14216,7 +14216,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#2680962aa3520480-e3b0c44298fc1c14",
-          "line": 1001,
+          "line": 1048,
           "source": "K.<a> = GF(9)",
           "want": "",
           "tags": [],
@@ -14232,7 +14232,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#b51192cce36ea46d-6b86b273ff34fce1",
-          "line": 1002,
+          "line": 1049,
           "source": "a^8",
           "want": "1\n",
           "tags": [],
@@ -14248,7 +14248,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#248946a81e60d7c2-5c17eac5f0f80928",
-          "line": 1004,
+          "line": 1051,
           "source": "K['x']",
           "want": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n",
           "tags": [],
@@ -19301,7 +19301,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 4264,
+          "line": 5294,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -19317,7 +19317,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 4265,
+          "line": 5295,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -20989,9 +20989,9 @@
         "name": "cardinality",
         "qualified": "VectorSubspaceParent.cardinality",
         "path": "src/baselib/matrix.py",
-        "line": 1701,
+        "line": 2219,
         "excerpt": {
-          "start_line": 1689,
+          "start_line": 2207,
           "text": "\n    def _finite_field_order(self) -> int:\n        if getattr(self.base_ring(), \"_kind\", None) not in [\"GF\", \"GF_EXTENSION\"]:\n            raise TypeError(\"vector-space enumeration requires a finite base field\")\n        return int(_untyped(self.base_ring()).order())\n\n    def _finite_field_elements(self) -> list[Any]:\n        self._finite_field_order()\n        if self._enumeration_elements is None:\n            self._enumeration_elements = list(_untyped(self.base_ring()))\n        return self._enumeration_elements\n\n    def cardinality(self) -> int:\n        return self._finite_field_order() ** self.dimension()\n\n    order = cardinality\n\n    def __len__(self) -> int:\n        return self.cardinality()\n\n    def _finite_element(self, index: int) -> Vector:\n        if not runtime.is_exact_integer(index):\n            raise TypeError(\"vector-space indices must be integers or slices\")\n        index = int(index)\n        size = self.cardinality()"
         }
       },
@@ -21538,16 +21538,16 @@
         "name": "graphics_array",
         "qualified": "graphics_array",
         "path": "src/baselib/graphics.py",
-        "line": 3162,
+        "line": 4156,
         "excerpt": {
-          "start_line": 3150,
+          "start_line": 4144,
           "text": "        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n\ndef graphics_array(\n    graphics: Any,\n    rows: Any = None,\n    columns: Any = None,\n) -> GraphicsArray:\n    r\"\"\"\n    Arrange several two-dimensional graphics objects in a rectangular grid.\n\n    The input may already be a nested list of rows. For a flat list, specify\n    either `rows` or `columns`; omitting both creates one horizontal row.\n\n    ### Examples\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#55d251b726925a2a-e3b0c44298fc1c14",
-          "line": 3176,
+          "line": 4170,
           "source": "G = graphics_array([plot(sin(x), (x, 0, 2*pi)), circle((0, 0), 1)])",
           "want": "",
           "tags": [],
@@ -21563,7 +21563,7 @@
         },
         {
           "id": "src/baselib/graphics.py#b4bac3d2ef3ddf50-cf4dabed2ce0f4fc",
-          "line": 3177,
+          "line": 4171,
           "source": "G.nrows(), G.ncols()",
           "want": "(1, 2)\n",
           "tags": [],
@@ -21625,7 +21625,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 4264,
+          "line": 5294,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -21641,7 +21641,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 4265,
+          "line": 5295,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -24439,16 +24439,16 @@
         "name": "histogram",
         "qualified": "histogram",
         "path": "src/baselib/graphics.py",
-        "line": 2524,
+        "line": 3500,
         "excerpt": {
-          "start_line": 2512,
+          "start_line": 3488,
           "text": "        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Bar([float(value) for value in values], defaults))\n    return graphic\n\n\ndef histogram(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Compute and draw a histogram of numerical data.\n\n    Common Sage options include `bins`, `range`, `density`, `cumulative`,\n    `color`, `edgecolor`, `alpha`, and `label`.\n\n    ### Examples\n\n    ```sage\n    sage: histogram([1, 1, 2, 3], bins=3)\n    Graphics object consisting of 1 graphics primitive\n    ```"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
-          "line": 2534,
+          "line": 3510,
           "source": "histogram([1, 1, 2, 3], bins=3)",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -24516,9 +24516,9 @@
         "name": "hue",
         "qualified": "hue",
         "path": "src/baselib/graphics.py",
-        "line": 1682,
+        "line": 2651,
         "excerpt": {
-          "start_line": 1670,
+          "start_line": 2639,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Line(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef hue(\n    value: Any,\n    saturation: Any = 1,\n    brightness: Any = 1,\n) -> tuple[float, float, float]:\n    \"\"\"Return an RGB triple from hue, saturation, and brightness.\"\"\"\n    h = float(value) % 1.0\n    s = max(0.0, min(1.0, float(saturation)))\n    v = max(0.0, min(1.0, float(brightness)))\n    scaled = h * 6.0\n    sector = int(runtime.math.floor(scaled))\n    fraction = scaled - sector\n    p = v * (1.0 - s)"
         }
       },
@@ -24576,9 +24576,9 @@
         "name": "hyperbolic_arc",
         "qualified": "hyperbolic_arc",
         "path": "src/baselib/graphics.py",
-        "line": 2317,
+        "line": 3286,
         "excerpt": {
-          "start_line": 2305,
+          "start_line": 3274,
           "text": "        angle = start_angle + delta * index / float(resolution)\n        points.append(\n            runtime.math_tuple(\n                [\n                    center_x + radius * runtime.math.cos(angle),\n                    center_y + radius * runtime.math.sin(angle),\n                ]\n            )\n        )\n    return points\n\n\ndef hyperbolic_arc(\n    a: Any,\n    b: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")"
         }
       },
@@ -24636,9 +24636,9 @@
         "name": "hyperbolic_polygon",
         "qualified": "hyperbolic_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 2334,
+        "line": 3303,
         "excerpt": {
-          "start_line": 2322,
+          "start_line": 3291,
           "text": ") -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_polygon(\n    points: Any,\n    model: str = \"UHP\",\n    resolution: int = 100,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a polygon whose sides are hyperbolic geodesics.\"\"\"\n    vertices = list(points)\n    if len(vertices) == 0:\n        raise ValueError(\"cannot plot the empty polygon\")\n    if len(vertices) < 2:\n        raise ValueError(\"a hyperbolic polygon needs at least two vertices\")\n    sampled = []"
         }
       },
@@ -24696,9 +24696,9 @@
         "name": "hyperbolic_regular_polygon",
         "qualified": "hyperbolic_regular_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 2381,
+        "line": 3350,
         "excerpt": {
-          "start_line": 2369,
+          "start_line": 3338,
           "text": "\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,\n    i_angle: Any,\n    center: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a regular hyperbolic polygon in the upper-half-plane model.\"\"\"\n    count = int(sides)\n    angle = float(i_angle)\n    if count <= 2:\n        raise ValueError(\"degenerated polygons (sides<=2) are not supported\")\n    if angle <= 0 or angle >= _PI:\n        raise ValueError(\"interior angle must be in the interval (0, pi)\")"
         }
       },
@@ -24756,9 +24756,9 @@
         "name": "hyperbolic_triangle",
         "qualified": "hyperbolic_triangle",
         "path": "src/baselib/graphics.py",
-        "line": 2370,
+        "line": 3339,
         "excerpt": {
-          "start_line": 2358,
+          "start_line": 3327,
           "text": "    options = _copy_options(options)\n    fill = bool(_option_pop(options, \"fill\", False))\n    if fill:\n        answer = polygon(sampled, **options)\n    else:\n        answer = line(sampled, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,"
         }
       },
@@ -24809,9 +24809,9 @@
         "name": "icosahedron",
         "qualified": "icosahedron",
         "path": "src/baselib/graphics3d.py",
-        "line": 2672,
+        "line": 3325,
         "excerpt": {
-          "start_line": 2660,
+          "start_line": 3313,
           "text": "        [3, 2, 6],\n        [3, 6, 8],\n        [3, 8, 9],\n        [4, 9, 5],\n        [2, 4, 11],\n        [6, 2, 10],\n        [8, 6, 7],\n        [9, 8, 1],\n    ]\n    return [vertices, faces]\n\n\ndef icosahedron(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a regular icosahedron centered at `center`.\"\"\"\n    geometry = _icosahedron_geometry()\n    return _solid_mesh(geometry[0], geometry[1], center, size, **options)\n\n\ndef _cross_product(left: Any, right: Any) -> list[float]:\n    return [\n        left[1] * right[2] - left[2] * right[1],"
         }
       },
@@ -24869,9 +24869,9 @@
         "name": "implicit_plot",
         "qualified": "implicit_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4591,
+        "line": 5674,
         "excerpt": {
-          "start_line": 4579,
+          "start_line": 5662,
           "text": "    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphics_options[\"xmin\"] = xmin\n    graphics_options[\"xmax\"] = xmax\n    graphics_options[\"ymin\"] = ymin\n    graphics_options[\"ymax\"] = ymax\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(ComplexPlot(rgb_data, (xmin, xmax), (ymin, ymax), defaults))\n    return graphic\n\n\ndef implicit_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot the plane curve where a function is zero or an equality holds.\n    \"\"\"\n    if hasattr(function_value, \"_plot_zero_set_expression\"):\n        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]"
         }
       },
@@ -24931,16 +24931,16 @@
         "name": "implicit_plot3d",
         "qualified": "implicit_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 3143,
+        "line": 3796,
         "excerpt": {
-          "start_line": 3131,
+          "start_line": 3784,
           "text": "    points = []\n    for value in values:\n        points.append(\n            (\n                _g3d_finite_value(callables[0](value)),\n                _g3d_finite_value(callables[1](value)),\n                _g3d_finite_value(callables[2](value)),\n            )\n        )\n    return line3d(points, **options)\n\n\ndef implicit_plot3d(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    zrange: Any,\n    **options: Any,\n) -> Graphics3d:\n    r\"\"\"\n    Plot an implicit surface in three variables.\n\n    The first argument may be an expression interpreted as `f = 0` or a\n    symbolic equality, which is reduced to `left - right = 0`. Each range\n    has Sage form `(variable, minimum, maximum)` or a three-item list."
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics3d.py#45ca1b4721d9ee1e-4e05322c10ee7e21",
-          "line": 3160,
+          "line": 3813,
           "source": "var('x,y,z')",
           "want": "(x, y, z)\n",
           "tags": [],
@@ -24956,7 +24956,7 @@
         },
         {
           "id": "src/baselib/graphics3d.py#a9813e2756244916-0c3a441869f788d9",
-          "line": 3162,
+          "line": 3815,
           "source": "implicit_plot3d(x^2+y^2+z^2 == 1,\n    (x,-2,2), (y,-2,2), (z,-2,2))",
           "want": "Graphics3d Object\n",
           "tags": [],
@@ -25018,7 +25018,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics3d.py#5cc8a84cafffcac4-e3b0c44298fc1c14",
-          "line": 1914,
+          "line": 2567,
           "source": "S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])",
           "want": "",
           "tags": [],
@@ -25034,7 +25034,7 @@
         },
         {
           "id": "src/baselib/graphics3d.py#802eb5eae0add48b-f3e49bcac468b5df",
-          "line": 1915,
+          "line": 2568,
           "source": "S.index_faces()",
           "want": "[[0, 1, 2]]\n",
           "tags": [],
@@ -25050,7 +25050,7 @@
         },
         {
           "id": "src/baselib/graphics3d.py#47b1824ff9234cae-6671064d959f5283",
-          "line": 1917,
+          "line": 2570,
           "source": "S.vertex_list()",
           "want": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n",
           "tags": [],
@@ -25170,10 +25170,10 @@
         "name": "line",
         "qualified": "line",
         "path": "src/baselib/graphics.py",
-        "line": 1655,
+        "line": 2622,
         "excerpt": {
-          "start_line": 1643,
-          "text": "\ndef _graphics_options(options: dict[str, Any]) -> dict[str, Any]:\n    answer = {}\n    for name in _GRAPHICS_OPTION_NAMES:\n        if _option_has(options, name):\n            answer[name] = _option_pop(options, name)\n    for name in list(runtime.object.keys(options)):\n        if name[:7] == \"legend_\" and name not in (\"legend_label\", \"legend_color\"):\n            answer[name] = _option_pop(options, name)\n    return answer\n\n\ndef line(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a line through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,\n        \"legend_label\": None,\n        \"linestyle\": \"-\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")"
+          "start_line": 2610,
+          "text": "\ndef _graphics_options(options: dict[str, Any]) -> dict[str, Any]:\n    answer = {}\n    for name in _GRAPHICS_OPTION_NAMES:\n        if _option_has(options, name):\n            answer[name] = _option_pop(options, name)\n    for name in list(runtime.object.keys(options)):\n        if name[:7] == \"legend_\" and name not in (\"legend_label\", \"legend_color\"):\n            answer[name] = _option_pop(options, name)\n    return answer\n\n\ndef line(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a line through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):"
         }
       },
       "examples": []
@@ -25273,9 +25273,9 @@
         "name": "line3d",
         "qualified": "line3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 1808,
+        "line": 2461,
         "excerpt": {
-          "start_line": 1796,
+          "start_line": 2449,
           "text": "        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n\ndef line3d(points: Any, **options: Any) -> Graphics3d:\n    \"\"\"Return a line through three-dimensional `points`.\"\"\"\n    options = _g3d_copy_options(options)\n    normalized = _g3d_normalize_points(points)\n    arrow_head = bool(_g3d_option_pop(options, \"arrow_head\", False))\n    defaults = {\n        \"opacity\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 2,\n        \"legend_label\": None,\n    }\n    if _g3d_option_has(options, \"alpha\") and not _g3d_option_has(options, \"opacity\"):\n        options[\"opacity\"] = _g3d_option_pop(options, \"alpha\")"
         }
       },
@@ -25333,9 +25333,9 @@
         "name": "list_plot",
         "qualified": "list_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4937,
+        "line": 6020,
         "excerpt": {
-          "start_line": 4925,
+          "start_line": 6008,
           "text": "    returned semantic object using Plotly-compatible HTML/data, without\n    requiring a Jupyter extension.\n    \"\"\"\n\n    answer = value\n    for other in others:\n        answer = answer + other\n    if len(options) and hasattr(answer, \"set_extra_kwds\"):\n        answer.set_extra_kwds(options)\n    return answer\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
         }
       },
@@ -25393,9 +25393,9 @@
         "name": "list_plot_loglog",
         "qualified": "list_plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 5011,
+        "line": 6094,
         "excerpt": {
-          "start_line": 4999,
+          "start_line": 6082,
           "text": "\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25453,9 +25453,9 @@
         "name": "list_plot_semilogx",
         "qualified": "list_plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 5021,
+        "line": 6104,
         "excerpt": {
-          "start_line": 5009,
+          "start_line": 6092,
           "text": "\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25513,9 +25513,9 @@
         "name": "list_plot_semilogy",
         "qualified": "list_plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 5031,
+        "line": 6114,
         "excerpt": {
-          "start_line": 5019,
+          "start_line": 6102,
           "text": "\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\nline2d = line\narrow2d = arrow\npoint2d = point"
         }
       },
@@ -25567,9 +25567,9 @@
         "name": "list_plot3d",
         "qualified": "list_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2878,
+        "line": 3531,
         "excerpt": {
-          "start_line": 2866,
+          "start_line": 3519,
           "text": ") -> Graphics3d:\n    \"\"\"Plot a radial function in cylindrical coordinates.\"\"\"\n    transformation = Cylindrical(\"radius\", [\"azimuth\", \"height\"])\n    return plot3d(\n        function_value,\n        urange,\n        vrange,\n        transformation=transformation,\n        **options,\n    )\n\n\ndef list_plot3d(\n    values: Any,\n    interpolation_type: str = \"default\",\n    point_list: Any = None,\n    **options: Any,\n) -> Graphics3d:\n    r\"\"\"\n    Plot a matrix, rectangular array, or list of `(x, y, z)` samples.\n\n    Rectangular data preserves its exact grid.  Scattered samples use\n    Plotly's planar Delaunay triangulation; one or two samples become a point\n    or line exactly as in Sage.  The `default` and `linear` interpolation\n    modes are currently supported; higher-order Clough--Tocher and spline"
         }
       },
@@ -25785,16 +25785,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 6825,
+        "line": 8212,
         "excerpt": {
-          "start_line": 6813,
+          "start_line": 8200,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 6836,
+          "line": 8223,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -25810,7 +25810,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 6837,
+          "line": 8224,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -25826,7 +25826,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 6839,
+          "line": 8226,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -25894,9 +25894,9 @@
         "name": "matrix_plot",
         "qualified": "matrix_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4679,
+        "line": 5762,
         "excerpt": {
-          "start_line": 4667,
+          "start_line": 5750,
           "text": "        \"colorbar\": False,\n        \"alpha\": 1,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef matrix_plot(\n    matrix_value: Any,\n    xrange: Any = None,\n    yrange: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a matrix or rectangular array as a color-valued grid.\"\"\"\n    if hasattr(matrix_value, \"nrows\") and hasattr(matrix_value, \"ncols\"):\n        row_count = int(matrix_value.nrows())\n        column_count = int(matrix_value.ncols())\n        values = [\n            [float(matrix_value[row, column]) for column in range(column_count)]\n            for row in range(row_count)"
         }
       },
@@ -26054,9 +26054,9 @@
         "name": "Mod",
         "qualified": "Mod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1095,
+        "line": 1142,
         "excerpt": {
-          "start_line": 1083,
+          "start_line": 1130,
           "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> IntegerModElement:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    return Zmod(modulus)(value)\n\n\nruntime.set_class_repr(FiniteFieldElement, \"<class 'FiniteFieldElement'>\")\nruntime.set_class_repr(\n    IntegerModElement, \"<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>\"\n)\nruntime.set_class_repr(\n    FiniteFieldExtensionElement,\n    \"<class 'sage.rings.finite_rings.element_givaro.\" + \"FiniteField_givaroElement'>\",\n)"
         }
       },
@@ -26240,9 +26240,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 4092,
+        "line": 4056,
         "excerpt": {
-          "start_line": 4080,
+          "start_line": 4044,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -26321,16 +26321,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 3242,
+        "line": 3206,
         "excerpt": {
-          "start_line": 3230,
+          "start_line": 3194,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 3250,
+          "line": 3214,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -26346,7 +26346,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 3251,
+          "line": 3215,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -26435,9 +26435,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3923,
+        "line": 3887,
         "excerpt": {
-          "start_line": 3911,
+          "start_line": 3875,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -26518,16 +26518,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 3511,
+        "line": 3475,
         "excerpt": {
-          "start_line": 3499,
+          "start_line": 3463,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 3531,
+          "line": 3495,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -26543,7 +26543,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 3532,
+          "line": 3496,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -26559,7 +26559,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 3539,
+          "line": 3503,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -26575,7 +26575,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 3540,
+          "line": 3504,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -26591,7 +26591,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 3541,
+          "line": 3505,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -26681,16 +26681,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 3267,
+        "line": 3231,
         "excerpt": {
-          "start_line": 3255,
+          "start_line": 3219,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 3280,
+          "line": 3244,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -26706,7 +26706,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 3281,
+          "line": 3245,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -26722,7 +26722,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 3282,
+          "line": 3246,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -26786,16 +26786,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2440,
+        "line": 2404,
         "excerpt": {
-          "start_line": 2428,
+          "start_line": 2392,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 3911,
+          "line": 3875,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -26811,7 +26811,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 3912,
+          "line": 3876,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -26900,9 +26900,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3764,
+        "line": 3728,
         "excerpt": {
-          "start_line": 3752,
+          "start_line": 3716,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -26981,9 +26981,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 3345,
+        "line": 3309,
         "excerpt": {
-          "start_line": 3333,
+          "start_line": 3297,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -27069,16 +27069,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3594,
+        "line": 3558,
         "excerpt": {
-          "start_line": 3582,
+          "start_line": 3546,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 3604,
+          "line": 3568,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -27094,7 +27094,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 3605,
+          "line": 3569,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -27110,7 +27110,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 3606,
+          "line": 3570,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -27126,7 +27126,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 3608,
+          "line": 3572,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -27215,9 +27215,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3758,
+        "line": 3722,
         "excerpt": {
-          "start_line": 3746,
+          "start_line": 3710,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -27296,9 +27296,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 3392,
+        "line": 3356,
         "excerpt": {
-          "start_line": 3380,
+          "start_line": 3344,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -27357,16 +27357,16 @@
         "name": "multi_graphics",
         "qualified": "multi_graphics",
         "path": "src/baselib/graphics.py",
-        "line": 2782,
+        "line": 3776,
         "excerpt": {
-          "start_line": 2770,
+          "start_line": 3764,
           "text": "        \"\"\"Save through the host graphics hook when one is installed.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef multi_graphics(graphics_list: Any) -> MultiGraphics:\n    r\"\"\"\n    Draw graphics at arbitrary positions on one common canvas.\n\n    Each entry is either a `Graphics` object at Sage's default full-canvas\n    position or `(graphic, (left, bottom, width, height))`, with coordinates\n    expressed as fractions of the canvas.\n\n    ### Examples\n\n    ```sage\n    sage: g1 = plot(sin(x), (x, -pi, pi))\n    sage: g2 = circle((0, 0), 1, color='red')"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#e56965e227de7acb-e3b0c44298fc1c14",
-          "line": 2793,
+          "line": 3787,
           "source": "g1 = plot(sin(x), (x, -pi, pi))",
           "want": "",
           "tags": [],
@@ -27382,7 +27382,7 @@
         },
         {
           "id": "src/baselib/graphics.py#6cdbefe97dc33336-e3b0c44298fc1c14",
-          "line": 2794,
+          "line": 3788,
           "source": "g2 = circle((0, 0), 1, color='red')",
           "want": "",
           "tags": [],
@@ -27398,7 +27398,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
-          "line": 2795,
+          "line": 3789,
           "source": "multi_graphics([g1, (g2, (0.2, 0.55, 0.3, 0.3))])",
           "want": "Multigraphics with 2 elements\n",
           "tags": [],
@@ -27570,9 +27570,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 1680,
+        "line": 1690,
         "excerpt": {
-          "start_line": 1668,
+          "start_line": 1678,
           "text": "        def evaluate(value: float) -> float:\n            evaluated = runtime.reflect.apply(\n                function_value,\n                runtime.undefined,\n                [value] + parameters,\n            )\n            return float(evaluated)\n\n        return evaluate\n    return None\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -27623,9 +27623,9 @@
         "name": "octahedron",
         "qualified": "octahedron",
         "path": "src/baselib/graphics3d.py",
-        "line": 2595,
+        "line": 3248,
         "excerpt": {
-          "start_line": 2583,
+          "start_line": 3236,
           "text": "                coordinates[2] + half,\n            ]\n        )\n        answer = answer + frame3d(\n            frame_lower,\n            frame_upper,\n            thickness=float(frame_thickness),\n            color=actual_frame_color,\n        )\n    return answer\n\n\ndef octahedron(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a regular octahedron centered at `center`.\"\"\"\n    vertices = [\n        [1, 0, 0],\n        [-1, 0, 0],\n        [0, 1, 0],\n        [0, -1, 0],\n        [0, 0, 1],\n        [0, 0, -1],"
         }
       },
@@ -27679,9 +27679,9 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 3104,
+        "line": 3068,
         "excerpt": {
-          "start_line": 3092,
+          "start_line": 3056,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
@@ -27800,16 +27800,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2440,
+        "line": 2404,
         "excerpt": {
-          "start_line": 2428,
+          "start_line": 2392,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 2451,
+          "line": 2415,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -27873,9 +27873,9 @@
         "name": "higher_weight_presentation",
         "qualified": "P1List.higher_weight_presentation",
         "path": "src/baselib/modular.py",
-        "line": 2166,
+        "line": 2169,
         "excerpt": {
-          "start_line": 2154,
+          "start_line": 2157,
           "text": "                self._native, self._action_index(index)\n            )\n        )\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        return ManinRelations(self, modulus)\n\n    def manin_presentation(self) -> ManinPresentation:\n        if self._manin_presentation_cache is None:\n            self._manin_presentation_cache = ManinPresentation(self)\n        return self._manin_presentation_cache\n\n    def higher_weight_presentation(\n        self,\n        weight: Any,\n        sign: Any = 0,\n    ) -> Any:\n        \"\"\"Return the exact triple-Manin-symbol presentation over `QQ`.\"\"\"\n        weight = _positive_integer(weight, \"modular-symbol weight\")\n        if weight < 2:\n            raise ValueError(\"modular-symbol weight must be at least 2\")\n        sign = _exact_integer(sign, \"sign\")\n        if sign not in [-1, 0, 1]:\n            raise ValueError(\"sign must be -1, 0, or 1\")\n        key = str(weight) + \":\" + str(sign)"
         }
       },
@@ -27933,10 +27933,10 @@
         "name": "parametric_plot",
         "qualified": "parametric_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4331,
+        "line": 5414,
         "excerpt": {
-          "start_line": 4319,
-          "text": "            randomize=randomize,\n            initial_points=initial_points,\n        )\n        line_options = _copy_options(options)\n        color_value = color_values[index % len(color_values)]\n        if color_value is not None:\n            line_options[\"rgbcolor\"] = color_value\n        answer = answer + line(points, **line_options)\n    answer.set_extra_kwds(graphics_options)\n    return answer\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a two-component parametric plane curve.\"\"\"\n    components = list(functions)\n    if len(components) != 2:\n        raise ValueError(\"parametric_plot() requires exactly two components\")\n    minimum, maximum = _plot_range(range_args)\n    variable = _plot_variable(range_args)\n    count = int(_option_pop(options, \"plot_points\", 200))\n    if count < 2:"
+          "start_line": 5402,
+          "text": "        \"constructor\": \"plot\",\n        \"source\": {\"expressions\": [str(value) for value in functions]},\n        \"ranges\": [[xmin, xmax]],\n        \"sampling\": {} if sampling_context is None else sampling_context,\n    }\n    return answer.with_plot_spec_context(\n        provenance=provenance,\n        source_intent={\"frontend_constructor\": \"plot\"},\n        diagnostics=_curve_diagnostics(all_diagnostics),\n    )\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a two-component parametric plane curve.\"\"\"\n    components = list(functions)\n    if len(components) != 2:\n        raise ValueError(\"parametric_plot() requires exactly two components\")\n    minimum, maximum = _plot_range(range_args)\n    variable = _plot_variable(range_args)\n    count = int(_option_pop(options, \"plot_points\", 200))\n    if count < 2:"
         }
       },
       "examples": []
@@ -27985,9 +27985,9 @@
         "name": "parametric_plot3d",
         "qualified": "parametric_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 3104,
+        "line": 3757,
         "excerpt": {
-          "start_line": 3092,
+          "start_line": 3745,
           "text": "        )\n    answer = _g3d_surface(parametrization, surface_trange, surface_phirange, **options)\n    if show_curve:\n        answer = answer + parametric_plot3d(\n            components,\n            trange,\n            thickness=2,\n            rgbcolor=(1, 0, 0),\n        )\n    return answer\n\n\ndef parametric_plot3d(\n    functions: Sequence[Any],\n    urange: Any,\n    vrange: Any = None,\n    plot_points: Any = \"automatic\",\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Plot a parametric space curve or parametric surface.\"\"\"\n    components = list(functions)\n    if len(components) != 3:\n        raise ValueError(\"parametric_plot3d requires exactly three components\")\n    if vrange is not None:\n        options[\"plot_points\"] = plot_points"
         }
       },
@@ -28140,16 +28140,16 @@
         "name": "plot",
         "qualified": "TimeSeries.plot",
         "path": "src/baselib/graphics.py",
-        "line": 3296,
+        "line": 4290,
         "excerpt": {
-          "start_line": 3284,
+          "start_line": 4278,
           "text": "            maximum = _option_get(options, \"max\")\n        lower = None if minimum is None else float(minimum)\n        upper = None if maximum is None else float(maximum)\n        return TimeSeries(\n            [\n                value\n                for value in self._values\n                if (lower is None or value >= lower)\n                and (upper is None or value <= upper)\n            ]\n        )\n\n    def plot(self, **options: Any) -> Graphics:\n        return list_plot(self._values, plotjoined=True, **options)\n\n    def plot_histogram(self, **options: Any) -> Graphics:\n        options = _copy_options(options)\n        graphic = Graphics()\n        graphic.set_extra_kwds(_graphics_options(options))\n        graphic.add_primitive(Histogram(self._values, options))\n        return graphic\n\n\nclass Spline:\n    \"\"\"A natural cubic spline through a sequence of planar points.\"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 4264,
+          "line": 5294,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -28165,7 +28165,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 4265,
+          "line": 5295,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -28233,9 +28233,9 @@
         "name": "plot_loglog",
         "qualified": "plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 4981,
+        "line": 6064,
         "excerpt": {
-          "start_line": 4969,
+          "start_line": 6052,
           "text": "            if index + 1 < len(points):\n                path.append((points[index + 1][0], points[index][1]))\n        return line(path, **options)\n    answer = Graphics()\n    for index in range(len(points) - 1):\n        answer = answer + line(\n            [points[index], (points[index + 1][0], points[index][1])],\n            **options,\n        )\n    return answer\n\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28293,9 +28293,9 @@
         "name": "plot_semilogx",
         "qualified": "plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 4991,
+        "line": 6074,
         "excerpt": {
-          "start_line": 4979,
+          "start_line": 6062,
           "text": "\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28353,9 +28353,9 @@
         "name": "plot_semilogy",
         "qualified": "plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 5001,
+        "line": 6084,
         "excerpt": {
-          "start_line": 4989,
+          "start_line": 6072,
           "text": "\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -28413,9 +28413,9 @@
         "name": "plot_slope_field",
         "qualified": "plot_slope_field",
         "path": "src/baselib/graphics.py",
-        "line": 4772,
+        "line": 5855,
         "excerpt": {
-          "start_line": 4760,
+          "start_line": 5843,
           "text": "        PlotField(\n            sampled[0],\n            sampled[1],\n            sampled[2],\n            sampled[3],\n            sampled[4],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef plot_slope_field(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot short normalized line segments with slope `function_value`.\n    \"\"\"\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])\n    slope = _plot_callable_2d(function_value, xvariable, yvariable)\n"
         }
       },
@@ -28473,9 +28473,9 @@
         "name": "plot_step_function",
         "qualified": "plot_step_function",
         "path": "src/baselib/graphics.py",
-        "line": 4956,
+        "line": 6039,
         "excerpt": {
-          "start_line": 4944,
+          "start_line": 6027,
           "text": "    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:\n        points = [(float(index), float(values[index])) for index in range(len(values))]\n    if plotjoined:\n        return line(points, **options)\n    return point(points, **options)\n\n\ndef plot_step_function(\n    values: Any,\n    vertical_lines: bool = True,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the step function defined by a sequence of `(x, y)` pairs.\"\"\"\n    points = sorted([_point_pair(value) for value in values])\n    if len(points) <= 1:\n        return line([], **options)\n    if vertical_lines:\n        path = []\n        for index in range(len(points)):\n            path.append(points[index])"
         }
       },
@@ -28533,9 +28533,9 @@
         "name": "plot_vector_field",
         "qualified": "plot_vector_field",
         "path": "src/baselib/graphics.py",
-        "line": 4731,
+        "line": 5814,
         "excerpt": {
-          "start_line": 4719,
+          "start_line": 5802,
           "text": "        \"flip_y\": True,\n        \"ticks_integer\": True,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, _copy_options(options))\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, values, defaults))\n    return graphic\n\n\ndef plot_vector_field(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot a two-dimensional vector field on a rectangular sample grid.\n\n    The two components may be symbolic expressions or callables.  Invalid\n    values are omitted, matching Sage's masked-vector behavior.\n    \"\"\"\n    defaults = {"
         }
       },
@@ -28585,16 +28585,16 @@
         "name": "plot_vector_field3d",
         "qualified": "plot_vector_field3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2185,
+        "line": 2838,
         "excerpt": {
-          "start_line": 2173,
+          "start_line": 2826,
           "text": "            control1 = controls[0]\n            control2 = controls[-1]\n            points = [\n                tuple(cubic_point(start, control1, control2, end, parameter))\n                for parameter in _g3d_linspace(0.0, 1.0, plot_points)\n            ]\n            segment = line3d(points, **options)\n        result = result + segment\n        previous = end\n    return result\n\n\ndef plot_vector_field3d(\n    functions: Sequence[Any],\n    xrange: Any,\n    yrange: Any,\n    zrange: Any,\n    plot_points: Any = 5,\n    colors: Any = \"jet\",\n    center_arrows: bool = False,\n    **options: Any,\n) -> Graphics3d:\n    r\"\"\"\n    Plot a sampled vector field in three-dimensional space.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics3d.py#c1dc3818406b3428-e3b0c44298fc1c14",
-          "line": 2205,
+          "line": 2858,
           "source": "x, y, z = var('x y z')",
           "want": "",
           "tags": [],
@@ -28610,7 +28610,7 @@
         },
         {
           "id": "src/baselib/graphics3d.py#829c30fb7cef59e2-0c3a441869f788d9",
-          "line": 2206,
+          "line": 2859,
           "source": "plot_vector_field3d((x*cos(z), -y*cos(z), sin(z)),\n    (x,0,pi), (y,0,pi), (z,0,pi), plot_points=4)",
           "want": "Graphics3d Object\n",
           "tags": [],
@@ -28670,9 +28670,9 @@
         "name": "plot3d",
         "qualified": "plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2804,
+        "line": 3457,
         "excerpt": {
-          "start_line": 2792,
+          "start_line": 3445,
           "text": "    if _g3d_option_has(options, \"alpha\") and not _g3d_option_has(options, \"opacity\"):\n        options[\"opacity\"] = _g3d_option_pop(options, \"alpha\")\n    if _g3d_option_has(options, \"rgbcolor\") and not _g3d_option_has(options, \"color\"):\n        options[\"color\"] = _g3d_option_pop(options, \"rgbcolor\")\n    _g3d_option_update(defaults, options)\n    graphics_options = _g3d_graphics_options(defaults)\n    graphic = Graphics3d()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Surface3d(xdata, ydata, zdata, defaults))\n    return graphic\n\n\ndef plot3d(\n    func: Any,\n    urange: Any,\n    vrange: Any,\n    adaptive: bool = False,\n    transformation: Any = None,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Plot a function of two variables as a three-dimensional surface.\"\"\"\n    if adaptive:\n        raise NotImplementedError(\"adaptive plot3d refinement is not implemented yet\")\n    uvariable, _umin, _umax = _g3d_range(urange)\n    vvariable, _vmin, _vmax = _g3d_range(vrange)"
         }
       },
@@ -28730,10 +28730,10 @@
         "name": "point",
         "qualified": "point",
         "path": "src/baselib/graphics.py",
-        "line": 2474,
+        "line": 3446,
         "excerpt": {
-          "start_line": 2462,
-          "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Arrow(\n            [tail[0], head[0]],\n            [tail[1], head[1]],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef point(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing one or more points.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"size\": 10,\n        \"legend_label\": None,\n        \"marker\": \"circle\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")"
+          "start_line": 3434,
+          "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Arrow(\n            [tail[0], head[0]],\n            [tail[1], head[1]],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef point(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing one or more points.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"size\": 10,\n        \"faceted\": False,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"marker\": \"o\",\n        \"markeredgecolor\": None,"
         }
       },
       "examples": []
@@ -28833,9 +28833,9 @@
         "name": "point3d",
         "qualified": "point3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 1840,
+        "line": 2493,
         "excerpt": {
-          "start_line": 1828,
+          "start_line": 2481,
           "text": "        Line3d(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            [value[2] for value in normalized],\n            defaults,\n        )\n    )\n    if arrow_head and len(normalized) >= 2:\n        graphic.add_primitive(Arrowhead3d(normalized[-2], normalized[-1], defaults))\n    return graphic\n\n\ndef point3d(points: Any, **options: Any) -> Graphics3d:\n    \"\"\"Return one or more points in three-dimensional space.\"\"\"\n    options = _g3d_copy_options(options)\n    normalized = _g3d_normalize_points(points)\n    defaults = {\n        \"opacity\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"size\": 5,\n        \"legend_label\": None,\n        \"marker\": \"circle\",\n    }\n    if _g3d_option_has(options, \"alpha\") and not _g3d_option_has(options, \"opacity\"):\n        options[\"opacity\"] = _g3d_option_pop(options, \"alpha\")"
         }
       },
@@ -28953,9 +28953,9 @@
         "name": "polar_plot",
         "qualified": "polar_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4377,
+        "line": 5460,
         "excerpt": {
-          "start_line": 4365,
+          "start_line": 5448,
           "text": "\n            callables.append(constant)\n    step = (maximum - minimum) / float(count - 1)\n    points = []\n    for index in range(count):\n        value = maximum if index == count - 1 else minimum + index * step\n        points.append(\n            (_finite_value(callables[0](value)), _finite_value(callables[1](value)))\n        )\n    return line(points, **options)\n\n\ndef polar_plot(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot one or more functions in polar coordinates.\n\n    The input function gives the radius `r` as a function of angle `theta`.\n    All adaptive sampling and line options accepted by `plot` are supported.\n    \"\"\"\n    radial = plot(funcs, *range_args, **options)\n    answer = Graphics()"
         }
       },
@@ -29013,10 +29013,10 @@
         "name": "polygon",
         "qualified": "polygon",
         "path": "src/baselib/graphics.py",
-        "line": 2575,
+        "line": 3551,
         "excerpt": {
-          "start_line": 2563,
-          "text": "    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n\n\ndef polygon(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a filled polygon through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,\n        \"legend_label\": None,\n        \"linestyle\": \"-\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")"
+          "start_line": 3539,
+          "text": "    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n\n\ndef polygon(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a filled polygon through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"edgecolor\": None,\n        \"fill\": True,\n        \"thickness\": None,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\","
         }
       },
       "examples": []
@@ -29117,9 +29117,9 @@
         "name": "polygon3d",
         "qualified": "polygon3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2032,
+        "line": 2685,
         "excerpt": {
-          "start_line": 2020,
+          "start_line": 2673,
           "text": "        return [edges[key] for key in edges]\n\n    def edges(self) -> Any:\n        return iter(self.edge_list())\n\n    def is_enclosed(self) -> bool:\n        return self._enclosed\n\n    def has_local_colors(self) -> bool:\n        return self._texture_list is not None\n\n\ndef polygon3d(points: Any, **options: Any) -> Graphics3d:\n    \"\"\"Draw a single polygon with vertices in three-dimensional space.\"\"\"\n    normalized = list(points)\n    return _g3d_mesh([list(range(len(normalized)))], normalized, **options)\n\n\ndef polygons3d(\n    faces: Any,\n    points: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw an indexed union of polygons in three-dimensional space.\"\"\"\n    return _g3d_mesh(faces, points, **options)"
         }
       },
@@ -29170,9 +29170,9 @@
         "name": "polygons3d",
         "qualified": "polygons3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2038,
+        "line": 2691,
         "excerpt": {
-          "start_line": 2026,
+          "start_line": 2679,
           "text": "        return self._enclosed\n\n    def has_local_colors(self) -> bool:\n        return self._texture_list is not None\n\n\ndef polygon3d(points: Any, **options: Any) -> Graphics3d:\n    \"\"\"Draw a single polygon with vertices in three-dimensional space.\"\"\"\n    normalized = list(points)\n    return _g3d_mesh([list(range(len(normalized)))], normalized, **options)\n\n\ndef polygons3d(\n    faces: Any,\n    points: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw an indexed union of polygons in three-dimensional space.\"\"\"\n    return _g3d_mesh(faces, points, **options)\n\n\ndef text3d(\n    string: Any,\n    position: Any,\n    **options: Any,"
         }
       },
@@ -29239,16 +29239,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 4625,
+        "line": 5177,
         "excerpt": {
-          "start_line": 4613,
+          "start_line": 5165,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
-          "line": 4645,
+          "line": 5197,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -29264,7 +29264,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
-          "line": 4646,
+          "line": 5198,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -29280,7 +29280,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
-          "line": 4648,
+          "line": 5200,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -29296,7 +29296,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
-          "line": 4649,
+          "line": 5201,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -29367,16 +29367,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 5814,
+        "line": 5991,
         "excerpt": {
-          "start_line": 5802,
+          "start_line": 5979,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 5825,
+          "line": 6002,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -29392,7 +29392,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 5827,
+          "line": 6004,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -29408,7 +29408,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 5829,
+          "line": 6006,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -29668,9 +29668,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7252,
+        "line": 7456,
         "excerpt": {
-          "start_line": 7240,
+          "start_line": 7444,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -29728,9 +29728,9 @@
         "name": "rainbow",
         "qualified": "rainbow",
         "path": "src/baselib/graphics.py",
-        "line": 1975,
+        "line": 2944,
         "excerpt": {
-          "start_line": 1963,
+          "start_line": 2932,
           "text": "        raise AttributeError(\"unknown color '\" + name + \"'\")\n\n\n_color_values = {}\nfor _color_name in _NAMED_COLORS:\n    _color_values[_color_name] = Color(_option_get(_NAMED_COLORS, _color_name))\ncolors = ColorsDict(_color_values)\nfor _color_name in _NAMED_COLORS:\n    colors[_color_name] = _option_get(_color_values, _color_name)\n    runtime.reflect.set(runtime.global_object, _color_name, colors[_color_name])\n\n\ndef rainbow(count: int, format: str = \"hex\") -> list[Any]:\n    \"\"\"Return `count` evenly spaced hues as hex strings or RGB tuples.\"\"\"\n    size = int(count)\n    values = [hue(index / float(size)) for index in range(size)]\n    if format == \"rgbtuple\":\n        return values\n    if format == \"hex\":\n        return [Color(value).html_color() for value in values]\n    raise ValueError(\"format must be 'hex' or 'rgbtuple'\")\n\n\nclass Colormaps(dict):  # pyright: ignore[reportMissingTypeArgument]\n    \"\"\"Small portable collection of common Plotly-compatible colormaps.\"\"\""
         }
       },
@@ -29795,16 +29795,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 7285,
+        "line": 9060,
         "excerpt": {
-          "start_line": 7273,
-          "text": "        power = base(1)\n        degree = _untyped(base).degree()\n        characteristic = _untyped(base).characteristic()\n        generator = _untyped(base).gen()\n        for _index in range(degree):\n            coefficient = _random_int(0, characteristic - 1)\n            value += base(coefficient) * power\n            power *= generator\n        if not nonzero or not value.is_zero():\n            return value\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
+          "start_line": 9048,
+          "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 7307,
+          "line": 9082,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29820,7 +29820,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 7308,
+          "line": 9083,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29836,7 +29836,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 7310,
+          "line": 9085,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -29904,9 +29904,9 @@
         "name": "region_plot",
         "qualified": "region_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4613,
+        "line": 5696,
         "excerpt": {
-          "start_line": 4601,
+          "start_line": 5684,
           "text": "        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]\n    options[\"colorbar\"] = False\n    if not _option_has(options, \"fill\"):\n        options[\"fill\"] = False\n    if _option_has(options, \"fillcolor\") and not _option_has(options, \"cmap\"):\n        fillcolor = _option_get(options, \"fillcolor\")\n        options[\"cmap\"] = [fillcolor, fillcolor]\n    return contour_plot(function_value, xrange, yrange, **options)\n\n\ndef region_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the region where one or more boolean functions are true.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 100)\n    xminimum, xmaximum = _plot_range([xrange])\n    yminimum, ymaximum = _plot_range([yrange])\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])"
         }
       },
@@ -29957,9 +29957,9 @@
         "name": "revolution_plot3d",
         "qualified": "revolution_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2998,
+        "line": 3651,
         "excerpt": {
-          "start_line": 2986,
+          "start_line": 3639,
           "text": "    if _g3d_option_has(actual_options, \"rgbcolor\") and not _g3d_option_has(\n        actual_options, \"color\"\n    ):\n        actual_options[\"color\"] = _g3d_option_pop(actual_options, \"rgbcolor\")\n    _g3d_option_update(defaults, actual_options)\n    graphics_options = _g3d_graphics_options(defaults)\n    graphic = Graphics3d()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Surface3d(xdata, ydata, rows, defaults))\n    return graphic\n\n\ndef revolution_plot3d(\n    curve: Any,\n    trange: Any,\n    phirange: Any = None,\n    parallel_axis: str = \"z\",\n    axis: Any = None,\n    print_vector: bool = False,\n    show_curve: bool = False,\n    **options: Any,\n) -> Graphics3d:\n    r\"\"\"Revolve a function or parametric curve around a coordinate axis.\"\"\"\n    if parallel_axis not in (\"x\", \"y\", \"z\"):\n        raise ValueError(\"parallel_axis must be either 'x', 'y', or 'z'\")"
         }
       },
@@ -30017,9 +30017,9 @@
         "name": "rgbcolor",
         "qualified": "rgbcolor",
         "path": "src/baselib/graphics.py",
-        "line": 1823,
+        "line": 2792,
         "excerpt": {
-          "start_line": 1811,
+          "start_line": 2780,
           "text": "            return minimum + (maximum - minimum) * position * 6.0\n        if position < 0.5:\n            return maximum\n        if position < 2.0 / 3.0:\n            return minimum + (maximum - minimum) * (2.0 / 3.0 - position) * 6.0\n        return minimum\n\n    return runtime.math_tuple(\n        [component(1.0 / 3.0), component(0), component(-1.0 / 3.0)]\n    )\n\n\ndef rgbcolor(value: Any, space: str = \"rgb\") -> tuple[float, float, float]:\n    \"\"\"Convert a Sage color specification to an RGB triple.\"\"\"\n    if hasattr(value, \"rgb\"):\n        return value.rgb()\n    if runtime.jstype(value) == \"string\":\n        return _html_rgb(value)\n    values = list(value)\n    if len(values) != 3:\n        raise ValueError(\"a color must contain exactly three components\")\n    components = [_color_mod_one(component) for component in values]\n    normalized_space = runtime.reflect.apply(\n        runtime.reflect.get(runtime.string_class.prototype, \"toLowerCase\"),\n        space,"
         }
       },
@@ -30070,9 +30070,9 @@
         "name": "ruler",
         "qualified": "ruler",
         "path": "src/baselib/graphics3d.py",
-        "line": 2361,
+        "line": 3014,
         "excerpt": {
-          "start_line": 2349,
+          "start_line": 3002,
           "text": "            yvalue = lower[1] + fraction * (upper[1] - lower[1])\n            zvalue = lower[2] + fraction * (upper[2] - lower[2])\n            if index == 0:\n                position = (xvalue, lower[1] - distance, lower[2])\n            elif index == 1:\n                position = (upper[0] + distance, yvalue, lower[2])\n            else:\n                position = (lower[0] - distance, lower[1], zvalue)\n            answer += text3d(str(values[position_index]), position, **text_options)\n    return answer\n\n\ndef ruler(\n    start: Any,\n    end: Any,\n    ticks: int = 4,\n    sub_ticks: int = 4,\n    absolute: bool = False,\n    snap: bool = False,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw a three-dimensional ruler with labeled major and minor ticks.\"\"\"\n    if ticks <= 0 or sub_ticks <= 0:\n        raise ValueError(\"ticks and sub_ticks must be positive\")\n    start_point = list(_g3d_point(start))"
         }
       },
@@ -30123,9 +30123,9 @@
         "name": "ruler_frame",
         "qualified": "ruler_frame",
         "path": "src/baselib/graphics3d.py",
-        "line": 2439,
+        "line": 3092,
         "excerpt": {
-          "start_line": 2427,
+          "start_line": 3080,
           "text": "            minor_base = [\n                start_point[index] + direction[index] * minor_distance\n                for index in range(3)\n            ]\n            minor_end = [\n                minor_base[index] + tick_vector[index] / 2.0 for index in range(3)\n            ]\n            answer += line3d([minor_base, minor_end], **options)\n        current_distance += unit\n    return answer\n\n\ndef ruler_frame(\n    lower_left: Any,\n    upper_right: Any,\n    ticks: int = 4,\n    sub_ticks: int = 4,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw three axis-aligned rulers from the lower frame corner.\"\"\"\n    lower = _g3d_point(lower_left)\n    upper = _g3d_point(upper_right)\n    return (\n        ruler(\n            lower,"
         }
       },
@@ -30183,9 +30183,9 @@
         "name": "scatter_plot",
         "qualified": "scatter_plot",
         "path": "src/baselib/graphics.py",
-        "line": 2561,
+        "line": 3537,
         "excerpt": {
-          "start_line": 2549,
+          "start_line": 3525,
           "text": "        \"bins\": 10,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Histogram([float(value) for value in values], defaults))\n    return graphic\n\n\ndef scatter_plot(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"Return a Sage-compatible scatter plot of `(x, y)` points.\"\"\"\n    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n"
         }
       },
@@ -30274,9 +30274,9 @@
         "name": "show",
         "qualified": "Graphics.show",
         "path": "src/baselib/graphics.py",
-        "line": 1615,
+        "line": 2582,
         "excerpt": {
-          "start_line": 1603,
+          "start_line": 2570,
           "text": "        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n    def show(self, **options: Any) -> Graphics:\n        if len(options):\n            self.set_extra_kwds(options)\n        return self\n\n\ndef _graphics_from_plotly(figure: Any) -> Graphics:\n    \"\"\"Convert a renderer-neutral Plotly figure to composable `Graphics`.\"\"\"\n    answer = Graphics()\n    data = runtime.reflect.get(figure, \"data\")\n    if data is not runtime.undefined:\n        for trace in data:\n            answer.add_primitive(_PlotlyPrimitive(trace))"
         }
       },
@@ -30335,16 +30335,16 @@
         "name": "solve",
         "qualified": "solve",
         "path": "src/baselib/symbolic.py",
-        "line": 2387,
+        "line": 2397,
         "excerpt": {
-          "start_line": 2375,
+          "start_line": 2385,
           "text": "                    Expression(\n                        [\n                            \"Equal\",\n                            _expression_tree(variables[index]),\n                            values[index]._tree,\n                        ]\n                    )\n                )\n            answers.append(relations)\n    return answers\n\n\ndef solve(\n    equations: Any,\n    *variables: Any,\n    **options: Any,\n) -> Any:\n    r\"\"\"\n    Solve supported elementary symbolic equations.\n\n    One equation or a list of equations may be supplied, followed by one or\n    more variables. Set `solution_dict=True` for dictionary-valued\n    solutions.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 2402,
+          "line": 2412,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
@@ -30467,9 +30467,9 @@
         "name": "sphere",
         "qualified": "sphere",
         "path": "src/baselib/graphics3d.py",
-        "line": 3231,
+        "line": 3884,
         "excerpt": {
-          "start_line": 3219,
+          "start_line": 3872,
           "text": "        Isosurface3d(\n            sampled_x,\n            sampled_y,\n            sampled_z,\n            sampled_values,\n            0.0,\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef sphere(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a sphere of radius `size` centered at `center`.\"\"\"\n    coordinates = _g3d_point(center)\n    radius = float(size)\n    if radius <= 0:\n        raise ValueError(\"sphere size must be positive\")\n    counts = _g3d_plot_points(\n        _g3d_option_pop(options, \"plot_points\", [32, 17]),\n        32,"
         }
       },
@@ -30520,9 +30520,9 @@
         "name": "spherical_plot3d",
         "qualified": "spherical_plot3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2844,
+        "line": 3497,
         "excerpt": {
-          "start_line": 2832,
+          "start_line": 3485,
           "text": "\n    def second_coordinate(_u: float, v: float) -> float:\n        return v\n\n    return _g3d_surface(\n        (first_coordinate, second_coordinate, evaluated),\n        urange,\n        vrange,\n        **options,\n    )\n\n\ndef spherical_plot3d(\n    function_value: Any,\n    urange: Any,\n    vrange: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Plot a radial function in spherical coordinates.\"\"\"\n    transformation = Spherical(\"radius\", [\"azimuth\", \"inclination\"])\n    return plot3d(\n        function_value,\n        urange,\n        vrange,\n        transformation=transformation,"
         }
       },
@@ -30581,9 +30581,9 @@
         "name": "streamline_plot",
         "qualified": "streamline_plot",
         "path": "src/baselib/graphics.py",
-        "line": 4802,
+        "line": 5885,
         "excerpt": {
-          "start_line": 4790,
+          "start_line": 5873,
           "text": "        current = float(slope(xvalue, yvalue))\n        return current / runtime.math.sqrt(current * current + 1.0)\n\n    slope_options = {\n        \"headaxislength\": 0,\n        \"headlength\": 1e-9,\n        \"pivot\": \"middle\",\n    }\n    _option_update(slope_options, _copy_options(options))\n    return plot_vector_field((horizontal, vertical), xrange, yrange, **slope_options)\n\n\ndef streamline_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot integral curves of a vector field or first-order slope field.\n\n    Streamlines are integrated in both directions with a deterministic\n    midpoint method.  `density` controls seed count and integration step;\n    `start_points` supplies explicit seeds.\n    \"\"\""
         }
       },
@@ -30645,16 +30645,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 6931,
+        "line": 8318,
         "excerpt": {
-          "start_line": 6919,
+          "start_line": 8306,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 6942,
+          "line": 8329,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -30670,7 +30670,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 6948,
+          "line": 8335,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -30731,9 +30731,9 @@
         "name": "tetrahedron",
         "qualified": "tetrahedron",
         "path": "src/baselib/graphics3d.py",
-        "line": 2518,
+        "line": 3171,
         "excerpt": {
-          "start_line": 2506,
+          "start_line": 3159,
           "text": "                center_point[0] + scale * float(vertex[0]),\n                center_point[1] + scale * float(vertex[1]),\n                center_point[2] + scale * float(vertex[2]),\n            ]\n        )\n        for vertex in vertices\n    ]\n    if not _g3d_option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = [1, 1, 1]\n    return _g3d_mesh(faces, transformed, **options)\n\n\ndef tetrahedron(\n    center: Any = _SPHERE_DEFAULT_CENTER,\n    size: Any = 1,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Return a regular tetrahedron centered at `center`.\"\"\"\n    square_root_two = runtime.math.sqrt(2.0)\n    square_root_six = runtime.math.sqrt(6.0)\n    vertices = [\n        [0, 0, 1],\n        [2 * square_root_two / 3, 0, -1 / 3],\n        [-square_root_two / 3, square_root_six / 3, -1 / 3],\n        [-square_root_two / 3, -square_root_six / 3, -1 / 3],"
         }
       },
@@ -30791,10 +30791,10 @@
         "name": "text",
         "qualified": "text",
         "path": "src/baselib/graphics.py",
-        "line": 2609,
+        "line": 3591,
         "excerpt": {
-          "start_line": 2597,
-          "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Polygon(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef text(\n    string: Any,\n    position: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a graphics object containing a positioned text label.\"\"\"\n    options = _copy_options(options)\n    normalized_position = _point_pair(position)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": \"black\",\n        \"fontsize\": 12,\n        \"textposition\": \"middle center\","
+          "start_line": 3579,
+          "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Polygon(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef text(\n    string: Any,\n    position: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a graphics object containing a positioned text label.\"\"\"\n    options = _copy_options(options)\n    normalized_position = _point_pair(position)\n    defaults = {\n        \"fontsize\": 10,\n        \"rgbcolor\": [0, 0, 1],\n        \"horizontal_alignment\": \"center\",\n        \"vertical_alignment\": \"center\","
         }
       },
       "examples": []
@@ -30843,9 +30843,9 @@
         "name": "text3d",
         "qualified": "text3d",
         "path": "src/baselib/graphics3d.py",
-        "line": 2047,
+        "line": 2700,
         "excerpt": {
-          "start_line": 2035,
+          "start_line": 2688,
           "text": "    return _g3d_mesh([list(range(len(normalized)))], normalized, **options)\n\n\ndef polygons3d(\n    faces: Any,\n    points: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Draw an indexed union of polygons in three-dimensional space.\"\"\"\n    return _g3d_mesh(faces, points, **options)\n\n\ndef text3d(\n    string: Any,\n    position: Any,\n    **options: Any,\n) -> Graphics3d:\n    \"\"\"Display text at a point in three-dimensional space.\"\"\"\n    defaults = {\n        \"color\": [0, 0, 1],\n        \"opacity\": 1,\n        \"fontsize\": 14,\n    }\n    options = _g3d_copy_options(options)\n    if _g3d_option_has(options, \"alpha\") and not _g3d_option_has(options, \"opacity\"):"
         }
       },
@@ -30956,16 +30956,16 @@
         "name": "Zmod",
         "qualified": "Zmod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1060,
+        "line": 1107,
         "excerpt": {
-          "start_line": 1048,
+          "start_line": 1095,
           "text": "    generator = runtime.bigint(1)\n    if primitive:\n        generator = backend.wordPrimitiveRootPrime(order)\n    field = FiniteField_prime_modn(order, generator)\n    _prime_fields.set(key, field)\n    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))\n    return field\n\n\nFiniteField = GF\n\n\ndef Zmod(order: Any) -> IntegerModRing:\n    r\"\"\"\n    Construct the ring of integers modulo `order`.\n\n    Elements support exact arithmetic, inversion of units, iteration, and\n    matrices and polynomial rings over the resulting parent.\n\n    ### Examples\n\n    ```sage\n    sage: R = Zmod(15)\n    sage: R(17)\n    2"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",
-          "line": 1070,
+          "line": 1117,
           "source": "R = Zmod(15)",
           "want": "",
           "tags": [],
@@ -30981,7 +30981,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#27cc52590769f211-d4735e3a265e16ee",
-          "line": 1071,
+          "line": 1118,
           "source": "R(17)",
           "want": "2\n",
           "tags": [],
@@ -30997,7 +30997,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
-          "line": 1073,
+          "line": 1120,
           "source": "R(2)^4",
           "want": "1\n",
           "tags": [],

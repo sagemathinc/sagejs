@@ -212,6 +212,113 @@ async function main() {
     );
     assert.equal((await session.evaluate("q[0][1]")).repr, "(1.0, 2.0, 3.0)");
 
+    await session.evaluate(
+      [
+        "semantic3d = q + text3d('tip', (0, 0, 1), fontsize=18)",
+        "semantic3d_spec = semantic3d.spec()",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("semantic3d_spec.dimension")).repr,
+      "3",
+    );
+    assert.equal(
+      (await session.evaluate("[layer.id for layer in semantic3d_spec.layers]"))
+        .repr,
+      "['layer-0', 'layer-1', 'layer-2']",
+    );
+    assert.equal(
+      (await session.evaluate("[layer.kind for layer in semantic3d_spec.layers]"))
+        .repr,
+      "['line', 'point', 'text']",
+    );
+    assert.equal(
+      (await session.evaluate("semantic3d_spec.layers[0].data['z']")).repr,
+      "[0.0, 3.0]",
+    );
+    assert.equal(
+      (await session.evaluate("semantic3d_spec.layers[1].style['color']")).repr,
+      "'black'",
+    );
+    assert.equal(
+      (await session.evaluate("semantic3d_spec.layers[2].data['text']")).repr,
+      "'tip'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "[layer.id for layer in semantic3d.translate(2,3,4).spec().layers]",
+        )
+      ).repr,
+      "['layer-0', 'layer-1', 'layer-2']",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "semantic3d.translate(2,3,4).spec().layers[0].data['x']",
+        )
+      ).repr,
+      "[2.0, 3.0]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "semantic3d.rotateZ(pi/2).spec().layers[2].data['position'][2]",
+        )
+      ).repr,
+      "1.0",
+    );
+    assert.equal(
+      (await session.evaluate("sphere().spec().layers[0].kind")).repr,
+      "'surface'",
+    );
+
+    await session.evaluate(
+      [
+        "tagged3d = semantic3d.with_plot_spec_context(",
+        "  provenance={'frontend':'wolfram','source_language':'wolfram','constructor':'Graphics3D'},",
+        "  source_intent={'frontend':'wolfram','head':'Graphics3D'},",
+        "  ordered_options=[{'name':'ViewPoint','rule':'Rule','source':'ViewPoint->Above'}],",
+        ")",
+        "translated_tagged3d_spec = tagged3d.translate(1,2,3).spec()",
+      ].join("\n"),
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "translated_tagged3d_spec.provenance['frontend']",
+        )
+      ).repr,
+      "'wolfram'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "translated_tagged3d_spec.layers[0].source_intent['head']",
+        )
+      ).repr,
+      "'Graphics3D'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "translated_tagged3d_spec.layers[0].source_intent['ordered_options'][0]['name']",
+        )
+      ).repr,
+      "'ViewPoint'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "[layer.id for layer in translated_tagged3d_spec.layers]",
+        )
+      ).repr,
+      "['layer-0', 'layer-1', 'layer-2']",
+    );
+    const tagged3dDisplay = await session.evaluate("tagged3d");
+    const semantic3dDisplay = await session.evaluate("semantic3d");
+    assert.deepEqual(tagged3dDisplay.display, semantic3dDisplay.display);
+
     const constant = await session.evaluate(
       "plot3d(pi, (-1, 1), (-1, 1), plot_points=2)",
     );

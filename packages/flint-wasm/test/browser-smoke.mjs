@@ -363,6 +363,32 @@ try {
       traces: 1,
       points: [0, Math.PI, 2 * Math.PI],
     });
+    const imageExportState = await command("Runtime.evaluate", {
+      expression: `(async () => {
+        const renderer = await import("/plotly-renderer.mjs");
+        const capabilities = renderer.browserGraphicsExportCapabilities(Plotly);
+        const bytes = await renderer.sageDisplayToImageBytes({
+          mime: renderer.PLOTLY_MIME,
+          data: {
+            data: [{ type: "scatter", x: [0, 1], y: [0, 1] }],
+            layout: { width: 160, height: 120 },
+            config: { displaylogo: false }
+          }
+        }, { format: "png" }, Plotly);
+        return {
+          available: capabilities.available,
+          formats: capabilities.formats,
+          signature: Array.from(bytes.slice(0, 8))
+        };
+      })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    assert.deepEqual(imageExportState.result.value, {
+      available: true,
+      formats: ["png", "jpeg", "webp", "svg"],
+      signature: [137, 80, 78, 71, 13, 10, 26, 10],
+    });
     await runSource(
       "g = plot(prime_pi, 1, 100)\ng.save('prime-pi.png')",
       "Graphics object consisting of 1 graphics primitive",

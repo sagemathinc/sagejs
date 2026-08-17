@@ -1,0 +1,853 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "policy": {
+    "accessibility": "Foreground text meets WCAG AA normal-text contrast; categorical marks meet at least 3:1 against the plot background.",
+    "canonical_names": [
+      "notebook",
+      "presentation",
+      "publication",
+      "dark",
+      "high-contrast"
+    ],
+    "immutability": "Theme accessors return detached JSON-safe materializations.",
+    "interaction_limits": "Themes configure responsive rendering, hover labels, legend toggles, and the Plotly modebar. Keyboard navigation, focus order, screen-reader semantics, and hover availability are capabilities of Plotly and the embedding frontend; the theme alone does not guarantee them."
+  },
+  "schema_version": 1,
+  "themes": [
+    {
+      "config": {
+        "displayModeBar": true,
+        "displaylogo": false,
+        "doubleClick": "reset+autosize",
+        "responsive": true,
+        "scrollZoom": true
+      },
+      "layout": {
+        "autosize": true,
+        "colorway": [
+          "#0072b2",
+          "#d55e00",
+          "#007f5f",
+          "#a64d79",
+          "#6a3d9a",
+          "#8c6d1f",
+          "#006d77",
+          "#444444"
+        ],
+        "font": {
+          "color": "#1f2937",
+          "family": "Inter, system-ui, sans-serif",
+          "size": 14
+        },
+        "hoverlabel": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#64748b",
+          "font": {
+            "color": "#1f2937",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "namelength": 48
+        },
+        "legend": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#d7dee8",
+          "borderwidth": 1,
+          "font": {
+            "color": "#1f2937",
+            "size": 14
+          },
+          "itemclick": "toggle",
+          "itemdoubleclick": "toggleothers",
+          "orientation": "v"
+        },
+        "margin": {
+          "b": 56,
+          "l": 64,
+          "pad": 4,
+          "r": 32,
+          "t": 48
+        },
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#f8fafc",
+        "scene": {
+          "aspectmode": "data",
+          "bgcolor": "#f8fafc",
+          "camera": {
+            "center": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "eye": {
+              "x": 1.45,
+              "y": 1.45,
+              "z": 1.2
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            }
+          },
+          "xaxis": {
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "zerolinecolor": "#d7dee8"
+          },
+          "yaxis": {
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "zerolinecolor": "#d7dee8"
+          },
+          "zaxis": {
+            "color": "#64748b",
+            "gridcolor": "#d7dee8",
+            "linecolor": "#64748b",
+            "zerolinecolor": "#d7dee8"
+          }
+        },
+        "xaxis": {
+          "automargin": true,
+          "color": "#64748b",
+          "gridcolor": "#d7dee8",
+          "linecolor": "#64748b",
+          "zerolinecolor": "#d7dee8"
+        },
+        "yaxis": {
+          "automargin": true,
+          "color": "#64748b",
+          "gridcolor": "#d7dee8",
+          "linecolor": "#64748b",
+          "zerolinecolor": "#d7dee8"
+        }
+      },
+      "name": "notebook",
+      "schema_version": 1,
+      "tokens": {
+        "axis": "#64748b",
+        "colorway": [
+          "#0072b2",
+          "#d55e00",
+          "#007f5f",
+          "#a64d79",
+          "#6a3d9a",
+          "#8c6d1f",
+          "#006d77",
+          "#444444"
+        ],
+        "font_family": "Inter, system-ui, sans-serif",
+        "font_size": 14,
+        "foreground": "#1f2937",
+        "grid": "#d7dee8",
+        "line_width": 2.0,
+        "marker_size": 8.0,
+        "paper_background": "#ffffff",
+        "plot_background": "#f8fafc"
+      },
+      "trace_defaults": {
+        "line": {
+          "width": 2.0
+        },
+        "marker": {
+          "size": 8.0
+        },
+        "mesh3d": {
+          "flatshading": false,
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "opacity": 1.0
+        },
+        "surface": {
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "lightposition": {
+            "x": 100,
+            "y": 200,
+            "z": 300
+          }
+        }
+      }
+    },
+    {
+      "config": {
+        "displayModeBar": true,
+        "displaylogo": false,
+        "doubleClick": "reset+autosize",
+        "responsive": true,
+        "scrollZoom": true
+      },
+      "layout": {
+        "autosize": true,
+        "colorway": [
+          "#0072b2",
+          "#d55e00",
+          "#007f5f",
+          "#a64d79",
+          "#6a3d9a",
+          "#8c6d1f",
+          "#006d77",
+          "#444444"
+        ],
+        "font": {
+          "color": "#111827",
+          "family": "Inter, system-ui, sans-serif",
+          "size": 20
+        },
+        "hoverlabel": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#475569",
+          "font": {
+            "color": "#111827",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 20
+          },
+          "namelength": 48
+        },
+        "legend": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#cbd5e1",
+          "borderwidth": 1,
+          "font": {
+            "color": "#111827",
+            "size": 20
+          },
+          "itemclick": "toggle",
+          "itemdoubleclick": "toggleothers",
+          "orientation": "h"
+        },
+        "margin": {
+          "b": 70,
+          "l": 78,
+          "pad": 4,
+          "r": 42,
+          "t": 64
+        },
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#f8fafc",
+        "scene": {
+          "aspectmode": "data",
+          "bgcolor": "#f8fafc",
+          "camera": {
+            "center": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "eye": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.25
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            }
+          },
+          "xaxis": {
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "zerolinecolor": "#cbd5e1"
+          },
+          "yaxis": {
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "zerolinecolor": "#cbd5e1"
+          },
+          "zaxis": {
+            "color": "#475569",
+            "gridcolor": "#cbd5e1",
+            "linecolor": "#475569",
+            "zerolinecolor": "#cbd5e1"
+          }
+        },
+        "xaxis": {
+          "automargin": true,
+          "color": "#475569",
+          "gridcolor": "#cbd5e1",
+          "linecolor": "#475569",
+          "zerolinecolor": "#cbd5e1"
+        },
+        "yaxis": {
+          "automargin": true,
+          "color": "#475569",
+          "gridcolor": "#cbd5e1",
+          "linecolor": "#475569",
+          "zerolinecolor": "#cbd5e1"
+        }
+      },
+      "name": "presentation",
+      "schema_version": 1,
+      "tokens": {
+        "axis": "#475569",
+        "colorway": [
+          "#0072b2",
+          "#d55e00",
+          "#007f5f",
+          "#a64d79",
+          "#6a3d9a",
+          "#8c6d1f",
+          "#006d77",
+          "#444444"
+        ],
+        "font_family": "Inter, system-ui, sans-serif",
+        "font_size": 20,
+        "foreground": "#111827",
+        "grid": "#cbd5e1",
+        "line_width": 3.0,
+        "marker_size": 11.0,
+        "paper_background": "#ffffff",
+        "plot_background": "#f8fafc"
+      },
+      "trace_defaults": {
+        "line": {
+          "width": 3.0
+        },
+        "marker": {
+          "size": 11.0
+        },
+        "mesh3d": {
+          "flatshading": false,
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "opacity": 1.0
+        },
+        "surface": {
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "lightposition": {
+            "x": 100,
+            "y": 200,
+            "z": 300
+          }
+        }
+      }
+    },
+    {
+      "config": {
+        "displayModeBar": true,
+        "displaylogo": false,
+        "doubleClick": "reset+autosize",
+        "responsive": true,
+        "scrollZoom": true
+      },
+      "layout": {
+        "autosize": true,
+        "colorway": [
+          "#000000",
+          "#005a9c",
+          "#9c2f00",
+          "#00633f",
+          "#7a1f5c",
+          "#5b2c83",
+          "#704f00",
+          "#164e63"
+        ],
+        "font": {
+          "color": "#000000",
+          "family": "STIX Two Text, Georgia, serif",
+          "size": 12
+        },
+        "hoverlabel": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#333333",
+          "font": {
+            "color": "#000000",
+            "family": "STIX Two Text, Georgia, serif",
+            "size": 12
+          },
+          "namelength": 48
+        },
+        "legend": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#d4d4d4",
+          "borderwidth": 1,
+          "font": {
+            "color": "#000000",
+            "size": 12
+          },
+          "itemclick": "toggle",
+          "itemdoubleclick": "toggleothers",
+          "orientation": "v"
+        },
+        "margin": {
+          "b": 50,
+          "l": 58,
+          "pad": 4,
+          "r": 24,
+          "t": 36
+        },
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "scene": {
+          "aspectmode": "data",
+          "bgcolor": "#ffffff",
+          "camera": {
+            "center": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "eye": {
+              "x": 1.35,
+              "y": 1.35,
+              "z": 1.15
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            }
+          },
+          "xaxis": {
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "zerolinecolor": "#d4d4d4"
+          },
+          "yaxis": {
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "zerolinecolor": "#d4d4d4"
+          },
+          "zaxis": {
+            "color": "#333333",
+            "gridcolor": "#d4d4d4",
+            "linecolor": "#333333",
+            "zerolinecolor": "#d4d4d4"
+          }
+        },
+        "xaxis": {
+          "automargin": true,
+          "color": "#333333",
+          "gridcolor": "#d4d4d4",
+          "linecolor": "#333333",
+          "zerolinecolor": "#d4d4d4"
+        },
+        "yaxis": {
+          "automargin": true,
+          "color": "#333333",
+          "gridcolor": "#d4d4d4",
+          "linecolor": "#333333",
+          "zerolinecolor": "#d4d4d4"
+        }
+      },
+      "name": "publication",
+      "schema_version": 1,
+      "tokens": {
+        "axis": "#333333",
+        "colorway": [
+          "#000000",
+          "#005a9c",
+          "#9c2f00",
+          "#00633f",
+          "#7a1f5c",
+          "#5b2c83",
+          "#704f00",
+          "#164e63"
+        ],
+        "font_family": "STIX Two Text, Georgia, serif",
+        "font_size": 12,
+        "foreground": "#000000",
+        "grid": "#d4d4d4",
+        "line_width": 1.5,
+        "marker_size": 6.0,
+        "paper_background": "#ffffff",
+        "plot_background": "#ffffff"
+      },
+      "trace_defaults": {
+        "line": {
+          "width": 1.5
+        },
+        "marker": {
+          "size": 6.0
+        },
+        "mesh3d": {
+          "flatshading": false,
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "opacity": 1.0
+        },
+        "surface": {
+          "lighting": {
+            "ambient": 0.65,
+            "diffuse": 0.75,
+            "fresnel": 0.1,
+            "roughness": 0.7,
+            "specular": 0.2
+          },
+          "lightposition": {
+            "x": 100,
+            "y": 200,
+            "z": 300
+          }
+        }
+      }
+    },
+    {
+      "config": {
+        "displayModeBar": true,
+        "displaylogo": false,
+        "doubleClick": "reset+autosize",
+        "responsive": true,
+        "scrollZoom": true
+      },
+      "layout": {
+        "autosize": true,
+        "colorway": [
+          "#56b4e9",
+          "#f0a33a",
+          "#4ecb9c",
+          "#e78ac3",
+          "#cab2d6",
+          "#ffd166",
+          "#8dd3c7",
+          "#ffffff"
+        ],
+        "font": {
+          "color": "#f8fafc",
+          "family": "Inter, system-ui, sans-serif",
+          "size": 14
+        },
+        "hoverlabel": {
+          "bgcolor": "#1e293b",
+          "bordercolor": "#cbd5e1",
+          "font": {
+            "color": "#f8fafc",
+            "family": "Inter, system-ui, sans-serif",
+            "size": 14
+          },
+          "namelength": 48
+        },
+        "legend": {
+          "bgcolor": "#0b1020",
+          "bordercolor": "#334155",
+          "borderwidth": 1,
+          "font": {
+            "color": "#f8fafc",
+            "size": 14
+          },
+          "itemclick": "toggle",
+          "itemdoubleclick": "toggleothers",
+          "orientation": "v"
+        },
+        "margin": {
+          "b": 56,
+          "l": 64,
+          "pad": 4,
+          "r": 32,
+          "t": 48
+        },
+        "paper_bgcolor": "#0b1020",
+        "plot_bgcolor": "#111827",
+        "scene": {
+          "aspectmode": "data",
+          "bgcolor": "#111827",
+          "camera": {
+            "center": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "eye": {
+              "x": 1.45,
+              "y": 1.45,
+              "z": 1.2
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            }
+          },
+          "xaxis": {
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "zerolinecolor": "#334155"
+          },
+          "yaxis": {
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "zerolinecolor": "#334155"
+          },
+          "zaxis": {
+            "color": "#cbd5e1",
+            "gridcolor": "#334155",
+            "linecolor": "#cbd5e1",
+            "zerolinecolor": "#334155"
+          }
+        },
+        "xaxis": {
+          "automargin": true,
+          "color": "#cbd5e1",
+          "gridcolor": "#334155",
+          "linecolor": "#cbd5e1",
+          "zerolinecolor": "#334155"
+        },
+        "yaxis": {
+          "automargin": true,
+          "color": "#cbd5e1",
+          "gridcolor": "#334155",
+          "linecolor": "#cbd5e1",
+          "zerolinecolor": "#334155"
+        }
+      },
+      "name": "dark",
+      "schema_version": 1,
+      "tokens": {
+        "axis": "#cbd5e1",
+        "colorway": [
+          "#56b4e9",
+          "#f0a33a",
+          "#4ecb9c",
+          "#e78ac3",
+          "#cab2d6",
+          "#ffd166",
+          "#8dd3c7",
+          "#ffffff"
+        ],
+        "font_family": "Inter, system-ui, sans-serif",
+        "font_size": 14,
+        "foreground": "#f8fafc",
+        "grid": "#334155",
+        "line_width": 2.2,
+        "marker_size": 8.5,
+        "paper_background": "#0b1020",
+        "plot_background": "#111827"
+      },
+      "trace_defaults": {
+        "line": {
+          "width": 2.2
+        },
+        "marker": {
+          "size": 8.5
+        },
+        "mesh3d": {
+          "flatshading": false,
+          "lighting": {
+            "ambient": 0.8,
+            "diffuse": 0.65,
+            "fresnel": 0.15,
+            "roughness": 0.8,
+            "specular": 0.15
+          },
+          "opacity": 1.0
+        },
+        "surface": {
+          "lighting": {
+            "ambient": 0.8,
+            "diffuse": 0.65,
+            "fresnel": 0.15,
+            "roughness": 0.8,
+            "specular": 0.15
+          },
+          "lightposition": {
+            "x": 100,
+            "y": 200,
+            "z": 300
+          }
+        }
+      }
+    },
+    {
+      "config": {
+        "displayModeBar": true,
+        "displaylogo": false,
+        "doubleClick": "reset+autosize",
+        "responsive": true,
+        "scrollZoom": true
+      },
+      "layout": {
+        "autosize": true,
+        "colorway": [
+          "#000000",
+          "#005a9c",
+          "#9c2f00",
+          "#00633f",
+          "#7a1f5c",
+          "#5b2c83",
+          "#704f00",
+          "#164e63"
+        ],
+        "font": {
+          "color": "#000000",
+          "family": "Atkinson Hyperlegible, Arial, sans-serif",
+          "size": 16
+        },
+        "hoverlabel": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#000000",
+          "font": {
+            "color": "#000000",
+            "family": "Atkinson Hyperlegible, Arial, sans-serif",
+            "size": 16
+          },
+          "namelength": 48
+        },
+        "legend": {
+          "bgcolor": "#ffffff",
+          "bordercolor": "#666666",
+          "borderwidth": 1,
+          "font": {
+            "color": "#000000",
+            "size": 16
+          },
+          "itemclick": "toggle",
+          "itemdoubleclick": "toggleothers",
+          "orientation": "v"
+        },
+        "margin": {
+          "b": 64,
+          "l": 72,
+          "pad": 4,
+          "r": 40,
+          "t": 54
+        },
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "scene": {
+          "aspectmode": "data",
+          "bgcolor": "#ffffff",
+          "camera": {
+            "center": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "eye": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.25
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            }
+          },
+          "xaxis": {
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "zerolinecolor": "#666666"
+          },
+          "yaxis": {
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "zerolinecolor": "#666666"
+          },
+          "zaxis": {
+            "color": "#000000",
+            "gridcolor": "#666666",
+            "linecolor": "#000000",
+            "zerolinecolor": "#666666"
+          }
+        },
+        "xaxis": {
+          "automargin": true,
+          "color": "#000000",
+          "gridcolor": "#666666",
+          "linecolor": "#000000",
+          "zerolinecolor": "#666666"
+        },
+        "yaxis": {
+          "automargin": true,
+          "color": "#000000",
+          "gridcolor": "#666666",
+          "linecolor": "#000000",
+          "zerolinecolor": "#666666"
+        }
+      },
+      "name": "high-contrast",
+      "schema_version": 1,
+      "tokens": {
+        "axis": "#000000",
+        "colorway": [
+          "#000000",
+          "#005a9c",
+          "#9c2f00",
+          "#00633f",
+          "#7a1f5c",
+          "#5b2c83",
+          "#704f00",
+          "#164e63"
+        ],
+        "font_family": "Atkinson Hyperlegible, Arial, sans-serif",
+        "font_size": 16,
+        "foreground": "#000000",
+        "grid": "#666666",
+        "line_width": 2.8,
+        "marker_size": 10.0,
+        "paper_background": "#ffffff",
+        "plot_background": "#ffffff"
+      },
+      "trace_defaults": {
+        "line": {
+          "width": 2.8
+        },
+        "marker": {
+          "size": 10.0
+        },
+        "mesh3d": {
+          "flatshading": false,
+          "lighting": {
+            "ambient": 0.75,
+            "diffuse": 0.8,
+            "fresnel": 0.05,
+            "roughness": 0.85,
+            "specular": 0.1
+          },
+          "opacity": 1.0
+        },
+        "surface": {
+          "lighting": {
+            "ambient": 0.75,
+            "diffuse": 0.8,
+            "fresnel": 0.05,
+            "roughness": 0.85,
+            "specular": 0.1
+          },
+          "lightposition": {
+            "x": 100,
+            "y": 200,
+            "z": 300
+          }
+        }
+      }
+    }
+  ]
+}
