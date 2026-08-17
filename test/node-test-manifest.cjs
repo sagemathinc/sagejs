@@ -57,6 +57,7 @@ const integration = [
   "test/number-field-discriminant-components.cjs",
   "test/number-field-buchmann-lenstra.cjs",
   "test/number-field-local-polygons.cjs",
+  "test/number-field-local-parallel.cjs",
   "test/number-field-om-maxmin.cjs",
   "test/number-field-round4.cjs",
   "test/coverage-python-stdlib.cjs",

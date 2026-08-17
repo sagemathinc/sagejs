@@ -18,12 +18,11 @@ from __future__ import annotations
 import os
 from typing import Any, Callable, Iterable, TypeAlias, cast
 
-from .maximal_order_contracts import (
+from sagejs.number_fields.maximal_order_contracts import (
     DiscriminantComponent,
     LocalOrderResult,
     OrderBasis,
 )
-
 
 WireScalar: TypeAlias = int | str | bool | None
 WireValue: TypeAlias = WireScalar | tuple["WireValue", ...]
