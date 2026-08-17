@@ -263,7 +263,12 @@ export class PythonModuleResolver {
             : entry;
           if (!nameNode) continue;
           const key = nameNode.text;
-          this.validateIntrinsicImport(node, key, entry);
+          this.validateIntrinsicImport(
+            node,
+            key,
+            entry,
+            moduleOptions.source_filename ?? moduleOptions.filename,
+          );
           resolvedImportKeys.set(nameNode.startIndex, key);
           if (!INTRINSIC_MODULES.has(key)) requests.push({ key, node });
         }
@@ -281,7 +286,7 @@ export class PythonModuleResolver {
           throw this.importError(
             `Compiler intrinsic modules must be imported as modules: import ${relativeName} as runtime`,
             node,
-            moduleOptions.filename,
+            moduleOptions.source_filename ?? moduleOptions.filename,
           );
         }
         const key = this.absoluteModuleKey(
@@ -325,6 +330,7 @@ export class PythonModuleResolver {
     statement: SyntaxNode,
     key: string,
     entry: SyntaxNode,
+    sourceFilename?: string,
   ): void {
     if (!INTRINSIC_MODULES.has(key)) return;
     const alias = entry.type === "aliased_import"
@@ -334,7 +340,7 @@ export class PythonModuleResolver {
       throw this.importError(
         `Compiler intrinsic modules require an explicit alias: import ${key} as runtime`,
         statement,
-        this.options.filename,
+        sourceFilename,
       );
     }
   }
@@ -540,9 +546,10 @@ export class PythonModuleResolver {
         if (
           candidate.version === this.compiler.get_compiler_version() &&
           candidate.signature === sourceHash &&
-          candidate.filename === logicalFilename &&
           candidate.filename_policy ===
             (moduleOptions.filename_policy ?? null) &&
+          (moduleOptions.filename_policy == null ||
+            candidate.filename === logicalFilename) &&
           candidate.discard_asserts === !!moduleOptions.discard_asserts
         ) return candidate;
       } catch (_error) {}
@@ -562,7 +569,7 @@ export class PythonModuleResolver {
       classes: cached.classes ?? nullObject(),
       outputs: cached.outputs ?? nullObject(),
       module_id: key,
-      filename: cached.filename ?? logicalFilename,
+      filename: logicalFilename ?? cached.filename,
       source_filename: sourceFilename,
       filename_policy: cached.filename_policy ?? null,
       import_order: assignOrder ? this.nextImportOrder++ : -1,
@@ -621,7 +628,7 @@ export class PythonModuleResolver {
   ): any {
     return new this.compiler.ImportError(
       message,
-      filename ?? this.options.filename,
+      filename ?? this.options.source_filename ?? this.options.filename,
       node.startPosition.row + 1,
       node.startPosition.column,
       node.startIndex,

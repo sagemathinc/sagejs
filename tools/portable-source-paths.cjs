@@ -7,6 +7,7 @@ const {
   isAbsolute,
   join,
   relative,
+  win32,
 } = require("node:path");
 
 const PORTABLE_SOURCE_FILENAME_POLICY =
@@ -20,7 +21,16 @@ function portablePrefix(prefix) {
   const segments = normalized.split("/");
   if (
     isAbsolute(prefix) ||
-    segments.some((segment) => segment === "" || segment === "." || segment === "..")
+    win32.isAbsolute(prefix) ||
+    prefix.includes(":") ||
+    /[\x00-\x1f\x7f]/.test(prefix) ||
+    segments.some((segment) =>
+      segment === "" ||
+      segment === "." ||
+      segment === ".." ||
+      !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/.test(segment) ||
+      /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(segment)
+    )
   ) {
     throw new Error(
       `portable source filename prefix must be a relative canonical path: ${prefix}`,

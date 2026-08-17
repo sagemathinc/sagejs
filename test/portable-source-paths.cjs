@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const {
+  copyFileSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -45,9 +46,14 @@ function fixture(directory) {
   return main;
 }
 
-async function compileFixture(directory, { cache, prefix = "src" } = {}) {
+async function compileFixture(
+  directory,
+  { cache, portable = true, precompiled, prefix = "src" } = {},
+) {
   const main = fixture(directory);
-  const portable = createPortableSourcePaths(directory, prefix);
+  const portableSources = portable
+    ? createPortableSourcePaths(directory, prefix)
+    : undefined;
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
   try {
@@ -55,9 +61,14 @@ async function compileFixture(directory, { cache, prefix = "src" } = {}) {
       filename: main,
       basedir: directory,
       exact_integer_literals: true,
-      filename_policy: portable.policy,
-      logicalize_filename: portable.logicalize,
+      ...(portableSources
+        ? {
+            filename_policy: portableSources.policy,
+            logicalize_filename: portableSources.logicalize,
+          }
+        : {}),
       module_cache_dir: cache,
+      precompiled_module_cache_dir: precompiled,
       strict_python_scopes: true,
     });
     const output = new compiler.OutputStream({
@@ -65,7 +76,7 @@ async function compileFixture(directory, { cache, prefix = "src" } = {}) {
       module_cache_dir: cache,
     });
     ast.print(output);
-    return { ast, javascript: output.get(), main, portable };
+    return { ast, javascript: output.get(), main, portable: portableSources };
   } finally {
     frontend.close();
   }
@@ -84,7 +95,20 @@ test("portable source paths validate roots, prefixes, and symlink containment", 
       () => portable.logicalize(join(outside, "module.py")),
       /outside the portable source root/,
     );
-    for (const prefix of ["", ".", "..", "/src", "src//nested", "src/../lib"]) {
+    for (const prefix of [
+      "",
+      ".",
+      "..",
+      "/src",
+      "C:\\src",
+      "C:src",
+      "src:bad",
+      "src\0bad",
+      "src//nested",
+      "src/../lib",
+      "src/.",
+      "NUL",
+    ]) {
       assert.throws(
         () => createPortableSourcePaths(temporary, prefix),
         /prefix/,
@@ -101,6 +125,44 @@ test("portable source paths validate roots, prefixes, and symlink containment", 
   } finally {
     rmSync(temporary, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("null-policy precompiled caches relocate without retaining builder paths", async () => {
+  const left = mkdtempSync(join(tmpdir(), "sagejs-precompiled-left-"));
+  const right = mkdtempSync(join(tmpdir(), "sagejs-precompiled-right-"));
+  const cache = join(left, "cache");
+  const precompiled = join(right, "precompiled");
+  mkdirSync(cache);
+  mkdirSync(precompiled);
+  try {
+    const built = await compileFixture(join(left, "source"), {
+      cache,
+      portable: false,
+    });
+    const cacheName = readdirSync(cache).find((name) =>
+      name.includes("source-package-module.py"),
+    );
+    assert.ok(cacheName);
+    copyFileSync(
+      join(cache, cacheName),
+      join(precompiled, "package-module.json"),
+    );
+
+    const relocated = await compileFixture(join(right, "source"), {
+      portable: false,
+      precompiled,
+    });
+    const module = relocated.ast.imports["package.module"];
+    assert.equal(module.is_cached, true);
+    assert.equal(module.filename, join(right, "source", "package", "module.py"));
+    assert.equal(module.source_filename, module.filename);
+    assert.equal(relocated.javascript.includes(left), false);
+    assert.equal(relocated.javascript.includes(right), true);
+    assert.notEqual(built.main, relocated.main);
+  } finally {
+    rmSync(left, { recursive: true, force: true });
+    rmSync(right, { recursive: true, force: true });
   }
 });
 
@@ -199,10 +261,53 @@ test("portable resolver rejects an outside main source and incomplete policy", a
       }),
       /must be configured together/,
     );
+
+    const main = join(sourceRoot, "main.py");
+    write(main, "import escaped\n");
+    write(join(outside, "escaped.py"), "answer = 42\n");
+    assert.throws(
+      () => frontend.parse(readFileSync(main, "utf8"), {
+        filename: main,
+        basedir: sourceRoot,
+        import_dirs: [outside],
+        filename_policy: portable.policy,
+        logicalize_filename: portable.logicalize,
+      }),
+      /outside the portable source root/,
+    );
   } finally {
     frontend.close();
     rmSync(sourceRoot, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("portable imported-module diagnostics retain physical filenames", async () => {
+  const source = mkdtempSync(join(tmpdir(), "sagejs-portable-diagnostic-"));
+  const main = join(source, "main.py");
+  const bad = join(source, "bad.py");
+  write(main, "import bad\n");
+  write(bad, "from sagejs.runtime import reflect\n");
+  const portable = createPortableSourcePaths(source);
+  const frontend = await createPythonCompilerFrontend(createCompiler(), "python");
+  try {
+    assert.throws(
+      () => frontend.parse(readFileSync(main, "utf8"), {
+        filename: main,
+        basedir: source,
+        filename_policy: portable.policy,
+        logicalize_filename: portable.logicalize,
+      }),
+      (error) => {
+        assert.equal(error.filename, bad);
+        assert.equal(error.fileName, bad);
+        assert.equal(error.toString().includes(bad), true);
+        return true;
+      },
+    );
+  } finally {
+    frontend.close();
+    rmSync(source, { recursive: true, force: true });
   }
 });
 
@@ -240,6 +345,24 @@ test("portable CLI stdin requires an explicit physical source identity", () => {
   );
   assert.notEqual(escaped.status, 0);
   assert.match(escaped.stderr, /outside the portable source root/);
+});
+
+test("portable CLI resolves ordinary relative source files", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "compile",
+      "--python",
+      "--omit-baselib",
+      "--portable-sagejs-paths",
+      "src/compiler_version.py",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.includes(root), false);
+  assert.match(result.stdout, /src\/compiler_version\.py/);
 });
 
 test("built compiler and runtime assets contain no physical checkout root", () => {

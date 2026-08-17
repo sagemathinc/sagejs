@@ -113,6 +113,9 @@ export default async function Compile({
   const portableSources = argv.portable_sagejs_paths
     ? createPortableSourcePaths(src_path, "src")
     : undefined;
+  const portableStdinFilename = portableSources && argv.filename_for_stdin
+    ? resolve(argv.filename_for_stdin)
+    : argv.filename_for_stdin;
   const pythonFrontend = await createPythonCompilerFrontend(
     PyLang,
     argv.sage ? "sage" : "python",
@@ -234,7 +237,7 @@ export default async function Compile({
     let topLevel;
     timeIt("parse", () => {
       const filename =
-        sourceFilename || argv.filename_for_stdin || "<stdin>";
+        sourceFilename || portableStdinFilename || "<stdin>";
       if (foreignFrontend) {
         try {
           code = foreignFrontend.lower(code, { filename }).source;
@@ -379,7 +382,10 @@ export default async function Compile({
   try {
     if (files.length > 0) {
       for (const filename of files) {
-        await compileSingleFile(await readWholeFile(filename), filename);
+        const sourceFilename = portableSources && filename !== "-"
+          ? resolve(filename)
+          : filename;
+        await compileSingleFile(await readWholeFile(filename), sourceFilename);
       }
     } else {
       await compileSingleFile(await readWholeFile());
