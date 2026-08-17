@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Bridge guarded Sage Surface3d and Mesh3d geometry into semantic PlotSpec layers while preserving exact Plotly fallbacks, correctness, and large-surface performance",
-  "base_commit": "68099807d3e30ea1d93d933da8366ba501af18cc",
+  "base_commit": "8a2e2ce80f505d1b080b161804ec64c68b639414",
   "claims": [
     "src/baselib/graphics3d.py",
     "src/lib/sagejs/plotting/surface_layers.py",
@@ -117,11 +117,107 @@
       "commit": "68099807d3e30ea1d93d933da8366ba501af18cc",
       "workspace_fingerprint": "342bfb7601f3aefffb1506e2480b8de04917d28d60896dc18a8652f88d2722a3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/sage-plot3d-plotspec.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.485,
+      "started_at": "2026-08-17T07:34:39.404Z",
+      "commit": "7472656c38d2aa57beee51487e87ad7bab6bd4c6",
+      "workspace_fingerprint": "5f1ade762ffe283661a355f6bb8564cd2fd1b229293baf935e8cd745d4f3d066",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/sage-plot3d-plotspec.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.855,
+      "started_at": "2026-08-17T07:46:39.896Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/plot-surface-layers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.573,
+      "started_at": "2026-08-17T07:46:47.346Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics3d.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.404,
+      "started_at": "2026-08-17T07:46:54.284Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/bin/sagelite test/oracles/sage-plot3d-plotspec.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.297,
+      "started_at": "2026-08-17T07:47:01.517Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/sage-plot3d-plotspec.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.84,
+      "started_at": "2026-08-17T07:47:08.257Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.509,
+      "started_at": "2026-08-17T07:47:28.233Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.743,
+      "started_at": "2026-08-17T07:47:54.352Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 589.637,
+      "started_at": "2026-08-17T07:48:09.022Z",
+      "commit": "7d8f156a0a9f7a59fd5dc06dba69e79d2b8509f7",
+      "workspace_fingerprint": "48357ee04df91af8cdd02529e28b8a4b80c2e18355ef029d7448c35ef84c1f7e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented the guarded Sage 3D PlotSpec bridge in standalone commit 7472656c: plain Surface3d instances lower to rectangular surfaces, all-triangular Mesh3d instances lower to triangular meshes, and one convex planar polygon lowers to a polygon layer. Unsupported mesh/dots companions, nonrepresentable transforms, multi-face polygonal topology, and invalid single polygons preserve the exact raw Plotly fallback. Stable IDs, source provenance, bounds, diagnostics, explicit resource limits, native-disabled behavior, and Sage 10.9 differential fixtures are covered. The validated no-redundant-copy path, combined with root commit 8a2e2ce8, measured plotspec_ms=4544.865634 for a 300x300 surface versus about 32300 ms before optimization; the unchanged Plotly path measured 17.547439 ms.",
+    "risks": [
+      "The full integration tier remains red for unrelated pre-existing native artifact, multiprocessing, sparse-random timeout, and performance-threshold failures; every 2D/3D plotting integration test, including graphics3d and Sage surface coverage, passed in that run.",
+      "The focused test is intentionally not registered in the central node test manifest because that file belongs to the integration lane."
+    ],
+    "next_steps": [
+      "Cherry-pick standalone bridge commit 7472656c only; do not cherry-pick the duplicate performance-foundation commit 68099807 or this lane's root merge commits.",
+      "Register test/sage-plot3d-plotspec.cjs in the central node test manifest from the integration lane."
+    ]
   }
 }
