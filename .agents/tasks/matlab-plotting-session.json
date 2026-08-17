@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement a session-local MATLAB figure/axes/handle model with plot, hold, labels, limits, legends, property access, command syntax, PlotSpec inspection, rich Plotly display, and isolated persistent state across cells.",
-  "base_commit": "d6b08bc9c876ba605852b70338e2fd140c39db4f",
+  "base_commit": "9e6e6b5cd13f5aab0d0a4b74bc69da59b67d47cf",
   "claims": [
     "tools/matlab/ast.ts",
     "tools/matlab/frontend.ts",
