@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wolfram-plotspec-spine",
+  "title": "Preserve Wolfram plotting intent",
+  "lane": "polyglot",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route core Wolfram plotting and Graphics composition through an ordered option/provenance spine, preserve nested directive scope and stable PlotSpec intent, and diagnose every unsupported option without changing established Plotly happy paths.",
+  "base_commit": "00a84bf556eacf9689d330253d51152231e11168",
+  "claims": [
+    "tools/wolfram/ast.ts",
+    "tools/wolfram/frontend.ts",
+    "src/lib/wolfram.py",
+    "test/wolfram-plotting.cjs"
+  ],
+  "dependencies": [
+    "plot-semantic-primitives"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing Wolfram Plotly traces plus focused option precedence/provenance fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:integration",
+    "pnpm bench:polyglot"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
