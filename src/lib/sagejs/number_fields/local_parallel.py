@@ -3,11 +3,11 @@
 The local number-field algorithms deliberately live elsewhere.  This module
 owns the narrow P5 isolation boundary between those algorithms and Sage.js's
 worker pool.  Values crossing that boundary are recursively immutable tuples
-of exact integers, strings, booleans, and ``None``; in particular, they never
+of exact integers, strings, booleans, and `None`; in particular, they never
 contain a FLINT resource, pointer, parent object, or host identity.
 
 The public constructors validate and canonicalize every payload.  Callers can
-therefore use :func:`run_local_jobs` with a module-level worker function, then
+therefore use `run_local_jobs` with a module-level worker function, then
 consume the returned CRT/HNF plan without depending on worker completion
 order.  The same code is ordinary CPython and provides a sequential fallback
 when workers are unavailable or the measured setup threshold predicts a loss.
@@ -313,7 +313,7 @@ def canonical_polynomial(coefficients: Iterable[Any]) -> tuple[int, ...]:
 
 
 def canonical_factor(coefficients: Iterable[Any], prime: Any) -> tuple[int, ...]:
-    """Return a monic constant-first factor over ``GF(prime)``."""
+    """Return a monic constant-first factor over `GF(prime)`."""
     p = _integer(prime, "local prime", 2)
     answer = tuple(
         value % p for value in _integer_tuple(coefficients, "factor coefficient")
@@ -352,7 +352,7 @@ def make_local_job(
 ) -> JobPayload:
     """Construct one canonical immutable local-component job.
 
-    ``predicted_micros`` and ``predicted_peak_bytes`` come from the maximal
+    `predicted_micros` and `predicted_peak_bytes` come from the maximal
     order selector.  They are evidence used only for scheduling and never
     influence the mathematical result.
     """
