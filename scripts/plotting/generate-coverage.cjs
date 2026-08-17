@@ -255,13 +255,11 @@ function sageClassification(qualifiedName, kind, dimension) {
 
   return {
     classification: "unsupported",
-    support_state: "not-advertised",
+    support_state: "unverified-or-unimplemented",
     translation_or_reason:
-      "This exact qualified Sage entry is not part of the evidence-backed " +
-      "Sage.js plotting surface for this release. Use an advertised " +
-      "Plotly-backed constructor from this matrix, revise its PlotSpec, or " +
-      "apply a validated Plotly override. The entry remains unsupported " +
-      "until its exact import and semantics have focused executable tests.",
+      "No checked evidence currently demonstrates this exact qualified " +
+      "Sage entry. It is classified unsupported rather than inferring " +
+      "compatibility from a related global name or neighboring feature.",
     semantic_tests: [],
     plotly_tests: [],
     visual_tests: [],

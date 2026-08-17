@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "oracle": {
+    "command": "/home/user/bin/sagelite",
+    "sage_version": "10.9.post1",
+    "source_modules": [
+      "sage.plot.line",
+      "sage.plot.point",
+      "sage.plot.polygon",
+      "sage.plot.arrow",
+      "sage.plot.text"
+    ]
+  },
+  "cases": {
+    "arrow_default": {
+      "artist": {
+        "arrowshorten_each": 0.0,
+        "arrowsize": 5.0,
+        "head": 1,
+        "linestyle": "solid",
+        "width": 2.0,
+        "zorder": 2
+      },
+      "options": {
+        "head": 1,
+        "legend_color": null,
+        "legend_label": null,
+        "linestyle": "solid",
+        "rgbcolor": [0, 0, 1],
+        "width": 2,
+        "zorder": 2
+      }
+    },
+    "arrow_styled": {
+      "artist": {
+        "arrowshorten_each": 7.0,
+        "arrowsize": 11.0,
+        "head": 2,
+        "linestyle": "dashed",
+        "width": 4.0,
+        "zorder": 8
+      }
+    },
+    "line_default": {
+      "artist": {
+        "linestyle": "-",
+        "marker": "None",
+        "markeredgewidth": 1.0,
+        "markersize": 6.0,
+        "zorder": 2
+      },
+      "options": {
+        "alpha": 1,
+        "legend_color": null,
+        "legend_label": null,
+        "rgbcolor": [0, 0, 1],
+        "thickness": 1
+      }
+    },
+    "line_markers": {
+      "artist": {
+        "linestyle": "--",
+        "marker": "D",
+        "markeredgecolor": "red",
+        "markeredgewidth": 2.5,
+        "markerfacecolor": "yellow",
+        "markersize": 13.0,
+        "zorder": 7
+      }
+    },
+    "point_default": {
+      "artist": {
+        "edgecolors": [],
+        "size": 10,
+        "zorder": 0
+      },
+      "options": {
+        "alpha": 1,
+        "faceted": false,
+        "legend_color": null,
+        "legend_label": null,
+        "marker": "o",
+        "markeredgecolor": null,
+        "rgbcolor": [0, 0, 1],
+        "size": 10
+      }
+    },
+    "polygon_default": {
+      "artist": {
+        "edgecolor": [0, 0, 1, 1],
+        "facecolor": [0, 0, 1, 1],
+        "fill": true,
+        "thickness": 0.0,
+        "zorder": 1
+      },
+      "options": {
+        "alpha": 1,
+        "edgecolor": null,
+        "fill": true,
+        "legend_color": null,
+        "legend_label": null,
+        "rgbcolor": [0, 0, 1],
+        "thickness": 0
+      }
+    },
+    "polygon_no_fill": {
+      "artist": {
+        "edgecolor_ignores_edgecolor_option": true,
+        "fill": false,
+        "thickness": 4.0,
+        "zorder": 5
+      }
+    },
+    "text_default": {
+      "artist": {
+        "axis_coords": false,
+        "horizontal_alignment": "center",
+        "rotation": 0.0,
+        "vertical_alignment": "center",
+        "zorder": 3
+      },
+      "options": {
+        "axis_coords": false,
+        "clip": false,
+        "fontsize": 10,
+        "horizontal_alignment": "center",
+        "rgbcolor": [0.0, 0.0, 1.0],
+        "vertical_alignment": "center"
+      }
+    },
+    "text_styled": {
+      "artist": {
+        "alpha": 0.4,
+        "axis_coords": true,
+        "background_rgba": [1.0, 1.0, 0.0, 1.0],
+        "clip": true,
+        "fontsize": 17.0,
+        "fontstyle": "italic",
+        "fontweight": "bold",
+        "horizontal_alignment": "left",
+        "rotation": 45.0,
+        "vertical_alignment": "top",
+        "zorder": 9
+      }
+    }
+  },
+  "intentional_plotly_translations": [
+    "Point size remains the established Sage.js Plotly marker diameter rather than attempting a DPI-dependent matplotlib area conversion.",
+    "Documented Sage step-line forms are accepted even though Sage 10.9.post1 currently forwards them incorrectly to matplotlib.",
+    "Nontrivial arrow heads and shortening use Plotly annotations because shortening is measured in display pixels.",
+    "Rotated, paper-coordinate, styled-background text uses Plotly annotations."
+  ]
+}

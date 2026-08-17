@@ -853,22 +853,10 @@ def lower_3d_geometry_layer(layer: PlotLayer) -> list[dict[str, JSONValue]]:
     raise ValueError("unsupported semantic 3D geometry layer kind: " + layer.kind)
 
 
-def layer_payload(
-    layer: PlotLayer, *, reuse_validated_layer: bool = False
-) -> PlotLayer | dict[str, JSONValue]:
-    """Return the payload consumed by `GraphicPrimitive3d` bridges.
-
-    The default is a detached JSON mapping and remains the public interchange
-    boundary.  An in-process bridge may explicitly reuse the already
-    validated immutable `PlotLayer`; this avoids copying a large geometry only
-    to reconstruct the same layer before lowering it.
-    """
+def layer_payload(layer: PlotLayer) -> dict[str, JSONValue]:
+    """Return the payload shape consumed by `GraphicPrimitive3d` bridges."""
     if not isinstance(layer, PlotLayer):
         raise TypeError("surface payload requires a PlotLayer")
-    if not isinstance(reuse_validated_layer, bool):
-        raise TypeError("reuse_validated_layer must be a bool")
-    if reuse_validated_layer:
-        return layer
     record = layer.to_dict()
     return {
         "kind": record["kind"],
@@ -881,12 +869,8 @@ def layer_payload(
     }
 
 
-def lower_3d_geometry_payload(
-    payload: PlotLayer | Mapping[str, Any],
-) -> list[dict[str, JSONValue]]:
+def lower_3d_geometry_payload(payload: Mapping[str, Any]) -> list[dict[str, JSONValue]]:
     """Lower a bridge payload after reconstructing and validating a layer."""
-    if isinstance(payload, PlotLayer):
-        return lower_3d_geometry_layer(payload)
     value = cast(dict[str, Any], materialize_object(payload, "$.surface_payload"))
     required = (
         "data",

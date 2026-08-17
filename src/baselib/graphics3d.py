@@ -510,23 +510,6 @@ def _g3d_plot_spec_layer(
     return plotting.PlotLayer.from_dict(materialized)
 
 
-def _g3d_semantic_source_intent(
-    primitive: str,
-    source_context: Any = None,
-    ordered_options: Any = None,
-) -> dict[str, Any]:
-    """Merge frontend intent before constructing a large semantic layer."""
-    answer = {"sage_primitive": primitive}
-    if source_context is not None:
-        context = _g3d_plot_spec_json_value(source_context)
-        for name in context:
-            if name not in ("constructor", "representation") and name not in answer:
-                answer[name] = context.__getitem__(name)
-    if ordered_options is not None and len(ordered_options):
-        answer["ordered_options"] = _g3d_plot_spec_json_value(ordered_options)
-    return answer
-
-
 def _g3d_plot_spec_traces(payload: dict[str, Any]) -> list[Any]:
     """Lower one supported semantic payload to its exact Plotly traces."""
     kind = str(payload["kind"])
@@ -615,24 +598,6 @@ class GraphicPrimitive3d:
             "visibility": True,
             "legend": {},
             "metadata": {"semantic": False},
-        }
-
-    def _raw_plot_spec_payload(self, reason: str) -> dict[str, Any]:
-        """Describe an unsupported semantic case without losing its traces."""
-        return {
-            "kind": "plotly-trace",
-            "data": {
-                "traces": _g3d_plot_spec_json_value(self._plotly_traces()),
-            },
-            "source_intent": {
-                "representation": "raw-plotly-fallback",
-                "primitive": repr(self),
-                "reason": reason,
-            },
-            "style": {},
-            "visibility": True,
-            "legend": {},
-            "metadata": {"semantic": False, "fallback_reason": reason},
         }
 
     def _plot_spec_layer(
@@ -875,7 +840,7 @@ class TransformedPrimitive3d(GraphicPrimitive3d):
         )
         if transformed is not None:
             return transformed
-        return self._raw_plot_spec_payload("affine-transform-not-representable")
+        return GraphicPrimitive3d._plot_spec_payload(self)
 
 
 class TranslatedPrimitive3d(GraphicPrimitive3d):
@@ -922,7 +887,7 @@ class TranslatedPrimitive3d(GraphicPrimitive3d):
         )
         if transformed is not None:
             return transformed
-        return self._raw_plot_spec_payload("translation-not-representable")
+        return GraphicPrimitive3d._plot_spec_payload(self)
 
 
 @runtime.sequence_class
@@ -1151,141 +1116,6 @@ class Mesh3d(GraphicPrimitive3d):
                 mesh_y.append(None)
                 mesh_z.append(None)
         return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
-
-    def _plot_spec_semantic_layer(
-        self,
-        ordinal: int,
-        source_context: Any = None,
-        ordered_options: Any = None,
-    ) -> Any:
-        """Return a validated layer and fallback reason without recopying it."""
-        if bool(_g3d_option_get(self._options, "mesh", False)):
-            return runtime.math_tuple([None, "wireframe-companion-trace"])
-
-        all_triangles = len(self.faces) > 0
-        for face in self.faces:
-            if len(face) != 3:
-                all_triangles = False
-        single_polygon = len(self.faces) == 1 and len(self.faces[0]) >= 3
-        if not all_triangles and not single_polygon:
-            return runtime.math_tuple(
-                [None, "multi-face-polygonal-mesh-requires-explicit-triangulation"]
-            )
-
-        surface_layers = __import__(
-            "sagejs.plotting.surface_layers",
-            fromlist=[
-                "MAX_MESH_TRIANGLES",
-                "MAX_MESH_VERTICES",
-                "layer_payload",
-                "lower_3d_geometry_payload",
-                "polygon_layer",
-                "triangular_mesh_layer",
-            ],
-        )
-        if len(self.vertices) > surface_layers.MAX_MESH_VERTICES:
-            raise ValueError(
-                "mesh exceeds the vertex limit of "
-                + str(surface_layers.MAX_MESH_VERTICES)
-            )
-        if all_triangles and len(self.faces) > surface_layers.MAX_MESH_TRIANGLES:
-            raise ValueError(
-                "mesh exceeds the triangle limit of "
-                + str(surface_layers.MAX_MESH_TRIANGLES)
-            )
-
-        options = self._options
-        color = _g3d_option_get(
-            options, "color", _g3d_option_get(options, "rgbcolor", [0, 0, 1])
-        )
-        face_colors = []
-        is_face_colors = (
-            isinstance(color, (list, tuple))
-            and len(color) > 0
-            and isinstance(color[0], (str, list, tuple))
-        )
-        if is_face_colors:
-            colors = list(color)
-            if all_triangles:
-                for face_index in range(len(self.faces)):
-                    face_colors.append(colors[face_index % len(colors)])
-            else:
-                face_colors.append(colors[0])
-        style = {
-            "color": [0, 0, 1] if is_face_colors else color,
-            "face_colors": face_colors,
-            "flat_shading": bool(
-                _g3d_option_get(options, "threejs_flat_shading", True)
-            ),
-            "opacity": float(_g3d_option_get(options, "opacity", 1)),
-        }
-        legend_label = _g3d_option_get(options, "legend_label")
-        try:
-            if all_triangles:
-                layer = surface_layers.triangular_mesh_layer(
-                    self.vertices,
-                    self.faces,
-                    ordinal=ordinal,
-                    style=style,
-                    legend_label=(None if legend_label is None else str(legend_label)),
-                    source_intent=_g3d_semantic_source_intent(
-                        "Mesh3d", source_context, ordered_options
-                    ),
-                )
-            else:
-                points = [self.vertices[index] for index in self.faces[0]]
-                layer = surface_layers.polygon_layer(
-                    points,
-                    ordinal=ordinal,
-                    style=style,
-                    legend_label=(None if legend_label is None else str(legend_label)),
-                    source_intent=_g3d_semantic_source_intent(
-                        "Mesh3d", source_context, ordered_options
-                    ),
-                )
-            payload = surface_layers.layer_payload(layer, reuse_validated_layer=True)
-            surface_layers.lower_3d_geometry_payload(payload)
-            return runtime.math_tuple([payload, None])
-        except TypeError:
-            return runtime.math_tuple(
-                [None, "mesh-geometry-or-style-not-losslessly-representable"]
-            )
-        except ValueError:
-            return runtime.math_tuple(
-                [None, "mesh-geometry-or-style-not-losslessly-representable"]
-            )
-        except IndexError:
-            return runtime.math_tuple(
-                [None, "mesh-geometry-or-style-not-losslessly-representable"]
-            )
-
-    def _plot_spec_payload(self) -> dict[str, Any]:
-        """Return a guarded semantic mesh or an exact raw Plotly fallback."""
-        layer, reason = self._plot_spec_semantic_layer(0)
-        if layer is None:
-            return self._raw_plot_spec_payload(reason)
-        surface_layers = __import__(
-            "sagejs.plotting.surface_layers", fromlist=["layer_payload"]
-        )
-        return surface_layers.layer_payload(layer)
-
-    def _plot_spec_layer(
-        self,
-        ordinal: int,
-        source_context: Any = None,
-        ordered_options: Any = None,
-    ) -> Any:
-        layer, reason = self._plot_spec_semantic_layer(
-            ordinal, source_context, ordered_options
-        )
-        if layer is not None:
-            return layer
-        return _g3d_plot_spec_layer(
-            self._raw_plot_spec_payload(reason),
-            ordinal,
-            source_context,
-            ordered_options,
-        )
 
     def _plotly_traces(self) -> list[Any]:
         xdata = [point[0] for point in self.vertices]
@@ -1699,100 +1529,6 @@ class Surface3d(GraphicPrimitive3d):
                 mesh_y.append(None)
                 mesh_z.append(None)
         return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
-
-    def _plot_spec_semantic_layer(
-        self,
-        ordinal: int,
-        source_context: Any = None,
-        ordered_options: Any = None,
-    ) -> Any:
-        """Return a validated layer and fallback reason without recopying it."""
-        if bool(_g3d_option_get(self._options, "mesh", False)):
-            return runtime.math_tuple([None, "wireframe-companion-trace"])
-        if bool(_g3d_option_get(self._options, "dots", False)):
-            return runtime.math_tuple([None, "dot-companion-trace"])
-
-        surface_layers = __import__(
-            "sagejs.plotting.surface_layers",
-            fromlist=[
-                "MAX_SURFACE_SAMPLES",
-                "layer_payload",
-                "lower_3d_geometry_payload",
-                "rectangular_surface_layer",
-            ],
-        )
-        row_count = len(self.xdata)
-        column_count = 0 if row_count == 0 else len(self.xdata[0])
-        sample_count = row_count * column_count
-        if sample_count > surface_layers.MAX_SURFACE_SAMPLES:
-            raise ValueError(
-                "surface exceeds the sample limit of "
-                + str(surface_layers.MAX_SURFACE_SAMPLES)
-            )
-
-        options = self._options
-        color = _g3d_option_get(options, "color", "steelblue")
-        style = {
-            "color": color,
-            "colorbar": bool(_g3d_option_get(options, "colorbar", False)),
-            "opacity": float(_g3d_option_get(options, "opacity", 1)),
-        }
-        legend_label = _g3d_option_get(options, "legend_label")
-        try:
-            layer = surface_layers.rectangular_surface_layer(
-                self.xdata,
-                self.ydata,
-                self.zdata,
-                ordinal=ordinal,
-                style=style,
-                legend_label=None if legend_label is None else str(legend_label),
-                source_intent=_g3d_semantic_source_intent(
-                    "Surface3d", source_context, ordered_options
-                ),
-            )
-            payload = surface_layers.layer_payload(layer, reuse_validated_layer=True)
-            surface_layers.lower_3d_geometry_payload(payload)
-            return runtime.math_tuple([payload, None])
-        except TypeError:
-            return runtime.math_tuple(
-                [None, "surface-geometry-or-style-not-losslessly-representable"]
-            )
-        except ValueError:
-            return runtime.math_tuple(
-                [None, "surface-geometry-or-style-not-losslessly-representable"]
-            )
-        except IndexError:
-            return runtime.math_tuple(
-                [None, "surface-geometry-or-style-not-losslessly-representable"]
-            )
-
-    def _plot_spec_payload(self) -> dict[str, Any]:
-        """Return a semantic grid only when no companion trace is required."""
-        layer, reason = self._plot_spec_semantic_layer(0)
-        if layer is None:
-            return self._raw_plot_spec_payload(reason)
-        surface_layers = __import__(
-            "sagejs.plotting.surface_layers", fromlist=["layer_payload"]
-        )
-        return surface_layers.layer_payload(layer)
-
-    def _plot_spec_layer(
-        self,
-        ordinal: int,
-        source_context: Any = None,
-        ordered_options: Any = None,
-    ) -> Any:
-        layer, reason = self._plot_spec_semantic_layer(
-            ordinal, source_context, ordered_options
-        )
-        if layer is not None:
-            return layer
-        return _g3d_plot_spec_layer(
-            self._raw_plot_spec_payload(reason),
-            ordinal,
-            source_context,
-            ordered_options,
-        )
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options

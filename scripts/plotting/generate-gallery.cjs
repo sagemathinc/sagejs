@@ -255,218 +255,6 @@ print(json.dumps(records, sort_keys=True, separators=(",", ":"), ensure_ascii=Fa
   return JSON.parse(result.stdout);
 }
 
-const cssNames = {
-  black: "#000000",
-  blue: "#0000ff",
-  red: "#ff0000",
-  white: "#ffffff",
-};
-
-function colorChannels(value) {
-  assert.equal(typeof value, "string", `unsupported gallery color ${value}`);
-  const source = (cssNames[value.toLowerCase()] || value).trim().toLowerCase();
-  if (/^#[0-9a-f]{3}$/.test(source)) {
-    return [1, 2, 3].map((index) =>
-      Number.parseInt(source[index] + source[index], 16) / 255
-    );
-  }
-  if (/^#[0-9a-f]{6}$/.test(source)) {
-    return [1, 3, 5].map((index) =>
-      Number.parseInt(source.slice(index, index + 2), 16) / 255
-    );
-  }
-  const rgb = source.match(/^rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/);
-  assert.ok(rgb, `unsupported gallery color ${value}`);
-  return rgb.slice(1, 4).map((channel) => Number(channel) / 255);
-}
-
-function linearChannel(channel) {
-  return channel <= 0.04045
-    ? channel / 12.92
-    : ((channel + 0.055) / 1.055) ** 2.4;
-}
-
-function relativeLuminance(color, background = "#ffffff", opacity = 1) {
-  const foreground = colorChannels(color);
-  const behind = colorChannels(background);
-  return [0.2126, 0.7152, 0.0722].reduce((total, weight, index) => {
-    const channel = foreground[index] * opacity + behind[index] * (1 - opacity);
-    return total + weight * linearChannel(channel);
-  }, 0);
-}
-
-function contrastRatio(foreground, background, opacity = 1) {
-  const first = relativeLuminance(foreground, background, opacity);
-  const second = relativeLuminance(background);
-  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
-}
-
-function traceColor(trace) {
-  if (typeof trace.line?.color === "string") return trace.line.color;
-  if (typeof trace.marker?.color === "string") return trace.marker.color;
-  if (typeof trace.textfont?.color === "string") return trace.textfont.color;
-  if (typeof trace.color === "string") return trace.color;
-  if (Array.isArray(trace.colorscale) && typeof trace.colorscale[0]?.[1] === "string") {
-    return trace.colorscale[0][1];
-  }
-  return "#2a3f5f";
-}
-
-function renderedContrast(figure) {
-  const background = figure.layout?.scene?.bgcolor ||
-    figure.layout?.plot_bgcolor || figure.layout?.paper_bgcolor || "#ffffff";
-  const foreground = figure.layout?.font?.color || "#2a3f5f";
-  const axis = figure.layout?.xaxis?.color ||
-    figure.layout?.scene?.xaxis?.color || foreground;
-  const grid = figure.layout?.xaxis?.gridcolor ||
-    figure.layout?.scene?.xaxis?.gridcolor || "#eeeeee";
-  const layerContrast = figure.data.map((trace) =>
-    contrastRatio(traceColor(trace), background, trace.opacity ?? 1)
-  );
-  return {
-    contrast: {
-      foreground_on_paper: contrastRatio(
-        foreground,
-        figure.layout?.paper_bgcolor || "#ffffff",
-      ),
-      foreground_on_plot: contrastRatio(foreground, background),
-      axis_on_plot: contrastRatio(axis, background),
-      grid_on_plot: contrastRatio(grid, background),
-      categorical_on_plot: layerContrast,
-    },
-    layer_contrast: layerContrast,
-    contrast_basis: {
-      background,
-      foreground,
-      axis,
-      grid,
-      trace_colors: figure.data.map(traceColor),
-    },
-  };
-}
-
-function finiteValues(value, output = []) {
-  if (Array.isArray(value)) {
-    for (const item of value) finiteValues(item, output);
-  } else if (typeof value === "number" && Number.isFinite(value)) {
-    output.push(value);
-  }
-  return output;
-}
-
-function plotlyBounds(figure, dimension) {
-  const answer = {};
-  for (const coordinate of dimension === 3 ? ["x", "y", "z"] : ["x", "y"]) {
-    const values = figure.data.flatMap((trace) => finiteValues(trace[coordinate]));
-    if (values.length > 0) answer[coordinate] = [Math.min(...values), Math.max(...values)];
-  }
-  return answer;
-}
-
-async function inspectSpec(session, expression) {
-  const result = await session.evaluate([
-    `gallery_spec = ${expression}`,
-    "import json",
-    "print(json.dumps({",
-    "  'plot_spec': json.loads(gallery_spec.to_json()),",
-    "  'alt_text': gallery_spec.alt_text(),",
-    "  'bounds': gallery_spec.bounds(),",
-    "  'validation_codes': [item.code for item in gallery_spec.validate()],",
-    "}, sort_keys=True, separators=(',', ':'), ensure_ascii=False))",
-  ].join("\n"), { language: "python" });
-  return JSON.parse(result.stdout.trim());
-}
-
-async function actualFrontendFixture(definition) {
-  const { createSage } = require("../../dist/tools/kernel.js");
-  const session = await createSage();
-  try {
-    await session.evaluate(definition.source, { language: definition.frontend });
-    const rendered = await session.evaluate(definition.result_expression, {
-      language: definition.frontend,
-    });
-    assert.equal(rendered.display?.mime, "application/vnd.plotly.v1+json");
-    const inspected = await inspectSpec(session, definition.spec_expression);
-    const plotSpec = inspected.plot_spec;
-    assert.equal(plotSpec.provenance.frontend, definition.frontend);
-    const figure = rendered.display.data;
-    if (definition.assert_figure) definition.assert_figure(figure);
-    const semanticBounds = inspected.bounds;
-    const hasSemanticBounds = Object.keys(semanticBounds).length > 0;
-    return {
-      id: definition.id,
-      frontend: definition.frontend,
-      classification: "translated",
-      dimension: plotSpec.dimension,
-      theme: plotSpec.theme,
-      title: definition.title,
-      source: definition.source,
-      alt_text: inspected.alt_text,
-      alt_text_origin: plotSpec.annotations.some((item) => item.kind === "alt_text")
-        ? "explicit"
-        : "generated",
-      bounds: hasSemanticBounds ? semanticBounds : plotlyBounds(figure, plotSpec.dimension),
-      bounds_origin: hasSemanticBounds ? "plotspec-semantic" : "plotly-trace",
-      validation_codes: inspected.validation_codes,
-      plot_spec: plotSpec,
-      plotly: figure,
-      frontend_evidence: {
-        execution: "createSage.evaluate",
-        language: definition.frontend,
-        spec_expression: definition.spec_expression,
-      },
-      ...renderedContrast(figure),
-    };
-  } finally {
-    await session.close();
-  }
-}
-
-async function frontendFixtures() {
-  const previous = process.env.SAGEJS_NATIVE_DISABLE;
-  process.env.SAGEJS_NATIVE_DISABLE = "1";
-  try {
-    const definitions = [
-      {
-        id: "wolfram-semantic-2d-notebook",
-        frontend: "wolfram",
-        title: "Wolfram Graphics semantic 2D primitives",
-        source: "g=Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False];",
-        result_expression: "g",
-        spec_expression: "g.spec()",
-        assert_figure(figure) {
-          assert.equal(figure.layout.xaxis.visible, false);
-          assert.equal(figure.layout.yaxis.visible, false);
-        },
-      },
-      {
-        id: "wolfram-semantic-3d-notebook",
-        frontend: "wolfram",
-        title: "Wolfram Graphics3D sphere",
-        source: "g=Graphics3D[{Red,Sphere[{0,0,0},1]},Boxed->False];",
-        result_expression: "g",
-        spec_expression: "g.spec()",
-      },
-      {
-        id: "matlab-semantic-2d-notebook",
-        frontend: "matlab",
-        title: "MATLAB stateful quadratic plot",
-        source: "h=plot([0 1 2],[0 1 4],'b-o','LineWidth',3); xlabel('x'); ylabel('y'); title('quadratic'); legend('quadratic'); grid on; snapshot=plotspec(h);",
-        result_expression: "gcf()",
-        spec_expression: "snapshot",
-      },
-    ];
-    const records = [];
-    for (const definition of definitions) {
-      records.push(await actualFrontendFixture(definition));
-    }
-    return records;
-  } finally {
-    if (previous === undefined) delete process.env.SAGEJS_NATIVE_DISABLE;
-    else process.env.SAGEJS_NATIVE_DISABLE = previous;
-  }
-}
-
 function fixtureDocument(records) {
   return {
     schema_version: 1,
@@ -478,18 +266,27 @@ function fixtureDocument(records) {
     },
     scope: {
       statement:
-        "Sage fixtures exercise checked semantic PlotSpec/Plotly lowering. Wolfram and MATLAB fixtures are executed by their integrated frontends and capture the resulting live PlotSpec and rich Plotly display.",
-      frontends: ["sage", "wolfram", "matlab"],
+        "These fixtures exercise the checked semantic PlotSpec and Plotly lowering APIs. Their source fields name the equivalent Sage constructors; Sage frontend syntax remains covered by focused frontend tests.",
       dimensions: [2, 3],
       themes,
       sage_layer_kinds: ["line", "point", "text", "surface"],
-      frontend_fixture_counts: {
-        sage: records.filter((record) => record.frontend === "sage").length,
-        wolfram: records.filter((record) => record.frontend === "wolfram").length,
-        matlab: records.filter((record) => record.frontend === "matlab").length,
-      },
     },
-    placeholders: [],
+    placeholders: [
+      {
+        frontend: "wolfram",
+        classification: "pending-integration",
+        intended_equivalence: ["sage-semantic-2d", "sage-semantic-3d"],
+        reason:
+          "The Wolfram PlotSpec adapter is being integrated on its own claimed branch; this gallery must not fabricate evidence before it lands.",
+      },
+      {
+        frontend: "matlab",
+        classification: "pending-integration",
+        intended_equivalence: ["sage-semantic-2d", "sage-semantic-3d"],
+        reason:
+          "The stateful MATLAB plotting adapter is being integrated on its own claimed branch; this gallery must not fabricate evidence before it lands.",
+      },
+    ],
     fixtures: records,
   };
 }
@@ -517,7 +314,7 @@ function expectationDocument(records) {
         grid_minimum_only_for_high_contrast: 3.0,
       },
       alt_text:
-        "Every fixture exposes nonempty semantic alt text. Sage gallery specifications include explicit alt-text annotations; current Wolfram and MATLAB specifications expose generated text and honestly retain PLOT_ALT_TEXT_MISSING until the frontends attach it.",
+        "Every fixture must carry explicit nonempty semantic alt text and validate without PLOT_ACCESSIBILITY_ALT_TEXT_MISSING.",
       browser_dom_boundary:
         "PlotSpec alt text is available, but the current Plotly display bridge does not attach it as a DOM accessible name. Browser evidence records that debt; a future display-lane change must connect the two.",
     },
@@ -525,26 +322,18 @@ function expectationDocument(records) {
     static_export_probes: [
       "sage-semantic-2d-notebook",
       "sage-semantic-3d-notebook",
-      "wolfram-semantic-2d-notebook",
-      "wolfram-semantic-3d-notebook",
-      "matlab-semantic-2d-notebook",
     ],
     fixtures: records.map((record) => ({
       id: record.id,
       geometry: geometryExpectation(record),
       accessibility: {
         alt_text_minimum_characters: 40,
-        expected_validation_codes: record.alt_text_origin === "generated"
-          ? ["PLOT_ALT_TEXT_MISSING"]
-          : [],
+        expected_validation_codes: [],
         foreground_contrast_minimum: 4.5,
         axis_contrast_minimum: 3.0,
         categorical_contrast_minimum: 3.0,
         layer_contrast_minimum: 3.0,
-        grid_contrast_minimum:
-          record.frontend === "sage" && record.theme === "high-contrast"
-            ? 3.0
-            : null,
+        grid_contrast_minimum: record.theme === "high-contrast" ? 3.0 : null,
       },
       responsive: {
         expected_widths: viewports.map((viewport) => viewport.width),
@@ -583,8 +372,8 @@ function performanceDocument(records) {
       {
         id: "semantic-gallery-generation",
         fixture_count: records.length,
-        max_wall_ms: 15000,
-        max_checked_fixture_bytes: 500000,
+        max_wall_ms: 5000,
+        max_checked_fixture_bytes: 300000,
         observed_checked_fixture_bytes: Buffer.byteLength(text),
       },
       {
@@ -596,9 +385,9 @@ function performanceDocument(records) {
       },
       {
         id: "representative-static-exports",
-        fixture_count: 5,
+        fixture_count: 2,
         formats: ["svg", "png"],
-        max_wall_ms: 45000,
+        max_wall_ms: 30000,
         max_output_bytes_each: 8000000,
         browser_optional: true,
       },
@@ -805,17 +594,12 @@ async function renderEvidence(records, expectations) {
 }
 
 function validateDocuments(records, expectations, performanceBudgets) {
-  assert.equal(records.length, themes.length * 2 + 3);
+  assert.equal(records.length, themes.length * 2);
   assert.deepEqual(
     records.map((record) => record.id),
-    [
-      ...["semantic-2d", "semantic-3d"].flatMap((name) =>
-        themes.map((theme) => `sage-${name}-${theme}`),
-      ),
-      "wolfram-semantic-2d-notebook",
-      "wolfram-semantic-3d-notebook",
-      "matlab-semantic-2d-notebook",
-    ],
+    ["semantic-2d", "semantic-3d"].flatMap((name) =>
+      themes.map((theme) => `sage-${name}-${theme}`),
+    ),
   );
   for (const record of records) {
     const expected = expectations.fixtures.find((item) => item.id === record.id);
@@ -823,15 +607,9 @@ function validateDocuments(records, expectations, performanceBudgets) {
     assertContrast(record, expected.accessibility);
     assert.deepEqual(geometryExpectation(record), expected.geometry);
     assert.equal(record.plotly.config.responsive, true);
-    if (record.frontend === "sage") {
-      assert.equal(record.plotly.layout.autosize, true);
-      assert.ok(record.plot_spec.annotations.some((item) => item.kind === "alt_text"));
-      assert.equal(record.alt_text_origin, undefined);
-    } else {
-      assert.equal(record.frontend_evidence.execution, "createSage.evaluate");
-      assert.equal(record.plot_spec.provenance.frontend, record.frontend);
-      assert.equal(record.alt_text_origin, "generated");
-    }
+    assert.equal(record.plotly.layout.autosize, true);
+    assert.equal(record.plot_spec.provenance.frontend, "sage");
+    assert.ok(record.plot_spec.annotations.some((item) => item.kind === "alt_text"));
   }
   const generation = performanceBudgets.workloads.find(
     (item) => item.id === "semantic-gallery-generation",
@@ -882,10 +660,7 @@ function validateRenderEvidence(evidence, records, expectations) {
     assert.ok(staticExpected.png.allowed_color_types.includes(output.png.color_type));
     assert.ok(output.png.byte_length >= staticExpected.png.minimum_bytes);
   }
-  assert.equal(
-    evidence.static_exports.length,
-    expectations.static_export_probes.length,
-  );
+  assert.equal(evidence.static_exports.length, 2);
   assert.equal(evidence.responsive.length, records.length);
 }
 
@@ -894,7 +669,7 @@ async function main(argv = process.argv.slice(2)) {
   const skipRender = argv.includes("--skip-render");
   const render = !skipRender && (write || argv.includes("--render"));
   const generationStarted = performance.now();
-  const records = [...pythonFixtures(), ...await frontendFixtures()];
+  const records = pythonFixtures();
   const fixtures = fixtureDocument(records);
   const expectations = expectationDocument(records);
   const performanceBudgets = performanceDocument(records);
@@ -966,7 +741,6 @@ module.exports = {
   dataUriBytes,
   discoverChromium,
   fixtureDocument,
-  frontendFixtures,
   geometryExpectation,
   main,
   pngProperties,

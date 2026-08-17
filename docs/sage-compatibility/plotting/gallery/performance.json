@@ -4,26 +4,26 @@
   "workloads": [
     {
       "id": "semantic-gallery-generation",
-      "fixture_count": 13,
-      "max_wall_ms": 15000,
-      "max_checked_fixture_bytes": 500000,
-      "observed_checked_fixture_bytes": 303254
+      "fixture_count": 10,
+      "max_wall_ms": 5000,
+      "max_checked_fixture_bytes": 300000,
+      "observed_checked_fixture_bytes": 148627
     },
     {
       "id": "warm-browser-responsive-layout",
-      "fixture_count": 13,
+      "fixture_count": 10,
       "viewport_count": 3,
       "max_wall_ms": 30000,
       "browser_optional": true
     },
     {
       "id": "representative-static-exports",
-      "fixture_count": 5,
+      "fixture_count": 2,
       "formats": [
         "svg",
         "png"
       ],
-      "max_wall_ms": 45000,
+      "max_wall_ms": 30000,
       "max_output_bytes_each": 8000000,
       "browser_optional": true
     }

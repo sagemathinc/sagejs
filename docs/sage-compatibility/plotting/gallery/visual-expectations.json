@@ -8,7 +8,7 @@
       "axis_and_marks_minimum": 3,
       "grid_minimum_only_for_high_contrast": 3
     },
-    "alt_text": "Every fixture exposes nonempty semantic alt text. Sage gallery specifications include explicit alt-text annotations; current Wolfram and MATLAB specifications expose generated text and honestly retain PLOT_ALT_TEXT_MISSING until the frontends attach it.",
+    "alt_text": "Every fixture must carry explicit nonempty semantic alt text and validate without PLOT_ACCESSIBILITY_ALT_TEXT_MISSING.",
     "browser_dom_boundary": "PlotSpec alt text is available, but the current Plotly display bridge does not attach it as a DOM accessible name. Browser evidence records that debt; a future display-lane change must connect the two."
   },
   "viewports": [
@@ -30,10 +30,7 @@
   ],
   "static_export_probes": [
     "sage-semantic-2d-notebook",
-    "sage-semantic-3d-notebook",
-    "wolfram-semantic-2d-notebook",
-    "wolfram-semantic-3d-notebook",
-    "matlab-semantic-2d-notebook"
+    "sage-semantic-3d-notebook"
   ],
   "fixtures": [
     {
@@ -595,166 +592,6 @@
         "categorical_contrast_minimum": 3,
         "layer_contrast_minimum": 3,
         "grid_contrast_minimum": 3
-      },
-      "responsive": {
-        "expected_widths": [
-          360,
-          800,
-          1280
-        ],
-        "expected_heights": [
-          480,
-          600,
-          720
-        ],
-        "maximum_overflow_pixels": 1,
-        "responsive_config": true
-      }
-    },
-    {
-      "id": "wolfram-semantic-2d-notebook",
-      "geometry": {
-        "layer_ids": [
-          "layer-0",
-          "layer-1",
-          "layer-2"
-        ],
-        "layer_kinds": [
-          "line",
-          "point",
-          "text"
-        ],
-        "trace_types": [
-          "scatter",
-          "scatter",
-          "scatter"
-        ],
-        "bounds": {
-          "x": [
-            0,
-            2
-          ],
-          "y": [
-            0,
-            1
-          ]
-        },
-        "trace_count": 3
-      },
-      "accessibility": {
-        "alt_text_minimum_characters": 40,
-        "expected_validation_codes": [
-          "PLOT_ALT_TEXT_MISSING"
-        ],
-        "foreground_contrast_minimum": 4.5,
-        "axis_contrast_minimum": 3,
-        "categorical_contrast_minimum": 3,
-        "layer_contrast_minimum": 3,
-        "grid_contrast_minimum": null
-      },
-      "responsive": {
-        "expected_widths": [
-          360,
-          800,
-          1280
-        ],
-        "expected_heights": [
-          480,
-          600,
-          720
-        ],
-        "maximum_overflow_pixels": 1,
-        "responsive_config": true
-      }
-    },
-    {
-      "id": "wolfram-semantic-3d-notebook",
-      "geometry": {
-        "layer_ids": [
-          "layer-0"
-        ],
-        "layer_kinds": [
-          "plotly-trace"
-        ],
-        "trace_types": [
-          "surface"
-        ],
-        "bounds": {
-          "x": [
-            -0.9948693233918952,
-            1
-          ],
-          "y": [
-            -0.9987165071710528,
-            0.9987165071710528
-          ],
-          "z": [
-            -1,
-            1
-          ]
-        },
-        "trace_count": 1
-      },
-      "accessibility": {
-        "alt_text_minimum_characters": 40,
-        "expected_validation_codes": [
-          "PLOT_ALT_TEXT_MISSING"
-        ],
-        "foreground_contrast_minimum": 4.5,
-        "axis_contrast_minimum": 3,
-        "categorical_contrast_minimum": 3,
-        "layer_contrast_minimum": 3,
-        "grid_contrast_minimum": null
-      },
-      "responsive": {
-        "expected_widths": [
-          360,
-          800,
-          1280
-        ],
-        "expected_heights": [
-          480,
-          600,
-          720
-        ],
-        "maximum_overflow_pixels": 1,
-        "responsive_config": true
-      }
-    },
-    {
-      "id": "matlab-semantic-2d-notebook",
-      "geometry": {
-        "layer_ids": [
-          "matlab.line-0"
-        ],
-        "layer_kinds": [
-          "line"
-        ],
-        "trace_types": [
-          "scatter"
-        ],
-        "bounds": {
-          "x": [
-            0,
-            2
-          ],
-          "y": [
-            0,
-            4
-          ]
-        },
-        "trace_count": 1
-      },
-      "accessibility": {
-        "alt_text_minimum_characters": 40,
-        "expected_validation_codes": [
-          "PLOT_ALT_TEXT_MISSING"
-        ],
-        "foreground_contrast_minimum": 4.5,
-        "axis_contrast_minimum": 3,
-        "categorical_contrast_minimum": 3,
-        "layer_contrast_minimum": 3,
-        "grid_contrast_minimum": null
       },
       "responsive": {
         "expected_widths": [

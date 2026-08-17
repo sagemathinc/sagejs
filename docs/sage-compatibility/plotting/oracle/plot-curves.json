@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "source": {
+    "system": "SageMath",
+    "version": "10.9.post1",
+    "command": "/home/user/bin/sagelite",
+    "randomize": false
+  },
+  "cases": [
+    {
+      "id": "constant",
+      "expression": "plot(3, (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False)",
+      "layers": [
+        {"kind": "line", "x": [0.0, 0.5, 1.0], "y": [3.0, 3.0, 3.0]}
+      ]
+    },
+    {
+      "id": "invalid-midpoint",
+      "expression": "plot(1/x, (x, -1, 1), plot_points=3, adaptive_recursion=0, randomize=False)",
+      "layers": [],
+      "excluded": [0.0]
+    },
+    {
+      "id": "explicit-exclusion",
+      "expression": "plot(1/x, (x, -1, 1), plot_points=5, adaptive_recursion=0, randomize=False, exclude=[0])",
+      "layers": [
+        {"kind": "line", "x": [-1.0, -0.5], "y": [-1.0, -2.0]},
+        {"kind": "line", "x": [0.5, 1.0], "y": [2.0, 1.0]}
+      ],
+      "excluded": [0.0]
+    },
+    {
+      "id": "detected-poles",
+      "expression": "plot(tan(x), (x, -2, 2), plot_points=10, adaptive_recursion=5, randomize=False, detect_poles=True)",
+      "layer_summaries": [
+        {"kind": "line", "count": 27, "xmin": -2.0, "xmax": -1.5972222222222223},
+        {"kind": "line", "count": 86, "xmin": -1.5555555555555556, "xmax": 1.5555555555555554},
+        {"kind": "line", "count": 27, "xmin": 1.5972222222222219, "xmax": 2.0}
+      ]
+    },
+    {
+      "id": "undefined-left-endpoint",
+      "expression": "plot(log(x), (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False)",
+      "layers": [
+        {"kind": "line", "x": [0.5, 1.0], "y": [-0.6931471805599453, 0.0]}
+      ],
+      "excluded": [0.0]
+    },
+    {
+      "id": "fill-to-axis",
+      "expression": "plot(x^2, (x, -1, 1), plot_points=3, adaptive_recursion=0, randomize=False, fill=True, fillcolor='red', fillalpha=.2)",
+      "layers": [
+        {
+          "kind": "polygon",
+          "x": [-1.0, -1.0, 0.0, 1.0, 1.0],
+          "y": [0.0, 1.0, 0.0, 1.0, 0.0],
+          "style": {"color": "red", "alpha": 0.2, "thickness": 0.0}
+        },
+        {"kind": "line", "x": [-1.0, 0.0, 1.0], "y": [1.0, 0.0, 1.0]}
+      ]
+    },
+    {
+      "id": "fill-between-curves",
+      "expression": "plot(x^2, (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False, fill=x, fillcolor='green', fillalpha=.25)",
+      "layers": [
+        {
+          "kind": "polygon",
+          "x": [1.0, 0.5, 0.0, 0.0, 0.5, 1.0],
+          "y": [1.0, 0.5, 0.0, 0.0, 0.25, 1.0],
+          "style": {"color": "green", "alpha": 0.25, "thickness": 0.0}
+        },
+        {"kind": "line", "x": [0.0, 0.5, 1.0], "y": [0.0, 0.25, 1.0]}
+      ]
+    },
+    {
+      "id": "symbolic-small-imaginary-part",
+      "expression": "plot(x + 1e-9*I, (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False, imaginary_tolerance=1e-8)",
+      "layers": [
+        {"kind": "line", "x": [0.0, 0.5, 1.0], "y": [0.0, 0.5, 1.0]}
+      ]
+    },
+    {
+      "id": "symbolic-large-imaginary-part",
+      "expression": "plot(x + 1e-7*I, (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False, imaginary_tolerance=1e-8)",
+      "layers": []
+    },
+    {
+      "id": "initial-points",
+      "expression": "generate_plot_points(lambda x:x^2, (0,1), plot_points=2, adaptive_recursion=0, randomize=False, initial_points=[.25,.75])",
+      "points": [[0.0, 0.0], [0.25, 0.0625], [0.75, 0.5625], [1.0, 1.0]]
+    },
+    {
+      "id": "initial-points-outside-range",
+      "expression": "generate_plot_points(lambda x:x^2, (0,1), plot_points=2, adaptive_recursion=0, randomize=False, initial_points=[-1,.5,2])",
+      "points": [[-1.0, 1.0], [0.0, 0.0], [0.5, 0.25], [1.0, 1.0], [2.0, 4.0]]
+    },
+    {
+      "id": "empty-function-list",
+      "expression": "plot([], (x, 0, 1), plot_points=3, adaptive_recursion=0, randomize=False)",
+      "layers": []
+    },
+    {
+      "id": "zorder-is-not-legend-order",
+      "expression": "line([(0,0),(1,1)], zorder=9, legend_label='high') + line([(0,1),(1,0)], zorder=2, legend_label='low')",
+      "layers": [
+        {"kind": "line", "zorder": 9, "legend_label": "high"},
+        {"kind": "line", "zorder": 2, "legend_label": "low"}
+      ],
+      "requirement": "drawing order uses zorder while legend order remains construction order"
+    }
+  ]
+}

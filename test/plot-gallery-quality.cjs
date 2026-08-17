@@ -17,13 +17,7 @@ function read(name) {
 test("gallery fixtures remain generated from current PlotSpec lowering", async () => {
   await generator.main(["--skip-render"]);
   const document = read("fixtures.json");
-  assert.equal(document.fixtures.length, 13);
-  assert.deepEqual(document.scope.frontends, ["sage", "wolfram", "matlab"]);
-  assert.deepEqual(document.scope.frontend_fixture_counts, {
-    sage: 10,
-    wolfram: 2,
-    matlab: 1,
-  });
+  assert.equal(document.fixtures.length, 10);
   assert.deepEqual(document.scope.dimensions, [2, 3]);
   assert.deepEqual(document.scope.themes, [
     "notebook",
@@ -37,10 +31,10 @@ test("gallery fixtures remain generated from current PlotSpec lowering", async (
     Array.from({ length: 5 }, () => ["line", "point", "text"]),
   );
   assert.deepEqual(
-    document.fixtures.slice(5, 10).map((item) => item.plot_spec.layers.map((layer) => layer.kind)),
+    document.fixtures.slice(5).map((item) => item.plot_spec.layers.map((layer) => layer.kind)),
     Array.from({ length: 5 }, () => ["line", "point", "text", "surface"]),
   );
-  for (const fixture of document.fixtures.slice(0, 10)) {
+  for (const fixture of document.fixtures) {
     assert.equal(fixture.frontend, "sage");
     assert.equal(fixture.classification, "translated");
     assert.deepEqual(fixture.validation_codes, []);
@@ -48,43 +42,17 @@ test("gallery fixtures remain generated from current PlotSpec lowering", async (
     assert.equal(fixture.plotly.config.responsive, true);
     assert.equal(fixture.plotly.layout.autosize, true);
   }
-  const [wolfram2d, wolfram3d, matlab2d] = document.fixtures.slice(-3);
-  assert.deepEqual(
-    [wolfram2d.id, wolfram3d.id, matlab2d.id],
-    [
-      "wolfram-semantic-2d-notebook",
-      "wolfram-semantic-3d-notebook",
-      "matlab-semantic-2d-notebook",
-    ],
-  );
-  assert.deepEqual(
-    [wolfram2d.frontend, wolfram3d.frontend, matlab2d.frontend],
-    ["wolfram", "wolfram", "matlab"],
-  );
-  assert.deepEqual(wolfram2d.plot_spec.layers.map((layer) => layer.kind), [
-    "line", "point", "text",
-  ]);
-  assert.deepEqual(wolfram3d.plotly.data.map((trace) => trace.type), ["surface"]);
-  assert.deepEqual(matlab2d.plot_spec.layers.map((layer) => layer.id), [
-    "matlab.line-0",
-  ]);
-  assert.equal(matlab2d.plot_spec.provenance.metadata.revision, 11);
-  for (const fixture of [wolfram2d, wolfram3d, matlab2d]) {
-    assert.equal(fixture.classification, "translated");
-    assert.equal(fixture.plot_spec.provenance.frontend, fixture.frontend);
-    assert.equal(fixture.frontend_evidence.execution, "createSage.evaluate");
-    assert.equal(fixture.alt_text_origin, "generated");
-    assert.deepEqual(fixture.validation_codes, ["PLOT_ALT_TEXT_MISSING"]);
-    assert.ok(Math.min(...fixture.layer_contrast) >= 3);
-    assert.equal(fixture.plotly.config.responsive, true);
-  }
 });
 
 test("gallery classifications are honest about frontend and DOM boundaries", () => {
   const fixtures = read("fixtures.json");
-  assert.deepEqual(fixtures.placeholders, []);
-  assert.equal(fixtures.fixtures.filter((item) => item.frontend === "wolfram").length, 2);
-  assert.equal(fixtures.fixtures.filter((item) => item.frontend === "matlab").length, 1);
+  assert.deepEqual(
+    fixtures.placeholders.map((item) => [item.frontend, item.classification]),
+    [
+      ["wolfram", "pending-integration"],
+      ["matlab", "pending-integration"],
+    ],
+  );
   const expectations = read("visual-expectations.json");
   assert.match(expectations.policy.browser_dom_boundary, /does not attach/);
   assert.equal(expectations.policy.pixel_hashes, "forbidden");
@@ -102,12 +70,14 @@ test("gallery classifications are honest about frontend and DOM boundaries", () 
 
 test("checked static evidence records structure without raster blobs", () => {
   const evidence = read("render-evidence.json");
-  assert.equal(evidence.static_exports.length, 5);
+  assert.equal(evidence.static_exports.length, 2);
+  const [two, three] = evidence.static_exports;
+  assert.equal(two.svg.root_element, "svg");
+  assert.equal(two.svg.view_box, "0 0 800 600");
+  assert.ok(two.svg.path_count >= 4);
+  assert.equal(three.svg.root_element, "svg");
+  assert.ok(three.svg.image_count >= 1);
   for (const output of evidence.static_exports) {
-    assert.equal(output.svg.root_element, "svg");
-    assert.equal(output.svg.view_box, "0 0 800 600");
-    if (output.id.includes("-2d-")) assert.ok(output.svg.path_count >= 4);
-    else assert.ok(output.svg.image_count >= 1);
     assert.equal(output.png.signature_hex, "89504e470d0a1a0a");
     assert.equal(output.png.width, 800);
     assert.equal(output.png.height, 600);
@@ -160,7 +130,7 @@ test("PNG and SVG property readers ignore image content", () => {
 
 test(
   "live Chromium satisfies responsive and structural image expectations",
-  { skip: !generator.discoverChromium(), timeout: 90_000 },
+  { skip: !generator.discoverChromium(), timeout: 45_000 },
   async () => {
     await generator.main(["--render"]);
   },
