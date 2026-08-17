@@ -17,6 +17,7 @@ from .axes import (
     lower_axes_2d,
     lower_scene_3d,
 )
+from .field_layers import FIELD_LAYER_KINDS, lower_field_layer
 from .model import PlotLayer, PlotSpec
 from .surface_layers import lower_3d_geometry_layer
 from .themes import get_theme
@@ -225,6 +226,10 @@ def lower_layer(layer: PlotLayer, dimension: int) -> list[dict[str, JSONValue]]:
                 trace["visible"] = False
             traces.append(trace)
         return traces
+    if layer.kind in FIELD_LAYER_KINDS:
+        if dimension != 2:
+            raise ValueError("field layers require a 2D PlotSpec")
+        return lower_field_layer(layer)
     if dimension == 2:
         return [_semantic_2d_trace(layer)]
     if dimension == 3:

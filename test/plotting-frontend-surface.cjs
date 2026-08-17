@@ -78,19 +78,12 @@ test("surface separates plotting evidence from generic call syntax", () => {
   );
   assert.equal(matlabPlot.signature_or_syntax, "plot(x, y)");
   assert.equal(matlabPlot.classification, "translated");
-  assert.equal(matlabPlot.lowering_target, "line");
+  assert.equal(matlabPlot.lowering_target, "_matlab.plot");
 
   for (const name of [
-    "plot.LineSpec",
     "scatter",
     "surf",
-    "hold",
-    "xlabel",
-    "grid",
-    "legend",
     "subplot",
-    "set",
-    "handle.Property",
   ]) {
     const entry = surface.entries.find(
       ({ frontend, qualified_name }) =>
@@ -100,11 +93,29 @@ test("surface separates plotting evidence from generic call syntax", () => {
     assert.equal(entry.plotting_lowerer_recognized, false, name);
     assert.equal(entry.runtime_export, null, name);
   }
-  assert.deepEqual(surface.frontends.matlab.plotting_runtime_exports, []);
+  for (const name of [
+    "plot.LineSpec",
+    "hold",
+    "xlabel",
+    "grid",
+    "legend",
+    "set",
+    "handle.Property",
+  ]) {
+    const entry = surface.entries.find(
+      ({ frontend, qualified_name }) =>
+        frontend === "matlab" && qualified_name === name,
+    );
+    assert.equal(entry.classification, "translated", name);
+    assert.equal(entry.plotting_lowerer_recognized, true, name);
+    assert.ok(entry.runtime_export, name);
+  }
+  assert.ok(surface.frontends.matlab.plotting_runtime_exports.includes("plot"));
+  assert.ok(surface.frontends.matlab.plotting_runtime_exports.includes("hold"));
   assert.deepEqual(surface.frontends.matlab.session_model, {
     shared_module_namespace_across_cells: true,
-    persistent_figure_axes_state: false,
-    graphics_handles: false,
+    persistent_figure_axes_state: true,
+    graphics_handles: true,
     evidence: ["tools/kernel.ts", "tools/matlab/frontend.ts", "src/lib/matlab.py"],
   });
 });

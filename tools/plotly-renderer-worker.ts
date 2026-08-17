@@ -26,6 +26,7 @@ interface RenderRequest {
     data?: unknown[];
     layout?: Record<string, unknown>;
     config?: Record<string, unknown>;
+    frames?: unknown[];
   };
   options: {
     format: "png" | "jpeg" | "webp" | "svg";
@@ -228,6 +229,13 @@ async function render(requestText: string): Promise<Buffer> {
           figure.layout ?? {},
           figure.config ?? {},
         );
+        if (
+          Array.isArray(figure.frames) &&
+          figure.frames.length > 0 &&
+          typeof plotly.addFrames === "function"
+        ) {
+          await plotly.addFrames(element, figure.frames);
+        }
         return plotly.toImage(element, options);
       },
       request,
