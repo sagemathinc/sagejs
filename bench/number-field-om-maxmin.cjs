@@ -39,6 +39,20 @@ cases = (
         10,
     ),
     (
+        "degree-raising-higher-d4",
+        (4, 4, 0, 0, 1),
+        4,
+        2,
+        8,
+    ),
+    (
+        "degree-raising-deep-index-d8",
+        tuple([16, 16] + [0] * 6 + [1]),
+        8,
+        12,
+        32,
+    ),
+    (
         "representative-refined-d16",
         tuple([-(3 * 2 ** 16)] + [0] * 15 + [1]),
         16,
@@ -103,7 +117,7 @@ function measure(label, command, args) {
 const report = {
   schema_version: 2,
   workload:
-    "certified residual-extension and representative-refined OM quotient bases plus independent closure",
+    "certified first- and second-order OM quotient bases plus independent closure",
   implementations: [
     measure("cpython", "python3", ["-"]),
     measure("sagejs-dynamic", process.execPath, [join(root, "bin/sagejs"), "--python"]),

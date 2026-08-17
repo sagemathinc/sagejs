@@ -61,9 +61,23 @@ for case in cases:
             [list(level.key_polynomial) for level in branch.levels]
             for branch in result.type_tree.types
         ],
+        "active_key_values": [
+            list(level.key_value.to_pair())
+            for level in result.type_tree.types[0].levels
+            if not level.optimized_away
+        ],
+        "active_slopes": [
+            list(level.slope.to_pair())
+            for level in result.type_tree.types[0].levels
+            if not level.optimized_away
+        ],
         "level_index_evidence": [
             [
-                [level.index_contribution, level.optimized_away]
+                [
+                    level.index_contribution,
+                    level.optimized_away,
+                    level.index_evidence,
+                ]
                 for level in branch.levels
             ]
             for branch in result.type_tree.types
@@ -149,6 +163,13 @@ function checkWitness(output) {
     assert.match(actual.certificate_id, /^om2-[0-9a-f]{16}$/);
     assert.equal(actual.type_depth, expected.expected_type_depth);
     assert.equal(actual.shared_result.trace.length, expected.expected_type_count ?? 1);
+    if (expected.expected_active_key_values !== undefined) {
+      assert.deepEqual(
+        actual.active_key_values,
+        expected.expected_active_key_values,
+      );
+      assert.deepEqual(actual.active_slopes, expected.expected_active_slopes);
+    }
     assert.ok(
       actual.residual_field_degrees.every(
         (degree) => degree === expected.expected_residual_field_degree,
@@ -184,7 +205,11 @@ function checkWitness(output) {
         assert.ok(
           actual.level_index_evidence
             .flat()
-            .some(([index, optimized]) => index === 0 && optimized),
+            .some(
+              ([index, optimized, evidence]) =>
+                (index === 0 && optimized) ||
+                evidence.startsWith("gmn-theorem-3.3-quotient-index="),
+            ),
         );
       }
       assert.equal(
@@ -281,6 +306,14 @@ if bounded.complete or bounded.incomplete_states() != ("representative-refinemen
     raise AssertionError("representative work bound did not fail closed")
 if not validate_type_tree(bounded).valid:
     raise AssertionError("the bounded incomplete certificate did not validate")
+higher_bounded = build_om_type_tree((4, 4, 0, 0, 1), 2, max_type_depth=1)
+if higher_bounded.complete or higher_bounded.incomplete_states() != ("type-depth-bound",):
+    raise AssertionError("higher type work bound did not fail closed")
+unsupported = build_om_type_tree(tuple([4, 8] + [0] * 6 + [1]), 2)
+if unsupported.complete or unsupported.incomplete_states() != ("higher-residual-degree-unsupported",):
+    raise AssertionError("unsupported higher residue was not rejected explicitly")
+if not validate_type_tree(unsupported).valid:
+    raise AssertionError("the unsupported higher certificate did not validate")
 try:
     build_om_type_tree((-8, 0, 1), 4)
 except OMDomainError:
@@ -340,5 +373,49 @@ print(json.dumps({
       depth: 2,
       valid: true,
     });
+  }
+});
+
+test("nonmonic residual polynomials use their monic associate", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_maxmin import regular_local_basis
+from sagejs.number_fields.om_types import build_om_type_tree, validate_type_tree
+polynomial = (
+    -18433878713, 23835146496, 46833416626, -91476357427,
+    29078205681, 23102811288, -14798379535, 1922958558, -885599, 1,
+)
+expected = ((2, 9),)
+answer = []
+for prime, local_index in expected:
+    tree = build_om_type_tree(polynomial, prime)
+    if tree.expected_index_valuation != local_index or not validate_type_tree(tree).valid:
+        raise AssertionError((prime, tree.expected_index_valuation))
+    answer.append([prime, tree.complete, tree.expected_index_valuation])
+rejected = regular_local_basis(
+    polynomial,
+    2,
+    local_discriminant_valuation=18,
+)
+if rejected.status != "rejected" or rejected.certificate is None:
+    raise AssertionError("the independently invalid quotient basis did not fail closed")
+print(json.dumps(answer))
+`;
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [
+      [2, true, 9],
+    ]);
   }
 });

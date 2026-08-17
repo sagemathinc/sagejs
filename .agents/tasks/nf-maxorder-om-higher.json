@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-om-higher",
+  "title": "Nf Maxorder Om Higher",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement certified degree-raising higher OM representatives and a bounded second-order quotient basis beginning with x^4+4*x+4",
+  "base_commit": "19d573ff43bb139b41d40de28e224faa39cc5aad",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-maxmin.cjs",
+    "test/fixtures/number-field-om-maxmin.json",
+    "bench/number-field-om-maxmin.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/2405.13577"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage",
+      "PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-om-maxmin.cjs",
+    "env SAGEJS_OM_MAXMIN_SAMPLES=3 SAGEJS_OM_MAXMIN_ITERATIONS=5 node bench/number-field-om-maxmin.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.123,
+      "started_at": "2026-08-17T22:16:34.929Z",
+      "commit": "19d573ff43bb139b41d40de28e224faa39cc5aad",
+      "workspace_fingerprint": "81604bde51f375fdcbcfdddae8131f99a0bbadf21e69f9f6e3fff2caaa1f87fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.199,
+      "started_at": "2026-08-17T22:16:48.805Z",
+      "commit": "19d573ff43bb139b41d40de28e224faa39cc5aad",
+      "workspace_fingerprint": "81604bde51f375fdcbcfdddae8131f99a0bbadf21e69f9f6e3fff2caaa1f87fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_OM_MAXMIN_SAMPLES=3 SAGEJS_OM_MAXMIN_ITERATIONS=5 node bench/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.957,
+      "started_at": "2026-08-17T22:17:15.127Z",
+      "commit": "19d573ff43bb139b41d40de28e224faa39cc5aad",
+      "workspace_fingerprint": "81604bde51f375fdcbcfdddae8131f99a0bbadf21e69f9f6e3fff2caaa1f87fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 699.26,
+      "started_at": "2026-08-17T22:17:45.352Z",
+      "commit": "19d573ff43bb139b41d40de28e224faa39cc5aad",
+      "workspace_fingerprint": "81604bde51f375fdcbcfdddae8131f99a0bbadf21e69f9f6e3fff2caaa1f87fb",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds normalized MacLane-chain valuations, higher Newton polygons, degree-raising binary linear-residual types, GMN quotient-denominator evidence, chain-aware MaxMin values, and exact degree-4/degree-8 Sage oracle fixtures. The mandatory x^4+4*x+4 case now returns an independently validated triangular basis. Nonmonic residuals are normalized to their monic associate, fixing pari-round4-vector-250 type construction.",
+    "risks": [
+      "The certified higher lane intentionally covers only residue characteristic 2, degree-one residue fields, one higher side, and higher residual degree one; every other higher residual operator remains an explicit incomplete state.",
+      "The public pari-round4-vector-250 tree now validates, but its p=2 and p=5 quotient candidates fail independent multiplication closure and therefore remain rejected/fallback results.",
+      "Automatic selector enablement remains outside this lane and must stay disabled until broader differential crossover evidence is available.",
+      "The broad native tier reaches unrelated generated-FFI currentness/export failures; the changed-files architecture tier also sees the inherited number-field-algorithms package above its 400000-byte lazy budget. Root integration must rerun these tiers on current main-1."
+    ],
+    "next_steps": [
+      "Implement the general higher residual coefficient operator over finite residue extensions and recursively process higher residual factors of degree or multiplicity greater than one.",
+      "Extend local quotient tables for higher types inside multi-branch factorizations and add exact Sage/PARI lattice comparisons before changing selector policy.",
+      "Use the source-transparent native compiler only after profiling identifies a stable hot mathematical kernel; dynamic CPython remains the correct fallback."
+    ]
+  }
+}

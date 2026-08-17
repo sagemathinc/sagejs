@@ -2,9 +2,10 @@
 
 This module implements a bounded, certified Ore--MacLane slice over `ZZ[x]`.
 It includes first-order residual arithmetic over arbitrary small finite residue
-fields and same-degree representative optimization.  It deliberately stops,
-with an explicit certificate state, when a degree-raising higher type is
-required.  No incomplete type is ever reported as a maximality proof.
+fields, same-degree representative optimization, and a second-order binary
+linear-residual lane.  Higher residual operators outside that exact lane stop
+with an explicit certificate state.  No incomplete type is ever reported as a
+maximality proof.
 
 Polynomials are immutable tuples of integer coefficients in ascending order.
 The implementation is ordinary CPython source and has no native/runtime
@@ -581,18 +582,25 @@ def factor_residual_polynomial(
     *,
     max_enumerated_candidates: int = 200_000,
 ) -> tuple[ResidualFactor, ...]:
-    """Factor a bounded monic polynomial over `F_p[x]/(modulus)`.
+    """Factor a bounded nonzero polynomial over `F_p[x]/(modulus)`.
 
     This exhaustive implementation is deliberately bounded.  It makes the
     mathematical residual-extension path executable in ordinary Python while
     larger fields remain an explicit future FLINT `fq` acceleration domain.
+    A nonmonic input is replaced by its monic associate in the residue field.
     """
     modulus = _mod_polynomial(modulus, prime)
     if polynomial_degree(modulus) <= 0 or modulus[-1] != 1:
         raise OMDomainError("a residual field modulus must be monic")
     remaining = _residual_normalize(polynomial, prime, modulus)
-    if remaining == ((0,),) or remaining[-1] != (1,):
-        raise OMDomainError("bounded residual factorization requires monic input")
+    if remaining == ((0,),):
+        raise OMDomainError("the zero residual polynomial cannot be factored")
+    if remaining[-1] != (1,):
+        leading_inverse = _residue_inverse(remaining[-1], prime, modulus)
+        remaining = tuple(
+            _residue_multiply(value, leading_inverse, prime, modulus)
+            for value in remaining
+        )
     field_size = prime ** polynomial_degree(modulus)
     factors: list[ResidualFactor] = []
     used = 0
@@ -781,6 +789,90 @@ class OMLevel(ImmutableOMRecord):
     representative_precision: int
     representative_step: int
     optimized_away: bool
+    index_evidence: str
+
+
+def _active_levels(levels: tuple[OMLevel, ...]) -> tuple[OMLevel, ...]:
+    return tuple(level for level in levels if not level.optimized_away)
+
+
+def maclane_integer_valuation(
+    polynomial: Polynomial,
+    prime: int,
+    levels: tuple[OMLevel, ...],
+) -> int | None:
+    """Return the normalized integer MacLane value supported by `levels`.
+
+    Optimized-away representatives remain in the certificate trace but do not
+    define an additional augmentation.  For an active level
+    `(phi_i, -h_i/e_i)`, the recursion is
+    `v_(i+1)(sum a_s phi_i^s) = min(e_i*v_i(a_s) +
+    s*(e_i*V_i+h_i))`, where `V_i=v_i(phi_i)`.
+    """
+    active = _active_levels(levels)
+    if not active:
+        return coefficient_valuation(polynomial, prime)
+    level = active[-1]
+    previous = active[:-1]
+    key_base_value = maclane_integer_valuation(level.key_polynomial, prime, previous)
+    if key_base_value is None:
+        raise ArithmeticError("a MacLane key has infinite previous value")
+    height = -level.slope.numerator
+    answer: int | None = None
+    for exponent, coefficient in enumerate(
+        phi_adic_expansion(polynomial, level.key_polynomial)
+    ):
+        base = maclane_integer_valuation(coefficient, prime, previous)
+        if base is None:
+            continue
+        value = level.ramification_index * base + exponent * (
+            level.ramification_index * key_base_value + height
+        )
+        if answer is None or value < answer:
+            answer = value
+    return answer
+
+
+def maclane_valuation(
+    polynomial: Polynomial,
+    prime: int,
+    levels: tuple[OMLevel, ...],
+) -> RationalValue | None:
+    """Return the rational lower valuation supported by an OM chain."""
+    active = _active_levels(levels)
+    value = maclane_integer_valuation(polynomial, prime, active)
+    if value is None:
+        return None
+    denominator = 1
+    for level in active:
+        denominator *= level.ramification_index
+    return RationalValue(value, denominator)
+
+
+def higher_newton_polygon(
+    polynomial: Polynomial,
+    prime: int,
+    key: Polynomial,
+    prior_levels: tuple[OMLevel, ...],
+) -> tuple[NewtonSide, ...]:
+    """Build `N_r^-(polynomial)` using the prior normalized MacLane value."""
+    active = _active_levels(prior_levels)
+    key_value = maclane_integer_valuation(key, prime, active)
+    if key_value is None:
+        raise ArithmeticError("a higher key has infinite previous value")
+    points: list[NewtonPoint] = []
+    for exponent, coefficient in enumerate(phi_adic_expansion(polynomial, key)):
+        coefficient_value = maclane_integer_valuation(coefficient, prime, active)
+        if coefficient_value is not None:
+            points.append(
+                NewtonPoint(
+                    exponent,
+                    coefficient_value + exponent * key_value,
+                )
+            )
+    if len(points) < 2:
+        return ()
+    return lower_newton_polygon(tuple(points))
 
 
 def representative_from_level(level: OMLevel, prime: int) -> Polynomial:
@@ -825,6 +917,7 @@ class OMTypeTree(ImmutableOMRecord):
     precision: int
     max_enumerated_candidates: int
     max_representative_refinements: int
+    max_type_depth: int
     certificate_id: str
 
     def incomplete_states(self) -> tuple[str, ...]:
@@ -841,6 +934,7 @@ def _certificate_text(
     index: int,
     max_enumerated_candidates: int,
     max_representative_refinements: int,
+    max_type_depth: int,
 ) -> str:
     factor_text = ";".join(
         ",".join(str(value) for value in factor.polynomial)
@@ -872,6 +966,8 @@ def _certificate_text(
                 + factor
                 + "@"
                 + ("optimized" if level.optimized_away else "active")
+                + "@"
+                + level.index_evidence
             )
         type_parts.append(
             branch.branch_id
@@ -897,6 +993,8 @@ def _certificate_text(
         + str(max_enumerated_candidates)
         + "|"
         + str(max_representative_refinements)
+        + "|"
+        + str(max_type_depth)
     )
 
 
@@ -915,6 +1013,169 @@ def stable_certificate_id(text: str) -> str:
     return "om2-" + encoded
 
 
+def _ramification_product(levels: tuple[OMLevel, ...]) -> int:
+    product = 1
+    for level in _active_levels(levels):
+        product *= level.ramification_index
+    return product
+
+
+def _higher_quotient_index(
+    polynomial: Polynomial,
+    prime: int,
+    key: Polynomial,
+    side: NewtonSide,
+    prior_levels: tuple[OMLevel, ...],
+) -> int:
+    """Return the denominator sum certified by GMN Theorem 3.3.
+
+    For each triangular degree `j`, this computes the relevant quotient number
+    `s` and `floor((y_s-s*V_r)/(e_0...e_(r-1)))`.  The caller compares the
+    total with the independent first-order Ore index before accepting a higher
+    type as complete.
+    """
+    degree = polynomial_degree(polynomial)
+    key_degree = polynomial_degree(key)
+    if key_degree <= 0 or degree % key_degree != 0:
+        raise OMDomainError("a higher quotient key must divide the local degree")
+    previous_value = maclane_integer_valuation(key, prime, prior_levels)
+    if previous_value is None:
+        raise ArithmeticError("a higher quotient key has infinite prior value")
+    previous_ramification = _ramification_product(prior_levels)
+    quotient_count = degree // key_degree
+    total = 0
+    for candidate_degree in range(degree):
+        quotient_degree = candidate_degree // key_degree
+        if quotient_degree == 0:
+            continue
+        quotient_number = quotient_count - quotient_degree
+        if (
+            quotient_number < side.left.abscissa
+            or quotient_number > side.right.abscissa
+        ):
+            raise OMDomainError("a higher quotient ordinate is unavailable")
+        ordinate = side.ordinate_at(quotient_number)
+        height = (
+            ordinate - RationalValue(quotient_number * previous_value)
+        ) / previous_ramification
+        exponent = height.floor()
+        if exponent < 0:
+            raise ArithmeticError("a higher quotient denominator is negative")
+        total += exponent
+    return total
+
+
+def _analyze_binary_linear_higher_key(
+    polynomial: Polynomial,
+    prime: int,
+    initial_factor: ModularFactor,
+    factor_index: int,
+    representative: Polynomial,
+    prior_levels: tuple[OMLevel, ...],
+    expected_factor_index: int,
+    maximum_valuation: int,
+    *,
+    max_type_depth: int,
+) -> tuple[tuple[OMType, ...], int]:
+    """Certify one degree-raising binary type with linear higher residue.
+
+    In this bounded domain the residue fields at every level are `F_2`, and a
+    side of lattice length one has the unique nonzero monic linear residual
+    polynomial `y+1`.  Thus no unimplemented higher residual coefficient map is
+    hidden by this shortcut.  Quotient denominators must independently recover
+    the full Ore index before the branch is declared complete.
+    """
+    prefix = "f" + str(factor_index) + "o" + str(len(prior_levels) + 1)
+    factor_degree = polynomial_degree(initial_factor.polynomial)
+    active = _active_levels(prior_levels)
+    if len(prior_levels) >= max_type_depth:
+        state = "type-depth-bound"
+    elif prime != 2 or factor_degree != 1:
+        state = "higher-residual-field-unsupported"
+    elif any(level.residue_degree != 1 for level in active):
+        state = "higher-residual-extension-unsupported"
+    else:
+        sides = higher_newton_polygon(polynomial, prime, representative, active)
+        if len(sides) != 1:
+            state = "higher-multiple-sides-unsupported"
+        elif sides[0].lattice_length() != 1:
+            state = "higher-residual-degree-unsupported"
+        else:
+            side = sides[0]
+            previous_value = maclane_integer_valuation(representative, prime, active)
+            if previous_value is None:
+                raise ArithmeticError("a higher representative has infinite value")
+            previous_ramification = _ramification_product(active)
+            quotient_index = _higher_quotient_index(
+                polynomial,
+                prime,
+                representative,
+                side,
+                active,
+            )
+            if quotient_index != expected_factor_index:
+                state = "higher-quotient-index-mismatch"
+            else:
+                key_value = RationalValue(
+                    side.ramification_index * previous_value + side.height,
+                    side.ramification_index * previous_ramification,
+                )
+                higher_level = OMLevel(
+                    len(active) + 1,
+                    representative,
+                    key_value,
+                    side.slope,
+                    (0, 1),
+                    ((1,), (1,)),
+                    ((1,), (1,)),
+                    side.ramification_index,
+                    1,
+                    1,
+                    0,
+                    maximum_valuation + len(prior_levels) + 1,
+                    len(prior_levels),
+                    False,
+                    "gmn-theorem-3.3-quotient-index=" + str(quotient_index),
+                )
+                branch_degree = (
+                    factor_degree * previous_ramification * side.ramification_index
+                )
+                if branch_degree == polynomial_degree(polynomial):
+                    return (
+                        (
+                            OMType(
+                                prefix + "s0r0",
+                                prefix,
+                                prime,
+                                initial_factor.polynomial,
+                                initial_factor.multiplicity,
+                                prior_levels + (higher_level,),
+                                branch_degree,
+                                True,
+                                "complete",
+                            ),
+                        ),
+                        expected_factor_index,
+                    )
+                state = "higher-local-degree-mismatch"
+    return (
+        (
+            OMType(
+                prefix + "s0r0",
+                prefix,
+                prime,
+                initial_factor.polynomial,
+                initial_factor.multiplicity,
+                prior_levels,
+                polynomial_degree(polynomial),
+                False,
+                state,
+            ),
+        ),
+        expected_factor_index,
+    )
+
+
 def _analyze_bounded_key(
     polynomial: Polynomial,
     prime: int,
@@ -926,6 +1187,7 @@ def _analyze_bounded_key(
     *,
     max_enumerated_candidates: int,
     max_representative_refinements: int,
+    max_type_depth: int,
 ) -> tuple[tuple[OMType, ...], int]:
     """Analyze one initial factor, optimizing same-degree representatives."""
     expansion = phi_adic_expansion(polynomial, key)
@@ -975,7 +1237,6 @@ def _analyze_bounded_key(
         if (
             len(factors) == 1
             and factors[0].multiplicity > 1
-            and side.ramification_index == 1
             and len(factors[0].polynomial) == 2
         ):
             repeated = factors[0]
@@ -1002,6 +1263,7 @@ def _analyze_bounded_key(
                     maximum_valuation + len(prior_levels) + 1,
                     len(prior_levels),
                     True,
+                    "representative-optimized-away",
                 )
                 return _analyze_bounded_key(
                     polynomial,
@@ -1013,6 +1275,7 @@ def _analyze_bounded_key(
                     maximum_valuation,
                     max_enumerated_candidates=max_enumerated_candidates,
                     max_representative_refinements=max_representative_refinements,
+                    max_type_depth=max_type_depth,
                 )
             state = (
                 "representative-refinement-bound"
@@ -1040,7 +1303,20 @@ def _analyze_bounded_key(
                 maximum_valuation + len(prior_levels) + 1,
                 len(prior_levels),
                 False,
+                "ore-first-order-index",
             )
+            if state == "requires-degree-raising-representative":
+                return _analyze_binary_linear_higher_key(
+                    polynomial,
+                    prime,
+                    initial_factor,
+                    factor_index,
+                    representative,
+                    prior_levels + (level,),
+                    factor_degree * polygon_index(sides),
+                    maximum_valuation,
+                    max_type_depth=max_type_depth,
+                )
             return (
                 (
                     OMType(
@@ -1079,6 +1355,7 @@ def _analyze_bounded_key(
                 maximum_valuation + len(prior_levels) + 1,
                 len(prior_levels),
                 False,
+                "ore-first-order-index",
             )
             branch_degree = (
                 factor_degree
@@ -1110,12 +1387,15 @@ def build_om_type_tree(
     *,
     max_enumerated_candidates: int = 200_000,
     max_representative_refinements: int = 8,
+    max_type_depth: int = 3,
 ) -> OMTypeTree:
     """Build the bounded residual-extension/optimized-representative tree."""
     if max_enumerated_candidates < 1:
         raise ValueError("the modular factorization bound must be positive")
     if max_representative_refinements < 0:
         raise ValueError("the representative refinement bound must be nonnegative")
+    if max_type_depth < 1:
+        raise ValueError("the type depth bound must be positive")
     polynomial = normalize_polynomial(polynomial)
     degree = polynomial_degree(polynomial)
     if degree <= 0 or polynomial[-1] != 1:
@@ -1145,6 +1425,7 @@ def build_om_type_tree(
             maximum_valuation,
             max_enumerated_candidates=max_enumerated_candidates,
             max_representative_refinements=max_representative_refinements,
+            max_type_depth=max_type_depth,
         )
         branches.extend(factor_branches)
         index += factor_index_contribution
@@ -1167,6 +1448,7 @@ def build_om_type_tree(
         index,
         max_enumerated_candidates,
         max_representative_refinements,
+        max_type_depth,
     )
     return OMTypeTree(
         polynomial,
@@ -1178,6 +1460,7 @@ def build_om_type_tree(
         precision,
         max_enumerated_candidates,
         max_representative_refinements,
+        max_type_depth,
         stable_certificate_id(text),
     )
 
@@ -1199,6 +1482,7 @@ def validate_type_tree(tree: OMTypeTree) -> TypeTreeValidation:
             tree.prime,
             max_enumerated_candidates=tree.max_enumerated_candidates,
             max_representative_refinements=tree.max_representative_refinements,
+            max_type_depth=tree.max_type_depth,
         )
     except (OMDomainError, OMResourceError, ArithmeticError) as error:
         return TypeTreeValidation(False, False, (str(error),), "")
@@ -1214,6 +1498,7 @@ def validate_type_tree(tree: OMTypeTree) -> TypeTreeValidation:
         tree.max_enumerated_candidates != recomputed.max_enumerated_candidates
         or tree.max_representative_refinements
         != recomputed.max_representative_refinements
+        or tree.max_type_depth != recomputed.max_type_depth
     ):
         failures.append("deterministic work bounds differ")
     if tree.certificate_id != recomputed.certificate_id:
@@ -1251,6 +1536,9 @@ __all__ = [
     "factor_residual_polynomial",
     "gauss_valuation",
     "lower_newton_polygon",
+    "higher_newton_polygon",
+    "maclane_integer_valuation",
+    "maclane_valuation",
     "modular_divmod",
     "newton_polygon",
     "normalize_polynomial",

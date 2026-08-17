@@ -178,18 +178,81 @@
       ]
     },
     {
-      "name": "degree-raising higher representative remains fail-closed",
+      "name": "degree-raising quartic higher representative",
       "polynomial": [4, 4, 0, 0, 1],
       "prime": 2,
       "polynomial_discriminant": "9472",
       "field_discriminant": "592",
       "local_discriminant_valuation": 8,
-      "expected_status": "incomplete",
+      "expected_status": "complete",
       "expected_index_valuation": 2,
-      "expected_type_depth": 1,
+      "expected_type_depth": 2,
       "expected_residual_field_degree": 1,
-      "expected_incomplete_state": "requires-degree-raising-representative",
+      "expected_active_key_values": [[1, 2], [5, 4]],
+      "expected_active_slopes": [[-1, 2], [-1, 2]],
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 0},
+        {"numerator": [-2, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, -2, 0, 1], "denominator_exponent": 1}
+      ],
       "sage_basis": ["1", "a", "1/2*a^2", "1/2*a^3"]
+    },
+    {
+      "name": "degree-eight degree-four higher representative",
+      "polynomial": [4, 4, 0, 0, 0, 0, 0, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": "220906192896",
+      "field_discriminant": "95879424",
+      "local_discriminant_valuation": 16,
+      "expected_status": "complete",
+      "expected_index_valuation": 4,
+      "expected_type_depth": 2,
+      "expected_residual_field_degree": 1,
+      "expected_active_key_values": [[1, 4], [9, 8]],
+      "expected_active_slopes": [[-1, 4], [-1, 2]],
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 0},
+        {"numerator": [0, 0, 1], "denominator_exponent": 0},
+        {"numerator": [0, 0, 0, 1], "denominator_exponent": 0},
+        {"numerator": [-2, 0, 0, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, -2, 0, 0, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, 0, -2, 0, 0, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, 0, 0, -2, 0, 0, 0, 1], "denominator_exponent": 1}
+      ],
+      "sage_basis": [
+        "1", "a", "a^2", "a^3", "1/2*a^4", "1/2*a^5",
+        "1/2*a^6", "1/2*a^7"
+      ]
+    },
+    {
+      "name": "degree-eight deep-index higher quotient basis",
+      "polynomial": [16, 16, 0, 0, 0, 0, 0, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": "966509375520768",
+      "field_discriminant": "57608448",
+      "local_discriminant_valuation": 32,
+      "expected_status": "complete",
+      "expected_index_valuation": 12,
+      "expected_type_depth": 2,
+      "expected_residual_field_degree": 1,
+      "expected_active_key_values": [[1, 2], [9, 8]],
+      "expected_active_slopes": [[-1, 2], [-1, 4]],
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 0},
+        {"numerator": [-6, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, -6, 0, 1], "denominator_exponent": 1},
+        {"numerator": [12, 0, -4, 0, 1], "denominator_exponent": 2},
+        {"numerator": [0, 12, 0, -4, 0, 1], "denominator_exponent": 2},
+        {"numerator": [-8, 0, 4, 0, -2, 0, 1], "denominator_exponent": 3},
+        {"numerator": [0, -8, 0, 4, 0, -2, 0, 1], "denominator_exponent": 3}
+      ],
+      "sage_basis": [
+        "1", "a", "1/2*a^2", "1/2*a^3", "1/4*a^4",
+        "1/4*a^5", "1/8*a^6", "1/8*a^7"
+      ]
     }
   ]
 }
