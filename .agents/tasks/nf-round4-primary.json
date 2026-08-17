@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round4-primary",
+  "title": "Nf Round4 Primary",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and certify the modified Round-4 deep-primary power-basis search, eliminating Round-2 delegation on supported PARI corpus and public timeout vectors",
+  "base_commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "test/number-field-round4.cjs",
+    "test/fixtures/number-field-round4-primary.json",
+    "bench/number-field-round4-primary.cjs"
+  ],
+  "dependencies": [
+    "nf-maxorder-round4"
+  ],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md",
+    "Ford-Letard 1994",
+    "PARI base2.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing Round-2 implementation",
+      "PARI/GP round4 corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.601,
+      "started_at": "2026-08-17T21:51:16.829Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "8d6cd6de8f0835efa99b5ddb0a15718f104ba896cc4d354d471ef773cbc23900",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Correctness checkpoint: an ordinary-Python Ford--Letard power-basis search now handles PARI #2510 and vector 008 without constructive Round-2 fallback. Exact E*F, p-local containment, p-power denominators/index, discriminant change, canonical HNF, and stable stage evidence fail closed; Round 2 remains an optional independent verifier.",
+    "risks": [
+      "Vector 008 remains a measured performance debt: about 20.0s in the power-basis kernel and 22.3s through the strict public wrapper on the shared Linux x64 host.",
+      "Multiple modular primary components and higher-residue-field root matching remain explicit unsupported boundaries delegated to Round 2.",
+      "Vector 010 reaches a ramification-degree decrease which requires closer parity with PARI progress state before it can be accepted."
+    ],
+    "next_steps": [
+      "Implement PARI progress state semantics for vector 010 without weakening invariants.",
+      "Move repeated exact characteristic-polynomial work toward the source-transparent native boundary; a single degree-32 probe measured about 217ms.",
+      "Integrate the public dispatcher/selector separately through the shared integration lane."
+    ]
+  }
+}

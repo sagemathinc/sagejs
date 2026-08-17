@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "provenance": {
+    "pari": "PARI/GP 2.18.1 src/test/in/round4 vectors and nfbasis",
+    "algorithm": "Ford--Letard modified Round Four progress, testb2, and testc2",
+    "normalization": "ascending integral defining-polynomial coefficients"
+  },
+  "cases": [
+    {
+      "id": "pari-2510-p2",
+      "coefficients": ["3136", "0", "-3136", "0", "840", "0", "-56", "0", "1"],
+      "prime": "2",
+      "ramification_degree": 4,
+      "residue_degree": 2,
+      "local_index": "262144",
+      "local_index_valuation": 18,
+      "local_output_discriminant": "12018746582523550105600",
+      "required_power_stages": [
+        "power-basis-ramification",
+        "power-basis-residue-refinement",
+        "assemble-power-basis-hnf"
+      ]
+    },
+    {
+      "id": "pari-round4-vector-008-p2",
+      "coefficients": ["16", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1"],
+      "prime": "2",
+      "ramification_degree": 32,
+      "residue_degree": 1,
+      "local_index": "4611686018427387904",
+      "local_index_valuation": 62,
+      "local_output_discriminant": "1461501637330902918203684832716283019655932542976",
+      "required_power_stages": [
+        "power-basis-ramification",
+        "power-basis-ramification-composition",
+        "assemble-power-basis-hnf"
+      ]
+    }
+  ]
+}

@@ -10,6 +10,12 @@ const { createSage } = require("../dist/tools/kernel.js");
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures", "number-field-round4.json"), "utf8"),
 );
+const primaryFixture = JSON.parse(
+  readFileSync(
+    join(__dirname, "fixtures", "number-field-round4-primary.json"),
+    "utf8",
+  ),
+);
 
 function sageCase(record) {
   return `{` +
@@ -98,6 +104,62 @@ test("canonical polynomial/HNF boundary returns exact local evidence", async () 
     assert.match(result.repr, /modified-round4/);
     assert.match(result.repr, /modified-round4-dedekind-discriminant-certified/);
     assert.match(result.repr, /262144/); // 2^18 for PARI #2510.
+  } finally {
+    await session.close();
+  }
+});
+
+test("deep primary Round-4 stages construct frozen PARI local orders", async () => {
+  const session = await createSage();
+  try {
+    const cases = primaryFixture.cases
+      .map(
+        (record) =>
+          `{` +
+          `'id': ${JSON.stringify(record.id)}, ` +
+          `'coefficients': [${record.coefficients.join(",")}], ` +
+          `'prime': ${record.prime}, ` +
+          `'ramification_degree': ${record.ramification_degree}, ` +
+          `'residue_degree': ${record.residue_degree}, ` +
+          `'local_index': ${record.local_index}, ` +
+          `'local_index_valuation': ${record.local_index_valuation}, ` +
+          `'local_output_discriminant': ${record.local_output_discriminant}, ` +
+          `'required_power_stages': ${JSON.stringify(record.required_power_stages)}` +
+          `}`,
+      )
+      .join(",");
+    const result = await session.evaluate(
+      [
+        "R.<x> = ZZ[]",
+        "from sagejs.number_fields.round4 import modified_round4_local_order",
+        `cases = [${cases}]`,
+        "answer = []",
+        "for case in cases:",
+        "    K = NumberField(R(case['coefficients']), 'a')",
+        "    result = modified_round4_local_order(K.equation_order(), case['prime'], strict=True)",
+        "    certificate = result.certificate",
+        "    assert certificate.algorithm == 'modified-round4-primary-power-basis'",
+        "    assert certificate.fallback_reason is None",
+        "    assert certificate.local_index == case['local_index']",
+        "    assert certificate.local_index_valuation == case['local_index_valuation']",
+        "    assert result.order.discriminant() == case['local_output_discriminant']",
+        "    power_stages = [stage for stage in result.plan.stages if 'power-basis' in stage.name]",
+        "    names = [stage.name for stage in power_stages]",
+        "    for required in case['required_power_stages']:",
+        "        assert required in names",
+        "    final = power_stages[-1].evidence",
+        "    assert final['ramification_degree'] == case['ramification_degree']",
+        "    assert final['residue_degree'] == case['residue_degree']",
+        "    assert final['local_index'] == case['local_index']",
+        "    assert final['p_maximality_verifier'] == 'ford-letard-ef-degree-certificate'",
+        "    assert final['closure_witness'].startswith('nested local orders')",
+        "    answer.append((case['id'], names, final['output_discriminant']))",
+        "answer",
+      ].join("\n"),
+    );
+    assert.match(result.repr, /pari-2510-p2/);
+    assert.match(result.repr, /pari-round4-vector-008-p2/);
+    assert.match(result.repr, /power-basis-ramification-composition/);
   } finally {
     await session.close();
   }

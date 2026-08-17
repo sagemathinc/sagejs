@@ -11,9 +11,9 @@ that are independent of the eventual native storage boundary:
 * Dedekind's coefficient-ring enlargement, which constructs all first-layer
   integral elements at once as an integer-HNF numerator/common-denominator
   lattice;
-* an exact local-order adapter that verifies the lattice evidence and uses the
-  existing Round-2 implementation only for primary/deep branches not yet
-  handled by the Ford--Letard power-basis search.
+* an exact local-order adapter that verifies the lattice evidence, constructs
+  common deep-primary orders by the Ford--Letard power-basis search, and uses
+  the existing Round-2 implementation only at named unsupported boundaries.
 
 The fallback is deliberate and visible in the result certificate.  A failed
 Hensel invariant, uncertified modulus, or inconsistent basis never gets
@@ -106,6 +106,7 @@ class Round4LocalPlan:
         self,
         prime: Any,
         polynomial_coefficients: list[Any],
+        polynomial_discriminant: Any,
         discriminant_valuation: int,
         required_precision: int,
         irreducible_factors: list[list[Any]],
@@ -121,6 +122,7 @@ class Round4LocalPlan:
     ) -> None:
         self.prime = prime
         self.polynomial_coefficients = polynomial_coefficients
+        self.polynomial_discriminant = polynomial_discriminant
         self.discriminant_valuation = discriminant_valuation
         self.required_precision = required_precision
         self.irreducible_factors = irreducible_factors
@@ -141,6 +143,7 @@ class Round4LocalPlan:
         answer: dict[str, Any] = {
             "prime": self.prime,
             "degree": len(self.polynomial_coefficients) - 1,
+            "polynomial_discriminant": self.polynomial_discriminant,
             "discriminant_valuation": self.discriminant_valuation,
             "required_precision": self.required_precision,
             "factor_degrees": [
@@ -225,6 +228,41 @@ class Round4LocalResult:
         return {
             "plan": self.plan.as_dict(include_coefficients),
             "certificate": self.certificate.as_dict(),
+        }
+
+
+class Round4PowerBasisResult:
+    """A locally monogenic order found by the modified Round-4 search."""
+
+    def __init__(
+        self,
+        order: Any,
+        generator_coefficients: list[Any],
+        ramification_degree: int,
+        residue_degree: int,
+        local_index: Any,
+        stages: list[Round4Stage],
+        verification_algorithm: str,
+    ) -> None:
+        self.order = order
+        self.generator_coefficients = generator_coefficients
+        self.ramification_degree = ramification_degree
+        self.residue_degree = residue_degree
+        self.local_index = local_index
+        self.stages = stages
+        self.verification_algorithm = verification_algorithm
+
+    def as_dict(self) -> dict[str, Any]:
+        numerator, denominator = _basis_hnf_evidence(self.order)
+        return {
+            "generator_coefficients": list(self.generator_coefficients),
+            "ramification_degree": self.ramification_degree,
+            "residue_degree": self.residue_degree,
+            "local_index": self.local_index,
+            "basis_numerator": numerator,
+            "basis_denominator": denominator,
+            "verification_algorithm": self.verification_algorithm,
+            "stages": [stage.as_dict() for stage in self.stages],
         }
 
 
@@ -627,6 +665,639 @@ def _factor_sort_key(record: tuple[list[Any], int]) -> tuple[int, str]:
     return _poly_degree(record[0]), str(record[0])
 
 
+def _element_characteristic_polynomial(
+    field: Any,
+    element: Any,
+) -> list[Any]:
+    """Return the exact regular-representation characteristic polynomial.
+
+    The matrix is assembled transparently from `1,x,...,x^(n-1)` and its
+    columns under multiplication by `element`. Matrix characteristic
+    polynomial computation then uses Sage.js's exact FLINT-backed operation
+    with its dynamic fallback. The result is in ascending coefficient order.
+    """
+    degree = field.degree()
+    columns = []
+    power = field.one()
+    for _column in range(degree):
+        product = element * power
+        column = list(product.list())
+        column += [sage.QQ(0) for _index in range(degree - len(column))]
+        columns.append(column)
+        power *= field.gen()
+    rows = []
+    for row_index in range(degree):
+        rows.append([columns[column][row_index] for column in range(degree)])
+    matrix = _nf_global("matrix")(sage.QQ, rows)
+    return list(matrix.charpoly().list())
+
+
+def _integral_characteristic_polynomial(
+    field: Any,
+    element: Any,
+) -> list[Any] | None:
+    coefficients = _element_characteristic_polynomial(field, element)
+    answer = []
+    for coefficient in coefficients:
+        if coefficient._denominator != 1:
+            return None
+        answer.append(coefficient._numerator)
+    return answer
+
+
+def _evaluate_polynomial_element(
+    coefficients: list[Any],
+    element: Any,
+) -> Any:
+    answer = element.parent()(0)
+    for coefficient in reversed(coefficients):
+        answer = answer * element + coefficient
+    return answer
+
+
+def _vstar_characteristic(
+    coefficients: list[Any],
+    prime: Any,
+) -> tuple[int, int]:
+    """Return Ford--Letard's minimum extension valuation `L/E`."""
+    degree = len(coefficients) - 1
+    best_valuation = 0
+    best_denominator = 1
+    found = False
+    for denominator in range(1, degree + 1):
+        coefficient = coefficients[degree - denominator]
+        if coefficient == 0:
+            continue
+        valuation = _valuation(coefficient, prime)
+        if not found or valuation * best_denominator < best_valuation * denominator:
+            best_valuation = valuation
+            best_denominator = denominator
+            found = True
+    if not found:
+        raise Round4InvariantError(
+            "a characteristic polynomial supplied no finite extension valuation"
+        )
+    common = _integer_gcd(best_valuation, best_denominator)
+    return best_valuation // common, best_denominator // common
+
+
+def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
+    old_remainder, remainder = left, right
+    old_left, current_left = 1, 0
+    old_right, current_right = 0, 1
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = (
+            remainder,
+            old_remainder - quotient * remainder,
+        )
+        old_left, current_left = (
+            current_left,
+            old_left - quotient * current_left,
+        )
+        old_right, current_right = (
+            current_right,
+            old_right - quotient * current_right,
+        )
+    return old_remainder, old_left, old_right
+
+
+def _round4_uniformizer(
+    beta: Any,
+    numerator: int,
+    ramification_degree: int,
+    prime: Any,
+) -> tuple[Any, int, int]:
+    if ramification_degree == 1:
+        return beta.parent()(prime), 0, 1
+    common, exponent, signed_prime_exponent = _extended_gcd(
+        numerator,
+        ramification_degree,
+    )
+    if common != 1:
+        raise Round4InvariantError("a reduced extension valuation is not coprime")
+    prime_exponent = -signed_prime_exponent
+    while exponent <= 0:
+        exponent += ramification_degree
+        prime_exponent += numerator
+    if prime_exponent < 0:
+        raise Round4InvariantError("a Round-4 uniformizer acquired p in its numerator")
+    return beta**exponent / prime**prime_exponent, exponent, prime_exponent
+
+
+def _p_adic_reduce_element(
+    field: Any,
+    element: Any,
+    prime: Any,
+    precision: int,
+) -> Any:
+    """Choose a small global representative of one local field element.
+
+    Odd denominator parts are units in `ZZ_p`; replacing their inverses modulo
+    `p**precision` preserves every characteristic-polynomial decision made by
+    the bounded Round-4 search.  The only denominator retained in the result
+    is a power of `p`.
+    """
+    coefficients = element.list()
+    denominator = sage.ZZ(1)
+    for coefficient in coefficients:
+        denominator = _integer_lcm(denominator, coefficient._denominator)
+    denominator_valuation = _valuation(denominator, prime) if denominator != 1 else 0
+    prime_denominator = prime**denominator_valuation
+    unit = denominator // prime_denominator
+    modulus = prime ** (precision + denominator_valuation)
+    unit_inverse = _modular_inverse(unit % modulus, modulus)
+    half_modulus = modulus // 2
+    reduced = []
+    for coefficient in coefficients:
+        numerator = coefficient._numerator * (denominator // coefficient._denominator)
+        value = (numerator * unit_inverse) % modulus
+        if value > half_modulus:
+            value -= modulus
+        reduced.append(sage.QQ(value) / sage.QQ(prime_denominator))
+    return field._from_coefficients(reduced)
+
+
+def _single_characteristic_branch(
+    coefficients: list[Any],
+    prime: Any,
+) -> tuple[list[Any], int]:
+    polynomial_ring = _nf_global("PolynomialRing")(sage.ZZ, "z")
+    polynomial = polynomial_ring(coefficients)
+    factors, multiplicities = _factor_polynomial_mod_prime(polynomial, prime)
+    if len(factors) != 1:
+        raise Round4Unsupported(
+            "the current Round-4 power-basis search requires one primary "
+            "characteristic branch; use the certified decomposition path"
+        )
+    return factors[0], multiplicities[0]
+
+
+def _power_basis_rows(field: Any, generator: Any) -> list[list[Any]]:
+    degree = field.degree()
+    rows = []
+    power = field.one()
+    for _exponent in range(degree):
+        coefficients = list(power.list())
+        coefficients += [sage.QQ(0) for _index in range(degree - len(coefficients))]
+        rows.append(coefficients)
+        power *= generator
+    return rows
+
+
+def _round4_residue_refinement(
+    field: Any,
+    phi: Any,
+    nu: list[Any],
+    ramification_degree: int,
+    prime: Any,
+    discriminant_valuation: int,
+    stages: list[Round4Stage],
+) -> tuple[Any, list[Any], int, int]:
+    """Increase the residue degree by Ford--Letard beta refinement.
+
+    This is the `loop`/`testb2` part of modified Round 4.  The implemented
+    branch is the common primary case in which the current residue field is
+    prime.  Higher residue-field root matching remains a precise unsupported
+    boundary rather than an implicit Round-2 construction.
+    """
+    degree = field.degree()
+    residue_degree = _poly_degree(nu)
+    nu_at_phi = _evaluate_polynomial_element(nu, phi)
+    beta = nu_at_phi**ramification_degree
+    # A degree-sized structural window is the inexpensive first attempt.  The
+    # exact closure/fixed-point checks below make this safe: insufficient
+    # precision cannot be reported as a maximal order.
+    precision = max(3, min(discriminant_valuation + 2, 2 * degree + 1))
+    bound = 2 * discriminant_valuation + 2 * degree + 4
+    refinements = []
+    for iteration in range(bound):
+        beta_characteristic = _integral_characteristic_polynomial(field, beta)
+        if beta_characteristic is None:
+            raise Round4InvariantError("Round-4 beta ceased to be integral")
+        norm = beta_characteristic[0]
+        if norm == 0:
+            raise Round4Unsupported("Round-4 beta has zero norm")
+        norm_valuation = _valuation(norm, prime)
+        quotient = norm_valuation // degree
+        remainder = (
+            norm_valuation * ramification_degree // degree
+            - quotient * ramification_degree
+        )
+
+        gamma = beta / prime**quotient
+        if remainder:
+            gamma /= nu_at_phi**remainder
+        gamma = _p_adic_reduce_element(field, gamma, prime, precision)
+        gamma_characteristic = _integral_characteristic_polynomial(field, gamma)
+        used_minimum_valuation = False
+        if gamma_characteristic is None:
+            local_numerator, local_denominator = _vstar_characteristic(
+                beta_characteristic,
+                prime,
+            )
+            quotient = local_numerator // local_denominator
+            remainder = (
+                local_numerator * ramification_degree // local_denominator
+                - quotient * ramification_degree
+            )
+            gamma = beta / prime**quotient
+            if remainder:
+                gamma /= nu_at_phi**remainder
+            gamma = _p_adic_reduce_element(field, gamma, prime, precision)
+            gamma_characteristic = _integral_characteristic_polynomial(field, gamma)
+            used_minimum_valuation = True
+        if gamma_characteristic is None:
+            raise Round4Unsupported(
+                "the beta normalization did not produce a locally integral element"
+            )
+
+        gamma_factor, gamma_multiplicity = _single_characteristic_branch(
+            gamma_characteristic,
+            prime,
+        )
+        gamma_residue_degree = _poly_degree(gamma_factor)
+        refinements.append(
+            {
+                "iteration": iteration,
+                "norm_valuation": norm_valuation,
+                "quotient": quotient,
+                "remainder": remainder,
+                "used_minimum_valuation": used_minimum_valuation,
+                "residue_degree": gamma_residue_degree,
+                "multiplicity": gamma_multiplicity,
+            }
+        )
+
+        if gamma_residue_degree > residue_degree:
+            if gamma_residue_degree % residue_degree != 0:
+                raise Round4Unsupported(
+                    "a residue-degree increase is not divisible by the old degree"
+                )
+            candidate = _p_adic_reduce_element(
+                field,
+                gamma + phi,
+                prime,
+                precision,
+            )
+            candidate_characteristic = _integral_characteristic_polynomial(
+                field,
+                candidate,
+            )
+            if candidate_characteristic is None:
+                raise Round4Unsupported(
+                    "the deterministic residue-degree composition is not integral"
+                )
+            candidate_factor, candidate_multiplicity = _single_characteristic_branch(
+                candidate_characteristic,
+                prime,
+            )
+            candidate_residue_degree = _poly_degree(candidate_factor)
+            if candidate_residue_degree < gamma_residue_degree:
+                raise Round4Unsupported(
+                    "the deterministic residue-degree composition made no progress"
+                )
+            stages.append(
+                Round4Stage(
+                    "power-basis-residue-refinement",
+                    {
+                        "old_residue_degree": residue_degree,
+                        "new_residue_degree": candidate_residue_degree,
+                        "multiplicity": candidate_multiplicity,
+                        "iterations": refinements,
+                    },
+                )
+            )
+            return (
+                candidate,
+                candidate_factor,
+                ramification_degree,
+                candidate_residue_degree,
+            )
+
+        if residue_degree != 1 or gamma_residue_degree != 1:
+            raise Round4Unsupported(
+                "higher-residue-field root matching is not implemented"
+            )
+        root = -gamma_factor[0]
+        error_element = gamma - root
+        error_characteristic = _integral_characteristic_polynomial(
+            field,
+            error_element,
+        )
+        if error_characteristic is None:
+            raise Round4InvariantError("a Round-4 residue error is not integral")
+        error_numerator, error_ramification = _vstar_characteristic(
+            error_characteristic,
+            prime,
+        )
+        if ramification_degree % error_ramification != 0:
+            error_uniformizer, error_exponent, error_prime_exponent = (
+                _round4_uniformizer(
+                    error_element,
+                    error_numerator,
+                    error_ramification,
+                    prime,
+                )
+            )
+            error_uniformizer = _p_adic_reduce_element(
+                field,
+                error_uniformizer,
+                prime,
+                precision,
+            )
+            if (
+                _integral_characteristic_polynomial(
+                    field,
+                    error_uniformizer,
+                )
+                is None
+            ):
+                raise Round4Unsupported(
+                    "the testc2 prime element did not certify as integral"
+                )
+            common, error_power, old_power = _extended_gcd(
+                ramification_degree,
+                error_ramification,
+            )
+            if common <= 0:
+                raise Round4InvariantError("invalid testc2 ramification gcd")
+            prime_power = 0
+            while error_power < 0:
+                error_power += error_ramification
+                prime_power += 1
+            while old_power < 0:
+                old_power += ramification_degree
+                prime_power += 1
+            composition = (
+                nu_at_phi**old_power
+                * error_uniformizer**error_power
+                / prime**prime_power
+            )
+            composition = _p_adic_reduce_element(
+                field,
+                composition,
+                prime,
+                precision,
+            )
+            candidate = _p_adic_reduce_element(
+                field,
+                phi + composition,
+                prime,
+                precision,
+            )
+            candidate_characteristic = _integral_characteristic_polynomial(
+                field,
+                candidate,
+            )
+            if candidate_characteristic is None:
+                raise Round4Unsupported("the testc2 generator is not integral")
+            candidate_factor, candidate_multiplicity = _single_characteristic_branch(
+                candidate_characteristic,
+                prime,
+            )
+            new_ramification = _integer_lcm(
+                ramification_degree,
+                error_ramification,
+            )
+            candidate_residue_degree = _poly_degree(candidate_factor)
+            stages.append(
+                Round4Stage(
+                    "power-basis-ramification-composition",
+                    {
+                        "old_ramification_degree": ramification_degree,
+                        "error_ramification_degree": error_ramification,
+                        "new_ramification_degree": new_ramification,
+                        "residue_degree": candidate_residue_degree,
+                        "multiplicity": candidate_multiplicity,
+                        "error_exponent": error_exponent,
+                        "error_prime_exponent": error_prime_exponent,
+                        "composition_old_power": old_power,
+                        "composition_error_power": error_power,
+                        "composition_prime_power": prime_power,
+                        "iterations": refinements,
+                    },
+                )
+            )
+            return (
+                candidate,
+                candidate_factor,
+                new_ramification,
+                candidate_residue_degree,
+            )
+        correction = root * prime**quotient
+        if remainder:
+            correction *= nu_at_phi**remainder
+        beta -= correction
+    raise Round4Unsupported("the Round-4 beta refinement exceeded its proved bound")
+
+
+def round4_primary_power_basis(
+    order: Any,
+    prime: Any,
+    plan: Round4LocalPlan | None = None,
+    verify: bool = True,
+) -> Round4PowerBasisResult:
+    """Find a `p`-maximal locally monogenic order by modified Round 4.
+
+    Construction uses only the exact Ford--Letard power-basis stages.  When
+    `verify` is true, Round 2 is run *afterward* as an independent fixed-point
+    checker; it does not supply the returned lattice or generator.
+    """
+    field = order.number_field()
+    maximal_order = _maximal_order_module()
+    if field._equation_order_cache is not order:
+        raise Round4Unsupported(
+            "the primary power-basis search currently starts at an equation order"
+        )
+    polynomial = maximal_order.integral_equation_polynomial(field)
+    if plan is None:
+        plan = round4_local_plan(polynomial, prime)
+    if len(plan.irreducible_factors) != 1:
+        raise Round4Unsupported(
+            "the primary power-basis search requires one modular primary component"
+        )
+    degree = field.degree()
+    phi = field.gen()
+    nu = list(plan.irreducible_factors[0])
+    ramification_degree = 0
+    stages: list[Round4Stage] = []
+    search_precision = max(
+        3,
+        min(plan.discriminant_valuation + 2, 2 * degree + 1),
+    )
+    progress_bound = 2 * plan.discriminant_valuation + 2 * degree + 4
+    for iteration in range(progress_bound):
+        beta = _evaluate_polynomial_element(nu, phi)
+        beta_characteristic = _integral_characteristic_polynomial(field, beta)
+        if beta_characteristic is None:
+            raise Round4InvariantError(
+                "a Round-4 characteristic prime candidate is not integral"
+            )
+        numerator, candidate_ramification = _vstar_characteristic(
+            beta_characteristic,
+            prime,
+        )
+        if candidate_ramification < ramification_degree:
+            raise Round4InvariantError("the Round-4 ramification degree decreased")
+        uniformizer, beta_exponent, prime_exponent = _round4_uniformizer(
+            beta,
+            numerator,
+            candidate_ramification,
+            prime,
+        )
+        uniformizer = _p_adic_reduce_element(
+            field,
+            uniformizer,
+            prime,
+            search_precision,
+        )
+        if _integral_characteristic_polynomial(field, uniformizer) is None:
+            raise Round4Unsupported(
+                "the Round-4 prime element did not certify as integral"
+            )
+        ramification_degree = candidate_ramification
+        stages.append(
+            Round4Stage(
+                "power-basis-ramification",
+                {
+                    "iteration": iteration,
+                    "minimum_valuation_numerator": numerator,
+                    "ramification_degree": ramification_degree,
+                    "beta_exponent": beta_exponent,
+                    "prime_exponent": prime_exponent,
+                },
+            )
+        )
+        if numerator != 1:
+            phi = _p_adic_reduce_element(
+                field,
+                phi + uniformizer,
+                prime,
+                search_precision,
+            )
+            characteristic = _integral_characteristic_polynomial(field, phi)
+            if characteristic is None:
+                raise Round4InvariantError(
+                    "the updated Round-4 generator is not integral"
+                )
+            nu, _multiplicity = _single_characteristic_branch(
+                characteristic,
+                prime,
+            )
+            continue
+
+        residue_degree = _poly_degree(nu)
+        if ramification_degree * residue_degree < degree:
+            phi, nu, ramification_degree, residue_degree = _round4_residue_refinement(
+                field,
+                phi,
+                nu,
+                ramification_degree,
+                prime,
+                plan.discriminant_valuation,
+                stages,
+            )
+        if ramification_degree * residue_degree != degree:
+            continue
+
+        power_rows = _power_basis_rows(field, phi)
+        for coefficient in phi.list():
+            denominator = coefficient._denominator
+            denominator_valuation = (
+                _valuation(denominator, prime) if denominator != 1 else 0
+            )
+            if denominator != prime**denominator_valuation:
+                raise Round4InvariantError(
+                    "the local generator has a denominator away from p"
+                )
+        power_matrix = _nf_global("matrix")(sage.QQ, power_rows)
+        if power_matrix.determinant() == 0:
+            raise Round4InvariantError("the Round-4 generator is not primitive")
+        containment = order.basis_matrix() * power_matrix.inverse()
+        for row in containment.rows():
+            for value in row:
+                if value._denominator % prime == 0:
+                    raise Round4InvariantError(
+                        "the power basis does not locally contain the input order"
+                    )
+        candidate = maximal_order.NumberFieldOrder(
+            field,
+            list(order._basis_rows) + power_rows,
+            False,
+            False,
+        )
+        local_index = _order_index(order, candidate)
+        local_index_valuation = (
+            _valuation(local_index, prime) if local_index != 1 else 0
+        )
+        if local_index != prime**local_index_valuation:
+            raise Round4InvariantError(
+                "a local power-basis join changed the order away from p"
+            )
+        input_discriminant = plan.polynomial_discriminant
+        order._discriminant_cache = runtime.normalize_integer(input_discriminant)
+        output_discriminant, discriminant_remainder = divmod(
+            input_discriminant,
+            local_index * local_index,
+        )
+        if discriminant_remainder != 0:
+            raise Round4InvariantError(
+                "the local power-basis index does not divide the discriminant"
+            )
+        # The discriminant-change formula is exact for a finite-index lattice
+        # inclusion.  Retaining it avoids reconstructing an O(n^3)
+        # multiplication table merely to recompute the same determinant.
+        candidate._discriminant_cache = runtime.normalize_integer(output_discriminant)
+        verification_algorithm = "ford-letard-ef-degree-certificate"
+        if verify:
+            maximal_order._nf_order_multiplication_table(candidate)
+            # Materialize the cache before crossing into the native verifier;
+            # an unset optional attribute is represented by JavaScript `undefined`.
+            candidate.discriminant()
+            if prime <= 18446744073709551615:
+                checked = maximal_order.maximal_overorder_native(
+                    candidate,
+                    [runtime.number(prime)],
+                )
+                verification_algorithm = "native-round2-fixed-point"
+            else:
+                checked = maximal_order.p_maximal_overorder_dynamic(candidate, prime)
+                verification_algorithm = "dynamic-round2-fixed-point"
+            if checked._basis_rows != candidate._basis_rows:
+                raise Round4InvariantError(
+                    "the independently checked Round-4 power basis is not p-maximal"
+                )
+        stages.append(
+            Round4Stage(
+                "assemble-power-basis-hnf",
+                {
+                    "ramification_degree": ramification_degree,
+                    "residue_degree": residue_degree,
+                    "local_index": local_index,
+                    "local_index_valuation": local_index_valuation,
+                    "input_discriminant": input_discriminant,
+                    "output_discriminant": output_discriminant,
+                    "closure_checked": True,
+                    "closure_witness": (
+                        "nested local orders: power basis at p and input order away from p"
+                    ),
+                    "p_maximality_verifier": verification_algorithm,
+                },
+            )
+        )
+        return Round4PowerBasisResult(
+            candidate,
+            list(phi.list()),
+            ramification_degree,
+            residue_degree,
+            local_index,
+            stages,
+            verification_algorithm,
+        )
+    raise Round4Unsupported("the Round-4 power-basis progress loop exceeded its bound")
+
+
 def _coefficient_bits(coefficients: list[Any]) -> int:
     answer = 0
     for coefficient in coefficients:
@@ -767,6 +1438,7 @@ def round4_local_plan(
     return Round4LocalPlan(
         prime,
         coefficients,
+        discriminant,
         discriminant_valuation,
         precision,
         factors,
@@ -843,17 +1515,21 @@ def modified_round4_local_order(
 ) -> Round4LocalResult:
     """Return a certified `p`-maximal overorder with explicit stage evidence.
 
-    The implemented Round-4 portion performs local factor refinement and the
-    complete Dedekind coefficient-ring enlargement in one lattice step.  Deep
-    primary branches currently finish through the named Round-2 oracle.  Set
-    `strict=True` to reject that fallback, which is useful for measuring the
-    independently implemented domain.
+    The implemented Round-4 portion performs local factor refinement, the
+    complete Dedekind coefficient-ring enlargement, and a bounded
+    Ford--Letard power-basis search on a single primary component.  Unsupported
+    decomposition or higher-residue-field branches retain the named Round-2
+    fallback. Set `strict=True` to reject that fallback.
     """
     maximal_order = _maximal_order_module()
     field = order.number_field()
     polynomial = maximal_order.integral_equation_polynomial(field)
     plan = round4_local_plan(polynomial, prime)
-    original_discriminant = order.discriminant()
+    if field._equation_order_cache is order:
+        original_discriminant = plan.polynomial_discriminant
+        order._discriminant_cache = runtime.normalize_integer(original_discriminant)
+    else:
+        original_discriminant = order.discriminant()
     initial = order
     used_dedekind = False
     fallback_reason: str | None = None
@@ -914,36 +1590,51 @@ def modified_round4_local_order(
                 )
             )
         else:
-            fallback_reason = (
-                "the Ford--Letard primary power-basis search is not yet available; "
-                "finish from the certified Dedekind overorder with Round 2"
-            )
-            if strict:
-                raise Round4Unsupported(fallback_reason)
-            if fallback not in ["auto", "native-round2", "dynamic-round2"]:
-                raise ValueError("unknown Round-4 fallback " + fallback)
-            if fallback == "dynamic-round2" or (
-                fallback == "auto" and prime > 18446744073709551615
-            ):
-                final = maximal_order.p_maximal_overorder_dynamic(initial, prime)
-                fallback_name = "dynamic-round2"
+            power_basis: Round4PowerBasisResult | None = None
+            power_basis_error: str | None = None
+            try:
+                power_basis = round4_primary_power_basis(order, prime, plan, False)
+            except Round4Unsupported as error:
+                power_basis_error = str(error)
+            if power_basis is not None:
+                final = power_basis.order
+                algorithm = "modified-round4-primary-power-basis"
+                witness = (
+                    "Ford--Letard local power basis; "
+                    + power_basis.verification_algorithm
+                )
+                plan.stages.extend(power_basis.stages)
             else:
-                final = maximal_order.maximal_overorder_native(
-                    initial, [runtime.number(prime)]
+                fallback_reason = (
+                    "the Ford--Letard primary power-basis search stopped at a "
+                    "certified unsupported branch: " + str(power_basis_error)
                 )
-                fallback_name = "native-round2"
-            algorithm = (
-                "modified-round4-dedekind+" + fallback_name
-                if used_dedekind
-                else "modified-round4-analysis+" + fallback_name
-            )
-            witness = fallback_name + " multiplier-ring fixed point"
-            plan.stages.append(
-                Round4Stage(
-                    "round2-fallback",
-                    {"implementation": fallback_name, "reason": fallback_reason},
+                if strict:
+                    raise Round4Unsupported(fallback_reason)
+                if fallback not in ["auto", "native-round2", "dynamic-round2"]:
+                    raise ValueError("unknown Round-4 fallback " + fallback)
+                if fallback == "dynamic-round2" or (
+                    fallback == "auto" and prime > 18446744073709551615
+                ):
+                    final = maximal_order.p_maximal_overorder_dynamic(initial, prime)
+                    fallback_name = "dynamic-round2"
+                else:
+                    final = maximal_order.maximal_overorder_native(
+                        initial, [runtime.number(prime)]
+                    )
+                    fallback_name = "native-round2"
+                algorithm = (
+                    "modified-round4-dedekind+" + fallback_name
+                    if used_dedekind
+                    else "modified-round4-analysis+" + fallback_name
                 )
-            )
+                witness = fallback_name + " multiplier-ring fixed point"
+                plan.stages.append(
+                    Round4Stage(
+                        "round2-fallback",
+                        {"implementation": fallback_name, "reason": fallback_reason},
+                    )
+                )
 
     local_index = _order_index(order, final)
     index_valuation = _valuation(local_index, prime) if local_index != 1 else 0
@@ -1142,6 +1833,7 @@ __all__ = [
     "Round4LocalCertificate",
     "Round4LocalPlan",
     "Round4LocalResult",
+    "Round4PowerBasisResult",
     "Round4SelectorMetrics",
     "Round4Stage",
     "Round4Unsupported",
@@ -1151,6 +1843,7 @@ __all__ = [
     "modified_round4_hnf",
     "modified_round4_hnf_contract",
     "round4_local_plan",
+    "round4_primary_power_basis",
     "round4_required_precision",
     "round4_selection_decision",
     "round4_selector_metrics",
