@@ -78,12 +78,12 @@ jobs:
         shell: bash
         env:
           SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_FLINT_TEST_DIRECT_ADDON: "1"
           SAGEJS_NATIVE_MATH_PROFILE: portable
         run: |
           node scripts/native-prebuilt-dependencies.cjs \
             install-archive build/native-dependencies
           pnpm --dir packages/flint build:addon
-          pnpm --dir packages/flint build:ffi
           node --test packages/flint/test/eclib-rank.cjs
 
       - name: Upload dependency bundle for publication

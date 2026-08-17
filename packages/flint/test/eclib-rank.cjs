@@ -38,6 +38,12 @@ const rankCases = [
   ], 15],
 ];
 
+function loadFlint() {
+  return process.env.SAGEJS_FLINT_TEST_DIRECT_ADDON === "1"
+    ? require("../build/Release/sagejs_flint.node")
+    : require("..");
+}
+
 function rankData(flint, coefficients, saturate = false) {
   return flint.ecRankData(
     ...coefficients.flatMap((value) => [value, 1n]),
@@ -52,7 +58,7 @@ function pointIsOnCurve(coefficients, [x, y, z]) {
 }
 
 if (!isMainThread) {
-  const flint = require("..");
+  const flint = loadFlint();
   const results = [];
   for (let repeat = 0; repeat < 3; repeat += 1) {
     for (const index of [0, 3, 0]) {
@@ -69,7 +75,7 @@ if (!isMainThread) {
   }
   parentPort.postMessage(results);
 } else {
-  const flint = require("..");
+  const flint = loadFlint();
 
   test("FLINT eclib port passes upstream tmrank-short", () => {
     for (const [coefficients, expectedRank] of rankCases) {

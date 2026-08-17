@@ -19,6 +19,7 @@ const {
   basename,
   dirname,
   join,
+  relative,
   resolve,
 } = require("node:path");
 const {
@@ -310,13 +311,20 @@ function extract(archive, dependency) {
   const source = join(sources, `${dependency.name}-${dependency.version}`);
   rmSync(source, { recursive: true, force: true });
   mkdirSync(source, { recursive: true });
-  // An absolute Windows archive path such as `D:\\...` is parsed by tar as
-  // the remote archive syntax `host:file`. Run in the archive directory so
-  // that the archive operand itself is unambiguously local on every host.
+  // Windows tar parses absolute drive-letter operands as `host:file` syntax.
+  // Both paths share the package build root, so make both operands relative
+  // to the archive directory and keep drive letters out of tar's arguments.
+  const archiveDirectory = dirname(archive);
   run(
     "tar",
-    ["xf", basename(archive), "-C", source, "--strip-components=1"],
-    { cwd: dirname(archive) },
+    [
+      "xf",
+      basename(archive),
+      "-C",
+      relative(archiveDirectory, source),
+      "--strip-components=1",
+    ],
+    { cwd: archiveDirectory },
   );
   return source;
 }
