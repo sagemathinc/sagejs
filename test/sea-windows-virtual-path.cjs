@@ -37,8 +37,7 @@ function checkoutRootSpellings() {
   return [...spellings];
 }
 
-function assertOmitsCheckoutRoot(filename) {
-  const bytes = readFileSync(filename);
+function assertBytesOmitCheckoutRoot(bytes, label) {
   const latin1 = bytes.toString("latin1").toLowerCase();
   const utf16 = bytes
     .subarray(0, bytes.length - (bytes.length % 2))
@@ -47,17 +46,42 @@ function assertOmitsCheckoutRoot(filename) {
   for (const spelling of checkoutRootSpellings()) {
     const lower = spelling.toLowerCase();
     assert.equal(
+      bytes.indexOf(Buffer.from(spelling, "utf8")),
+      -1,
+      `${label} embeds the physical checkout root as UTF-8 bytes`,
+    );
+    assert.equal(
+      bytes.indexOf(Buffer.from(spelling, "utf16le")),
+      -1,
+      `${label} embeds the physical checkout root as UTF-16LE bytes`,
+    );
+    assert.equal(
       latin1.includes(lower),
       false,
-      `${filename} embeds the physical checkout root as single-byte text`,
+      `${label} embeds the physical checkout root as single-byte text`,
     );
     assert.equal(
       utf16.includes(lower),
       false,
-      `${filename} embeds the physical checkout root as UTF-16LE text`,
+      `${label} embeds the physical checkout root as UTF-16LE text`,
     );
   }
 }
+
+function assertOmitsCheckoutRoot(filename) {
+  assertBytesOmitCheckoutRoot(readFileSync(filename), filename);
+}
+
+test("checkout-root scan detects odd-offset UTF-16LE paths", () => {
+  const oddOffset = Buffer.concat([
+    Buffer.from([0x7f]),
+    Buffer.from(root, "utf16le"),
+  ]);
+  assert.throws(
+    () => assertBytesOmitCheckoutRoot(oddOffset, "odd-offset fixture"),
+    /UTF-16LE bytes/,
+  );
+});
 
 test("release compiler and cache artifacts omit the physical checkout root", () => {
   for (const relativeDirectory of ["dist/compiler", "dist/runtime-cache"]) {
