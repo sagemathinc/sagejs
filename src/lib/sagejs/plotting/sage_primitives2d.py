@@ -340,15 +340,20 @@ def arrow_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
     has_line, dash, shape = _line_style(values.get("linestyle", "solid"))
     if not has_line or shape != "linear":
         raise ValueError("arrow linestyle must draw a non-step shaft")
-    if dash != "solid":
+    shorten = _nonnegative(values.get("arrowshorten", 0), "arrowshorten")
+    renderer = "trace" if head == 1 and shorten == 0 else "annotation"
+    if renderer == "annotation" and dash != "solid":
         raise NotImplementedError(
-            "dashed and dotted arrow shafts are not supported by Plotly annotations"
+            "two-ended or shortened dashed arrows are not supported by Plotly annotations"
         )
-    if "zorder" in values and float(values["zorder"]) != 2.0:
+    if (
+        renderer == "annotation"
+        and "zorder" in values
+        and float(values["zorder"]) != 2.0
+    ):
         raise NotImplementedError(
             "non-default arrow zorder is not supported by Plotly annotations"
         )
-    shorten = _nonnegative(values.get("arrowshorten", 0), "arrowshorten")
     size = _nonnegative(values.get("arrowsize", 5), "arrowsize")
     return {
         "arrowhead": 2 if head in (1, 2) else 0,
@@ -361,6 +366,7 @@ def arrow_render_plan(options: Mapping[str, Any]) -> dict[str, Any]:
         "startarrowhead": 2 if head in (0, 2) else 0,
         "width": _nonnegative(values.get("width", 2), "width"),
         "opacity": _opacity(values),
+        "renderer": renderer,
         "zorder": _zorder(values, 2),
     }
 

@@ -15,6 +15,7 @@
     "src/lib/sage/plot/polygon.py",
     "src/lib/sage/plot/arrow.py",
     "src/lib/sage/plot/text.py",
+    "src/baselib/graphics.py",
     "test/graphics-primitives2d.cjs",
     "docs/sage-compatibility/plotting/oracle/primitives2d.json",
     "bench/graphics-primitives2d.cjs"
