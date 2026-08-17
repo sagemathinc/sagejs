@@ -282,10 +282,16 @@ class FastCallablePlotWrapper:
     def __call__(self, *args: Any) -> float:
         try:
             native_number = runtime.reflect.get(runtime.global_object, "Number")
-            native_args = [
-                runtime.reflect.apply(native_number, runtime.undefined, [arg])
-                for arg in args
-            ]
+            native_args = runtime.reflect.construct(runtime.array, [])
+            for arg in args:
+                native_value = runtime.reflect.apply(
+                    native_number, runtime.undefined, [arg]
+                )
+                runtime.reflect.apply(
+                    runtime.array.prototype.push,
+                    native_args,
+                    [native_value],
+                )
             value = runtime.reflect.apply(self._ff, runtime.global_object, native_args)
             if runtime.jstype(value) == "number":
                 return float(value)
