@@ -253,6 +253,90 @@
         "1", "a", "1/2*a^2", "1/2*a^3", "1/4*a^4",
         "1/4*a^5", "1/8*a^6", "1/8*a^7"
       ]
+    },
+    {
+      "name": "GMN nonlinear residual and multiple higher sides",
+      "polynomial": [832, -256, -288, 256, -80, 128, 80, 32, 60, 0, 14, 0, 1],
+      "prime": 2,
+      "polynomial_discriminant": "226631756275139289932235418672417461902357037056",
+      "field_discriminant": "749861579918552765825024",
+      "local_discriminant_valuation": 97,
+      "expected_status": "complete",
+      "expected_index_valuation": 39,
+      "expected_type_count": 3,
+      "expected_type_depth": 2,
+      "expected_residual_field_degree": 1,
+      "expected_active_key_values": [[1, 2], [2, 1]],
+      "expected_active_slopes": [[-1, 2], [-2, 1]],
+      "expected_branch_slopes": [
+        [[-1, 2], [-2, 1]],
+        [[-1, 2], [-5, 3]],
+        [[-1, 2]]
+      ],
+      "expected_level_index_contributions": [[30, 5], [0, 4], [0]],
+      "expected_selection_kind": "gmn-terminal-quotients",
+      "expected_basis_kind": "certified-higher-terminal-quotients",
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [0, 1], "denominator_exponent": 0},
+        {"numerator": [14, 0, 1], "denominator_exponent": 1},
+        {"numerator": [0, 14, 0, 1], "denominator_exponent": 1},
+        {"numerator": [-12, 0, 6, 0, 1], "denominator_exponent": 2},
+        {"numerator": [0, -12, 0, 6, 0, 1], "denominator_exponent": 2},
+        {"numerator": [-24, 32, 0, 0, 8, 0, 1], "denominator_exponent": 3},
+        {"numerator": [0, -24, 32, 0, 0, 8, 0, 1], "denominator_exponent": 4},
+        {"numerator": [-48, 0, -24, 32, 16, 0, 10, 0, 1], "denominator_exponent": 5},
+        {"numerator": [0, -48, 0, -24, 32, 16, 0, 10, 0, 1], "denominator_exponent": 6},
+        {"numerator": [-96, 128, -96, 64, 8, 32, 36, 0, 12, 0, 1], "denominator_exponent": 7},
+        {"numerator": [0, -96, 128, -96, 64, 8, 32, 36, 0, 12, 0, 1], "denominator_exponent": 8}
+      ],
+      "sage_basis": [
+        "1/4 + 3/16*a^4 + 1/32*a^6 + 3/128*a^10",
+        "1/8*a + 3/32*a^5 + 5/64*a^7 + 1/32*a^9 + 3/256*a^11",
+        "1/4*a^2 + 1/8*a^4 + 1/32*a^8 + 1/64*a^10",
+        "1/8*a^3 + 1/16*a^5 + 1/64*a^9 + 1/128*a^11",
+        "1/4*a^4", "1/8*a^5 + 1/64*a^11", "1/8*a^6",
+        "1/8*a^7", "1/16*a^8", "1/16*a^9", "1/32*a^10",
+        "1/32*a^11"
+      ]
+    },
+    {
+      "name": "GMN multiple sides translated generator",
+      "polynomial": [779, 1592, 5528, 9196, 10515, 8960, 5848, 2984, 1185, 360, 80, 12, 1],
+      "prime": 2,
+      "polynomial_discriminant": "226631756275139289932235418672417461902357037056",
+      "field_discriminant": "749861579918552765825024",
+      "local_discriminant_valuation": 97,
+      "expected_status": "complete",
+      "expected_index_valuation": 39,
+      "expected_type_count": 3,
+      "expected_type_depth": 2,
+      "expected_residual_field_degree": 1,
+      "expected_branch_slopes": [
+        [[-1, 2], [-2, 1]],
+        [[-1, 2], [-5, 3]],
+        [[-1, 2]]
+      ],
+      "expected_level_index_contributions": [[30, 5], [0, 4], [0]],
+      "expected_selection_kind": "gmn-terminal-quotients",
+      "expected_basis_kind": "certified-higher-terminal-quotients",
+      "expected_basis": [
+        {"numerator": [1], "denominator_exponent": 0},
+        {"numerator": [1, 1], "denominator_exponent": 0},
+        {"numerator": [15, 2, 1], "denominator_exponent": 1},
+        {"numerator": [15, 17, 3, 1], "denominator_exponent": 1},
+        {"numerator": [-5, 16, 12, 4, 1], "denominator_exponent": 2},
+        {"numerator": [-5, 11, 28, 16, 5, 1], "denominator_exponent": 2},
+        {"numerator": [17, 70, 63, 52, 23, 6, 1], "denominator_exponent": 3},
+        {"numerator": [17, 87, 133, 115, 75, 29, 7, 1], "denominator_exponent": 4},
+        {"numerator": [-13, 180, 346, 352, 236, 116, 38, 8, 1], "denominator_exponent": 5},
+        {"numerator": [-13, 167, 526, 698, 588, 352, 154, 46, 9, 1], "denominator_exponent": 6},
+        {"numerator": [89, 642, 1385, 1928, 1758, 1172, 582, 216, 57, 10, 1], "denominator_exponent": 7},
+        {"numerator": [89, 731, 2027, 3313, 3686, 2930, 1754, 798, 273, 67, 11, 1], "denominator_exponent": 8}
+      ],
+      "sage_basis": [
+        "Sage maximal-order lattice for the translated generator; discriminant and index are unchanged"
+      ]
     }
   ]
 }
