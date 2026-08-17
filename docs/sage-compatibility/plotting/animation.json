@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "title": "Sage.js semantic animation and panel export contract",
+  "semantic_model": {
+    "frame_state": "Each frame owns a detached PlotSpec or the existing PanelComposition2D.",
+    "identity": "Frames and layers have stable IDs; panel layer IDs are qualified as <panel-id>.<layer-id>.",
+    "immutability": "Constructors detach JSON-safe state and all serialization returns detached data.",
+    "topology": "Every frame must preserve state kind, dimension, panel grid and placement, layer order, layer IDs, and layer kinds.",
+    "nested_animation": "unsupported",
+    "cross_dimension_animation": "unsupported",
+    "dynamic_layer_topology": "unsupported"
+  },
+  "timing": {
+    "frame_duration_ms": {
+      "default": 250,
+      "constraint": "positive integer"
+    },
+    "transition_duration_ms": {
+      "default": 0,
+      "constraint": "nonnegative integer"
+    },
+    "redraw": {
+      "default": true,
+      "reason": "Portable correctness for Cartesian, WebGL, and 3D traces takes priority over trace-specific redraw guesses."
+    },
+    "easing": [
+      "linear",
+      "quad",
+      "cubic",
+      "sin",
+      "exp",
+      "circle",
+      "elastic",
+      "back",
+      "bounce"
+    ]
+  },
+  "controls": {
+    "portable": [
+      "play",
+      "pause",
+      "slider",
+      "from_current",
+      "slider_prefix"
+    ],
+    "autoplay": "unsupported because it requires a host lifecycle",
+    "loop": "unsupported because it requires a host callback",
+    "existing_plotly_updatemenus_or_sliders": "rejected instead of overwritten"
+  },
+  "resource_limits": {
+    "max_frames": 500,
+    "max_panels": 64,
+    "max_layers_per_frame": 128,
+    "max_total_samples": 5000000,
+    "max_payload_bytes": 67108864,
+    "max_duration_ms": 3600000,
+    "policy": "hard validation before Plotly lowering or browser rendering"
+  },
+  "plotly_lowering": {
+    "entry_point": "sagejs.plotting.animation.lower_plot_animation",
+    "frame_order": "constructor order",
+    "trace_identity": "stable semantic layer IDs become Plotly uid values",
+    "panel_identity": "PanelComposition2D qualification and axis binding are reused without a second panel model",
+    "required_invariants": [
+      "identical trace count",
+      "identical trace uid order",
+      "identical trace type order",
+      "identical subplot references",
+      "identical Plotly config"
+    ]
+  },
+  "export": {
+    "json": {
+      "backend": "builtin",
+      "animation": "full semantic document"
+    },
+    "html": {
+      "backend": "builtin",
+      "animation": "interactive Plotly frames and controls"
+    },
+    "png": {
+      "backend": "chromium",
+      "animation": "explicit single frame"
+    },
+    "jpeg": {
+      "backend": "chromium",
+      "animation": "explicit single frame"
+    },
+    "webp": {
+      "backend": "chromium",
+      "animation": "explicit single frame"
+    },
+    "svg": {
+      "backend": "chromium",
+      "animation": "explicit single frame",
+      "caveat": "WebGL and 3D traces are rasterized."
+    },
+    "gif": "unsupported; use HTML/JSON or export explicit frames",
+    "mp4": "unsupported; use HTML/JSON or export explicit frames",
+    "pdf": "unsupported by the current graphics export backend"
+  },
+  "error_codes": {
+    "SAGEJS_GRAPHICS_FORMAT_UNSUPPORTED": "The requested output format is outside the supported graphics contract.",
+    "SAGEJS_GRAPHICS_ANIMATION_FRAME_REQUIRED": "A static animation export did not identify one stable frame.",
+    "SAGEJS_GRAPHICS_ANIMATION_FRAME_INVALID": "A frame was supplied for a non-animation export.",
+    "SAGEJS_GRAPHICS_BROWSER_UNAVAILABLE": "A static image backend is not configured."
+  }
+}
