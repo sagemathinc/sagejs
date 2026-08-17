@@ -5239,7 +5239,7 @@ def _curve_diagnostics(values: Sequence[Any]) -> list[Any]:
         answer.append(
             plotting.Diagnostic(
                 str(code),
-                details=details,
+                details=_plot_spec_json_value(details),
             ).to_dict()
         )
     return answer
