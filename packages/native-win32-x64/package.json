@@ -1,16 +1,11 @@
 {
   "name": "@sagemath/sagejs-win32-x64",
   "version": "0.2.0",
-  "description": "Sage.js native executables for Windows x64",
+  "description": "Private workspace version anchor for Sage.js Windows x64",
+  "private": true,
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sagemathinc/sagejs.git"
-  },
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "files": ["bin", "licenses", "LICENSE", "README.md"],
-  "publishConfig": {
-    "access": "public"
   }
 }
