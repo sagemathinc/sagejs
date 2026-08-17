@@ -376,7 +376,9 @@ test("multiprocessing imports without a worker host capability", async () => {
     evaluator.evaluate(
       [
         "from multiprocessing import Pool",
+        "from multiprocessing import worker_module_available",
         "print(Pool.__name__)",
+        "print(worker_module_available('worker_fixture'))",
         "try:",
         "    Pool(1)",
         "except NotImplementedError as error:",
@@ -387,10 +389,106 @@ test("multiprocessing imports without a worker host capability", async () => {
       output.join("").trim(),
       [
         "Pool",
+        "False",
         "NotImplementedError multiprocessing requires a worker-thread host capability",
       ].join("\n"),
     );
   } finally {
     evaluator.close();
+  }
+});
+
+test("task evaluators load only validated precompiled module resources", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-task-modules-"));
+  const cache = {
+    version: "test-compiler-version",
+    signature: "test-source-signature",
+    mode: "python",
+    module: "worker_fixture",
+    javascriptTemplate: [
+      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      "var fixture = function fixture(value) { return value + 1; };",
+      'fixture.__module__ = "worker_fixture";',
+      'fixture.__name__ = "fixture";',
+      'Reflect.set(\u03c1\u03c3_modules["worker_fixture"], "fixture", fixture);',
+    ].join("\n"),
+  };
+  writeFileSync(
+    join(directory, "worker_fixture.json"),
+    JSON.stringify(cache),
+  );
+  writeFileSync(
+    join(directory, "task-runtime-modules.json"),
+    JSON.stringify({
+      schema: "sagejs.task-runtime-modules/v1",
+      roots: ["worker_fixture"],
+      modules: {
+        worker_fixture: {
+          resource: "worker_fixture.json",
+          version: cache.version,
+          signature: cache.signature,
+          mode: cache.mode,
+          filename: "/__sagejs_task_modules__/worker_fixture.py",
+        },
+      },
+    }),
+  );
+  try {
+    const capability = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), "--python"],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: directory,
+        },
+        input: [
+          "from multiprocessing import worker_module_available",
+          "print(worker_module_available('worker_fixture'))",
+          "print(worker_module_available('worker_missing'))",
+          "",
+        ].join("\n"),
+      },
+    );
+    assert.equal(capability.status, 0, capability.stderr);
+    assert.equal(capability.stdout.trim(), "True\nFalse");
+
+    const script = [
+      'const { createTaskEvaluator } = require("./dist/tools/task-evaluator.js");',
+      'const { hasPrecompiledTaskModule } = require("./dist/tools/resources.js");',
+      "const evaluator = createTaskEvaluator({ mode: 'python', onOutput() {} });",
+      "const source = 'function fixture(value) { return value + 1; }';",
+      "console.log(hasPrecompiledTaskModule('worker_fixture'));",
+      "console.log(hasPrecompiledTaskModule('worker_missing'));",
+      "console.log(evaluator.invoke({ module: 'worker_fixture', name: 'fixture', source }, [41]));",
+      "try {",
+      "  evaluator.invoke({ module: 'worker_missing', name: 'fixture', source }, [1]);",
+      "} catch (error) {",
+      "  console.log(error.name, error.message);",
+      "}",
+      "evaluator.close();",
+    ].join("\n");
+    const result = spawnSync(process.execPath, ["-e", script], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: directory,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      [
+        "true",
+        "false",
+        "42",
+        "ImportError No module named 'worker_missing'",
+      ].join("\n"),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });

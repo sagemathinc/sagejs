@@ -16,6 +16,7 @@ import { Worker } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
+import { hasPrecompiledTaskModule } from "./resources";
 
 interface HostFailure {
   code?: string;
@@ -626,6 +627,13 @@ export class NodeHostAdapter {
               args[1],
               (args[2] as unknown[] | undefined) ?? [],
             ),
+          };
+        case "multiprocessingWorkerModuleAvailable":
+          return {
+            ok: true,
+            value:
+              typeof args[0] === "string" &&
+              hasPrecompiledTaskModule(args[0]),
           };
         case "multiprocessingMap":
           return {
