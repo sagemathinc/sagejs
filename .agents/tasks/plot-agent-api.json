@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-agent-api",
+  "title": "Agent inspection validation and revision API",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement deterministic agent-facing PlotSpec inspection, descriptions, data and bounds access, diagnostics/validation, stable layer selection and functional revision, themes, and controlled Plotly overrides without coupling to rendering.",
+  "base_commit": "74930cf540977fae36011cfbba8a968371ac9ac5",
+  "claims": [
+    "src/lib/sagejs/plotting/model.py",
+    "src/lib/sagejs/plotting/inspection.py",
+    "src/lib/sagejs/plotting/validation.py",
+    "test/plot-agent-api.cjs"
+  ],
+  "dependencies": [
+    "plot-spec-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PlotSpec schema invariants and focused CPython/Sage.js differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
