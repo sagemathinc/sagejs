@@ -301,7 +301,13 @@ class FastCallablePlotWrapper:
             real_value = runtime.reflect.get(value, "real")
             imaginary_value = runtime.reflect.get(value, "imag")
             if real_value is runtime.undefined or imaginary_value is runtime.undefined:
-                return float(value)
+                real_value = runtime.reflect.get(value, "re")
+                imaginary_value = runtime.reflect.get(value, "im")
+                if (
+                    real_value is runtime.undefined
+                    or imaginary_value is runtime.undefined
+                ):
+                    return float(value)
             if runtime.jstype(real_value) == "function":
                 real_value = runtime.reflect.apply(real_value, value, [])
             if runtime.jstype(imaginary_value) == "function":
