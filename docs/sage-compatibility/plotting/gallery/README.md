@@ -1,10 +1,11 @@
 # Sage.js plotting gallery evidence
 
 This directory is the compact, generated visual-quality witness for the
-Plotly-native plotting platform. It currently covers the semantic Sage 2D and
-3D slices across all five first-party themes. Wolfram and MATLAB are explicit
-`pending-integration` records until their independent frontend branches land;
-there are no invented compatibility claims.
+Plotly-native plotting platform. It covers the semantic Sage 2D and 3D slices
+across all five first-party themes, plus figures executed through the integrated
+Wolfram and stateful MATLAB frontends. The polyglot records contain the actual
+frontend-produced PlotSpec and rich Plotly display rather than hand-written
+equivalents.
 
 The gallery intentionally checks meaning and rendering structure instead of
 committing screenshots or pixel hashes:
@@ -23,8 +24,15 @@ fully vector output.
 
 ## Generate and check
 
-Generate all deterministic documents and refresh the representative Chromium
-observation:
+Build the compiler first because polyglot generation executes the real
+frontends:
+
+```sh
+pnpm build
+```
+
+Then generate all deterministic documents and refresh the representative
+Chromium observation:
 
 ```sh
 node scripts/plotting/generate-gallery.cjs --write --render
@@ -56,11 +64,19 @@ run, while the live rendering test reports a skip.
 ## What automation proves—and what it does not
 
 Automation proves that the current PlotSpec layer IDs/kinds/data bounds lower
-to the expected Plotly trace families; all canonical themes meet their checked
-contrast policy; explicit alt text exists and validation accepts it; ten plots
-fit mobile, notebook, and presentation viewports without page overflow; 2D SVG
-contains vector paths; 3D SVG discloses an embedded raster; and PNG output has
-the requested dimensions and a valid header.
+to the expected Plotly trace families; the Wolfram and MATLAB source programs
+execute through `createSage.evaluate` and retain their frontend provenance;
+all canonical themes and rendered layer colors meet their checked contrast
+policy; semantic alt text is available; thirteen plots fit mobile, notebook,
+and presentation viewports without page overflow; 2D SVG contains vector
+paths; 3D SVG discloses an embedded raster; and PNG output has the requested
+dimensions and a valid header.
+
+The Sage fixtures contain explicit alt-text annotations. The current Wolfram
+and MATLAB frontends provide generated descriptions but retain the stable
+`PLOT_ALT_TEXT_MISSING` diagnostic because they do not yet attach those
+descriptions to their PlotSpecs. This distinction is checked rather than
+silently counting generated text as complete frontend accessibility.
 
 The browser observation currently also proves an accessibility gap: the
 semantic alt text is not attached to the Plotly DOM as an accessible name.
@@ -72,7 +88,7 @@ keyboard or screen-reader interaction.
 ## Human visual-review protocol
 
 Run this review for a plotting release, a Plotly upgrade, a theme/default
-change, or a substantive lowering change. Review the ten canonical fixtures at
+change, or a substantive lowering change. Review the thirteen canonical fixtures at
 360×480, 800×600, and 1280×720. Temporary PNG/SVG exports may be generated in
 a throwaway directory, but must not be committed here.
 
