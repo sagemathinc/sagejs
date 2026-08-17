@@ -4,7 +4,7 @@
   "id": "plot-agent-api",
   "title": "Agent inspection validation and revision API",
   "lane": "graphics",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement deterministic agent-facing PlotSpec inspection, descriptions, data and bounds access, diagnostics/validation, stable layer selection and functional revision, themes, and controlled Plotly overrides without coupling to rendering.",
   "base_commit": "74930cf540977fae36011cfbba8a968371ac9ac5",
