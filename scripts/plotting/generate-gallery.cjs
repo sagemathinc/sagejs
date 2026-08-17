@@ -390,6 +390,7 @@ async function actualFrontendFixture(definition) {
     const plotSpec = inspected.plot_spec;
     assert.equal(plotSpec.provenance.frontend, definition.frontend);
     const figure = rendered.display.data;
+    if (definition.assert_figure) definition.assert_figure(figure);
     const semanticBounds = inspected.bounds;
     const hasSemanticBounds = Object.keys(semanticBounds).length > 0;
     return {
@@ -430,9 +431,13 @@ async function frontendFixtures() {
         id: "wolfram-semantic-2d-notebook",
         frontend: "wolfram",
         title: "Wolfram Graphics semantic 2D primitives",
-        source: "g=Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]}];",
+        source: "g=Graphics[{Blue,Line[{{0,0},{1,1},{2,0}}],Red,Point[{{1,1}}],Black,Text[\"peak\",{1,1}]},Axes->False];",
         result_expression: "g",
         spec_expression: "g.spec()",
+        assert_figure(figure) {
+          assert.equal(figure.layout.xaxis.visible, false);
+          assert.equal(figure.layout.yaxis.visible, false);
+        },
       },
       {
         id: "wolfram-semantic-3d-notebook",
