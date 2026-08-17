@@ -33,6 +33,15 @@ export interface PlotlyImageOptions {
   scale?: number;
 }
 
+export interface BrowserGraphicsExportCapabilities {
+  backend: "plotly-browser";
+  available: boolean;
+  formats: Array<"png" | "jpeg" | "webp" | "svg">;
+  dataUrl: boolean;
+  bytes: boolean;
+  missing: Array<"react" | "toImage">;
+}
+
 export function renderSageDisplay(
   element: PlotlyRenderElement,
   display: SageDisplayData,
@@ -49,6 +58,16 @@ export function sageDisplayToImage(
   options?: PlotlyImageOptions,
   plotly?: PlotlyRenderer,
 ): Promise<string>;
+
+export function sageDisplayToImageBytes(
+  display: SageDisplayData,
+  options?: PlotlyImageOptions,
+  plotly?: PlotlyRenderer,
+): Promise<Uint8Array>;
+
+export function browserGraphicsExportCapabilities(
+  plotly?: Partial<PlotlyRenderer>,
+): BrowserGraphicsExportCapabilities;
 
 export function downloadSageDisplay(
   display: SageDisplayData,
