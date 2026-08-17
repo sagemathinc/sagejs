@@ -18,6 +18,7 @@ from .axes import (
     lower_scene_3d,
 )
 from .model import PlotLayer, PlotSpec
+from .themes import get_theme
 
 _THEME_NAMES = (
     "notebook",
@@ -62,15 +63,6 @@ def _theme_document(name: str) -> dict[str, JSONValue]:
         raise TypeError("theme name must be a string")
     if name not in _THEME_NAMES:
         raise ValueError("unknown plot theme: " + name)
-    try:
-        themes = __import__("sagejs.plotting.themes", fromlist=["get_theme"])
-    except ImportError:
-        # Themes are integrated as a separate strict module.  The canonical
-        # notebook fallback keeps this lowering usable during staged merges.
-        if name != "notebook":
-            raise ValueError("plot theme is not installed: " + name)
-        return {"layout": {}, "config": {}, "trace_defaults": {}}
-    get_theme = getattr(themes, "get_theme")
     theme = get_theme(name)
     document = theme.to_dict()
     return materialize_object(document, "$.theme")

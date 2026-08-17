@@ -178,7 +178,13 @@ assert figure["data"][0]["legendrank"] == 7
 assert figure["data"][1]["marker"]["line"]["width"] == 1
 assert figure["data"][2]["hoverinfo"] == "skip"
 assert figure["layout"]["annotations"][0]["text"] == "peak"
-assert figure["config"] == {"displaylogo": False, "responsive": True}
+assert figure["config"] == {
+    "displaylogo": False,
+    "responsive": True,
+    "displayModeBar": True,
+    "scrollZoom": True,
+    "doubleClick": "reset+autosize",
+}
 
 # Full legacy layout+config overrides are authoritative for exact parity.
 legacy = spec.revise(

@@ -1,12 +1,33 @@
 """Semantic plotting documents shared by Sage.js frontends and renderers."""
 
 from ._json import JSONScalar, JSONValue, canonical_json, materialize_json
+from .axes import (
+    AnnotationSettings,
+    Axes2DSettings,
+    AxisSettings,
+    LegendSettings,
+    Scene3DSettings,
+    UnsupportedPresentationError,
+    lower_annotations,
+    lower_axes_2d,
+    lower_legend,
+    lower_scene_3d,
+    unsupported_option_diagnostic,
+)
+from .composition import (
+    Panel2D,
+    PanelComposition2D,
+    lower_panel_figure,
+    qualified_layer_id,
+    stable_panel_id,
+)
 from .diagnostics import (
     Diagnostic,
     diagnostic_definition,
     diagnostic_registry,
     materialize_diagnostic,
 )
+from .lowering import lower_layer, lower_plot_spec
 from .model import (
     PLOTSPEC_SCHEMA_VERSION,
     PlotLayer,
@@ -37,20 +58,35 @@ from .themes import (
 
 __all__ = [
     "Diagnostic",
+    "AnnotationSettings",
+    "Axes2DSettings",
+    "AxisSettings",
     "JSONScalar",
     "JSONValue",
     "PLOTSPEC_SCHEMA_VERSION",
     "NormalizedStyle",
     "OptionResult",
+    "LegendSettings",
+    "Panel2D",
+    "PanelComposition2D",
     "PlotLayer",
     "PlotSpec",
     "PlotTheme",
     "Provenance",
+    "Scene3DSettings",
+    "UnsupportedPresentationError",
     "canonical_json",
     "color_channels",
     "contrast_ratio",
     "diagnostic_definition",
     "diagnostic_registry",
+    "lower_annotations",
+    "lower_axes_2d",
+    "lower_layer",
+    "lower_legend",
+    "lower_panel_figure",
+    "lower_plot_spec",
+    "lower_scene_3d",
     "make_layer",
     "materialize_diagnostic",
     "materialize_json",
@@ -60,9 +96,12 @@ __all__ = [
     "normalize_line_style",
     "normalize_marker_style",
     "normalize_text_style",
+    "qualified_layer_id",
     "stable_layer_id",
+    "stable_panel_id",
     "get_theme",
     "theme_contrast",
     "theme_names",
     "theme_registry",
+    "unsupported_option_diagnostic",
 ]
