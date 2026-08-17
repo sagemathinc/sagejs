@@ -22,10 +22,14 @@ _untyped = _nf_module._untyped
 
 def integral_equation_polynomial(field: Any) -> Any:
     """Return the monic integral polynomial for the equation-order generator."""
+    cached = field._integral_equation_polynomial_cache
+    if cached is not None:
+        return cached
     degree = field.degree()
     scale = runtime.bigint(1)
     for coefficient in field._defining_coefficients:
         scale = _nf_lcm(scale, coefficient._denominator)
+    field._integral_equation_scale_cache = scale
     coefficients = []
     for index, coefficient in enumerate(field._defining_coefficients):
         value = coefficient * scale ** runtime.bigint(degree - index)
@@ -36,7 +40,12 @@ def integral_equation_polynomial(field: Any) -> Any:
         sage.ZZ,
         field._polynomial._parent.variable_name(),
     )
-    return polynomial_ring(coefficients)
+    polynomial = polynomial_ring(coefficients)
+    # Number fields are immutable, so this exact transformed polynomial is a
+    # field invariant.  The engine and `equation_order()` intentionally share
+    # it instead of rebuilding and rediscriminating the same polynomial.
+    field._integral_equation_polynomial_cache = polynomial
+    return polynomial
 
 
 def prime_polynomial_radical(polynomial: Any, prime: Any) -> Any:

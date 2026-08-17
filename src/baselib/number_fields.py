@@ -1580,6 +1580,10 @@ class NumberFieldParent(sage.Parent):
         generator_coefficients = [sage.QQ(0), sage.QQ(1)]
         self._generator = NumberFieldElement(self, generator_coefficients)
         self._equation_order_cache = runtime.undefined
+        # `None`, rather than the JavaScript `undefined` sentinel, keeps this
+        # private invariant visible to independently compiled lazy modules.
+        self._integral_equation_polynomial_cache = None
+        self._integral_equation_scale_cache = None
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
@@ -1666,15 +1670,26 @@ class NumberFieldParent(sage.Parent):
 
     def equation_order(self) -> NumberFieldOrder:
         if self._equation_order_cache is runtime.undefined:
-            scale = runtime.bigint(1)
-            for coefficient in self._defining_coefficients:
-                scale = _nf_lcm(scale, coefficient._denominator)
-            integral_generator = self(scale) * self.gen()
+            scale = self._integral_equation_scale_cache
+            if scale is None:
+                scale = runtime.bigint(1)
+                for coefficient in self._defining_coefficients:
+                    scale = _nf_lcm(scale, coefficient._denominator)
+                self._integral_equation_scale_cache = scale
+            degree = self.degree()
+            zero = sage.QQ(0)
             rows = []
-            power = self.one()
-            for _index in range(self.degree()):
-                rows.append(_nf_coordinates(power, self.degree()))
-                power *= integral_generator
+            power = runtime.bigint(1)
+            for index in range(degree):
+                # In the public power basis, `(scale*a)^index` has the one
+                # nonzero coordinate `scale^index`.  Constructing these
+                # diagonal rows directly is the exact defining theorem for
+                # the equation order and avoids reducing field products that
+                # are already known to be powers below the field degree.
+                row = [zero for _column in range(degree)]
+                row[index] = sage.QQ(power)
+                rows.append(row)
+                power *= scale
             # Powers of the integral generator form an order by construction.
             # Canonicalize that proven-closed lattice without repeating all
             # pairwise products; a global maximal-order certificate still
