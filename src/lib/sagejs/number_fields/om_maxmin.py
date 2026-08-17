@@ -1,10 +1,12 @@
 """Quotient bases, MaxMin selection, and independent local-order checks.
 
-The complete executable domain is a single, first-order `p`-regular OM branch
-with a linear residue key.  Generic MaxMin selection accepts any certified
-local numerator tables, so later higher-order and FLINT residual-field lanes do
-not need to replace it.  Outside the complete domain, `regular_local_basis`
-returns an explicit incomplete/unsupported result instead of guessing a basis.
+The complete executable domain covers bounded `p`-regular OM branches,
+including nonlinear first residue fields, same-degree representative
+optimization, and actual multi-branch MaxMin combination.  Generic MaxMin
+selection accepts any certified local numerator tables, so degree-raising
+higher-order and FLINT residual-field lanes do not need to replace it.  Outside
+the complete domain, `regular_local_basis` returns an explicit
+incomplete/unsupported result instead of guessing a basis.
 """
 
 from __future__ import annotations
@@ -24,12 +26,14 @@ from .om_types import (
     Polynomial,
     RationalValue,
     augmented_valuation,
-    build_first_order_type_tree,
+    build_om_type_tree,
+    modular_divmod,
     normalize_polynomial,
     phi_quotients,
     polynomial_degree,
     polynomial_divmod_monic,
     polynomial_multiply,
+    representative_from_level,
     validate_type_tree,
 )
 
@@ -287,6 +291,7 @@ class TriangularBasisCertificate(ImmutableOMRecord):
     polynomial: Polynomial
     prime: int
     type_tree: OMTypeTree
+    numerator_tables: tuple[LocalNumeratorTable, ...]
     maxmin: MaxMinCertificate
     basis: tuple[TriangularBasisElement, ...]
     local_index_valuation: int
@@ -364,13 +369,21 @@ def _type_tree_trace(tree: OMTypeTree) -> list[dict[str, object]]:
                         "key_polynomial": list(level.key_polynomial),
                         "slope": list(level.slope.to_pair()),
                         "key_value": list(level.key_value.to_pair()),
-                        "residual_polynomial": list(level.residual_polynomial),
-                        "residual_factor": list(level.residual_factor),
+                        "residual_field_modulus": list(level.residual_field_modulus),
+                        "residual_polynomial": [
+                            list(coefficient)
+                            for coefficient in level.residual_polynomial
+                        ],
+                        "residual_factor": [
+                            list(coefficient) for coefficient in level.residual_factor
+                        ],
                         "ramification_index": level.ramification_index,
                         "residue_degree": level.residue_degree,
                         "multiplicity": level.multiplicity,
                         "index_contribution": level.index_contribution,
                         "representative_precision": level.representative_precision,
+                        "representative_step": level.representative_step,
+                        "optimized_away": level.optimized_away,
                     }
                     for level in branch.levels
                 ],
@@ -396,6 +409,8 @@ def _not_applicable_result(
             "certificate_id": tree.certificate_id,
             "complete": tree.complete,
             "expected_index_valuation": tree.expected_index_valuation,
+            "max_enumerated_candidates": tree.max_enumerated_candidates,
+            "max_representative_refinements": tree.max_representative_refinements,
             "selector": _selector_evidence(metrics),
         },
         trace=_type_tree_trace(tree),
@@ -592,31 +607,93 @@ def validate_triangular_basis(
     )
 
 
-def _single_branch_table(tree: OMTypeTree) -> LocalNumeratorTable:
-    degree = polynomial_degree(tree.polynomial)
-    branch = tree.types[0]
-    level = branch.levels[0]
-    key = level.key_polynomial
-    quotients = phi_quotients(tree.polynomial, key)
+def _unramified_branch_valuation(
+    polynomial: Polynomial,
+    key: Polynomial,
+    prime: int,
+) -> RationalValue:
+    """Return the order of an initial squarefree key in reduction modulo `p`."""
+    remaining = polynomial
+    valuation = 0
+    while polynomial_degree(remaining) >= polynomial_degree(key):
+        quotient, remainder = modular_divmod(remaining, key, prime)
+        if remainder != (0,):
+            break
+        valuation += 1
+        remaining = quotient
+    return RationalValue(valuation)
+
+
+def _branch_approximant(tree: OMTypeTree, branch_index: int) -> Polynomial:
+    branch = tree.types[branch_index]
+    if branch.levels:
+        approximant = representative_from_level(branch.levels[-1], tree.prime)
+    else:
+        approximant = branch.initial_factor
+    if polynomial_degree(approximant) != branch.branch_degree or approximant[-1] != 1:
+        raise OMDomainError(
+            "the bounded branch representative does not have its certified degree"
+        )
+    return approximant
+
+
+def _bounded_branch_table(
+    tree: OMTypeTree,
+    branch_index: int,
+) -> LocalNumeratorTable:
+    branch = tree.types[branch_index]
+    degree = branch.branch_degree
+    approximant = _branch_approximant(tree, branch_index)
+    quotient_source = tree.polynomial if len(tree.types) == 1 else approximant
+    level = branch.levels[-1] if branch.levels else None
+    key = level.key_polynomial if level is not None else branch.initial_factor
+    key_degree = polynomial_degree(key)
+    quotients = phi_quotients(quotient_source, key)
     numerators: list[Polynomial] = [(1,)]
-    valuations: list[tuple[FiniteValuation, ...]] = [(RationalValue(0),)]
     for candidate_degree in range(1, degree):
-        quotient_number = degree - candidate_degree
-        candidate = quotients[quotient_number - 1]
+        quotient_degree, residue_degree = divmod(candidate_degree, key_degree)
+        residue_monomial = (0,) * residue_degree + (1,)
+        if quotient_degree == 0:
+            candidate = residue_monomial
+        else:
+            quotient_number = degree // key_degree - quotient_degree - 1
+            if quotient_number < 0 or quotient_number >= len(quotients):
+                raise OMDomainError("quotient numerator degree is unavailable")
+            candidate = polynomial_multiply(
+                quotients[quotient_number], residue_monomial
+            )
         if polynomial_degree(candidate) != candidate_degree or candidate[-1] != 1:
             raise OMDomainError("quotient numerator is not monic triangular")
-        valuation = augmented_valuation(
-            candidate,
-            tree.prime,
-            key,
-            level.key_value,
-        )
-        if valuation is None:
-            raise ArithmeticError("a proper quotient numerator has infinite value")
         numerators.append(candidate)
-        valuations.append((valuation,))
-    numerators.append(tree.polynomial)
-    valuations.append((None,))
+    numerators.append(quotient_source)
+    valuations: list[tuple[FiniteValuation, ...]] = []
+    for numerator_index, numerator in enumerate(numerators):
+        row: list[FiniteValuation] = []
+        for other_index, other in enumerate(tree.types):
+            if numerator_index == degree and branch_index == other_index:
+                row.append(None)
+            elif other.levels:
+                other_level = other.levels[-1]
+                value = augmented_valuation(
+                    numerator,
+                    tree.prime,
+                    other_level.key_polynomial,
+                    other_level.key_value,
+                )
+                if value is None:
+                    raise ArithmeticError(
+                        "a proper cross-branch numerator has infinite value"
+                    )
+                row.append(value)
+            else:
+                row.append(
+                    _unramified_branch_valuation(
+                        numerator,
+                        other.initial_factor,
+                        tree.prime,
+                    )
+                )
+        valuations.append(tuple(row))
     return LocalNumeratorTable(branch.branch_id, tuple(numerators), tuple(valuations))
 
 
@@ -629,7 +706,7 @@ def regular_local_basis(
 ) -> LocalBasisResult:
     """Return a certified triangular basis in the bounded complete domain."""
     polynomial = normalize_polynomial(polynomial)
-    tree = build_first_order_type_tree(polynomial, prime)
+    tree = build_om_type_tree(polynomial, prime)
     metrics = selector_metrics(
         tree,
         local_discriminant_valuation=local_discriminant_valuation,
@@ -648,24 +725,10 @@ def regular_local_basis(
             None,
             _not_applicable_result(tree, metrics, message),
         )
-    if len(tree.types) != 1:
-        message = "bounded quotient construction currently requires one local branch"
-        return LocalBasisResult(
-            "unsupported",
-            message,
-            tree,
-            metrics,
-            None,
-            None,
-            _not_applicable_result(tree, metrics, message),
-        )
-    branch = tree.types[0]
-    if (
-        len(branch.levels) != 1
-        or polynomial_degree(branch.initial_factor) != 1
-        or branch.branch_degree != polynomial_degree(polynomial)
+    if sum(branch.branch_degree for branch in tree.types) != polynomial_degree(
+        polynomial
     ):
-        message = "bounded quotient construction requires one complete linear-key level"
+        message = "bounded quotient construction requires the complete local degree"
         return LocalBasisResult(
             "unsupported",
             message,
@@ -675,8 +738,23 @@ def regular_local_basis(
             None,
             _not_applicable_result(tree, metrics, message),
         )
-    table = _single_branch_table(tree)
-    maxmin = maxmin_select((table,))
+    try:
+        tables = tuple(
+            _bounded_branch_table(tree, branch_index)
+            for branch_index in range(len(tree.types))
+        )
+        maxmin = maxmin_select(tables)
+    except (OMDomainError, ArithmeticError) as error:
+        message = "bounded quotient/MaxMin construction stopped: " + str(error)
+        return LocalBasisResult(
+            "unsupported",
+            message,
+            tree,
+            metrics,
+            None,
+            None,
+            _not_applicable_result(tree, metrics, message),
+        )
     basis = tuple(
         TriangularBasisElement(
             candidate.degree,
@@ -711,6 +789,7 @@ def regular_local_basis(
         polynomial,
         prime,
         tree,
+        tables,
         maxmin,
         basis,
         local_index,
@@ -771,11 +850,15 @@ def regular_local_basis(
             "basis_kind": certificate.basis_kind,
             "local_index_valuation": local_index,
             "expected_index_valuation": tree.expected_index_valuation,
+            "max_enumerated_candidates": tree.max_enumerated_candidates,
+            "max_representative_refinements": tree.max_representative_refinements,
             "contains_one": validation.contains_one,
             "contains_equation_order": validation.contains_equation_order,
             "multiplication_closed": validation.multiplication_closed,
             "locally_maximal": validation.locally_maximal,
             "maxmin_maximality_checked": maxmin.maximality_checked,
+            "maxmin_branch_count": len(maxmin.branch_order),
+            "maxmin_comparison_count": maxmin.comparison_count,
             "selector": _selector_evidence(metrics),
         },
         trace=_type_tree_trace(tree),

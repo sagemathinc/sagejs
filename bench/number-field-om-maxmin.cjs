@@ -21,14 +21,37 @@ from sagejs.number_fields.om_maxmin import regular_local_basis
 samples = ${samples}
 iterations = ${iterations}
 rows = []
-for degree in (4, 8, 16):
-    polynomial = tuple([-(2 ** (degree + 1))] + [0] * (degree - 1) + [1])
-    expected_index = degree * (degree - 1) // 2
+cases = (
+    ("linear-regular-d8", tuple([-512] + [0] * 7 + [1]), 8, 28, 87),
+    ("representative-refined-d8", tuple([-768] + [0] * 7 + [1]), 8, 28, 80),
+    (
+        "residual-f4-d6",
+        (5, 3, 6, 7, 6, 3, 1),
+        6,
+        2,
+        8,
+    ),
+    (
+        "two-branch-maxmin-d4",
+        (72, 16, -15, -2, 1),
+        4,
+        2,
+        10,
+    ),
+    (
+        "representative-refined-d16",
+        tuple([-(3 * 2 ** 16)] + [0] * 15 + [1]),
+        16,
+        120,
+        304,
+    ),
+)
+for name, polynomial, degree, expected_index, discriminant_valuation in cases:
     def run_once():
         result = regular_local_basis(
             polynomial,
             2,
-            local_discriminant_valuation=(2 * degree + degree * (degree.bit_length() - 1)),
+            local_discriminant_valuation=discriminant_valuation,
         )
         if result.status != "complete" or result.certificate is None:
             raise RuntimeError(result.reason)
@@ -47,6 +70,7 @@ for degree in (4, 8, 16):
         timings.append((time.perf_counter() - started) * 1000 / iterations)
     timings.sort()
     rows.append({
+        "name": name,
         "degree": degree,
         "index_valuation": expected_index,
         "median_ms": timings[len(timings) // 2],
@@ -77,8 +101,9 @@ function measure(label, command, args) {
 }
 
 const report = {
-  schema_version: 1,
-  workload: "certified first-order p-regular OM quotient basis plus independent closure",
+  schema_version: 2,
+  workload:
+    "certified residual-extension and representative-refined OM quotient bases plus independent closure",
   implementations: [
     measure("cpython", "python3", ["-"]),
     measure("sagejs-dynamic", process.execPath, [join(root, "bin/sagejs"), "--python"]),
