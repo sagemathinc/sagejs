@@ -198,8 +198,11 @@ function assertSafeRelative(path) {
   }
 }
 
-function runTar(arguments_) {
-  const result = spawnSync("tar", arguments_, { encoding: "utf8" });
+function runTar(arguments_, options = {}) {
+  const result = spawnSync("tar", arguments_, {
+    cwd: options.cwd,
+    encoding: "utf8",
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(result.stderr || `tar exited with ${result.status}`);
@@ -306,20 +309,29 @@ function validateExtracted(staging, expectedKey) {
 }
 
 function installBundleArchive(repositoryRoot, archive, expectedDigest, options = {}) {
-  const actualDigest = sha256(readFileSync(archive));
+  const absoluteArchive = resolve(archive);
+  const archiveDirectory = dirname(absoluteArchive);
+  const archiveName = basename(absoluteArchive);
+  const actualDigest = sha256(readFileSync(absoluteArchive));
   if (actualDigest !== expectedDigest) {
     throw new Error(`native dependency SHA-256 is ${actualDigest}, expected ${expectedDigest}`);
   }
   const expectedKey = bundleKey(repositoryRoot, options);
-  const listing = runTar(["-tzf", archive]);
+  const listing = runTar(["-tzf", archiveName], { cwd: archiveDirectory });
   for (const path of listing.split(/\r?\n/).filter((value) => value && value !== "./")) {
     assertSafeRelative(path.startsWith("./") ? path.slice(2) : path);
   }
-  const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-dependencies-install-"));
+  // Keep tar's archive and extraction operands relative on Windows. Absolute
+  // drive-letter paths are parsed as remote `host:file` syntax by Git tar.
+  const temporary = mkdtempSync(
+    join(archiveDirectory, ".sagejs-native-dependencies-install-"),
+  );
   const backups = [];
   const installed = [];
   try {
-    runTar(["-xzf", resolve(archive), "-C", temporary]);
+    runTar(["-xzf", archiveName, "-C", basename(temporary)], {
+      cwd: archiveDirectory,
+    });
     validateExtracted(temporary, expectedKey);
     const targets = packageTargets(repositoryRoot, options.platform || process.platform);
     for (const packageId of packages) {
