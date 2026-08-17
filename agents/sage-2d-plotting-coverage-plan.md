@@ -1,5 +1,128 @@
 # Sage.js plotting: Plotly-native, multilingual, and agent-first
 
+## Status — substantial foundation merged; completion gate not yet met
+
+**As of 2026-08-17, at `main-2` commit `8a3800b1`, this plan is partially
+implemented.** The shared plotting platform and several end-to-end vertical
+slices are merged and tested. The exhaustive classification requirement is
+met, but comprehensive Sage plotting implementation and the final evidence
+requirements are not.
+
+Do not interpret the checked-in coverage ledger as a claim of complete Sage
+compatibility. It records **640 classified entries** across Sage, Wolfram, and
+MATLAB:
+
+| Frontend and dimension | Faithful | Translated | Unsupported | Total |
+| --- | ---: | ---: | ---: | ---: |
+| Sage 2D | 4 | 39 | 167 | 210 |
+| Sage 3D | 0 | 50 | 277 | 327 |
+| Wolfram, all dimensions | 0 | 55 | 20 | 75 |
+| MATLAB, all dimensions | 0 | 14 | 14 | 28 |
+| **Total** | **4** | **158** | **478** | **640** |
+
+Thus, one hundred percent of the pinned surface is classified, but only 43 of
+210 Sage 2D entries are currently claimed as faithful or translated. This is a
+strong platform milestone, not completion of P4 or of the plan as a whole.
+
+### What is merged and working
+
+- Pinned Sage 10.9.post1 2D/3D inventories, Wolfram/MATLAB inventories, a
+  deterministic four-state coverage classifier, and generated performance and
+  gallery evidence.
+- A versioned semantic `PlotSpec` with stable layer IDs, deterministic
+  serialization, provenance, diagnostics, validation, inspection, description,
+  alt text, immutable revision, and controlled Plotly overrides.
+- Shared Plotly lowering, themes, strict styles, axes/scenes, annotations,
+  composition, panels, and bounded animation support.
+- Sage 2D semantic paths for line, point, polygon, arrow, text, segmented
+  function curves, exclusions, pole handling, fill, imaginary tolerance,
+  contour/density/implicit/region grids, vector fields, and slope fields.
+- Guarded Sage 3D semantic paths for rectangular surfaces, triangular meshes,
+  and convex planar polygons, with explicit raw fallbacks where migration would
+  lose companion traces or transformations.
+- Stateful MATLAB figures, axes, handles, `hold`, LineSpec and property updates,
+  labels, titles, limits, legends, and grids. Unsupported subplot/surface and
+  multi-axes cases fail explicitly rather than pretending to work.
+- Wolfram plotting intent, ordered options, lexical style scope, `Show`, axes,
+  and supported 2D/3D primitives routed through the common semantic platform.
+- Browser-returned image bytes, machine-readable export capabilities, and a
+  bounded persistent Chromium worker for optional headless static export.
+- An intentional `matplotlib()` compatibility boundary with a clear Plotly
+  alternative instead of a Matplotlib dependency.
+
+Representative focused tests for the inventories, classifier, PlotSpec, agent
+API, primitives, curves, fields, guarded 3D paths, MATLAB, Wolfram, and the
+performance ledger pass together. Important measured improvements included a
+100,000-point curve `PlotSpec` path reduced from about 7.9 seconds to about
+0.26 seconds, warm batched Chromium export around 3.1 times faster than cold
+per-image startup, and a 90,000-point surface `spec()` path reduced from about
+32 seconds to about 4.5 seconds.
+
+### What remains before this plan is complete
+
+- **Sage 2D breadth:** implement or deliberately translate the remaining core
+  plot families and option semantics, especially matrix and complex plots,
+  streamlines, hyperbolic plots, graph/mathematical-object integrations, and
+  the many public `Graphics` and primitive methods currently classified as
+  unsupported.
+- **Sage 3D breadth:** transformations, additional curve/surface constructors,
+  implicit/revolution/list plots, textures, vector fields, cameras, and
+  mathematical-object conversions remain incomplete or unverified.
+- **Frontend breadth:** Wolfram remains a supported subset. MATLAB still needs
+  the planned surface/mesh, subplot/tiled layout, matrix orientation, bar,
+  histogram, contour, and image families.
+- **Evidence closure:** 638 of 640 ledger entries currently carry some evidence
+  debt. Every supported entry lacks recorded platform and performance evidence;
+  158 supported entries lack stable visual evidence; and 28 supported entries
+  lack linked semantic and Plotly-lowering evidence.
+- **Platform closure:** exercise the supported rendering and export paths on
+  Windows x64 and macOS in addition to Linux, including browser discovery,
+  worker recovery, fonts, MathJax, and WebGL/vector-export behavior.
+- **Visual/accessibility closure:** complete responsive, keyboard/touch,
+  accessible-name, contrast, camera, dense-data, and periodic human-review
+  evidence. The present gallery is a foundation, not a final visual sign-off.
+- **Performance closure:** continue reducing large 3D `PlotSpec` materialization
+  costs and add memory/transfer budgets for all supported dense grids, meshes,
+  animations, and panels.
+- **Repository-wide validation:** plotting-focused suites pass, but isolated
+  lane runs of the full integration suite were repeatedly blocked by absent or
+  stale optional native FLINT/FFLAS/igraph artifacts and unrelated production
+  kernel failures. A correctly provisioned root run must be green before the
+  completion gate below can be claimed.
+
+### How to resume the work
+
+1. Regenerate and check `sage-surface.json`, `frontend-surface.json`,
+   `coverage.json`, and `performance.json` before changing classifications.
+   Treat the generated ledgers as executable scope, not narrative estimates.
+2. Select the highest-value unsupported Sage 2D family, add a pinned Sage oracle
+   for its numerical and option semantics, and implement one complete vertical
+   slice through frontend, `PlotSpec`, Plotly lowering, rendering, diagnostics,
+   and performance evidence.
+3. Change a ledger entry from unsupported only when its linked semantic and
+   Plotly tests exist. Do not infer support from a matching function name or an
+   older direct-Plotly implementation.
+4. Prefer extending the existing strict modules in `src/lib/sagejs/plotting/`
+   and the common lowering boundary. Preserve explicit raw fallbacks until the
+   semantic representation can carry all source behavior without loss.
+5. Close visual, platform, and performance evidence alongside each new family
+   rather than postponing all evidence to P10.
+6. Keep the public product direction intact: Plotly is the renderer, Sage is a
+   compatibility authority, Matplotlib-specific objects remain unsupported,
+   and agent inspection must not require pixel analysis.
+
+The authoritative progress artifacts are:
+
+- `docs/sage-compatibility/plotting/sage-surface.json`
+- `docs/sage-compatibility/plotting/frontend-surface.json`
+- `docs/sage-compatibility/plotting/coverage.json`
+- `docs/sage-compatibility/plotting/performance.json`
+- `docs/sage-compatibility/plotting/README.md`
+
+The remainder of this document is the original product and execution plan. Its
+acceptance criteria remain active unless the status above explicitly records a
+deliberate product decision.
+
 ## Product vision
 
 Build the plotting system that Sage.js actually needs:
@@ -695,4 +818,3 @@ The first complete Sage.js plotting platform release requires:
 The success metric is not that Sage.js secretly became Matplotlib. It is that
 Sage.js became the best environment for an agent to create mathematical plots
 that humans genuinely want to look at.
-
