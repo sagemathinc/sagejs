@@ -209,7 +209,7 @@ def plan_curve(
             {
                 "code": (
                     "PLOT_DATA_ALL_NONFINITE"
-                    if not sampled["points"] and sampled["excluded"]
+                    if sampled["excluded"]
                     else "PLOT_DATA_EMPTY"
                 ),
                 "details": {"sample_count": len(sampled["points"])},
