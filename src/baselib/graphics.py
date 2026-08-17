@@ -467,24 +467,6 @@ runtime.set_class_repr(
 )
 
 
-def _marker_value(marker: str) -> str:
-    markers = {
-        "o": "circle",
-        "s": "square",
-        "^": "triangle-up",
-        "v": "triangle-down",
-        "<": "triangle-left",
-        ">": "triangle-right",
-        "d": "diamond",
-        "D": "diamond",
-        "+": "cross",
-        "x": "x",
-        "*": "star",
-        ".": "circle",
-    }
-    return _option_get(markers, marker, marker)
-
-
 def _parse_figsize(figsize: Any) -> tuple[float, float]:
     r"""
     Normalize Sage's figure-size option to `(width, height)` in inches.
@@ -637,6 +619,38 @@ def _plot_spec_json_value(value: Any) -> Any:
     raise TypeError("Plotly fallback value is not JSON-safe: " + str(value))
 
 
+def _sage_primitive_plan(name: str, options: Any) -> Any:
+    """Return a strict Sage primitive plan without leaking internal metadata."""
+    public_options = dict()
+    for option_name in runtime.object.keys(options):
+        if str(option_name)[:7] != "__plot_":
+            public_options.__setitem__(
+                str(option_name), runtime.reflect.get(options, option_name)
+            )
+    planning = __import__(
+        "sagejs.plotting.sage_primitives2d",
+        fromlist=[name],
+    )
+    planner = getattr(planning, name)
+    return planner(public_options)
+
+
+def _plotly_marker_record(style: Any) -> Any:
+    marker = _native_record(
+        color=style["color"],
+        size=style["size"],
+        symbol=style["symbol"],
+    )
+    edge = style.get("line")
+    if edge is not None:
+        runtime.reflect.set(
+            marker,
+            "line",
+            _native_record(color=edge["color"], width=edge["width"]),
+        )
+    return marker
+
+
 def _plot_spec_layer(
     payload: dict[str, Any],
     ordinal: int,
@@ -670,19 +684,24 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
     legend = payload["legend"]
     metadata = payload["metadata"]
     if kind == "line":
+        line_style = _native_record(
+            color=style["color"],
+            width=style["width"],
+            dash=style["dash"],
+        )
+        if style["shape"] != "linear":
+            runtime.reflect.set(line_style, "shape", style["shape"])
         trace = _native_record(
             type="scatter",
-            mode="lines",
+            mode=style["mode"],
             x=data["x"],
             y=data["y"],
-            line=_native_record(
-                color=style["color"],
-                width=style["width"],
-                dash=style["dash"],
-            ),
+            line=line_style,
             opacity=style["opacity"],
             showlegend=legend["show"],
         )
+        if style["marker"] is not None:
+            runtime.reflect.set(trace, "marker", _plotly_marker_record(style["marker"]))
         if legend["label"] is not None:
             runtime.reflect.set(trace, "name", legend["label"])
         if metadata["zorder"] is not None:
@@ -714,8 +733,77 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
         )
         if legend["label"] is not None:
             runtime.reflect.set(trace, "name", legend["label"])
+        if metadata["zorder"] is not None:
+            runtime.reflect.set(trace, "zorder", metadata["zorder"])
+        return trace
+    if kind == "polygon":
+        xdata = list(data["x"])
+        ydata = list(data["y"])
+        if style["close_path"] and len(xdata):
+            if xdata[-1] != xdata[0] or ydata[-1] != ydata[0]:
+                xdata.append(xdata[0])
+                ydata.append(ydata[0])
+        trace = _native_record(
+            type="scatter",
+            mode="lines",
+            x=xdata,
+            y=ydata,
+            line=_native_record(
+                color=style["line"]["color"],
+                width=style["line"]["width"],
+                dash=style["line"]["dash"],
+            ),
+            fill="toself" if style["fill"] else "none",
+            opacity=style["opacity"],
+            showlegend=legend["show"],
+        )
+        if style["fill"]:
+            runtime.reflect.set(trace, "fillcolor", style["fillcolor"])
+        if legend["label"] is not None:
+            runtime.reflect.set(trace, "name", legend["label"])
+        runtime.reflect.set(trace, "zorder", metadata["zorder"])
+        return trace
+    if kind == "arrow":
+        if style["renderer"] == "annotation":
+            if not legend["show"]:
+                return None
+            return _native_record(
+                type="scatter",
+                mode="lines",
+                x=[None],
+                y=[None],
+                line=_native_record(color=style["color"], width=style["width"]),
+                opacity=style["opacity"],
+                showlegend=True,
+                name=legend["label"],
+            )
+        marker_size = max(6.0, style["width"] * 4.0, style["arrowsize"] * 2.0)
+        trace = _native_record(
+            type="scatter",
+            mode="lines+markers",
+            x=[data["tail"][0], data["head"][0]],
+            y=[data["tail"][1], data["head"][1]],
+            line=_native_record(
+                color=style["color"],
+                width=style["width"],
+                dash=style["dash"],
+            ),
+            marker=_native_record(
+                color=style["color"],
+                size=[0, marker_size],
+                symbol=["circle", "arrow"],
+                angleref="previous",
+            ),
+            opacity=style["opacity"],
+            showlegend=legend["show"],
+        )
+        if legend["label"] is not None:
+            runtime.reflect.set(trace, "name", legend["label"])
+        runtime.reflect.set(trace, "zorder", metadata["zorder"])
         return trace
     if kind == "text":
+        if style["renderer"] == "annotation":
+            return None
         return _native_record(
             type="scatter",
             mode="text",
@@ -730,6 +818,7 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
             opacity=style["opacity"],
             showlegend=False,
             hoverinfo="skip",
+            zorder=metadata["zorder"],
         )
     raise ValueError("unsupported semantic 2D layer kind: " + kind)
 
@@ -751,6 +840,9 @@ class GraphicPrimitive:
 
     def _plotly_trace(self) -> Any:
         raise NotImplementedError("graphics primitive has no Plotly renderer")
+
+    def _plotly_annotation(self) -> Any:
+        return None
 
     def _plot_spec_payload(self) -> dict[str, Any]:
         """Describe an unmigrated primitive through an honest raw fallback."""
@@ -808,7 +900,20 @@ class _PlotlyPrimitive(GraphicPrimitive):
 
 def _line_plot_spec_payload(value: Any) -> dict[str, Any]:
     options = value._options
-    color = _option_get(options, "rgbcolor", _option_get(options, "color", [0, 0, 1]))
+    plan = _sage_primitive_plan("line_render_plan", options)
+    line_style = plan["line"]
+    marker_plan = plan["marker"]
+    marker_style = None
+    if marker_plan is not None:
+        marker_style = {
+            "color": _color_value(marker_plan["color"]),
+            "size": marker_plan["size"],
+            "symbol": marker_plan["symbol"],
+            "line": {
+                "color": _color_value(marker_plan["line"]["color"]),
+                "width": marker_plan["line"]["width"],
+            },
+        }
     legend_label = _option_get(options, "legend_label")
     source_intent = {
         "constructor": "line",
@@ -823,10 +928,13 @@ def _line_plot_spec_payload(value: Any) -> dict[str, Any]:
         "data": {"x": value.xdata, "y": value.ydata},
         "source_intent": source_intent,
         "style": {
-            "color": _color_value(color),
-            "width": float(_option_get(options, "thickness", 1)),
-            "dash": _dash_value(str(_option_get(options, "linestyle", "-"))),
-            "opacity": float(_option_get(options, "alpha", 1)),
+            "color": _color_value(line_style["color"]),
+            "width": line_style["width"],
+            "dash": line_style["dash"],
+            "shape": line_style["shape"],
+            "mode": plan["mode"],
+            "marker": marker_style,
+            "opacity": plan["opacity"],
         },
         "visibility": True,
         "legend": {
@@ -835,11 +943,7 @@ def _line_plot_spec_payload(value: Any) -> dict[str, Any]:
         },
         "metadata": {
             "semantic": True,
-            "zorder": (
-                int(_option_get(options, "zorder"))
-                if _option_has(options, "zorder")
-                else None
-            ),
+            "zorder": plan["zorder"],
         },
     }
 
@@ -888,47 +992,70 @@ class Arrow(Line):
     toString = __repr__
 
     def _plotly_trace(self) -> Any:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
-        width = float(_option_get(self._options, "width", 2))
-        runtime.reflect.set(trace, "mode", "lines+markers")
-        runtime.reflect.set(
-            trace,
-            "marker",
-            _native_record(
-                color=_color_value(_option_get(self._options, "rgbcolor", [0, 0, 1])),
-                size=[0, max(6, width * 4)],
-                symbol=["circle", "arrow"],
-                angleref="previous",
-            ),
-        )
-        return trace
+        return _plot_spec_2d_trace(self._plot_spec_payload())
 
     def _plot_spec_payload(self) -> dict[str, Any]:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
-        width = float(_option_get(self._options, "width", 2))
-        runtime.reflect.set(trace, "mode", "lines+markers")
-        runtime.reflect.set(
-            trace,
-            "marker",
-            _native_record(
-                color=_color_value(_option_get(self._options, "rgbcolor", [0, 0, 1])),
-                size=[0, max(6, width * 4)],
-                symbol=["circle", "arrow"],
-                angleref="previous",
-            ),
-        )
+        options = self._options
+        plan = _sage_primitive_plan("arrow_render_plan", options)
+        legend_label = _option_get(options, "legend_label")
         return {
-            "kind": "plotly-trace",
-            "data": {"traces": [_plot_spec_json_value(trace)]},
-            "source_intent": {
-                "representation": "raw-plotly-fallback",
-                "primitive": repr(self),
+            "kind": "arrow",
+            "data": {
+                "tail": [self.xdata[0], self.ydata[0]],
+                "head": [self.xdata[1], self.ydata[1]],
             },
-            "style": {},
+            "source_intent": {
+                "constructor": "arrow",
+                "representation": "normalized-primitive",
+            },
+            "style": {
+                "arrowhead": plan["arrowhead"],
+                "arrowside": plan["arrowside"],
+                "arrowsize": plan["arrowsize"],
+                "color": _color_value(plan["color"]),
+                "dash": plan["dash"],
+                "head": plan["head"],
+                "opacity": plan["opacity"],
+                "renderer": plan["renderer"],
+                "shorten_each": plan["shorten_each"],
+                "startarrowhead": plan["startarrowhead"],
+                "width": plan["width"],
+            },
             "visibility": True,
-            "legend": {},
-            "metadata": {"semantic": False},
+            "legend": {
+                "show": legend_label is not None,
+                "label": None if legend_label is None else str(legend_label),
+            },
+            "metadata": {"semantic": True, "zorder": plan["zorder"]},
         }
+
+    def _plotly_annotation(self) -> Any:
+        payload = self._plot_spec_payload()
+        style = payload["style"]
+        if style["renderer"] != "annotation":
+            return None
+        data = payload["data"]
+        return _native_record(
+            x=data["head"][0],
+            y=data["head"][1],
+            ax=data["tail"][0],
+            ay=data["tail"][1],
+            xref="x",
+            yref="y",
+            axref="x",
+            ayref="y",
+            text="",
+            showarrow=True,
+            arrowcolor=style["color"],
+            arrowwidth=style["width"],
+            arrowhead=style["arrowhead"],
+            arrowsize=style["arrowsize"],
+            startarrowhead=style["startarrowhead"],
+            startarrowsize=style["arrowsize"],
+            standoff=style["shorten_each"],
+            startstandoff=style["shorten_each"],
+            opacity=style["opacity"],
+        )
 
 
 @runtime.sequence_class
@@ -959,14 +1086,13 @@ class Point(GraphicPrimitive):
 
     def _plot_spec_payload(self) -> dict[str, Any]:
         options = self._options
-        color = _option_get(
-            options, "rgbcolor", _option_get(options, "color", [0, 0, 1])
-        )
+        plan = _sage_primitive_plan("point_render_plan", options)
+        edge_plan = plan["edge"]
         edge = None
-        if _option_has(options, "markeredgecolor"):
+        if edge_plan is not None:
             edge = {
-                "color": _color_value(_option_get(options, "markeredgecolor")),
-                "width": 1,
+                "color": _color_value(edge_plan["color"]),
+                "width": edge_plan["width"],
             }
         legend_label = _option_get(options, "legend_label")
         return {
@@ -977,18 +1103,18 @@ class Point(GraphicPrimitive):
                 "representation": "normalized-primitive",
             },
             "style": {
-                "color": _color_value(color),
-                "size": float(_option_get(options, "size", 10)),
-                "symbol": _marker_value(str(_option_get(options, "marker", "circle"))),
+                "color": _color_value(plan["color"]),
+                "size": plan["size"],
+                "symbol": plan["symbol"],
                 "edge": edge,
-                "opacity": float(_option_get(options, "alpha", 1)),
+                "opacity": plan["opacity"],
             },
             "visibility": True,
             "legend": {
                 "show": legend_label is not None,
                 "label": None if legend_label is None else str(legend_label),
             },
-            "metadata": {"semantic": True},
+            "metadata": {"semantic": True, "zorder": plan["zorder"]},
         }
 
     def _plotly_trace(self) -> Any:
@@ -1006,34 +1132,41 @@ class Polygon(Line):
     toString = __repr__
 
     def _plotly_trace(self) -> Any:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
-        options = self._options
-        color = _option_get(
-            options, "rgbcolor", _option_get(options, "color", [0, 0, 1])
-        )
-        runtime.reflect.set(trace, "fill", "toself")
-        runtime.reflect.set(trace, "fillcolor", _color_value(color))
-        return trace
+        return _plot_spec_2d_trace(self._plot_spec_payload())
 
     def _plot_spec_payload(self) -> dict[str, Any]:
-        trace = _plot_spec_2d_trace(_line_plot_spec_payload(self))
         options = self._options
-        color = _option_get(
-            options, "rgbcolor", _option_get(options, "color", [0, 0, 1])
-        )
-        runtime.reflect.set(trace, "fill", "toself")
-        runtime.reflect.set(trace, "fillcolor", _color_value(color))
+        plan = _sage_primitive_plan("polygon_render_plan", options)
+        line_style = plan["line"]
+        legend_label = _option_get(options, "legend_label")
         return {
-            "kind": "plotly-trace",
-            "data": {"traces": [_plot_spec_json_value(trace)]},
+            "kind": "polygon",
+            "data": {"x": self.xdata, "y": self.ydata},
             "source_intent": {
-                "representation": "raw-plotly-fallback",
-                "primitive": repr(self),
+                "constructor": "polygon",
+                "representation": "normalized-primitive",
             },
-            "style": {},
+            "style": {
+                "close_path": plan["close_path"],
+                "fill": plan["fill"],
+                "fillcolor": (
+                    None
+                    if plan["fillcolor"] is None
+                    else _color_value(plan["fillcolor"])
+                ),
+                "line": {
+                    "color": _color_value(line_style["color"]),
+                    "dash": line_style["dash"],
+                    "width": line_style["width"],
+                },
+                "opacity": plan["opacity"],
+            },
             "visibility": True,
-            "legend": {},
-            "metadata": {"semantic": False},
+            "legend": {
+                "show": legend_label is not None,
+                "label": None if legend_label is None else str(legend_label),
+            },
+            "metadata": {"semantic": True, "zorder": plan["zorder"]},
         }
 
 
@@ -1618,7 +1751,22 @@ class Text(GraphicPrimitive):
 
     def _plot_spec_payload(self) -> dict[str, Any]:
         options = self._options
-        color = _option_get(options, "rgbcolor", _option_get(options, "color", "black"))
+        plan = _sage_primitive_plan("text_render_plan", options)
+        horizontal_positions = {
+            "left": "right",
+            "center": "center",
+            "right": "left",
+        }
+        vertical_positions = {
+            "top": "bottom",
+            "middle": "middle",
+            "bottom": "top",
+        }
+        position = (
+            vertical_positions[plan["yanchor"]]
+            + " "
+            + horizontal_positions[plan["xanchor"]]
+        )
         return {
             "kind": "text",
             "data": {"text": self.string, "position": list(self.position)},
@@ -1627,18 +1775,62 @@ class Text(GraphicPrimitive):
                 "representation": "normalized-primitive",
             },
             "style": {
-                "color": _color_value(color),
-                "font_size": float(_option_get(options, "fontsize", 12)),
-                "position": str(_option_get(options, "textposition", "middle center")),
-                "opacity": float(_option_get(options, "alpha", 1)),
+                "background_color": (
+                    None
+                    if plan["background_color"] is None
+                    else _color_value(plan["background_color"])
+                ),
+                "color": _color_value(plan["color"]),
+                "font_size": plan["font_size"],
+                "font_style": plan["font_style"],
+                "font_weight": plan["font_weight"],
+                "opacity": plan["opacity"],
+                "position": position,
+                "renderer": plan["renderer"],
+                "rotation": plan["rotation"],
+                "xanchor": plan["xanchor"],
+                "xref": plan["xref"],
+                "yanchor": plan["yanchor"],
+                "yref": plan["yref"],
             },
             "visibility": True,
             "legend": {"show": False, "label": None},
-            "metadata": {"semantic": True},
+            "metadata": {"semantic": True, "zorder": plan["zorder"]},
         }
 
     def _plotly_trace(self) -> Any:
         return _plot_spec_2d_trace(self._plot_spec_payload())
+
+    def _plotly_annotation(self) -> Any:
+        payload = self._plot_spec_payload()
+        style = payload["style"]
+        if style["renderer"] != "annotation":
+            return None
+        data = payload["data"]
+        font = _native_record(
+            color=style["color"],
+            size=style["font_size"],
+        )
+        if style["font_style"] is not None:
+            runtime.reflect.set(font, "style", style["font_style"])
+        if style["font_weight"] is not None:
+            runtime.reflect.set(font, "weight", style["font_weight"])
+        annotation = _native_record(
+            x=data["position"][0],
+            y=data["position"][1],
+            xref=style["xref"],
+            yref=style["yref"],
+            text=data["text"],
+            showarrow=False,
+            xanchor=style["xanchor"],
+            yanchor=style["yanchor"],
+            textangle=style["rotation"],
+            font=font,
+            opacity=style["opacity"],
+        )
+        if style["background_color"] is not None:
+            runtime.reflect.set(annotation, "bgcolor", style["background_color"])
+        return annotation
 
 
 @runtime.sequence_class
@@ -1868,7 +2060,9 @@ class Graphics:
             data = getattr(primitive, axis, runtime.undefined)
             if data is not runtime.undefined:
                 values.extend(data)
-            elif isinstance(primitive, Text):
+            elif isinstance(primitive, Text) and not bool(
+                _option_get(primitive._options, "axis_coords", False)
+            ):
                 values.append(primitive.position[0 if name[0] == "x" else 1])
         if len(values) == 0:
             return 0.0
@@ -2205,7 +2399,26 @@ class Graphics:
 
     def plotly(self) -> Any:
         """Return the renderer-neutral Plotly figure description."""
-        traces = [primitive._plotly_trace() for primitive in self._objects]
+        traces = []
+        annotations = []
+        for primitive in self._objects:
+            trace = primitive._plotly_trace()
+            if trace is not None:
+                traces.append(trace)
+            annotation = primitive._plotly_annotation()
+            if annotation is not None:
+                annotations.append(annotation)
+        layout = self._plotly_layout()
+        if len(annotations):
+            existing_annotations = runtime.reflect.get(layout, "annotations")
+            if existing_annotations is runtime.undefined:
+                runtime.reflect.set(layout, "annotations", annotations)
+            else:
+                runtime.reflect.set(
+                    layout,
+                    "annotations",
+                    list(existing_annotations) + annotations,
+                )
         config = _native_record(
             displaylogo=False,
             responsive=True,
@@ -2215,7 +2428,7 @@ class Graphics:
             _option_update(config, imported_config)
         return _native_record(
             data=traces,
-            layout=self._plotly_layout(),
+            layout=layout,
             config=config,
         )
 
@@ -2347,12 +2560,14 @@ def line(points: Any, **options: Any) -> Graphics:
         "rgbcolor": [0, 0, 1],
         "thickness": 1,
         "legend_label": None,
+        "legend_color": None,
         "linestyle": "-",
     }
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
+    _sage_primitive_plan("line_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(
@@ -3135,16 +3350,19 @@ def arrow(
     tail = _point_pair(tailpoint)
     head = _point_pair(headpoint)
     defaults = {
-        "alpha": 1,
         "rgbcolor": [0, 0, 1],
-        "thickness": 1,
         "width": 2,
-        "linestyle": "-",
+        "zorder": 2,
+        "head": 1,
+        "linestyle": "solid",
+        "legend_label": None,
+        "legend_color": None,
     }
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
+    _sage_primitive_plan("arrow_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(
@@ -3165,8 +3383,11 @@ def point(points: Any, **options: Any) -> Graphics:
         "alpha": 1,
         "rgbcolor": [0, 0, 1],
         "size": 10,
+        "faceted": False,
         "legend_label": None,
-        "marker": "circle",
+        "legend_color": None,
+        "marker": "o",
+        "markeredgecolor": None,
     }
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
@@ -3174,6 +3395,7 @@ def point(points: Any, **options: Any) -> Graphics:
         options["size"] = _option_pop(options, "pointsize")
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
+    _sage_primitive_plan("point_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(
@@ -3265,21 +3487,27 @@ def polygon(points: Any, **options: Any) -> Graphics:
     defaults = {
         "alpha": 1,
         "rgbcolor": [0, 0, 1],
-        "thickness": 1,
+        "edgecolor": None,
+        "fill": True,
+        "thickness": None,
         "legend_label": None,
+        "legend_color": None,
         "linestyle": "-",
+        "aspect_ratio": 1.0,
     }
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
-    if _option_has(options, "hue") and not _option_has(options, "rgbcolor"):
-        hue = float(_option_pop(options, "hue"))
-        options["rgbcolor"] = [
-            0.5 + 0.5 * runtime.math.cos(6.283185307179586 * hue),
-            0.5 + 0.5 * runtime.math.cos(6.283185307179586 * (hue - 1.0 / 3.0)),
-            0.5 + 0.5 * runtime.math.cos(6.283185307179586 * (hue + 1.0 / 3.0)),
-        ]
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
+    if _option_get(defaults, "thickness") is None:
+        if (
+            bool(_option_get(defaults, "fill", True))
+            and _option_get(defaults, "edgecolor") is None
+        ):
+            defaults["thickness"] = 0
+        else:
+            defaults["thickness"] = 1
+    _sage_primitive_plan("polygon_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(
@@ -3301,15 +3529,18 @@ def text(
     options = _copy_options(options)
     normalized_position = _point_pair(position)
     defaults = {
-        "alpha": 1,
-        "rgbcolor": "black",
-        "fontsize": 12,
-        "textposition": "middle center",
+        "fontsize": 10,
+        "rgbcolor": [0, 0, 1],
+        "horizontal_alignment": "center",
+        "vertical_alignment": "center",
+        "axis_coords": False,
+        "clip": False,
     }
     if _option_has(options, "color") and not _option_has(options, "rgbcolor"):
         options["rgbcolor"] = _option_pop(options, "color")
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
+    _sage_primitive_plan("text_render_plan", defaults)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(Text(str(string), normalized_position, defaults))
@@ -4926,6 +5157,8 @@ def _curve_callable(
 ) -> tuple[Any, Any]:
     """Return a plot callable and the resolved symbolic variable."""
     resolved_variable = variable
+    if runtime.jstype(function_value) == "function":
+        return function_value, resolved_variable
     if resolved_variable is None and hasattr(function_value, "variables"):
         variables = list(function_value.variables())
         if len(variables) != 1:
@@ -4948,7 +5181,7 @@ def _curve_diagnostics(values: Sequence[Any]) -> list[Any]:
     for value in values:
         answer.append(
             plotting.Diagnostic(
-                str(value["code"]),
+                str(value.get("code")),
                 details=value.get("details", {}),
             ).to_dict()
         )
@@ -4979,7 +5212,7 @@ def plot(
     host with a supported Plotly export route.
     """
     options = _copy_options(options)
-    if hasattr(funcs, "plot"):
+    if hasattr(funcs, "plot") and not isinstance(funcs, (int, float, complex)):
         return funcs.plot(*range_args, **options)
     xmin, xmax = _plot_range(range_args)
     plot_variable = _plot_variable(range_args)
@@ -5039,21 +5272,21 @@ def plot(
             curve_options,
             fill_function=fill_function,
         )
-        sampling_context = planned["sampling"]
+        sampling_context = planned.get("sampling")
         source_intent = {
             "constructor": "plot",
             "representation": "sampled-curve-segment",
             "expression": str(original),
             "range": [xmin, xmax],
         }
-        for polygon_points in planned["fill_polygons"]:
-            fill_options = _copy_options(planned["fill_style"])
+        for polygon_points in planned.get("fill_polygons"):
+            fill_options = _copy_options(planned.get("fill_style"))
             answer = answer + polygon(polygon_points, **fill_options)
-        for segment in planned["segments"]:
-            line_options = _copy_options(planned["style"])
+        for segment in planned.get("segments"):
+            line_options = _copy_options(planned.get("style"))
             line_options["__plot_source_intent__"] = source_intent
             answer = answer + line(segment, **line_options)
-        for pole in planned["poles"]:
+        for pole in planned.get("poles"):
             pole_options = {
                 "rgbcolor": "gray",
                 "linestyle": "--",
@@ -5065,11 +5298,11 @@ def plot(
                 },
             }
             answer = answer + line(pole, **pole_options)
-        all_diagnostics += planned["diagnostics"]
+        all_diagnostics += planned.get("diagnostics")
 
     if not len(functions):
         normalized = curves.normalize_curve_options(options)
-        sampling_context = normalized["sampling"]
+        sampling_context = normalized.get("sampling")
         all_diagnostics.append(
             {"code": "PLOT_DATA_EMPTY", "details": {"function_count": 0}}
         )
