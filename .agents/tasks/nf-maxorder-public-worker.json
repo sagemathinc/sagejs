@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-public-worker",
+  "title": "Nf Maxorder Public Worker",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and measure a real pointer-free maximal-order local worker with deterministic merge, cancellation, full sequential equivalence, and an evidence-based public crossover gate",
+  "base_commit": "997c562f8ca1c2361ed2d2236fad71655f518f95",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-maximal-order-parallel-worker.cjs",
+    "bench/number-field-maximal-order-parallel-worker.cjs"
+  ],
+  "dependencies": [
+    "nf-maxorder-parallel"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sequential certified maximal-order local execution",
+      "randomized completion-order equivalence"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
