@@ -432,6 +432,142 @@ function setMappingEntry(mapping: unknown, key: unknown, value: unknown): void {
   invoke(setter, mapping, [key, value]);
 }
 
+function setIntegerMappingEntry(
+  mapping: unknown,
+  key: number,
+  value: unknown,
+): void {
+  const jsmap = Reflect.get(Object(mapping), "jsmap");
+  const keymap = Reflect.get(Object(mapping), "keymap");
+  if (jsmap instanceof Map && keymap instanceof Map) {
+    jsmap.set(key, value);
+    keymap.set(key, key);
+    return;
+  }
+  setMappingEntry(mapping, key, value);
+}
+
+function decimalIntegerKey(value: string, label: string): number {
+  if (!/^(0|[1-9][0-9]*)$/.test(value)) {
+    throw new SageSerializationError(`${label} is not a canonical nonnegative integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new SageSerializationError(`${label} exceeds the exact integer range`);
+  }
+  return parsed;
+}
+
+/**
+ * Decode a compact JSON table of ``integer -> integer -> integer tuple``.
+ *
+ * JSON is exact for this deliberately bounded representation, and constructing
+ * the Python dictionaries through their native Map storage avoids tens of
+ * thousands of reflective Python calls.  This is a reusable data boundary for
+ * large immutable coefficient/reference tables; the returned dictionaries
+ * remain ordinary mutable Python dictionaries.
+ */
+export function loadsIntegerTupleTable(source: string): unknown {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    throw new SageSerializationError(
+      `invalid integer tuple table JSON: ${(error as Error).message}`,
+    );
+  }
+  if (!isPlainObject(parsed)) {
+    throw new SageSerializationError("integer tuple table root is not an object");
+  }
+
+  const dictionaryTemplate = makePythonDict();
+  const dictionaryPrototype = Object.getPrototypeOf(dictionaryTemplate);
+  const directDictionaryStorage =
+    Reflect.get(Object(dictionaryTemplate), "jsmap") instanceof Map &&
+    Reflect.get(Object(dictionaryTemplate), "keymap") instanceof Map;
+  const makeDictionary = (): unknown => {
+    if (!directDictionaryStorage) return makePythonDict();
+    const dictionary = Object.create(dictionaryPrototype) as {
+      jsmap: Map<unknown, unknown>;
+      keymap: Map<unknown, unknown>;
+    };
+    dictionary.jsmap = new Map();
+    dictionary.keymap = new Map();
+    return dictionary;
+  };
+  const tupleTemplate = makePythonTuple([]);
+  const tuplePrototype = Object.getPrototypeOf(tupleTemplate);
+  const makeTuple = (items: unknown[]): unknown => {
+    Object.setPrototypeOf(items, tuplePrototype);
+    return Object.freeze(items);
+  };
+
+  const result = dictionaryTemplate;
+  for (const [outerText, innerSource] of Object.entries(parsed)) {
+    const outerKey = decimalIntegerKey(outerText, "outer key");
+    if (!isPlainObject(innerSource)) {
+      throw new SageSerializationError("integer tuple table row is not an object");
+    }
+    const inner = makeDictionary();
+    for (const [innerText, tupleSource] of Object.entries(innerSource)) {
+      const innerKey = decimalIntegerKey(innerText, "inner key");
+      if (!Array.isArray(tupleSource)) {
+        throw new SageSerializationError("integer tuple table value is not an array");
+      }
+      for (const coefficient of tupleSource) {
+        if (!Number.isSafeInteger(coefficient)) {
+          throw new SageSerializationError(
+            "integer tuple table coefficient is not an exact integer",
+          );
+        }
+      }
+      setIntegerMappingEntry(inner, innerKey, makeTuple(tupleSource));
+    }
+    setIntegerMappingEntry(result, outerKey, inner);
+  }
+  return result;
+}
+
+/** Materialize a dynamic Python view of an integer tuple table in one pass. */
+export function integerTupleTableView(
+  table: unknown,
+  kind: "keys" | "values" | "items",
+): unknown[] {
+  if (!(["keys", "values", "items"] as const).includes(kind)) {
+    throw new SageSerializationError("unknown integer tuple table view kind");
+  }
+  const outerMap = Reflect.get(Object(table), "jsmap");
+  const outerKeys = Reflect.get(Object(table), "keymap");
+  if (!(outerMap instanceof Map) || !(outerKeys instanceof Map)) {
+    throw new SageSerializationError("integer tuple table is not a Python dictionary");
+  }
+
+  const tupleTemplate = makePythonTuple([]);
+  const tuplePrototype = Object.getPrototypeOf(tupleTemplate);
+  const makeTuple = (items: unknown[]): unknown => {
+    Object.setPrototypeOf(items, tuplePrototype);
+    return Object.freeze(items);
+  };
+  const result: unknown[] = [];
+  for (const [outerStorageKey, row] of outerMap) {
+    const outerKey = outerKeys.get(outerStorageKey);
+    const innerMap = Reflect.get(Object(row), "jsmap");
+    const innerKeys = Reflect.get(Object(row), "keymap");
+    if (!(innerMap instanceof Map) || !(innerKeys instanceof Map)) {
+      throw new SageSerializationError("integer tuple table row is not a Python dictionary");
+    }
+    for (const [innerStorageKey, value] of innerMap) {
+      if (kind === "values") {
+        result.push(value);
+        continue;
+      }
+      const key = makeTuple([outerKey, innerKeys.get(innerStorageKey)]);
+      result.push(kind === "keys" ? key : makeTuple([key, value]));
+    }
+  }
+  return result;
+}
+
 export function decode(packet: SagePacket): unknown {
   validatePacket(packet);
   const decoded = new Array<unknown>(packet.objects.length);

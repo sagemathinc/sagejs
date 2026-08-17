@@ -69,16 +69,24 @@ non-Node prerequisites are installed by:
 sudo apt-get install build-essential cmake git python3 m4 xz-utils
 ```
 
-A system GMP installation is **not** required. Linux and macOS download and
-build SHA-256-pinned GMP, MPFR, MPC, OpenBLAS, FLINT, and igraph releases.
+A system GMP installation is **not** required. By default, bootstrap downloads
+a content-addressed static dependency bundle for the current supported target,
+verifies its SHA-256 sidecar and complete internal file manifest, and then only
+builds the comparatively small Sage.js native adapters. Linux and macOS bundles
+contain GMP, MPFR, MPC, OpenBLAS, FLINT, FFLAS/FFPACK, igraph, and M4RI.
 Linux x64 also builds ffpoly and smalljac; Windows installs the arithmetic
 stack from a pinned vcpkg baseline and builds the same pinned igraph source.
 Every platform statically links its libraries into the native addons and SEA.
 The ffpoly/smalljac accelerator still contains x86-64
 GNU assembly, so Linux arm64, macOS, and Windows currently use the tested
-portable elliptic-curve point-count fallback behind the same API. Downloads
-and builds are cached under `packages/flint/.native` and
-`packages/graph/.native`, making later bootstrap runs incremental.
+portable elliptic-curve point-count fallback behind the same API. Verified
+bundles are cached by content identity under `~/.cache/sagejs/native-prebuilt`;
+installed prefixes remain under each package's `.native` directory.
+The published bundles use the portable native-math profile: ordinary compiled
+code does not use `-march=native`, x86-64 GMP and OpenBLAS select compatible
+optimized kernels at runtime, arm64 OpenBLAS retains its ARMv8 baseline, and
+Windows OpenBLAS uses its generic x86-64 target. CPU-specialized local builds
+are fingerprinted separately and are never restored from the release catalog.
 
 On Apple Silicon macOS, install the Xcode Command Line Tools and Homebrew
 packages `node`, `pnpm`, `m4`, and `xz`. The native libraries target macOS 13
@@ -94,12 +102,16 @@ Tools with the Desktop C++ workload, clang-cl, and the ClangCL MSBuild
 toolset. Native Windows does not require WSL, MSYS2, or MinGW. See
 [`WINDOWS.md`](WINDOWS.md) for the exact toolchain and architecture.
 
-The cold native-library build is the expensive step. Expect roughly 3–15
-minutes on a modern Linux or Apple Silicon machine. A first Windows vcpkg
-build can take 30–60 minutes on a four-core VM. Subsequent runs normally take
-well under a minute because verified archives, package sources, and static
-libraries are reused. Builds use up to eight CPU jobs by default. To choose
-the parallelism explicitly, for example on a 16-core builder, run:
+If a bundle has not yet been published for a new platform or changed dependency
+specification, bootstrap falls back to the pinned source build. That fallback
+takes roughly 3–15 minutes on Linux or Apple Silicon and 30–60 minutes for a
+first Windows vcpkg build. Set `SAGEJS_NATIVE_PREBUILT=0` to request it
+explicitly. `SAGEJS_NATIVE_MATH_PROFILE=cpu-native` and custom package prefix
+variables also bypass portable prebuilds by design. An R2 or other mirror can
+be selected with `SAGEJS_NATIVE_PREBUILT_BASE_URL`; it must serve the bundle and
+its neighboring `.sha256` file. Source builds use up to eight CPU jobs by
+default. To choose the parallelism explicitly, for example on a 16-core builder,
+run:
 
 ```sh
 SAGEJS_BUILD_JOBS=16 pnpm bootstrap

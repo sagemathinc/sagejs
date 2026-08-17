@@ -89,6 +89,8 @@
   },
   "scripts": {
     "bootstrap": "node scripts/bootstrap.cjs",
+    "native:dependencies:identity": "node scripts/native-prebuilt-dependencies.cjs identity",
+    "native:dependencies:pack": "node scripts/native-prebuilt-dependencies.cjs pack build/native-dependencies",
     "build": "node scripts/build.cjs",
     "build:sea": "pnpm --dir packages/flint build && pnpm --dir packages/fflas build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --python",
@@ -102,6 +104,7 @@
     "docs:check": "pnpm run build && node scripts/generate-docs.cjs --check",
     "docs:verify": "pnpm run build && node scripts/verify-reference-examples.cjs && node scripts/generate-docs.cjs",
     "docs:graphs:import": "python3 scripts/import-sage-graph-reference.py",
+    "conway:data": "node scripts/generate-conway-data.cjs",
     "format:python": "node scripts/python-docstring-markdown.cjs --fix && node scripts/format-python.cjs",
     "format:python:check": "node scripts/python-docstring-markdown.cjs --check && node scripts/format-python.cjs --check",
     "test:website:browser": "node scripts/test-reference-browser.cjs",

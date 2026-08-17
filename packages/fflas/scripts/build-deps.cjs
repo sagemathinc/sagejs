@@ -16,6 +16,9 @@ const { spawnSync } = require("node:child_process");
 
 const packageRoot = resolve(__dirname, "..");
 const repositoryRoot = resolve(packageRoot, "..", "..");
+const {
+  prebuiltPackageIsCurrent,
+} = require("../../../scripts/native-prebuilt-dependencies.cjs");
 const buildRoot = join(packageRoot, ".native");
 const prefix = resolve(
   process.env.SAGEJS_FFLAS_PREFIX || join(buildRoot, "prefix"),
@@ -317,8 +320,29 @@ function buildFflasFfpack(source) {
 }
 
 async function buildDependencies() {
-  installHeader();
   const stampPath = join(prefix, ".sagejs-fflas-dependencies.json");
+  const prebuiltRequired = process.platform === "win32"
+    ? [stampPath]
+    : [
+      join(prefix, "lib", "libgmpxx.a"),
+      join(prefix, "lib", "libgivaro.a"),
+      join(
+        prefix,
+        "lib",
+        process.platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a",
+      ),
+      join(prefix, "include", "fflas-ffpack", "fflas-ffpack.h"),
+    ];
+  if (prebuiltPackageIsCurrent(
+    repositoryRoot,
+    "fflas",
+    prefix,
+    prebuiltRequired,
+  )) {
+    process.stdout.write(`Using prebuilt FFLAS dependencies in ${prefix}\n`);
+    return;
+  }
+  installHeader();
   const expectedStamp = {
     fflasFfpack: "2.5.0",
     givaro: "4.2.2",

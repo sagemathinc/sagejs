@@ -8,10 +8,10 @@ const {
   igraphLtoSetting,
 } = require("../scripts/build-deps.cjs");
 
-test("igraph dependency LTO remains compatible with the generated linker", () => {
+test("igraph dependency archives contain portable non-LTO objects", () => {
   assert.equal(igraphLtoSetting("win32"), "OFF");
-  assert.equal(igraphLtoSetting("linux"), "ON");
-  assert.equal(igraphLtoSetting("darwin"), "ON");
+  assert.equal(igraphLtoSetting("linux"), "OFF");
+  assert.equal(igraphLtoSetting("darwin"), "OFF");
 
   assert.deepEqual(JSON.parse(expectedStamp("win32")), {
     sha256: "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c",
@@ -20,7 +20,7 @@ test("igraph dependency LTO remains compatible with the generated linker", () =>
   });
   assert.deepEqual(JSON.parse(expectedStamp("linux")), {
     sha256: "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c",
-    lto: "ON",
+    lto: "OFF",
     platform: "linux",
   });
   assert.equal(expectedStamp("win32").endsWith("\n"), true);

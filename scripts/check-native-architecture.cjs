@@ -225,6 +225,9 @@ function validateKernelRegistry(manifest, options = {}) {
   }
   const packages = readJson(join(root, "package.json"));
   const requiredOracles = new Set(manifest.policy.required_oracles || []);
+  const optionalForeignLibraries = new Set(
+    manifest.policy.optional_foreign_libraries || [],
+  );
   const compilerSources = sourceFiles(join(root, "tools", "native-kernel"));
   const ids = new Set();
   for (const kernel of manifest.kernels || []) {
@@ -249,6 +252,13 @@ function validateKernelRegistry(manifest, options = {}) {
     }
     if (!Array.isArray(kernel.functions) || kernel.functions.length === 0) {
       throw new Error(`${kernel.id} must list compiled functions`);
+    }
+    for (const library of kernel.optional_foreign_libraries || []) {
+      if (!optionalForeignLibraries.has(library)) {
+        throw new Error(
+          `${kernel.id} names unknown optional foreign library ${library}`,
+        );
+      }
     }
     const oracles = new Set(kernel.oracles || []);
     for (const oracle of requiredOracles) {

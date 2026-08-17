@@ -47,6 +47,30 @@ def loads(source):
         raise TypeError("loads() requires bytes, bytearray, or str")
 
 
+def loads_integer_tuple_table(source):
+    """Load compact JSON `int -> int -> tuple[int, ...]` table data.
+
+    This bounded format is intended for large, trusted package data whose
+    integers fit exactly in JavaScript numbers. The result is an ordinary
+    mutable Python dictionary with tuple leaves.
+    """
+    if isinstance(source, bytes) or isinstance(source, bytearray):
+        source = bytes(source).decode("utf-8")
+    if not isinstance(source, str):
+        raise TypeError("loads_integer_tuple_table() requires bytes, bytearray, or str")
+    return _host_call("serializationLoadsIntegerTupleTable", source)
+
+
+def load_integer_tuple_table(filename):
+    """Load a compact integer tuple table directly from `filename`."""
+    return _host_call("serializationLoadIntegerTupleTable", str(filename))
+
+
+def integer_tuple_table_view(table, kind):
+    """Materialize one dynamic view of an integer tuple table."""
+    return _host_call("serializationIntegerTupleTableView", table, kind)
+
+
 def dump(value, file):
     """Write `value` to a binary file-like object and return `None`."""
     file.write(dumps(value))
