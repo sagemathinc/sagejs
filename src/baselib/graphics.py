@@ -619,6 +619,31 @@ def _plot_spec_json_value(value: Any) -> Any:
     raise TypeError("Plotly fallback value is not JSON-safe: " + str(value))
 
 
+def _native_plan_value(value: Any) -> Any:
+    """Materialize a strict render plan as native recursive records."""
+    if value is runtime.undefined:
+        return None
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_native_plan_value(item) for item in value]
+    if isinstance(value, dict):
+        answer = _native_object()
+        for key, item in value.items():
+            runtime.reflect.set(answer, str(key), _native_plan_value(item))
+        return answer
+    if runtime.jstype(value) == "object":
+        answer = _native_object()
+        for key in runtime.object.keys(value):
+            runtime.reflect.set(
+                answer,
+                str(key),
+                _native_plan_value(runtime.reflect.get(value, key)),
+            )
+        return answer
+    raise TypeError("primitive render plan is not JSON-safe: " + str(value))
+
+
 def _sage_primitive_plan(name: str, options: Any) -> Any:
     """Return a strict Sage primitive plan without leaking internal metadata."""
     public_options = dict()
@@ -634,7 +659,7 @@ def _sage_primitive_plan(name: str, options: Any) -> Any:
     planner = getattr(planning, name)
     # Strict library mappings are runtime Python dictionaries. Materialize
     # them recursively before bootstrap code uses native property access.
-    return _plot_spec_json_value(planner(public_options))
+    return _native_plan_value(planner(public_options))
 
 
 def _plotly_marker_record(style: Any) -> Any:
