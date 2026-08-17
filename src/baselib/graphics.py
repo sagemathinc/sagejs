@@ -686,8 +686,9 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
         if legend["label"] is not None:
             runtime.reflect.set(trace, "name", legend["label"])
         if metadata["zorder"] is not None:
-            # Preserve the existing renderer behavior for this first slice.
-            runtime.reflect.set(trace, "legendrank", metadata["zorder"])
+            # Plotly zorder controls paint order without changing the trace
+            # array, so legend order remains the user's construction order.
+            runtime.reflect.set(trace, "zorder", metadata["zorder"])
         return trace
     if kind == "point":
         marker = _native_record(
@@ -809,13 +810,18 @@ def _line_plot_spec_payload(value: Any) -> dict[str, Any]:
     options = value._options
     color = _option_get(options, "rgbcolor", _option_get(options, "color", [0, 0, 1]))
     legend_label = _option_get(options, "legend_label")
+    source_intent = {
+        "constructor": "line",
+        "representation": "normalized-primitive",
+    }
+    supplied_source_intent = _option_get(options, "__plot_source_intent__")
+    if supplied_source_intent is not None:
+        for source_name in supplied_source_intent:
+            source_intent[source_name] = supplied_source_intent[source_name]
     return {
         "kind": "line",
         "data": {"x": value.xdata, "y": value.ydata},
-        "source_intent": {
-            "constructor": "line",
-            "representation": "normalized-primitive",
-        },
+        "source_intent": source_intent,
         "style": {
             "color": _color_value(color),
             "width": float(_option_get(options, "thickness", 1)),
@@ -4831,6 +4837,32 @@ def _adaptive_refinement(
     )
 
 
+def adaptive_refinement(
+    func: Callable[[float], Any],
+    point1: Sequence[Any],
+    point2: Sequence[Any],
+    adaptive_tolerance: float = 0.01,
+    adaptive_recursion: int = 5,
+    level: int = 0,
+    excluded: bool = False,
+    imaginary_tolerance: float = 1e-8,
+) -> Any:
+    """Return adaptive samples through the strict ordinary-Python sampler."""
+    sampling = __import__(
+        "sagejs.plotting.curve_sampling", fromlist=["adaptive_refinement"]
+    )
+    return sampling.adaptive_refinement(
+        func,
+        point1,
+        point2,
+        adaptive_tolerance,
+        adaptive_recursion,
+        level,
+        excluded=excluded,
+        imaginary_tolerance=imaginary_tolerance,
+    )
+
+
 def generate_plot_points(
     func: Callable[[float], Any],
     xrange: Sequence[Any],
@@ -4839,65 +4871,26 @@ def generate_plot_points(
     adaptive_recursion: int = 5,
     randomize: bool = True,
     initial_points: Sequence[Any] | None = None,
-) -> list[tuple[float, float]]:
-    """Sample a callable using Sage's uniform-plus-adaptive strategy."""
-    if len(xrange) != 2:
-        raise ValueError("plot range must contain exactly two endpoints")
-    xmin = float(xrange[0])
-    xmax = float(xrange[1])
-    count = int(plot_points)
-    if count < 2:
-        raise ValueError("plot_points must be at least 2")
-    if xmax <= xmin:
-        raise ValueError("plot range must have xmin < xmax")
-
-    delta = (xmax - xmin) / float(count - 1)
-    x_values = [xmin + delta * index for index in range(count)]
-    x_values[count - 1] = xmax
-    if randomize:
-        for index in range(1, count - 1):
-            x_values[index] += delta * (runtime.math.random() - 0.5)
-    if initial_points is not None:
-        for initial in initial_points:
-            numeric_initial = float(initial)
-            if xmin <= numeric_initial <= xmax:
-                x_values.append(numeric_initial)
-        x_values.sort()
-
-    data = []
-    for index in range(len(x_values)):
-        evaluated = _evaluate_plot_function(func, x_values[index])
-        if evaluated is not None:
-            data.append(evaluated)
-            continue
-
-        # Match Sage's helpful endpoint behavior: move slightly inward when
-        # a function is undefined exactly at a boundary.
-        if index in (0, len(x_values) - 1):
-            direction = 1 if index == 0 else -1
-            for attempt in range(1, 99):
-                moved = x_values[index] + direction * delta * attempt / 100.0
-                evaluated = _evaluate_plot_function(func, moved)
-                if evaluated is not None:
-                    data.append(evaluated)
-                    break
-
-    tolerance = abs(delta * float(adaptive_tolerance))
-    recursion = int(adaptive_recursion)
-    index = 0
-    while index < len(data) - 1:
-        refined = _adaptive_refinement(
-            func,
-            data[index],
-            data[index + 1],
-            tolerance,
-            recursion,
-        )
-        if len(refined):
-            data[index + 1 : index + 1] = refined
-            index += len(refined)
-        index += 1
-    return data
+    excluded: bool = False,
+    imaginary_tolerance: float = 1e-8,
+    sample_limit: int = 1_000_000,
+) -> Any:
+    """Sample a callable through the strict segmented curve sampler."""
+    sampling = __import__(
+        "sagejs.plotting.curve_sampling", fromlist=["generate_plot_points"]
+    )
+    return sampling.generate_plot_points(
+        func,
+        xrange,
+        plot_points,
+        adaptive_tolerance,
+        adaptive_recursion,
+        randomize,
+        initial_points,
+        excluded=excluded,
+        imaginary_tolerance=imaginary_tolerance,
+        sample_limit=sample_limit,
+    )
 
 
 def _plot_range(range_args: Sequence[Any]) -> tuple[float, float]:
@@ -4924,6 +4917,42 @@ def _plot_variable(range_args: Sequence[Any]) -> Any:
     if len(range_args) == 3:
         return range_args[0]
     return None
+
+
+def _curve_callable(
+    function_value: Any,
+    variable: Any,
+    imaginary_tolerance: float,
+) -> tuple[Any, Any]:
+    """Return a plot callable and the resolved symbolic variable."""
+    resolved_variable = variable
+    if resolved_variable is None and hasattr(function_value, "variables"):
+        variables = list(function_value.variables())
+        if len(variables) != 1:
+            raise ValueError("plot() needs a variable for this symbolic expression")
+        resolved_variable = variables[0]
+    variable_values = [] if resolved_variable is None else [resolved_variable]
+    return (
+        _grid_fast_callable(
+            function_value,
+            variable_values,
+            imaginary_tolerance,
+        ),
+        resolved_variable,
+    )
+
+
+def _curve_diagnostics(values: Sequence[Any]) -> list[Any]:
+    plotting = __import__("sagejs.plotting", fromlist=["Diagnostic"])
+    answer = []
+    for value in values:
+        answer.append(
+            plotting.Diagnostic(
+                str(value["code"]),
+                details=value.get("details", {}),
+            ).to_dict()
+        )
+    return answer
 
 
 def plot(
@@ -4954,58 +4983,111 @@ def plot(
         return funcs.plot(*range_args, **options)
     xmin, xmax = _plot_range(range_args)
     plot_variable = _plot_variable(range_args)
-    plot_points = int(_option_pop(options, "plot_points", 200))
-    adaptive_tolerance = float(_option_pop(options, "adaptive_tolerance", 0.01))
-    adaptive_recursion = int(_option_pop(options, "adaptive_recursion", 5))
-    randomize = bool(_option_pop(options, "randomize", True))
-    initial_points = _option_pop(options, "initial_points", None)
-
     if isinstance(funcs, (list, tuple)):
         functions = list(funcs)
     else:
         functions = [funcs]
-    answer = Graphics()
-    graphics_options = _graphics_options(options)
-    answer.set_extra_kwds(graphics_options)
-    colors = _option_pop(options, "color", _option_pop(options, "rgbcolor", None))
-    if (
-        isinstance(colors, (list, tuple))
-        and len(colors)
-        and isinstance(colors[0], (list, tuple, str))
-    ):
-        color_values = list(colors)
-    else:
-        color_values = [colors]
 
+    graphics_options = _graphics_options(options)
+    curves = __import__("sagejs.plotting.sage_curves", fromlist=["plan_curve"])
+
+    color_name = None
+    colors = None
+    for candidate in ("color", "rgbcolor"):
+        if _option_has(options, candidate):
+            color_name = candidate
+            supplied_colors = _option_get(options, candidate)
+            if (
+                isinstance(supplied_colors, (list, tuple))
+                and len(supplied_colors)
+                and isinstance(supplied_colors[0], (list, tuple, str))
+            ):
+                colors = list(supplied_colors)
+                _option_pop(options, candidate)
+            break
+
+    answer = Graphics()
+    answer.set_extra_kwds(graphics_options)
+    all_diagnostics = []
+    sampling_context = None
     for index in range(len(functions)):
-        current = functions[index]
-        if hasattr(current, "_plot_fast_callable"):
-            if plot_variable is None:
-                variables = current.variables()
-                if len(variables) != 1:
-                    raise ValueError(
-                        "plot() needs a variable for this symbolic expression"
-                    )
-                plot_variable = variables[0]
-            current = current._plot_fast_callable(plot_variable)
-        if not callable(current):
-            raise TypeError("plot() requires a callable function")
-        points = generate_plot_points(
+        original = functions[index]
+        curve_options = _copy_options(options)
+        if colors is not None and color_name is not None:
+            curve_options[color_name] = colors[index % len(colors)]
+        imaginary_tolerance = float(
+            _option_get(curve_options, "imaginary_tolerance", 1e-8)
+        )
+        current, plot_variable = _curve_callable(
+            original,
+            plot_variable,
+            imaginary_tolerance,
+        )
+        fill = _option_get(curve_options, "fill", False)
+        fill_function = None
+        if fill not in (False, None, True, "axis", "min", "max") and not isinstance(
+            fill, (int, float)
+        ):
+            fill_function, _fill_variable = _curve_callable(
+                fill,
+                plot_variable,
+                imaginary_tolerance,
+            )
+        planned = curves.plan_curve(
             current,
             (xmin, xmax),
-            plot_points=plot_points,
-            adaptive_tolerance=adaptive_tolerance,
-            adaptive_recursion=adaptive_recursion,
-            randomize=randomize,
-            initial_points=initial_points,
+            curve_options,
+            fill_function=fill_function,
         )
-        line_options = _copy_options(options)
-        color_value = color_values[index % len(color_values)]
-        if color_value is not None:
-            line_options["rgbcolor"] = color_value
-        answer = answer + line(points, **line_options)
+        sampling_context = planned["sampling"]
+        source_intent = {
+            "constructor": "plot",
+            "representation": "sampled-curve-segment",
+            "expression": str(original),
+            "range": [xmin, xmax],
+        }
+        for polygon_points in planned["fill_polygons"]:
+            fill_options = _copy_options(planned["fill_style"])
+            answer = answer + polygon(polygon_points, **fill_options)
+        for segment in planned["segments"]:
+            line_options = _copy_options(planned["style"])
+            line_options["__plot_source_intent__"] = source_intent
+            answer = answer + line(segment, **line_options)
+        for pole in planned["poles"]:
+            pole_options = {
+                "rgbcolor": "gray",
+                "linestyle": "--",
+                "thickness": 1,
+                "__plot_source_intent__": {
+                    "constructor": "plot",
+                    "representation": "detected-pole",
+                    "expression": str(original),
+                },
+            }
+            answer = answer + line(pole, **pole_options)
+        all_diagnostics += planned["diagnostics"]
+
+    if not len(functions):
+        normalized = curves.normalize_curve_options(options)
+        sampling_context = normalized["sampling"]
+        all_diagnostics.append(
+            {"code": "PLOT_DATA_EMPTY", "details": {"function_count": 0}}
+        )
+
     answer.set_extra_kwds(graphics_options)
-    return answer
+    provenance = {
+        "frontend": "sagejs",
+        "source_language": "sage",
+        "constructor": "plot",
+        "source": {"expressions": [str(value) for value in functions]},
+        "ranges": [[xmin, xmax]],
+        "sampling": {} if sampling_context is None else sampling_context,
+    }
+    return answer.with_plot_spec_context(
+        provenance=provenance,
+        source_intent={"frontend_constructor": "plot"},
+        diagnostics=_curve_diagnostics(all_diagnostics),
+    )
 
 
 def parametric_plot(
