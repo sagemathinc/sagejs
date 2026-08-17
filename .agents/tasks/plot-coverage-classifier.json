@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "plot-coverage-classifier",
+  "title": "Generated plotting coverage classifier",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate a deterministic coverage.json classifying every pinned Sage and frontend plotting entry as faithful, translated, unsupported, or extension, with evidence completeness checks and no ambiguous partial state.",
+  "base_commit": "744dfb16f64239e44bb18dcdf592e86dd68ec5c8",
+  "claims": [
+    "scripts/plotting/generate-coverage.cjs",
+    "docs/sage-compatibility/plotting/coverage.json",
+    "test/plotting-coverage.cjs"
+  ],
+  "dependencies": [
+    "plot-sage-surface",
+    "plot-frontend-surface"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned Sage surface and checked-in frontend surface artifacts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
