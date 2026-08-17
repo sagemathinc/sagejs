@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Generate a deterministic coverage.json classifying every pinned Sage and frontend plotting entry as faithful, translated, unsupported, or extension, with evidence completeness checks and no ambiguous partial state.",
-  "base_commit": "744dfb16f64239e44bb18dcdf592e86dd68ec5c8",
+  "base_commit": "a3e5f264aaf9df38f2af104a03950f88b3832c47",
   "claims": [
     "scripts/plotting/generate-coverage.cjs",
     "docs/sage-compatibility/plotting/coverage.json",
