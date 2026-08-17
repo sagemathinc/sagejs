@@ -7,9 +7,10 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement certified p-radical/ring-of-multipliers fallback iteration for nonidentity local orders with HNF updates, component split propagation, irregular corpus coverage, and selector crossover evidence",
-  "base_commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+  "base_commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
   "claims": [
     "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/local_polygons.py",
     "test/number-field-buchmann-lenstra-fallback.cjs",
     "test/fixtures/number-field-buchmann-lenstra-fallback.json",
     "bench/number-field-buchmann-lenstra-fallback.cjs"
@@ -37,6 +38,7 @@
     "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
     "pnpm test:baselib:strict",
     "pnpm architecture:check",
+    "pnpm test:portable",
     "node bench/number-field-buchmann-lenstra-fallback.cjs --check",
     "pnpm test:native"
   ],
@@ -170,17 +172,56 @@
       "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
       "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.987,
+      "started_at": "2026-08-17T22:06:22.685Z",
+      "commit": "37237a5a339e4b1bcfaa54bef41ee1672b5d1a4f",
+      "workspace_fingerprint": "7165ce69c1d86773b48223bbc9bbcf37e8661ca9442eaf7a0b8485a8ff473be0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/baselib-boundaries.cjs test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.181,
+      "started_at": "2026-08-17T22:07:36.741Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.386,
+      "started_at": "2026-08-17T22:07:39.662Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.694,
+      "started_at": "2026-08-17T22:07:46.803Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Extends the integrated general Buchmann--Lenstra cycle with an exact proven-prime p-radical path, using the tame trace radical for p greater than the degree and a sufficiently high Frobenius kernel for wild small primes. A stable buchmann_lenstra_multiplier_cycle API canonicalizes arbitrary current OrderBasis inputs, reuses the existing certified multiplier/HNF/event machinery, and certifies prime fixed points. Sage 10.9 fixtures cover the two irregular polygon timeout cases; the crossover benchmark shows one saved radical iteration and 1.60x--1.89x measured speedup when reusing polygon/current-order evidence.",
+    "summary": "Extends the integrated general Buchmann--Lenstra cycle with an exact proven-prime p-radical path, using the tame trace radical for p greater than the degree and a sufficiently high Frobenius kernel for wild small primes. A stable buchmann_lenstra_multiplier_cycle API canonicalizes arbitrary current OrderBasis inputs, reuses the existing certified multiplier/HNF/event machinery, and certifies prime fixed points. Sage 10.9 fixtures cover the two irregular polygon timeout cases; the crossover benchmark shows one saved radical iteration and 1.60x--1.89x measured speedup when reusing polygon/current-order evidence. The final portable follow-up removes a prose-only runtime namespace false positive in local_polygons.py.",
     "risks": [
-      "On base 51f8fca1, architecture:check fails only because bench/number-field-order-resource-witness.c is not yet classified, and the completed 773.98-second test:native run fails on inherited stale FFI counts/artifacts for nine new number-field-order functions. The P2 owner is landing the classification, regenerated inventory, and fresh native cache fix; this lane adds no native code.",
       "Focused CPython/Sage.js differential tests, strict Pyright/Ruff, the benchmark guard, and an ad hoc Sage 10.9 comparison across 30 local primes in 24 deterministic irreducible cubics pass."
     ],
     "next_steps": [
       "Cherry-pick this lane and route proven-prime nonidentity/current-order local fallbacks to buchmann_lenstra_multiplier_cycle.",
-      "Run the integration branch's full native and changed-file suites after all number-field lanes land."
+      "Retain the selector's preference for polygon-produced current-order evidence on the two irregular cubic families."
     ]
   }
 }
