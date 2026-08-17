@@ -18,6 +18,7 @@ from .axes import (
     lower_scene_3d,
 )
 from .model import PlotLayer, PlotSpec
+from .surface_layers import lower_3d_geometry_layer
 from .themes import get_theme
 
 _THEME_NAMES = (
@@ -227,6 +228,8 @@ def lower_layer(layer: PlotLayer, dimension: int) -> list[dict[str, JSONValue]]:
     if dimension == 2:
         return [_semantic_2d_trace(layer)]
     if dimension == 3:
+        if layer.kind in ("surface", "mesh", "polygon"):
+            return lower_3d_geometry_layer(layer)
         return [_semantic_3d_trace(layer)]
     raise ValueError("plot dimension must be 2 or 3")
 

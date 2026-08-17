@@ -62,6 +62,7 @@
     "src/lib/sagejs/plotting/lowering.py",
     "src/lib/sagejs/plotting/model.py",
     "src/lib/sagejs/plotting/styles.py",
+    "src/lib/sagejs/plotting/surface_layers.py",
     "src/lib/sagejs/plotting/themes.py",
     "src/lib/sagejs/plotting/validation.py",
     "src/lib/sagejs/ffi/fflas.py",

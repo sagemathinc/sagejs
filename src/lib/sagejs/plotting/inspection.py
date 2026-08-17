@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .model import PlotLayer, PlotSpec
 
 _AXES = ("x", "y", "z")
-_COORDINATE_KINDS = ("line", "point", "text")
+_COORDINATE_KINDS = ("line", "mesh", "point", "polygon", "surface", "text")
 
 
 def layer_by_id(spec: PlotSpec, layer_id: str) -> PlotLayer:
@@ -130,7 +130,7 @@ def semantic_coordinates(
                 answer[axis] = _coordinate_entries(data[axis])
         if found_direct:
             return answer
-        for key in ("points", "position"):
+        for key in ("points", "position", "vertices"):
             if key in data:
                 return _point_entries(data[key], dimension)
         return answer
