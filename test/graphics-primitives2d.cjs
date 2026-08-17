@@ -193,6 +193,82 @@ print("ok")
   assert.equal(runSagejs(source), "ok");
 });
 
+test("Graphics lowers every targeted primitive without losing semantics", () => {
+  const source = String.raw`
+g = line([(0, 0), (1, 1)], marker="D", markersize=13,
+         markeredgecolor="red", markeredgewidth=2.5,
+         markerfacecolor="yellow", linestyle="steps-mid--",
+         thickness=4, alpha=.4, zorder=7)
+t = g.plotly()["data"][0]
+assert t["mode"] == "lines+markers"
+assert t["line"]["shape"] == "hvh" and t["line"]["dash"] == "dash"
+assert t["line"]["width"] == 4 and t["zorder"] == 7
+assert t["marker"]["symbol"] == "diamond"
+assert t["marker"]["size"] == 13
+assert t["marker"]["line"] == {"color": "red", "width": 2.5}
+
+p = point([(0, 0), (1, 2)], marker="d", size=20.9,
+          faceted=True, zorder=6.9)
+pt = p.plotly()["data"][0]
+assert pt["marker"]["symbol"] == "diamond-tall"
+assert pt["marker"]["size"] == 20
+assert pt["marker"]["line"]["color"] == "rgb(0,0,255)"
+assert pt["zorder"] == 6
+
+outline = polygon([(0, 0), (1, 0), (0, 1)], fill=False,
+                  rgbcolor="blue", edgecolor="red", thickness=4,
+                  linestyle="--", zorder=5.9)
+poly = outline.plotly()["data"][0]
+assert poly["x"] == [0, 1, 0, 0] and poly["y"] == [0, 0, 1, 0]
+assert poly["fill"] == "none"
+assert poly["line"] == {"color": "blue", "width": 4, "dash": "dash"}
+assert poly["zorder"] == 5
+
+a = arrow((0, 0), (2, 1), head=2, arrowshorten=14,
+          arrowsize=10, width=4, color="orange")
+af = a.plotly()
+assert af["data"] == []
+ann = af["layout"]["annotations"][0]
+assert ann["arrowhead"] == 2 and ann["startarrowhead"] == 2
+assert ann["standoff"] == 7 and ann["startstandoff"] == 7
+assert ann["arrowwidth"] == 4 and ann["arrowsize"] == 2
+
+label = text("agent", (.2, .8), horizontal_alignment="left",
+             vertical_alignment="top", rotation=45, axis_coords=True,
+             background_color="yellow", fontstyle="italic",
+             fontweight="bold", fontsize=14.9, alpha=.25)
+tf = label.plotly()
+assert tf["data"] == []
+ta = tf["layout"]["annotations"][0]
+assert ta["xref"] == "paper" and ta["yref"] == "paper"
+assert ta["xanchor"] == "left" and ta["yanchor"] == "top"
+assert ta["textangle"] == 45 and ta["bgcolor"] == "yellow"
+assert ta["font"]["size"] == 14 and ta["font"]["style"] == "italic"
+
+ordered = line([(0, 0), (1, 0)], zorder=10) + point((0, 1), zorder=-1)
+traces = ordered.plotly()["data"]
+assert traces[0]["mode"] == "lines" and traces[0]["zorder"] == 10
+assert traces[1]["mode"] == "markers" and traces[1]["zorder"] == -1
+assert [layer.kind for layer in ordered.spec().layers] == ["line", "point"]
+
+for make in (
+    lambda: line([(0, 0), (1, 1)], frobnicate=True),
+    lambda: point((0, 0), frobnicate=True),
+    lambda: polygon([(0, 0), (1, 0), (0, 1)], frobnicate=True),
+    lambda: arrow((0, 0), (1, 1), thickness=99),
+    lambda: text("x", (0, 0), clip=True),
+):
+    try:
+        make()
+    except (KeyError, NotImplementedError, ValueError):
+        pass
+    else:
+        raise AssertionError("unsupported constructor option was silently accepted")
+print("ok")
+`;
+  assert.equal(runSagejs(source), "ok");
+});
+
 test("the Sage 10.9 oracle records every targeted primitive", () => {
   assert.equal(fixture.oracle.sage_version, "10.9.post1");
   for (const prefix of ["line", "point", "polygon", "arrow", "text"]) {

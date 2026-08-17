@@ -679,7 +679,7 @@ def _plotly_marker_record(style: Any) -> Any:
         size=style["size"],
         symbol=style["symbol"],
     )
-    edge = style.get("line")
+    edge = _option_get(style, "line")
     if edge is not None:
         runtime.reflect.set(
             marker,
