@@ -393,6 +393,13 @@ def _norm_squared(value: Sequence[float]) -> float:
     return _dot(value, value)
 
 
+def _significant_cross(left: Sequence[float], right: Sequence[float]) -> bool:
+    scale_squared = max(_norm_squared(left), _norm_squared(right))
+    if scale_squared == 0:
+        return False
+    return _norm_squared(_cross(left, right)) > scale_squared * scale_squared * 1e-24
+
+
 def _triangle_indices(
     value: Sequence[Sequence[Any]],
     vertices: Sequence[Sequence[float]],
@@ -422,7 +429,7 @@ def _triangle_indices(
             raise ValueError("triangle vertices must be distinct")
         left = _vector(vertices[triangle[0]], vertices[triangle[1]])
         right = _vector(vertices[triangle[0]], vertices[triangle[2]])
-        if _norm_squared(_cross(left, right)) <= 1e-28:
+        if not _significant_cross(left, right):
             raise ValueError("triangle vertices must not be collinear")
         answer.append(triangle)
     return answer
@@ -621,10 +628,10 @@ def _polygon_projection(points: Sequence[Sequence[float]]) -> tuple[int, list[fl
     normal: list[float] | None = None
     origin = points[0]
     for index in range(1, len(points) - 1):
-        candidate = _cross(
-            _vector(origin, points[index]), _vector(origin, points[index + 1])
-        )
-        if _norm_squared(candidate) > 1e-28:
+        left = _vector(origin, points[index])
+        right = _vector(origin, points[index + 1])
+        candidate = _cross(left, right)
+        if _significant_cross(left, right):
             normal = candidate
             break
     if normal is None:
@@ -650,6 +657,12 @@ def _project(point: Sequence[float], dropped: int) -> list[float]:
 
 def _strictly_convex(points: Sequence[Sequence[float]], dropped: int) -> None:
     projected = [_project(point, dropped) for point in points]
+    span = max(
+        max(point[coordinate] for point in projected)
+        - min(point[coordinate] for point in projected)
+        for coordinate in range(2)
+    )
+    tolerance = span * span * 1e-12
     direction = 0
     for index in range(len(projected)):
         first = projected[index]
@@ -658,7 +671,7 @@ def _strictly_convex(points: Sequence[Sequence[float]], dropped: int) -> None:
         turn = (second[0] - first[0]) * (third[1] - second[1]) - (
             second[1] - first[1]
         ) * (third[0] - second[0])
-        if abs(turn) <= 1e-14:
+        if abs(turn) <= tolerance:
             raise ValueError("polygon must not contain collinear boundary vertices")
         current = 1 if turn > 0 else -1
         if direction == 0:
