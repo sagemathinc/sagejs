@@ -62,8 +62,18 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented Sage-compatible line, point, polygon, arrow, and text render plans and Plotly lowering; imported and stabilized curve correctness; added differential oracles, focused compiled tests, and performance benchmarks. The native flat-coordinate materializer reduces 100k curve PlotSpec construction from seconds to about 0.27 seconds.",
+    "risks": [
+      "Annotation-only arrows and styled text deliberately reject non-default zorder because Plotly annotations cannot preserve trace z-layer semantics.",
+      "TeX path markers, text bounding_box, and text clip=True are explicit unsupported errors rather than silent losses.",
+      "The final opacity-to-alpha presentation alias is source-formatted and narrowly additive; root should include it in the post-integration build run."
+    ],
+    "next_steps": [
+      "Add strict pyright entries for sage_primitives2d.py, curve_sampling.py, sage_curves.py, and the six sage.plot wrapper modules.",
+      "Export intended public planning helpers from sagejs.plotting.__init__ and own the sage.plot wrapper exports centrally.",
+      "Register graphics-primitives2d.cjs and graphics-curve-semantics.cjs in the node test manifest.",
+      "Confirm the integrated graphics bootstrap budget remains at least 400000 bytes.",
+      "Regenerate plotting coverage/frontend surface artifacts after public exports are finalized."
+    ]
   }
 }
