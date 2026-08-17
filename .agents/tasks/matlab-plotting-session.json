@@ -42,10 +42,92 @@
     "pnpm test:integration",
     "pnpm bench:polyglot"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/matlab-plotting.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.663,
+      "started_at": "2026-08-17T06:39:36.337Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/foreign-languages.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.134,
+      "started_at": "2026-08-17T06:39:59.412Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.392,
+      "started_at": "2026-08-17T06:40:12.357Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.678,
+      "started_at": "2026-08-17T06:41:58.638Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 289.57,
+      "started_at": "2026-08-17T06:42:17.341Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:polyglot",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.127,
+      "started_at": "2026-08-17T06:47:12.365Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 651.809,
+      "started_at": "2026-08-17T06:47:21.013Z",
+      "commit": "281585aa67f65015299b549315c3715c936b8f6d",
+      "workspace_fingerprint": "2b76ff54d010bcd915a5e1c3a463a06694a03fb1e241ca1e7583290277972c5f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented the first persistent MATLAB graphics session in src/lib/matlab.py and the corresponding parser/lowering surface. Each Sage worker now owns isolated figure/axes/line state with stable non-reused object and PlotSpec layer IDs, live and stale handles, hold replacement/append semantics, MATLAB color cycling, figure/gcf, axes/gca, plot(Y), plot(X,Y), repeated series pairs, LineSpec and quoted property/value handling, labels, titles, limits, legends, grids, set/get, dot property reads/writes, deletion, PlotSpec inspection, Plotly output, and rich display. The frontend recognizes field expressions and bounded command syntax and directly lowers MATLAB graphics calls into the session. New focused tests cover parser lowering, persistent multi-cell behavior, worker isolation, handle-vector indexing, mutations, stale handles, PlotSpec/Plotly/rich output, native-disabled behavior, multiple figures, and actionable unsupported-operation errors. PlotSpec agent APIs, semantic Graphics.spec integration, and central graphics/polyglot budgets are merged into this branch. Focused MATLAB, existing foreign-language, strict Python, architecture, full build, and polyglot benchmark receipts pass; full integration was recorded but is blocked by shared/out-of-claim inventory expectations and unrelated native/multiprocessing baseline failures.",
+    "risks": [
+      "Modern MATLAB Name=Value syntax such as plot(x, y, LineWidth=2) is not yet represented by the frontend AST because the pinned tree-sitter grammar flattens those triples; traditional quoted property/value pairs are supported.",
+      "This bounded lane intentionally supports one axes per figure. A second axes, subplot, and surf raise actionable errors until the shared positioned-panel and surface layers are connected instead of silently overlaying incompatible semantics.",
+      "The shared plotting frontend inventory still asserts the retired plot(x,y)->line(list(zip(...))) lowering. test/plotting-frontend-surface.cjs therefore fails until the integration lane updates tools/foreign/plotting-surface.cjs and regenerates the checked-in surface.",
+      "The full integration receipt also contains unrelated failures from missing/stale production native artifacts and the existing multiprocessing TYPE_CHECKING generated-module error; the focused MATLAB suite is native-disabled and passes independently.",
+      "test/matlab-plotting.cjs is lane-owned but still needs central test-tier registration by the integration lane."
+    ],
+    "next_steps": [
+      "Integration lane: update the shared plotting frontend inventory/tests for direct _matlab.plot lowering, field expressions, and bounded commands, then register test/matlab-plotting.cjs in the central test manifest.",
+      "Rerun pnpm test:integration from a fully bootstrapped root workspace with current native artifacts; separately repair the multiprocessing TYPE_CHECKING baseline regression.",
+      "Connect MATLAB subplot and surf to the shared PlotSpec panel and surface primitives, then relax the explicit guards with differential tests.",
+      "Extend the MATLAB AST with ordered positional/name-value argument unions so modern Name=Value syntax can be supported without lossy parsing."
+    ]
   }
 }
