@@ -38,7 +38,7 @@ class LocalPolygonResult:
     algorithm selector that should not know the trace's internal layout.
     """
 
-    def __init__(self, trace: dict[str, Any]):
+    def __init__(self, trace: dict[str, Any]) -> None:
         self.status = trace["status"]
         self.prime = trace["prime"]
         self.algorithm = trace["algorithm"]
@@ -465,7 +465,7 @@ def lower_newton_polygon(development: list[list[int]], prime: int) -> dict[str, 
             hull.pop()
         hull.append(point)
     sides = []
-    for left, right in zip(hull, hull[1:]):
+    for left, right in zip(hull, hull[1:], strict=False):
         numerator = right[1] - left[1]
         denominator = right[0] - left[0]
         divisor = _gcd_integer(numerator, denominator)
@@ -506,7 +506,7 @@ def _extension_reduce(value: list[int], phi: list[int], prime: int) -> tuple[int
 def _extension_sub(
     left: tuple[int, ...], right: tuple[int, ...], prime: int
 ) -> tuple[int, ...]:
-    return tuple((a - b) % prime for a, b in zip(left, right))
+    return tuple((a - b) % prime for a, b in zip(left, right, strict=True))
 
 
 def _extension_mul(

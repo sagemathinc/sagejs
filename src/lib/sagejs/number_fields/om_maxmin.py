@@ -87,7 +87,7 @@ def _validate_numerator_tables(tables: tuple[LocalNumeratorTable, ...]) -> None:
         if table.numerators[0] != (1,):
             raise OMDomainError("every extended numerator table must start at one")
         for degree, (numerator, values) in enumerate(
-            zip(table.numerators, table.valuations)
+            zip(table.numerators, table.valuations, strict=True)
         ):
             if normalize_polynomial(numerator)[-1] != 1:
                 raise OMDomainError("Okutsu numerators must be monic")

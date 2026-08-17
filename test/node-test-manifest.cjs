@@ -53,6 +53,9 @@ const unit = [
 const integration = [
   "test/number-field-maximal-order-corpus.cjs",
   "test/number-field-maximal-order-contracts.cjs",
+  "test/number-field-discriminant-components.cjs",
+  "test/number-field-local-polygons.cjs",
+  "test/number-field-om-maxmin.cjs",
   "test/coverage-python-stdlib.cjs",
   "test/coverage-graphics3d.cjs",
   "test/coverage-graphs.cjs",

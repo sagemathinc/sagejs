@@ -468,7 +468,7 @@ def lower_newton_polygon(points: tuple[NewtonPoint, ...]) -> tuple[NewtonSide, .
             hull.pop()
         hull.append(point)
     sides: list[NewtonSide] = []
-    for left, right in zip(hull, hull[1:]):
+    for left, right in zip(hull, hull[1:], strict=False):
         slope = RationalValue(
             right.ordinate - left.ordinate,
             right.abscissa - left.abscissa,

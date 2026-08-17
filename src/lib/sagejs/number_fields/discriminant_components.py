@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 PROVEN_PRIME = "proven-prime"
 PROBABLE_PRIME = "probable-prime-awaiting-proof"
 COMPOSITE = "composite"
@@ -518,7 +517,7 @@ class DiscriminantComponent:
         base: int | None = None,
         exponent: int = 1,
         evidence: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         self.value = abs(int(value))
         self.state = state
         self.base = abs(int(base if base is not None else value))
