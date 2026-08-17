@@ -156,6 +156,21 @@
       "prefixes": []
     },
     {
+      "id": "number-field-algorithms",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 100000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.number_fields"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/number_fields/"]
+    },
+    {
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",

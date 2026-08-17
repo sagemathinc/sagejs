@@ -387,6 +387,8 @@ from sagejs.ffi.flint import (
     fmpz_mod_polynomial_format as _ffi_fmpz_mod_polynomial_format,
     fmpz_mod_polynomial_serialize as _ffi_fmpz_mod_polynomial_serialize,
     fmpz_mod_polynomial_deserialize as _ffi_fmpz_mod_polynomial_deserialize,
+    number_field_order_pmaximal as _ffi_number_field_order_pmaximal,
+    number_field_order_maximal_at_primes as _ffi_number_field_order_maximal_at_primes,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -4635,4 +4637,28 @@ def ffiFmpzModPolynomialDeserialize(
 ) -> FmpzModPolynomial:
     return _ffi_fmpz_mod_polynomial_deserialize(
         source,
+    )
+
+
+@native
+def ffiNumberFieldOrderPmaximal(
+    multiplication_table: FmpzMatrix,
+    prime: uint64,
+) -> FmpqMatrix:
+    return _ffi_number_field_order_pmaximal(
+        multiplication_table,
+        prime,
+    )
+
+
+@native
+def ffiNumberFieldOrderMaximalAtPrimes(
+    multiplication_table: FmpzMatrix,
+    primes: UInt64Buffer,
+    prime_count: uint64,
+) -> FmpqMatrix:
+    return _ffi_number_field_order_maximal_at_primes(
+        multiplication_table,
+        primes,
+        prime_count,
     )

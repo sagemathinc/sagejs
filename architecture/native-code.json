@@ -95,6 +95,13 @@
       "rationale": "Host-neutral generated owned-resource ABI over FLINT dense integer matrices, with physical retained-size accounting, structural arithmetic, exact algorithms, formatting, and stable serialization."
     },
     {
+      "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
+      "category": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle."
+    },
+    {
       "path": "packages/flint/include/sagejs/exact_vector_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",
