@@ -1,0 +1,212 @@
+const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+
+const fixturePath = path.join(
+  __dirname,
+  "fixtures",
+  "number-field-maximal-order-corpus.json",
+);
+
+function digest(domain, value) {
+  return crypto
+    .createHash("sha256")
+    .update(`${domain}\n${JSON.stringify(value)}`)
+    .digest("hex");
+}
+
+function abs(value) {
+  return value < 0n ? -value : value;
+}
+
+function pow(base, exponent) {
+  let answer = 1n;
+  let factor = base;
+  let power = BigInt(exponent);
+  while (power > 0n) {
+    if (power & 1n) answer *= factor;
+    factor *= factor;
+    power >>= 1n;
+  }
+  return answer;
+}
+
+test("maximal-order corpus is a canonical self-consistent authority", () => {
+  const manifest = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+  assert.equal(manifest.schemaVersion, 1);
+
+  const claimedManifestDigest = manifest.manifestDigest;
+  delete manifest.manifestDigest;
+  assert.equal(
+    claimedManifestDigest,
+    digest("sagejs-maximal-order-corpus-v1", manifest),
+  );
+
+  const ids = new Set();
+  let standardCount = 0;
+  let stressCount = 0;
+  let basisAvailableCount = 0;
+  let basisInlineCount = 0;
+  let crossFamilyLatticeCount = 0;
+  let degreeMinimum = Infinity;
+  let degreeMaximum = -Infinity;
+
+  for (const entry of manifest.cases) {
+    assert.match(entry.id, /^[a-z0-9][a-z0-9.-]*$/);
+    assert(!ids.has(entry.id), `duplicate case id ${entry.id}`);
+    ids.add(entry.id);
+
+    assert(["standard", "stress"].includes(entry.tier));
+    if (entry.tier === "standard") standardCount += 1;
+    else stressCount += 1;
+
+    const polynomial = entry.polynomial;
+    assert.equal(polynomial.coefficientOrder, "ascending");
+    assert.equal(polynomial.coefficients.length, polynomial.degree + 1);
+    assert.equal(polynomial.coefficients.at(-1), "1");
+    assert(polynomial.coefficients.every((value) => /^-?\d+$/.test(value)));
+    assert.equal(
+      polynomial.digest,
+      digest("sagejs-number-field-polynomial-v1", polynomial.coefficients),
+    );
+    const height = polynomial.coefficients.reduce(
+      (maximum, value) => {
+        const magnitude = abs(BigInt(value));
+        return magnitude > maximum ? magnitude : maximum;
+      },
+      0n,
+    );
+    assert.equal(polynomial.coefficientHeight, height.toString());
+    assert.equal(polynomial.coefficientHeightBits, height.toString(2).length);
+    degreeMinimum = Math.min(degreeMinimum, polynomial.degree);
+    degreeMaximum = Math.max(degreeMaximum, polynomial.degree);
+
+    const equationDiscriminant = BigInt(entry.equationDiscriminant);
+    const fieldDiscriminant = BigInt(entry.fieldDiscriminant);
+    const index = BigInt(entry.equationOrderIndex);
+    assert(index > 0n);
+    assert.equal(equationDiscriminant, fieldDiscriminant * index * index);
+
+    let localProduct = 1n;
+    for (const factor of entry.localIndexFactors) {
+      assert(BigInt(factor.value) > 1n);
+      assert(Number.isSafeInteger(factor.valuation) && factor.valuation > 0);
+      assert(
+        [
+          "proven-prime",
+          "probable-prime",
+          "composite-unresolved",
+          "supplied-prime-hint",
+        ].includes(factor.state),
+      );
+      localProduct *= pow(BigInt(factor.value), factor.valuation);
+    }
+    assert.equal(localProduct, index, `local index factors for ${entry.id}`);
+    assert.equal(
+      entry.primeSupportCertified,
+      entry.localIndexFactors.every((factor) => factor.state === "proven-prime"),
+    );
+
+    assert.equal(entry.certification.expected, "certified-global-maximal-order");
+    assert(entry.certification.discriminantFamilies.length > 0);
+    assert(entry.provenance.source.length > 0);
+    assert(entry.provenance.locator.length > 0);
+
+    if (entry.certification.fixtureEvidence === "cross-family-lattice-agreement") {
+      crossFamilyLatticeCount += 1;
+      assert(entry.certification.discriminantFamilies.length >= 2);
+      assert(entry.certification.latticeCrossChecks.length > 0);
+    }
+
+    const basis = entry.basis;
+    if (basis.state === "unavailable") {
+      assert.equal(entry.id, "pari-large-prime-quadratic-compositum");
+      assert(basis.reason.length > 0);
+      continue;
+    }
+    assert.equal(basis.state, "available");
+    basisAvailableCount += 1;
+    assert(BigInt(basis.denominator) > 0n);
+    assert.match(basis.digest, /^[0-9a-f]{64}$/);
+    if (!basis.numerator) {
+      assert.equal(entry.tier, "stress");
+      assert.equal(basis.storage, "digest-only");
+      continue;
+    }
+
+    basisInlineCount += 1;
+    assert.equal(basis.numerator.length, polynomial.degree);
+    let diagonalProduct = 1n;
+    for (let row = 0; row < polynomial.degree; row += 1) {
+      assert.equal(basis.numerator[row].length, polynomial.degree);
+      for (let column = row + 1; column < polynomial.degree; column += 1) {
+        assert.equal(basis.numerator[row][column], "0");
+      }
+      const diagonal = BigInt(basis.numerator[row][row]);
+      assert(diagonal > 0n);
+      diagonalProduct *= diagonal;
+    }
+    assert.equal(
+      diagonalProduct * index,
+      pow(BigInt(basis.denominator), polynomial.degree),
+      `basis covolume for ${entry.id}`,
+    );
+    assert.equal(
+      basis.digest,
+      digest("sagejs-maximal-order-hnf-v1", {
+        denominator: basis.denominator,
+        numerator: basis.numerator,
+      }),
+    );
+  }
+
+  assert.equal(ids.size, manifest.summary.caseCount);
+  assert.deepEqual(
+    {
+      caseCount: ids.size,
+      standardCount,
+      stressCount,
+      basisAvailableCount,
+      basisInlineCount,
+      crossFamilyLatticeCount,
+      degreeMinimum,
+      degreeMaximum,
+    },
+    manifest.summary,
+  );
+
+  assert.equal(
+    manifest.cases.filter((entry) =>
+      entry.id.startsWith("pari-round4-vector-"),
+    ).length,
+    430,
+  );
+  for (const required of [
+    "pari-1710",
+    "pari-1735",
+    "pari-2011",
+    "pari-2178",
+    "pari-2510",
+    "hecke-degree-18",
+    "hecke-degree-90",
+    "hecke-huge-degree-6",
+    "hecke-precision-degree-12",
+    "pure-bad-generator-n8-c2pow32",
+    "pure-bad-generator-n96-c1009",
+  ]) {
+    assert(ids.has(required), `missing required case ${required}`);
+  }
+
+  assert(
+    manifest.expectedOracleOutcomes.some(
+      (outcome) => outcome.status === "timeout",
+    ),
+  );
+  assert(
+    manifest.expectedOracleOutcomes.some(
+      (outcome) => outcome.status === "unavailable",
+    ),
+  );
+});
