@@ -86,9 +86,16 @@ class PersistentLineProcess {
     this.stderr = "";
     this.startupMs = null;
     this.version = null;
+    this.shutdownPromise = null;
   }
 
   async start() {
+    // A timed-out worker is killed as a process group.  Delivery of SIGKILL is
+    // asynchronous, so do not overlap its teardown with the replacement
+    // worker.  In particular, Sage.js workers share compiler/cache resources;
+    // an immediate replacement can otherwise observe a half-torn-down writer
+    // and fail repeatedly during startup.
+    if (this.shutdownPromise) await this.shutdownPromise;
     if (this.child) return { status: "ok", startup_ms: this.startupMs, version: this.version };
     const started = process.hrtime.bigint();
     const launched = boundedSpawn(this.command, this.args, {
@@ -185,18 +192,40 @@ class PersistentLineProcess {
   }
 
   #kill() {
-    if (this.child) {
-      if (process.platform === "win32") {
-        this.child.kill("SIGKILL");
-      } else {
-        try {
-          process.kill(-this.child.pid, "SIGKILL");
-        } catch {
-          this.child.kill("SIGKILL");
-        }
+    const child = this.child;
+    if (!child) return this.shutdownPromise || Promise.resolve();
+    this.child = null;
+
+    let finish;
+    const shutdown = new Promise((resolve) => {
+      let complete = false;
+      finish = () => {
+        if (complete) return;
+        complete = true;
+        resolve();
+      };
+      child.once("exit", finish);
+      child.once("close", finish);
+    });
+    this.shutdownPromise = shutdown;
+    shutdown.finally(() => {
+      if (this.shutdownPromise === shutdown) this.shutdownPromise = null;
+    });
+
+    if (child.exitCode !== null || child.signalCode !== null) {
+      finish();
+      return shutdown;
+    }
+    if (process.platform === "win32") {
+      child.kill("SIGKILL");
+    } else {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
       }
     }
-    this.child = null;
+    return shutdown;
   }
 
   async request(line, { timeoutMs }) {
