@@ -43,10 +43,49 @@
     "pnpm exec pyright src/lib/sagejs/plotting/surface_layers.py",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/plot-surface-layers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.68,
+      "started_at": "2026-08-17T06:20:20.002Z",
+      "commit": "6036c32c2fe278ba8279389df77af849b94c595f",
+      "workspace_fingerprint": "8eb8d3e88f37bf83aa1d5690b4dfeaa58ed617617d4cc3272c8687d31c3eab3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/plotting/surface_layers.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.8,
+      "started_at": "2026-08-17T06:20:22.462Z",
+      "commit": "6036c32c2fe278ba8279389df77af849b94c595f",
+      "workspace_fingerprint": "8eb8d3e88f37bf83aa1d5690b4dfeaa58ed617617d4cc3272c8687d31c3eab3f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.591,
+      "started_at": "2026-08-17T06:20:25.006Z",
+      "commit": "6036c32c2fe278ba8279389df77af849b94c595f",
+      "workspace_fingerprint": "8eb8d3e88f37bf83aa1d5690b4dfeaa58ed617617d4cc3272c8687d31c3eab3f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added strict PlotSpec-facing rectangular surface, indexed triangular mesh, and convex planar polygon planners with deterministic Plotly lowering, stable IDs, preserved source intent, shared structured style decisions, resource bounds, scene metadata, and Sage 10.9/native-disabled differential fixtures.",
+    "risks": [
+      "The combined surface plus shared theme/style sources raise plot-spec ownership to 113460 bytes, above the central 100000-byte budget; integration must deliberately raise or split that budget.",
+      "Current PlotSpec inspection counts only line, point, and text coordinates; integration must teach inspection and validation to consume surface grids and mesh vertices/resource metadata.",
+      "Wireframe/dot companion traces, affine-transformed geometry, and multi-face polygonal IndexFaceSets intentionally remain outside this bounded semantic slice."
+    ],
+    "next_steps": [
+      "Add surface_layers.py to pyrightconfig, package exports, and the integration manifest in the central lane.",
+      "Delegate Graphics3d surface/mesh/polygon payloads through layer_payload and lower_3d_geometry_payload only for the explicitly supported cases, retaining raw fallbacks for companion traces and unsupported polygonal face sets.",
+      "Extend semantic bounds/sample validation to surface x/y/z grids and mesh vertices, using the checked resource and scene metadata."
+    ]
   }
 }
