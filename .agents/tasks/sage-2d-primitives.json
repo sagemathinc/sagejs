@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement Sage-compatible line, point, polygon, arrow, and text option semantics with explicit unsupported-option errors, correct z-order lowering, deterministic Sage 10.9 differential fixtures, and representative performance coverage",
-  "base_commit": "31d14b23db2b72195471c7a95570d154702ee6fb",
+  "base_commit": "2b8d3c29af4708e041ced3fa71881be4d922fe31",
   "claims": [
     "src/lib/sagejs/plotting/sage_primitives2d.py",
     "src/lib/sagejs/plotting/curve_sampling.py",

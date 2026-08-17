@@ -619,6 +619,9 @@ def _plot_spec_json_value(value: Any) -> Any:
         return None
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
+    scalar_sequence = runtime.json_scalar_sequence(value)
+    if scalar_sequence is not None:
+        return scalar_sequence
     if isinstance(value, (list, tuple)):
         return [_plot_spec_json_value(item) for item in value]
     if isinstance(value, dict):
