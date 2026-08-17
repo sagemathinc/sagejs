@@ -1,0 +1,5118 @@
+{
+  "authority": {
+    "name": "SageMath",
+    "reference_2d": "https://doc.sagemath.org/html/en/reference/plotting/",
+    "reference_3d": "https://doc.sagemath.org/html/en/reference/plot3d/",
+    "release_date": "2026-05-04",
+    "version": "10.9.post1"
+  },
+  "modules": [
+    {
+      "dimension": "2d",
+      "name": "sage.graphs.graph_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/graphs/graph_plot.py",
+        "sha256": "b92619cca09f9174c56df1881caa631ec6d9a235263858c85238093005ecf425",
+        "sha256_scope": "source-file",
+        "size_bytes": 70543
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.graphs.graph_plot.GraphPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "layout_tree",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.layout_tree",
+              "signature": "(self, root, orientation)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.plot",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_edges",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.set_edges",
+              "signature": "(self, **edge_options)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_pos",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.set_pos",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_vertices",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.set_vertices",
+              "signature": "(self, **vertex_options)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.graphs.graph_plot.GraphPlot.show",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "GraphPlot",
+          "qualified_name": "sage.graphs.graph_plot.GraphPlot",
+          "signature": "(graph, options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.animate",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/animate.py",
+        "sha256": "190f7fe627e03d3413c723e63dc1aa8a609aa59e209bd6ea31626ad4e48caae8",
+        "sha256_scope": "source-file",
+        "size_bytes": 70209
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.animate.APngAssembler",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "add_frame",
+              "qualified_name": "sage.plot.animate.APngAssembler.add_frame",
+              "signature": "(self, pngfile, delay=None, delay_denominator=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_default",
+              "qualified_name": "sage.plot.animate.APngAssembler.set_default",
+              "signature": "(self, pngfile)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "APngAssembler",
+          "qualified_name": "sage.plot.animate.APngAssembler",
+          "signature": "(out, num_frames, num_plays=0, delay=200, delay_denominator=100)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.animate.Animation",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "apng",
+              "qualified_name": "sage.plot.animate.Animation.apng",
+              "signature": "(self, savefile=None, show_path=False, delay=20, iterations=0)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ffmpeg",
+              "qualified_name": "sage.plot.animate.Animation.ffmpeg",
+              "signature": "(self, savefile=None, show_path=False, output_format=None, ffmpeg_options='', delay=None, iterations=0, pix_fmt='rgb24')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "gif",
+              "qualified_name": "sage.plot.animate.Animation.gif",
+              "signature": "(self, delay=20, savefile=None, iterations=0, show_path=False, use_ffmpeg=False)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "graphics_array",
+              "qualified_name": "sage.plot.animate.Animation.graphics_array",
+              "signature": "(self, ncols=3)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "interactive",
+              "qualified_name": "sage.plot.animate.Animation.interactive",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "make_image",
+              "qualified_name": "sage.plot.animate.Animation.make_image",
+              "signature": "(self, frame, filename, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "png",
+              "qualified_name": "sage.plot.animate.Animation.png",
+              "signature": "(self, dir=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save",
+              "qualified_name": "sage.plot.animate.Animation.save",
+              "signature": "(self, filename=None, show_path=False, use_ffmpeg=False, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.plot.animate.Animation.show",
+              "signature": "(self, delay=None, iterations=None, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Animation",
+          "qualified_name": "sage.plot.animate.Animation",
+          "signature": "(v=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.animate.animate",
+          "kind": "function",
+          "name": "animate",
+          "qualified_name": "sage.plot.animate.animate",
+          "signature": "(frames, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.arc",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/arc.py",
+        "sha256": "f4e8ed1b2e32f49c2bab511b4a49ebfe7818bd2c36794a017642ef64aa1aa74a",
+        "sha256_scope": "source-file",
+        "size_bytes": 15636
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.arc.Arc",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bezier_path",
+              "qualified_name": "sage.plot.arc.Arc.bezier_path",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.arc.Arc.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.arc.Arc.plot3d",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Arc",
+          "qualified_name": "sage.plot.arc.Arc",
+          "signature": "(x, y, r1, r2, angle, s1, s2, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.arc.arc",
+          "kind": "function",
+          "name": "arc",
+          "qualified_name": "sage.plot.arc.arc",
+          "signature": "(center, r1, r2=None, angle=0.0, sector=(0.0, 6.283185307179586), **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.arrow",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/arrow.py",
+        "sha256": "253c6f643ed98ea7316e7f91c97bb839231f350c3ac2c4c16ecfd47d6c4c3876",
+        "sha256_scope": "source-file",
+        "size_bytes": 24978
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.arrow.Arrow",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.arrow.Arrow.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.arrow.Arrow.plot3d",
+              "signature": "(self, ztail=0, zhead=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Arrow",
+          "qualified_name": "sage.plot.arrow.Arrow",
+          "signature": "(xtail, ytail, xhead, yhead, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.arrow.CurveArrow",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.arrow.CurveArrow.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "CurveArrow",
+          "qualified_name": "sage.plot.arrow.CurveArrow",
+          "signature": "(path, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.arrow.arrow",
+          "kind": "function",
+          "name": "arrow",
+          "qualified_name": "sage.plot.arrow.arrow",
+          "signature": "(tailpoint=None, headpoint=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.arrow.arrow2d",
+          "kind": "function",
+          "name": "arrow2d",
+          "qualified_name": "sage.plot.arrow.arrow2d",
+          "signature": "(tailpoint=None, headpoint=None, path=None, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.bar_chart",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/bar_chart.py",
+        "sha256": "f965d0934d99cea5c6f5ec44ef24046f0dc907f5ff46609d7ddb742ecae6bc39",
+        "sha256_scope": "source-file",
+        "size_bytes": 6769
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.bar_chart.BarChart",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.bar_chart.BarChart.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "BarChart",
+          "qualified_name": "sage.plot.bar_chart.BarChart",
+          "signature": "(ind, datalist, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.bar_chart.bar_chart",
+          "kind": "function",
+          "name": "bar_chart",
+          "qualified_name": "sage.plot.bar_chart.bar_chart",
+          "signature": "(datalist, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.bezier_path",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/bezier_path.py",
+        "sha256": "9d9bdd761809c92095ede49a51d3549a2de33306d3bdcc2f1ab65afdf5d10c8d",
+        "sha256_scope": "source-file",
+        "size_bytes": 15689
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive_xydata"
+          ],
+          "implementation_qualified_name": "sage.plot.bezier_path.BezierPath",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.bezier_path.BezierPath.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.bezier_path.BezierPath.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "BezierPath",
+          "qualified_name": "sage.plot.bezier_path.BezierPath",
+          "signature": "(path, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.bezier_path.bezier_path",
+          "kind": "function",
+          "name": "bezier_path",
+          "qualified_name": "sage.plot.bezier_path.bezier_path",
+          "signature": "(path, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.circle",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/circle.py",
+        "sha256": "c945eab83eace62156c1fb8394aa2d80d5a8932d811cca07c6b2852195d2d8b0",
+        "sha256_scope": "source-file",
+        "size_bytes": 14349
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.circle.Circle",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.circle.Circle.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.circle.Circle.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Circle",
+          "qualified_name": "sage.plot.circle.Circle",
+          "signature": "(x, y, r, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.circle.circle",
+          "kind": "function",
+          "name": "circle",
+          "qualified_name": "sage.plot.circle.circle",
+          "signature": "(center, radius, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.colors",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/colors.py",
+        "sha256": "1766326244baeb8487bad94a627efe09499e9250a2eb19ad75d31a9adf19f99a",
+        "sha256_scope": "source-file",
+        "size_bytes": 54224
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.colors.Color",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "blend",
+              "qualified_name": "sage.plot.colors.Color.blend",
+              "signature": "(self, color, fraction=0.5)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "darker",
+              "qualified_name": "sage.plot.colors.Color.darker",
+              "signature": "(self, fraction=0.3333333333333333)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "hls",
+              "qualified_name": "sage.plot.colors.Color.hls",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "hsl",
+              "qualified_name": "sage.plot.colors.Color.hsl",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "hsv",
+              "qualified_name": "sage.plot.colors.Color.hsv",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "html_color",
+              "qualified_name": "sage.plot.colors.Color.html_color",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "lighter",
+              "qualified_name": "sage.plot.colors.Color.lighter",
+              "signature": "(self, fraction=0.3333333333333333)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "rgb",
+              "qualified_name": "sage.plot.colors.Color.rgb",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Color",
+          "qualified_name": "sage.plot.colors.Color",
+          "signature": "(r='#0000ff', g=None, b=None, space='rgb') -> None",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "collections.abc.MutableMapping"
+          ],
+          "implementation_qualified_name": "sage.plot.colors.Colormaps",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "load_maps",
+              "qualified_name": "sage.plot.colors.Colormaps.load_maps",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Colormaps",
+          "qualified_name": "sage.plot.colors.Colormaps",
+          "signature": "() -> None",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.dict"
+          ],
+          "implementation_qualified_name": "sage.plot.colors.ColorsDict",
+          "kind": "class",
+          "methods": [],
+          "name": "ColorsDict",
+          "qualified_name": "sage.plot.colors.ColorsDict",
+          "signature": "() -> None",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.check_color_data",
+          "kind": "function",
+          "name": "check_color_data",
+          "qualified_name": "sage.plot.colors.check_color_data",
+          "signature": "(cfcm)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.float_to_html",
+          "kind": "function",
+          "name": "float_to_html",
+          "qualified_name": "sage.plot.colors.float_to_html",
+          "signature": "(r, g, b)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.float_to_integer",
+          "kind": "function",
+          "name": "float_to_integer",
+          "qualified_name": "sage.plot.colors.float_to_integer",
+          "signature": "(r, g, b)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.get_cmap",
+          "kind": "function",
+          "name": "get_cmap",
+          "qualified_name": "sage.plot.colors.get_cmap",
+          "signature": "(cmap)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.html_to_float",
+          "kind": "function",
+          "name": "html_to_float",
+          "qualified_name": "sage.plot.colors.html_to_float",
+          "signature": "(c)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.hue",
+          "kind": "function",
+          "name": "hue",
+          "qualified_name": "sage.plot.colors.hue",
+          "signature": "(h, s=1, v=1)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.mod_one",
+          "kind": "function",
+          "name": "mod_one",
+          "qualified_name": "sage.plot.colors.mod_one",
+          "signature": "(x)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.rainbow",
+          "kind": "function",
+          "name": "rainbow",
+          "qualified_name": "sage.plot.colors.rainbow",
+          "signature": "(n, format='hex')",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.rgbcolor",
+          "kind": "function",
+          "name": "rgbcolor",
+          "qualified_name": "sage.plot.colors.rgbcolor",
+          "signature": "(c, space='rgb')",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.colors.rgbcolor",
+          "kind": "function",
+          "name": "to_mpl_color",
+          "qualified_name": "sage.plot.colors.to_mpl_color",
+          "signature": "(c, space='rgb')",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.complex_plot",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/complex_plot.pyx",
+        "sha256": "928a9829f5cdd7b172d0b975a0d6d61261358345892b9450e3a708f2a9b0d603",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 273512
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.complex_plot.ComplexPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.complex_plot.ComplexPlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ComplexPlot",
+          "qualified_name": "sage.plot.complex_plot.ComplexPlot",
+          "signature": "(rgb_data, x_range, y_range, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.add_contours_to_rgb",
+          "kind": "function",
+          "name": "add_contours_to_rgb",
+          "qualified_name": "sage.plot.complex_plot.add_contours_to_rgb",
+          "signature": "(rgb, delta, dark_rate=0.5)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.add_lightness_smoothing_to_rgb",
+          "kind": "function",
+          "name": "add_lightness_smoothing_to_rgb",
+          "qualified_name": "sage.plot.complex_plot.add_lightness_smoothing_to_rgb",
+          "signature": "(rgb, delta)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.complex_plot",
+          "kind": "function",
+          "name": "complex_plot",
+          "qualified_name": "sage.plot.complex_plot.complex_plot",
+          "signature": "(f, x_range, y_range, contoured=False, tiled=False, cmap=None, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.complex_to_cmap_rgb",
+          "kind": "function",
+          "name": "complex_to_cmap_rgb",
+          "qualified_name": "sage.plot.complex_plot.complex_to_cmap_rgb",
+          "signature": "(z_values, cmap='turbo', contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.complex_to_rgb",
+          "kind": "function",
+          "name": "complex_to_rgb",
+          "qualified_name": "sage.plot.complex_plot.complex_to_rgb",
+          "signature": "(z_values, contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.hls_to_rgb",
+          "kind": "function",
+          "name": "hls_to_rgb",
+          "qualified_name": "sage.plot.complex_plot.hls_to_rgb",
+          "signature": "(hls)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.complex_plot.rgb_to_hls",
+          "kind": "function",
+          "name": "rgb_to_hls",
+          "qualified_name": "sage.plot.complex_plot.rgb_to_hls",
+          "signature": "(rgb)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.contour_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/contour_plot.py",
+        "sha256": "57b7c37be9f1d91d9bf6b5ba8ed0fe8f9e3bedfb116af1dcb141f1a400dee2bc",
+        "sha256_scope": "source-file",
+        "size_bytes": 65472
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.contour_plot.ContourPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.contour_plot.ContourPlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ContourPlot",
+          "qualified_name": "sage.plot.contour_plot.ContourPlot",
+          "signature": "(xy_data_array, xrange, yrange, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.contour_plot.contour_plot",
+          "kind": "function",
+          "name": "contour_plot",
+          "qualified_name": "sage.plot.contour_plot.contour_plot",
+          "signature": "(f, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.contour_plot.equify",
+          "kind": "function",
+          "name": "equify",
+          "qualified_name": "sage.plot.contour_plot.equify",
+          "signature": "(f)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.contour_plot.implicit_plot",
+          "kind": "function",
+          "name": "implicit_plot",
+          "qualified_name": "sage.plot.contour_plot.implicit_plot",
+          "signature": "(f, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.contour_plot.region_plot",
+          "kind": "function",
+          "name": "region_plot",
+          "qualified_name": "sage.plot.contour_plot.region_plot",
+          "signature": "(f, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.density_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/density_plot.py",
+        "sha256": "339f93c4e3a8ed31d78e84d14a1f49d9844b00043f90b58c8f1d8d353e947541",
+        "sha256_scope": "source-file",
+        "size_bytes": 10965
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.density_plot.DensityPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.density_plot.DensityPlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "DensityPlot",
+          "qualified_name": "sage.plot.density_plot.DensityPlot",
+          "signature": "(xy_data_array, xrange, yrange, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.density_plot.density_plot",
+          "kind": "function",
+          "name": "density_plot",
+          "qualified_name": "sage.plot.density_plot.density_plot",
+          "signature": "(f, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.disk",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/disk.py",
+        "sha256": "fe9539781a17495e27866758ee73f1a89b22ccd2db93f57f921ff0435f5122a3",
+        "sha256_scope": "source-file",
+        "size_bytes": 12439
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.disk.Disk",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.disk.Disk.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.disk.Disk.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Disk",
+          "qualified_name": "sage.plot.disk.Disk",
+          "signature": "(point, r, angle, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.disk.disk",
+          "kind": "function",
+          "name": "disk",
+          "qualified_name": "sage.plot.disk.disk",
+          "signature": "(point, radius, angle, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.ellipse",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/ellipse.py",
+        "sha256": "d1b1ad7ac65b9a4c86eea5d8c5e9dd29c0b5811bbdff0745df151d2db9bf6940",
+        "sha256_scope": "source-file",
+        "size_bytes": 12355
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.ellipse.Ellipse",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.ellipse.Ellipse.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.ellipse.Ellipse.plot3d",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Ellipse",
+          "qualified_name": "sage.plot.ellipse.Ellipse",
+          "signature": "(x, y, r1, r2, angle, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.ellipse.ellipse",
+          "kind": "function",
+          "name": "ellipse",
+          "qualified_name": "sage.plot.ellipse.ellipse",
+          "signature": "(center, r1, r2, angle=0, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.graphics",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/graphics.py",
+        "sha256": "789ce54521daea696bace01922d82715fe05dc8802cdd87eb10a770661a1c23d",
+        "sha256_scope": "source-file",
+        "size_bytes": 142623
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.graphics.Graphics",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "add_primitive",
+              "qualified_name": "sage.plot.graphics.Graphics.add_primitive",
+              "signature": "(self, primitive)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "aspect_ratio",
+              "qualified_name": "sage.plot.graphics.Graphics.aspect_ratio",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes",
+              "qualified_name": "sage.plot.graphics.Graphics.axes",
+              "signature": "(self, show=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_color",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_color",
+              "signature": "(self, c=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_label_color",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_label_color",
+              "signature": "(self, c=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_labels",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_labels",
+              "signature": "(self, l=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_labels_size",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_labels_size",
+              "signature": "(self, s=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_range",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_range",
+              "signature": "(self, xmin=None, xmax=None, ymin=None, ymax=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "axes_width",
+              "qualified_name": "sage.plot.graphics.Graphics.axes_width",
+              "signature": "(self, w=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "description",
+              "qualified_name": "sage.plot.graphics.Graphics.description",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "flip",
+              "qualified_name": "sage.plot.graphics.Graphics.flip",
+              "signature": "(self, flip_x=False, flip_y=False)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "fontsize",
+              "qualified_name": "sage.plot.graphics.Graphics.fontsize",
+              "signature": "(self, s=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_axes_range",
+              "qualified_name": "sage.plot.graphics.Graphics.get_axes_range",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.graphics.Graphics.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "inset",
+              "qualified_name": "sage.plot.graphics.Graphics.inset",
+              "signature": "(self, graphics, pos=None, fontsize=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "legend",
+              "qualified_name": "sage.plot.graphics.Graphics.legend",
+              "signature": "(self, show=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "matplotlib",
+              "qualified_name": "sage.plot.graphics.Graphics.matplotlib",
+              "signature": "(self, filename=None, xmin=None, xmax=None, ymin=None, ymax=None, figsize=None, figure=None, sub=None, axes=None, axes_labels=None, axes_labels_size=None, flip_x=False, flip_y=False, fontsize=None, frame=False, verify=True, aspect_ratio=None, gridlines=None, gridlinesstyle=None, vgridlinesstyle=None, hgridlinesstyle=None, show_legend=None, legend_options=None, axes_pad=None, ticks_integer=None, tick_formatter=None, ticks=None, title=None, title_pos=None, base=None, scale=None, stylesheet=None, typeset='default')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.graphics.Graphics.plot",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.graphics.Graphics.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save",
+              "qualified_name": "sage.plot.graphics.Graphics.save",
+              "signature": "(self, filename, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save_image",
+              "qualified_name": "sage.plot.graphics.Graphics.save_image",
+              "signature": "(self, filename=None, *args, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_aspect_ratio",
+              "qualified_name": "sage.plot.graphics.Graphics.set_aspect_ratio",
+              "signature": "(self, ratio)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_axes_range",
+              "qualified_name": "sage.plot.graphics.Graphics.set_axes_range",
+              "signature": "(self, xmin=None, xmax=None, ymin=None, ymax=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_flip",
+              "qualified_name": "sage.plot.graphics.Graphics.set_flip",
+              "signature": "(self, flip_x=None, flip_y=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_legend_options",
+              "qualified_name": "sage.plot.graphics.Graphics.set_legend_options",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.plot.graphics.Graphics.show",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tick_label_color",
+              "qualified_name": "sage.plot.graphics.Graphics.tick_label_color",
+              "signature": "(self, c=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "xmax",
+              "qualified_name": "sage.plot.graphics.Graphics.xmax",
+              "signature": "(self, xmax=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "xmin",
+              "qualified_name": "sage.plot.graphics.Graphics.xmin",
+              "signature": "(self, xmin=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ymax",
+              "qualified_name": "sage.plot.graphics.Graphics.ymax",
+              "signature": "(self, ymax=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ymin",
+              "qualified_name": "sage.plot.graphics.Graphics.ymin",
+              "signature": "(self, ymin=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Graphics",
+          "qualified_name": "sage.plot.graphics.Graphics",
+          "signature": "()",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.histogram",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/histogram.py",
+        "sha256": "e4e4744d1dc05d89c5afc4e53d4da6dcdf849600c543dde1406e37adba9bb00f",
+        "sha256_scope": "source-file",
+        "size_bytes": 15390
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.histogram.Histogram",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.histogram.Histogram.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Histogram",
+          "qualified_name": "sage.plot.histogram.Histogram",
+          "signature": "(datalist, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.histogram.histogram",
+          "kind": "function",
+          "name": "histogram",
+          "qualified_name": "sage.plot.histogram.histogram",
+          "signature": "(datalist, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.hyperbolic_arc",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/hyperbolic_arc.py",
+        "sha256": "fd5deb00891f1604a98b9e9d0230db24162f7bb103971f0afea095a5af48bf09",
+        "sha256_scope": "source-file",
+        "size_bytes": 13434
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.hyperbolic_arc.HyperbolicArcCore"
+          ],
+          "implementation_qualified_name": "sage.plot.hyperbolic_arc.HyperbolicArc",
+          "kind": "class",
+          "methods": [],
+          "name": "HyperbolicArc",
+          "qualified_name": "sage.plot.hyperbolic_arc.HyperbolicArc",
+          "signature": "(A, B, model, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.bezier_path.BezierPath"
+          ],
+          "implementation_qualified_name": "sage.plot.hyperbolic_arc.HyperbolicArcCore",
+          "kind": "class",
+          "methods": [],
+          "name": "HyperbolicArcCore",
+          "qualified_name": "sage.plot.hyperbolic_arc.HyperbolicArcCore",
+          "signature": "(path, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.hyperbolic_arc.hyperbolic_arc",
+          "kind": "function",
+          "name": "hyperbolic_arc",
+          "qualified_name": "sage.plot.hyperbolic_arc.hyperbolic_arc",
+          "signature": "(a, b, model='UHP', **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.hyperbolic_polygon",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/hyperbolic_polygon.py",
+        "sha256": "343bd56134b4d90958917060436faae4ceae51eabfe9b89dc1e132752e44338d",
+        "sha256_scope": "source-file",
+        "size_bytes": 14433
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.hyperbolic_arc.HyperbolicArcCore"
+          ],
+          "implementation_qualified_name": "sage.plot.hyperbolic_polygon.HyperbolicPolygon",
+          "kind": "class",
+          "methods": [],
+          "name": "HyperbolicPolygon",
+          "qualified_name": "sage.plot.hyperbolic_polygon.HyperbolicPolygon",
+          "signature": "(pts, model, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.hyperbolic_polygon.hyperbolic_polygon",
+          "kind": "function",
+          "name": "hyperbolic_polygon",
+          "qualified_name": "sage.plot.hyperbolic_polygon.hyperbolic_polygon",
+          "signature": "(pts, model='UHP', resolution=200, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.hyperbolic_polygon.hyperbolic_triangle",
+          "kind": "function",
+          "name": "hyperbolic_triangle",
+          "qualified_name": "sage.plot.hyperbolic_polygon.hyperbolic_triangle",
+          "signature": "(a, b, c, model='UHP', **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.hyperbolic_regular_polygon",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/hyperbolic_regular_polygon.py",
+        "sha256": "cf5053b2097bd4c087e75cddb7c8d51048818459bce3eeb3a53e274007dfefc8",
+        "sha256_scope": "source-file",
+        "size_bytes": 11186
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.hyperbolic_polygon.HyperbolicPolygon"
+          ],
+          "implementation_qualified_name": "sage.plot.hyperbolic_regular_polygon.HyperbolicRegularPolygon",
+          "kind": "class",
+          "methods": [],
+          "name": "HyperbolicRegularPolygon",
+          "qualified_name": "sage.plot.hyperbolic_regular_polygon.HyperbolicRegularPolygon",
+          "signature": "(sides, i_angle, center, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.hyperbolic_regular_polygon.hyperbolic_regular_polygon",
+          "kind": "function",
+          "name": "hyperbolic_regular_polygon",
+          "qualified_name": "sage.plot.hyperbolic_regular_polygon.hyperbolic_regular_polygon",
+          "signature": "(sides, i_angle, center=1.00000000000000*I, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.line",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/line.py",
+        "sha256": "8e7bc4f09e8919333588113f2faa737c776732437df72f891ec02554bbc34975",
+        "sha256_scope": "source-file",
+        "size_bytes": 22338
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive_xydata"
+          ],
+          "implementation_qualified_name": "sage.plot.line.Line",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.line.Line.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Line",
+          "qualified_name": "sage.plot.line.Line",
+          "signature": "(xdata, ydata, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.line.line",
+          "kind": "function",
+          "name": "line",
+          "qualified_name": "sage.plot.line.line",
+          "signature": "(points, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.line.line2d",
+          "kind": "function",
+          "name": "line2d",
+          "qualified_name": "sage.plot.line.line2d",
+          "signature": "(points, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.matrix_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/matrix_plot.py",
+        "sha256": "0da77539051dc7c323e0dadc2a60c84e9fdd42e89fc8916e2c4adc9ffbc87d70",
+        "sha256_scope": "source-file",
+        "size_bytes": 25060
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.matrix_plot.MatrixPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.matrix_plot.MatrixPlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "MatrixPlot",
+          "qualified_name": "sage.plot.matrix_plot.MatrixPlot",
+          "signature": "(xy_data_array, xrange, yrange, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.matrix_plot.matrix_plot",
+          "kind": "function",
+          "name": "matrix_plot",
+          "qualified_name": "sage.plot.matrix_plot.matrix_plot",
+          "signature": "(mat, xrange=None, yrange=None, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.misc",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/misc.py",
+        "sha256": "b3612ffbb1eb4ac8841e2c5b93ff4e19350a68e070dcea7920700c6c52665b41",
+        "sha256_scope": "source-file",
+        "size_bytes": 19749
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.ext.fast_callable.FastCallableFloatWrapper"
+          ],
+          "implementation_qualified_name": "sage.plot.misc.FastCallablePlotWrapper",
+          "kind": "class",
+          "methods": [],
+          "name": "FastCallablePlotWrapper",
+          "qualified_name": "sage.plot.misc.FastCallablePlotWrapper",
+          "signature": "(ff, imag_tol)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.misc.get_matplotlib_linestyle",
+          "kind": "function",
+          "name": "get_matplotlib_linestyle",
+          "qualified_name": "sage.plot.misc.get_matplotlib_linestyle",
+          "signature": "(linestyle, return_type)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.misc.setup_for_eval_on_grid",
+          "kind": "function",
+          "name": "setup_for_eval_on_grid",
+          "qualified_name": "sage.plot.misc.setup_for_eval_on_grid",
+          "signature": "(funcs, ranges, plot_points=None, return_vars=False, imaginary_tolerance=1e-08)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.misc.unify_arguments",
+          "kind": "function",
+          "name": "unify_arguments",
+          "qualified_name": "sage.plot.misc.unify_arguments",
+          "signature": "(funcs)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.multigraphics",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/multigraphics.py",
+        "sha256": "2e684ee1988db44c9f86b3767d0b2b2734b4331f0ab9b4a3e1d6c0e37e11ca3b",
+        "sha256_scope": "source-file",
+        "size_bytes": 47718
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.multigraphics.MultiGraphics"
+          ],
+          "implementation_qualified_name": "sage.plot.multigraphics.GraphicsArray",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "append",
+              "qualified_name": "sage.plot.multigraphics.GraphicsArray.append",
+              "signature": "(self, g)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ncols",
+              "qualified_name": "sage.plot.multigraphics.GraphicsArray.ncols",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "nrows",
+              "qualified_name": "sage.plot.multigraphics.GraphicsArray.nrows",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "position",
+              "qualified_name": "sage.plot.multigraphics.GraphicsArray.position",
+              "signature": "(self, index)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "GraphicsArray",
+          "qualified_name": "sage.plot.multigraphics.GraphicsArray",
+          "signature": "(array)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.multigraphics.MultiGraphics",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "append",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.append",
+              "signature": "(self, graphics, pos=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "inset",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.inset",
+              "signature": "(self, graphics, pos=None, fontsize=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "matplotlib",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.matplotlib",
+              "signature": "(self, figure=None, figsize=None, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.plot",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "position",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.position",
+              "signature": "(self, index)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.save",
+              "signature": "(self, filename, figsize=None, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save_image",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.save_image",
+              "signature": "(self, filename=None, *args, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.plot.multigraphics.MultiGraphics.show",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "MultiGraphics",
+          "qualified_name": "sage.plot.multigraphics.MultiGraphics",
+          "signature": "(graphics_list)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot.py",
+        "sha256": "ead269ff1f12f8dfba172c85ea1504f427324f1d53edf0dae466c0ce5777140f",
+        "sha256_scope": "source-file",
+        "size_bytes": 145708
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot.SelectiveFormatter",
+          "kind": "function",
+          "name": "SelectiveFormatter",
+          "qualified_name": "sage.plot.plot.SelectiveFormatter",
+          "signature": "(formatter, skip_values)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.adaptive_refinement",
+          "kind": "function",
+          "name": "adaptive_refinement",
+          "qualified_name": "sage.plot.plot.adaptive_refinement",
+          "signature": "(f, p1, p2, adaptive_tolerance=0.01, adaptive_recursion=5, level=0, *, excluded=False)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.generate_plot_points",
+          "kind": "function",
+          "name": "generate_plot_points",
+          "qualified_name": "sage.plot.plot.generate_plot_points",
+          "signature": "(f, xrange, plot_points=5, adaptive_tolerance=0.01, adaptive_recursion=5, randomize=True, initial_points=None, *, excluded=False, imaginary_tolerance=1e-08)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.graphics_array",
+          "kind": "function",
+          "name": "graphics_array",
+          "qualified_name": "sage.plot.plot.graphics_array",
+          "signature": "(array, nrows=None, ncols=None)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.list_plot",
+          "kind": "function",
+          "name": "list_plot",
+          "qualified_name": "sage.plot.plot.list_plot",
+          "signature": "(data, plotjoined=False, **kwargs)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.list_plot_loglog",
+          "kind": "function",
+          "name": "list_plot_loglog",
+          "qualified_name": "sage.plot.plot.list_plot_loglog",
+          "signature": "(data, plotjoined=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.list_plot_semilogx",
+          "kind": "function",
+          "name": "list_plot_semilogx",
+          "qualified_name": "sage.plot.plot.list_plot_semilogx",
+          "signature": "(data, plotjoined=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.list_plot_semilogy",
+          "kind": "function",
+          "name": "list_plot_semilogy",
+          "qualified_name": "sage.plot.plot.list_plot_semilogy",
+          "signature": "(data, plotjoined=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.minmax_data",
+          "kind": "function",
+          "name": "minmax_data",
+          "qualified_name": "sage.plot.plot.minmax_data",
+          "signature": "(xdata, ydata, dict=False) -> tuple | dict",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.multi_graphics",
+          "kind": "function",
+          "name": "multi_graphics",
+          "qualified_name": "sage.plot.plot.multi_graphics",
+          "signature": "(graphics_list)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.parametric_plot",
+          "kind": "function",
+          "name": "parametric_plot",
+          "qualified_name": "sage.plot.plot.parametric_plot",
+          "signature": "(funcs, *args, **kwargs)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.plot",
+          "kind": "function",
+          "name": "plot",
+          "qualified_name": "sage.plot.plot.plot",
+          "signature": "(funcs, *args, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.plot_loglog",
+          "kind": "function",
+          "name": "plot_loglog",
+          "qualified_name": "sage.plot.plot.plot_loglog",
+          "signature": "(funcs, *args, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.plot_semilogx",
+          "kind": "function",
+          "name": "plot_semilogx",
+          "qualified_name": "sage.plot.plot.plot_semilogx",
+          "signature": "(funcs, *args, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.plot_semilogy",
+          "kind": "function",
+          "name": "plot_semilogy",
+          "qualified_name": "sage.plot.plot.plot_semilogy",
+          "signature": "(funcs, *args, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.polar_plot",
+          "kind": "function",
+          "name": "polar_plot",
+          "qualified_name": "sage.plot.plot.polar_plot",
+          "signature": "(funcs, *args, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.reshape",
+          "kind": "function",
+          "name": "reshape",
+          "qualified_name": "sage.plot.plot.reshape",
+          "signature": "(v, n, m)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.to_float_list",
+          "kind": "function",
+          "name": "to_float_list",
+          "qualified_name": "sage.plot.plot.to_float_list",
+          "signature": "(v)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot.xydata_from_point_list",
+          "kind": "function",
+          "name": "xydata_from_point_list",
+          "qualified_name": "sage.plot.plot.xydata_from_point_list",
+          "signature": "(points)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.plot_field",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot_field.py",
+        "sha256": "a7d746144e5ea772e1a329e5d9e297902d42a3eeb8efe44d923779bf2f5edfec",
+        "sha256_scope": "source-file",
+        "size_bytes": 13022
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.plot_field.PlotField",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.plot_field.PlotField.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "PlotField",
+          "qualified_name": "sage.plot.plot_field.PlotField",
+          "signature": "(xpos_array, ypos_array, xvec_array, yvec_array, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot_field.plot_slope_field",
+          "kind": "function",
+          "name": "plot_slope_field",
+          "qualified_name": "sage.plot.plot_field.plot_slope_field",
+          "signature": "(f, xrange, yrange, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot_field.plot_vector_field",
+          "kind": "function",
+          "name": "plot_vector_field",
+          "qualified_name": "sage.plot.plot_field.plot_vector_field",
+          "signature": "(f_g, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.point",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/point.py",
+        "sha256": "1942e67cd0189ec765b2b3cdd1224960e1ca65574757fe427239aa39667ea759",
+        "sha256_scope": "source-file",
+        "size_bytes": 19625
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive_xydata"
+          ],
+          "implementation_qualified_name": "sage.plot.point.Point",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.point.Point.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Point",
+          "qualified_name": "sage.plot.point.Point",
+          "signature": "(xdata, ydata, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.point.point",
+          "kind": "function",
+          "name": "point",
+          "qualified_name": "sage.plot.point.point",
+          "signature": "(points, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.point.point2d",
+          "kind": "function",
+          "name": "point2d",
+          "qualified_name": "sage.plot.point.point2d",
+          "signature": "(points, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.point.point",
+          "kind": "function",
+          "name": "points",
+          "qualified_name": "sage.plot.point.points",
+          "signature": "(points, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.polygon",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/polygon.py",
+        "sha256": "ee9b98acdc27a272a8115fd9c4c4b48bf8c63ccbe1bb84b26219529071462ff3",
+        "sha256_scope": "source-file",
+        "size_bytes": 19441
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive_xydata"
+          ],
+          "implementation_qualified_name": "sage.plot.polygon.Polygon",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.polygon.Polygon.plot3d",
+              "signature": "(self, z=0, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Polygon",
+          "qualified_name": "sage.plot.polygon.Polygon",
+          "signature": "(xdata, ydata, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.polygon.polygon",
+          "kind": "function",
+          "name": "polygon",
+          "qualified_name": "sage.plot.polygon.polygon",
+          "signature": "(points, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.polygon.polygon2d",
+          "kind": "function",
+          "name": "polygon2d",
+          "qualified_name": "sage.plot.polygon.polygon2d",
+          "signature": "(points, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.primitive",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/primitive.py",
+        "sha256": "c573e93674690f391d5dfe884f05e9411947701892711b477ac95bf12ad5e17c",
+        "sha256_scope": "source-file",
+        "size_bytes": 7453
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.primitive.GraphicPrimitive",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "options",
+              "qualified_name": "sage.plot.primitive.GraphicPrimitive.options",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.primitive.GraphicPrimitive.plot3d",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_options",
+              "qualified_name": "sage.plot.primitive.GraphicPrimitive.set_options",
+              "signature": "(self, new_options)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_zorder",
+              "qualified_name": "sage.plot.primitive.GraphicPrimitive.set_zorder",
+              "signature": "(self, zorder)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "GraphicPrimitive",
+          "qualified_name": "sage.plot.primitive.GraphicPrimitive",
+          "signature": "(options)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.primitive.GraphicPrimitive_xydata",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.primitive.GraphicPrimitive_xydata.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "GraphicPrimitive_xydata",
+          "qualified_name": "sage.plot.primitive.GraphicPrimitive_xydata",
+          "signature": "(options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.scatter_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/scatter_plot.py",
+        "sha256": "9d649d97c6eb30310c4dd9c0e8b7a047b223bb1ec96e2c2bd616d7ab0c2f8e4c",
+        "sha256_scope": "source-file",
+        "size_bytes": 7401
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.scatter_plot.ScatterPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.scatter_plot.ScatterPlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ScatterPlot",
+          "qualified_name": "sage.plot.scatter_plot.ScatterPlot",
+          "signature": "(xdata, ydata, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.scatter_plot.scatter_plot",
+          "kind": "function",
+          "name": "scatter_plot",
+          "qualified_name": "sage.plot.scatter_plot.scatter_plot",
+          "signature": "(datalist, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.step",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/step.py",
+        "sha256": "2ef4e53a9751ba8c8ae28c5d089cdbececbaadc4571210bdda14e55f7f4eb17b",
+        "sha256_scope": "source-file",
+        "size_bytes": 2875
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.step.plot_step_function",
+          "kind": "function",
+          "name": "plot_step_function",
+          "qualified_name": "sage.plot.step.plot_step_function",
+          "signature": "(v, vertical_lines=True, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.streamline_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/streamline_plot.py",
+        "sha256": "3feb77a6b2f4590a2a4e2080874a7fff50a1e3e26e8dbd08f946856aba055b92",
+        "sha256_scope": "source-file",
+        "size_bytes": 11799
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.streamline_plot.StreamlinePlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.streamline_plot.StreamlinePlot.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "StreamlinePlot",
+          "qualified_name": "sage.plot.streamline_plot.StreamlinePlot",
+          "signature": "(xpos_array, ypos_array, xvec_array, yvec_array, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.streamline_plot.streamline_plot",
+          "kind": "function",
+          "name": "streamline_plot",
+          "qualified_name": "sage.plot.streamline_plot.streamline_plot",
+          "signature": "(f_g, xrange, yrange, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "2d",
+      "name": "sage.plot.text",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/text.py",
+        "sha256": "12cbc4dcb31fc1e1db3df1d0f4e2d7705d88afeb59e1fc35eb35ecbc2152a02a",
+        "sha256_scope": "source-file",
+        "size_bytes": 16149
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.primitive.GraphicPrimitive"
+          ],
+          "implementation_qualified_name": "sage.plot.text.Text",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_minmax_data",
+              "qualified_name": "sage.plot.text.Text.get_minmax_data",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot3d",
+              "qualified_name": "sage.plot.text.Text.plot3d",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Text",
+          "qualified_name": "sage.plot.text.Text",
+          "signature": "(string, point, options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.text.text",
+          "kind": "function",
+          "name": "text",
+          "qualified_name": "sage.plot.text.text",
+          "signature": "(string, xy, **options)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.base",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/base.pyx",
+        "sha256": "5e4134251bc99c01691fcd45aad9d7739e84a9db8c7e8bfa7d36edb35d069992",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 801912
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.BoundingSphere",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.base.BoundingSphere.transform",
+              "signature": "(self, T)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "BoundingSphere",
+          "qualified_name": "sage.plot.plot3d.base.BoundingSphere",
+          "signature": "(cen, r)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.Graphics3d",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "amf_ascii_string",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.amf_ascii_string",
+              "signature": "(self, name='surface')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "aspect_ratio",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.aspect_ratio",
+              "signature": "(self, v=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "default_render_params",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.default_render_params",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "export_jmol",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.export_jmol",
+              "signature": "(self, filename='jmol_shape.jmol', force_reload=False, zoom=1, spin=False, background=(1, 1, 1), stereo=False, mesh=False, dots=False, perspective_depth=True, orientation=(-764, -346, -545, 76.39), **ignored_kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "flatten",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.flatten",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "frame_aspect_ratio",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.frame_aspect_ratio",
+              "signature": "(self, v=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "mtl_str",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.mtl_str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.obj",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.plot",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ply_ascii_string",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.ply_ascii_string",
+              "signature": "(self, name='surface')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "rotate",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.rotate",
+              "signature": "(self, v, theta)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "rotateX",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.rotateX",
+              "signature": "(self, theta)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "rotateY",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.rotateY",
+              "signature": "(self, theta)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "rotateZ",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.rotateZ",
+              "signature": "(self, theta)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.save",
+              "signature": "(self, filename, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save_image",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.save_image",
+              "signature": "(self, filename, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "scale",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.scale",
+              "signature": "(self, *x)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.show",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_ascii_string",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.stl_ascii_string",
+              "signature": "(self, name='surface')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.stl_binary",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.tachyon",
+              "signature": "(self, zoom=1.0, antialiasing=False, figsize=[5, 5], raydepth=8, camera_position=[2.3, 2.4, 2.0], updir=[0, 0, 1], light_position=[4.0, 3.0, 2.0], viewdir=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "testing_render_params",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.testing_render_params",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texture_set",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.texture_set",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.transform",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "translate",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.translate",
+              "signature": "(self, *x)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "viewpoint",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.viewpoint",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3d.x3d",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Graphics3d",
+          "qualified_name": "sage.plot.plot3d.base.Graphics3d",
+          "signature": "(self, /, *args, **kwargs)",
+          "signature_source": "constructor_inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.Graphics3d"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.Graphics3dGroup",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "flatten",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.flatten",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.plot",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_texture",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.set_texture",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.stl_binary_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texture_set",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.texture_set",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.transform",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_str",
+              "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup.x3d_str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Graphics3dGroup",
+          "qualified_name": "sage.plot.plot3d.base.Graphics3dGroup",
+          "signature": "(all=(), rot=None, trans=None, scale=None, T=None)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.Graphics3dGroup"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.KeyframeAnimationGroup",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.base.KeyframeAnimationGroup.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "KeyframeAnimationGroup",
+          "qualified_name": "sage.plot.plot3d.base.KeyframeAnimationGroup",
+          "signature": "(all=(), **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.Graphics3d"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.PrimitiveObject",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_texture",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.get_texture",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_texture",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.set_texture",
+              "signature": "(self, texture=None, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texture_set",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.texture_set",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_str",
+              "qualified_name": "sage.plot.plot3d.base.PrimitiveObject.x3d_str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "PrimitiveObject",
+          "qualified_name": "sage.plot.plot3d.base.PrimitiveObject",
+          "signature": "(**kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.RenderParams",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "pop_transform",
+              "qualified_name": "sage.plot.plot3d.base.RenderParams.pop_transform",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "push_transform",
+              "qualified_name": "sage.plot.plot3d.base.RenderParams.push_transform",
+              "signature": "(self, T)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "unique_name",
+              "qualified_name": "sage.plot.plot3d.base.RenderParams.unique_name",
+              "signature": "(self, desc='name')",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "RenderParams",
+          "qualified_name": "sage.plot.plot3d.base.RenderParams",
+          "signature": "(**kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.Graphics3dGroup"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.TransformGroup",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "flatten",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.flatten",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_transformation",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.get_transformation",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.stl_binary_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.transform",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_str",
+              "qualified_name": "sage.plot.plot3d.base.TransformGroup.x3d_str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TransformGroup",
+          "qualified_name": "sage.plot.plot3d.base.TransformGroup",
+          "signature": "(all=[], rot=None, trans=None, scale=None, T=None)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.Graphics3d"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.base.Viewpoint",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "x3d_str",
+              "qualified_name": "sage.plot.plot3d.base.Viewpoint.x3d_str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Viewpoint",
+          "qualified_name": "sage.plot.plot3d.base.Viewpoint",
+          "signature": "(*x)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.flatten_list",
+          "kind": "function",
+          "name": "flatten_list",
+          "qualified_name": "sage.plot.plot3d.base.flatten_list",
+          "signature": "(L)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.max3",
+          "kind": "function",
+          "name": "max3",
+          "qualified_name": "sage.plot.plot3d.base.max3",
+          "signature": "(v)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.min3",
+          "kind": "function",
+          "name": "min3",
+          "qualified_name": "sage.plot.plot3d.base.min3",
+          "signature": "(v)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.optimal_aspect_ratios",
+          "kind": "function",
+          "name": "optimal_aspect_ratios",
+          "qualified_name": "sage.plot.plot3d.base.optimal_aspect_ratios",
+          "signature": "(ratios)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.optimal_extra_kwds",
+          "kind": "function",
+          "name": "optimal_extra_kwds",
+          "qualified_name": "sage.plot.plot3d.base.optimal_extra_kwds",
+          "signature": "(v)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.base.point_list_bounding_box",
+          "kind": "function",
+          "name": "point_list_bounding_box",
+          "qualified_name": "sage.plot.plot3d.base.point_list_bounding_box",
+          "signature": "(v)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.implicit_plot3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/implicit_plot3d.py",
+        "sha256": "7cc4db005ba706eeea61adf21df5bbec69db5b7151696d27613debe81c3e5948",
+        "sha256_scope": "source-file",
+        "size_bytes": 23220
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_plot3d.implicit_plot3d",
+          "kind": "function",
+          "name": "implicit_plot3d",
+          "qualified_name": "sage.plot.plot3d.implicit_plot3d.implicit_plot3d",
+          "signature": "(f, xrange, yrange, zrange, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.implicit_surface",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/implicit_surface.pyx",
+        "sha256": "2faa0d981658e7bf5e481f301fdd2bd240c2a6ffc9a139124e1994a1d735e5e6",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 358144
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.plot3d.index_face_set.IndexFaceSet"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangulate",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface.triangulate",
+              "signature": "(self, force=False)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ImplicitSurface",
+          "qualified_name": "sage.plot.plot3d.implicit_surface.ImplicitSurface",
+          "signature": "(f, xrange, yrange, zrange, contour=0, plot_points='automatic', region=None, smooth=True, gradient=None, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubes",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "finish",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubes.finish",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "MarchingCubes",
+          "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubes",
+          "signature": "(xrange, yrange, zrange, contour, plot_points, transform=None, region=None, gradient=None, smooth=True, color_function=None, colormap=None)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.implicit_surface.MarchingCubes"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubesTriangles",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "add_triangle",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubesTriangles.add_triangle",
+              "signature": "(self, v1, v2, v3)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "process_cubes",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubesTriangles.process_cubes",
+              "signature": "(self, _left, _right)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "process_slice",
+              "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubesTriangles.process_slice",
+              "signature": "(self, x, slice)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "MarchingCubesTriangles",
+          "qualified_name": "sage.plot.plot3d.implicit_surface.MarchingCubesTriangles",
+          "signature": "(*args, **kwargs)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_surface.VertexInfo",
+          "kind": "class",
+          "methods": [],
+          "name": "VertexInfo",
+          "qualified_name": "sage.plot.plot3d.implicit_surface.VertexInfo",
+          "signature": "(self, /, *args, **kwargs)",
+          "signature_source": "constructor_inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.implicit_surface.render_implicit",
+          "kind": "function",
+          "name": "render_implicit",
+          "qualified_name": "sage.plot.plot3d.implicit_surface.render_implicit",
+          "signature": "(f, xrange, yrange, zrange, plot_points, cube_marchers)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.index_face_set",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/index_face_set.pyx",
+        "sha256": "78719ac7578f7513fc823ef31609c76333275c5efdde8000f40885a7e0505857",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 469216
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.EdgeIter",
+          "kind": "class",
+          "methods": [],
+          "name": "EdgeIter",
+          "qualified_name": "sage.plot.plot3d.index_face_set.EdgeIter",
+          "signature": "(face_set)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.FaceIter",
+          "kind": "class",
+          "methods": [],
+          "name": "FaceIter",
+          "qualified_name": "sage.plot.plot3d.index_face_set.FaceIter",
+          "signature": "(face_set)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.PrimitiveObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "add_condition",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.add_condition",
+              "signature": "(self, condition, N=100, eps=1e-06)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "dual",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.dual",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "edge_list",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.edge_list",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "edges",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.edges",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "face_list",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.face_list",
+              "signature": "(self, render_params=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "faces",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.faces",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "has_local_colors",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.has_local_colors",
+              "signature": "(self) -> 'bool'",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "index_faces",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.index_faces",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "index_faces_with_colors",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.index_faces_with_colors",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "is_enclosed",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.is_enclosed",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "partition",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.partition",
+              "signature": "(self, f)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "sticker",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.sticker",
+              "signature": "(self, face_list, width, hover, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stickers",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.stickers",
+              "signature": "(self, colors, width, hover)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.stl_binary_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "vertex_list",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.vertex_list",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "vertices",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.vertices",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "IndexFaceSet",
+          "qualified_name": "sage.plot.plot3d.index_face_set.IndexFaceSet",
+          "signature": "(faces, point_list=None, enclosed=False, texture_list=None, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.VertexIter",
+          "kind": "class",
+          "methods": [],
+          "name": "VertexIter",
+          "qualified_name": "sage.plot.plot3d.index_face_set.VertexIter",
+          "signature": "(face_set)",
+          "signature_source": "docstring"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.cut_edge_by_bisection",
+          "kind": "function",
+          "name": "cut_edge_by_bisection",
+          "qualified_name": "sage.plot.plot3d.index_face_set.cut_edge_by_bisection",
+          "signature": "(pointa, pointb, condition, eps=1e-06, N=100)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.midpoint",
+          "kind": "function",
+          "name": "midpoint",
+          "qualified_name": "sage.plot.plot3d.index_face_set.midpoint",
+          "signature": "(pointa, pointb, w)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.index_face_set.sticker",
+          "kind": "function",
+          "name": "sticker",
+          "qualified_name": "sage.plot.plot3d.index_face_set.sticker",
+          "signature": "(face, width, hover)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.introduction",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/introduction.py",
+        "sha256": "3169b260ed1a01a8b3bd51f8a2a23899d8a55314cc5399116b68a9d086e7f3aa",
+        "sha256_scope": "source-file",
+        "size_bytes": 5330
+      },
+      "symbols": []
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.list_plot3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/list_plot3d.py",
+        "sha256": "013e01bbf5c997fc34eeb4ec259a5258971a4f91ae3bf51c90070dea508fdbf8",
+        "sha256_scope": "source-file",
+        "size_bytes": 22394
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d",
+          "kind": "function",
+          "name": "list_plot3d",
+          "qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d",
+          "signature": "(v, interpolation_type='default', point_list=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_array_of_arrays",
+          "kind": "function",
+          "name": "list_plot3d_array_of_arrays",
+          "qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_array_of_arrays",
+          "signature": "(v, interpolation_type, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_matrix",
+          "kind": "function",
+          "name": "list_plot3d_matrix",
+          "qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_matrix",
+          "signature": "(m, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_tuples",
+          "kind": "function",
+          "name": "list_plot3d_tuples",
+          "qualified_name": "sage.plot.plot3d.list_plot3d.list_plot3d_tuples",
+          "signature": "(v, interpolation_type, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.parametric_plot3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/parametric_plot3d.py",
+        "sha256": "8090043994687b01fc6da50dfdfd2f967053a65cb6462fbb82ccc4f7f76f2ad9",
+        "sha256_scope": "source-file",
+        "size_bytes": 40364
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.parametric_plot3d.parametric_plot3d",
+          "kind": "function",
+          "name": "parametric_plot3d",
+          "qualified_name": "sage.plot.plot3d.parametric_plot3d.parametric_plot3d",
+          "signature": "(f, urange, vrange=None, plot_points='automatic', boundary_style=None, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.parametric_surface",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/parametric_surface.pyx",
+        "sha256": "4bec6385d1474aedd7e7e08cb1efaebe615f03ae11efdf3745f8fb5b03886d24",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 194296
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.plot3d.parametric_surface.ParametricSurface"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.parametric_surface.MoebiusStrip",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "eval",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.MoebiusStrip.eval",
+              "signature": "(self, u, v)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.MoebiusStrip.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "MoebiusStrip",
+          "qualified_name": "sage.plot.plot3d.parametric_surface.MoebiusStrip",
+          "signature": "(r, width, twists=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.index_face_set.IndexFaceSet"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "default_render_params",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.default_render_params",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "dual",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.dual",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "eval",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.eval",
+              "signature": "(self, u, v)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "is_enclosed",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.is_enclosed",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "json_repr",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.json_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.plot",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangulate",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.triangulate",
+              "signature": "(self, render_params=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ParametricSurface",
+          "qualified_name": "sage.plot.plot3d.parametric_surface.ParametricSurface",
+          "signature": "(f=None, domain=None, **kwds)",
+          "signature_source": "docstring"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.platonic",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/platonic.py",
+        "sha256": "85a35230e0737721a3c03be7b2e23deddc3048c8496f283972991c35d3b5cd06",
+        "sha256_scope": "source-file",
+        "size_bytes": 17613
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.cube",
+          "kind": "function",
+          "name": "cube",
+          "qualified_name": "sage.plot.plot3d.platonic.cube",
+          "signature": "(center=(0, 0, 0), size=1, color=None, frame_thickness=0, frame_color=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.dodecahedron",
+          "kind": "function",
+          "name": "dodecahedron",
+          "qualified_name": "sage.plot.plot3d.platonic.dodecahedron",
+          "signature": "(center=(0, 0, 0), size=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.icosahedron",
+          "kind": "function",
+          "name": "icosahedron",
+          "qualified_name": "sage.plot.plot3d.platonic.icosahedron",
+          "signature": "(center=(0, 0, 0), size=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.index_face_set",
+          "kind": "function",
+          "name": "index_face_set",
+          "qualified_name": "sage.plot.plot3d.platonic.index_face_set",
+          "signature": "(face_list, point_list, enclosed, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.octahedron",
+          "kind": "function",
+          "name": "octahedron",
+          "qualified_name": "sage.plot.plot3d.platonic.octahedron",
+          "signature": "(center=(0, 0, 0), size=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.prep",
+          "kind": "function",
+          "name": "prep",
+          "qualified_name": "sage.plot.plot3d.platonic.prep",
+          "signature": "(G, center, size, kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.platonic.tetrahedron",
+          "kind": "function",
+          "name": "tetrahedron",
+          "qualified_name": "sage.plot.plot3d.platonic.tetrahedron",
+          "signature": "(center=(0, 0, 0), size=1, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.plot3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/plot3d.py",
+        "sha256": "db4bc1e7924889a1b51e4fee26babd495f89a29cc1b7543d4d7f9a76f61ef64e",
+        "sha256_scope": "source-file",
+        "size_bytes": 51182
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.plot3d.plot3d._Coordinates"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.Cylindrical",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.plot3d.Cylindrical.transform",
+              "signature": "(self, radius=None, azimuth=None, height=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Cylindrical",
+          "qualified_name": "sage.plot.plot3d.plot3d.Cylindrical",
+          "signature": "(dep_var, indep_vars)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.plot3d._Coordinates"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.Spherical",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.plot3d.Spherical.transform",
+              "signature": "(self, radius=None, azimuth=None, inclination=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Spherical",
+          "qualified_name": "sage.plot.plot3d.plot3d.Spherical",
+          "signature": "(dep_var, indep_vars)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.plot3d._Coordinates"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.SphericalElevation",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "transform",
+              "qualified_name": "sage.plot.plot3d.plot3d.SphericalElevation.transform",
+              "signature": "(self, radius=None, azimuth=None, elevation=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "SphericalElevation",
+          "qualified_name": "sage.plot.plot3d.plot3d.SphericalElevation",
+          "signature": "(dep_var, indep_vars)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.TrivialTriangleFactory",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "smooth_triangle",
+              "qualified_name": "sage.plot.plot3d.plot3d.TrivialTriangleFactory.smooth_triangle",
+              "signature": "(self, a, b, c, da, db, dc, color=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangle",
+              "qualified_name": "sage.plot.plot3d.plot3d.TrivialTriangleFactory.triangle",
+              "signature": "(self, a, b, c, color=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TrivialTriangleFactory",
+          "qualified_name": "sage.plot.plot3d.plot3d.TrivialTriangleFactory",
+          "signature": "()",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.axes",
+          "kind": "function",
+          "name": "axes",
+          "qualified_name": "sage.plot.plot3d.plot3d.axes",
+          "signature": "(scale=1, radius=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.cylindrical_plot3d",
+          "kind": "function",
+          "name": "cylindrical_plot3d",
+          "qualified_name": "sage.plot.plot3d.plot3d.cylindrical_plot3d",
+          "signature": "(f, urange, vrange, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.plot3d",
+          "kind": "function",
+          "name": "plot3d",
+          "qualified_name": "sage.plot.plot3d.plot3d.plot3d",
+          "signature": "(f, urange, vrange, adaptive=False, transformation=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.plot3d_adaptive",
+          "kind": "function",
+          "name": "plot3d_adaptive",
+          "qualified_name": "sage.plot.plot3d.plot3d.plot3d_adaptive",
+          "signature": "(f, x_range, y_range, color='automatic', grad_f=None, max_bend=0.5, max_depth=5, initial_depth=4, num_colors=128, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot3d.spherical_plot3d",
+          "kind": "function",
+          "name": "spherical_plot3d",
+          "qualified_name": "sage.plot.plot3d.plot3d.spherical_plot3d",
+          "signature": "(f, urange, vrange, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.plot_field3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/plot_field3d.py",
+        "sha256": "3f9a314384620365814e307d50940394c30f4001243e8c5b90d2fc629abafb1b",
+        "sha256_scope": "source-file",
+        "size_bytes": 5787
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.plot_field3d.plot_vector_field3d",
+          "kind": "function",
+          "name": "plot_vector_field3d",
+          "qualified_name": "sage.plot.plot3d.plot_field3d.plot_vector_field3d",
+          "signature": "(functions, xrange, yrange, zrange, plot_points=5, colors='jet', center_arrows=False, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.revolution_plot3d",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/revolution_plot3d.py",
+        "sha256": "d9752364ce6e3ba0e0ee6d074e6771b9a94c66af7b05c0d09dd278b9d0e73f41",
+        "sha256_scope": "source-file",
+        "size_bytes": 10956
+      },
+      "symbols": [
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.revolution_plot3d.revolution_plot3d",
+          "kind": "function",
+          "name": "revolution_plot3d",
+          "qualified_name": "sage.plot.plot3d.revolution_plot3d.revolution_plot3d",
+          "signature": "(curve, trange, phirange=None, parallel_axis='z', axis=(0, 0), print_vector=False, show_curve=False, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.shapes",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/shapes.pyx",
+        "sha256": "cbf8dbe9b5f938cd6295b1be109fb5a718fb8f7269e0733ffca14a4fa7532b1d",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 324880
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.plot3d.index_face_set.IndexFaceSet"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Box",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes.Box.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.shapes.Box.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Box",
+          "qualified_name": "sage.plot.plot3d.shapes.Box",
+          "signature": "(*size, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.ColorCube",
+          "kind": "function",
+          "name": "ColorCube",
+          "qualified_name": "sage.plot.plot3d.shapes.ColorCube",
+          "signature": "(size, colors, opacity=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.parametric_surface.ParametricSurface"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Cone",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.shapes.Cone.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.shapes.Cone.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Cone",
+          "qualified_name": "sage.plot.plot3d.shapes.Cone",
+          "signature": "(radius, height, closed=True, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.parametric_surface.ParametricSurface"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Cylinder",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_endpoints",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.get_endpoints",
+              "signature": "(self, transform=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_radius",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.get_radius",
+              "signature": "(self, transform=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.shapes.Cylinder.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Cylinder",
+          "qualified_name": "sage.plot.plot3d.shapes.Cylinder",
+          "signature": "(radius, height, closed=True, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.LineSegment",
+          "kind": "function",
+          "name": "LineSegment",
+          "qualified_name": "sage.plot.plot3d.shapes.LineSegment",
+          "signature": "(start, end, thickness=1, radius=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.parametric_surface.ParametricSurface"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Sphere",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes.Sphere.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.shapes.Sphere.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Sphere.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Sphere.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.shapes.Sphere.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Sphere",
+          "qualified_name": "sage.plot.plot3d.shapes.Sphere",
+          "signature": "(radius, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.PrimitiveObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Text",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_geometry",
+              "qualified_name": "sage.plot.plot3d.shapes.Text.x3d_geometry",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Text",
+          "qualified_name": "sage.plot.plot3d.shapes.Text",
+          "signature": "(string, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.parametric_surface.ParametricSurface"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.Torus",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_grid",
+              "qualified_name": "sage.plot.plot3d.shapes.Torus.get_grid",
+              "signature": "(self, ds)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Torus",
+          "qualified_name": "sage.plot.plot3d.shapes.Torus",
+          "signature": "(R=1, r=.3, **kwds)",
+          "signature_source": "docstring"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.arrow3d",
+          "kind": "function",
+          "name": "arrow3d",
+          "qualified_name": "sage.plot.plot3d.shapes.arrow3d",
+          "signature": "(start, end, width=1, radius=None, head_radius=None, head_len=None, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes.validate_frame_size",
+          "kind": "function",
+          "name": "validate_frame_size",
+          "qualified_name": "sage.plot.plot3d.shapes.validate_frame_size",
+          "signature": "(size)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.shapes2",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/shapes2.py",
+        "sha256": "c48e36072c4e01821c75887885292473199134ffd40fc3bb3ef9cf689d33f8d8",
+        "sha256_scope": "source-file",
+        "size_bytes": 52121
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.plot.plot3d.base.PrimitiveObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.Line",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "corners",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.corners",
+              "signature": "(self, corner_cutoff=None, max_len=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.stl_binary_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Line.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Line",
+          "qualified_name": "sage.plot.plot3d.shapes2.Line",
+          "signature": "(points, thickness=5, corner_cutoff=0.5, arrow_head=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.base.PrimitiveObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.Point",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "bounding_box",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.bounding_box",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.jmol_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "obj_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.obj_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "stl_binary_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.stl_binary_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.tachyon_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "threejs_repr",
+              "qualified_name": "sage.plot.plot3d.shapes2.Point.threejs_repr",
+              "signature": "(self, render_params)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Point",
+          "qualified_name": "sage.plot.plot3d.shapes2.Point",
+          "signature": "(center, size=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.bezier3d",
+          "kind": "function",
+          "name": "bezier3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.bezier3d",
+          "signature": "(path, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.frame3d",
+          "kind": "function",
+          "name": "frame3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.frame3d",
+          "signature": "(lower_left, upper_right, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.frame_labels",
+          "kind": "function",
+          "name": "frame_labels",
+          "qualified_name": "sage.plot.plot3d.shapes2.frame_labels",
+          "signature": "(lower_left, upper_right, label_lower_left, label_upper_right, eps=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.line3d",
+          "kind": "function",
+          "name": "line3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.line3d",
+          "signature": "(points, thickness=1, radius=None, arrow_head=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.point3d",
+          "kind": "function",
+          "name": "point3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.point3d",
+          "signature": "(v, size=5, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.polygon3d",
+          "kind": "function",
+          "name": "polygon3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.polygon3d",
+          "signature": "(points, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.polygons3d",
+          "kind": "function",
+          "name": "polygons3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.polygons3d",
+          "signature": "(faces, points, **options)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.ruler",
+          "kind": "function",
+          "name": "ruler",
+          "qualified_name": "sage.plot.plot3d.shapes2.ruler",
+          "signature": "(start, end, ticks=4, sub_ticks=4, absolute=False, snap=False, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.ruler_frame",
+          "kind": "function",
+          "name": "ruler_frame",
+          "qualified_name": "sage.plot.plot3d.shapes2.ruler_frame",
+          "signature": "(lower_left, upper_right, ticks=4, sub_ticks=4, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.sphere",
+          "kind": "function",
+          "name": "sphere",
+          "qualified_name": "sage.plot.plot3d.shapes2.sphere",
+          "signature": "(center=(0, 0, 0), size=1, **kwds)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.shapes2.text3d",
+          "kind": "function",
+          "name": "text3d",
+          "qualified_name": "sage.plot.plot3d.shapes2.text3d",
+          "signature": "(txt, x_y_z, **kwds)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.tachyon",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/tachyon.py",
+        "sha256": "433e0ee1a726febd344d3d22b8e5269aa82ee526bb8bd2ed96e751516b32f874",
+        "sha256_scope": "source-file",
+        "size_bytes": 63935
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Axis_aligned_box",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Axis_aligned_box.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Axis_aligned_box",
+          "qualified_name": "sage.plot.plot3d.tachyon.Axis_aligned_box",
+          "signature": "(min_p, max_p, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Cylinder",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Cylinder.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Cylinder",
+          "qualified_name": "sage.plot.plot3d.tachyon.Cylinder",
+          "signature": "(center, axis, radius, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.FCylinder",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.FCylinder.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "FCylinder",
+          "qualified_name": "sage.plot.plot3d.tachyon.FCylinder",
+          "signature": "(base, apex, radius, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.FractalLandscape",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.FractalLandscape.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "FractalLandscape",
+          "qualified_name": "sage.plot.plot3d.tachyon.FractalLandscape",
+          "signature": "(res, scale, center, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Light",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Light.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Light",
+          "qualified_name": "sage.plot.plot3d.tachyon.Light",
+          "signature": "(center, radius, color)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.ParametricPlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.ParametricPlot.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tol",
+              "qualified_name": "sage.plot.plot3d.tachyon.ParametricPlot.tol",
+              "signature": "(self, est, val)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "ParametricPlot",
+          "qualified_name": "sage.plot.plot3d.tachyon.ParametricPlot",
+          "signature": "(f, t_0, t_f, tex, r=0.1, cylinders=True, min_depth=4, max_depth=8, e_rel=0.01, e_abs=0.01)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Plane",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Plane.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Plane",
+          "qualified_name": "sage.plot.plot3d.tachyon.Plane",
+          "signature": "(center, normal, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Ring",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Ring.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Ring",
+          "qualified_name": "sage.plot.plot3d.tachyon.Ring",
+          "signature": "(center, normal, inner, outer, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Sphere",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Sphere.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Sphere",
+          "qualified_name": "sage.plot.plot3d.tachyon.Sphere",
+          "signature": "(center, radius, texture)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Tachyon",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "axis_aligned_box",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.axis_aligned_box",
+              "signature": "(self, min_p, max_p, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "cylinder",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.cylinder",
+              "signature": "(self, center, axis, radius, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "fcylinder",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.fcylinder",
+              "signature": "(self, base, apex, radius, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "fractal_landscape",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.fractal_landscape",
+              "signature": "(self, res, scale, center, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "light",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.light",
+              "signature": "(self, center, radius, color)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "parametric_plot",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.parametric_plot",
+              "signature": "(self, f, t_0, t_f, tex, r=0.1, cylinders=True, min_depth=4, max_depth=8, e_rel=0.01, e_abs=0.01)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plane",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.plane",
+              "signature": "(self, center, normal, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.plot",
+              "signature": "(self, f, xmin_xmax, ymin_ymax, texture, grad_f=None, max_bend=0.7, max_depth=5, initial_depth=3, num_colors=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "ring",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.ring",
+              "signature": "(self, center, normal, inner, outer, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.save",
+              "signature": "(self, filename='sage.png', verbose=None, extra_opts='')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "save_image",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.save_image",
+              "signature": "(self, filename=None, *args, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "show",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.show",
+              "signature": "(self, **kwds)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "smooth_triangle",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.smooth_triangle",
+              "signature": "(self, vertex_1, vertex_2, vertex_3, normal_1, normal_2, normal_3, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "sphere",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.sphere",
+              "signature": "(self, center, radius, texture)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texfunc",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.texfunc",
+              "signature": "(self, type=0, center=(0, 0, 0), rotate=(0, 0, 0), scale=(1, 1, 1), imagefile='')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texture",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.texture",
+              "signature": "(self, name, ambient=0.2, diffuse=0.8, specular=0.0, opacity=1.0, color=(1.0, 0.0, 0.5), texfunc=0, phong=0, phongsize=0.5, phongtype='PLASTIC', imagefile='')",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "texture_recolor",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.texture_recolor",
+              "signature": "(self, name, colors)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangle",
+              "qualified_name": "sage.plot.plot3d.tachyon.Tachyon.triangle",
+              "signature": "(self, vertex_1, vertex_2, vertex_3, texture)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Tachyon",
+          "qualified_name": "sage.plot.plot3d.tachyon.Tachyon",
+          "signature": "(xres=350, yres=350, zoom=1.0, antialiasing=False, aspectratio=1.0, raydepth=8, camera_position=None, camera_center=None, updir=[0, 0, 1], look_at=[0, 0, 0], viewdir=None, projection='PERSPECTIVE', focallength='', aperture='', frustum='')",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.tri_plot.SmoothTriangle"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.TachyonSmoothTriangle",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.TachyonSmoothTriangle.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TachyonSmoothTriangle",
+          "qualified_name": "sage.plot.plot3d.tachyon.TachyonSmoothTriangle",
+          "signature": "(a, b, c, da, db, dc, color=0)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.tri_plot.Triangle"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangle",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangle.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TachyonTriangle",
+          "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangle",
+          "signature": "(a, b, c, color=0)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.tri_plot.TriangleFactory"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangleFactory",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_colors",
+              "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangleFactory.get_colors",
+              "signature": "(self, list)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "smooth_triangle",
+              "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangleFactory.smooth_triangle",
+              "signature": "(self, a, b, c, da, db, dc, color=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangle",
+              "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangleFactory.triangle",
+              "signature": "(self, a, b, c, color=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TachyonTriangleFactory",
+          "qualified_name": "sage.plot.plot3d.tachyon.TachyonTriangleFactory",
+          "signature": "(tach, tex)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Texfunc",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Texfunc.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Texfunc",
+          "qualified_name": "sage.plot.plot3d.tachyon.Texfunc",
+          "signature": "(ttype=0, center=(0, 0, 0), rotate=(0, 0, 0), scale=(1, 1, 1), imagefile='')",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.Texture",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "recolor",
+              "qualified_name": "sage.plot.plot3d.tachyon.Texture.recolor",
+              "signature": "(self, name, color)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tachyon.Texture.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Texture",
+          "qualified_name": "sage.plot.plot3d.tachyon.Texture",
+          "signature": "(name, ambient=0.2, diffuse=0.8, specular=0.0, opacity=1.0, color=(1.0, 0.0, 0.5), texfunc=0, phong=0, phongsize=0, phongtype='PLASTIC', imagefile='')",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.tachyon.tostr",
+          "kind": "function",
+          "name": "tostr",
+          "qualified_name": "sage.plot.plot3d.tachyon.tostr",
+          "signature": "(s, length=3, out_type=<class 'float'>)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.texture",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/texture.py",
+        "sha256": "369ea551086e171df24986ecfb50d20c1809140bfa8e626d7c742b0c30712928",
+        "sha256_scope": "source-file",
+        "size_bytes": 13683
+      },
+      "symbols": [
+        {
+          "bases": [
+            "sage.misc.fast_methods.WithEqualityById",
+            "sage.structure.sage_object.SageObject"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.texture.Texture",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "hex_rgb",
+              "qualified_name": "sage.plot.plot3d.texture.Texture.hex_rgb",
+              "signature": "(self) -> str",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "jmol_str",
+              "qualified_name": "sage.plot.plot3d.texture.Texture.jmol_str",
+              "signature": "(self, obj) -> str",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "mtl_str",
+              "qualified_name": "sage.plot.plot3d.texture.Texture.mtl_str",
+              "signature": "(self) -> str",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "tachyon_str",
+              "qualified_name": "sage.plot.plot3d.texture.Texture.tachyon_str",
+              "signature": "(self) -> str",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "x3d_str",
+              "qualified_name": "sage.plot.plot3d.texture.Texture.x3d_str",
+              "signature": "(self) -> str",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Texture",
+          "qualified_name": "sage.plot.plot3d.texture.Texture",
+          "signature": "(id, color=(0.4, 0.4, 1), opacity=1, ambient=0.5, diffuse=1, specular=0, shininess=1, name=None, **kwds) -> None",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.texture.parse_color",
+          "kind": "function",
+          "name": "parse_color",
+          "qualified_name": "sage.plot.plot3d.texture.parse_color",
+          "signature": "(info, base=None)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.transform",
+      "source": {
+        "installed_kind": "extension-binary",
+        "logical_path": "sage/plot/plot3d/transform.pyx",
+        "sha256": "49a4972584acd5faa235dd3cbd1d0d72adb7f7059d3d5cf29ee70cfb399026db",
+        "sha256_scope": "installed-extension-binary",
+        "size_bytes": 145664
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.transform.Transformation",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "avg_scale",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.avg_scale",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "get_matrix",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.get_matrix",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "is_skew",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.is_skew",
+              "signature": "(self, eps=1e-05)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "is_uniform",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.is_uniform",
+              "signature": "(self, eps=1e-05)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "is_uniform_on",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.is_uniform_on",
+              "signature": "(self, basis, eps=1e-05)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "max_scale",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.max_scale",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform_bounding_box",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.transform_bounding_box",
+              "signature": "(self, box)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform_point",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.transform_point",
+              "signature": "(self, x)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "transform_vector",
+              "qualified_name": "sage.plot.plot3d.transform.Transformation.transform_vector",
+              "signature": "(self, v)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Transformation",
+          "qualified_name": "sage.plot.plot3d.transform.Transformation",
+          "signature": "(scale=(1, 1, 1), rot=None, trans=[0, 0, 0], m=None)",
+          "signature_source": "docstring"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.transform.rotate_arbitrary",
+          "kind": "function",
+          "name": "rotate_arbitrary",
+          "qualified_name": "sage.plot.plot3d.transform.rotate_arbitrary",
+          "signature": "(v, theta)",
+          "signature_source": "inspect"
+        }
+      ]
+    },
+    {
+      "dimension": "3d",
+      "name": "sage.plot.plot3d.tri_plot",
+      "source": {
+        "installed_kind": "python-source",
+        "logical_path": "sage/plot/plot3d/tri_plot.py",
+        "sha256": "e4b83d651dd601f0ddcc86f3635bfef9d081c8eafc95017eb8990c9f405fe84d",
+        "sha256_scope": "source-file",
+        "size_bytes": 22061
+      },
+      "symbols": [
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.PlotBlock",
+          "kind": "class",
+          "methods": [],
+          "name": "PlotBlock",
+          "qualified_name": "sage.plot.plot3d.tri_plot.PlotBlock",
+          "signature": "(left, left_c, top, top_c, right, right_c, bottom, bottom_c)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "sage.plot.plot3d.tri_plot.Triangle"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.SmoothTriangle",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_normals",
+              "qualified_name": "sage.plot.plot3d.tri_plot.SmoothTriangle.get_normals",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tri_plot.SmoothTriangle.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "SmoothTriangle",
+          "qualified_name": "sage.plot.plot3d.tri_plot.SmoothTriangle",
+          "signature": "(a, b, c, da, db, dc, color=0)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.Triangle",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_vertices",
+              "qualified_name": "sage.plot.plot3d.tri_plot.Triangle.get_vertices",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "set_color",
+              "qualified_name": "sage.plot.plot3d.tri_plot.Triangle.set_color",
+              "signature": "(self, color)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tri_plot.Triangle.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "Triangle",
+          "qualified_name": "sage.plot.plot3d.tri_plot.Triangle",
+          "signature": "(a, b, c, color=0)",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.TriangleFactory",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "get_colors",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TriangleFactory.get_colors",
+              "signature": "(self, list)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "smooth_triangle",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TriangleFactory.smooth_triangle",
+              "signature": "(self, a, b, c, da, db, dc, color=None)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangle",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TriangleFactory.triangle",
+              "signature": "(self, a, b, c, color=None)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TriangleFactory",
+          "qualified_name": "sage.plot.plot3d.tri_plot.TriangleFactory",
+          "signature": "()",
+          "signature_source": "inspect"
+        },
+        {
+          "bases": [
+            "builtins.object"
+          ],
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot",
+          "kind": "class",
+          "methods": [
+            {
+              "descriptor": "instance",
+              "name": "extrema",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot.extrema",
+              "signature": "(self, list)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "interface",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot.interface",
+              "signature": "(self, n, p, p_c, q, q_c)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "plot_block",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot.plot_block",
+              "signature": "(self, min_x, mid_x, max_x, min_y, mid_y, max_y, sw_z, nw_z, se_z, ne_z, mid_z, depth)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "str",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot.str",
+              "signature": "(self)",
+              "signature_source": "inspect"
+            },
+            {
+              "descriptor": "instance",
+              "name": "triangulate",
+              "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot.triangulate",
+              "signature": "(self, p, c)",
+              "signature_source": "inspect"
+            }
+          ],
+          "name": "TrianglePlot",
+          "qualified_name": "sage.plot.plot3d.tri_plot.TrianglePlot",
+          "signature": "(triangle_factory, f, min_x__max_x, min_y__max_y, g=None, min_depth=4, max_depth=8, num_colors=None, max_bend=0.3)",
+          "signature_source": "inspect"
+        },
+        {
+          "implementation_qualified_name": "sage.plot.plot3d.tri_plot.crossunit",
+          "kind": "function",
+          "name": "crossunit",
+          "qualified_name": "sage.plot.plot3d.tri_plot.crossunit",
+          "signature": "(u, v)",
+          "signature_source": "inspect"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "scope": {
+    "dimensions": {
+      "2d": [
+        "sage.graphs.graph_plot",
+        "sage.plot.animate",
+        "sage.plot.arc",
+        "sage.plot.arrow",
+        "sage.plot.bar_chart",
+        "sage.plot.bezier_path",
+        "sage.plot.circle",
+        "sage.plot.colors",
+        "sage.plot.complex_plot",
+        "sage.plot.contour_plot",
+        "sage.plot.density_plot",
+        "sage.plot.disk",
+        "sage.plot.ellipse",
+        "sage.plot.graphics",
+        "sage.plot.histogram",
+        "sage.plot.hyperbolic_arc",
+        "sage.plot.hyperbolic_polygon",
+        "sage.plot.hyperbolic_regular_polygon",
+        "sage.plot.line",
+        "sage.plot.matrix_plot",
+        "sage.plot.misc",
+        "sage.plot.multigraphics",
+        "sage.plot.plot",
+        "sage.plot.plot_field",
+        "sage.plot.point",
+        "sage.plot.polygon",
+        "sage.plot.primitive",
+        "sage.plot.scatter_plot",
+        "sage.plot.step",
+        "sage.plot.streamline_plot",
+        "sage.plot.text"
+      ],
+      "3d": [
+        "sage.plot.plot3d.base",
+        "sage.plot.plot3d.implicit_plot3d",
+        "sage.plot.plot3d.implicit_surface",
+        "sage.plot.plot3d.index_face_set",
+        "sage.plot.plot3d.introduction",
+        "sage.plot.plot3d.list_plot3d",
+        "sage.plot.plot3d.parametric_plot3d",
+        "sage.plot.plot3d.parametric_surface",
+        "sage.plot.plot3d.platonic",
+        "sage.plot.plot3d.plot3d",
+        "sage.plot.plot3d.plot_field3d",
+        "sage.plot.plot3d.revolution_plot3d",
+        "sage.plot.plot3d.shapes",
+        "sage.plot.plot3d.shapes2",
+        "sage.plot.plot3d.tachyon",
+        "sage.plot.plot3d.texture",
+        "sage.plot.plot3d.transform",
+        "sage.plot.plot3d.tri_plot"
+      ]
+    },
+    "rule": "documented modules; module-local public callables and classes; class-declared public callable methods"
+  },
+  "summary": {
+    "classes": 88,
+    "functions": 121,
+    "methods": 328,
+    "modules": 49,
+    "modules_2d": 31,
+    "modules_3d": 18,
+    "unavailable_signatures": 0
+  }
+}
