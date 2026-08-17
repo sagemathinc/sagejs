@@ -4,7 +4,7 @@
   "id": "nf-round4-primary",
   "title": "Nf Round4 Primary",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement and certify the modified Round-4 deep-primary power-basis search, eliminating Round-2 delegation on supported PARI corpus and public timeout vectors",
   "base_commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
@@ -72,6 +72,16 @@
       "started_at": "2026-08-17T22:33:04.775Z",
       "commit": "0bd7bdf895e1624cc3443265fbc3a65bbab6f2ef",
       "workspace_fingerprint": "acbe362cd93d6f941a807a2765826b2b1ff9e3f8afb7ee6b9e7fa9d2e37478a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=vector 010 test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.709,
+      "started_at": "2026-08-17T23:02:10.220Z",
+      "commit": "2c279e99e1f9acbc0726a8ec7ead368d1b3fca8f",
+      "workspace_fingerprint": "fe2b05dd779cd090d43e7510ad3ca37cb5b65926609012017c3dc4b788b0488b",
       "platform": "linux-x64"
     }
   ],
