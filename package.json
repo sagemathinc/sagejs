@@ -214,6 +214,7 @@
     "bench:number-field-buchmann-lenstra-fast": "node bench/number-field-buchmann-lenstra-fast.cjs",
     "bench:number-field-om-higher-residual": "node bench/number-field-om-higher-residual.cjs",
     "bench:number-field-om-length4": "node bench/number-field-om-length4.cjs",
+    "bench:number-field-om-length8": "node bench/number-field-om-length8.cjs",
     "bench:word-prime-krylov": "node bench/word-prime-krylov.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",

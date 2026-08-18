@@ -126,15 +126,16 @@ bad = validate_triangular_basis(polynomial, 3, tree, corrupted, 544)
 if bad.valid or bad.multiplication_closed:
     raise AssertionError("a corrupted mixed-radix quotient basis passed closure")
 
-# The next effective higher-residual length is eight over F4 at p=2; the
-# bounded implementation must remain inspectable but incomplete there.
-incomplete = build_om_type_tree(polynomial, 2)
-if incomplete.complete or set(incomplete.incomplete_states()) != {
-    "higher-residual-degree-unsupported"
-}:
-    raise AssertionError(incomplete.incomplete_states())
-if not validate_type_tree(incomplete).valid:
-    raise AssertionError("the p=2 fail-closed tree does not replay")
+# The adjacent effective length-eight F4 tower is now complete as well. Keep
+# this cross-check here so later length-four changes cannot silently regress
+# the shared recursive residual operator.
+p2_tree = build_om_type_tree(polynomial, 2)
+if not p2_tree.complete or p2_tree.expected_index_valuation != 332:
+    raise AssertionError((p2_tree.complete, p2_tree.expected_index_valuation))
+if [branch.branch_degree for branch in p2_tree.types] != [32, 32]:
+    raise AssertionError([branch.branch_degree for branch in p2_tree.types])
+if not validate_type_tree(p2_tree).valid:
+    raise AssertionError("the p=2 length-eight tree does not replay")
 
 print("P3-LENGTH-FOUR-EXACT")
 `;
@@ -165,9 +166,13 @@ if result.order_basis.denominator != 387420489:
     raise AssertionError(result.order_basis.denominator)
 if tree.types[0].levels[2].residual_polynomial != ((2,), (0, 2), (2,)):
     raise AssertionError(tree.types[0].levels[2].residual_polynomial)
-incomplete = build_om_type_tree(polynomial, 2)
-if incomplete.complete or incomplete.incomplete_states() != ("higher-residual-degree-unsupported",):
-    raise AssertionError(incomplete.incomplete_states())
+p2_tree = build_om_type_tree(polynomial, 2)
+if not p2_tree.complete or p2_tree.expected_index_valuation != 332:
+    raise AssertionError((p2_tree.complete, p2_tree.expected_index_valuation))
+if [branch.branch_degree for branch in p2_tree.types] != [32, 32]:
+    raise AssertionError([branch.branch_degree for branch in p2_tree.types])
+if not validate_type_tree(p2_tree).valid:
+    raise AssertionError("the Sage.js p=2 length-eight tree differs")
 print("P3-LENGTH-FOUR-SAGEJS")
 `;
 

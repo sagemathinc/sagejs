@@ -71,6 +71,7 @@ const integration = [
   "test/number-field-om-maxmin.cjs",
   "test/number-field-om-higher-residual.cjs",
   "test/number-field-om-length4.cjs",
+  "test/number-field-om-length8.cjs",
   "test/number-field-round4.cjs",
   "test/word-prime-krylov.cjs",
   "test/coverage-python-stdlib.cjs",
