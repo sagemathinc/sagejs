@@ -894,16 +894,16 @@ static pthread_mutex_t elliptic_smalljac_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int elliptic_smalljac_callback(
     smalljac_curve_t curve,
-    unsigned long prime,
+    uint64_t prime,
     int good,
-    long coefficients[],
+    int64_t coefficients[],
     int count,
     void *argument)
 {
     elliptic_smalljac_result *result = argument;
     (void) curve;
 
-    if (prime > result->bound)
+    if (prime > (uint64_t) result->bound || prime > (uint64_t) SIZE_MAX)
     {
         result->failed = 1;
         return 0;
@@ -911,8 +911,8 @@ static int elliptic_smalljac_callback(
     if (!good || coefficients == NULL || count < 1)
         return 1;
     /* smalljac returns the T coefficient of 1 - a_p*T + p*T^2. */
-    result->ap_values[prime] = -(int64_t) coefficients[0];
-    result->available[prime] = 1;
+    result->ap_values[(size_t) prime] = -coefficients[0];
+    result->available[(size_t) prime] = 1;
     return 1;
 }
 
@@ -950,7 +950,7 @@ static int elliptic_smalljac_ap_values(
     char *curve_text;
     smalljac_curve_t curve;
     elliptic_smalljac_result result;
-    long status;
+    int64_t status;
     int error = 0;
 
     if (bound < 2)
@@ -992,19 +992,19 @@ typedef struct
 
 static int elliptic_smalljac_single_callback(
     smalljac_curve_t curve,
-    unsigned long prime,
+    uint64_t prime,
     int good,
-    long coefficients[],
+    int64_t coefficients[],
     int count,
     void *argument)
 {
     elliptic_smalljac_single_result *result = argument;
     (void) curve;
 
-    if (prime != result->prime || !good ||
+    if (prime != (uint64_t) result->prime || !good ||
         coefficients == NULL || count < 1)
         return 0;
-    result->value = -(int64_t) coefficients[0];
+    result->value = -coefficients[0];
     result->found = 1;
     return 1;
 }
@@ -1015,7 +1015,7 @@ static int elliptic_smalljac_single_ap(
     char *curve_text;
     smalljac_curve_t curve;
     elliptic_smalljac_single_result result;
-    long status;
+    int64_t status;
     int error = 0;
 
     curve_text = elliptic_smalljac_curve_string(coefficients);

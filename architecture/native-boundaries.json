@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 68,
+    "classified-native-file": 73,
     "declared-ffi": 400,
     "declared-ffi-resource": 27,
     "napi-export": 295,
@@ -7889,6 +7889,46 @@
       "disposition": "mathematical-algorithm",
       "review_status": "audited",
       "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint/scripts/portable-smalljac/gmp_word_test.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/scripts/portable-smalljac/gmp_word_test.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/scripts/portable-smalljac/sagejs_ffpoly_word.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_ffpoly_word.h",
+      "disposition": "portability-shim",
+      "review_status": "audited",
+      "lane": "elliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+      "disposition": "portability-shim",
+      "review_status": "audited",
+      "lane": "elliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/scripts/portable-smalljac/smalljac_trace_harness.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/scripts/portable-smalljac/smalljac_trace_harness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/scripts/portable-smalljac/word_arithmetic_test.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/scripts/portable-smalljac/word_arithmetic_test.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves"
     },
     {
       "id": "native-file:packages/flint/src/addon.c",

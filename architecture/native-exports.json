@@ -1936,14 +1936,15 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 329,
-        "lines": 185,
-        "sha256": "20b1b38a7f94f25697f237d2882c326c589ffff82d311dcf6817e6ed1b86d28d",
+        "line": 410,
+        "lines": 205,
+        "sha256": "b88992ad13954530c12d1989737f69617cf993ed516f235a485ca345cd031004",
         "calls": [
           "_arb_vec_clear",
           "_arb_vec_init",
           "_fmpz_vec_clear",
           "_fmpz_vec_init",
+          "arb_add",
           "arb_clear",
           "arb_contains_zero",
           "arb_get_ubound_arf",

@@ -1138,7 +1138,14 @@ class EllipticCurveParent(sage.Parent):
             "cutoff": int(runtime.reflect.get(native, "cutoff")),
             "required_cutoff": int(runtime.reflect.get(native, "requiredCutoff")),
             "grid_points": int(runtime.reflect.get(native, "gridPoints")),
+            "coefficient_terms": int(runtime.reflect.get(native, "coefficientTerms")),
             "grid_step": str(runtime.reflect.get(native, "gridStep")),
+            "coefficient_tail_bound": str(
+                runtime.reflect.get(native, "coefficientTailBound")
+            ),
+            "grid_omission_bound": str(
+                runtime.reflect.get(native, "gridOmissionBound")
+            ),
             "tail_bound": str(runtime.reflect.get(native, "tailBound")),
             "derivatives": derivatives,
         }

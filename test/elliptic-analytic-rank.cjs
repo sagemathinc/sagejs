@@ -86,6 +86,31 @@ test("rank decisions use completed derivatives while returning raw L derivatives
   }
 });
 
+test("native diagnostics account for variable-grid coefficient omissions", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([2,3,1,4,50])",
+            "D = E._analytic_rank_result('native', 64)['runs'][-1]",
+            "tail = float(D['tail_bound'])",
+            "pieces = float(D['coefficient_tail_bound']) + float(D['grid_omission_bound'])",
+            "[D['coefficient_terms'] < D['cutoff']*D['grid_points'],",
+            " D['grid_omission_bound'] > '0',",
+            " abs(tail-pieces) <= 1e-12*max(1.0, abs(tail))]",
+          ].join("\n"),
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "[True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("zero sums give a separate GRH-conditional parity-adjusted upper bound", async () => {
   const session = await createSage();
   try {

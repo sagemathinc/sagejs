@@ -14,10 +14,7 @@ assert.equal(
   process.platform === "win32" ? "1.3.1" : "1.4.1",
 );
 assert.match(flint.gmpVersion(), /^6\./);
-assert.ok(
-  flint.smalljacVersion() === null ||
-    flint.smalljacVersion() === "smalljac version 4.1.3",
-);
+assert.equal(flint.smalljacVersion(), "smalljac version 4.1.3");
 assert.equal(flint.ecApIntegral(0n, 0n, 1n, -1n, 0n, 5n), -2);
 assert.deepEqual(
   flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 12n),

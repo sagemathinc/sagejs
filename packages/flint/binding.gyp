@@ -129,7 +129,10 @@
           ]
         }],
         ["OS=='linux' and target_arch=='arm64'", {
+          "defines": ["SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/libsmalljac.a",
+            "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
             "<(native_prefix)/lib/libopenblas.a",
             "<(native_prefix)/lib/libmpc.a",
@@ -153,7 +156,10 @@
           ]
         }],
         ["OS=='mac'", {
+          "defines": ["SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/libsmalljac.a",
+            "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
             "<(native_prefix)/lib/libopenblas.a",
             "<(native_prefix)/lib/libmpc.a",
@@ -174,8 +180,10 @@
           }
         }],
         ["OS=='win'", {
-          "defines": ["_CRT_SECURE_NO_WARNINGS"],
+          "defines": ["_CRT_SECURE_NO_WARNINGS", "SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/smalljac.lib",
+            "<(native_prefix)/lib/ff_poly.lib",
             "<(native_prefix)/lib/flint.lib",
             "<(native_prefix)/lib/openblas.lib",
             "<(native_prefix)/lib/mpc.lib",

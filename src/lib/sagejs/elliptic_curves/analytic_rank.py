@@ -169,6 +169,15 @@ def choose_cutoff(conductor: int, precision_bits: int, max_order: int) -> int:
     return cutoff
 
 
+def choose_native_cutoff(conductor: int, precision_bits: int) -> int:
+    """Return the exact coefficient request used by the native Molin plan."""
+    a_value = 2.0 * pi / sqrt(float(conductor))
+    cutoff = int(ceil((precision_bits * log(2.0) + 2.0) / a_value))
+    if cutoff > 5_000_000:
+        raise ValueError("analytic-rank coefficient cutoff exceeds 5000000")
+    return max(1, cutoff)
+
+
 def _legendre_moments(
     coefficients: list[int],
     conductor: int,
@@ -347,7 +356,7 @@ def native_central_derivatives(
     """Evaluate a completed central jet through the optional Arb boundary."""
     conductor = int(curve.conductor())
     if cutoff is None:
-        cutoff = choose_cutoff(conductor, precision_bits, max_order)
+        cutoff = choose_native_cutoff(conductor, precision_bits)
     prefix = coefficient_prefix or CoefficientPrefix(curve)
     coefficients = prefix.through(cutoff)
     native = curve._analytic_completed_derivatives_native(
@@ -375,7 +384,10 @@ def native_central_derivatives(
         "cutoff": native["cutoff"],
         "required_cutoff": native["required_cutoff"],
         "grid_points": native["grid_points"],
+        "coefficient_terms": native["coefficient_terms"],
         "grid_step": native["grid_step"],
+        "coefficient_tail_bound": native["coefficient_tail_bound"],
+        "grid_omission_bound": native["grid_omission_bound"],
         "completed_derivatives": [record["midpoint"] for record in derivative_records],
         "completed_radii": [record["radius"] for record in derivative_records],
         "derivatives": [mp.nstr(value, n=30) for value in derivatives],
@@ -468,12 +480,12 @@ def probable_analytic_rank(
         raise ValueError("precision must be at least 32 bits")
     prefix = CoefficientPrefix(curve)
     conductor = int(curve.conductor())
-    first_cutoff = choose_cutoff(conductor, initial_precision, max_order)
     second_precision = initial_precision + 24
-    second_cutoff = choose_cutoff(conductor, second_precision, max_order)
-    prefix.through(second_cutoff)
     evaluator = "reference"
     if algorithm in ("auto", "native"):
+        first_cutoff = choose_native_cutoff(conductor, initial_precision)
+        second_cutoff = choose_native_cutoff(conductor, second_precision)
+        prefix.through(second_cutoff)
         try:
             first = native_central_derivatives(
                 curve, initial_precision, max_order, first_cutoff, prefix
@@ -482,6 +494,9 @@ def probable_analytic_rank(
         except NotImplementedError:
             if algorithm == "native":
                 raise
+            first_cutoff = choose_cutoff(conductor, initial_precision, max_order)
+            second_cutoff = choose_cutoff(conductor, second_precision, max_order)
+            prefix.through(second_cutoff)
             first = reference_central_derivatives(
                 curve,
                 root_number,
@@ -492,6 +507,9 @@ def probable_analytic_rank(
                 prefix,
             )
     else:
+        first_cutoff = choose_cutoff(conductor, initial_precision, max_order)
+        second_cutoff = choose_cutoff(conductor, second_precision, max_order)
+        prefix.through(second_cutoff)
         first = reference_central_derivatives(
             curve,
             root_number,

@@ -144,6 +144,41 @@
       "rationale": "Shared Sage.js native mathematical ABI declarations."
     },
     {
+      "path": "packages/flint/scripts/portable-smalljac/gmp_word_test.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves",
+      "rationale": "Standalone LLP64 regression oracle for exact fixed-width GMP adapters used by the portable smalljac build."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_ffpoly_word.h",
+      "category": "portability-shim",
+      "review_status": "audited",
+      "lane": "elliptic-curves",
+      "rationale": "Portable exact 64-bit ffpoly arithmetic primitives for GCC, Clang, Apple Silicon, and native Windows clang-cl."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+      "category": "portability-shim",
+      "review_status": "audited",
+      "lane": "elliptic-curves",
+      "rationale": "Fixed-width GMP conversion layer that prevents LLP64 truncation in transformed smalljac and ffpoly sources."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/smalljac_trace_harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves",
+      "rationale": "Standalone exact trace-stream harness used to compare portable smalljac with the established optimized implementation."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/word_arithmetic_test.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "elliptic-curves",
+      "rationale": "Independent randomized oracle for portable multiply, carry, division, and bit-scan primitives."
+    },
+    {
       "path": "packages/flint/src/addon.c",
       "category": "mixed-native",
       "review_status": "audited",

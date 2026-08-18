@@ -59,6 +59,18 @@ evaluates the whole selected tier in that process:
   --tier core --samples 5
 ```
 
+Benchmark the in-process Sage.js boundaries separately with:
+
+```bash
+node bench/elliptic-analytic-rank/sagejs-benchmark.cjs --samples 7
+```
+
+The JSON receipt includes the commit, host, Node and native-library versions,
+native module and corpus hashes, precision/cutoff policy, exact coefficient
+generation, resident-coefficient kernel, fresh public call, cache hit, and cold
+startup-plus-public-call timings. The benchmark checks the probable rank while
+timing and never mixes cache hits into fresh-call results.
+
 ## Result semantics
 
 All ranks in this corpus are **probable numerical analytic ranks**. A numerical

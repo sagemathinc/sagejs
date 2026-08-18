@@ -14,7 +14,7 @@
     {
       "path": "packages/flint/src/addon.c",
       "lines": 4412,
-      "bytes": 141837,
+      "bytes": 141890,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -22,7 +22,7 @@
         "GMP and FLINT representation wrappers",
         "locally implemented integer, polynomial, and factoring helpers"
       ],
-      "rationale": "The boundary is legitimate, but a 4,401-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 4,412-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -61,8 +61,8 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 513,
-      "bytes": 18021,
+      "lines": 614,
+      "bytes": 22046,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [
@@ -194,6 +194,48 @@
         "PARI/GP"
       ],
       "next": "Replace this exception with source-transparent native lowering when packed exact multiplication tables, modular kernels, and rational basis changes are expressible in the typed compiler."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_ffpoly_word.h",
+      "lines": 246,
+      "bytes": 9495,
+      "decision": "retain-primitive",
+      "priority": "medium",
+      "responsibilities": [
+        "portable exact 64-by-64-bit multiplication and division",
+        "carry, borrow, and bit-scan abstractions",
+        "compiler-specific GCC, Clang, and clang-cl selection"
+      ],
+      "rationale": "This focused arithmetic layer replaces ffpoly's x86 GNU assembly assumptions with exact portable primitives. It is justified as the representation-level boundary that makes the mature smalljac implementation usable on arm64 and native LLP64 Windows.",
+      "fallback": "The ordinary exact point-count implementation remains available when the optional smalljac capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "optimized x86-64 ffpoly",
+        "randomized exact arithmetic harness"
+      ],
+      "next": "Keep the portable and optimized trace-stream differential in CI and coordinate the fixed-width layer with upstream ffpoly."
+    },
+    {
+      "path": "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+      "lines": 297,
+      "bytes": 10506,
+      "decision": "retain-bridge",
+      "priority": "medium",
+      "responsibilities": [
+        "exact fixed-width conversion to and from GMP integers",
+        "LLP64-safe replacements for C-long GMP entry points",
+        "signed 64-bit edge-case handling"
+      ],
+      "rationale": "The bridge prevents silent 32-bit truncation when upstream LP64 source is transformed for native Windows. It contains no elliptic-curve policy and is differentially exercised above the LLP64 boundary, including INT64_MIN.",
+      "fallback": "The ordinary exact point-count implementation remains available when the optional smalljac capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "GMP",
+        "native Windows fixed-width regression harness"
+      ],
+      "next": "Keep native Windows CI at the public fixed-width smalljac ABI and propose the conversion boundary upstream."
     },
     {
       "path": "packages/graph/src/addon.c",
