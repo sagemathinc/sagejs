@@ -14,6 +14,7 @@
     "packages/flint/src/hyperelliptic/smalljac.c",
     "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
     "packages/flint/test/hyperelliptic/smalljac.cjs",
+    "packages/flint/test/hyperelliptic/smalljac_bridge.c",
     "packages/flint/binding.gyp",
     "packages/flint/scripts/build-deps.cjs",
     "packages/flint/README.md"
