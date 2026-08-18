@@ -122,13 +122,22 @@ function run(command, args, environment = {}) {
     timeout: 120_000,
     maxBuffer: 20 * 1024 * 1024,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  if (result.error) throw result.error;
+  assert.equal(
+    result.status,
+    0,
+    result.stderr || result.stdout || result.error?.message,
+  );
   return JSON.parse(result.stdout.trim());
 }
 
 test("packed BL HNF agrees exactly and rejects corrupted T8 evidence", () => {
   const python = run(pythonExecutable(), ["-c", source]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"]);
+  const sagejs = run(process.execPath, [
+    join(root, "bin", "sagejs"),
+    "--python",
+    "-",
+  ]);
   assert.equal(python.native_marked, true);
   assert.equal(sagejs.native_marked, true);
   assert.match(sagejs.execution_mode, /^(dynamic|native-capable|compiled)$/);

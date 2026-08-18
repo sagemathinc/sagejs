@@ -1,13 +1,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
+const { mkdtempSync, readFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
 const flint = require("../packages/flint");
+const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
@@ -129,7 +130,7 @@ test("packed Krylov kernel matches FLINT word-prime minimal polynomials", async 
     );
     assert.deepEqual(Array.from(output), [91n, 91n, 91n]);
   } finally {
-    rmSync(cache, { recursive: true, force: true });
+    removeLoadedNativeCache(cache);
   }
 });
 
@@ -258,6 +259,6 @@ print("cpython-rational-differential-ok")
     assert.equal(cpython.status, 0, cpython.stderr || cpython.stdout);
     assert.equal(cpython.stdout.trim(), "cpython-rational-differential-ok");
   } finally {
-    rmSync(cache, { recursive: true, force: true });
+    removeLoadedNativeCache(cache);
   }
 });

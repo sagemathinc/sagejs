@@ -3,11 +3,12 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { createSage } = require("../dist/tools/kernel.js");
+const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -256,6 +257,14 @@ test("packed field-analysis proof is source-transparent and differential", () =>
     "number_fields",
     "field_analysis_resource.py",
   );
+  const blSource = join(
+    root,
+    "src",
+    "lib",
+    "sagejs",
+    "number_fields",
+    "bl_composite_kernel.py",
+  );
   const program = String.raw`
 from sagejs.native import is_compiled
 from sagejs.number_fields.field_analysis_resource import (
@@ -322,10 +331,19 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     assert.match(explanation, /host boundary: 1 public crossing\/call/);
     assert.match(explanation, /0 callbacks inside core/);
     run([sagejs, "native", "compile", source, "--cache-root", cache]);
+    run([sagejs, "native", "compile", blSource, "--cache-root", cache]);
     const nativeResult = run([sagejs, witness], {
       SAGEJS_NATIVE_CACHE_DIR: cache,
       SAGEJS_NATIVE_REQUIRED: "1",
     });
+    writeFileSync(
+      witness,
+      [
+        "import sagejs.number_fields.field_analysis_resource as _field_analysis",
+        "_field_analysis.packed_field_analysis_fixed_points_are_valid = getattr(_field_analysis.packed_field_analysis_fixed_points_are_valid, '__sagejs_native_source__', _field_analysis.packed_field_analysis_fixed_points_are_valid)",
+        program,
+      ].join("\n"),
+    );
     const dynamicResult = run([sagejs, witness], {
       SAGEJS_NATIVE_DISABLE: "1",
     });
@@ -334,6 +352,6 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     assert.match(nativeResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
     assert.match(dynamicResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
