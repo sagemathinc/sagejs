@@ -250,8 +250,8 @@ degree = len(coefficients) - 1
       "sagejs-dynamic-round2-p7-local",
       setup + String.raw`
 from sagejs.number_fields import maximal_order as maximal_order_module
-R.<x> = ZZ[]
-K.<a> = NumberField(R(coefficients))
+R = PolynomialRing(ZZ, "x")
+K = NumberField(R(coefficients), "a")
 started = time.perf_counter()
 order = maximal_order_module.p_maximal_overorder_dynamic(K.equation_order(), 7)
 print(json.dumps({"elapsed_ms": (time.perf_counter() - started) * 1000, "degree": order.degree()}))
