@@ -32,6 +32,7 @@ from sagejs.ffi.flint import (
     FqElement,
     FqPolynomial,
     NmodMatrix,
+    NumberFieldAnalysisResource,
     NumberFieldOrderResource,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
@@ -397,6 +398,7 @@ from sagejs.ffi.flint import (
     number_field_order_resource_resolved_primes as _ffi_number_field_order_resource_resolved_primes,
     number_field_order_resource_native_primes as _ffi_number_field_order_resource_native_primes,
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
+    number_field_analyze_resource as _ffi_number_field_analyze_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -4734,4 +4736,17 @@ def ffiNumberFieldOrderResourceUnramifiedPrimes(
 ) -> uint64:
     return _ffi_number_field_order_resource_unramified_primes(
         resource,
+    )
+
+
+@native
+def ffiNumberFieldAnalyzeResource(
+    polynomial: FmpzPolynomial,
+    scale: Integer,
+    trial_bound: uint64,
+) -> NumberFieldAnalysisResource:
+    return _ffi_number_field_analyze_resource(
+        polynomial,
+        scale,
+        trial_bound,
     )

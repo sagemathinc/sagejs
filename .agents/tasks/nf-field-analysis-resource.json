@@ -1,0 +1,139 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-field-analysis-resource",
+  "title": "Fused number-field analysis resource",
+  "lane": "integration",
+  "status": "review",
+  "owner": "nf_p2_kernel_perf",
+  "objective": "Implement an immutable host-neutral fused field-analysis resource that returns polynomial discriminant, certified factor/decomposition hints, and compact canonical order evidence in one crossing with independent packed-certificate validation and measured microcase performance",
+  "base_commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+  "claims": [
+    ".agents/lanes.json",
+    "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource.cjs",
+    "test/number-field-analysis-resource-python.cjs",
+    "bench/number-field-analysis-resource.cjs",
+    "bench/number-field-analysis-resource-witness.c",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "architecture/native-code.json",
+    "architecture/native-boundaries.json",
+    "architecture/native-audit.json",
+    "pyrightconfig.json",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "independent packed certificate checker",
+      "SageMath and PARI exact field invariants",
+      "existing direct number-field order resource"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.756,
+      "started_at": "2026-08-18T00:11:27.158Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "becf450d180c974f5d45c91402b790e939c962a3de75ddf6381095846daf3b38",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.811,
+      "started_at": "2026-08-18T00:11:41.099Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "becf450d180c974f5d45c91402b790e939c962a3de75ddf6381095846daf3b38",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main-worktrees/nf-field-analysis-resource/packages/flint/.native/prefix SAGEJS_FFI_SANITIZE=1 node test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.871,
+      "started_at": "2026-08-18T00:11:43.636Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "becf450d180c974f5d45c91402b790e939c962a3de75ddf6381095846daf3b38",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.563,
+      "started_at": "2026-08-18T00:11:47.251Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "becf450d180c974f5d45c91402b790e939c962a3de75ddf6381095846daf3b38",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.234,
+      "started_at": "2026-08-18T00:13:59.566Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "64a094f5bb72670150dff35155cd3c97135043e3f22df2083a664f4d096ccd29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.323,
+      "started_at": "2026-08-18T00:14:06.517Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "64a094f5bb72670150dff35155cd3c97135043e3f22df2083a664f4d096ccd29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.169,
+      "started_at": "2026-08-18T00:14:27.584Z",
+      "commit": "0eb7e49241f77c0ebe0ba5c519e87d6d63bf8f7a",
+      "workspace_fingerprint": "64a094f5bb72670150dff35155cd3c97135043e3f22df2083a664f4d096ccd29",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added one-call immutable fused field-analysis resource with exact input binding, bounded discriminant decomposition, partial word-prime Round-2 HNF evidence, arbitrary-size/lazy residual preservation, generated FFI ownership, and an ordinary-Python corruption-resistant checker. The checker deliberately reports every native result as an uncertified candidate until a separate local fixed-point proof is supplied. Six-case differential timings and normal/sanitized lifecycle tests are included.",
+    "risks": [
+      "The resource is not wired into the public maximal-order engine and must not be promoted to certified completion without independent local fixed-point evidence.",
+      "Warm generated-host plus independent-check timings remain above 2 ms (about 3.2-35.8 ms across the six cases); one fused crossing does not remove Round-2-heavy tails.",
+      "Linux x64 normal and ASan/UBSan witnesses pass; Linux arm64 and native Windows x64 reruns remain for the platform lane."
+    ],
+    "next_steps": [
+      "Run the focused lifecycle witness on Linux arm64 and native Windows x64.",
+      "Design the independent fixed-point witness required to promote a complete candidate to a globally certified order.",
+      "Only after that proof and public-path measurements, adopt the resource lazily in maximal_order_engine.py."
+    ]
+  }
+}
