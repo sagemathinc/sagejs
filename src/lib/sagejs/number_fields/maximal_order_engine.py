@@ -405,6 +405,21 @@ def _local_selection_decision(
         factor_multiplicities,
         round4_precision,
     )
+    om_module = __import__(
+        "sagejs.number_fields.om_auto_selector",
+        fromlist=["om_auto_selector"],
+    )
+    om_prefilter = (
+        None
+        if arbitrary_prime
+        else om_module.om_auto_prefilter(
+            tuple(coefficients),
+            prime,
+            local_discriminant_valuation=local_valuation,
+            factor_degrees=tuple(factor_degrees),
+            factor_multiplicities=tuple(factor_multiplicities),
+        )
+    )
     predicted_micros = {
         "round2": _LOCAL_SETUP_MICROS + round2_units * _ROUND2_MICROS_PER_UNIT,
         "polygon": _LOCAL_SETUP_MICROS + polygon_units * _POLYGON_MICROS_PER_UNIT,
@@ -433,6 +448,7 @@ def _local_selection_decision(
         "expected_output_bytes": output_bytes,
         "predicted_micros": predicted_micros,
         "round4_selector": round4_selector.as_dict(),
+        "om_prefilter": (None if om_prefilter is None else om_prefilter.as_dict()),
         "auto_eligibility": {
             "round2": {"eligible": True, "reason": "certified dynamic baseline"},
             "polygon": {
@@ -444,10 +460,14 @@ def _local_selection_decision(
                 "reason": "certified within the Round-4 selector domain",
             },
             "om-maxmin": {
-                "eligible": False,
+                "eligible": bool(om_prefilter is not None and om_prefilter.eligible),
                 "reason": (
-                    "extended OM types require differential evidence and do not yet "
-                    "advertise auto_selectable"
+                    "terminal complete OM evidence is checked immediately before "
+                    "the native batch"
+                    if om_prefilter is not None and om_prefilter.eligible
+                    else om_prefilter.reason
+                    if om_prefilter is not None
+                    else "the current OM host adapter requires a word prime"
                 ),
             },
         },
@@ -512,8 +532,8 @@ def _local_selection_decision(
     else:
         selected = "round2"
         reason = (
-            "the measured local fallback favors Round 2; OM/MaxMin remains "
-            "forceable but is not auto-selectable"
+            "the measured local fallback favors Round 2 after any complete "
+            "pre-native OM opportunity has been exhausted"
         )
     return (
         SelectionDecision(selected, reason, metrics),
@@ -776,6 +796,91 @@ def _forced_local_order(
             },
         )
     raise ValueError("unknown forced local algorithm")
+
+
+def _auto_om_local_order(
+    field: Any,
+    coefficients: list[int],
+    scale: int,
+    equation_discriminant: int,
+    prime: int,
+) -> tuple[Any | None, dict[str, Any]]:
+    """Attempt OM only after its cheap measured shape prefilter passes."""
+    degree = len(coefficients) - 1
+    local_valuation = _valuation(equation_discriminant, prime)
+    coefficient_bits = _coefficient_bits(coefficients)
+    output_entries = degree * (degree + 1) // 2
+    entry_bits = max(
+        8,
+        coefficient_bits + local_valuation * max(1, prime.bit_length()),
+    )
+    output_bytes = output_entries * ((entry_bits + 7) // 8 + 16)
+    cheap_reason = None
+    if prime < 7 or prime > _MAX_WORD_PRIME:
+        cheap_reason = "the measured residual-characteristic crossover starts at p=7"
+    elif coefficient_bits > 256:
+        cheap_reason = "coefficient growth exceeds the measured OM crossover envelope"
+    elif degree < 48 or local_valuation < 8 * degree:
+        cheap_reason = (
+            "degree and local valuation remain below the measured OM crossover"
+        )
+    elif output_bytes > 64 * 1024 * 1024:
+        cheap_reason = "the predicted exact basis exceeds the local memory budget"
+    if cheap_reason is not None:
+        return None, {
+            "schema": "sagejs.number-fields/om-auto-selection-v1",
+            "stage": "shape-prefilter",
+            "eligible": False,
+            "reason": cheap_reason,
+            "degree": degree,
+            "prime": prime,
+            "local_discriminant_valuation": local_valuation,
+            "coefficient_bits": coefficient_bits,
+            "estimated_output_bytes": output_bytes,
+            "memory_budget_bytes": 64 * 1024 * 1024,
+            "benchmark": "bench/number-field-om-auto-selector.cjs:v1",
+        }
+    module = __import__(
+        "sagejs.number_fields.om_auto_selector",
+        fromlist=["om_auto_selector"],
+    )
+    shape = module.om_auto_shape_prefilter(
+        tuple(coefficients),
+        prime,
+        local_discriminant_valuation=local_valuation,
+    )
+    if not shape.eligible:
+        return None, shape.as_dict()
+    polygon_module = __import__(
+        "sagejs.number_fields.local_polygons",
+        fromlist=["local_polygons"],
+    )
+    factors = polygon_module.factor_mod_prime(coefficients, prime)
+    selection = module.select_om_local_basis(
+        tuple(coefficients),
+        prime,
+        local_discriminant_valuation=local_valuation,
+        factor_degrees=tuple(int(record["degree"]) for record in factors),
+        factor_multiplicities=tuple(int(record["multiplicity"]) for record in factors),
+    )
+    evidence = selection.as_dict()
+    if (
+        not selection.selected
+        or selection.result is None
+        or selection.result.order_basis is None
+    ):
+        return None, evidence
+    local_index = selection.result.local_result.index
+    discriminant = equation_discriminant // (local_index * local_index)
+    return (
+        _order_from_basis(
+            field,
+            selection.result.order_basis,
+            scale,
+            discriminant,
+        ),
+        evidence,
+    )
 
 
 def _arbitrary_prime_local_order(
@@ -1830,6 +1935,72 @@ def compute_maximal_order(
         "benchmark": _SELECTOR_BENCHMARK,
     }
     native_handled_primes: list[int] = []
+    om_auto_evidence: list[dict[str, Any]] = []
+    if relevant_primes and algorithm == "auto":
+        for prime in relevant_primes:
+            if prime > _MAX_WORD_PRIME:
+                continue
+            started = time.perf_counter_ns()
+            try:
+                om_order, evidence = _auto_om_local_order(
+                    field,
+                    coefficients,
+                    scale,
+                    equation_discriminant,
+                    prime,
+                )
+            except Exception as error:
+                evidence = {
+                    "schema": "sagejs.number-fields/om-auto-selection-v1",
+                    "stage": "terminal-selection",
+                    "selected": False,
+                    "algorithm": "fallback",
+                    "reason": "OM auto-selection was unavailable",
+                    "exception_type": type(error).__name__,
+                    "message": str(error),
+                    "prime": prime,
+                }
+                om_order = None
+            evidence = dict(evidence)
+            evidence["prime"] = prime
+            om_auto_evidence.append(evidence)
+            if om_order is None:
+                if evidence.get("stage") == "terminal-selection":
+                    trace.emit(
+                        "om-auto-local-order",
+                        "fallback",
+                        evidence,
+                        duration_ns=time.perf_counter_ns() - started,
+                    )
+                continue
+            if (
+                current_basis.canonical_key()
+                == _identity_basis(field.degree()).canonical_key()
+            ):
+                order = om_order
+            else:
+                order = _merge_orders(field, order, om_order)
+            current_basis = _basis_from_order(order, scale)
+            _cache_discriminant_from_basis(
+                order,
+                current_basis,
+                equation_discriminant,
+            )
+            native_handled_primes.append(prime)
+            trace.emit(
+                "om-auto-local-order",
+                "complete",
+                evidence,
+                duration_ns=time.perf_counter_ns() - started,
+            )
+        if native_handled_primes:
+            primary_selection["primary"] = "om-maxmin+native"
+            primary_selection["reason"] = (
+                "a complete measured OM region was resolved before the native "
+                "batch; remaining primes retain the native-first fallback"
+            )
+            primary_selection["om_auto_primes"] = list(native_handled_primes)
+            primary_selection["om_auto_evidence"] = list(om_auto_evidence)
     native_fallback_for_parallel = False
     if len(relevant_primes) and algorithm in ("auto", "native"):
         # The native resource is complete for a batch of certified word
@@ -1839,7 +2010,9 @@ def compute_maximal_order(
         # present; sending the mixed batch would discard that complete work
         # and force every word prime back through local selector estimates.
         native_batch_primes = [
-            prime for prime in relevant_primes if prime <= _MAX_WORD_PRIME
+            prime
+            for prime in relevant_primes
+            if prime <= _MAX_WORD_PRIME and prime not in native_handled_primes
         ]
         deferred_arbitrary_primes = [
             prime for prime in relevant_primes if prime > _MAX_WORD_PRIME
@@ -1880,7 +2053,7 @@ def compute_maximal_order(
                         current_basis,
                         equation_discriminant,
                     )
-                    native_handled_primes = list(native_batch_primes)
+                    native_handled_primes.extend(native_batch_primes)
                     trace.end(
                         token,
                         "complete",

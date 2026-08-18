@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-om-auto",
+  "title": "Nf Opt Om Auto",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enable measured complete OM/MaxMin auto-selection for input-derived vector429-class local regions with exact fallback and decision evidence",
+  "base_commit": "dae954d6afd99483ffa19021e4072bb816bc8e28",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "src/lib/sagejs/number_fields/om_auto_selector.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-om-auto-selector.cjs",
+    "bench/number-field-om-auto-selector.cjs",
+    "bench/results/number-field-om-auto-selector.json",
+    "bench/results/number-field-om-auto-selector.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sagejs-dynamic",
+      "sagejs-production-native",
+      "pari-frozen-lattice",
+      "round2",
+      "round4"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
