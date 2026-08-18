@@ -149,7 +149,7 @@ def _packed_polynomial_gcd_mod(
         modulus,
     )
     while control[5] != 0 and second_length > 0:
-        quotient_length = _packed_polynomial_divide_mod(
+        _quotient_length = _packed_polynomial_divide_mod(
             workspace,
             quotient_offset,
             workspace,
@@ -238,7 +238,6 @@ def packed_composite_dedekind_enlargement_in_place(
     derivative_offset = 0
     mutual_offset = capacity
     division_remainder_offset = 2 * capacity
-    division_quotient_offset = 3 * capacity
     gcd_workspace_offset = 4 * capacity
     index = 1
     while valid and index <= degree:

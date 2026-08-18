@@ -413,8 +413,11 @@
     {
       "id": "word-prime-krylov-production",
       "source": "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
-      "functions": ["word_prime_krylov_minimal_polynomial"],
-      "semantic_domain": "packed Krylov minimal-polynomial relations for square regular-representation matrices over machine-word prime fields",
+      "functions": [
+        "word_prime_krylov_minimal_polynomial",
+        "integer_matrix_word_prime_minimal_polynomial_batch"
+      ],
+      "semantic_domain": "packed Krylov minimal-polynomial relations and exact persistent CRT batches for square integer regular-representation matrices over machine-word prime fields",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],
@@ -422,10 +425,28 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-om-proof-production",
+      "source": "src/lib/sagejs/number_fields/om_maxmin.py",
+      "functions": [
+        "packed_maxmin_valuations_are_maximal",
+        "packed_triangular_basis_is_closed"
+      ],
+      "semantic_domain": "packed exact MaxMin quotient-valuation comparisons and independent triangular local-basis multiplication closure for complete certified OM types",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "pari", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-om-maxmin",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
-      "functions": ["packed_row_hnf_in_place"],
-      "semantic_domain": "deterministic full-column-rank row Hermite normal form over packed exact-integer rectangular matrices for certified composite Buchmann--Lenstra construction and replay",
+      "functions": [
+        "packed_row_hnf_in_place",
+        "packed_composite_dedekind_basis_in_place",
+        "packed_order_table_in_place"
+      ],
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, and order multiplication tables for certified Buchmann--Lenstra construction and compact replay",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
@@ -435,8 +456,11 @@
     {
       "id": "field-analysis-fixed-point-checker-production",
       "source": "src/lib/sagejs/number_fields/field_analysis_resource.py",
-      "functions": ["packed_field_analysis_fixed_points_are_valid"],
-      "semantic_domain": "exact-integer reconstruction of order multiplication, canonical nilradicals, and full-rank terminal fixed-point witnesses for authenticated fused number-field analysis",
+      "functions": [
+        "packed_field_analysis_fixed_points_are_valid",
+        "packed_field_analysis_decode_integers"
+      ],
+      "semantic_domain": "one-pass signed integer decoding plus exact reconstruction of order multiplication, defining discriminant, canonical nilradicals, and full-rank terminal fixed-point witnesses for authenticated fused number-field analysis",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "native-resource"],

@@ -167,7 +167,10 @@ test("all production native kernels are published and autoloadable", () => {
 
 test("the field-analysis checker is current and required-autoloadable", () => {
   const source = "src/lib/sagejs/number_fields/field_analysis_resource.py";
-  const functionName = "packed_field_analysis_fixed_points_are_valid";
+  const functionNames = [
+    "packed_field_analysis_fixed_points_are_valid",
+    "packed_field_analysis_decode_integers",
+  ];
   const manifest = JSON.parse(readFileSync(
     join(root, "architecture", "native-kernels.json"),
     "utf8",
@@ -176,7 +179,7 @@ test("the field-analysis checker is current and required-autoloadable", () => {
     entry.id === "field-analysis-fixed-point-checker-production"
   );
   assert.equal(kernel?.source, source);
-  assert.deepEqual(kernel?.functions, [functionName]);
+  assert.deepEqual(kernel?.functions, functionNames);
 
   const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
   const sourceKey = source.slice("src/lib/".length);
@@ -188,13 +191,18 @@ test("the field-analysis checker is current and required-autoloadable", () => {
 
   const loaded = runWithCache(published, [
     "from sagejs.native import is_compiled",
-    `from sagejs.number_fields.field_analysis_resource import ${functionName}`,
-    `print(is_compiled(${functionName}))`,
-    `print(${functionName}.nativeAvailable)`,
+    `from sagejs.number_fields.field_analysis_resource import ${functionNames.join(", ")}`,
+    ...functionNames.flatMap((functionName) => [
+      `print(is_compiled(${functionName}))`,
+      `print(${functionName}.nativeAvailable)`,
+    ]),
     "",
   ].join("\n"));
   assert.equal(loaded.status, 0, loaded.stdout + loaded.stderr);
-  assert.equal(loaded.stdout.trim(), "True\nTrue");
+  assert.equal(
+    loaded.stdout.trim(),
+    functionNames.flatMap(() => ["True", "True"]).join("\n"),
+  );
 });
 
 test("stale FFI declaration metadata fails before a native wrapper loads", () => {

@@ -865,6 +865,12 @@ class _CertificateAdapter:
         return list(self.coefficients)
 
     def basis_data(self, candidate: Any) -> tuple[list[list[int]], int]:
+        analysis = self.authenticated_analysis
+        if analysis is not None and candidate is self._candidate:
+            return (
+                [list(row) for row in analysis.basis_numerator],
+                int(analysis.basis_denominator),
+            )
         basis = _basis_from_order(candidate, self.scale)
         return [list(row) for row in basis.numerator], basis.denominator
 
@@ -1015,6 +1021,25 @@ class _CertificateAdapter:
     def bind_candidate(self, candidate: Any) -> None:
         self._candidate = candidate
 
+    def authenticated_proof(self, candidate: Any, certificate: dict[str, Any]) -> bool:
+        """Bind one live packed proof envelope to its serialized certificate."""
+        analysis = self.authenticated_analysis
+        if analysis is None or candidate is not self._candidate:
+            return False
+        return field_analysis_resource.authenticated_field_analysis_matches(
+            analysis,
+            polynomial=list(certificate.get("defining_polynomial", [])),
+            scale=self.scale,
+            trial_bound=_FIELD_ANALYSIS_TRIAL_BOUND,
+            equation_discriminant=int(certificate.get("equation_discriminant", 0)),
+            basis_numerator=[
+                list(row) for row in certificate.get("basis_numerator", [])
+            ],
+            basis_denominator=int(certificate.get("basis_denominator", 0)),
+            index=int(certificate.get("index", 0)),
+            order_discriminant=int(certificate.get("order_discriminant", 0)),
+        )
+
 
 def _proven_decomposition_from_field_analysis(
     analysis: Any, equation_discriminant: int
@@ -1057,7 +1082,7 @@ def _proven_decomposition_from_field_analysis(
 
 
 def _authenticated_default_field_analysis(
-    coefficients: list[int], scale: int, equation_discriminant: int
+    coefficients: list[int], scale: int
 ) -> tuple[Any, OrderBasis, dict[str, Any]] | None:
     """Return a fully rebound fused result, or defer to the established path."""
     if not is_compiled(
@@ -1074,17 +1099,14 @@ def _authenticated_default_field_analysis(
         # Native availability and resource decoding are an optional boundary.
         return None
     try:
-        if analysis.certified is not True:
-            return None
-        if not isinstance(analysis, field_analysis_resource.NativeFieldAnalysisResult):
-            return None
-        if (
-            list(analysis.polynomial) != coefficients
-            or int(analysis.scale) != scale
-            or int(analysis.trial_bound) != _FIELD_ANALYSIS_TRIAL_BOUND
-            or int(analysis.equation_discriminant) != equation_discriminant
+        if not field_analysis_resource.authenticated_field_analysis_matches(
+            analysis,
+            polynomial=coefficients,
+            scale=scale,
+            trial_bound=_FIELD_ANALYSIS_TRIAL_BOUND,
         ):
             return None
+        equation_discriminant = int(analysis.equation_discriminant)
         basis = OrderBasis(
             [list(row) for row in analysis.basis_numerator],
             int(analysis.basis_denominator),
@@ -1340,15 +1362,12 @@ def compute_maximal_order(
     requested = _normalize_requested_primes(requested_primes)
     trace = MaximalOrderTrace(trace_enabled)
     coefficients, scale = _integral_polynomial_data(field)
-    equation_order = field.equation_order()
-    equation_discriminant = _exact_integer(equation_order.discriminant())
 
     if requested is None and algorithm == "auto" and not trace_enabled:
-        authenticated = _authenticated_default_field_analysis(
-            coefficients, scale, equation_discriminant
-        )
+        authenticated = _authenticated_default_field_analysis(coefficients, scale)
         if authenticated is not None:
             analysis, basis, decomposition = authenticated
+            equation_discriminant = int(analysis.equation_discriminant)
             order = _order_from_basis(
                 field,
                 basis,
@@ -1392,6 +1411,9 @@ def compute_maximal_order(
             order._maximal_order_local_evidence = runtime.undefined
             order._maximal_order_trace = trace.to_dict()
             return order
+
+    equation_order = field.equation_order()
+    equation_discriminant = _exact_integer(equation_order.discriminant())
 
     decomposition_token = trace.begin(
         "discriminant-decomposition",

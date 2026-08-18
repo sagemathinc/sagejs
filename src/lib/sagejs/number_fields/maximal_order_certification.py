@@ -334,8 +334,11 @@ def _valuation(value: int, prime: int) -> int:
     return answer
 
 
-def check_maximal_order_certificate(
-    certificate: dict[str, Any], local_checker: Any = None
+def _check_maximal_order_certificate(
+    certificate: dict[str, Any],
+    local_checker: Any,
+    *,
+    lattice_authenticated: bool,
 ) -> dict[str, Any]:
     """Check global or explicitly scoped local maximality evidence.
 
@@ -347,13 +350,18 @@ def check_maximal_order_certificate(
     """
     if int(certificate.get("version", 0)) != 1:
         return {"valid": False, "certified": False, "reason": "version"}
-    lattice = check_order_lattice(
-        certificate.get("defining_polynomial", []),
-        certificate.get("basis_numerator", []),
-        int(certificate.get("basis_denominator", 0)),
-    )
-    if not lattice["valid"]:
-        return {"valid": False, "certified": False, "reason": lattice["reason"]}
+    if not lattice_authenticated:
+        lattice = check_order_lattice(
+            certificate.get("defining_polynomial", []),
+            certificate.get("basis_numerator", []),
+            int(certificate.get("basis_denominator", 0)),
+        )
+        if not lattice["valid"]:
+            return {
+                "valid": False,
+                "certified": False,
+                "reason": lattice["reason"],
+            }
 
     equation_discriminant = int(certificate.get("equation_discriminant", 0))
     order_discriminant = int(certificate.get("order_discriminant", 0))
@@ -506,6 +514,17 @@ def check_maximal_order_certificate(
     return {"valid": True, "certified": True, "reason": "checked"}
 
 
+def check_maximal_order_certificate(
+    certificate: dict[str, Any], local_checker: Any = None
+) -> dict[str, Any]:
+    """Check a serialized certificate with the independent lattice oracle."""
+    return _check_maximal_order_certificate(
+        certificate,
+        local_checker,
+        lattice_authenticated=False,
+    )
+
+
 def require_maximal_order_certificate(
     certificate: dict[str, Any], local_checker: Any = None
 ) -> None:
@@ -525,6 +544,13 @@ def _adapter_operation(adapter: Any, name: str) -> Any:
     if operation is None:
         raise TypeError("the maximal-order adapter does not provide " + name)
     return operation
+
+
+def _optional_adapter_operation(adapter: Any, name: str) -> Any:
+    """Return an optional adapter operation without changing core contracts."""
+    if isinstance(adapter, dict):
+        return adapter.get(name)
+    return getattr(adapter, name, None)
 
 
 def certify_global_order(
@@ -564,7 +590,28 @@ def certify_global_order(
         merge_denominator_primes,
     )
     local_checker = _adapter_operation(adapter, "verify_local_witness")
-    require_maximal_order_certificate(certificate, local_checker)
+    authenticated_operation = _optional_adapter_operation(
+        adapter, "authenticated_proof"
+    )
+    lattice_authenticated = False
+    if callable(authenticated_operation):
+        try:
+            lattice_authenticated = (
+                authenticated_operation(candidate, certificate) is True
+            )
+        except Exception:
+            # Authentication is an optional optimization.  A malformed or
+            # stale envelope must retain the complete generic checker.
+            lattice_authenticated = False
+    result = _check_maximal_order_certificate(
+        certificate,
+        local_checker,
+        lattice_authenticated=lattice_authenticated,
+    )
+    if not result["certified"]:
+        raise CertificationError(
+            "maximal-order certification failed: " + result["reason"]
+        )
     certificate["certified"] = True
     return certificate
 
