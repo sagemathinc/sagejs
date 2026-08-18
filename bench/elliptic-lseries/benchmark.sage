@@ -1,7 +1,7 @@
 """Matched warm/repeated/batch benchmark for elliptic L-series evaluation.
 
 This is intentionally valid Sage source. Run it under SageMath for the PARI
-baseline and under Sage.js after ``Lseries_ell.values`` is available.
+baseline and under Sage.js after `Lseries_ell.values` is available.
 """
 
 import json
