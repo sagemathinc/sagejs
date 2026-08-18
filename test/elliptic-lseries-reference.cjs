@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const referenceTimeout = 120_000;
 
 test("split-Mellin reference values agree with raw and completed oracles", async () => {
@@ -112,7 +113,7 @@ test("512-bit GL64 reference retains accuracy beyond the old GL16 floor", () => 
     "assert result200['quadrature_rule_order'] == 64",
     "print('ok')",
   ].join("\n");
-  const python = spawnSync("python3", ["-c", source], {
+  const python = spawnSync(pythonExecutable(), ["-c", source], {
     encoding: "utf8",
     timeout: referenceTimeout,
   });
