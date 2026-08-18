@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round4-native-state",
+  "title": "Round-4 packed native state machine",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce vector010 modified-Round4 construction by at least one order of magnitude with a reusable source-transparent packed residue/type-state kernel while preserving exact certificates and same-source fallback",
+  "base_commit": "2dbfd8401dbe7eac3298d81ee8d91510fbec5548",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4_state_kernel.py",
+    "test/number-field-round4-native-state.cjs",
+    "bench/number-field-round4-native-state.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Existing round4.py dynamic exact transition logic",
+      "Independent exact compact Round-4 certificate verifier with corruption differentials"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
