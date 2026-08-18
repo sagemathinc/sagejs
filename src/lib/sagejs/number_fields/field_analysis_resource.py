@@ -14,6 +14,7 @@ from typing import Any
 
 from sagejs.native import (
     IntegerBuffer,
+    integer_buffer_values,
     kernel_integer_buffer,
     kernel_integer_zeros,
     native,
@@ -50,23 +51,6 @@ def _unsigned(payload: Any, offset: int, width: int) -> int:
     for index in range(width):
         answer += _byte(payload, offset + index) << (8 * index)
     return answer
-
-
-def _integer(payload: Any, offset: int) -> tuple[int, int]:
-    if offset > len(payload) - 4:
-        raise ValueError("truncated field-analysis integer header")
-    header = _unsigned(payload, offset, 4)
-    length = header & 0x7FFFFFFF
-    negative = header >= 0x80000000
-    offset += 4
-    if length > len(payload) - offset:
-        raise ValueError("truncated field-analysis integer")
-    if negative and length == 0:
-        raise ValueError("noncanonical negative zero in field-analysis payload")
-    if length and _byte(payload, offset + length - 1) == 0:
-        raise ValueError("noncanonical field-analysis integer encoding")
-    value = _unsigned(payload, offset, length)
-    return (-value if negative else value), offset + length
 
 
 def _gcd(left: int, right: int) -> int:
@@ -170,6 +154,61 @@ def _integer_power_product(
             for index in range(degree):
                 product[exponent - degree + index] -= leading * polynomial[index]
     return product[:degree]
+
+
+@native
+def packed_field_analysis_decode_integers(
+    payload: IntegerBuffer,
+    output: IntegerBuffer,
+    entry_count: uint64,
+) -> bool:
+    """Decode the canonical signed integer stream in one packed traversal."""
+    if len(payload) < 80 or len(output) != entry_count:
+        return False
+    encoded_count = 0
+    count_factor = 1
+    for byte_index in range(8):
+        byte = payload[56 + byte_index]
+        if byte > 255:
+            return False
+        encoded_count += byte * count_factor
+        count_factor *= 256
+    if encoded_count != entry_count:
+        return False
+    offset = 80
+    for output_index in range(entry_count):
+        if offset + 4 > len(payload):
+            return False
+        header = 0
+        header_factor = 1
+        for byte_index in range(4):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            header += byte * header_factor
+            header_factor *= 256
+        negative = header >= 2147483648
+        length = header
+        if negative:
+            length -= 2147483648
+        offset += 4
+        if length > len(payload) - offset or (negative and length == 0):
+            return False
+        value = 0
+        multiplier = 1
+        for byte_index in range(length):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            value += byte * multiplier
+            multiplier *= 256
+        if length != 0 and payload[offset + length - 1] == 0:
+            return False
+        if negative:
+            value = -value
+        output[output_index] = value
+        offset += length
+    return offset == len(payload)
 
 
 @native
@@ -1507,13 +1546,16 @@ def decode_field_analysis_resource(
         raise ValueError("field-analysis entry count is inconsistent")
     if entry_count > (len(payload) - 80) // 4:
         raise ValueError("truncated field-analysis integer stream")
-    values: list[int] = []
-    offset = 80
-    for _index in range(entry_count):
-        value, offset = _integer(payload, offset)
-        values.append(value)
-    if offset != len(payload):
-        raise ValueError("field-analysis resource has trailing bytes")
+    decoded_values = kernel_integer_zeros(
+        packed_field_analysis_decode_integers, entry_count, 64
+    )
+    if not packed_field_analysis_decode_integers(
+        kernel_integer_buffer(packed_field_analysis_decode_integers, payload),
+        decoded_values,
+        entry_count,
+    ):
+        raise ValueError("field-analysis resource has an invalid integer stream")
+    values: list[int] = list(integer_buffer_values(decoded_values))
 
     scale, denominator, index, equation_disc, order_disc = values[:5]
     polynomial_start = 5
