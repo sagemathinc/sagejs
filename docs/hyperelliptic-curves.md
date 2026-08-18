@@ -61,6 +61,11 @@ complex L-series are outside this API.
 
 ## Jacobians
 
+See [Jacobian arithmetic for genus-2 and genus-3 hyperelliptic
+curves](hyperelliptic-jacobian-arithmetic.md) for the representation, Cantor
+formulas, enumeration and structure algorithms, native certification kernel,
+examples, and performance boundaries.
+
 Odd-degree genus-2 and genus-3 models over odd-characteristic finite fields
 have canonical reduced Mumford divisors `(u,v)`, generalized Cantor
 arithmetic, exact scalar multiplication, element orders, bounded enumeration,
@@ -90,15 +95,16 @@ incomplete group.
 
 ## Genus 3
 
-The exact genus-3 API uses the exhaustive implementation today. Internally,
-Sage.js also has exact Hasse--Witt matrices, exact Weil-constrained lift
-enumeration, and Jacobian/twist order filters. A modular residue is never
-reported as a full local polynomial: completion must leave exactly one
-candidate or return an explicit indeterminate/resource status.
+The explicit `algorithm="rforest"` backend combines exact Hasse--Witt
+residues, exact Weil-constrained lift enumeration, and certified
+Jacobian/twist order filters. A modular residue is never reported as a full
+local polynomial: completion must leave exactly one exhaustive candidate or
+use the exact reference fallback.
 
 The pinned rforest backend accelerates dense Hasse--Witt batches for integral
-curves. It is an internal modular stage until the exact completion workflow is
-both unique and faster for the requested range. Its timing diagnostics keep
-the remainder-forest, candidate-enumeration, and certification costs
-separate.
-
+curves, and one traversal serves a requested prime interval. Its timing
+diagnostics keep the remainder forest, candidate enumeration, primary
+Jacobian certification, twist certification, and fallback costs separate.
+`algorithm="auto"` does not yet select this path because complete dense-range
+certification, rather than the modular stage alone, must pass the documented
+performance gate.
