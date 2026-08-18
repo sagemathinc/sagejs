@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "genus3-group-kernel",
+  "title": "Packed genus-3 Jacobian certification kernel",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and validate a bounded portable packed genus-3 Mumford scalar-annihilation kernel with Python-recheckable certificates",
+  "base_commit": "2754498d6d06374df569b6e79b2aac6ec2b7f6a3",
+  "claims": [
+    "packages/flint/src/hyperelliptic/",
+    "packages/flint/include/sagejs/hyperelliptic/",
+    "packages/flint/test/hyperelliptic/",
+    "bench/hyperelliptic/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-genus3-certified-completion-plan.md",
+    "David Cantor, Computing in the Jacobian of a hyperelliptic curve"
+  ],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary Python HyperellipticJacobian differential oracle"
+    ],
+    "exceptions": [
+      "The existing source-transparent compiler cannot lower variable-length finite-field polynomial xgcd/division or packed batches of Mumford divisors; this isolated host-independent C primitive preserves the ordinary Python group law as its oracle and fallback."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

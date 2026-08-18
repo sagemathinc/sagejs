@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import sagejs as sage
+
 
 class JacobianResourceLimitError(RuntimeError):
     """A requested exact group computation exceeded its declared budget."""
@@ -57,7 +59,7 @@ def validate_factorization(
     value: Any,
     factorization: list[tuple[Any, int]],
 ) -> list[tuple[Any, int]]:
-    """Validate positivity, increasing bases, and product of a factorization."""
+    """Validate prime bases, exponents, ordering, and the exact product."""
     product = 1
     previous = 1
     normalized: list[tuple[Any, int]] = []
@@ -66,6 +68,8 @@ def validate_factorization(
             raise ValueError(
                 "factorization entries must have prime > 1 and exponent > 0"
             )
+        if not sage.is_prime(prime):
+            raise ValueError("factorization bases must be prime")
         if prime <= previous:
             raise ValueError("factorization primes must be strictly increasing")
         power = 1

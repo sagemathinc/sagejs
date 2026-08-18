@@ -17,6 +17,8 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/hyperelliptic/genus3_jacobian.c",
+        "src/hyperelliptic/genus3_jacobian_addon.c",
         "src/hyperelliptic/rforest.c",
         "src/hyperelliptic/smalljac.c",
         "src/matrix.c",

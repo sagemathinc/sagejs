@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 16,
+    "retain-host-adapter": 18,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -4281,6 +4281,100 @@
         "test/native-kernel.cjs"
       ],
       "declared_ffi": "flint:fmpz_gcd"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianCapabilities",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianCapabilities",
+      "callback": "sagejs_g3j_capabilities_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+        "line": 168,
+        "lines": 36,
+        "sha256": "4075f13e5713332c56677cdc53a12b827bde69442816355684ad9ede31e9c0d7",
+        "calls": [
+          "check_napi",
+          "napi_create_object",
+          "napi_create_string_utf8",
+          "napi_get_boolean",
+          "set_int32",
+          "set_property",
+          "set_uint64"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSearchProgression",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianSearchProgression",
+      "callback": "sagejs_g3j_search_progression_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+        "line": 205,
+        "lines": 122,
+        "sha256": "e18c36d0f9e8989a353de91013e1252f465e4bf5bd16c00c468d3e3fd9e056b1",
+        "calls": [
+          "bigint_to_integer",
+          "bigint_to_uint64",
+          "check_napi",
+          "integer_to_bigint",
+          "memcpy",
+          "memset",
+          "napi_create_array_with_length",
+          "napi_create_int32",
+          "napi_create_object",
+          "napi_create_string_utf8",
+          "napi_create_uint32",
+          "napi_get_cb_info",
+          "napi_get_typedarray_info",
+          "napi_is_typedarray",
+          "napi_set_element",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "napi_typeof",
+          "sagejs_g3j_search_progression",
+          "sagejs_g3j_status_name",
+          "set_property",
+          "set_uint64",
+          "typed_u64"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [],
+      "declared_ffi": null
     },
     {
       "id": "napi:@sagemath/sagejs-flint:gmpVersion",
