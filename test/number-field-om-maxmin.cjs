@@ -481,6 +481,41 @@ print(json.dumps(answer))
   }
 });
 
+test("degree-one residual extensions use exact scalable factorization", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_types import factor_residual_polynomial
+
+residual = tuple((value,) for value in (4, 5, 2, 5, 5, 2, 1, 1, 4, 2, 1, 5, 1, 4, 2, 6, 1))
+factors = factor_residual_polynomial(residual, 7, (0, 1))
+print(json.dumps([
+    [[coefficient[0] for coefficient in factor.polynomial], factor.multiplicity]
+    for factor in factors
+]))
+`;
+  const expected = [
+    [[1, 1, 2, 0, 1], 1],
+    [[1, 6, 1, 1, 1], 1],
+    [[1, 2, 4, 2, 1], 1],
+    [[4, 4, 5, 3, 1], 1],
+  ];
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), expected);
+  }
+});
+
 test("OM stress matrix is stable under equivalent translated generators", () => {
   const script = String.raw`
 import json

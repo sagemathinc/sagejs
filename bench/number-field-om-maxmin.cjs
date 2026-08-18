@@ -2,14 +2,33 @@
 "use strict";
 
 const { spawnSync } = require("node:child_process");
+const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
-const samples = Math.max(1, Number(process.env.SAGEJS_OM_MAXMIN_SAMPLES || 7));
+const profile = process.env.SAGEJS_OM_MAXMIN_PROFILE || "standard";
+if (!new Set(["standard", "scalable", "v429-p7"]).has(profile)) {
+  throw new Error(`unknown SAGEJS_OM_MAXMIN_PROFILE: ${profile}`);
+}
+const stress = profile !== "standard";
+const samples = Math.max(
+  1,
+  Number(process.env.SAGEJS_OM_MAXMIN_SAMPLES || (stress ? 1 : 7)),
+);
 const iterations = Math.max(
   1,
-  Number(process.env.SAGEJS_OM_MAXMIN_ITERATIONS || 10),
+  Number(process.env.SAGEJS_OM_MAXMIN_ITERATIONS || (stress ? 1 : 10)),
 );
+const v429Polynomial =
+  profile === "v429-p7"
+    ? JSON.parse(
+        readFileSync(
+          join(root, "test/fixtures/number-field-maximal-order-corpus.json"),
+          "utf8",
+        ),
+      ).cases.find((item) => item.id === "pari-round4-vector-429").polynomial
+        .coefficients
+    : [];
 
 const script = String.raw`
 import json
@@ -21,7 +40,25 @@ from sagejs.number_fields.om_maxmin import regular_local_basis
 samples = ${samples}
 iterations = ${iterations}
 rows = []
-cases = (
+profile = "${profile}"
+
+def bad_generator_polynomial(degree, coefficient):
+    previous = [2]
+    current = [-1]
+    for _index in range(2, degree + 1):
+        following = [0] * max(len(current), len(previous) + 1)
+        for index in range(len(current)):
+            following[index] -= current[index]
+        for index in range(len(previous)):
+            following[index + 1] += coefficient * previous[index]
+        previous, current = current, following
+    answer = [-2 * value for value in current]
+    answer[0] += 4 * coefficient ** degree
+    answer.extend([0] * (degree + 1 - len(answer)))
+    answer[degree] += 1
+    return tuple(answer)
+
+standard_cases = (
     ("linear-regular-d8", tuple([-512] + [0] * 7 + [1]), 8, 28, 87),
     ("representative-refined-d8", tuple([-768] + [0] * 7 + [1]), 8, 28, 80),
     (
@@ -74,11 +111,23 @@ cases = (
         304,
     ),
 )
-for name, polynomial, degree, expected_index, discriminant_valuation in cases:
+if profile == "scalable":
+    cases = (
+        ("bad-generator-d32-c1009-p2", bad_generator_polynomial(32, 1009), 32, 0, 191, 2),
+        ("bad-generator-d48-c1009-p2", bad_generator_polynomial(48, 1009), 48, 0, 239, 2),
+        ("bad-generator-d32-k32-p2", bad_generator_polynomial(32, 2 ** 32), 32, 0, 191, 2),
+        ("bad-generator-d32-k128-p2", bad_generator_polynomial(32, 2 ** 128), 32, 0, 191, 2),
+    )
+elif profile == "v429-p7":
+    cases = (("pari-round4-vector-429-p7", tuple(int(value) for value in ${JSON.stringify(v429Polynomial)}), 64, 480, 1008, 7),)
+else:
+    cases = tuple(item + (2,) for item in standard_cases)
+
+for name, polynomial, degree, expected_index, discriminant_valuation, prime in cases:
     def run_once():
         result = regular_local_basis(
             polynomial,
-            2,
+            prime,
             local_discriminant_valuation=discriminant_valuation,
         )
         if result.status != "complete" or result.certificate is None:
@@ -100,6 +149,7 @@ for name, polynomial, degree, expected_index, discriminant_valuation in cases:
     rows.append({
         "name": name,
         "degree": degree,
+        "prime": prime,
         "index_valuation": expected_index,
         "median_ms": timings[len(timings) // 2],
         "minimum_ms": timings[0],
@@ -116,6 +166,7 @@ function measure(label, command, args) {
     encoding: "utf8",
     input: script,
     maxBuffer: 16 * 1024 * 1024,
+    timeout: Number(process.env.SAGEJS_OM_MAXMIN_TIMEOUT_MS || 60000),
   });
   const wallMs = Number(process.hrtime.bigint() - started) / 1e6;
   if (result.status !== 0) {
@@ -129,9 +180,14 @@ function measure(label, command, args) {
 }
 
 const report = {
-  schema_version: 2,
+  schema_version: 3,
+  profile,
   workload:
     "certified first- and second-order OM quotient bases plus independent closure",
+  comparison_scope:
+    profile === "scalable"
+      ? "OM rows are p=2 local components; direct PARI nfbasis and Hecke maximal_order timings are full-global and are not crossover-equivalent"
+      : "same exact local OM type, MaxMin, and independent lattice certificate",
   implementations: [
     measure("cpython", "python3", ["-"]),
     measure("sagejs-dynamic", process.execPath, [join(root, "bin/sagejs"), "--python"]),
