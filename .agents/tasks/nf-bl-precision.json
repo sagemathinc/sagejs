@@ -69,6 +69,56 @@
       "commit": "f7fd13b5c6690087e1acd6abd75e56689f508668",
       "workspace_fingerprint": "f7e7a05f652a748b5f270a8cad992b0cccc07f8f8505cee396af2bb4bbd2f183",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/buchmann_lenstra.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.812,
+      "started_at": "2026-08-18T01:33:10.059Z",
+      "commit": "a45d8aa525ee8480594faec0916f798139063467",
+      "workspace_fingerprint": "127e05e03385206afd73ac4bd4c0e613dd99ed4a7accae3daf1b762246627ab5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs test/number-field-buchmann-lenstra-precision.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.394,
+      "started_at": "2026-08-18T01:33:17.115Z",
+      "commit": "a45d8aa525ee8480594faec0916f798139063467",
+      "workspace_fingerprint": "127e05e03385206afd73ac4bd4c0e613dd99ed4a7accae3daf1b762246627ab5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/buchmann_lenstra.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.035,
+      "started_at": "2026-08-18T01:35:47.755Z",
+      "commit": "56598336c54e482739b970942b56cd4d5069c156",
+      "workspace_fingerprint": "0232299fa149b7b3eabd0842b5d8f3a2519e7e0fef11646dc6a1c617115c645d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs test/number-field-buchmann-lenstra-precision.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.886,
+      "started_at": "2026-08-18T01:35:57.103Z",
+      "commit": "56598336c54e482739b970942b56cd4d5069c156",
+      "workspace_fingerprint": "0232299fa149b7b3eabd0842b5d8f3a2519e7e0fef11646dc6a1c617115c645d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-buchmann-lenstra-precision.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.967,
+      "started_at": "2026-08-18T01:36:26.723Z",
+      "commit": "56598336c54e482739b970942b56cd4d5069c156",
+      "workspace_fingerprint": "0232299fa149b7b3eabd0842b5d8f3a2519e7e0fef11646dc6a1c617115c645d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
