@@ -1,26 +1,28 @@
 #include <errno.h>
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "smalljac.h"
 
-static int print_lpoly(smalljac_curve_t curve, unsigned long q, int good,
-                       long coefficients[], int count, void *context) {
+static int print_lpoly(smalljac_curve_t curve, uint64_t q, int good,
+                       int64_t coefficients[], int count, void *context) {
   int i;
   (void)curve;
   (void)context;
-  printf("%lu %d", q, good);
-  for (i = 0; i < count; i += 1) printf(" %ld", coefficients[i]);
+  printf("%" PRIu64 " %d", q, good);
+  for (i = 0; i < count; i += 1) printf(" %" PRId64, coefficients[i]);
   putchar('\n');
   return 1;
 }
 
 int main(int argc, char *argv[]) {
   char *end = NULL;
-  unsigned long start;
-  unsigned long stop;
+  uint64_t start;
+  uint64_t stop;
   int error = 0;
-  long result;
+  int64_t result;
   smalljac_curve_t curve;
 
   if (argc != 4) {
@@ -28,10 +30,10 @@ int main(int argc, char *argv[]) {
     return 2;
   }
   errno = 0;
-  start = strtoul(argv[2], &end, 10);
+  start = strtoull(argv[2], &end, 10);
   if (errno || !end || *end) return 2;
   errno = 0;
-  stop = strtoul(argv[3], &end, 10);
+  stop = strtoull(argv[3], &end, 10);
   if (errno || !end || *end) return 2;
 
   curve = smalljac_curve_init(argv[1], &error);
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
   result = smalljac_Lpolys(curve, start, stop, 0, print_lpoly, NULL);
   smalljac_curve_clear(curve);
   if (result < 0) {
-    fprintf(stderr, "smalljac_Lpolys failed: %ld\n", result);
+    fprintf(stderr, "smalljac_Lpolys failed: %" PRId64 "\n", result);
     return 1;
   }
   return 0;
