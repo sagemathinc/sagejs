@@ -55,6 +55,10 @@ from sagejs.native import (
     kernel_uint64_buffer,
     kernel_uint64_zeros,
 )
+from sagejs.number_fields.round4_state_kernel import (
+    packed_round4_exact_characteristic,
+    packed_round4_power_basis_covolume,
+)
 
 
 class Round4Unsupported(ArithmeticError):
@@ -1655,6 +1659,95 @@ def _record_characteristic_input(
         )
 
 
+def _packed_exact_integral_characteristic(
+    field: Any,
+    element: Any,
+    prime: Any,
+    transition: int,
+) -> dict[str, Any] | None:
+    """Run one exact characteristic event inside the packed FLINT boundary.
+
+    Returning `None` is a capability result and selects the existing host
+    implementation.  A completed result explicitly distinguishes integral
+    from nonintegral elements and carries the exact replay certificate.
+    """
+    kernel = packed_round4_exact_characteristic
+    if not is_compiled(kernel):
+        return None
+    degree = field.degree()
+    packed_element = _packed_field_element_coordinates(field, element)
+    rows, denominator, row_bounds = _integer_multiplication_matrix_data(
+        field,
+        element,
+    )
+    if denominator != packed_element[0]:
+        raise Round4InvariantError(
+            "the packed characteristic element changed its canonical denominator"
+        )
+    defining = []
+    for coefficient in field._defining_coefficients:
+        if coefficient._denominator != 1:
+            return None
+        defining.append(coefficient._numerator)
+    coefficient_bounds = _characteristic_coefficient_bounds(row_bounds)
+    coefficient_bits = _positive_integer_bits(max(coefficient_bounds))
+    strategy = {
+        "strategy": (
+            "modular-crt"
+            if coefficient_bits >= _ROUND4_CRT_BOUND_BITS
+            else "direct-exact"
+        ),
+        "degree": degree,
+        "hadamard_bound_bits": coefficient_bits,
+        "estimated_crt_primes": (coefficient_bits + 29) // 30,
+        "crt_bound_bits_cutoff": _ROUND4_CRT_BOUND_BITS,
+        "implementation": "packed-exact-flint",
+    }
+    matrix_bits = _positive_integer_bits(
+        max(sage.ZZ(1), max(abs(value) for row in rows for value in row))
+    )
+    control = kernel_integer_buffer(kernel, [0, 0, 0, transition])
+    output = kernel_integer_zeros(
+        kernel,
+        degree + 1,
+        max(8, (coefficient_bits + 63) // 64 + 2),
+    )
+    matrix_workspace = kernel_integer_zeros(
+        kernel,
+        degree * degree,
+        max(8, (matrix_bits + 63) // 64 + 2),
+    )
+    completed = kernel(
+        control,
+        output,
+        matrix_workspace,
+        kernel_integer_buffer(kernel, defining),
+        kernel_integer_buffer(kernel, packed_element),
+        kernel_integer_buffer(kernel, [prime]),
+        degree,
+    )
+    status = integer_buffer_values(control)
+    if not runtime.number(completed):
+        if status[0] == -4:
+            return {"integral": False, "strategy": strategy}
+        return None
+    coefficients = [sage.ZZ(value) for value in integer_buffer_values(output)]
+    return {
+        "integral": True,
+        "strategy": strategy,
+        "coefficients": coefficients,
+        "certificate": {
+            "kind": "direct-characteristic-replay",
+            "element": list(packed_element),
+            "matrix_denominator": denominator,
+            "coefficient_bounds": list(coefficient_bounds),
+            "characteristic_polynomial": list(coefficients),
+            "transition": transition,
+            "implementation": "packed-exact-flint",
+        },
+    }
+
+
 def _element_characteristic_polynomial(
     field: Any,
     element: Any,
@@ -1706,11 +1799,53 @@ def _integral_characteristic_polynomial(
             if metrics is not None:
                 metrics["characteristic_polynomial_cache_hits"] += 1
             return list(cached)
+    recorded_input = False
+    recorded_strategy = False
+    local_prime = None if metrics is None else metrics.get("_round4_prime")
+    if metrics is not None and local_prime is not None:
+        _record_characteristic_input(element, metrics, metric_label)
+        recorded_input = True
+        transition = metrics.get("packed_exact_characteristic_calls", 0)
+        packed = _packed_exact_integral_characteristic(
+            field,
+            element,
+            local_prime,
+            transition,
+        )
+        if packed is not None:
+            if metric_label in ["residue-beta", "residue-root-error"]:
+                _record_characteristic_strategy(
+                    metrics,
+                    metric_label,
+                    packed["strategy"],
+                )
+                recorded_strategy = True
+            metrics["packed_exact_characteristic_attempts"] = (
+                metrics.get("packed_exact_characteristic_attempts", 0) + 1
+            )
+            certifications = metrics.get("packed_exact_characteristic_certifications")
+            if certifications is None:
+                certifications = {}
+                metrics["packed_exact_characteristic_certifications"] = certifications
+            certification = "integral" if packed["integral"] else "nonintegral"
+            certifications[certification] = certifications.get(certification, 0) + 1
+            if not packed["integral"]:
+                return None
+            metrics["packed_exact_characteristic_calls"] = transition + 1
+            certificates = metrics.get("modular_characteristic_certificates")
+            if certificates is None:
+                certificates = []
+                metrics["modular_characteristic_certificates"] = certificates
+            certificates.append(packed["certificate"])
+            answer = list(packed["coefficients"])
+            if cache is not None and key is not None:
+                cache[key] = list(answer)
+            return answer
     if metric_label in ["residue-beta", "residue-root-error"]:
-        if metrics is not None:
+        if metrics is not None and not recorded_input:
             _record_characteristic_input(element, metrics, metric_label)
         decision = residue_characteristic_strategy(field, element)
-        if metrics is not None:
+        if metrics is not None and not recorded_strategy:
             _record_characteristic_strategy(metrics, metric_label, decision)
         if decision["strategy"] == "modular-crt":
             coefficients = _modular_characteristic_polynomial(
@@ -1724,7 +1859,7 @@ def _integral_characteristic_polynomial(
         coefficients = _element_characteristic_polynomial(
             field,
             element,
-            metrics,
+            None if recorded_input else metrics,
             metric_label,
         )
     answer = []
@@ -2078,6 +2213,76 @@ def _power_basis_rows(field: Any, generator: Any) -> list[list[Any]]:
         rows.append(coefficients)
         power *= generator
     return rows
+
+
+def _packed_power_basis_containment(
+    power_rows: list[list[Any]],
+    prime: Any,
+    expected_index_valuation: int,
+    transition: int,
+) -> dict[str, Any] | None:
+    """Prove local containment by the exact power-basis covolume."""
+    kernel = packed_round4_power_basis_covolume
+    if not is_compiled(kernel):
+        return None
+    degree = len(power_rows)
+    numerators = []
+    denominators = []
+    determinant_bound = sage.ZZ(1)
+    denominator_bound = sage.ZZ(1)
+    for row in power_rows:
+        denominator = sage.ZZ(1)
+        for value in row:
+            denominator = _integer_lcm(denominator, value._denominator)
+        integer_row = [
+            value._numerator * (denominator // value._denominator) for value in row
+        ]
+        content = denominator
+        for value in integer_row:
+            content = _integer_gcd(content, value)
+        denominator //= content
+        integer_row = [value // content for value in integer_row]
+        numerators.extend(integer_row)
+        denominators.append(denominator)
+        row_norm_square = sum(value * value for value in integer_row)
+        determinant_bound *= max(
+            sage.ZZ(1),
+            _integer_sqrt_ceiling(row_norm_square),
+        )
+        denominator_bound *= denominator
+    storage_bits = _positive_integer_bits(
+        max(sage.ZZ(1), determinant_bound, denominator_bound)
+    )
+    word_capacity = max(8, (storage_bits + 63) // 64 + 2)
+    control = kernel_integer_buffer(kernel, [0, 0, 0, transition])
+    determinant_parts = kernel_integer_zeros(kernel, 2, word_capacity)
+    determinant_workspace = kernel_integer_zeros(kernel, 1, word_capacity)
+    completed = kernel(
+        control,
+        determinant_parts,
+        determinant_workspace,
+        kernel_integer_buffer(kernel, numerators),
+        kernel_integer_buffer(kernel, denominators),
+        kernel_integer_buffer(kernel, [prime]),
+        expected_index_valuation,
+        degree,
+    )
+    status = integer_buffer_values(control)
+    if not runtime.number(completed):
+        if status[0] == -5:
+            raise Round4InvariantError(
+                "the power-basis covolume does not match the local join index"
+            )
+        return None
+    determinant = integer_buffer_values(determinant_parts)
+    return {
+        "implementation": "packed-exact-covolume",
+        "determinant_numerator": determinant[0],
+        "determinant_denominator": determinant[1],
+        "local_index_valuation": status[1],
+        "expected_index_valuation": status[2],
+        "transition": status[3],
+    }
 
 
 def _exact_field_element_quotient(
@@ -2601,6 +2806,9 @@ def round4_primary_power_basis(
     characteristic_metrics.setdefault("max_input_coefficient_bits", 0)
     characteristic_metrics.setdefault("max_denominator_bits", 0)
     characteristic_metrics.setdefault("characteristic_polynomial_inputs", [])
+    characteristic_metrics.setdefault("modular_characteristic_calls", 0)
+    characteristic_metrics.setdefault("modular_characteristic_primes", 0)
+    characteristic_metrics["_round4_prime"] = prime
     characteristic_cache: dict[Any, list[Any]] = {}
     phi = field.gen()
     nu = list(plan.irreducible_factors[0])
@@ -2761,16 +2969,6 @@ def round4_primary_power_basis(
                 raise Round4InvariantError(
                     "the local generator has a denominator away from p"
                 )
-        power_matrix = _nf_global("matrix")(sage.QQ, power_rows)
-        if power_matrix.determinant() == 0:
-            raise Round4InvariantError("the Round-4 generator is not primitive")
-        containment = order.basis_matrix() * power_matrix.inverse()
-        for row in containment.rows():
-            for value in row:
-                if value._denominator % prime == 0:
-                    raise Round4InvariantError(
-                        "the power basis does not locally contain the input order"
-                    )
         candidate = maximal_order.NumberFieldOrder(
             field,
             list(order._basis_rows) + power_rows,
@@ -2785,6 +2983,27 @@ def round4_primary_power_basis(
             raise Round4InvariantError(
                 "a local power-basis join changed the order away from p"
             )
+        containment_evidence = _packed_power_basis_containment(
+            power_rows,
+            prime,
+            local_index_valuation,
+            len(stages),
+        )
+        if containment_evidence is None:
+            power_matrix = _nf_global("matrix")(sage.QQ, power_rows)
+            if power_matrix.determinant() == 0:
+                raise Round4InvariantError("the Round-4 generator is not primitive")
+            containment = order.basis_matrix() * power_matrix.inverse()
+            for row in containment.rows():
+                for value in row:
+                    if value._denominator % prime == 0:
+                        raise Round4InvariantError(
+                            "the power basis does not locally contain the input order"
+                        )
+            containment_evidence = {
+                "implementation": "dynamic-rational-inverse",
+                "local_index_valuation": local_index_valuation,
+            }
         input_discriminant = plan.polynomial_discriminant
         order._discriminant_cache = runtime.normalize_integer(input_discriminant)
         output_discriminant, discriminant_remainder = divmod(
@@ -2829,6 +3048,7 @@ def round4_primary_power_basis(
                     "input_discriminant": input_discriminant,
                     "output_discriminant": output_discriminant,
                     "closure_checked": True,
+                    "power_basis_containment": containment_evidence,
                     "closure_witness": (
                         "nested local orders: power basis at p and input order away from p"
                     ),
@@ -3520,6 +3740,7 @@ def _multiplication_matrix_from_packed_evidence(
 def _verify_round4_characteristic_certificate(
     field: Any,
     certificate: dict[str, Any],
+    prime: Any | None = None,
 ) -> None:
     rows, denominator = _multiplication_matrix_from_packed_evidence(
         field,
@@ -3528,7 +3749,25 @@ def _verify_round4_characteristic_certificate(
     if denominator != certificate["matrix_denominator"]:
         raise Round4InvariantError("a characteristic proof changed matrix scale")
     if certificate["kind"] == "direct-characteristic-replay":
-        characteristic = list(_nf_global("matrix")(sage.ZZ, rows).charpoly().list())
+        characteristic = None
+        if (
+            prime is not None
+            and certificate.get("implementation") == "packed-exact-flint"
+        ):
+            packed = certificate["element"]
+            element = field._from_coefficients(
+                [sage.QQ(value) / packed[0] for value in packed[1:]]
+            )
+            replay = _packed_exact_integral_characteristic(
+                field,
+                element,
+                prime,
+                certificate["transition"],
+            )
+            if replay is not None and replay["integral"]:
+                characteristic = replay["coefficients"]
+        if characteristic is None:
+            characteristic = list(_nf_global("matrix")(sage.ZZ, rows).charpoly().list())
         if characteristic != certificate["characteristic_polynomial"]:
             raise Round4InvariantError("a direct characteristic proof was corrupted")
         return
@@ -3689,8 +3928,15 @@ def verify_round4_local_result(result: Round4LocalResult) -> bool:
             raise Round4InvariantError("the certified order is not locally maximal")
     characteristic_certificates = envelope["characteristic_certificates"]
     quotient_certificates = envelope["quotient_certificates"]
+    packed_transition = 0
     for event in characteristic_certificates:
-        _verify_round4_characteristic_certificate(field, event)
+        if "transition" in event:
+            if event["transition"] != packed_transition:
+                raise Round4InvariantError(
+                    "the packed characteristic transcript was reordered"
+                )
+            packed_transition += 1
+        _verify_round4_characteristic_certificate(field, event, certificate.prime)
     for event in quotient_certificates:
         _verify_round4_quotient_certificate(field, event)
     if ford_letard is not None:
@@ -3700,9 +3946,10 @@ def verify_round4_local_result(result: Round4LocalResult) -> bool:
             if stage.name == "assemble-power-basis-hnf"
         ][-1]
         metrics = final_stage.evidence["characteristic_polynomial_metrics"]
-        if len(characteristic_certificates) != metrics.get(
+        expected_characteristic_certificates = metrics.get(
             "modular_characteristic_calls", 0
-        ):
+        ) + metrics.get("packed_exact_characteristic_calls", 0)
+        if len(characteristic_certificates) != expected_characteristic_certificates:
             raise Round4InvariantError(
                 "the characteristic proof envelope is incomplete"
             )
