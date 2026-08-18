@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "nf_opt_round2_native_state",
   "objective": "Reduce the remaining vector010 Round-2 direct-reference gap using a general exact packed FLINT-owned state across cycle stages, preserving forced exact fallbacks and differential/lifecycle evidence",
-  "base_commit": "285c223da7f42e69ee5e91e6f1d214f6bcf7cfe5",
+  "base_commit": "47d9e2c0820f15deebdc6f3c7f4b9a1da652e7ab",
   "claims": [
     "packages/flint/include/sagejs/number_field_order_ffi.h",
     "test/number-field-order-resource-ffi.cjs",
@@ -38,10 +38,38 @@
     "pnpm test:native",
     "pnpm test:sea"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main-2/packages/flint/.native/prefix node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.535,
+      "started_at": "2026-08-18T11:11:33.650Z",
+      "commit": "819759cefc3e18c47f41d3da7262d062c9f5ca10",
+      "workspace_fingerprint": "64a9740c186c5b6d58e0b6a5d2629582a39c60eb593abf7a5f7eb540da1f5ccd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main-2/packages/flint/.native/prefix SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.996,
+      "started_at": "2026-08-18T11:11:45.883Z",
+      "commit": "819759cefc3e18c47f41d3da7262d062c9f5ca10",
+      "workspace_fingerprint": "64a9740c186c5b6d58e0b6a5d2629582a39c60eb593abf7a5f7eb540da1f5ccd",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented a general exact terminal-p=2 packed state with adaptive precision retries, bit-sliced modulo-four tensor state, packed GF(2) radical and multiplier kernels, and an immutable prime-boundary restart. Vector010 Round2 is 69.673ms versus PARI's 37ms (1.883x, below the no-case-above-2x gate), down from 233.145ms. Vector429 is 0.650s, down from 6.129s. Vector010 agrees byte-for-byte with the forced exact tensor implementation, vector429 matches its frozen forced-exact hash, 32 randomized differentials agree, and ASan/UBSan passes.",
+    "risks": [
+      "The packed path is intentionally terminal-prime and degree-at-most-64; nonterminal primes and larger degrees keep the exact FLINT tensor fallback.",
+      "Linux x64 sanitizer and lifecycle execution passed. The final integration platform matrix must exercise native Windows x64, Linux arm64, and macOS arm64 before release."
+    ],
+    "next_steps": [
+      "Integration lane: refresh packages/flint/include/sagejs/number_field_order_ffi.h in architecture/native-audit.json from 1639 lines/68585 bytes to 2344 lines/97540 bytes and extend the rationale with adaptive p-adic tensor state and packed GF(2) kernels.",
+      "Integration lane: run pnpm architecture:check after the audit refresh.",
+      "Integration lane: preserve bench/results/number-field-round2-native-state-2026-08-18.json as the direct-ratio receipt and rerun the final four-platform native lifecycle suite."
+    ]
   }
 }
