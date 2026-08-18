@@ -35,12 +35,64 @@
   "validation": [
     "node test/elliptic-lseries-oracles.cjs",
     "node bench/elliptic-lseries/verify-sage-capture.cjs",
-    "/home/user/sagelite/sage bench/elliptic-lseries/benchmark.sage"
+    "/home/user/sagelite/sage bench/elliptic-lseries/benchmark.sage",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/elliptic-lseries-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.054,
+      "started_at": "2026-08-18T07:52:22.867Z",
+      "commit": "822271dcffd187194c446df571c9e5b48b7dc621",
+      "workspace_fingerprint": "32c59800cb16adeb21b277a9920cb7dee08a918de87cc752847d8e383e7f41f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/elliptic-lseries/verify-sage-capture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.436,
+      "started_at": "2026-08-18T07:52:28.782Z",
+      "commit": "822271dcffd187194c446df571c9e5b48b7dc621",
+      "workspace_fingerprint": "32c59800cb16adeb21b277a9920cb7dee08a918de87cc752847d8e383e7f41f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/sagelite/sage bench/elliptic-lseries/benchmark.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.387,
+      "started_at": "2026-08-18T07:52:37.023Z",
+      "commit": "822271dcffd187194c446df571c9e5b48b7dc621",
+      "workspace_fingerprint": "32c59800cb16adeb21b277a9920cb7dee08a918de87cc752847d8e383e7f41f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.923,
+      "started_at": "2026-08-18T07:53:20.225Z",
+      "commit": "822271dcffd187194c446df571c9e5b48b7dc621",
+      "workspace_fingerprint": "32c59800cb16adeb21b277a9920cb7dee08a918de87cc752847d8e383e7f41f6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Pinned 261 Sage/PARI raw and canonical-completed values at 53, 100, and 200 bits for ten curve models, plus 20 independent 70-decimal-digit Magma comparisons. The one-process capture and verification harnesses record exact curve, coefficient-prefix, normalization, precision, and source metadata. The corpus checker covers stable precision prefixes, conjugation, the functional equation, trivial and near-trivial-zero behavior, ranks 0 through 5, both root signs, and isomorphic integral/nonintegral models. Matched Sage/Sage.js and Magma benchmark scaffolding separates setup, cold, repeated, independent, and native batch work.",
+    "risks": [
+      "All values are non-rigorous numerical approximations, and high analytic-rank labels are classifications rather than proofs.",
+      "PARI lfunlambda for elliptic gammaV=[0,1] is twice the project's canonical completion; the harness deliberately divides it by two and the provenance/checker freeze that convention.",
+      "The installed old Magma is prohibitively slow for the conductor-430250329 curve at 70 decimal digits, so independent Magma fixtures stop at conductor 1008811 while Sage/PARI covers the large public example."
+    ],
+    "next_steps": [
+      "Wire test/elliptic-lseries-oracles.cjs into the integration lane's focused public test command without changing the offline fixture schema.",
+      "Use raw and completed corpus records directly in reference/native differential tests, including s=-1+2^-20 to prevent trivial-zero snapping.",
+      "Run benchmark.sage under the completed Sage.js API on bench-1 and compare native batch time against the retained independent-point Sage baseline."
+    ]
   }
 }
