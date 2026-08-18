@@ -253,13 +253,20 @@ async function main() {
   mkdirSync(packDestination, { recursive: true });
   copyFileSync(pack.addonPath, join(packDestination, PACK_FILENAME));
   copyFileSync(pack.manifestPath, join(packDestination, "index.json"));
-  const standaloneBytes = built.reduce((total, item) =>
-    total + statSync(join(
+  const standaloneAddons = built.map((item) => ({
+    source: item.logicalSource,
+    bytes: statSync(join(
       item.outputPath,
       "build",
       "Release",
       "sagejs_native_kernel.node",
-    )).size, 0
+    )).size,
+  })).sort((left, right) =>
+    right.bytes - left.bytes || left.source.localeCompare(right.source)
+  );
+  const standaloneBytes = standaloneAddons.reduce(
+    (total, addon) => total + addon.bytes,
+    0,
   );
   const sizeReport = {
     schema: "sagejs.native-pack-size/v1",
@@ -270,6 +277,7 @@ async function main() {
     packBytes: pack.manifest.bytes,
     savedBytes: standaloneBytes - pack.manifest.bytes,
     packToStandaloneRatio: pack.manifest.bytes / standaloneBytes,
+    largestStandaloneAddons: standaloneAddons.slice(0, 10),
   };
   writeFileSync(
     join(options.outputRoot, "size-report.json"),

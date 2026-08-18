@@ -220,6 +220,19 @@ test("the production pack eliminates repeated static dependency payloads", () =>
   assert.ok(report.kernels > 0);
   assert.ok(report.standaloneBytes > report.packBytes);
   assert.equal(report.savedBytes, report.standaloneBytes - report.packBytes);
+  assert.ok(report.largestStandaloneAddons.length > 0);
+  assert.ok(report.largestStandaloneAddons.length <= 10);
+  assert.equal(
+    report.largestStandaloneAddons.reduce(
+      (largest, addon) => Math.max(largest, addon.bytes),
+      0,
+    ),
+    report.largestStandaloneAddons[0].bytes,
+  );
+  for (const addon of report.largestStandaloneAddons) {
+    assert.match(addon.source, /^sagejs\//);
+    assert.ok(addon.bytes > 0);
+  }
   assert.ok(
     report.packToStandaloneRatio < 0.25,
     `production native pack is unexpectedly large: ${JSON.stringify(report)}`,
