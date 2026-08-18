@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-discriminant-flint-primitives",
+  "title": "Mature FLINT discriminant primitives",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate exact discriminant perfect-power extraction and compositeness scheduling through generated mature-FLINT adapters while preserving maximal-exponent semantics, replayable evidence boundaries, ordinary fallbacks, and degree-90 phase evidence",
+  "base_commit": "ac4dd69212845436cf4161f3633b386fa63a1485",
+  "claims": [
+    "src/lib/sagejs/number_fields/discriminant_flint_primitives.py",
+    "test/number-field-discriminant-flint-primitives.cjs",
+    "bench/number-field-discriminant-flint-primitives.cjs",
+    "bench/results/number-field-discriminant-flint-primitives-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_is_perfect_power, fmpz_is_probabprime, and fmpz_is_prime semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "flint",
+      "discriminant_components readable theorem and certificate layer"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
