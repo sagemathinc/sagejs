@@ -1,0 +1,94 @@
+{
+  "schema": "sagejs.number-fields/proof-path-m1-benchmark-v1",
+  "source": {
+    "commit": "0d3cd2c6cef201bf2e9e58d821542775700a81f5",
+    "field_analysis_resource_sha256": "c11d538359c07ee32f454206d2e14d0281d33298a5c349e0c22be72ffb2fa97a",
+    "native_cache_key": "f8c5348ec00c304007018b4993408f944f6c311814bedfc7c5f8f43c27da1ee0"
+  },
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "release": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "node": "v26.7.0",
+    "load_average": [6.93, 8.57, 9.89],
+    "openblas_threads": 1,
+    "omp_threads": 1
+  },
+  "policy": {
+    "warmups": 3,
+    "samples": 7,
+    "boundary": "fresh NumberField and checked public maximal_order",
+    "cache": "a new field per operation; no maximal-order result cache",
+    "equivalence": "basis matrix, discriminant, and maximality certificate equal to the established public path",
+    "phase_profile": "one additional fresh call per case; inclusive instrumentation"
+  },
+  "results": [
+    {
+      "id": "motivating-degree-7",
+      "rounds_per_sample": 3,
+      "established_public_samples_ms": [32.43295351664225, 34.677346547444664, 31.045834223429363, 35.43408711751302, 31.60881996154785, 32.69147872924805, 29.883305231730144],
+      "established_public_median_ms": 32.43295351664225,
+      "proof_path_samples_ms": [22.33600616455078, 24.160385131835938, 20.28822898864746, 20.3397274017334, 20.67844072977702, 20.519574483235676, 18.770217895507812],
+      "proof_path_median_ms": 20.519574483235676,
+      "speedup": 1.5805860663991695,
+      "phase_profile_ms": {"total": 21.866321563720703, "equation_order": 3.0052661895751953, "native_resource": 0.32806396484375, "resource_copy": 0.06318092346191406, "decode_and_authenticate": 5.151033401489258, "validate": 2.053976058959961, "decomposition_adapter": 1.4350414276123047, "order_materialization": 2.7666091918945312, "duplicate_generic_lattice": 0.3101825714111328, "global_certification": 3.0219554901123047}
+    },
+    {
+      "id": "sage-essential-discriminant",
+      "rounds_per_sample": 3,
+      "established_public_samples_ms": [19.893646240234375, 17.377614974975586, 17.49078432718913, 17.163832982381184, 17.621676127115887, 17.196178436279297, 17.613013585408527],
+      "established_public_median_ms": 17.49078432718913,
+      "proof_path_samples_ms": [15.190362930297852, 14.030933380126953, 12.984832127888998, 13.132333755493164, 12.749830881754557, 13.58946164449056, 13.155698776245117],
+      "proof_path_median_ms": 13.155698776245117,
+      "speedup": 1.3295214967046642,
+      "phase_profile_ms": {"total": 14.307260513305664, "equation_order": 1.4095306396484375, "native_resource": 0.22363662719726562, "resource_copy": 0.04696846008300781, "decode_and_authenticate": 2.7997493743896484, "validate": 1.0404586791992188, "decomposition_adapter": 1.1372566223144531, "order_materialization": 1.2440681457519531, "duplicate_generic_lattice": 1.1734962463378906, "global_certification": 2.8841495513916016}
+    },
+    {
+      "id": "lmfdb-3.1.431.1",
+      "rounds_per_sample": 3,
+      "established_public_samples_ms": [17.211278279622395, 17.658074696858723, 16.814152399698894, 17.49388376871745, 17.43340492248535, 17.061948776245117, 16.165892283121746],
+      "established_public_median_ms": 17.211278279622395,
+      "proof_path_samples_ms": [12.399117151896158, 15.442132949829102, 12.689669926961264, 12.21768061319987, 12.209653854370117, 12.888193130493164, 14.991839726765951],
+      "proof_path_median_ms": 12.689669926961264,
+      "speedup": 1.356321983052864,
+      "phase_profile_ms": {"total": 15.515804290771484, "equation_order": 1.4004707336425781, "native_resource": 0.21529197692871094, "resource_copy": 0.038623809814453125, "decode_and_authenticate": 2.9304027557373047, "validate": 1.1539459228515625, "decomposition_adapter": 1.1928081512451172, "order_materialization": 1.1796951293945312, "duplicate_generic_lattice": 1.5106201171875, "global_certification": 3.910064697265625}
+    },
+    {
+      "id": "lmfdb-5.1.17161.1",
+      "rounds_per_sample": 2,
+      "established_public_samples_ms": [26.973366737365723, 24.08158779144287, 26.68440341949463, 25.057077407836914, 24.771809577941895, 23.536205291748047, 24.281859397888184],
+      "established_public_median_ms": 24.771809577941895,
+      "proof_path_samples_ms": [21.053791046142578, 17.636418342590332, 16.942977905273438, 16.358494758605957, 16.524791717529297, 19.96588706970215, 18.438220024108887],
+      "proof_path_median_ms": 17.636418342590332,
+      "speedup": 1.4045827841427558,
+      "phase_profile_ms": {"total": 20.16735076904297, "equation_order": 1.779317855834961, "native_resource": 0.29015541076660156, "resource_copy": 0.039577484130859375, "decode_and_authenticate": 4.098415374755859, "validate": 1.4681816101074219, "decomposition_adapter": 1.1074542999267578, "order_materialization": 2.474069595336914, "duplicate_generic_lattice": 2.778768539428711, "global_certification": 5.474328994750977}
+    },
+    {
+      "id": "pari-2510",
+      "rounds_per_sample": 1,
+      "established_public_samples_ms": [44.701337814331055, 48.76971244812012, 45.098304748535156, 44.02470588684082, 44.542551040649414, 45.58300971984863, 49.41868782043457],
+      "established_public_median_ms": 45.098304748535156,
+      "proof_path_samples_ms": [31.6617488861084, 32.03606605529785, 37.13703155517578, 31.575441360473633, 31.726360321044922, 32.360076904296875, 39.6575927734375],
+      "proof_path_median_ms": 32.03606605529785,
+      "speedup": 1.4077354151627235,
+      "phase_profile_ms": {"total": 34.25741195678711, "equation_order": 2.4139881134033203, "native_resource": 2.6772022247314453, "resource_copy": 0.03910064697265625, "decode_and_authenticate": 9.807109832763672, "validate": 4.270315170288086, "decomposition_adapter": 1.6422271728515625, "order_materialization": 2.724170684814453, "duplicate_generic_lattice": 4.39000129699707, "global_certification": 9.199142456054688}
+    },
+    {
+      "id": "pari-1710",
+      "rounds_per_sample": 1,
+      "established_public_samples_ms": [84.22064781188965, 75.99568367004395, 76.77960395812988, 77.24523544311523, 74.5692253112793, 75.25110244750977, 74.74517822265625],
+      "established_public_median_ms": 75.99568367004395,
+      "proof_path_samples_ms": [65.18673896789551, 58.69340896606445, 62.229156494140625, 63.18521499633789, 62.764883041381836, 59.07702445983887, 59.08393859863281],
+      "proof_path_median_ms": 62.229156494140625,
+      "speedup": 1.221223104272666,
+      "phase_profile_ms": {"total": 63.94314765930176, "equation_order": 3.291606903076172, "native_resource": 7.246971130371094, "resource_copy": 0.04935264587402344, "decode_and_authenticate": 17.01211929321289, "validate": 10.850906372070312, "decomposition_adapter": 3.1599998474121094, "order_materialization": 3.7870407104492188, "duplicate_generic_lattice": 13.939857482910156, "global_certification": 22.228002548217773}
+    }
+  ],
+  "limitations": [
+    "This receipt predates the integration hook that removes equation-order materialization and duplicate generic lattice replay; those phases are measured explicitly above.",
+    "The 2 ms public acceptance gate is not met by this resource-local checkpoint.",
+    "The native decoder used an explicit source-current cache because central production registration belongs to the integration lane."
+  ]
+}
