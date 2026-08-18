@@ -263,6 +263,7 @@ const integration = [
   "test/elliptic-lseries-reference.cjs",
   "test/elliptic-curves.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
+  "test/hyperelliptic-genus3-certified-oracle.cjs",
   "test/hyperelliptic-jacobian.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",

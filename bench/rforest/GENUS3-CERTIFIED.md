@@ -1,0 +1,191 @@
+# Certified genus-3 oracle and benchmark protocol
+
+This directory contains independent development evidence for the certified
+genus-3 local-factor pipeline. None of Sage, PARI, or Magma is a Sage.js
+runtime dependency.
+
+## Exact corpus
+
+[`genus3-certified-oracle.json`](../../test/data/hyperelliptic-rforest/genus3-certified-oracle.json)
+freezes 20 good reductions of four genus-3 models:
+
+- odd degree and even degree;
+- sparse and dense coefficients;
+- the generalized equation `y^2+x^2*y=x^7-x+1`;
+- primes from 5 through 10007.
+
+Every record stores the full `det(1-T*Frob)` polynomial, its three rforest
+residues, `L(1)=#J(F_p)`, `L(-1)=#J_twist(F_p)`, and `#C(F_p)`. Sage
+10.9.post1 with PARI 2.17.1 produced all records through
+`frobenius_polynomial()`, whose implementation calls PARI
+`hyperellcharpoly`. Magma 2.18-5 independently reproduced every record with
+`p <= 101` using `LPolynomial` and `#Points`.
+
+The checked-in test deliberately needs no external CAS. It checks all exact
+functional-equation and cardinality identities, compares every residue with a
+fresh rforest traversal, and runs exhaustive exact candidate completion on the
+cross-CAS small-prime subset:
+
+```sh
+node --test test/hyperelliptic-genus3-certified-oracle.cjs
+```
+
+This corpus is an oracle sample, not a claim that 20 points prove the whole
+implementation. The full stream also has to match across the supported
+platforms, and unresolved rows must use the exact fallback.
+
+## Stage benchmark
+
+Run the complete acceptance workload with:
+
+```sh
+node bench/rforest/benchmark-genus3-certified.cjs
+```
+
+The defaults are one sample each through `10^4`, `10^5`, and `10^6`. Useful
+development subsets are:
+
+```sh
+node bench/rforest/benchmark-genus3-certified.cjs --quick
+node bench/rforest/benchmark-genus3-certified.cjs \
+  --limits 10000 --stages raw,candidates
+node bench/rforest/benchmark-genus3-certified.cjs \
+  --quick --allow-incomplete
+```
+
+The JSON result keeps the following stages separate:
+
+1. `raw_rforest` calls the packed native bridge directly and SHA-256 hashes
+   every returned buffer.
+2. `candidates` includes the checked Python boundary and exact Weil-candidate
+   enumeration. It records row count, total/max candidates, and a deterministic
+   digest of the candidate-count stream.
+3. `certification` calls `certified_genus3_local_rows`, records primary and
+   twist sample/operation counts, sums any stage timing instrumentation, and
+   digests every uniquely completed polynomial.
+4. `public` constructs a fresh curve and consumes
+   `local_lpolynomial_chunks(..., algorithm='rforest')`, including exact
+   per-row fallback and public polynomial construction.
+
+Missing certification or public APIs make the benchmark fail. The
+`--allow-incomplete` switch exists only so an implementation lane can measure
+finished earlier stages. A valid acceptance receipt uses no such switch.
+
+Each result records OS, architecture, Node version, backend capability, CPU
+and wall time, RSS, row counts, and exact-stream digests. Compare digests, not
+timings, across Linux x64/arm64, macOS arm64, and native Windows x64. Compare
+timings only for like hosts and builds. The public stage is the default-selection
+gate: a fast raw remainder forest does not compensate for slow certification
+or widespread fallback.
+
+The pre-certification baseline on the same Linux x86-64 host was:
+
+| Stage | Limit | Rows | Wall time | Exact digest |
+| --- | ---: | ---: | ---: | --- |
+| raw rforest | 10000 | 1229 | 316.955 ms | `a7c9918ed5f317aca3581bc31e6c0e121e99ce99d9997ee579a40916ae562486` |
+| raw rforest | 100000 | 9592 | 6386.673 ms | `6fb94e04ed80b8964cd1c8356950d0d8b3c91e13e42873ab22f795d34733922d` |
+| raw rforest | 1000000 | 78498 | 132786.735 ms | `e2a9385cb24018539272494a6245aa4c0c016b54e7243191d9688a2b367b5b1a` |
+| candidates | 101 | 24 | 3362.210 ms | count digest `3279588448590785459017807028135743382` |
+| candidates | 1009 | 165 | 52043.354 ms | count digest `153946097821799377117130024943921925723` |
+
+At 1009 the candidate stream contained 17545 candidates in total and at most
+215 for one prime. A run through 10000 was stopped after 75 seconds rather
+than consuming a development host indefinitely. This directly establishes
+that the old transpiled-Python enumeration is not a viable `10^6` path; the
+new completion work must accelerate it before a full acceptance receipt can
+exist. The raw times also show why the limit must remain an explicit benchmark
+dimension instead of extrapolating from a 100-prime smoke test.
+
+## One-off oracle measurements
+
+On the Linux x86-64 development host, a cold `frobenius_polynomial()` call for
+`y^2+x^2*y=x^7-x+1` gave:
+
+| p | Sage 10.9.post1 / PARI 2.17.1 median of 3 |
+| ---: | ---: |
+| 11 | 2.669 ms |
+| 1009 | 300.845 ms |
+| 10007 | 4083.071 ms |
+
+Each repetition constructed a fresh finite-field curve so Sage's polynomial
+cache could not turn later samples into lookup timings. A separate run at
+`p=100003` and `p=1000003` exhausted PARI's configured 1 GiB stack. These are
+host/toolchain observations, not complexity claims.
+
+Magma 2.18-5 produced all `p <= 101` oracle rows, but its first
+`LPolynomial` computation for the odd sparse curve at `p=1009` was manually
+stopped after 100 seconds. The currently installed version is valuable as an
+independent small-case oracle, not as a competitive performance baseline.
+
+## Competing backend audit
+
+### PARI `hyperellcharpoly`
+
+PARI exposes an exact library call for `y^2=P(x)` and generalized
+`y^2+Q(x)y=P(x)` over finite fields. It is the current Sage implementation and
+the strongest one-off reference tested here. Its millisecond-to-seconds curve
+above is compelling below roughly `10^4`; its stack behavior and per-prime
+scaling do not replace an average-polynomial dense traversal. The
+[PARI documentation](https://pari.math.u-bordeaux.fr/dochtml/html-stable/Arithmetic_functions.html)
+also documents the related `hyperellpadicfrobenius` interface.
+
+PARI is embeddable, but adding it solely for this feature is not currently the
+portable choice. The upstream project distributes Windows executables, while
+its own [Windows guidance](https://pari.math.u-bordeaux.fr/faq.html) recommends
+WSL for serious use and says pthread PARI is very slow on Windows. That does
+not satisfy Sage.js's native-Windows product path without a separate library,
+threading, cancellation, and packaging project. Keep PARI as the exact oracle
+and revisit it only as a repository-wide dependency decision.
+
+### Magma Jacobian and point-counting machinery
+
+Magma exposes Jacobian arithmetic, bounded point order, Jacobian order,
+Euler factors, deformation point counting, and group structure in one mature
+system; see its [hyperelliptic curve handbook](https://magma-maths.org/documentation/text1607.htm).
+That validates the architecture of rforest residues followed by exact group
+certification. Its proprietary license rules it out as a runtime dependency.
+The installed 2.18-5 build is also too old to characterize current Magma
+performance.
+
+### `hypellfrob` / Kedlaya--Harvey
+
+David Harvey's [hypellfrob 2.1.1](https://web.maths.unsw.edu.au/~davidharvey/code/hypellfrob/)
+is a 2008 C++ library using NTL and zn_poly. It computes the whole zeta
+function by Monsky--Washnitzer Frobenius and is a legitimate one-off algorithm
+comparison. It is old, adds two native dependency families, and supports only
+odd-degree models in the comparison described by Harvey--Sutherland. Reviving
+it would be a separate portability project, not a shortcut for this pipeline.
+
+The Harvey--Sutherland
+[remainder-forest paper](https://doi.org/10.1112/S1461157014000187)
+reports that optimized Kedlaya was faster than genus-3 Jacobian group
+computation beyond `2^16` for one-prime work, while the remainder forest was
+substantially faster for its all-primes Hasse--Witt workload. This supports a
+hybrid policy: rforest for dense intervals, an exact one-off fallback, and
+benchmarks before selecting a one-off threshold.
+
+### dormant smalljac genus 3
+
+The pinned smalljac source retains the shape of the desired coefficient and
+group search, but the audited version has no complete linked genus-3 group-law
+closure. It remains useful algorithmic provenance. Making it a production
+backend requires restoring those operations, fixed-width/Windows validation,
+sanitizers, and differential testing; it is more work than using the already
+verified Sage.js Jacobian law.
+
+### higher Frobenius congruences
+
+Computing coefficients modulo `p^2` or higher can collapse much of the lift
+set before group search, but neither rforest's present ABI nor a ready,
+portable library supplies those congruences. This is promising follow-up
+research after stage timings identify candidate enumeration or certification
+as the bottleneck. It must not weaken the current exhaustive candidate proof.
+
+## Decision
+
+Use the existing rforest traversal plus exact Weil enumeration and
+primary/twist Jacobian certificates as the production dense-range path. Keep
+PARI and Magma as development oracles. Retain exact point counting as the
+deterministic per-row fallback. Benchmark a PARI-like p-adic backend later for
+one-off primes, but do not delay or complicate the portable certified stream
+by adding a large external runtime dependency now.

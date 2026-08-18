@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 88,
+    "classified-native-file": 94,
     "declared-ffi": 408,
     "declared-ffi-resource": 29,
-    "napi-export": 301,
+    "napi-export": 303,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -5907,6 +5907,26 @@
       "declaration": "flint:fmpz_gcd"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianCapabilities",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianCapabilities",
+      "symbol": "sagejs_g3j_capabilities_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSearchProgression",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianSearchProgression",
+      "symbol": "sagejs_g3j_search_progression_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:gmpVersion",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7949,6 +7969,14 @@
       "lane": "native-compiler"
     },
     {
+      "id": "native-file:bench/hyperelliptic/genus3-jacobian-kernel.c",
+      "kind": "classified-native-file",
+      "path": "bench/hyperelliptic/genus3-jacobian-kernel.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
       "id": "native-file:bench/hyperelliptic/smalljac_batch.c",
       "kind": "classified-native-file",
       "path": "bench/hyperelliptic/smalljac_batch.c",
@@ -8083,6 +8111,14 @@
       "disposition": "external-library-bridge",
       "review_status": "accepted",
       "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/hyperelliptic/genus3_jacobian.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/hyperelliptic/genus3_jacobian.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:packages/flint/include/sagejs/hyperelliptic/rforest.h",
@@ -8325,6 +8361,30 @@
       "lane": "arithmetic-algebra"
     },
     {
+      "id": "native-file:packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+      "disposition": "host-adapter",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/hyperelliptic/genus3_jacobian_addon.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/hyperelliptic/genus3_jacobian.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian.c",
+      "disposition": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves"
+    },
+    {
       "id": "native-file:packages/flint/src/hyperelliptic/rforest.c",
       "kind": "classified-native-file",
       "path": "packages/flint/src/hyperelliptic/rforest.c",
@@ -8467,6 +8527,14 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/test/hyperelliptic/genus3-jacobian-kernel.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/hyperelliptic/genus3-jacobian-kernel.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:packages/flint/test/hyperelliptic/rforest_bridge.c",

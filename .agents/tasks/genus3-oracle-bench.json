@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "genus3-oracle-bench",
+  "title": "Genus-3 certification oracles and stage benchmarks",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide deterministic exact genus-3 oracle fixtures, stage-separated performance benchmarks through 10^6, and a pragmatic independent-backend audit for certified completion",
+  "base_commit": "d63d107ef21cc222d67dddf94ff1b0ad9c4ed996",
+  "claims": [
+    "bench/rforest/benchmark-genus3-certified.cjs",
+    "bench/rforest/GENUS3-CERTIFIED.md",
+    "test/hyperelliptic-genus3-certified-oracle.cjs",
+    "test/data/hyperelliptic-rforest/genus3-certified-oracle.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://pari.math.u-bordeaux.fr/dochtml/html-stable/Arithmetic_functions.html",
+    "https://www.math.uwaterloo.ca/~snavas/MagmaHandbook/text/1422"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage/FLINT exact extension-field point counts",
+      "PARI hyperellcharpoly",
+      "Magma HyperellipticCurve point counts and EulerFactor when supported"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-genus3-certified-oracle.cjs",
+    "node bench/rforest/benchmark-genus3-certified.cjs --stages raw --limits 10000"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

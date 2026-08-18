@@ -16,10 +16,26 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable
 
+from sagejs.hyperelliptic_curves.genus3_candidate_kernel import (
+    scan_genus3_weil_candidates,
+)
 from sagejs.hyperelliptic_curves.hasse_witt import _is_prime
+from sagejs.native import integer_buffer_values, is_compiled, kernel_integer_zeros
+
+try:
+    import sagejs.runtime as _runtime
+except ImportError:
+    _runtime = None
 
 Rational = tuple[int, int]
 Candidate = tuple[int, int, int]
+
+
+def _host_buffer_length(value: int) -> int:
+    """Return a native host size while keeping CPython imports ordinary."""
+    if _runtime is None:
+        return int(value)
+    return _runtime.number(value)
 
 
 def _integer_gcd(left: int, right: int) -> int:
@@ -145,7 +161,7 @@ def _roots_strictly_above(integer_polynomial: list[int], lower: int) -> int:
     return at_lower - at_infinity
 
 
-def _is_genus3_weil_candidate(
+def _is_genus3_weil_candidate_sturm(
     prime: int, coefficient1: int, coefficient2: int, coefficient3: int
 ) -> bool:
     """Test the genus-3 Weil condition using exact integer arithmetic.
@@ -185,6 +201,55 @@ def _is_genus3_weil_candidate(
         1,
     ]
     return _roots_strictly_above(squared_root_polynomial, 4 * prime) == 0
+
+
+def _is_genus3_weil_candidate(
+    prime: int, coefficient1: int, coefficient2: int, coefficient3: int
+) -> bool:
+    """Test the genus-3 Weil condition with cubic-specific integer tests.
+
+    This is equivalent to `_is_genus3_weil_candidate_sturm`, but avoids the
+    allocation and normalization of general rational Sturm sequences.  Once
+    the real Weil cubic has three real roots, its squared-root polynomial
+    `S(Y)` has three nonnegative real roots.  The coefficient bounds used by
+    `_candidate_iterator` put `4*p` at or above their mean.  Consequently
+    `S'(4*p) >= 0` puts the endpoint beyond the larger critical point, where
+    `S(4*p) >= 0` is equivalent to every root being at most `4*p`.
+
+    The explicit mean test keeps this helper correct even when called outside
+    `_candidate_iterator`.  All comparisons are exact and accept repeated
+    roots and roots on the Weil interval boundary.
+    """
+    a_value = coefficient1
+    b_value = coefficient2 - 3 * prime
+    c_value = coefficient3 - 2 * prime * coefficient1
+    discriminant = (
+        a_value * a_value * b_value * b_value
+        - 4 * b_value * b_value * b_value
+        - 4 * a_value * a_value * a_value * c_value
+        - 27 * c_value * c_value
+        + 18 * a_value * b_value * c_value
+    )
+    if discriminant < 0:
+        return False
+
+    squared_coefficient2 = -(a_value * a_value - 2 * b_value)
+    squared_coefficient1 = b_value * b_value - 2 * a_value * c_value
+    squared_coefficient0 = -(c_value * c_value)
+    endpoint = 4 * prime
+    if 3 * endpoint + squared_coefficient2 < 0:
+        return False
+    derivative_at_endpoint = (
+        3 * endpoint * endpoint
+        + 2 * squared_coefficient2 * endpoint
+        + squared_coefficient1
+    )
+    if derivative_at_endpoint < 0:
+        return False
+    value_at_endpoint = (
+        (endpoint + squared_coefficient2) * endpoint + squared_coefficient1
+    ) * endpoint + squared_coefficient0
+    return value_at_endpoint >= 0
 
 
 def _ceil_div(numerator: int, denominator: int) -> int:
@@ -262,8 +327,116 @@ def _scan_candidate_lifts(
     accept: Callable[[Candidate], bool],
     max_candidates: int,
     max_combinations: int,
+    unfiltered: bool = False,
 ) -> dict[str, Any]:
     """Scan exact Weil lifts once, retaining only accepted candidates."""
+    if unfiltered and is_compiled(scan_genus3_weil_candidates):
+        # Most residue classes contain only dozens or hundreds of candidates.
+        # Start with a small packed result and repeat with the exact size only
+        # when necessary.  The first scan is still useful: it establishes the
+        # complete candidate count without allocating according to a public
+        # resource limit that may be much larger than the actual answer.
+        capacity = min(256, max_candidates)
+        output_length = _host_buffer_length(2 + 3 * capacity)
+        output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+        stored = scan_genus3_weil_candidates(
+            output,
+            prime,
+            residues[0],
+            residues[1],
+            residues[2],
+            max_combinations,
+        )
+        values = integer_buffer_values(output)
+        initial_candidate_count = int(values[0])
+        combinations_examined = int(values[1])
+        if stored == -1:
+            return {
+                "status": "resource_limit",
+                "initial_candidate_count": initial_candidate_count,
+                "remaining_candidate_count": None,
+                "candidates": (),
+                "diagnostics": {
+                    "reason": "max_combinations exceeded",
+                    "combinations_examined": combinations_examined,
+                    "max_combinations": max_combinations,
+                    "max_candidates": max_candidates,
+                    "candidate_scan": "native",
+                },
+            }
+        if stored == -2:
+            raise RuntimeError("invalid native candidate output buffer")
+        if initial_candidate_count > max_candidates:
+            return {
+                "status": "resource_limit",
+                "initial_candidate_count": initial_candidate_count,
+                "remaining_candidate_count": initial_candidate_count,
+                "candidates": (),
+                "diagnostics": {
+                    "reason": "max_candidates exceeded",
+                    "combinations_examined": combinations_examined,
+                    "max_combinations": max_combinations,
+                    "max_candidates": max_candidates,
+                    "candidate_scan": "native",
+                },
+            }
+        if initial_candidate_count > capacity:
+            capacity = initial_candidate_count
+            output_length = _host_buffer_length(2 + 3 * capacity)
+            output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+            stored = scan_genus3_weil_candidates(
+                output,
+                prime,
+                residues[0],
+                residues[1],
+                residues[2],
+                max_combinations,
+            )
+            if stored != initial_candidate_count:
+                raise RuntimeError("native candidate scan was not deterministic")
+            values = integer_buffer_values(output)
+
+        candidates = []
+        remaining_candidate_count = 0
+        for index in range(initial_candidate_count):
+            offset = 2 + 3 * index
+            candidate = (
+                int(values[offset]),
+                int(values[offset + 1]),
+                int(values[offset + 2]),
+            )
+            if not accept(candidate):
+                continue
+            remaining_candidate_count += 1
+            if len(candidates) < max_candidates:
+                candidates.append(candidate)
+        if remaining_candidate_count > max_candidates:
+            return {
+                "status": "resource_limit",
+                "initial_candidate_count": initial_candidate_count,
+                "remaining_candidate_count": remaining_candidate_count,
+                "candidates": (),
+                "diagnostics": {
+                    "reason": "max_candidates exceeded",
+                    "combinations_examined": combinations_examined,
+                    "max_combinations": max_combinations,
+                    "max_candidates": max_candidates,
+                    "candidate_scan": "native",
+                },
+            }
+        return {
+            "status": "ok",
+            "initial_candidate_count": initial_candidate_count,
+            "remaining_candidate_count": remaining_candidate_count,
+            "candidates": tuple(candidates),
+            "diagnostics": {
+                "combinations_examined": combinations_examined,
+                "max_combinations": max_combinations,
+                "max_candidates": max_candidates,
+                "candidate_scan": "native",
+            },
+        }
+
     candidates: list[Candidate] = []
     initial_candidate_count = 0
     remaining_candidate_count = 0
@@ -381,6 +554,7 @@ def enumerate_genus3_weil_candidates(
         lambda _candidate: True,
         max_candidates,
         max_combinations,
+        unfiltered=True,
     )
     if scan["status"] == "resource_limit":
         return {
@@ -568,6 +742,7 @@ def complete_genus3_lpolynomial(
 
 
 __all__ = [
+    "_is_genus3_weil_candidate_sturm",
     "complete_genus3_lpolynomial",
     "enumerate_genus3_weil_candidates",
     "jacobian_order_from_coefficients",

@@ -1,0 +1,48 @@
+{
+  "schema": "sagejs.hyperelliptic-genus3-certified-oracle.v1",
+  "normalization": {
+    "equation": "y^2+h(x)y=f(x)",
+    "lpolynomial": "det(1-T*Frob), coefficients in ascending powers of T",
+    "jacobian_order": "L(1)",
+    "twist_order": "L(-1)",
+    "residues": "coefficients of T,T^2,T^3 modulo p"
+  },
+  "provenance": {
+    "generated_utc": "2026-08-18",
+    "sage": "10.9.post1",
+    "pari": "2.17.1 via Sage finite-field frobenius_polynomial/hyperellcharpoly",
+    "magma": "2.18-5 via LPolynomial and #Points; independently checked for every record with p <= 101",
+    "note": "Records above p=101 were checked with Sage/PARI. Magma 2.18-5 did not complete the first p=1009 genus-3 calculation in 100 seconds on the development host."
+  },
+  "curves": {
+    "odd_sparse": { "f": [1, 1, 0, 0, 0, 0, 0, 1], "h": [0] },
+    "generalized_user": { "f": [1, -1, 0, 0, 0, 0, 0, 1], "h": [0, 0, 1] },
+    "even_monic": { "f": [1, 0, 3, 0, 0, 2, 0, 0, 1], "h": [0] },
+    "dense": { "f": [19, 17, 13, 11, 7, 5, 3, 2], "h": [0] }
+  },
+  "records": [
+    { "curve": "odd_sparse", "p": 5, "lpolynomial": [1, 3, 9, 17, 45, 75, 125], "jacobian_order": 275, "twist_order": 85, "curve_cardinality": 9, "residues": [3, 4, 2], "oracles": ["sage-pari", "magma"] },
+    { "curve": "odd_sparse", "p": 7, "lpolynomial": [1, 0, 21, 0, 147, 0, 343], "jacobian_order": 512, "twist_order": 512, "curve_cardinality": 8, "residues": [0, 0, 0], "oracles": ["sage-pari", "magma"] },
+    { "curve": "odd_sparse", "p": 101, "lpolynomial": [1, 19, 315, 3595, 31815, 193819, 1030301], "jacobian_order": 1259865, "twist_order": 864999, "curve_cardinality": 121, "residues": [19, 12, 60], "oracles": ["sage-pari", "magma"] },
+    { "curve": "odd_sparse", "p": 1009, "lpolynomial": [1, -12, 711, -31096, 717399, -12216972, 1027243729], "jacobian_order": 1015713760, "twist_order": 1040209920, "curve_cardinality": 998, "residues": [997, 711, 183], "oracles": ["sage-pari"] },
+    { "curve": "odd_sparse", "p": 10007, "lpolynomial": [1, 4, 21884, -99088, 218993188, 400560196, 1002101470343], "jacobian_order": 1002720946528, "twist_order": 1001920024304, "curve_cardinality": 10012, "residues": [4, 1870, 982], "oracles": ["sage-pari"] },
+
+    { "curve": "generalized_user", "p": 7, "lpolynomial": [1, -1, -5, 11, -35, -49, 343], "jacobian_order": 265, "twist_order": 343, "curve_cardinality": 7, "residues": [6, 2, 4], "oracles": ["sage-pari", "magma"] },
+    { "curve": "generalized_user", "p": 11, "lpolynomial": [1, 1, 8, -22, 88, 121, 1331], "jacobian_order": 1528, "twist_order": 1328, "curve_cardinality": 13, "residues": [1, 8, 0], "oracles": ["sage-pari", "magma"] },
+    { "curve": "generalized_user", "p": 101, "lpolynomial": [1, -2, 11, 1312, 1111, -20402, 1030301], "jacobian_order": 1012332, "twist_order": 1050516, "curve_cardinality": 100, "residues": [99, 11, 100], "oracles": ["sage-pari", "magma"] },
+    { "curve": "generalized_user", "p": 1009, "lpolynomial": [1, -29, 102, 9224, 102918, -29524349, 1027243729], "jacobian_order": 997831596, "twist_order": 1056861904, "curve_cardinality": 981, "residues": [980, 102, 143], "oracles": ["sage-pari"] },
+    { "curve": "generalized_user", "p": 10007, "lpolynomial": [1, -3, 15592, -340818, 156029144, -300420147, 1002101470343], "jacobian_order": 1001956754112, "twist_order": 1002558276048, "curve_cardinality": 10005, "residues": [10004, 5585, 9427], "oracles": ["sage-pari"] },
+
+    { "curve": "even_monic", "p": 5, "lpolynomial": [1, -1, 5, -13, 25, -25, 125], "jacobian_order": 117, "twist_order": 195, "curve_cardinality": 5, "residues": [4, 0, 2], "oracles": ["sage-pari", "magma"] },
+    { "curve": "even_monic", "p": 7, "lpolynomial": [1, 1, 5, -14, 35, 49, 343], "jacobian_order": 420, "twist_order": 348, "curve_cardinality": 9, "residues": [1, 5, 0], "oracles": ["sage-pari", "magma"] },
+    { "curve": "even_monic", "p": 11, "lpolynomial": [1, 6, 27, 85, 297, 726, 1331], "jacobian_order": 2473, "twist_order": 839, "curve_cardinality": 18, "residues": [6, 5, 8], "oracles": ["sage-pari", "magma"] },
+    { "curve": "even_monic", "p": 101, "lpolynomial": [1, -1, -11, 1494, -1111, -10201, 1030301], "jacobian_order": 1020472, "twist_order": 1037888, "curve_cardinality": 101, "residues": [100, 90, 80], "oracles": ["sage-pari", "magma"] },
+    { "curve": "even_monic", "p": 1009, "lpolynomial": [1, -3, 549, -1262, 553941, -3054243, 1027243729], "jacobian_order": 1024742712, "twist_order": 1030853728, "curve_cardinality": 1007, "residues": [1006, 549, 756], "oracles": ["sage-pari"] },
+    { "curve": "even_monic", "p": 10007, "lpolynomial": [1, 4, 607, -872892, 6074249, 400560196, 1002101470343], "jacobian_order": 1002507232508, "twist_order": 1001707857892, "curve_cardinality": 10012, "residues": [4, 607, 7724], "oracles": ["sage-pari"] },
+
+    { "curve": "dense", "p": 5, "lpolynomial": [1, -3, 15, -27, 75, -75, 125], "jacobian_order": 111, "twist_order": 321, "curve_cardinality": 3, "residues": [2, 0, 3], "oracles": ["sage-pari", "magma"] },
+    { "curve": "dense", "p": 101, "lpolynomial": [1, -2, 105, 384, 10605, -20402, 1030301], "jacobian_order": 1020992, "twist_order": 1061032, "curve_cardinality": 100, "residues": [99, 4, 81], "oracles": ["sage-pari", "magma"] },
+    { "curve": "dense", "p": 1009, "lpolynomial": [1, 2, -525, -26412, -529725, 2036162, 1027243729], "jacobian_order": 1028723232, "twist_order": 1024703728, "curve_cardinality": 1012, "residues": [2, 484, 831], "oracles": ["sage-pari"] },
+    { "curve": "dense", "p": 10007, "lpolynomial": [1, -101, 17677, -1324858, 176893739, -10114144949, 1002101470343], "jacobian_order": 992162911852, "twist_order": 1012393851668, "curve_cardinality": 9907, "residues": [9906, 7670, 6073], "oracles": ["sage-pari"] }
+  ]
+}

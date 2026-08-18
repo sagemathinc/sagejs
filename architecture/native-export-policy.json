@@ -727,6 +727,16 @@
       "decision": "declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianCapabilities",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSearchProgression",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:gmpVersion",
       "family": "metadata",
       "decision": "retain-host-adapter"

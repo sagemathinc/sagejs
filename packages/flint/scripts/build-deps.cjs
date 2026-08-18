@@ -776,18 +776,18 @@ async function main() {
     openblas:
       dependencies.find(({ name }) => name === "openblas").version,
     openblasBuild: "threaded-cblas-dynamic-v1",
-    ffpolyPortability: digest(
-      join(packageRoot, "patches", "ffpoly-portability.patch"),
-    ),
-    smalljacPortability: digest(
-      join(packageRoot, "patches", "smalljac-portability.patch"),
-    ),
     rforest:
       dependencies.find(({ name }) => name === "rforest").version,
     rforestPortabilityPatch: digest(
       join(packageRoot, "patches", "rforest-portability.patch"),
     ),
     rforestSourceClosure: "upstream-20-tu-v1",
+    ffpolyPortability: digest(
+      join(packageRoot, "patches", "ffpoly-portability.patch"),
+    ),
+    smalljacPortability: digest(
+      join(packageRoot, "patches", "smalljac-portability.patch"),
+    ),
     smalljacArithmetic:
       forcePortableSmalljac || process.arch !== "x64"
         ? "portable-v1"

@@ -6,6 +6,8 @@
 #include <sagejs/hyperelliptic/rforest.h>
 #include <sagejs/hyperelliptic/smalljac.h>
 
+#include "hyperelliptic/genus3_jacobian_addon.h"
+
 napi_value sagejs_smalljac_lpoly_batch_value(
     napi_env env, napi_callback_info info);
 napi_value sagejs_smalljac_group_batch_value(

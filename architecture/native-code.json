@@ -18,6 +18,13 @@
   },
   "files": [
     {
+      "path": "bench/hyperelliptic/genus3-jacobian-kernel.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone performance harness for the bounded exact genus-3 Jacobian progression search; it is not linked into Sage.js."
+    },
+    {
       "path": "bench/hyperelliptic/smalljac_batch.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -191,6 +198,13 @@
       "review_status": "accepted",
       "lane": "integration",
       "rationale": "Host-neutral generated owned-resource ABI over word-characteristic FLINT extension contexts, elements, and univariate polynomials, with bulk canonical power-basis coordinates, exact context identity, thread-affine shared ownership, structural arithmetic, and deterministic lifecycle accounting."
+    },
+    {
+      "path": "packages/flint/include/sagejs/hyperelliptic/genus3_jacobian.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-width ABI for exact genus-3 Mumford arithmetic, bounded progression search, cancellation, and recheckable element-order certificates."
     },
     {
       "path": "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
@@ -382,6 +396,27 @@
       "rationale": "Declarations for native floating-point operations."
     },
     {
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian.c",
+      "category": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Bounded exact genus-3 Cantor arithmetic and congruence-strided BSGS certification kernel; handwritten C is retained because the object-heavy Python fallback is not source-transparently compilable and the measured fallback is the pipeline bottleneck."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Node-API packing adapter for bounded genus-3 progression searches and exact certificates; Python independently rechecks every certificate with the ordinary group law."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Declarations for the private genus-3 Jacobian Node-API callbacks."
+    },
+    {
       "path": "packages/flint/src/hyperelliptic/smalljac.c",
       "category": "external-library-bridge",
       "review_status": "accepted",
@@ -513,6 +548,13 @@
       "review_status": "accepted",
       "lane": "native-compiler",
       "rationale": "Host-neutral igraph resource and borrowed-view ABI shared by generated kernels and the Node adapter."
+    },
+    {
+      "path": "packages/flint/test/hyperelliptic/genus3-jacobian-kernel.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone exact-vector, overflow, cancellation, and sanitizer harness for the genus-3 Jacobian kernel."
     },
     {
       "path": "packages/flint/test/hyperelliptic/smalljac_bridge.c",
