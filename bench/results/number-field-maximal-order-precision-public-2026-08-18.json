@@ -1,0 +1,140 @@
+{
+  "schema": "sagejs.number-fields/maximal-order-precision-public-result-v1",
+  "generated_at": "2026-08-18T08:39:09.993Z",
+  "source": {
+    "commit": "88a1bd2e20fed1200f766e08eb7173f91e3d30e6",
+    "tree": "13e501303802a68e814bdddfb27d23d45133f8e3",
+    "tracked_worktree_clean": true
+  },
+  "environment": {
+    "node": "v26.7.0",
+    "platform": "linux-x64",
+    "release": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "load_average": [11.02, 13.21, 12.22]
+  },
+  "policy": {
+    "boundary": "fresh NumberField.maximal_order() with default public arguments",
+    "field_construction": "outside every timed sample",
+    "runtime_warmup": "one unrelated quadratic public call; no target-field warmup",
+    "target_cache": "fresh field and uncached order for every sample",
+    "samples": 3,
+    "threshold_ms": 5000,
+    "trace_control": "fresh maximal_order(trace=True) diagnostic; intentionally bypasses the fused default hook"
+  },
+  "case": {
+    "id": "hecke-precision-degree-12",
+    "degree": 12,
+    "coefficient_height_bits": 501,
+    "polynomial_digest": "0ab25225733fdc8e6a2ab9444d1c6f324389541dbedd507aa039ca8547ad088f",
+    "canonical_basis_digest": "3e1e7c30ff5f7989dfd6efd53f5c968222468ba46911e75db2e7b059802c4c45",
+    "field_discriminant": "28975330946137036032",
+    "equation_order_index_decimal_digits": 1055,
+    "equation_order_index_sha256": "930fe32d6ff01d9894a9322a26ab60d33552d33c99e7224c94f93bf765b35b11"
+  },
+  "native_compiled": {
+    "packed_row_hnf_in_place": true,
+    "packed_composite_dedekind_basis_in_place": true,
+    "packed_order_table_in_place": true,
+    "packed_field_analysis_fixed_points_are_valid": true,
+    "packed_field_analysis_decode_integers": true
+  },
+  "default_public": {
+    "timings_ms": [3704.029184, 3572.818176, 3620.649984],
+    "median_ms": 3620.649984,
+    "below_five_second_gate": true,
+    "raw_samples": [
+      {
+        "total_ns": 3704029184,
+        "inclusive_stage_ns": {
+          "authenticated_field_analysis": 199762944,
+          "native_field_analysis": 199464448,
+          "order_materialization": 40505856,
+          "global_certification": 938868480
+        },
+        "calls": {
+          "authenticated_field_analysis": 1,
+          "native_field_analysis": 1,
+          "order_materialization": 3,
+          "global_certification": 1
+        }
+      },
+      {
+        "total_ns": 3572818176,
+        "inclusive_stage_ns": {
+          "authenticated_field_analysis": 213541120,
+          "native_field_analysis": 213353984,
+          "order_materialization": 41501184,
+          "global_certification": 934092544
+        },
+        "calls": {
+          "authenticated_field_analysis": 1,
+          "native_field_analysis": 1,
+          "order_materialization": 3,
+          "global_certification": 1
+        }
+      },
+      {
+        "total_ns": 3620649984,
+        "inclusive_stage_ns": {
+          "authenticated_field_analysis": 207565056,
+          "native_field_analysis": 207355136,
+          "order_materialization": 40679936,
+          "global_certification": 984698880
+        },
+        "calls": {
+          "authenticated_field_analysis": 1,
+          "native_field_analysis": 1,
+          "order_materialization": 3,
+          "global_certification": 1
+        }
+      }
+    ]
+  },
+  "trace_control": {
+    "total_ns": 3331347200,
+    "stages": [
+      {
+        "stage": "discriminant-decomposition",
+        "state": "complete",
+        "duration_ns": 791888384
+      },
+      {
+        "stage": "composite-local-order",
+        "state": "complete",
+        "duration_ns": 12845056
+      },
+      {
+        "stage": "composite-local-order",
+        "state": "complete",
+        "duration_ns": 1052113408
+      },
+      {
+        "stage": "native-local-orders",
+        "state": "complete",
+        "duration_ns": 436694016
+      },
+      {
+        "stage": "global-certification",
+        "state": "certified",
+        "duration_ns": 934626304
+      }
+    ],
+    "unattributed_residual_ns": 103180032
+  },
+  "independent_verification": {
+    "default_public_verified": true,
+    "trace_control_verified": true,
+    "canonical_basis_digest_matches_frozen": true,
+    "equation_order_index_matches_frozen": true,
+    "field_discriminant_matches_frozen": true,
+    "nonsingular": true,
+    "contains_one": true,
+    "contains_equation_order": true,
+    "multiplication_closed": true,
+    "discriminant_index_identity": true,
+    "basis_size_bytes": 23673
+  },
+  "host_wall_ms": 15507.47015
+}
