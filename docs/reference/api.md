@@ -5926,7 +5926,7 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - Tags: number theory, number fields, algebraic numbers, exact arithmetic
 - Backends: Sage.js exact quotient arithmetic, FLINT polynomials
 - Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators, certified maximal orders, integral bases, field discriminants, and exact HNF ideal lattices. Galois groups are identified natively through degree four.
-- Limitations: General unit groups, nonquadratic class groups, and Galois groups above degree four await further native number-field algorithms. Maximal-order overorder enumeration is correctness-first and can be exponential in the dimension of a large trace radical; machine-sized discriminant primes are currently required.
+- Limitations: General unit groups, nonquadratic class groups, and Galois groups above degree four await further native number-field algorithms. Modified Round Four and OM/MaxMin currently have bounded domains. Unsupported local shapes use a certified exact fallback; arbitrary-size primes are never narrowed to a machine word.
 
 ### Provenance
 
@@ -5934,6 +5934,7 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
 - `literature-implemented` — [Kappe--Warren criterion for quartic Galois groups](https://doi.org/10.1016/j.aim.2020.107282)
 - `literature-implemented` — Zassenhaus round-two maximal-order algorithm via exact trace radicals and integral overorder enumeration
+- `literature-implemented` — Buchmann--Lenstra composite-component cycles, Newton polygons, modified Round Four, and OM/MaxMin local bases
 
 ## `numerical_integral`
 
