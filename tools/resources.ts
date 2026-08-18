@@ -120,8 +120,17 @@ function assetKeyForVirtualPath(filename: string): string | undefined {
   const normalized = normalize(filename);
   const prefix = `${VIRTUAL_ROOT}/`;
   const platformPrefix = normalize(prefix);
-  if (!normalized.startsWith(platformPrefix)) return;
-  return normalized.slice(platformPrefix.length).replaceAll("\\", "/");
+  const offset = normalized.startsWith(platformPrefix)
+    ? 0
+    : process.platform === "win32" &&
+        /^[A-Za-z]:/.test(normalized) &&
+        normalized.slice(2).startsWith(platformPrefix)
+      ? 2
+      : -1;
+  if (offset < 0) return;
+  return normalized
+    .slice(offset + platformPrefix.length)
+    .replaceAll("\\", "/");
 }
 
 export function isSingleExecutable(): boolean {
