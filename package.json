@@ -222,6 +222,7 @@
     "bench:number-field-buchmann-lenstra-precision": "node bench/number-field-buchmann-lenstra-precision.cjs",
     "bench:number-field-buchmann-lenstra-fast": "node bench/number-field-buchmann-lenstra-fast.cjs",
     "bench:number-field-om-maxmin": "node bench/number-field-om-maxmin.cjs",
+    "bench:number-field-om-auto-selector": "node bench/number-field-om-auto-selector.cjs",
     "bench:number-field-om-higher-residual": "node bench/number-field-om-higher-residual.cjs",
     "bench:number-field-om-length4": "node bench/number-field-om-length4.cjs",
     "bench:number-field-om-length8": "node bench/number-field-om-length8.cjs",

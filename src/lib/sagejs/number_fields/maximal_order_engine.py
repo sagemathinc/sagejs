@@ -25,9 +25,12 @@ from sagejs.native import is_compiled
 from sagejs.number_fields.buchmann_lenstra import (
     BuchmannLenstraResult,
     buchmann_lenstra_multiplier_cycle,
-    buchmann_lenstra_overorder,
     check_buchmann_lenstra_general_result,
     check_buchmann_lenstra_result,
+)
+from sagejs.number_fields.composite_local_merge import (
+    certified_composite_overorder_from_equation,
+    merge_certified_coprime_composite_order,
 )
 from sagejs.number_fields.discriminant_components import (
     certify_decomposition_component,
@@ -1756,6 +1759,7 @@ def compute_maximal_order(
     current_basis = _identity_basis(field.degree())
     composite_results: dict[int, BuchmannLenstraResult] = {}
     composite_witnesses: list[dict[str, Any]] = []
+    processed_composite_supports: tuple[int, ...] = ()
 
     if requested is None:
         pending_composites = [
@@ -1776,22 +1780,13 @@ def compute_maximal_order(
                 "composite-local-order",
                 {"component_bits": support.bit_length()},
             )
-            starting_basis = current_basis
             identity_basis = _identity_basis(field.degree())
-            if current_basis.canonical_key() == identity_basis.canonical_key():
-                result = buchmann_lenstra_overorder(
-                    coefficients,
-                    component,
-                    basis=current_basis,
-                    equation_discriminant=equation_discriminant,
-                )
-            else:
-                result = buchmann_lenstra_multiplier_cycle(
-                    coefficients,
-                    component,
-                    current_basis,
-                    equation_discriminant=equation_discriminant,
-                )
+            starting_basis = identity_basis
+            result = certified_composite_overorder_from_equation(
+                coefficients,
+                component,
+                equation_discriminant,
+            )
             if result.evidence.get("stage") == "q-radical-multiplier-cycle":
                 if not check_buchmann_lenstra_general_result(
                     coefficients,
@@ -1809,37 +1804,6 @@ def compute_maximal_order(
             ) and not check_buchmann_lenstra_result(coefficients, result):
                 raise ArithmeticError("Buchmann--Lenstra evidence failed replay")
 
-            if result.state == "enlarged" and result.basis is not None:
-                # The equation-order Dedekind step is only the first
-                # enlargement.  Restart the same component at the new lattice
-                # and let the bounded q-radical/multiplier cycle finish it.
-                current_basis = result.basis
-                if result.discriminant is None:
-                    raise ArithmeticError(
-                        "Buchmann--Lenstra enlargement omitted its discriminant"
-                    )
-                order = _order_from_basis(
-                    field,
-                    current_basis,
-                    scale,
-                    int(result.discriminant),
-                )
-                general_start = current_basis
-                result = buchmann_lenstra_multiplier_cycle(
-                    coefficients,
-                    component,
-                    general_start,
-                    equation_discriminant=equation_discriminant,
-                )
-                if not check_buchmann_lenstra_general_result(
-                    coefficients,
-                    general_start,
-                    result,
-                    equation_discriminant=equation_discriminant,
-                ):
-                    raise ArithmeticError(
-                        "general Buchmann--Lenstra replay rejected its result"
-                    )
             trace.end(token, result.state, {"index": result.index})
             if result.state == "split":
                 replacements = _replace_component_by_certified_split(
@@ -1875,13 +1839,30 @@ def compute_maximal_order(
                 raise ArithmeticError(
                     "composite local-order result omitted discriminant"
                 )
-            current_basis = result.basis
-            order = _order_from_basis(
-                field,
-                current_basis,
-                scale,
-                int(result.discriminant),
+
+            def materialize_composite_order(
+                basis: OrderBasis, discriminant: int
+            ) -> Any:
+                return _order_from_basis(
+                    field,
+                    basis,
+                    scale,
+                    discriminant,
+                )
+
+            def merge_composite_orders(left: Any, right: Any) -> Any:
+                return _merge_orders(field, left, right)
+
+            order, processed_composite_supports = (
+                merge_certified_coprime_composite_order(
+                    order,
+                    processed_composite_supports,
+                    result,
+                    materialize_local_order=materialize_composite_order,
+                    merge_orders=merge_composite_orders,
+                )
             )
+            current_basis = _basis_from_order(order, scale)
             composite_results[component_value] = result
             composite_witnesses.append(
                 make_composite_local_maximality_witness(
