@@ -4,7 +4,7 @@
   "id": "smalljac-g2-native",
   "title": "Genus-2 smalljac native boundary",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Expose full genus-2 smalljac local polynomials and supported invariant factors through one packed batched native boundary, validate quintic/sextic streams and error handling, and retain a tested capability fallback on every platform",
   "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
