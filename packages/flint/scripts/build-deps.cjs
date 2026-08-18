@@ -359,7 +359,7 @@ async function buildWindowsRforest() {
   const stampPath = join(prefix, ".sagejs-rforest-dependencies.json");
   const expectedBuild = {
     rforest: dependency.version,
-    sourceClosure: "upstream-21-tu-v1",
+    sourceClosure: "upstream-20-tu-v1",
     arithmetic: "gmp-64-bit-limbs-v1",
     abi: "private-fixed-width-v1",
   };
@@ -799,7 +799,7 @@ async function main() {
     openblasBuild: "threaded-cblas-dynamic-v1",
     rforest:
       dependencies.find(({ name }) => name === "rforest").version,
-    rforestSourceClosure: "upstream-21-tu-v1",
+    rforestSourceClosure: "upstream-20-tu-v1",
     smalljacArithmetic:
       forcePortableSmalljac || process.arch !== "x64"
         ? "portable-v1"

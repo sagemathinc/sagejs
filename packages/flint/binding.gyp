@@ -17,6 +17,7 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/hyperelliptic/rforest.c",
         "src/hyperelliptic/smalljac.c",
         "src/matrix.c",
         "src/modsym_core.c",
@@ -103,8 +104,9 @@
       "cflags_cc": ["-std=c++17", "-fexceptions"],
       "conditions": [
         ["OS=='linux' and target_arch=='x64'", {
-          "defines": ["SAGEJS_HAVE_SMALLJAC=1"],
+          "defines": ["SAGEJS_HAVE_RFOREST=1", "SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/librforest.a",
             "<(native_prefix)/lib/libsmalljac.a",
             "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
@@ -130,8 +132,9 @@
           ]
         }],
         ["OS=='linux' and target_arch=='arm64'", {
-          "defines": ["SAGEJS_HAVE_SMALLJAC=1"],
+          "defines": ["SAGEJS_HAVE_RFOREST=1", "SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/librforest.a",
             "<(native_prefix)/lib/libsmalljac.a",
             "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
@@ -157,8 +160,9 @@
           ]
         }],
         ["OS=='mac'", {
-          "defines": ["SAGEJS_HAVE_SMALLJAC=1"],
+          "defines": ["SAGEJS_HAVE_RFOREST=1", "SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/librforest.a",
             "<(native_prefix)/lib/libsmalljac.a",
             "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
@@ -181,8 +185,9 @@
           }
         }],
         ["OS=='win'", {
-          "defines": ["_CRT_SECURE_NO_WARNINGS", "SAGEJS_HAVE_SMALLJAC=1"],
+          "defines": ["_CRT_SECURE_NO_WARNINGS", "SAGEJS_HAVE_RFOREST=1", "SAGEJS_HAVE_SMALLJAC=1"],
           "libraries": [
+            "<(native_prefix)/lib/rforest.lib",
             "<(native_prefix)/lib/smalljac.lib",
             "<(native_prefix)/lib/ff_poly.lib",
             "<(native_prefix)/lib/flint.lib",
