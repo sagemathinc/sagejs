@@ -62,6 +62,7 @@ const integration = [
   "test/number-field-maximal-order-public-micro-perf.cjs",
   "test/number-field-maximal-order-performance-receipt.cjs",
   "test/number-field-maximal-order-tail-final-receipt.cjs",
+  "test/number-field-maximal-order-parallel-public-receipt.cjs",
   "test/number-field-maximal-order-precision-public.cjs",
   "test/number-field-large-prime-maximal-order.cjs",
   "test/number-field-maximal-order-profiler.cjs",
