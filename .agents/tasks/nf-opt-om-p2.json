@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-om-p2",
+  "title": "OM p2 tail crossover",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile and source-transparently accelerate the complete vector429 p2 OM local certificate to a measured Sage.js crossover while preserving exact arbitrary residual-field mathematics and dynamic fallbacks",
+  "base_commit": "3ad58f0073d05e9d24c934aeabeda9037b94fee7",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_higher_residue.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-p2-tail.cjs",
+    "bench/number-field-om-p2-tail.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Guàrdia, Montes, and Nart, Higher Newton polygons and integral bases",
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "frozen-canonical-local-HNF",
+      "corruption-rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

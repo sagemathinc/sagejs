@@ -1357,6 +1357,26 @@ def _active_levels(levels: tuple[OMLevel, ...]) -> tuple[OMLevel, ...]:
     return tuple(level for level in levels if not level.optimized_away)
 
 
+def _previous_key_integer_value(
+    level: OMLevel,
+    previous: tuple[OMLevel, ...],
+) -> int:
+    """Recover `v_i(phi_i)` from the exact augmented value in a level."""
+    previous_ramification = 1
+    for prior in previous:
+        previous_ramification *= prior.ramification_index
+    augmented_denominator = previous_ramification * level.ramification_index
+    scaled_numerator = level.key_value.numerator * augmented_denominator
+    if scaled_numerator % level.key_value.denominator:
+        raise ArithmeticError("a MacLane key value has inconsistent normalization")
+    augmented_value = scaled_numerator // level.key_value.denominator
+    height = -level.slope.numerator
+    difference = augmented_value - height
+    if difference % level.ramification_index:
+        raise ArithmeticError("a MacLane key value does not match its slope")
+    return difference // level.ramification_index
+
+
 def maclane_integer_valuation(
     polynomial: Polynomial,
     prime: int,
@@ -1375,9 +1395,7 @@ def maclane_integer_valuation(
         return coefficient_valuation(polynomial, prime)
     level = active[-1]
     previous = active[:-1]
-    key_base_value = maclane_integer_valuation(level.key_polynomial, prime, previous)
-    if key_base_value is None:
-        raise ArithmeticError("a MacLane key has infinite previous value")
+    key_base_value = _previous_key_integer_value(level, previous)
     height = -level.slope.numerator
     answer: int | None = None
     for exponent, coefficient in enumerate(
