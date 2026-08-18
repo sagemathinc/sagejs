@@ -72,6 +72,10 @@ def _polynomial_quo_rem(numerator: Any, denominator: Any) -> tuple[Any, Any]:
     return quotient, remainder
 
 
+def _polynomial_remainder(numerator: Any, denominator: Any) -> Any:
+    return _polynomial_quo_rem(numerator, denominator)[1]
+
+
 def _polynomial_xgcd(left: Any, right: Any) -> tuple[Any, Any, Any]:
     """Return monic `(g,s,t)` with `g = s*left + t*right` over a field."""
     ring = _polynomial_ring(left)
@@ -104,6 +108,14 @@ def _coefficient_vectors(values: list[Any], length: int) -> list[list[Any]]:
     return vectors
 
 
+def _integer_bit_length(value: Any) -> int:
+    bits = 0
+    while value:
+        value //= 2
+        bits += 1
+    return bits
+
+
 @runtime.lightweight_math_class
 class MumfordDivisor(sage.Element):
     """A canonical reduced divisor class on an odd-degree Jacobian."""
@@ -116,8 +128,13 @@ class MumfordDivisor(sage.Element):
         if u.is_zero():
             raise ValueError("a Mumford u-polynomial must be nonzero")
         u = _polynomial_monic(u)
-        v %= u
-        if check and not ((v * v + parent.h() * v - parent.f()) % u).is_zero():
+        v = _polynomial_remainder(v, u)
+        if (
+            check
+            and not _polynomial_remainder(
+                v * v + parent.h() * v - parent.f(), u
+            ).is_zero()
+        ):
             raise ValueError("u does not divide v^2 + h*v - f")
         u, v = parent._reduce(u, v)
         if check:
@@ -177,7 +194,11 @@ class MumfordDivisor(sage.Element):
 
     def __neg__(self) -> Any:
         u = self._u
-        return self._parent._element(u, (-self._parent.h() - self._v) % u, False)
+        return self._parent._element(
+            u,
+            _polynomial_remainder(-self._parent.h() - self._v, u),
+            False,
+        )
 
     def _neg_(self) -> Any:
         return self.__neg__()
@@ -361,7 +382,7 @@ class HyperellipticJacobian(sage.Parent):
             raise ValueError("the Mumford divisor is not reduced")
         if not v.is_zero() and v.degree() >= u.degree():
             raise ValueError("v must have degree smaller than u")
-        if not ((v * v + self._h * v - self._f) % u).is_zero():
+        if not _polynomial_remainder(v * v + self._h * v - self._f, u).is_zero():
             raise ValueError("u does not divide v^2 + h*v - f")
 
     def _reduce(self, u: Any, v: Any) -> tuple[Any, Any]:
@@ -369,11 +390,11 @@ class HyperellipticJacobian(sage.Parent):
         while u.degree() > self._genus:
             quotient = _exact_quotient(v * v + self._h * v - self._f, u)
             u = _polynomial_monic(quotient)
-            v = (-self._h - v) % u
+            v = _polynomial_remainder(-self._h - v, u)
             steps += 1
             if steps > 2 * self._genus + 2:
                 raise ArithmeticError("Cantor reduction failed to decrease the divisor")
-        v %= u
+        v = _polynomial_remainder(v, u)
         return u, v
 
     def _compose(self, u1: Any, v1: Any, u2: Any, v2: Any) -> tuple[Any, Any]:
@@ -385,20 +406,22 @@ class HyperellipticJacobian(sage.Parent):
                 self._f - self._h * v1 - v1 * v1,
                 common,
             )
-            v3 = (v1 + bezout * correction) % u3
+            v3 = _polynomial_remainder(v1 + bezout * correction, u3)
             return self._reduce(u3, v3)
 
         common0, _left0, right0 = _polynomial_xgcd(u1, u2)
         difference = v1 - v2
         if common0.is_one():
             u3 = u1 * u2
-            v3 = (v2 + right0 * u2 * difference) % u3
+            v3 = _polynomial_remainder(v2 + right0 * u2 * difference, u3)
             return self._reduce(u3, v3)
 
         conjugate_sum = v1 + v2 + self._h
         if conjugate_sum.is_zero():
             u3 = _exact_quotient(u1 * u2, common0 * common0)
-            v3 = (v2 + right0 * difference * _exact_quotient(u2, common0)) % u3
+            v3 = _polynomial_remainder(
+                v2 + right0 * difference * _exact_quotient(u2, common0), u3
+            )
             return self._reduce(u3, v3)
 
         common, coefficient0, coefficient1 = _polynomial_xgcd(common0, conjugate_sum)
@@ -406,7 +429,7 @@ class HyperellipticJacobian(sage.Parent):
         numerator = coefficient0 * right0 * difference * u2 + coefficient1 * (
             self._f - self._h * v2 - v2 * v2
         )
-        v3 = (v2 + _exact_quotient(numerator, common)) % u3
+        v3 = _polynomial_remainder(v2 + _exact_quotient(numerator, common), u3)
         return self._reduce(u3, v3)
 
     def point_to_divisor(self, point: Any, check: bool = True) -> MumfordDivisor:
@@ -438,6 +461,22 @@ class HyperellipticJacobian(sage.Parent):
         u = self._ring.gen() - x_coordinate
         return MumfordDivisor(self, u, self._ring(y_coordinate), check)
 
+    def _random_affine_point(self, attempts: int) -> Any:
+        """Sample an affine point directly over an odd prime field."""
+        field = self.base_ring()
+        if not hasattr(field, "random_element"):
+            return None
+        four = field(4)
+        two = field(2)
+        for _attempt in range(attempts):
+            x_coordinate = field.random_element()
+            h_value = self._h(x_coordinate)
+            discriminant = h_value * h_value + four * self._f(x_coordinate)
+            if hasattr(discriminant, "is_square") and discriminant.is_square():
+                y_coordinate = (-h_value + discriminant.sqrt()) / two
+                return (x_coordinate, y_coordinate)
+        return None
+
     def random_element(self, attempts: int = 100) -> MumfordDivisor:
         if attempts <= 0:
             raise ValueError("attempts must be positive")
@@ -457,6 +496,23 @@ class HyperellipticJacobian(sage.Parent):
                 if not answer.is_zero():
                     return answer
             return last
+
+        if hasattr(self.base_ring(), "random_element"):
+            last = self.zero()
+            for _attempt in range(attempts):
+                answer = self.zero()
+                complete = True
+                for _index in range(2 * self._genus + 1):
+                    point = self._random_affine_point(attempts)
+                    if point is None:
+                        complete = False
+                        break
+                    answer += self.point_to_divisor(point)
+                last = answer
+                if complete and not answer.is_zero():
+                    return answer
+            if not last.is_zero():
+                return last
 
         points = self.points(max_elements=10_000, max_candidates=1_000_000)
         if len(points) <= 1:
@@ -516,6 +572,7 @@ class HyperellipticJacobian(sage.Parent):
         elements: Any,
         max_candidates: int = 10_000,
         max_elements: int = 256,
+        max_scalar_bits: int = 4096,
     ) -> list[Any]:
         """Retain candidate group orders that annihilate every supplied element.
 
@@ -536,6 +593,10 @@ class HyperellipticJacobian(sage.Parent):
         for candidate in candidate_list:
             if candidate <= 0:
                 raise ValueError("candidate orders must be positive")
+            if _integer_bit_length(candidate) > max_scalar_bits:
+                raise JacobianResourceLimitError(
+                    "order filtering exceeds max_scalar_bits=" + str(max_scalar_bits)
+                )
         survivors = []
         for candidate in candidate_list:
             valid = True
@@ -619,7 +680,9 @@ class HyperellipticJacobian(sage.Parent):
                 u = self._ring(u_vector + [one])
                 for v_vector in v_vectors:
                     v = self._ring(v_vector)
-                    if ((v * v + self._h * v - self._f) % u).is_zero():
+                    if _polynomial_remainder(
+                        v * v + self._h * v - self._f, u
+                    ).is_zero():
                         answer.append(self._element(u, v, False))
         if len(answer) != known_order:
             raise ArithmeticError(
