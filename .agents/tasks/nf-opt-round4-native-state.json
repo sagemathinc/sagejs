@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Reduce vector010 modified-Round4 construction by at least one order of magnitude with a reusable source-transparent packed residue/type-state kernel while preserving exact certificates and same-source fallback",
-  "base_commit": "89d08932f80ef917b839118c0b1dda0506cf4082",
+  "base_commit": "285c223da7f42e69ee5e91e6f1d214f6bcf7cfe5",
   "claims": [
     "src/lib/sagejs/number_fields/round4.py",
     "src/lib/sagejs/number_fields/round4_state_kernel.py",

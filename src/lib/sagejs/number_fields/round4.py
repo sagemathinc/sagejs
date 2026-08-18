@@ -1674,16 +1674,34 @@ def _packed_exact_integral_characteristic(
     kernel = packed_round4_exact_characteristic
     if not is_compiled(kernel):
         return None
-    degree = field.degree()
     packed_element = _packed_field_element_coordinates(field, element)
-    rows, denominator, row_bounds = _integer_multiplication_matrix_data(
+    return _packed_exact_characteristic_from_coordinates(
         field,
-        element,
+        packed_element,
+        prime,
+        transition,
     )
-    if denominator != packed_element[0]:
-        raise Round4InvariantError(
-            "the packed characteristic element changed its canonical denominator"
-        )
+
+
+def _packed_exact_characteristic_from_coordinates(
+    field: Any,
+    packed_element: list[Any],
+    prime: Any,
+    transition: int,
+) -> dict[str, Any] | None:
+    """Run the exact packed kernel without constructing a field element."""
+    kernel = packed_round4_exact_characteristic
+    if not is_compiled(kernel):
+        return None
+    degree = field.degree()
+    rows, denominator = _multiplication_matrix_from_packed_evidence(
+        field,
+        packed_element,
+    )
+    row_bounds = []
+    for row in rows:
+        norm_square = sum(value * value for value in row)
+        row_bounds.append(_integer_sqrt_ceiling(norm_square))
     defining = []
     for coefficient in field._defining_coefficients:
         if coefficient._denominator != 1:
@@ -3742,12 +3760,6 @@ def _verify_round4_characteristic_certificate(
     certificate: dict[str, Any],
     prime: Any | None = None,
 ) -> None:
-    rows, denominator = _multiplication_matrix_from_packed_evidence(
-        field,
-        certificate["element"],
-    )
-    if denominator != certificate["matrix_denominator"]:
-        raise Round4InvariantError("a characteristic proof changed matrix scale")
     if certificate["kind"] == "direct-characteristic-replay":
         characteristic = None
         if (
@@ -3755,22 +3767,43 @@ def _verify_round4_characteristic_certificate(
             and certificate.get("implementation") == "packed-exact-flint"
         ):
             packed = certificate["element"]
-            element = field._from_coefficients(
-                [sage.QQ(value) / packed[0] for value in packed[1:]]
-            )
-            replay = _packed_exact_integral_characteristic(
+            replay = _packed_exact_characteristic_from_coordinates(
                 field,
-                element,
+                packed,
                 prime,
                 certificate["transition"],
             )
             if replay is not None and replay["integral"]:
+                replay_certificate = replay["certificate"]
+                if (
+                    replay_certificate["matrix_denominator"]
+                    != certificate["matrix_denominator"]
+                    or replay_certificate["coefficient_bounds"]
+                    != certificate["coefficient_bounds"]
+                ):
+                    raise Round4InvariantError(
+                        "a direct characteristic proof changed its exact bounds"
+                    )
                 characteristic = replay["coefficients"]
         if characteristic is None:
+            rows, denominator = _multiplication_matrix_from_packed_evidence(
+                field,
+                certificate["element"],
+            )
+            if denominator != certificate["matrix_denominator"]:
+                raise Round4InvariantError(
+                    "a characteristic proof changed matrix scale"
+                )
             characteristic = list(_nf_global("matrix")(sage.ZZ, rows).charpoly().list())
         if characteristic != certificate["characteristic_polynomial"]:
             raise Round4InvariantError("a direct characteristic proof was corrupted")
         return
+    rows, denominator = _multiplication_matrix_from_packed_evidence(
+        field,
+        certificate["element"],
+    )
+    if denominator != certificate["matrix_denominator"]:
+        raise Round4InvariantError("a characteristic proof changed matrix scale")
     if certificate["kind"] != "exact-minimal-polynomial":
         raise Round4InvariantError("an unknown characteristic proof was supplied")
     minimal = certificate["minimal_polynomial"]
