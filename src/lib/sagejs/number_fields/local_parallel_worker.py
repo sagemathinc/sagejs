@@ -19,10 +19,14 @@ from typing import Any
 from sagejs.number_fields.local_parallel import (
     DEFAULT_POLICY,
     JobPayload,
+    LocalCertificationError,
+    LocalWorkerError,
     ResultPayload,
+    assemble_local_run,
     conservative_peak_bytes,
     make_schedule,
     run_local_jobs,
+    validate_local_result,
 )
 
 PUBLIC_DECISION_SCHEMA = "sagejs.number-fields.public-local-worker-decision.v2"
@@ -30,6 +34,16 @@ PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cj
 PUBLIC_PARALLEL_SETUP_MARGIN_MICROS = 20_000_000
 PUBLIC_PARALLEL_PARENT_RSS_BYTES = 640 * 1024 * 1024
 PUBLIC_PARALLEL_WORKER_RSS_BYTES = 224 * 1024 * 1024
+PUBLIC_PROOF_DECISION_SCHEMA = (
+    "sagejs.number-fields.public-local-proof-worker-decision.v1"
+)
+PUBLIC_PROOF_BENCHMARK = "bench/number-field-local-parallel-proof-workers.cjs:v1"
+# One fresh isolated evaluator is conservatively charged one quarter of the
+# measured four-worker 19-second startup.  The dedicated benchmark ratchets
+# this value only after the precompiled proof graph is measured directly.
+PUBLIC_PROOF_SETUP_MICROS = 4_750_000
+PUBLIC_PROOF_SAFETY_NUMERATOR = 11
+PUBLIC_PROOF_SAFETY_DENOMINATOR = 10
 
 
 def public_worker_capability() -> bool:
@@ -197,6 +211,121 @@ def public_worker_decision(
     }
 
 
+def public_local_proof_worker_decision(
+    jobs: list[JobPayload] | tuple[JobPayload, ...],
+    *,
+    parent_native_predicted_micros: int,
+    cpu_count: int | None = None,
+    max_workers: int | None = None,
+    memory_budget_bytes: int | None = None,
+    worker_capability: bool | None = None,
+) -> dict[str, Any]:
+    """Select external parent/proof overlap from measured input costs."""
+    from sagejs.number_fields.local_parallel import (
+        _canonical_jobs,
+        local_job_key,
+        wire_size,
+    )
+
+    canonical = _canonical_jobs(jobs)
+    parent_work = max(0, int(parent_native_predicted_micros))
+    actual_capability = public_worker_capability()
+    capability = actual_capability
+    if worker_capability is not None:
+        capability = actual_capability and bool(worker_capability)
+    multiprocessing = __import__("multiprocessing")
+    available_value = (
+        getattr(multiprocessing, "cpu_count", lambda: 1)()
+        if cpu_count is None
+        else cpu_count
+    )
+    available = max(1, int(available_value))
+    ceiling = 3 if max_workers is None else max(1, int(max_workers))
+    workers = min(ceiling, max(1, available - 1), max(1, len(canonical)))
+    worker_total = sum(int(job[4]) for job in canonical)
+    worker_critical = _predicted_critical_path(canonical, workers)
+    sequential = parent_work + worker_total
+    overlap = max(parent_work, worker_critical) + PUBLIC_PROOF_SETUP_MICROS
+    safe_overlap = (
+        overlap * PUBLIC_PROOF_SAFETY_NUMERATOR // PUBLIC_PROOF_SAFETY_DENOMINATOR
+    )
+    fixed_runtime_peak = (
+        PUBLIC_PARALLEL_PARENT_RSS_BYTES + workers * PUBLIC_PARALLEL_WORKER_RSS_BYTES
+    )
+    predicted_proof_wire = 0
+    for job in canonical:
+        degree = len(job[1]) - 1
+        coefficient_bits = max(abs(int(value)).bit_length() for value in job[1])
+        predicted_proof_wire += max(
+            wire_size(job),
+            degree * degree * (32 + (coefficient_bits + int(job[2][4]) + 7) // 8),
+        )
+    predicted_peak = (
+        fixed_runtime_peak
+        + conservative_peak_bytes(canonical, (), workers)
+        + predicted_proof_wire
+    )
+    if memory_budget_bytes is None:
+        memory_budget, memory_source = _platform_memory_budget()
+    else:
+        memory_budget = max(0, int(memory_budget_bytes))
+        memory_source = "caller-explicit"
+    selected = True
+    reason = "predicted-parent-proof-overlap-crossover"
+    if not canonical:
+        selected = False
+        reason = "no-proof-jobs"
+    elif not capability:
+        selected = False
+        reason = "precompiled-worker-module-unavailable"
+    elif available < 2:
+        selected = False
+        reason = "no-independent-parent-worker-cpu"
+    elif min((int(job[4]) for job in canonical), default=0) < 250_000:
+        selected = False
+        reason = "proof-job-below-measured-worker-floor"
+    elif memory_budget is None:
+        selected = False
+        reason = "memory-budget-unavailable"
+    elif predicted_peak > memory_budget:
+        selected = False
+        reason = "predicted-proof-peak-exceeds-memory-budget"
+    elif safe_overlap >= sequential:
+        selected = False
+        reason = "predicted-overlap-does-not-beat-sequential"
+    mode = "parallel" if selected else "sequential"
+    schedule = (
+        "sagejs.number-fields.local-schedule.v1",
+        mode,
+        workers if selected else 1,
+        tuple(local_job_key(job) for job in canonical),
+        worker_total,
+        predicted_peak,
+        reason,
+        PUBLIC_PROOF_BENCHMARK,
+    )
+    return {
+        "schema": PUBLIC_PROOF_DECISION_SCHEMA,
+        "selected": selected,
+        "reason": reason,
+        "worker_capability": capability,
+        "worker_count": workers if selected else 1,
+        "parent_native_predicted_micros": parent_work,
+        "worker_total_predicted_micros": worker_total,
+        "worker_critical_path_predicted_micros": worker_critical,
+        "sequential_predicted_micros": sequential,
+        "overlap_predicted_micros": overlap,
+        "safe_overlap_predicted_micros": safe_overlap,
+        "setup_predicted_micros": PUBLIC_PROOF_SETUP_MICROS,
+        "predicted_proof_wire_bytes": predicted_proof_wire,
+        "predicted_peak_rss_bytes": predicted_peak,
+        "memory_budget_bytes": memory_budget,
+        "memory_budget_source": memory_source,
+        "schedule": schedule,
+        "benchmark": PUBLIC_PROOF_BENCHMARK,
+    }
+
+
 def execute_public_local_job(job: JobPayload) -> ResultPayload:
     """Reconstruct and solve one local order using only canonical wire data.
 
@@ -290,6 +419,300 @@ def execute_public_local_job(job: JobPayload) -> ResultPayload:
         )
 
 
+def execute_public_local_proof_job(job: JobPayload) -> ResultPayload:
+    """Execute one complete OM or BL job and return only frozen wire data."""
+    from sagejs.number_fields.buchmann_lenstra import (
+        authenticate_buchmann_lenstra_result,
+        buchmann_lenstra_overorder,
+        polynomial_discriminant,
+    )
+    from sagejs.number_fields.local_parallel import (
+        local_job_component,
+        make_buchmann_lenstra_proof_source,
+        make_fatal_result,
+        make_local_proof_result,
+        make_om_proof_source,
+        validate_local_job,
+    )
+
+    canonical_job = validate_local_job(job)
+    coefficients = tuple(int(value) for value in canonical_job[1])
+    component = local_job_component(canonical_job)
+    algorithm = str(canonical_job[6])
+    try:
+        equation_discriminant = polynomial_discriminant(list(coefficients))
+        if algorithm == "om-maxmin":
+            from sagejs.number_fields.local_polygons import factor_mod_prime
+            from sagejs.number_fields.om_auto_selector import select_om_local_basis
+
+            prime = int(component.base)
+            factors = factor_mod_prime(list(coefficients), prime)
+            selection = select_om_local_basis(
+                coefficients,
+                prime,
+                local_discriminant_valuation=int(canonical_job[2][4]),
+                factor_degrees=tuple(int(item["degree"]) for item in factors),
+                factor_multiplicities=tuple(
+                    int(item["multiplicity"]) for item in factors
+                ),
+            )
+            if not selection.selected or selection.result is None:
+                raise ArithmeticError("OM did not produce a complete selected proof")
+            result = selection.result
+            basis = result.order_basis
+            certificate = result.certificate
+            if basis is None or certificate is None:
+                raise ArithmeticError("OM omitted its basis or certificate")
+            local_index = prime**certificate.local_index_valuation
+            index_square = local_index * local_index
+            if equation_discriminant % index_square != 0:
+                raise ArithmeticError(
+                    "OM index does not divide the equation discriminant"
+                )
+            order_discriminant = equation_discriminant // index_square
+            proof_source = make_om_proof_source(selection)
+            certified_modulus = prime ** int(canonical_job[2][4])
+        elif algorithm == "buchmann-lenstra":
+            result = buchmann_lenstra_overorder(
+                list(coefficients),
+                component,
+                equation_discriminant=equation_discriminant,
+            )
+            projection = authenticate_buchmann_lenstra_result(
+                list(coefficients),
+                result,
+                equation_discriminant=equation_discriminant,
+            )
+            if (
+                projection is None
+                or result.basis is None
+                or result.discriminant is None
+            ):
+                raise ArithmeticError("BL did not produce a complete accepted proof")
+            basis = result.basis
+            local_index = int(result.index)
+            order_discriminant = int(result.discriminant)
+            proof_source = make_buchmann_lenstra_proof_source(result)
+            certified_modulus = component.value
+        else:
+            raise ValueError("a proof worker accepts only OM and BL jobs")
+        return make_local_proof_result(
+            canonical_job,
+            basis.numerator,
+            basis.denominator,
+            local_index,
+            certified_modulus,
+            equation_discriminant,
+            order_discriminant,
+            proof_source,
+            peak_bytes=int(canonical_job[5]),
+        )
+    except Exception:
+        return make_fatal_result(
+            canonical_job,
+            "pointer-free local proof construction failed",
+        )
+
+
+class PublicLocalProofRunHandle:
+    """Runtime-local handle for overlapping parent and proof-worker work."""
+
+    def __init__(
+        self,
+        jobs: tuple[JobPayload, ...],
+        schedule: tuple[Any, ...],
+        pool: Any,
+        pending: list[Any],
+        started_ns: int,
+        launched_ns: int,
+        decision: dict[str, Any] | None,
+    ) -> None:
+        self.jobs = jobs
+        self.schedule = schedule
+        self.pool = pool
+        self.pending = pending
+        self.started_ns = started_ns
+        self.launched_ns = launched_ns
+        self.decision = decision
+        self.timing_evidence: tuple[Any, ...] | None = None
+        self.finished = False
+
+
+def start_public_local_proof_jobs(
+    jobs: list[JobPayload] | tuple[JobPayload, ...],
+    *,
+    max_workers: int | None = None,
+    cpu_count: int | None = None,
+    worker_capability: bool | None = None,
+    policy: tuple[Any, ...] | None = None,
+    pool_factory: Any = None,
+    parent_native_predicted_micros: int | None = None,
+    memory_budget_bytes: int | None = None,
+) -> PublicLocalProofRunHandle:
+    """Start proof jobs without blocking the independent parent computation."""
+    from sagejs.number_fields.local_parallel import _canonical_jobs
+
+    clock = __import__("time")
+    started_ns = clock.monotonic_ns()
+    ordered = _canonical_jobs(jobs)
+    available = public_worker_capability()
+    capability = available
+    if worker_capability is not None:
+        capability = available and bool(worker_capability)
+    decision = None
+    if parent_native_predicted_micros is None:
+        tuning = DEFAULT_POLICY if policy is None else policy
+        schedule = make_schedule(
+            ordered,
+            max_workers=max_workers,
+            cpu_count=cpu_count,
+            worker_capability=capability,
+            policy=tuning,
+        )
+    else:
+        decision = public_local_proof_worker_decision(
+            ordered,
+            parent_native_predicted_micros=parent_native_predicted_micros,
+            cpu_count=cpu_count,
+            max_workers=max_workers,
+            memory_budget_bytes=memory_budget_bytes,
+            worker_capability=capability,
+        )
+        schedule = decision["schedule"]
+    if schedule[1] == "sequential" or not ordered:
+        launched_ns = clock.monotonic_ns()
+        return PublicLocalProofRunHandle(
+            ordered,
+            schedule,
+            None,
+            [],
+            started_ns,
+            launched_ns,
+            decision,
+        )
+    if pool_factory is None:
+        from multiprocessing import Pool
+
+        pool = Pool(int(schedule[2]))
+    else:
+        pool = pool_factory(int(schedule[2]))
+    execution_jobs = sorted(
+        ordered,
+        key=lambda item: (-int(item[4]), item[1], int(item[3])),
+    )
+    try:
+        pending = [
+            pool.apply_async(execute_public_local_proof_job, (item,))
+            for item in execution_jobs
+        ]
+    except Exception as error:
+        try:
+            pool.terminate()
+            pool.join()
+        except Exception:
+            pass
+        raise LocalWorkerError("local proof worker startup failed") from error
+    launched_ns = clock.monotonic_ns()
+    return PublicLocalProofRunHandle(
+        ordered,
+        schedule,
+        pool,
+        pending,
+        started_ns,
+        launched_ns,
+        decision,
+    )
+
+
+def cancel_public_local_proof_jobs(handle: PublicLocalProofRunHandle) -> None:
+    """Cancel a live proof run after an independent parent failure."""
+    if type(handle) is not PublicLocalProofRunHandle or handle.finished:
+        return
+    handle.finished = True
+    if handle.pool is not None:
+        try:
+            handle.pool.terminate()
+            handle.pool.join()
+        except Exception:
+            pass
+
+
+def finish_public_local_proof_jobs(
+    handle: PublicLocalProofRunHandle,
+) -> tuple[Any, ...]:
+    """Join one proof run, preserving fatal-result sibling cancellation."""
+    if type(handle) is not PublicLocalProofRunHandle or handle.finished:
+        raise LocalWorkerError("local proof worker handle is stale")
+    clock = __import__("time")
+    joined_started_ns = clock.monotonic_ns()
+    results: list[ResultPayload] = []
+    completed = False
+    try:
+        if handle.pool is None:
+            for job in handle.jobs:
+                result = validate_local_result(execute_public_local_proof_job(job))
+                if result[2] == "fatal":
+                    raise LocalCertificationError(
+                        "local maximal-order certification failed"
+                    )
+                results.append(result)
+        else:
+            pending = list(handle.pending)
+            while pending:
+                ready = [item for item in pending if item.ready()]
+                if not ready:
+                    pending[0].wait(0.01)
+                    continue
+                for item in ready:
+                    pending.remove(item)
+                    result = validate_local_result(item.get())
+                    if result[2] == "fatal":
+                        handle.pool.terminate()
+                        handle.pool.join()
+                        raise LocalCertificationError(
+                            "local maximal-order certification failed"
+                        )
+                    results.append(result)
+            handle.pool.close()
+            handle.pool.join()
+        run = assemble_local_run(handle.jobs, results, handle.schedule)
+        completed = True
+        return run
+    except LocalCertificationError:
+        raise
+    except Exception as error:
+        if handle.pool is not None:
+            try:
+                handle.pool.terminate()
+                handle.pool.join()
+            except Exception:
+                pass
+        raise LocalWorkerError("local proof worker execution failed") from error
+    finally:
+        finished_ns = clock.monotonic_ns()
+        handle.timing_evidence = (
+            "sagejs.number-fields.local-proof-worker-timing.v1",
+            (handle.launched_ns - handle.started_ns) // 1000,
+            max(0, joined_started_ns - handle.launched_ns) // 1000,
+            (finished_ns - joined_started_ns) // 1000,
+            (finished_ns - handle.started_ns) // 1000,
+            str(handle.schedule[1]),
+            int(handle.schedule[2]),
+            completed,
+        )
+        handle.finished = True
+
+
+def run_public_local_proof_jobs(
+    jobs: list[JobPayload] | tuple[JobPayload, ...],
+    **options: Any,
+) -> tuple[Any, ...]:
+    """Blocking convenience wrapper over the begin/finish proof-worker API."""
+    return finish_public_local_proof_jobs(
+        start_public_local_proof_jobs(jobs, **options)
+    )
+
+
 def run_public_local_jobs(
     jobs: list[JobPayload] | tuple[JobPayload, ...],
     *,
@@ -334,8 +757,18 @@ __all__ = [
     "PUBLIC_PARALLEL_PARENT_RSS_BYTES",
     "PUBLIC_PARALLEL_SETUP_MARGIN_MICROS",
     "PUBLIC_PARALLEL_WORKER_RSS_BYTES",
+    "PUBLIC_PROOF_BENCHMARK",
+    "PUBLIC_PROOF_DECISION_SCHEMA",
+    "PUBLIC_PROOF_SETUP_MICROS",
+    "PublicLocalProofRunHandle",
+    "cancel_public_local_proof_jobs",
     "execute_public_local_job",
+    "execute_public_local_proof_job",
+    "finish_public_local_proof_jobs",
     "public_worker_capability",
     "public_worker_decision",
+    "public_local_proof_worker_decision",
     "run_public_local_jobs",
+    "run_public_local_proof_jobs",
+    "start_public_local_proof_jobs",
 ]

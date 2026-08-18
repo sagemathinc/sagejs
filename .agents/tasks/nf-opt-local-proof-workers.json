@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-local-proof-workers",
+  "title": "Nf Opt Local Proof Workers",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend pointer-free local workers for OM and Buchmann--Lenstra component jobs returning frozen proof envelopes with parent-side independent validation",
+  "base_commit": "049732200e72be31e722f02a9a0825b574a64b8b",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-local-parallel-proof-workers.cjs",
+    "bench/number-field-local-parallel-proof-workers.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "src/lib/sagejs/number_fields/om_auto_selector.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-local-parallel-proof-workers.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

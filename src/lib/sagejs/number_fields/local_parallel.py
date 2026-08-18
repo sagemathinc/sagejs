@@ -23,6 +23,7 @@ hostile parent process.
 from __future__ import annotations
 
 import os
+from dataclasses import fields, is_dataclass
 from typing import Any, Callable, Iterable, TypeAlias, cast
 
 from sagejs.number_fields.maximal_order_contracts import (
@@ -48,6 +49,10 @@ MERGE_SCHEMA = "sagejs.number-fields.local-merge-plan.v1"
 MERGE_STEP_SCHEMA = "sagejs.number-fields.local-merge-step.v1"
 RESOURCE_SCHEMA = "sagejs.number-fields.local-resources.v1"
 RUN_SCHEMA = "sagejs.number-fields.local-run.v1"
+PROOF_SOURCE_SCHEMA = "sagejs.number-fields.local-proof-source.v1"
+PROOF_ENVELOPE_SCHEMA = "sagejs.number-fields.local-proof-envelope.v1"
+OM_PROOF_SOURCE_SCHEMA = "sagejs.number-fields.om-worker-proof-source.v1"
+BL_PROOF_SOURCE_SCHEMA = "sagejs.number-fields.bl-worker-proof-source.v1"
 
 # Creating four isolated Sage.js evaluators plus their first payload round trip
 # costs roughly 19 seconds on the P5 reference host under a representative
@@ -138,6 +143,101 @@ def _thaw_json(value: Any, label: str = "contract value") -> Any:
             raise LocalPayloadError(label + " has an invalid dictionary key")
         answer[key] = _thaw_json(entry[1], label)
     return answer
+
+
+def _om_record_classes() -> dict[str, type[Any]]:
+    """Return the closed record vocabulary admitted by an OM proof payload."""
+    from sagejs.number_fields.om_auto_selector import OMAutoPrefilter
+    from sagejs.number_fields.om_maxmin import (
+        BasisValidation,
+        LocalNumeratorTable,
+        MaxMinCandidate,
+        MaxMinCertificate,
+        OMSelectorMetrics,
+        TriangularBasisCertificate,
+        TriangularBasisElement,
+    )
+    from sagejs.number_fields.om_types import (
+        ModularFactor,
+        OMLevel,
+        OMType,
+        OMTypeTree,
+        RationalValue,
+    )
+
+    classes = (
+        RationalValue,
+        ModularFactor,
+        OMLevel,
+        OMType,
+        OMTypeTree,
+        LocalNumeratorTable,
+        MaxMinCandidate,
+        MaxMinCertificate,
+        TriangularBasisElement,
+        BasisValidation,
+        TriangularBasisCertificate,
+        OMSelectorMetrics,
+        OMAutoPrefilter,
+    )
+    return {record.__name__: record for record in classes}
+
+
+def _freeze_om_record(value: Any) -> WireValue:
+    """Encode one closed OM dataclass graph without transferring an object."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_freeze_om_record(item) for item in value))
+    admitted = _om_record_classes()
+    record_type = type(value)
+    if not is_dataclass(value) or record_type.__name__ not in admitted:
+        raise LocalPayloadError("OM proof source contains an unsupported record")
+    if admitted[record_type.__name__] is not record_type:
+        raise LocalPayloadError("OM proof source contains a shadow record type")
+    entries = tuple(
+        (field.name, _freeze_om_record(getattr(value, field.name)))
+        for field in fields(value)
+    )
+    return ("om-record", record_type.__name__, entries)
+
+
+def _thaw_om_record(value: Any) -> Any:
+    """Reconstruct a fresh closed OM record graph from exact wire data."""
+    canonical = _wire_value(value, "OM proof source")
+    if canonical is None or isinstance(canonical, (str, bool, int)):
+        return canonical
+    if not isinstance(canonical, tuple):
+        raise LocalPayloadError("OM proof source has an invalid record")
+    if len(canonical) == 2 and canonical[0] == "tuple":
+        items = canonical[1]
+        if not isinstance(items, tuple):
+            raise LocalPayloadError("OM proof tuple has invalid entries")
+        return tuple(_thaw_om_record(item) for item in items)
+    if len(canonical) != 3 or canonical[0] != "om-record":
+        raise LocalPayloadError("OM proof source has an invalid record tag")
+    name = canonical[1]
+    entries = canonical[2]
+    admitted = _om_record_classes()
+    if not isinstance(name, str) or name not in admitted:
+        raise LocalPayloadError("OM proof source names an unsupported record")
+    record_type = admitted[name]
+    expected_names = tuple(field.name for field in fields(record_type))
+    if not isinstance(entries, tuple):
+        raise LocalPayloadError("OM proof record entries must be a tuple")
+    if any(not isinstance(entry, tuple) or len(entry) != 2 for entry in entries):
+        raise LocalPayloadError("OM proof record fields are invalid")
+    actual_names = tuple(entry[0] for entry in entries)
+    if actual_names != expected_names:
+        raise LocalPayloadError("OM proof record fields are stale or noncanonical")
+    arguments = {
+        str(entry[0]): _thaw_om_record(entry[1])
+        for entry in cast(tuple[tuple[Any, Any], ...], entries)
+    }
+    try:
+        return record_type(**arguments)
+    except (ArithmeticError, TypeError, ValueError) as error:
+        raise LocalPayloadError("OM proof record reconstruction failed") from error
 
 
 def _wire_evidence_to_json(value: WireValue) -> Any:
@@ -397,6 +497,52 @@ def make_local_job(
     )
 
 
+def make_om_proof_job(
+    polynomial_coefficients: Iterable[Any],
+    prime: Any,
+    discriminant_valuation: Any,
+    predicted_micros: Any,
+    predicted_peak_bytes: Any,
+    *,
+    component_index: Any = 0,
+) -> JobPayload:
+    """Construct a deterministic complete OM/MaxMin worker job."""
+    return make_local_job(
+        polynomial_coefficients,
+        prime,
+        component_index,
+        (0, 1),
+        discriminant_valuation,
+        predicted_micros,
+        predicted_peak_bytes,
+        algorithm="om-maxmin",
+    )
+
+
+def make_buchmann_lenstra_proof_job(
+    polynomial_coefficients: Iterable[Any],
+    component: DiscriminantComponent | dict[str, Any],
+    predicted_micros: Any,
+    predicted_peak_bytes: Any,
+    *,
+    component_index: Any = 0,
+) -> JobPayload:
+    """Construct a deterministic complete composite BL worker job."""
+    contract = _component_contract(component)
+    if contract.state not in ("composite", "unresolved-coprime-component"):
+        raise LocalPayloadError("a BL proof job needs a composite component")
+    return make_local_job(
+        polynomial_coefficients,
+        contract,
+        component_index,
+        (0, 1),
+        0,
+        predicted_micros,
+        predicted_peak_bytes,
+        algorithm="buchmann-lenstra",
+    )
+
+
 def validate_local_job(job: Any) -> JobPayload:
     """Validate and return a canonical local job payload."""
     value = _wire_value(job, "local job")
@@ -426,7 +572,14 @@ def validate_local_job(job: Any) -> JobPayload:
     _integer(value[3], "seed", 0)
     _integer(value[4], "predicted work", 0)
     _integer(value[5], "predicted peak bytes", 0)
-    if value[6] not in ("dedekind", "round2", "polygon", "round4", "om-maxmin"):
+    if value[6] not in (
+        "dedekind",
+        "round2",
+        "polygon",
+        "round4",
+        "om-maxmin",
+        "buchmann-lenstra",
+    ):
         raise LocalPayloadError("invalid local maximal-order algorithm")
     return value
 
@@ -565,6 +718,536 @@ def make_local_result(
         _freeze_json(shared_result, "local-order result"),
         canonical_job,
     )
+
+
+def make_om_proof_source(selection: Any) -> tuple[Any, ...]:
+    """Freeze every OM selection and certificate field for worker transfer."""
+    from sagejs.number_fields.om_auto_selector import OMAutoSelection
+    from sagejs.number_fields.om_maxmin import TriangularBasisCertificate
+
+    if type(selection) is not OMAutoSelection or not selection.selected:
+        raise LocalPayloadError("an OM worker proof requires a selected result")
+    result = selection.result
+    if result is None or result.status != "complete":
+        raise LocalPayloadError("an OM worker proof requires a complete result")
+    certificate = result.certificate
+    if type(certificate) is not TriangularBasisCertificate:
+        raise LocalPayloadError("an OM worker proof requires its full certificate")
+    return (
+        PROOF_SOURCE_SCHEMA,
+        "om-maxmin",
+        OM_PROOF_SOURCE_SCHEMA,
+        _freeze_om_record(selection.prefilter),
+        _freeze_om_record(result.selector),
+        _freeze_om_record(certificate),
+    )
+
+
+def make_buchmann_lenstra_proof_source(result: Any) -> tuple[Any, ...]:
+    """Freeze one complete BL result including its full accepted source."""
+    from sagejs.number_fields.buchmann_lenstra import BuchmannLenstraResult
+
+    if type(result) is not BuchmannLenstraResult or result.state != "complete":
+        raise LocalPayloadError("a BL worker proof requires a complete result")
+    if result.basis is None or result.discriminant is None:
+        raise LocalPayloadError("a BL worker proof requires a basis and discriminant")
+    return (
+        PROOF_SOURCE_SCHEMA,
+        "buchmann-lenstra",
+        BL_PROOF_SOURCE_SCHEMA,
+        _freeze_json(result.to_dict(), "Buchmann--Lenstra accepted result"),
+    )
+
+
+def make_local_proof_result(
+    job: Any,
+    numerator_rows: Iterable[Iterable[Any]],
+    denominator: Any,
+    local_index: Any,
+    certified_modulus: Any,
+    equation_discriminant: Any,
+    order_discriminant: Any,
+    proof_source: Any,
+    *,
+    peak_bytes: Any = 0,
+    elapsed_micros: Any = 0,
+) -> ResultPayload:
+    """Construct one scheduler-compatible result carrying a frozen proof."""
+    canonical_job = validate_local_job(job)
+    kind = str(canonical_job[6])
+    if kind not in ("om-maxmin", "buchmann-lenstra"):
+        raise LocalPayloadError("a proof result needs an OM or BL job")
+    source = _wire_value(proof_source, "local proof source")
+    if (
+        not isinstance(source, tuple)
+        or len(source) < 4
+        or source[0] != PROOF_SOURCE_SCHEMA
+        or source[1] != kind
+        or source[2] not in (OM_PROOF_SOURCE_SCHEMA, BL_PROOF_SOURCE_SCHEMA)
+    ):
+        raise LocalPayloadError("the local proof source is stale or has the wrong kind")
+    equation_disc = _integer(equation_discriminant, "equation discriminant")
+    order_disc = _integer(order_discriminant, "order discriminant")
+    index_value = _integer(local_index, "local index", 1)
+    if equation_disc != order_disc * index_value * index_value:
+        raise LocalPayloadError("local proof discriminants violate the index identity")
+    return make_local_result(
+        canonical_job,
+        numerator_rows,
+        denominator,
+        index_value,
+        certified_modulus,
+        (
+            ("equation-discriminant", equation_disc),
+            ("order-discriminant", order_disc),
+            ("proof-source", source),
+            ("proof-source-schema", source[2]),
+            ("proof-worker-kind", kind),
+            ("schema", PROOF_ENVELOPE_SCHEMA),
+        ),
+        peak_bytes=peak_bytes,
+        elapsed_micros=elapsed_micros,
+    )
+
+
+def _proof_certificate(result: ResultPayload) -> dict[str, WireValue]:
+    certificate = cast(tuple[tuple[Any, Any], ...], result[7])
+    answer = {str(entry[0]): entry[1] for entry in certificate}
+    expected = {
+        "equation-discriminant",
+        "order-discriminant",
+        "proof-source",
+        "proof-source-schema",
+        "proof-worker-kind",
+        "schema",
+    }
+    if set(answer) != expected:
+        raise LocalPayloadError("local proof certificate fields are noncanonical")
+    if answer["schema"] != PROOF_ENVELOPE_SCHEMA:
+        raise LocalPayloadError("local proof certificate schema is stale")
+    return answer
+
+
+class AuthenticatedLocalProofEnvelope:
+    """Module-issued immutable parent authentication of one worker result.
+
+    No worker object or native resource is retained.  The backing source is
+    the canonical tuple that crossed the worker boundary, captured only after
+    the parent independently replayed the OM or BL certificate checks.
+    """
+
+    def __init__(
+        self,
+        token: object,
+        kind: str,
+        polynomial: tuple[int, ...],
+        component: tuple[Any, ...],
+        basis_numerator: tuple[tuple[int, ...], ...],
+        basis_denominator: int,
+        index: int,
+        equation_discriminant: int,
+        order_discriminant: int,
+        proof_schema: str,
+        proof_source: tuple[Any, ...],
+        job: JobPayload,
+        om_selection: tuple[Any, ...] | None,
+        bl_projection: tuple[Any, ...] | None,
+    ) -> None:
+        if token is not _AUTHENTICATED_LOCAL_PROOF_TOKEN:
+            raise TypeError("authenticated local proof envelopes are module-issued")
+        self.kind = kind
+        self.polynomial = polynomial
+        self.polynomial_digest = _digest_parts((polynomial,))
+        self.component = component
+        self.basis_numerator = basis_numerator
+        self.basis_denominator = basis_denominator
+        self.index = index
+        self.equation_discriminant = equation_discriminant
+        self.order_discriminant = order_discriminant
+        self.proof_schema = proof_schema
+        self.proof_source = proof_source
+        self.job = job
+        self.om_selection = om_selection
+        self.bl_projection = bl_projection
+        self.__dict__["_frozen"] = True
+        self.__dict__["_authentication_snapshot"] = self._snapshot()
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated local proof envelopes are immutable")
+        self.__dict__[name] = value
+
+    def _snapshot(self) -> tuple[Any, ...]:
+        return (
+            PROOF_ENVELOPE_SCHEMA,
+            self.kind,
+            self.polynomial,
+            self.polynomial_digest,
+            self.component,
+            self.basis_numerator,
+            self.basis_denominator,
+            self.index,
+            self.equation_discriminant,
+            self.order_discriminant,
+            self.proof_schema,
+            self.proof_source,
+            self.job,
+            self.om_selection,
+            self.bl_projection,
+        )
+
+    @property
+    def certified(self) -> bool:
+        try:
+            return self.__dict__.get("_authentication_snapshot") == self._snapshot()
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def to_wire(self) -> tuple[Any, ...]:
+        """Return the canonical pointer-free snapshot accepted by the parent."""
+        if not self.certified:
+            raise LocalPayloadError("the authenticated local proof became stale")
+        return self._snapshot()
+
+
+_AUTHENTICATED_LOCAL_PROOF_TOKEN = object()
+
+
+def _reconstruct_buchmann_lenstra_result(source: Any) -> Any:
+    from sagejs.number_fields.buchmann_lenstra import BuchmannLenstraResult
+    from sagejs.number_fields.maximal_order_contracts import ComponentSplit
+
+    value = _thaw_json(source, "Buchmann--Lenstra proof source")
+    if not isinstance(value, dict):
+        raise LocalPayloadError("BL proof source must decode to a dictionary")
+    if value.get("schema") != "sagejs.number-fields/buchmann-lenstra-result-v1":
+        raise LocalPayloadError("BL proof source schema is stale")
+    component_value = value.get("component")
+    if not isinstance(component_value, dict):
+        raise LocalPayloadError("BL proof component is invalid")
+    basis_value = value.get("basis")
+    if not isinstance(basis_value, dict):
+        raise LocalPayloadError("BL proof basis is invalid")
+    split_value = value.get("split")
+    split = None
+    if split_value is not None:
+        if not isinstance(split_value, dict):
+            raise LocalPayloadError("BL proof split is invalid")
+        split = ComponentSplit(
+            split_value["source"],
+            split_value["left"],
+            split_value["right"],
+            split_value.get("evidence", {}),
+        )
+    result = BuchmannLenstraResult(
+        value["state"],
+        DiscriminantComponent.from_dict(component_value),
+        basis=OrderBasis.from_dict(basis_value),
+        index=value["index"],
+        discriminant=value["discriminant"],
+        split=split,
+        evidence=value.get("evidence", {}),
+        message=value.get("message"),
+    )
+    if result.to_dict() != value:
+        raise LocalPayloadError("BL proof source does not round-trip exactly")
+    return result
+
+
+def _authenticate_bl_proof_source(
+    source: tuple[Any, ...],
+    polynomial: tuple[int, ...],
+    job_component: DiscriminantComponent,
+    basis_numerator: tuple[tuple[int, ...], ...],
+    basis_denominator: int,
+    index: int,
+    equation_discriminant: int,
+    order_discriminant: int,
+) -> tuple[Any, ...] | None:
+    from sagejs.number_fields.buchmann_lenstra import (
+        authenticate_buchmann_lenstra_result,
+        authenticated_buchmann_lenstra_projection_matches,
+    )
+
+    if len(source) != 4 or source[2] != BL_PROOF_SOURCE_SCHEMA:
+        return None
+    result = _reconstruct_buchmann_lenstra_result(source[3])
+    if result.basis is None or result.discriminant is None:
+        return None
+    projection = authenticate_buchmann_lenstra_result(
+        list(polynomial),
+        result,
+        equation_discriminant=equation_discriminant,
+    )
+    valid = (
+        result.component.value == job_component.base
+        and result.component.evidence.get("source_component", result.component.value)
+        == job_component.value
+        and tuple(tuple(row) for row in result.basis.numerator) == basis_numerator
+        and result.basis.denominator == basis_denominator
+        and result.index == index
+        and result.discriminant == order_discriminant
+        and projection is not None
+        and authenticated_buchmann_lenstra_projection_matches(
+            projection,
+            polynomial=list(polynomial),
+            support=result.component.value,
+            source_component_value=job_component.value,
+            component_state=result.component.state,
+            basis_numerator=[list(row) for row in basis_numerator],
+            basis_denominator=basis_denominator,
+            index=index,
+            equation_discriminant=equation_discriminant,
+            order_discriminant=order_discriminant,
+        )
+    )
+    if not valid or projection is None:
+        return None
+    return cast(
+        tuple[Any, ...],
+        _freeze_json(projection.to_dict(), "authenticated BL projection"),
+    )
+
+
+def _authenticate_om_proof_source(
+    source: tuple[Any, ...],
+    polynomial: tuple[int, ...],
+    job_component: DiscriminantComponent,
+    local_discriminant_valuation: int,
+    basis_numerator: tuple[tuple[int, ...], ...],
+    basis_denominator: int,
+    index: int,
+) -> tuple[Any, ...] | None:
+    from sagejs.number_fields.om_auto_selector import (
+        OMAutoPrefilter,
+        om_auto_prefilter,
+    )
+    from sagejs.number_fields.om_maxmin import (
+        OMSelectorMetrics,
+        TriangularBasisCertificate,
+        selector_metrics,
+        validate_maxmin_certificate,
+        validate_triangular_basis,
+    )
+    from sagejs.number_fields.om_types import polynomial_degree
+
+    if len(source) != 6 or source[2] != OM_PROOF_SOURCE_SCHEMA:
+        return None
+    prefilter = _thaw_om_record(source[3])
+    selector = _thaw_om_record(source[4])
+    certificate = _thaw_om_record(source[5])
+    if (
+        type(prefilter) is not OMAutoPrefilter
+        or type(selector) is not OMSelectorMetrics
+        or type(certificate) is not TriangularBasisCertificate
+    ):
+        return None
+    tree = certificate.type_tree
+    factor_degrees = tuple(
+        polynomial_degree(factor.polynomial) for factor in tree.initial_factors
+    )
+    factor_multiplicities = tuple(
+        factor.multiplicity for factor in tree.initial_factors
+    )
+    expected_prefilter = om_auto_prefilter(
+        polynomial,
+        job_component.base,
+        local_discriminant_valuation=local_discriminant_valuation,
+        factor_degrees=factor_degrees,
+        factor_multiplicities=factor_multiplicities,
+        memory_budget_bytes=prefilter.memory_budget_bytes,
+        native_capable=prefilter.native_capable,
+    )
+    expected_selector = selector_metrics(
+        tree,
+        local_discriminant_valuation=local_discriminant_valuation,
+        differential_evidence=True,
+    )
+    validation = validate_triangular_basis(
+        polynomial,
+        job_component.base,
+        tree,
+        certificate.basis,
+        certificate.expected_index_valuation,
+    )
+    if not certificate.numerator_tables:
+        return None
+    maxmin_failures = validate_maxmin_certificate(
+        certificate.numerator_tables,
+        certificate.maxmin,
+    )
+    common_rows = tuple(
+        tuple(int(value) for value in row)
+        for row in certificate.common_denominator_numerators
+    )
+    valid = (
+        job_component.is_proven_prime
+        and job_component.value == tree.prime == certificate.prime
+        and tree.polynomial == polynomial == certificate.polynomial
+        and prefilter == expected_prefilter
+        and prefilter.eligible
+        and selector == expected_selector
+        and selector.auto_selectable
+        and certificate.validation == validation
+        and validation.valid
+        and certificate.maxmin.maximality_checked
+        and not certificate.maxmin.maximality_failures
+        and not maxmin_failures
+        and certificate.local_index_valuation == certificate.expected_index_valuation
+        and index == tree.prime**certificate.local_index_valuation
+        and certificate.common_denominator == basis_denominator
+        and common_rows == basis_numerator
+    )
+    if not valid:
+        return None
+    return (
+        "sagejs.number-fields/authenticated-om-worker-projection-v1",
+        tree.certificate_id,
+        selector.measured_crossover_region,
+        certificate.local_index_valuation,
+        len(tree.types),
+        certificate.basis_kind,
+    )
+
+
+def authenticate_local_proof_result(
+    job: Any,
+    result: Any,
+) -> AuthenticatedLocalProofEnvelope | None:
+    """Independently authenticate one OM/BL worker result in the parent."""
+    try:
+        canonical_job = validate_local_job(job)
+        canonical_result = validate_local_result(result)
+        if canonical_result[2] != "ok" or canonical_result[12] != canonical_job:
+            return None
+        certificate = _proof_certificate(canonical_result)
+        kind = str(certificate["proof-worker-kind"])
+        if kind != canonical_job[6]:
+            return None
+        source = certificate["proof-source"]
+        if (
+            not isinstance(source, tuple)
+            or len(source) < 4
+            or source[0] != PROOF_SOURCE_SCHEMA
+            or source[1] != kind
+            or source[2] != certificate["proof-source-schema"]
+        ):
+            return None
+        polynomial = cast(tuple[int, ...], canonical_job[1])
+        component = local_job_component(canonical_job)
+        component_wire = _freeze_json(component.to_dict(), "proof component")
+        rows = cast(tuple[tuple[int, ...], ...], canonical_result[3])
+        denominator = int(canonical_result[4])
+        index = int(canonical_result[5])
+        equation_disc = _integer(
+            certificate["equation-discriminant"], "equation discriminant"
+        )
+        order_disc = _integer(certificate["order-discriminant"], "order discriminant")
+        determinant = abs(_determinant(rows))
+        denominator_power = denominator ** len(rows)
+        if (
+            determinant == 0
+            or denominator_power % determinant != 0
+            or denominator_power // determinant != index
+            or equation_disc != order_disc * index * index
+        ):
+            return None
+        if kind == "buchmann-lenstra":
+            bl_projection = _authenticate_bl_proof_source(
+                source,
+                polynomial,
+                component,
+                rows,
+                denominator,
+                index,
+                equation_disc,
+                order_disc,
+            )
+        elif kind == "om-maxmin":
+            job_component = cast(tuple[Any, ...], canonical_job[2])
+            om_selection = _authenticate_om_proof_source(
+                source,
+                polynomial,
+                component,
+                int(job_component[4]),
+                rows,
+                denominator,
+                index,
+            )
+        else:
+            return None
+        if kind == "buchmann-lenstra":
+            om_selection = None
+            if bl_projection is None:
+                return None
+        else:
+            bl_projection = None
+            if om_selection is None:
+                return None
+        if (om_selection is None) == (bl_projection is None):
+            return None
+        envelope = AuthenticatedLocalProofEnvelope(
+            _AUTHENTICATED_LOCAL_PROOF_TOKEN,
+            kind,
+            polynomial,
+            cast(tuple[Any, ...], component_wire),
+            rows,
+            denominator,
+            index,
+            equation_disc,
+            order_disc,
+            str(source[2]),
+            source,
+            canonical_job,
+            om_selection,
+            bl_projection,
+        )
+        return envelope if envelope.certified else None
+    except (ArithmeticError, AttributeError, LocalPayloadError, TypeError, ValueError):
+        return None
+
+
+def authenticated_local_proof_matches(
+    envelope: Any,
+    *,
+    polynomial: Iterable[Any],
+    component: DiscriminantComponent | dict[str, Any],
+    kind: str,
+    basis_numerator: Iterable[Iterable[Any]],
+    basis_denominator: Any,
+    index: Any,
+    equation_discriminant: Any,
+    order_discriminant: Any,
+) -> bool:
+    """Bind one accepted worker proof to exact parent merge fields."""
+    if type(envelope) is not AuthenticatedLocalProofEnvelope or not envelope.certified:
+        return False
+    try:
+        expected_polynomial = canonical_polynomial(polynomial)
+        expected_component = _freeze_json(
+            _component_contract(component).to_dict(), "proof component"
+        )
+        degree = len(expected_polynomial) - 1
+        expected_rows = tuple(
+            tuple(_integer(entry, "basis numerator entry") for entry in row)
+            for row in _canonical_matrix(basis_numerator, degree)
+        )
+        return (
+            envelope.kind == kind
+            and envelope.polynomial == expected_polynomial
+            and envelope.polynomial_digest == _digest_parts((expected_polynomial,))
+            and envelope.component == expected_component
+            and envelope.basis_numerator == expected_rows
+            and envelope.basis_denominator
+            == _integer(basis_denominator, "basis denominator", 1)
+            and envelope.index == _integer(index, "local index", 1)
+            and envelope.equation_discriminant
+            == _integer(equation_discriminant, "equation discriminant")
+            and envelope.order_discriminant
+            == _integer(order_discriminant, "order discriminant")
+        )
+    except (LocalPayloadError, TypeError, ValueError):
+        return False
 
 
 def make_fatal_result(job: Any, message: str) -> ResultPayload:
@@ -1048,10 +1731,17 @@ def run_local_jobs(
 
 
 __all__ = [
+    "AuthenticatedLocalProofEnvelope",
+    "BL_PROOF_SOURCE_SCHEMA",
     "DEFAULT_POLICY",
     "LocalCertificationError",
     "LocalPayloadError",
     "LocalWorkerError",
+    "OM_PROOF_SOURCE_SCHEMA",
+    "PROOF_ENVELOPE_SCHEMA",
+    "PROOF_SOURCE_SCHEMA",
+    "authenticate_local_proof_result",
+    "authenticated_local_proof_matches",
     "assemble_local_run",
     "canonical_factor",
     "canonical_polynomial",
@@ -1060,8 +1750,13 @@ __all__ = [
     "local_job_key",
     "local_job_component",
     "local_result_contract",
+    "make_buchmann_lenstra_proof_job",
+    "make_buchmann_lenstra_proof_source",
     "make_local_job",
+    "make_local_proof_result",
     "make_local_result",
+    "make_om_proof_job",
+    "make_om_proof_source",
     "make_fatal_result",
     "make_merge_plan",
     "make_schedule",
