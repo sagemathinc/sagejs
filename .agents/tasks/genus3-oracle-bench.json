@@ -49,29 +49,48 @@
   ],
   "runs": [
     {
-      "command": "pnpm architecture:check",
+      "command": "node --test test/hyperelliptic-genus3-jacobian-search-differential.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 6.412,
-      "started_at": "2026-08-18T18:11:21.245Z",
-      "commit": "ac61abbd4d3f4264a3b7b7add02cc2e41c9502b4",
-      "workspace_fingerprint": "d7060fa7f6148a3a70d44b5a45cd6bbc42f3939ebeae918a70579fafa060d93e",
+      "seconds": 15.205,
+      "started_at": "2026-08-18T18:46:55.433Z",
+      "commit": "f3d10de38f4537bb9575db3eb1e6df803562140f",
+      "workspace_fingerprint": "87c91a1f0f3dcc5aa2fa80fd70be6b084d402552ff8628b896e8d3b09a34d928",
       "platform": "linux-x64"
     },
     {
-      "command": "pnpm test:baselib:strict",
+      "command": "node --test test/hyperelliptic-genus3-certified-oracle.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 26.093,
-      "started_at": "2026-08-18T18:11:33.200Z",
-      "commit": "ac61abbd4d3f4264a3b7b7add02cc2e41c9502b4",
-      "workspace_fingerprint": "d7060fa7f6148a3a70d44b5a45cd6bbc42f3939ebeae918a70579fafa060d93e",
+      "seconds": 5.072,
+      "started_at": "2026-08-18T18:47:15.507Z",
+      "commit": "f3d10de38f4537bb9575db3eb1e6df803562140f",
+      "workspace_fingerprint": "87c91a1f0f3dcc5aa2fa80fd70be6b084d402552ff8628b896e8d3b09a34d928",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/rforest/benchmark-genus3-certified.cjs --stages raw --limits 10000",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.391,
+      "started_at": "2026-08-18T18:47:43.448Z",
+      "commit": "f3d10de38f4537bb9575db3eb1e6df803562140f",
+      "workspace_fingerprint": "87c91a1f0f3dcc5aa2fa80fd70be6b084d402552ff8628b896e8d3b09a34d928",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Checked in a 20-row exact Sage/PARI corpus with independent Magma coverage at small primes, an offline oracle gate, a four-stage acceptance benchmark through 10^6, a competing-backend audit, and ordinary-Cantor differential/status/worker coverage for the native Jacobian progression search. The direct addon probe is exact on Linux x64/aarch64, macOS arm64, and Windows x64. Focused receipts pass and the 10^4 raw digest is stable.",
+    "risks": [
+      "The complete certification/public 10^4, 10^5, and 10^6 benchmark requires the central public-pipeline integration and can be long-running; this lane records the protocol rather than claiming an acceptance result.",
+      "Magma independently covers the small-prime corpus only; Sage/PARI is the exact source for the larger checked-in rows.",
+      "The N-API fix shortens the audited addon by one byte; integration must include group-kernel audit refresh fa1d9760 so architecture:check remains green.",
+      "The broad native suite was stopped at coordinator request after its FLINT, FFLAS, and graph sections passed; focused genus-3 native and differential gates pass."
+    ],
+    "next_steps": [
+      "Integrate f3d10de3 together with group-kernel fixes 8e12889a and fa1d9760.",
+      "Run the default four-stage benchmark on an otherwise idle host and compare exact digests across Linux x64/aarch64, macOS arm64, and Windows x64.",
+      "Grow the independent exact corpus when a practical current Magma or second open backend is available at larger primes."
+    ]
   }
 }
