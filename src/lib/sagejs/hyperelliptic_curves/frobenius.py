@@ -205,6 +205,9 @@ def _smalljac_lpoly_batch(curve_text: str, start: Any, stop: Any, max_rows: int)
     allowed = [_smalljac_status("OK"), _smalljac_status("TRUNCATED")]
     if status not in allowed:
         _raise_smalljac_batch_error(status, status_name)
+    expected_status_name = "truncated" if status == allowed[1] else "ok"
+    if status_name != expected_status_name:
+        raise RuntimeError("smalljac returned an inconsistent status name")
     truncated = bool(_property(batch, "truncated"))
     if (status == _smalljac_status("TRUNCATED")) != truncated:
         raise RuntimeError("inconsistent smalljac truncation status")
@@ -212,10 +215,16 @@ def _smalljac_lpoly_batch(curve_text: str, start: Any, stop: Any, max_rows: int)
         raise RuntimeError("smalljac returned an unexpected genus")
     if _property(batch, "normalization") != "det(1-T*Frob)":
         raise RuntimeError("smalljac returned an unexpected normalization")
+    if _property(batch, "backendVersion") != _property(capability, "backendVersion"):
+        raise RuntimeError("smalljac returned an unexpected backend version")
     row_count = int(_property(batch, "rowCount"))
     required_rows = int(_property(batch, "requiredRows"))
     if row_count < 0 or required_rows < row_count:
         raise RuntimeError("smalljac returned inconsistent row counts")
+    if (truncated and required_rows <= row_count) or (
+        not truncated and required_rows != row_count
+    ):
+        raise RuntimeError("smalljac returned inconsistent required row counts")
     if truncated and (max_rows == 0 or row_count != max_rows):
         raise RuntimeError("smalljac violated the requested row bound")
     arrays = [
@@ -261,6 +270,7 @@ def _smalljac_rows(
             prime_exact < start_exact
             or prime_exact > stop_exact
             or prime_exact <= previous
+            or not sage.is_prime(int(prime_exact))
         ):
             raise RuntimeError("smalljac returned an invalid prime stream")
         previous = prime_exact
