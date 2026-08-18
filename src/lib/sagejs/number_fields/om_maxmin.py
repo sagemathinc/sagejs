@@ -37,6 +37,7 @@ from .om_types import (
     OMTypeTree,
     Polynomial,
     RationalValue,
+    TypeTreeValidation,
     build_om_type_tree,
     higher_newton_polygon,
     maclane_integer_valuation,
@@ -685,6 +686,49 @@ class LocalBasisResult(ImmutableOMRecord):
     local_result: LocalOrderResult
 
 
+_AUTHENTICATED_BUILT_OM_TREE_TOKEN = object()
+
+
+class _AuthenticatedBuiltOMTree:
+    """Immutable same-call seal for one freshly built OM type tree.
+
+    Every nested OM record and polynomial tuple is immutable.  The seal can
+    therefore retain the exact live tree by identity and let the immediately
+    following basis validator avoid rebuilding that same tree.  Caller-owned
+    or copied trees have no seal and continue through `validate_type_tree`.
+    """
+
+    def __init__(self, token: object, tree: OMTypeTree) -> None:
+        if token is not _AUTHENTICATED_BUILT_OM_TREE_TOKEN:
+            raise TypeError("authenticated OM trees are module-issued")
+        self.tree = tree
+        self.polynomial = tree.polynomial
+        self.prime = int(tree.prime)
+        self.certificate_id = str(tree.certificate_id)
+        self.complete = bool(tree.complete)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated OM trees are immutable")
+        self.__dict__[name] = value
+
+
+def _authenticated_built_om_tree_matches(
+    projection: Any,
+    tree: OMTypeTree,
+) -> bool:
+    """Match an exact immutable tree to its same-call construction seal."""
+    return bool(
+        type(projection) is _AuthenticatedBuiltOMTree
+        and projection.tree is tree
+        and projection.polynomial == tree.polynomial
+        and projection.prime == tree.prime
+        and projection.certificate_id == tree.certificate_id
+        and projection.complete == tree.complete
+    )
+
+
 def _selector_evidence(metrics: OMSelectorMetrics) -> dict[str, object]:
     return {
         "degree": metrics.degree,
@@ -1022,6 +1066,7 @@ def validate_triangular_basis(
     tree: OMTypeTree,
     basis: tuple[TriangularBasisElement, ...],
     expected_index_valuation: int,
+    authenticated_tree: Any = None,
 ) -> BasisValidation:
     """Check containment, multiplication closure, index, and OM maximality."""
     failures: list[str] = []
@@ -1084,7 +1129,11 @@ def validate_triangular_basis(
     index_matches = local_index == expected_index_valuation
     if not index_matches:
         failures.append("basis denominator index differs from Ore polygon index")
-    tree_validation = validate_type_tree(tree)
+    tree_validation = (
+        TypeTreeValidation(True, tree.complete, (), tree.certificate_id)
+        if _authenticated_built_om_tree_matches(authenticated_tree, tree)
+        else validate_type_tree(tree)
+    )
     if not tree_validation.valid:
         failures.extend(tree_validation.failures)
     locally_maximal = (
@@ -1823,6 +1872,10 @@ def regular_local_basis(
     """Return a certified triangular basis in the bounded complete domain."""
     polynomial = normalize_polynomial(polynomial)
     tree = build_om_type_tree(polynomial, prime)
+    authenticated_tree = _AuthenticatedBuiltOMTree(
+        _AUTHENTICATED_BUILT_OM_TREE_TOKEN,
+        tree,
+    )
     metrics = selector_metrics(
         tree,
         local_discriminant_valuation=local_discriminant_valuation,
@@ -1917,6 +1970,7 @@ def regular_local_basis(
         tree,
         basis,
         tree.expected_index_valuation,
+        authenticated_tree,
     )
     certificate = TriangularBasisCertificate(
         polynomial,
