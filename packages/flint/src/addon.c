@@ -892,11 +892,21 @@ typedef struct
 /* ffpoly deliberately uses one global finite-field context. */
 static pthread_mutex_t elliptic_smalljac_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#ifdef _WIN32
+typedef uint64_t sagejs_smalljac_prime_t;
+typedef int64_t sagejs_smalljac_coefficient_t;
+typedef int64_t sagejs_smalljac_status_t;
+#else
+typedef unsigned long sagejs_smalljac_prime_t;
+typedef long sagejs_smalljac_coefficient_t;
+typedef long sagejs_smalljac_status_t;
+#endif
+
 static int elliptic_smalljac_callback(
     smalljac_curve_t curve,
-    uint64_t prime,
+    sagejs_smalljac_prime_t prime,
     int good,
-    int64_t coefficients[],
+    sagejs_smalljac_coefficient_t coefficients[],
     int count,
     void *argument)
 {
@@ -911,7 +921,7 @@ static int elliptic_smalljac_callback(
     if (!good || coefficients == NULL || count < 1)
         return 1;
     /* smalljac returns the T coefficient of 1 - a_p*T + p*T^2. */
-    result->ap_values[(size_t) prime] = -coefficients[0];
+    result->ap_values[(size_t) prime] = -(int64_t) coefficients[0];
     result->available[(size_t) prime] = 1;
     return 1;
 }
@@ -950,7 +960,7 @@ static int elliptic_smalljac_ap_values(
     char *curve_text;
     smalljac_curve_t curve;
     elliptic_smalljac_result result;
-    int64_t status;
+    sagejs_smalljac_status_t status;
     int error = 0;
 
     if (bound < 2)
@@ -992,9 +1002,9 @@ typedef struct
 
 static int elliptic_smalljac_single_callback(
     smalljac_curve_t curve,
-    uint64_t prime,
+    sagejs_smalljac_prime_t prime,
     int good,
-    int64_t coefficients[],
+    sagejs_smalljac_coefficient_t coefficients[],
     int count,
     void *argument)
 {
@@ -1004,7 +1014,7 @@ static int elliptic_smalljac_single_callback(
     if (prime != (uint64_t) result->prime || !good ||
         coefficients == NULL || count < 1)
         return 0;
-    result->value = -coefficients[0];
+    result->value = -(int64_t) coefficients[0];
     result->found = 1;
     return 1;
 }
@@ -1015,7 +1025,7 @@ static int elliptic_smalljac_single_ap(
     char *curve_text;
     smalljac_curve_t curve;
     elliptic_smalljac_single_result result;
-    int64_t status;
+    sagejs_smalljac_status_t status;
     int error = 0;
 
     curve_text = elliptic_smalljac_curve_string(coefficients);

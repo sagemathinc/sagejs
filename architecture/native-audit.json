@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 4412,
-      "bytes": 141890,
+      "lines": 4422,
+      "bytes": 142307,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -22,7 +22,7 @@
         "GMP and FLINT representation wrappers",
         "locally implemented integer, polynomial, and factoring helpers"
       ],
-      "rationale": "The boundary is legitimate, but a 4,412-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 4,422-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
