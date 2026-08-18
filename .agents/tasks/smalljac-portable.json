@@ -4,7 +4,7 @@
   "id": "smalljac-portable",
   "title": "Portable genus-1 smalljac and ffpoly",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Port the Sage.js smalljac/ffpoly accelerator to portable fixed-width arithmetic, native Windows clang-cl, macOS arm64, and Linux arm64 while retaining exact fallback and performance evidence",
   "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
