@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-p2-public-hook",
+  "title": "Adopt certified fused field analysis publicly",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Use immediately authenticated complete fused field-analysis results in the public maximal-order engine without changing fallback, certificate, trace, or cache semantics",
+  "base_commit": "fd8afa31c5b9eb6e99ed2c009a083e2d8dc52101",
+  "claims": [
+    "architecture/native-kernels.json",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-analysis-public-hook.cjs",
+    "test/number-field-maximal-order-engine.cjs",
+    "test/production-native-kernels.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/number-field-analysis-public-hook.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native-resource",
+      "current-public-path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "node --test test/production-native-kernels.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-engine.cjs",
+    "node bench/number-field-analysis-public-hook.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 747.475,
+      "started_at": "2026-08-18T04:34:28.951Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "a09cea005e0e03a3deb8c004e2cb3477764d8ff67d5add31ca104dad14fa933b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.565,
+      "started_at": "2026-08-18T04:47:10.180Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "a09cea005e0e03a3deb8c004e2cb3477764d8ff67d5add31ca104dad14fa933b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.967,
+      "started_at": "2026-08-18T04:47:31.437Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "a09cea005e0e03a3deb8c004e2cb3477764d8ff67d5add31ca104dad14fa933b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/production-native-kernels.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.497,
+      "started_at": "2026-08-18T04:47:38.132Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "a09cea005e0e03a3deb8c004e2cb3477764d8ff67d5add31ca104dad14fa933b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-analysis-public-hook.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.83,
+      "started_at": "2026-08-18T04:47:49.318Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "a09cea005e0e03a3deb8c004e2cb3477764d8ff67d5add31ca104dad14fa933b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adopted the independently authenticated fused field-analysis resource for default untraced public maximal-order calls when its same-source fixed-point checker is current and compiled. Production registration, exact rebinding, immutable certificate reuse, fail-closed fallback tests, and an ordinary-public six-case benchmark are included.",
+    "risks": [
+      "The full native suite reached the final matrix performance gates after all preceding phases passed, then construct_500 measured 10.23 ms against an unrelated 8 ms finite-matrix budget under host load.",
+      "The pari-1710 benchmark is neutral rather than a material improvement: its 11-sample median speedup was 1.002x."
+    ],
+    "next_steps": [
+      "Rerun pnpm test:native in the integration workspace under an unloaded host to obtain a coherent passing receipt for the unrelated finite-matrix timing gate.",
+      "Retain production-native publication on Linux x64, Linux arm64, Windows x64, and macOS arm64 validation jobs."
+    ]
+  }
+}
