@@ -113,7 +113,7 @@
       "category": "mathematical-algorithm",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Its optional proof-carrying mode performs a distinct terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot: p-adic workers rerun the theorem from their certified modulo-p-squared tensor with fresh workspaces and generic row selection, while non-p-adic workers use their live exact table. It does not replay enlargement."
+      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Independent coprime-prime jobs use a bounded monotone pthread queue with fixed caller-order output slots; forced-static, pthread-failure, and non-pthread sequential paths remain exact lifecycle oracles. Its optional proof-carrying mode performs a distinct terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot: p-adic workers rerun the theorem from their certified modulo-p-squared tensor with fresh workspaces and generic row selection, while non-p-adic workers use their live exact table. It does not replay enlargement."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
