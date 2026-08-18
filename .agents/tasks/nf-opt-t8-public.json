@@ -44,7 +44,38 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-t8-fused-analysis.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.937,
+      "started_at": "2026-08-18T09:10:24.726Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "60db5b16c6fa438757541021927c1a93d25f008a0b6de244caef23cd68c3e9dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.293,
+      "started_at": "2026-08-18T09:10:29.413Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "60db5b16c6fa438757541021927c1a93d25f008a0b6de244caef23cd68c3e9dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-t8-fused-analysis.cjs --output bench/results/number-field-t8-fused-analysis.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.91,
+      "started_at": "2026-08-18T09:10:36.445Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "c6c4c008fe567cc34b9e950ee9c43186baef04c00ceb896af5499b04699214d5",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

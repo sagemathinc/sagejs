@@ -63,8 +63,11 @@ assert any(
 fast_field = NumberField(polynomial, 'fast')
 fast = fast_field.maximal_order()
 assert fast.discriminant() == -2147483648
+assert fast.is_maximal()
+assert fast._maximal_order_certificate_factory is not None
 assert fast.maximality_certificate()['index'] == ${expectedIndex}
 assert fast.maximality_certificate()['certified']
+assert fast._maximal_order_certificate_factory is None
 assert fast.maximal_order_trace()['analysis_trace']['proof_check_ns'] > 0
 assert fast._basis_rows_cache is None
 assert fast_field.maximal_order() is fast
