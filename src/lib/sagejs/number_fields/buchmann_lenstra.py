@@ -21,13 +21,13 @@ arithmetic.  It was derived from Hecke commit
 
 from __future__ import annotations
 
+import math as _math
 from typing import Any
 
 try:
     import sagejs.runtime as _runtime
 except ImportError:
     _runtime = None
-    from math import gcd as _cpython_gcd
 
 from sagejs.number_fields.maximal_order_contracts import (
     ComponentSplit,
@@ -40,7 +40,7 @@ from sagejs.number_fields.maximal_order_contracts import (
 def _gcd(left: int, right: int) -> int:
     if _runtime is not None:
         return _runtime.bigint_gcd(_runtime.bigint(left), _runtime.bigint(right))
-    return _cpython_gcd(left, right)
+    return _math.gcd(left, right)
 
 
 def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
