@@ -25,9 +25,9 @@ import math as _math
 from typing import Any
 
 try:
-    import sagejs.runtime as _runtime
+    import sagejs.runtime as _rt
 except ImportError:
-    _runtime = None
+    _rt = None
 
 from sagejs.number_fields.maximal_order_contracts import (
     ComponentSplit,
@@ -38,8 +38,8 @@ from sagejs.number_fields.maximal_order_contracts import (
 
 
 def _gcd(left: int, right: int) -> int:
-    if _runtime is not None:
-        return _runtime.bigint_gcd(_runtime.bigint(left), _runtime.bigint(right))
+    if _rt is not None:
+        return _rt.bigint_gcd(_rt.bigint(left), _rt.bigint(right))
     return _math.gcd(left, right)
 
 
