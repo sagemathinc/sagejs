@@ -4,6 +4,7 @@
 import argparse
 import json
 import sys
+import time
 
 from sage.all import GF, ZZ, PolynomialRing
 from sage.env import SAGE_VERSION
@@ -41,16 +42,26 @@ def case_result(case):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("cases")
+    parser.add_argument("--repeat", type=int, default=1)
     arguments = parser.parse_args()
     with open(arguments.cases, encoding="utf-8") as stream:
         cases = json.load(stream)
+    if arguments.repeat < 1:
+        parser.error("--repeat must be positive")
+    timings = []
+    rows = None
+    for _ in range(arguments.repeat):
+        started = time.perf_counter()
+        rows = [case_result(case) for case in cases["cases"]]
+        timings.append((time.perf_counter() - started) * 1000)
     output = {
         "oracle": {
             "name": "pari-hyperellcharpoly",
             "version": ".".join(str(part) for part in pari.version()),
             "host_sage_version": SAGE_VERSION,
         },
-        "rows": [case_result(case) for case in cases["cases"]],
+        "timings_ms": timings,
+        "rows": rows,
     }
     json.dump(output, sys.stdout, sort_keys=True, separators=(",", ":"))
     sys.stdout.write("\n")
