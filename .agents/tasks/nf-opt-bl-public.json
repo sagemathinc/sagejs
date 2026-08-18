@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-bl-public",
+  "title": "Public precision-12 maximal-order closure",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Close precision degree-12 public maximal-order performance below five seconds with raw stage evidence and fail-closed generic Buchmann-Lenstra integration",
+  "base_commit": "4b5363d88a8677fe2b51714292e34236ee2831e1",
+  "claims": [
+    "src/lib/sagejs/number_fields/bl_public_precision.py",
+    "bench/number-field-maximal-order-precision-public.cjs",
+    "test/number-field-maximal-order-precision-public.cjs",
+    "bench/results/number-field-maximal-order-precision-public-2026-08-18.json",
+    "bench/results/number-field-maximal-order-precision-public-2026-08-18.md"
+  ],
+  "dependencies": [
+    "nf-opt-bl-fusion"
+  ],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "independent maximal-order certificate",
+      "PARI/Sage frozen precision-degree12 lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
