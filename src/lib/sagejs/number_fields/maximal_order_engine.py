@@ -75,10 +75,7 @@ from sagejs.number_fields.maximal_order_contracts import (
     OrderBasis,
     SelectionDecision,
 )
-from sagejs.number_fields.order_resource import (
-    _native_order_from_polynomial_resource_bound,
-    native_order_from_polynomial,
-)
+from sagejs.number_fields.order_resource import native_order_from_polynomial
 
 _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 NumberFieldOrder = _nf_module.NumberFieldOrder
@@ -960,24 +957,6 @@ def _auto_om_shape_gate(
         "memory_budget_bytes": 64 * 1024 * 1024,
         "benchmark": "bench/number-field-om-auto-selector.cjs:v1",
     }
-
-
-def _auto_om_local_order(
-    field: Any,
-    coefficients: list[int],
-    scale: int,
-    equation_discriminant: int,
-    prime: int,
-) -> tuple[Any | None, dict[str, Any]]:
-    """Attempt OM only after its cheap measured shape prefilter passes."""
-    order, evidence, _selection = _auto_om_local_order_with_proof(
-        field,
-        coefficients,
-        scale,
-        equation_discriminant,
-        prime,
-    )
-    return order, evidence
 
 
 def _auto_om_local_order_with_proof(
@@ -2576,6 +2555,7 @@ def compute_maximal_order(
     om_auto_evidence: list[dict[str, Any]] = []
     verified_om_entries: list[tuple[int, Any, OrderBasis, int]] = []
     authenticated_native_proof: Any = None
+    native_batch_primes: list[int] = []
     if relevant_primes and algorithm == "auto":
         for prime in relevant_primes:
             if prime > _MAX_WORD_PRIME:
@@ -2623,8 +2603,8 @@ def compute_maximal_order(
                     )
                 continue
             completed_local_primes.add(prime)
-            if om_basis is None:
-                raise ArithmeticError("a complete OM result omitted its basis")
+            if om_basis is None or om_selection is None or om_selection.result is None:
+                raise ArithmeticError("a complete OM result omitted its proof or basis")
             om_local_index = int(om_selection.result.local_result.index)
             verified_om_entries.append(
                 (
@@ -2683,11 +2663,11 @@ def compute_maximal_order(
         # discharge every word-prime branch even when a larger component is
         # present; sending the mixed batch would discard that complete work
         # and force every word prime back through local selector estimates.
-        native_batch_primes = [
+        native_batch_primes = sorted(
             prime
             for prime in relevant_primes
             if prime <= _MAX_WORD_PRIME and prime not in native_handled_primes
-        ]
+        )
         deferred_arbitrary_primes = [
             prime for prime in relevant_primes if prime > _MAX_WORD_PRIME
         ]
@@ -2712,11 +2692,21 @@ def compute_maximal_order(
                         raise ArithmeticError(
                             "field-owned integral polynomial resource is unavailable"
                         )
-                    native = _native_order_from_polynomial_resource_bound(
-                        polynomial._exact_polynomial_resource(),
-                        coefficients,
-                        native_batch_primes,
-                    )
+                    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+                    prime_hints = flint.fmpz_matrix(len(native_batch_primes), 1)
+                    try:
+                        for row, prime in enumerate(native_batch_primes):
+                            flint.fmpz_matrix_set_entry(prime_hints, row, 0, prime)
+                        native, authenticated_native_proof = (
+                            field_analysis_resource.native_carried_round2_order_from_resources(
+                                polynomial._exact_polynomial_resource(),
+                                prime_hints,
+                                coefficients_low_to_high=coefficients,
+                                certified_primes=native_batch_primes,
+                            )
+                        )
+                    finally:
+                        prime_hints.close()
                 if native.complete:
                     if native.equation_discriminant != equation_discriminant:
                         raise ArithmeticError(
@@ -3132,7 +3122,10 @@ def compute_maximal_order(
         and relevant_primes
         and all(prime in completed_local_primes for prime in relevant_primes)
     )
-    if authenticated_local_portfolio is not None:
+    if (
+        authenticated_local_portfolio is not None
+        and authenticated_native_proof is not None
+    ):
         certification_token = trace.begin("global-certification")
         certificate = materialize_certificate()
         trace.end(
