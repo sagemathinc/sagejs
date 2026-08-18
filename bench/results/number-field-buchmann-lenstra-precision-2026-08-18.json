@@ -63,5 +63,19 @@
     "cpython_sagejs_exact_lattice_differential": true,
     "corruptions_rejected": ["index", "discriminant", "event"],
     "special_case_polynomial_branch": false
+  },
+  "platform_checks": {
+    "linux_arm64": {
+      "commit": "f363c5eb",
+      "focused_exact_test": "pass",
+      "elapsed_ms": 40303.553465,
+      "node": "v26.7.0"
+    },
+    "windows_x64": {
+      "commit": "86dee3a9",
+      "focused_exact_test": "pass",
+      "elapsed_ms": 53560.3961,
+      "node": "v26.5.1"
+    }
   }
 }
