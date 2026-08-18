@@ -183,3 +183,61 @@ test("capability-disabled construction preserves packed exact semantics", () => 
     "exact-polynomial-portable-construction-ok",
   );
 });
+
+test("lazy signed IntegerBuffer ingress stays packed and resource-identical", () => {
+  const source = String.raw`
+import sagejs.runtime as runtime
+import sagejs._baselib.polynomial as polynomial_module
+
+R = PolynomialRing(ZZ, "x")
+values = []
+for index in range(65):
+    magnitude = 2 ** (137 + (index % 7) * 83) + 17 * index + 1
+    values.append(-magnitude if index % 2 else magnitude)
+values[-1] = 1
+
+capacity = polynomial_module._integer_word_capacity(values)
+storage = polynomial_module._FmpzPolynomialResourceStorage(
+    runtime.undefined,
+    runtime.integer_buffer(values, capacity),
+)
+lazy = polynomial_module.PolynomialElement(R, storage)
+expected = R(values)
+expected_bytes = list(expected._packed_exact_polynomial())
+
+lazy._exact_polynomial_resource()
+assert lazy == expected
+assert list(lazy._packed_exact_polynomial()) == expected_bytes
+
+payload = bytearray(expected_bytes)
+damaged_magic = bytearray(expected_bytes)
+damaged_magic[0] = 0
+damaged_count = bytearray(expected_bytes)
+damaged_count[8] = (damaged_count[8] + 1) % 256
+for damaged in (payload[:-1], damaged_magic, damaged_count):
+    try:
+        polynomial_module._exact_polynomial_resource_from_bytes(damaged, False)
+    except (ArithmeticError, RuntimeError, TypeError, ValueError):
+        pass
+    else:
+        raise AssertionError("stale or truncated packed polynomial was accepted")
+
+print("exact-polynomial-lazy-resource-ingress-ok")
+`;
+  assert.equal(runSage(source), "exact-polynomial-lazy-resource-ingress-ok");
+});
+
+test("lazy integer resource source has no host-list projection", () => {
+  const source = readFileSync(join(root, "src/baselib/polynomial.py"), "utf8");
+  const start = source.indexOf("    def _exact_polynomial_resource(self)");
+  assert.notEqual(start, -1);
+  const body = source.slice(start, source.indexOf("\n    def ", start + 8));
+  const integerBranch = body.slice(
+    body.indexOf("if self._has_fmpz_polynomial_resource():"),
+    body.indexOf("            else:"),
+  );
+  assert.match(integerBranch, /runtime\.integer_buffer_to_packed_bytes\(/);
+  assert.match(integerBranch, /_buffer_length\(/);
+  assert.doesNotMatch(integerBranch, /_integer_buffer_values\(/);
+  assert.doesNotMatch(integerBranch, /exact_integer_values_to_packed_bytes\(/);
+});

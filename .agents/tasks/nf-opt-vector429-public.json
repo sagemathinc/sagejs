@@ -2,23 +2,31 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "nf-opt-vector429-public",
-  "title": "Generated FFI transitive-header currentness",
-  "lane": "integration",
+  "title": "Vector429 public OM crossover",
+  "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Make generated FFI addon cache identities invalidate when a repository-local transitive ABI header changes",
-  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
+  "objective": "Prove a fresh exact vector429 public maximal-order run selects OM at p=7, packed Round-2 at p=2/3/5, and completes below 5 seconds while beating the paired p=7 Round-2 fallback",
+  "base_commit": "1dbd4b34fca97955524d70bda416ec9daf9f5b2d",
   "claims": [
-    "tools/native-kernel/compiler.cjs",
-    "test/ffi.cjs"
+    "src/baselib/polynomial.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "bench/exact-polynomial-lazy-resource-ingress.cjs",
+    "bench/number-field-vector429-public.cjs",
+    "test/exact-polynomial-bulk-construction.cjs",
+    "test/number-field-vector429-public.cjs",
+    "bench/results/exact-polynomial-lazy-resource-ingress.json",
+    "bench/results/number-field-vector429-public.json",
+    "bench/results/number-field-vector429-public.md"
   ],
   "dependencies": [],
   "references": [],
   "architecture": {
-    "strategy": "compiler-infrastructure",
-    "fallback": "not-applicable",
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
     "oracles": [
-      "A temporary cyclic repository-header graph whose transitive leaf alone changes"
+      "Frozen PARI vector429 canonical HNF and discriminant",
+      "Independent Sage.js maximality certificate and paired complete Round-2 control"
     ],
     "exceptions": []
   },
@@ -29,9 +37,8 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm architecture:check",
-    "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
   ],
   "runs": [],
   "handoff": {

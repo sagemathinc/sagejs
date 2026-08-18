@@ -935,10 +935,12 @@ class PolynomialElement(sage.Element):
             raise TypeError("polynomial does not own an exact FLINT resource")
         if self._storage.resource is runtime.undefined:
             if self._has_fmpz_polynomial_resource():
-                values = _integer_buffer_values(self._storage.coefficients)
-                body = runtime.exact_integer_values_to_packed_bytes(values)
+                coefficient_count = _buffer_length(self._storage.coefficients)
+                body = runtime.integer_buffer_to_packed_bytes(
+                    self._storage.coefficients
+                )
                 self._storage.resource = _exact_polynomial_resource_from_bytes(
-                    _exact_polynomial_bytes(body, len(values), False), False
+                    _exact_polynomial_bytes(body, coefficient_count, False), False
                 )
                 self._storage.coefficients = runtime.undefined
             else:
