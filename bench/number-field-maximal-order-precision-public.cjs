@@ -40,6 +40,19 @@ function git(args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 }
 
+function compactVerification(verification) {
+  return {
+    verified: verification.verified,
+    errors: verification.errors,
+    degree: verification.degree,
+    equation_order_index: verification.equation_order_index,
+    field_discriminant: verification.field_discriminant,
+    canonical_basis_digest: verification.canonical_basis?.digest ?? null,
+    basis_size_bytes: verification.basis_size_bytes,
+    checks: verification.checks,
+  };
+}
+
 function pythonSource() {
   return [
     "import json",
@@ -193,7 +206,7 @@ async function main() {
       median_ms: medianMs,
       below_five_second_gate: medianMs < thresholdMs,
       raw_samples: payload.default_rows,
-      verification: defaultVerification,
+      verification: compactVerification(defaultVerification),
     },
     trace_control: payload.trace_control
       ? {
@@ -205,7 +218,7 @@ async function main() {
           certified: payload.trace_control.certified,
           field_discriminant: payload.trace_control.field_discriminant,
           equation_order_index: payload.trace_control.equation_order_index,
-          verification: traceVerification,
+          verification: compactVerification(traceVerification),
         }
       : null,
     host_wall_ms: hostWallNs / 1e6,
