@@ -61,32 +61,6 @@ def _packed_length(values: IntegerBuffer, offset: int, capacity: int) -> int:
     return length
 
 
-def _publish_nonunit(
-    control: IntegerBuffer,
-    values: IntegerBuffer,
-    offset: int,
-    length: int,
-    modulus: int,
-) -> None:
-    divisor = _packed_gcd(values[offset + length - 1], modulus)
-    if divisor > 1 and divisor < modulus:
-        control[0] = PREFACTOR_SPLIT
-        control[1] = divisor
-        return
-    if divisor == modulus:
-        content = 0
-        index = 0
-        while index < length:
-            content = _packed_gcd(content, values[offset + index])
-            index += 1
-        divisor = _packed_gcd(content, modulus)
-        if divisor > 1 and divisor < modulus:
-            control[0] = PREFACTOR_SPLIT
-            control[1] = divisor
-            return
-    control[0] = PREFACTOR_UNRESOLVED
-
-
 @native
 def packed_composite_polynomial_split_hint_in_place(
     control: IntegerBuffer,
@@ -118,7 +92,7 @@ def packed_composite_polynomial_split_hint_in_place(
         and len(right) == right_length
     )
     if len(control) > 0:
-        control[0] = PREFACTOR_INVALID
+        control[0] = 0  # PREFACTOR_INVALID
     if len(control) > 1:
         control[1] = 0
     index = 0
@@ -144,19 +118,28 @@ def packed_composite_polynomial_split_hint_in_place(
     while second_length > 0:
         divisor = _packed_gcd(workspace[second_offset + second_length - 1], modulus)
         if divisor != 1:
-            _publish_nonunit(
-                control,
-                workspace,
-                second_offset,
-                second_length,
-                modulus,
-            )
+            if divisor > 1 and divisor < modulus:
+                control[0] = 2  # PREFACTOR_SPLIT
+                control[1] = divisor
+                return True
+            if divisor == modulus:
+                content = 0
+                index = 0
+                while index < second_length:
+                    content = _packed_gcd(content, workspace[second_offset + index])
+                    index += 1
+                divisor = _packed_gcd(content, modulus)
+                if divisor > 1 and divisor < modulus:
+                    control[0] = 2  # PREFACTOR_SPLIT
+                    control[1] = divisor
+                    return True
+            control[0] = 3  # PREFACTOR_UNRESOLVED
             return True
         inverse = _packed_inverse_or_zero(
             workspace[second_offset + second_length - 1], modulus
         )
         if inverse == 0:
-            control[0] = PREFACTOR_UNRESOLVED
+            control[0] = 3  # PREFACTOR_UNRESOLVED
             return True
 
         index = 0
@@ -191,19 +174,28 @@ def packed_composite_polynomial_split_hint_in_place(
         second_length = remainder_length
 
     if first_length == 0:
-        control[0] = PREFACTOR_UNRESOLVED
+        control[0] = 3  # PREFACTOR_UNRESOLVED
         return True
     divisor = _packed_gcd(workspace[first_offset + first_length - 1], modulus)
     if divisor != 1:
-        _publish_nonunit(
-            control,
-            workspace,
-            first_offset,
-            first_length,
-            modulus,
-        )
+        if divisor > 1 and divisor < modulus:
+            control[0] = 2  # PREFACTOR_SPLIT
+            control[1] = divisor
+            return True
+        if divisor == modulus:
+            content = 0
+            index = 0
+            while index < first_length:
+                content = _packed_gcd(content, workspace[first_offset + index])
+                index += 1
+            divisor = _packed_gcd(content, modulus)
+            if divisor > 1 and divisor < modulus:
+                control[0] = 2  # PREFACTOR_SPLIT
+                control[1] = divisor
+                return True
+        control[0] = 3  # PREFACTOR_UNRESOLVED
         return True
-    control[0] = PREFACTOR_NO_SPLIT
+    control[0] = 1  # PREFACTOR_NO_SPLIT
     return True
 
 

@@ -54,10 +54,15 @@ for left, right, modulus in cases:
     assert packed_result is not None
     assert outcome(packed_result) == expected
 
-# Invalid storage is transactional and never publishes an outcome.
-control = [9, 9]
-assert not dynamic(control, [0, 0], [1, 1], [1], 6, 2, 1, 2)
-assert control == [PREFACTOR_INVALID, 0]
+# Invalid storage is transactional in both execution modes and never publishes
+# an outcome.  The compiled adapter needs its own caller-owned packed buffers.
+for candidate in (dynamic, packed):
+    control = dc.kernel_integer_zeros(candidate, 2, 4)
+    workspace = dc.kernel_integer_zeros(candidate, 2, 4)
+    left = dc.kernel_integer_buffer(candidate, [1, 1])
+    right = dc.kernel_integer_buffer(candidate, [1])
+    assert not candidate(control, workspace, left, right, 6, 2, 1, 2)
+    assert list(dc.integer_buffer_values(control)) == [PREFACTOR_INVALID, 0]
 
 # Even a successful-looking corrupt result cannot cross host validation.
 def corrupt(control, workspace, left, right, modulus, left_length, right_length, capacity):
