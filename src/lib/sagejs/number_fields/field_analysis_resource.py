@@ -12,11 +12,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from sagejs.number_fields.buchmann_lenstra import polynomial_discriminant
-from sagejs.number_fields.maximal_order_certification import (
-    _scaled_integral_inverse,
-    check_order_lattice,
+from sagejs.native import (
+    IntegerBuffer,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+    native,
+    uint64,
 )
+from sagejs.number_fields.buchmann_lenstra import polynomial_discriminant
+from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
@@ -163,6 +167,567 @@ def _integer_power_product(
             for index in range(degree):
                 product[exponent - degree + index] -= leading * polynomial[index]
     return product[:degree]
+
+
+@native
+def packed_field_analysis_fixed_points_are_valid(
+    workspace: IntegerBuffer,
+    polynomial: IntegerBuffer,
+    numerator: IntegerBuffer,
+    denominator: int,
+    primes: IntegerBuffer,
+    radical_dimensions: IntegerBuffer,
+    radicals: IntegerBuffer,
+    selectors: IntegerBuffer,
+    degree: uint64,
+    witness_count: uint64,
+) -> bool:
+    """Recompute order arithmetic and every terminal fixed point exactly.
+
+    The packed body is the production checker and its own CPython/dynamic
+    fallback.  It constructs the full order multiplication table, independently
+    recomputes each canonical nilradical, and checks the supplied multiplier
+    minor has full rank.  A compiled artifact keeps the whole proof inside one
+    isolated GMP-backed core with no host callbacks.
+    """
+    square = degree * degree
+    cube = square * degree
+    inverse_offset = 0
+    table_offset = square
+    convolution_offset = table_offset + cube
+    matrix_offset = convolution_offset + 2 * degree
+    kernel_offset = matrix_offset + square
+    selected_offset = kernel_offset + square
+    pivot_offset = selected_offset + square
+    answer_offset = pivot_offset + degree
+    base_offset = answer_offset + degree
+    temporary_offset = base_offset + degree
+    product_offset = temporary_offset + degree
+    expected_workspace = product_offset + degree
+    valid = (
+        degree > 0
+        and len(workspace) == expected_workspace
+        and len(polynomial) == degree + 1
+        and polynomial[degree] == 1
+        and len(numerator) == square
+        and denominator > 0
+        and len(primes) == witness_count
+        and len(radical_dimensions) == witness_count
+        and len(radicals) == witness_count * square
+        and len(selectors) == witness_count * degree
+    )
+
+    reverse_row = 0
+    while valid and reverse_row < degree:
+        row = degree - reverse_row - 1
+        diagonal = numerator[row * degree + row]
+        if diagonal == 0:
+            valid = False
+        column = 0
+        while valid and column < degree:
+            value = 0
+            if row == column:
+                value = denominator
+            source = row + 1
+            while source < degree:
+                value -= (
+                    numerator[row * degree + source]
+                    * workspace[inverse_offset + source * degree + column]
+                )
+                source += 1
+            if value % diagonal != 0:
+                valid = False
+            else:
+                workspace[inverse_offset + row * degree + column] = value // diagonal
+            column += 1
+        reverse_row += 1
+
+    denominator_squared = denominator * denominator
+    left = 0
+    while valid and left < degree:
+        right = 0
+        while valid and right < degree:
+            entry = 0
+            while entry < 2 * degree:
+                workspace[convolution_offset + entry] = 0
+                entry += 1
+            left_index = 0
+            while left_index < degree:
+                left_value = numerator[left * degree + left_index]
+                if left_value:
+                    right_index = 0
+                    while right_index < degree:
+                        right_value = numerator[right * degree + right_index]
+                        if right_value:
+                            workspace[
+                                convolution_offset + left_index + right_index
+                            ] += left_value * right_value
+                        right_index += 1
+                left_index += 1
+            reduction_offset = 0
+            while reduction_offset < degree - 1:
+                exponent = 2 * degree - 2 - reduction_offset
+                leading = workspace[convolution_offset + exponent]
+                if leading:
+                    coefficient = 0
+                    while coefficient < degree:
+                        workspace[
+                            convolution_offset + exponent - degree + coefficient
+                        ] -= leading * polynomial[coefficient]
+                        coefficient += 1
+                reduction_offset += 1
+            column = 0
+            while valid and column < degree:
+                value = 0
+                source = 0
+                while source < degree:
+                    value += (
+                        workspace[convolution_offset + source]
+                        * workspace[inverse_offset + source * degree + column]
+                    )
+                    source += 1
+                if value % denominator_squared != 0:
+                    valid = False
+                else:
+                    workspace[
+                        table_offset + (left * degree + right) * degree + column
+                    ] = value // denominator_squared
+                column += 1
+            right += 1
+        left += 1
+
+    witness = 0
+    while valid and witness < witness_count:
+        prime = primes[witness]
+        radical_dimension = radical_dimensions[witness]
+        if prime < 2 or radical_dimension > degree:
+            valid = False
+        entry = 0
+        while entry < square:
+            workspace[matrix_offset + entry] = 0
+            workspace[kernel_offset + entry] = 0
+            workspace[selected_offset + entry] = 0
+            entry += 1
+
+        if valid and prime > degree:
+            basis = 0
+            while basis < degree:
+                value = 0
+                column = 0
+                while column < degree:
+                    value += workspace[
+                        table_offset + (basis * degree + column) * degree + column
+                    ]
+                    column += 1
+                workspace[product_offset + basis] = value % prime
+                basis += 1
+            left = 0
+            while left < degree:
+                right = 0
+                while right < degree:
+                    value = 0
+                    coordinate = 0
+                    while coordinate < degree:
+                        value += (
+                            workspace[
+                                table_offset
+                                + (left * degree + right) * degree
+                                + coordinate
+                            ]
+                            * workspace[product_offset + coordinate]
+                        )
+                        coordinate += 1
+                    workspace[matrix_offset + left * degree + right] = value % prime
+                    right += 1
+                left += 1
+        elif valid:
+            exponent = prime
+            while exponent < degree:
+                exponent *= prime
+            basis = 0
+            while basis < degree:
+                coordinate = 0
+                while coordinate < degree:
+                    workspace[answer_offset + coordinate] = (
+                        workspace[inverse_offset + coordinate] % prime
+                    )
+                    workspace[base_offset + coordinate] = 0
+                    if coordinate == basis:
+                        workspace[base_offset + coordinate] = 1
+                    coordinate += 1
+                power = exponent
+                while power:
+                    if power % 2:
+                        coordinate = 0
+                        while coordinate < degree:
+                            workspace[temporary_offset + coordinate] = 0
+                            coordinate += 1
+                        left = 0
+                        while left < degree:
+                            left_value = workspace[answer_offset + left] % prime
+                            if left_value:
+                                right = 0
+                                while right < degree:
+                                    right_value = workspace[base_offset + right] % prime
+                                    if right_value:
+                                        scalar = left_value * right_value
+                                        coordinate = 0
+                                        while coordinate < degree:
+                                            location = temporary_offset + coordinate
+                                            workspace[location] = (
+                                                workspace[location]
+                                                + scalar
+                                                * workspace[
+                                                    table_offset
+                                                    + (left * degree + right) * degree
+                                                    + coordinate
+                                                ]
+                                            ) % prime
+                                            coordinate += 1
+                                    right += 1
+                            left += 1
+                        coordinate = 0
+                        while coordinate < degree:
+                            workspace[answer_offset + coordinate] = workspace[
+                                temporary_offset + coordinate
+                            ]
+                            coordinate += 1
+                    power //= 2
+                    if power:
+                        coordinate = 0
+                        while coordinate < degree:
+                            workspace[temporary_offset + coordinate] = 0
+                            coordinate += 1
+                        left = 0
+                        while left < degree:
+                            left_value = workspace[base_offset + left] % prime
+                            if left_value:
+                                right = 0
+                                while right < degree:
+                                    right_value = workspace[base_offset + right] % prime
+                                    if right_value:
+                                        scalar = left_value * right_value
+                                        coordinate = 0
+                                        while coordinate < degree:
+                                            location = temporary_offset + coordinate
+                                            workspace[location] = (
+                                                workspace[location]
+                                                + scalar
+                                                * workspace[
+                                                    table_offset
+                                                    + (left * degree + right) * degree
+                                                    + coordinate
+                                                ]
+                                            ) % prime
+                                            coordinate += 1
+                                    right += 1
+                            left += 1
+                        coordinate = 0
+                        while coordinate < degree:
+                            workspace[base_offset + coordinate] = workspace[
+                                temporary_offset + coordinate
+                            ]
+                            coordinate += 1
+                coordinate = 0
+                while coordinate < degree:
+                    workspace[matrix_offset + coordinate * degree + basis] = workspace[
+                        answer_offset + coordinate
+                    ]
+                    coordinate += 1
+                basis += 1
+
+        entry = 0
+        while entry < square:
+            workspace[selected_offset + entry] = workspace[matrix_offset + entry]
+            entry += 1
+        defining_rank = 0
+        column = 0
+        while valid and column < degree and defining_rank < degree:
+            selected = defining_rank
+            while (
+                selected < degree
+                and workspace[matrix_offset + selected * degree + column] % prime == 0
+            ):
+                selected += 1
+            if selected < degree:
+                if selected != defining_rank:
+                    entry = 0
+                    while entry < degree:
+                        left_location = matrix_offset + defining_rank * degree + entry
+                        right_location = matrix_offset + selected * degree + entry
+                        swapped = workspace[left_location]
+                        workspace[left_location] = workspace[right_location]
+                        workspace[right_location] = swapped
+                        entry += 1
+                pivot = (
+                    workspace[matrix_offset + defining_rank * degree + column] % prime
+                )
+                previous_remainder = prime
+                remainder = pivot
+                previous_coefficient = 0
+                coefficient = 1
+                while remainder:
+                    quotient = previous_remainder // remainder
+                    previous_remainder, remainder = (
+                        remainder,
+                        previous_remainder - quotient * remainder,
+                    )
+                    previous_coefficient, coefficient = (
+                        coefficient,
+                        previous_coefficient - quotient * coefficient,
+                    )
+                if previous_remainder != 1:
+                    valid = False
+                else:
+                    inverse = previous_coefficient % prime
+                    entry = 0
+                    while entry < degree:
+                        location = matrix_offset + defining_rank * degree + entry
+                        workspace[location] = workspace[location] * inverse % prime
+                        entry += 1
+                    row = 0
+                    while row < degree:
+                        if row != defining_rank:
+                            scalar = (
+                                workspace[matrix_offset + row * degree + column] % prime
+                            )
+                            if scalar:
+                                entry = 0
+                                while entry < degree:
+                                    location = matrix_offset + row * degree + entry
+                                    workspace[location] = (
+                                        workspace[location]
+                                        - scalar
+                                        * workspace[
+                                            matrix_offset
+                                            + defining_rank * degree
+                                            + entry
+                                        ]
+                                    ) % prime
+                                    entry += 1
+                        row += 1
+                    defining_rank += 1
+            column += 1
+
+        kernel_rows = radical_dimension
+        if valid and kernel_rows + defining_rank != degree:
+            valid = False
+        search_start = 0
+        row = 0
+        while valid and row < kernel_rows:
+            pivot_column = -1
+            column = 0
+            while column < degree:
+                supplied = radicals[witness * square + row * degree + column]
+                workspace[kernel_offset + row * degree + column] = supplied
+                if pivot_column < 0 and supplied != 0:
+                    pivot_column = column
+                column += 1
+            if (
+                pivot_column < search_start
+                or workspace[kernel_offset + row * degree + pivot_column] != 1
+            ):
+                valid = False
+            else:
+                workspace[pivot_offset + row] = pivot_column
+                other_row = 0
+                while other_row < kernel_rows:
+                    if (
+                        other_row != row
+                        and radicals[
+                            witness * square + other_row * degree + pivot_column
+                        ]
+                        != 0
+                    ):
+                        valid = False
+                    other_row += 1
+                search_start = pivot_column + 1
+            row += 1
+        row = 0
+        while valid and row < degree:
+            radical_row = 0
+            while radical_row < kernel_rows:
+                value = 0
+                column = 0
+                while column < degree:
+                    value += (
+                        workspace[selected_offset + row * degree + column]
+                        * workspace[kernel_offset + radical_row * degree + column]
+                    )
+                    column += 1
+                if value % prime != 0:
+                    valid = False
+                radical_row += 1
+            row += 1
+
+        selector_row = 0
+        while valid and selector_row < degree:
+            selector = selectors[witness * degree + selector_row]
+            ideal_row = selector // degree
+            selected_coordinate = selector % degree
+            if ideal_row >= degree:
+                valid = False
+            ideal_free_column = -1
+            selected_free_column = -1
+            if valid and ideal_row >= kernel_rows:
+                wanted = ideal_row - kernel_rows
+                found = 0
+                column = 0
+                while column < degree:
+                    is_pivot = False
+                    pivot_row = 0
+                    while pivot_row < kernel_rows:
+                        if workspace[pivot_offset + pivot_row] == column:
+                            is_pivot = True
+                        pivot_row += 1
+                    if not is_pivot:
+                        if found == wanted:
+                            ideal_free_column = column
+                        found += 1
+                    column += 1
+                if ideal_free_column < 0:
+                    valid = False
+            if valid and selected_coordinate >= kernel_rows:
+                wanted = selected_coordinate - kernel_rows
+                found = 0
+                column = 0
+                while column < degree:
+                    is_pivot = False
+                    pivot_row = 0
+                    while pivot_row < kernel_rows:
+                        if workspace[pivot_offset + pivot_row] == column:
+                            is_pivot = True
+                        pivot_row += 1
+                    if not is_pivot:
+                        if found == wanted:
+                            selected_free_column = column
+                        found += 1
+                    column += 1
+                if selected_free_column < 0:
+                    valid = False
+            basis = 0
+            while valid and basis < degree:
+                target = 0
+                while target < degree:
+                    value = 0
+                    source = 0
+                    while source < degree:
+                        lattice_value = 0
+                        if ideal_row < kernel_rows:
+                            lattice_value = workspace[
+                                kernel_offset + ideal_row * degree + source
+                            ]
+                        elif source == ideal_free_column:
+                            lattice_value = prime
+                        if lattice_value:
+                            value += (
+                                lattice_value
+                                * workspace[
+                                    table_offset
+                                    + (basis * degree + source) * degree
+                                    + target
+                                ]
+                            )
+                        source += 1
+                    workspace[product_offset + target] = value
+                    target += 1
+                if selected_coordinate < kernel_rows:
+                    coordinate_value = workspace[
+                        product_offset + workspace[pivot_offset + selected_coordinate]
+                    ]
+                else:
+                    coordinate_value = workspace[product_offset + selected_free_column]
+                    pivot_row = 0
+                    while pivot_row < kernel_rows:
+                        coordinate_value -= (
+                            workspace[
+                                product_offset + workspace[pivot_offset + pivot_row]
+                            ]
+                            * workspace[
+                                kernel_offset
+                                + pivot_row * degree
+                                + selected_free_column
+                            ]
+                        )
+                        pivot_row += 1
+                    if coordinate_value % prime != 0:
+                        valid = False
+                    else:
+                        coordinate_value //= prime
+                workspace[selected_offset + selector_row * degree + basis] = (
+                    coordinate_value % prime
+                )
+                basis += 1
+            selector_row += 1
+        selected_rank = 0
+        column = 0
+        while valid and column < degree and selected_rank < degree:
+            selected = selected_rank
+            while (
+                selected < degree
+                and workspace[selected_offset + selected * degree + column] % prime == 0
+            ):
+                selected += 1
+            if selected < degree:
+                if selected != selected_rank:
+                    entry = 0
+                    while entry < degree:
+                        left_location = selected_offset + selected_rank * degree + entry
+                        right_location = selected_offset + selected * degree + entry
+                        swapped = workspace[left_location]
+                        workspace[left_location] = workspace[right_location]
+                        workspace[right_location] = swapped
+                        entry += 1
+                pivot = (
+                    workspace[selected_offset + selected_rank * degree + column] % prime
+                )
+                previous_remainder = prime
+                remainder = pivot
+                previous_coefficient = 0
+                coefficient = 1
+                while remainder:
+                    quotient = previous_remainder // remainder
+                    previous_remainder, remainder = (
+                        remainder,
+                        previous_remainder - quotient * remainder,
+                    )
+                    previous_coefficient, coefficient = (
+                        coefficient,
+                        previous_coefficient - quotient * coefficient,
+                    )
+                if previous_remainder != 1:
+                    valid = False
+                else:
+                    inverse = previous_coefficient % prime
+                    entry = column
+                    while entry < degree:
+                        location = selected_offset + selected_rank * degree + entry
+                        workspace[location] = workspace[location] * inverse % prime
+                        entry += 1
+                    row = selected_rank + 1
+                    while row < degree:
+                        scalar = (
+                            workspace[selected_offset + row * degree + column] % prime
+                        )
+                        if scalar:
+                            entry = column
+                            while entry < degree:
+                                location = selected_offset + row * degree + entry
+                                workspace[location] = (
+                                    workspace[location]
+                                    - scalar
+                                    * workspace[
+                                        selected_offset + selected_rank * degree + entry
+                                    ]
+                                ) % prime
+                                entry += 1
+                        row += 1
+                    selected_rank += 1
+            column += 1
+        if valid and selected_rank != degree:
+            valid = False
+        witness += 1
+    return valid
 
 
 def _order_arithmetic(
@@ -400,6 +965,45 @@ def _selected_multiplier_rows(
     return answer
 
 
+def reference_field_analysis_fixed_points_are_valid(
+    polynomial: list[int],
+    numerator: list[list[int]],
+    denominator: int,
+    primes: list[int],
+    radicals: list[list[list[int]]],
+    selectors: list[list[int]],
+) -> bool:
+    """Run the allocation-heavy independent oracle for packed-kernel tests.
+
+    Production authentication uses the source-transparent packed body above.
+    This deliberately separate formulation retains nested Python matrices,
+    determinant-based multiplier coordinates, and the original canonical
+    right-kernel construction so differential tests do not merely replay the
+    optimized representation.
+    """
+    if len(primes) != len(radicals) or len(primes) != len(selectors):
+        return False
+    degree = len(numerator)
+    try:
+        table, identity = _order_arithmetic(polynomial, numerator, denominator)
+        for prime, radical, selected_coordinates in zip(
+            primes, radicals, selectors, strict=True
+        ):
+            if _p_radical_rows(table, identity, prime) != radical:
+                return False
+            equations = _selected_multiplier_rows(
+                selected_coordinates,
+                _radical_lattice(radical, degree, prime),
+                table,
+                prime,
+            )
+            if len(_modular_rref(equations, prime)[0]) != degree:
+                return False
+    except (ArithmeticError, ValueError):
+        return False
+    return True
+
+
 class _ImmutableCertificatePart:
     def __setattr__(self, name: str, value: Any) -> None:
         if bool(self.__dict__.get("_certificate_frozen", False)):
@@ -631,15 +1235,12 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         )
     ):
         raise ValueError("failed native analysis did not preserve the identity order")
-    lattice = check_order_lattice(coefficients, rows, result.basis_denominator)
-    if not bool(lattice["valid"]):
-        raise ValueError(
-            "field-analysis basis is not an order: " + str(lattice["reason"])
-        )
-
-    table, identity = _order_arithmetic(coefficients, rows, result.basis_denominator)
     if len(required_primes) != len(result.fixed_point_witnesses):
         raise ValueError("field-analysis omitted required local fixed-point evidence")
+    packed_primes: list[int] = []
+    packed_dimensions: list[int] = []
+    packed_radicals: list[int] = []
+    packed_selectors: list[int] = []
     for expected_prime, witness in zip(
         required_primes, result.fixed_point_witnesses, strict=True
     ):
@@ -650,24 +1251,51 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
             raise ValueError("field-analysis fixed-point radical has the wrong shape")
         if any(value < 0 or value >= witness.prime for row in radical for value in row):
             raise ValueError("field-analysis fixed-point radical is not reduced")
-        recomputed_radical = _p_radical_rows(table, identity, witness.prime)
-        if radical != recomputed_radical:
-            raise ValueError(
-                "field-analysis fixed-point radical is not the canonical nilradical"
-            )
         if len(witness.selectors) != degree or len(set(witness.selectors)) != degree:
             raise ValueError("field-analysis fixed-point selectors are not distinct")
-        selected = _selected_multiplier_rows(
-            list(witness.selectors),
-            _radical_lattice(radical, degree, witness.prime),
-            table,
-            witness.prime,
+        packed_primes.append(witness.prime)
+        packed_dimensions.append(len(radical))
+        for row in radical:
+            packed_radicals.extend(row)
+        packed_radicals.extend([0] * ((degree - len(radical)) * degree))
+        packed_selectors.extend(witness.selectors)
+
+    packed_numerator = [value for row in rows for value in row]
+    square = degree * degree
+    workspace_length = degree * square + 4 * square + 7 * degree
+    workspace = kernel_integer_zeros(
+        packed_field_analysis_fixed_points_are_valid,
+        workspace_length,
+        64,
+    )
+    valid_fixed_points = packed_field_analysis_fixed_points_are_valid(
+        workspace,
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, coefficients
+        ),
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, packed_numerator
+        ),
+        result.basis_denominator,
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, packed_primes
+        ),
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, packed_dimensions
+        ),
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, packed_radicals
+        ),
+        kernel_integer_buffer(
+            packed_field_analysis_fixed_points_are_valid, packed_selectors
+        ),
+        degree,
+        len(result.fixed_point_witnesses),
+    )
+    if not valid_fixed_points:
+        raise ValueError(
+            "field-analysis order arithmetic or fixed-point evidence is invalid"
         )
-        reduced, _pivots = _modular_rref(selected, witness.prime)
-        if len(reduced) != degree:
-            raise ValueError(
-                "field-analysis multiplier minor does not prove a fixed point"
-            )
 
 
 def decode_field_analysis_resource(
