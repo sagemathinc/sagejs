@@ -3,6 +3,7 @@
 
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { spawn } = require("node:child_process");
 const { createSage } = require("../dist/tools/kernel.js");
 
 const fixture = JSON.parse(
@@ -11,7 +12,10 @@ const fixture = JSON.parse(
     "utf8",
   ),
 );
-const ids = ["pari-round4-vector-001", "pari-round4-vector-002"];
+const defaultIds = ["pari-round4-vector-001", "pari-round4-vector-002"];
+const ids = process.env.SAGEJS_NF_PARALLEL_CASES
+  ? process.env.SAGEJS_NF_PARALLEL_CASES.split(",").filter(Boolean)
+  : defaultIds;
 
 async function evaluateWithPeakRss(source) {
   const session = await createSage();
@@ -116,13 +120,63 @@ async function measureLocal(entry, workerCapability) {
   );
 }
 
-(async () => {
+function measureFreshProcess(id, mode) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [__filename, "--measure", id, mode], {
+      cwd: join(__dirname, ".."),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", reject);
+    child.once("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`measurement ${id}/${mode} failed: ${stderr}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim().split(/\r?\n/).at(-1)));
+      } catch (error) {
+        reject(
+          new Error(
+            `measurement ${id}/${mode} returned invalid JSON: ${stdout}\n${stderr}`,
+            { cause: error },
+          ),
+        );
+      }
+    });
+  });
+}
+
+async function runMeasurement(id, mode) {
+  const entry = fixture.cases.find((candidate) => candidate.id === id);
+  if (!entry) throw new Error(`unknown corpus case ${id}`);
+  if (mode === "native") return measureNative(entry);
+  if (mode === "sequential") return measureLocal(entry, false);
+  if (mode === "parallel") return measureLocal(entry, true);
+  throw new Error(`unknown measurement mode ${mode}`);
+}
+
+async function main() {
+  if (process.argv[2] === "--measure") {
+    const measurement = await runMeasurement(process.argv[3], process.argv[4]);
+    process.stdout.write(`${JSON.stringify(measurement)}\n`);
+    return;
+  }
   const cases = [];
   for (const id of ids) {
-    const entry = fixture.cases.find((candidate) => candidate.id === id);
-    const native = await measureNative(entry);
-    const sequential = await measureLocal(entry, false);
-    const parallel = await measureLocal(entry, true);
+    const native = await measureFreshProcess(id, "native");
+    const sequential = await measureFreshProcess(id, "sequential");
+    const parallel = await measureFreshProcess(id, "parallel");
     cases.push({
       id,
       native,
@@ -151,7 +205,9 @@ async function measureLocal(entry, workerCapability) {
       2,
     )}\n`,
   );
-})().catch((error) => {
+}
+
+main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
