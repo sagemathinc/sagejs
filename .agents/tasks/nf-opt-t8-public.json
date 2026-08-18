@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-t8-public",
+  "title": "Fused checked T8 public dataflow",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure and implement a generic packed decomposition/BL/proof dataflow that brings checked public T(8,2^32) toward the 25 ms gate while preserving independent verification and exact equivalence",
+  "base_commit": "4b5363d88a8677fe2b51714292e34236ee2831e1",
+  "claims": [
+    "src/lib/sagejs/number_fields/composite_field_analysis.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-t8-fused-analysis.cjs",
+    "bench/number-field-t8-fused-analysis.cjs",
+    "bench/results/number-field-t8-fused-analysis.json"
+  ],
+  "dependencies": [
+    "nf-opt-proof-path",
+    "nf-opt-bl-fusion"
+  ],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "generic maximal-order path and certificate checker",
+      "PARI/Sage canonical HNF fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
