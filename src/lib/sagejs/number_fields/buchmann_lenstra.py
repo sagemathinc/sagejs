@@ -343,12 +343,15 @@ def _packed_row_hnf(rows: list[list[int]]) -> list[list[int]]:
         raise ValueError("lattice rows must have a common length")
     flat = [value for row in rows for value in row]
     maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
-    # Extended-gcd combinations may temporarily exceed an input entry.  Four
-    # limbs per column is a conservative exact bound for these small dense
-    # lattices and keeps overflow fail-closed in the packed ABI.
+    # Extended-gcd elimination can add a constant number of limbs at each
+    # pivot. Capacity is per entry, so grow it linearly with the column count.
+    # The bounded ABI raises on any larger coefficient swell and the readable
+    # row-HNF below remains the exact fallback; reserving quadratically many
+    # limbs per entry would allocate tens of gigabytes before that guard can
+    # run on high-degree local-order merges.
     word_capacity = max(
         16,
-        (maximum_bits + 63) // 64 + 16 * columns * columns,
+        (maximum_bits + 63) // 64 + 8 * columns,
     )
     source = kernel_integer_buffer(packed_row_hnf_in_place, flat)
     output = kernel_integer_zeros(packed_row_hnf_in_place, len(flat), word_capacity)

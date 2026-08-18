@@ -363,6 +363,8 @@ def _basis_index(basis: OrderBasis) -> int:
 def _merge_bases(bases: list[OrderBasis]) -> OrderBasis:
     if not bases:
         raise ValueError("at least one order basis is required")
+    if len(bases) == 1:
+        return bases[0]
     degree = bases[0].degree
     denominator = 1
     for basis in bases:

@@ -47,6 +47,16 @@ for rows, columns in ((2, 2), (4, 2), (6, 3), (8, 4), (16, 8)):
         assert packed == reference
         hnf_controls.append([rows, columns, reference])
 
+large_degree = 90
+large_identity = [
+    [1 if row == column else 0 for column in range(large_degree)]
+    for row in range(large_degree)
+]
+large_rows = large_identity + [
+    [2 * value for value in row] for row in large_identity
+]
+assert bl._packed_row_hnf(large_rows) == large_identity
+
 case = fixtures["t8_2pow32"]
 coefficients = [int(value) for value in case["coefficients_low_to_high"]]
 modulus = int(case["reduced_resultant_component"])
