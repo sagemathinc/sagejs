@@ -443,7 +443,7 @@ static inline void sagejs_nf_analysis_run_proof_jobs(
         lanes[lane].item_count = item_count;
     }
 #if FLINT_USES_PTHREAD
-    pthread_t workers[4];
+    pthread_t workers[4] = {0};
     int started[4] = {0, 0, 0, 0};
 #ifndef SAGEJS_NF_ANALYSIS_PROOF_PTHREAD_CREATE
 #define SAGEJS_NF_ANALYSIS_PROOF_PTHREAD_CREATE(thread, entry, argument) \
