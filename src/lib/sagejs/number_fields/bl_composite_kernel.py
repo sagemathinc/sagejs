@@ -394,14 +394,23 @@ def packed_order_table_in_place(
     polynomial: IntegerBuffer,
     denominator: int,
     degree: uint64,
+    left_start: int,
+    left_count: int,
 ) -> bool:
-    """Check an upper row-HNF order and write its multiplication table.
+    """Check an upper row-HNF order and stream multiplication-table rows.
 
     The numerator is a row-major `degree` by `degree` matrix for the basis
-    `numerator / denominator`.  A successful call proves equation-order
-    containment and multiplication closure, and writes the integral structure
-    constants to `output` in `(left, right, coordinate)` order.  `workspace`
-    contains the scaled inverse followed by one power-basis convolution.
+    `numerator / denominator`.  When `left_count` is positive, a successful
+    call writes the upper-triangular integral structure constants for
+    `left_start <= left < left_start + left_count` to `output` in local
+    `(left, right, coordinate)` order.  Entries with `right < left` are zero
+    and the caller restores them by commutativity.  Passing `left_start == 0`,
+    `left_count == 0`, and a one-record output performs the same containment
+    and closure proof without materializing the degree-cubed table.
+
+    `workspace` contains the scaled inverse followed by one power-basis
+    convolution.  Its fixed word width and the streamed output width are
+    independently bounded by the ordinary-Python wrapper.
 
     This is the normalized-integer equivalent of the readable rational-pair
     implementation retained by `buchmann_lenstra`.  It is deliberately a
@@ -409,13 +418,20 @@ def packed_order_table_in_place(
     occur inside the complete table computation.
     """
     square = degree * degree
-    cube = square * degree
     inverse_offset = 0
     product_offset = square
+    check_only = left_start == 0 and left_count == 0 and len(output) == 1
+    write_rows = (
+        left_count > 0
+        and left_start >= 0
+        and left_start < degree
+        and left_count <= degree - left_start
+        and len(output) == left_count * square
+    )
     valid = (
         degree > 0
         and denominator > 0
-        and len(output) == cube
+        and (check_only or write_rows)
         and len(workspace) == square + 2 * degree - 1
         and len(numerator) == square
         and len(polynomial) == degree + 1
@@ -460,8 +476,12 @@ def packed_order_table_in_place(
         reverse_row += 1
 
     denominator_squared = denominator * denominator
-    left = 0
-    while valid and left < degree:
+    left = left_start
+    left_end = left_start + left_count
+    if check_only:
+        while left_end < degree:
+            left_end += 1
+    while valid and left < left_end:
         right = left
         while valid and right < degree:
             entry = 0
@@ -505,13 +525,10 @@ def packed_order_table_in_place(
                     source += 1
                 if value % denominator_squared != 0:
                     valid = False
-                else:
-                    output[(left * degree + right) * degree + coordinate] = (
-                        value // denominator_squared
-                    )
-                    output[(right * degree + left) * degree + coordinate] = (
-                        value // denominator_squared
-                    )
+                elif write_rows:
+                    output[
+                        ((left - left_start) * degree + right) * degree + coordinate
+                    ] = value // denominator_squared
                 coordinate += 1
             right += 1
         left += 1

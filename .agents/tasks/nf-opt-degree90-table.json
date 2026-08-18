@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-degree90-table",
+  "title": "Degree-90 BL table allocation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Eliminate degree-90 Buchmann-Lenstra multiplication-table allocation crashes with a theorem-backed memory-proportional packed boundary and preserve exact replay/fallback",
+  "base_commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "bench/number-field-maximal-order-degree90-table.cjs",
+    "test/number-field-maximal-order-degree90-table.cjs",
+    "bench/results/number-field-maximal-order-degree90-table-2026-08-18.json",
+    "bench/results/number-field-maximal-order-degree90-table-2026-08-18.md"
+  ],
+  "dependencies": [
+    "nf-opt-bl-fusion"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "independent-certificate",
+      "Sage-Hecke-frozen-lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
