@@ -57,7 +57,9 @@ if last.residual_polynomial != ((4, 0, 1), (1, 0, 2), (1,)):
     raise AssertionError(last.residual_polynomial)
 if last.residual_factor != ((3, 0, 2), (1,)):
     raise AssertionError(last.residual_factor)
-if "components=(2, 1, 0);twists=(-4, -4, -4)" not in last.index_evidence:
+if "components=(2, 1, 0)" not in last.index_evidence:
+    raise AssertionError(last.index_evidence)
+if "twists=(-4, -4, -4)" not in last.index_evidence:
     raise AssertionError(last.index_evidence)
 
 prior = tree.types[-1].levels[0]
@@ -122,18 +124,22 @@ bad = validate_triangular_basis(polynomial, 5, tree, corrupted, 132)
 if bad.valid or bad.multiplication_closed:
     raise AssertionError("a corrupted quotient-HNF basis passed closure")
 
-for prime, expected_state in (
-    (2, "higher-residual-degree-unsupported"),
-    (3, "higher-residual-degree-unsupported"),
+for prime, expected_index, expected_degrees in (
+    (2, 332, [32, 32]),
+    (3, 544, [8] * 8),
 ):
-    incomplete = build_om_type_tree(polynomial, prime)
-    if incomplete.complete or set(incomplete.incomplete_states()) != {expected_state}:
-        raise AssertionError((prime, incomplete.incomplete_states()))
-    if not validate_type_tree(incomplete).valid:
-        raise AssertionError("a fail-closed tree does not validate")
+    adjacent = build_om_type_tree(polynomial, prime)
+    if (
+        not adjacent.complete
+        or adjacent.expected_index_valuation != expected_index
+        or [branch.branch_degree for branch in adjacent.types] != expected_degrees
+    ):
+        raise AssertionError((prime, adjacent.incomplete_states()))
+    if not validate_type_tree(adjacent).valid:
+        raise AssertionError("an adjacent recursive type tree does not replay")
 
 try:
-    build_om_type_tree(polynomial, 5, max_enumerated_candidates=100)
+    build_om_type_tree(polynomial, 5, max_enumerated_candidates=1)
 except OMResourceError:
     pass
 else:

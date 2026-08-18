@@ -129,6 +129,7 @@ for name, polynomial, degree, expected_index, discriminant_valuation, prime in c
             polynomial,
             prime,
             local_discriminant_valuation=discriminant_valuation,
+            differential_evidence=profile == "v429-p7",
         )
         if result.status != "complete" or result.certificate is None:
             raise RuntimeError(result.reason)
@@ -136,14 +137,15 @@ for name, polynomial, degree, expected_index, discriminant_valuation, prime in c
             raise ArithmeticError("unexpected local index")
         if not result.certificate.validation.valid:
             raise ArithmeticError("basis validation failed")
-        return result.type_tree.certificate_id
+        return result
     run_once()
     timings = []
     digest = ""
     for _sample in range(samples):
         started = time.perf_counter()
         for _iteration in range(iterations):
-            digest = run_once()
+            measured = run_once()
+            digest = measured.type_tree.certificate_id
         timings.append((time.perf_counter() - started) * 1000 / iterations)
     timings.sort()
     rows.append({
@@ -155,6 +157,14 @@ for name, polynomial, degree, expected_index, discriminant_valuation, prime in c
         "minimum_ms": timings[0],
         "maximum_ms": timings[-1],
         "certificate_id": digest,
+        "selector": {
+            "auto_selectable": measured.selector.auto_selectable,
+            "native_capable": measured.selector.native_capable,
+            "measured_crossover_region": measured.selector.measured_crossover_region,
+            "expected_combinations": measured.selector.expected_combinations,
+            "estimated_memory_bytes": measured.selector.estimated_memory_bytes,
+            "suppressed_alternatives": list(measured.selector.suppressed_alternatives),
+        },
     })
 print(json.dumps({"samples": samples, "iterations": iterations, "rows": rows}, sort_keys=True))
 `;
@@ -193,4 +203,70 @@ const report = {
     measure("sagejs-dynamic", process.execPath, [join(root, "bin/sagejs"), "--python"]),
   ],
 };
+
+function measureCensoredLocal(label, body) {
+  const timeout = Number(
+    process.env.SAGEJS_OM_MAXMIN_COMPARISON_TIMEOUT_MS || 60_000,
+  );
+  const started = process.hrtime.bigint();
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin/sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: body,
+      maxBuffer: 16 * 1024 * 1024,
+      timeout,
+    },
+  );
+  const wallMs = Number(process.hrtime.bigint() - started) / 1e6;
+  if (result.status === 0) {
+    return {
+      label,
+      censored: false,
+      wall_ms: wallMs,
+      result: JSON.parse(result.stdout.trim().split("\n").at(-1)),
+    };
+  }
+  if (result.error?.code === "ETIMEDOUT" || result.signal) {
+    return { label, censored: true, lower_bound_ms: wallMs, timeout_ms: timeout };
+  }
+  throw new Error([result.stdout, result.stderr].filter(Boolean).join("\n"));
+}
+
+if (
+  profile === "v429-p7" &&
+  process.env.SAGEJS_OM_MAXMIN_COMPARE_COMPETITORS === "1"
+) {
+  const setup = String.raw`
+import json
+import time
+coefficients = [int(value) for value in ${JSON.stringify(v429Polynomial)}]
+degree = len(coefficients) - 1
+`;
+  report.competitors = [
+    measureCensoredLocal(
+      "sagejs-dynamic-round2-p7-local",
+      setup + String.raw`
+from sagejs.number_fields import maximal_order as maximal_order_module
+R.<x> = ZZ[]
+K.<a> = NumberField(R(coefficients))
+started = time.perf_counter()
+order = maximal_order_module.p_maximal_overorder_dynamic(K.equation_order(), 7)
+print(json.dumps({"elapsed_ms": (time.perf_counter() - started) * 1000, "degree": order.degree()}))
+`,
+    ),
+    measureCensoredLocal(
+      "sagejs-dynamic-round4-p7-local",
+      setup + String.raw`
+from sagejs.number_fields.round4 import modified_round4_hnf_contract
+identity = [[1 if row == column else 0 for column in range(degree)] for row in range(degree)]
+started = time.perf_counter()
+result = modified_round4_hnf_contract(coefficients, identity, 1, 7, "round2", False)
+print(json.dumps({"elapsed_ms": (time.perf_counter() - started) * 1000, "state": result.state, "algorithm": result.algorithm}))
+`,
+    ),
+  ];
+}
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

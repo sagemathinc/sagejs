@@ -1,10 +1,11 @@
-"""Exact order-two residual operators for bounded OM type construction.
+"""Exact recursive residual operators for bounded OM type construction.
 
-This module implements the coefficient map of Guàrdia--Montes--Nart,
-Definition 2.19, for one active first-order type whose residual factor is
-linear.  The linear factor identifies the next residue field with the prior
-finite field, while the required `z**t` twist is still computed explicitly.
-Unsupported type depth or residue-field towers fail closed.
+The coefficient map follows Guàrdia--Montes--Nart, Definition 2.19. A linear
+residual factor retains the current finite field; a proved prime-field factor
+of arbitrary degree constructs the corresponding finite extension. The
+required `z**t` twist is computed explicitly at every active level. Residue
+towers that cannot yet be flattened to one proved prime-field modulus retain
+an explicit incomplete state.
 """
 
 from __future__ import annotations
@@ -283,7 +284,11 @@ def next_residue_field(
     prime: int,
     level: OMLevel,
 ) -> tuple[Polynomial, ResidueElement]:
-    """Return the bounded next residue field and its distinguished generator."""
+    """Return the next supported residue field and distinguished generator.
+
+    A nonlinear factor with prime-field coefficients is itself an irreducible
+    modulus certified by residual factorization. Its degree is not bounded.
+    """
     factor = level.residual_factor
     if len(factor) == 2:
         modulus = level.residual_field_modulus
@@ -298,8 +303,8 @@ def next_residue_field(
             raise OMDomainError("the next residual generator must be nonzero")
         return modulus, root
     modulus = _prime_field_modulus(factor)
-    if polynomial_degree(modulus) != 2:
-        raise OMDomainError("the bounded next residue extension must be quadratic")
+    if polynomial_degree(modulus) <= 0:
+        raise OMDomainError("the next residue extension must have positive degree")
     return modulus, (0, 1)
 
 
