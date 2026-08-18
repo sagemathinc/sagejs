@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "ellrank-math",
+  "title": "Elliptic analytic rank mathematics and API",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the ordinary Python central-derivative engine, adaptive probable analytic-rank API, GRH-conditional zero-sum upper bound, caching, documentation, and public regression tests",
+  "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
+  "claims": [
+    "src/baselib/elliptic_curves.py",
+    "src/lib/sagejs/elliptic_curves/",
+    "test/elliptic-curves.cjs",
+    "test/elliptic-analytic-rank.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/elliptic-curve-analytic-rank-plan.md",
+    "/home/user/sagelite/src/sage/lfunctions/zero_sums.pyx",
+    "/home/user/sagelite/src/sage/schemes/elliptic_curves/lseries_ell.py"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI analytic_rank and derivative values",
+      "Magma AnalyticRank"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves",
+    "pnpm exec pyright src/lib/sagejs/elliptic_curves/analytic_rank.py src/lib/sagejs/elliptic_curves/__init__.py"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.097,
+      "started_at": "2026-08-18T00:24:47.772Z",
+      "commit": "f35b8b4005f192c5960bfe66056268e0237fce41",
+      "workspace_fingerprint": "48df2a6489c2c57b56344cff2074f85329e6657a3473a99d22b25b71a3c620ec",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/elliptic_curves/analytic_rank.py src/lib/sagejs/elliptic_curves/__init__.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.283,
+      "started_at": "2026-08-18T00:25:05.486Z",
+      "commit": "f35b8b4005f192c5960bfe66056268e0237fce41",
+      "workspace_fingerprint": "48df2a6489c2c57b56344cff2074f85329e6657a3473a99d22b25b71a3c620ec",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the ordinary CPython-parseable Mellin central-derivative engine, canonical completed-Lambda to raw-L derivative conversion, conservative coefficient-tail selection, two-refinement probable-rank policy, numerical-indeterminacy diagnostics, precision-aware per-curve caching, and the GRH-conditional sinc-squared prime-power zero sum. EllipticCurve now exposes root_number(), analytic_rank(), leading_coefficient=True semantics, and analytic_rank_upper_bound(), with a private adapter for the stable batched native completed-derivative ABI and automatic same-source fallback. Sage/PARI coefficient oracles reproduce ranks 0 through 4 and leading raw derivatives, including 234446a1 at 214.652337501621 and the motivating curve at 14.7552475203803; Delta=1 zero sums reproduce Sage raw values and parity bounds 0 through 4. The self-hosting baselib compiler converged, strict baselib and direct module Pyright checks pass, and focused public regressions cover the raw-L/completed-Lambda parity trap and low-lying-zero fixture.",
+    "risks": [
+      "The checked-in public Node tests require integration of native-lane commit 5a43cbff, which supplies ecRootNumber and ecCompletedCentralDerivatives; they could not run in this isolated lane because its installed FLINT addon predates those exports. Integration must run test/elliptic-analytic-rank.cjs after merging both commits.",
+      "The native evaluator currently reports rigorous=false and coefficient_tail_only because its Molin grid discretization bound is not yet proved. The public result is therefore deliberately documented and named as probable; two independent precision/cutoff refinements remain mandatory.",
+      "The zero-sum floor uses math.fsum plus an explicit conservative binary64 forward-error allowance. It is conditional on GRH and platform elementary-function accuracy; future Arb accumulation should replace that allowance with a true ball upper endpoint.",
+      "Linux arm64, macOS arm64, and Windows x64 public behavior remains for integration/CI validation. The reference implementation is ordinary Python and the coefficient fallback is platform independent, while root_number requires the all-platform eclib export."
+    ],
+    "next_steps": [
+      "Integrate native-lane commit 5a43cbff and this lane commit f35b8b40, add the two analytic-rank module paths to pyrightconfig.json, then build and run test/elliptic-analytic-rank.cjs plus existing elliptic tests.",
+      "Run pnpm test:native, architecture checks, and the analytic-rank benchmark/corpus on Linux x64 before exercising the same public fixtures on Windows x64, macOS arm64, and Linux arm64.",
+      "Complete the rigorous Arb Molin discretization error bound and make native diagnostics add coefficient, ball-radius, and grid analytic errors before changing any documentation strength."
+    ]
+  }
+}
