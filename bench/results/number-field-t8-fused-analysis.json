@@ -1,0 +1,774 @@
+{
+  "schema": "sagejs.number-fields/t8-fused-analysis-receipt-v1",
+  "case_id": "pure-bad-generator-n8-c2pow32",
+  "sample_count": 17,
+  "warmup_count": 4,
+  "threshold_ns": 25000000,
+  "raw": [
+    {
+      "public_ns": 24553728,
+      "basis_projection_ns": 1558016,
+      "cached_ns": 24064,
+      "stage_ns": {
+        "discriminant": 521728,
+        "factor_discovery": 527104,
+        "bl_construction": 6793216,
+        "local_work": 3307776,
+        "hnf_merge": 2152448,
+        "proof_check": 2605568
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21644288,
+      "basis_projection_ns": 2091520,
+      "cached_ns": 16640,
+      "stage_ns": {
+        "discriminant": 510208,
+        "factor_discovery": 531456,
+        "bl_construction": 5671424,
+        "local_work": 2703360,
+        "hnf_merge": 2071040,
+        "proof_check": 1905408
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21251584,
+      "basis_projection_ns": 1425664,
+      "cached_ns": 13056,
+      "stage_ns": {
+        "discriminant": 487168,
+        "factor_discovery": 519680,
+        "bl_construction": 5741568,
+        "local_work": 2747648,
+        "hnf_merge": 2046464,
+        "proof_check": 1956096
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 23161600,
+      "basis_projection_ns": 1547264,
+      "cached_ns": 13824,
+      "stage_ns": {
+        "discriminant": 452608,
+        "factor_discovery": 510208,
+        "bl_construction": 5293056,
+        "local_work": 2589184,
+        "hnf_merge": 3431680,
+        "proof_check": 2180352
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 20548864,
+      "basis_projection_ns": 1404416,
+      "cached_ns": 14080,
+      "stage_ns": {
+        "discriminant": 439040,
+        "factor_discovery": 497152,
+        "bl_construction": 5218304,
+        "local_work": 2607616,
+        "hnf_merge": 2057216,
+        "proof_check": 1920768
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 19356928,
+      "basis_projection_ns": 1442048,
+      "cached_ns": 13056,
+      "stage_ns": {
+        "discriminant": 479232,
+        "factor_discovery": 509440,
+        "bl_construction": 4929536,
+        "local_work": 2451456,
+        "hnf_merge": 1863936,
+        "proof_check": 1814016
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21722624,
+      "basis_projection_ns": 1325056,
+      "cached_ns": 11520,
+      "stage_ns": {
+        "discriminant": 457984,
+        "factor_discovery": 496128,
+        "bl_construction": 5547520,
+        "local_work": 3395328,
+        "hnf_merge": 2214400,
+        "proof_check": 1948160
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 18954752,
+      "basis_projection_ns": 1374720,
+      "cached_ns": 11776,
+      "stage_ns": {
+        "discriminant": 441344,
+        "factor_discovery": 438528,
+        "bl_construction": 4844288,
+        "local_work": 2568960,
+        "hnf_merge": 1944576,
+        "proof_check": 1793792
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21348864,
+      "basis_projection_ns": 1298688,
+      "cached_ns": 12032,
+      "stage_ns": {
+        "discriminant": 481024,
+        "factor_discovery": 460032,
+        "bl_construction": 5913344,
+        "local_work": 2474240,
+        "hnf_merge": 1857024,
+        "proof_check": 2128128
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 20148224,
+      "basis_projection_ns": 1627904,
+      "cached_ns": 12032,
+      "stage_ns": {
+        "discriminant": 423168,
+        "factor_discovery": 471552,
+        "bl_construction": 5114368,
+        "local_work": 2766080,
+        "hnf_merge": 2061312,
+        "proof_check": 2077952
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 20380928,
+      "basis_projection_ns": 1479424,
+      "cached_ns": 14080,
+      "stage_ns": {
+        "discriminant": 460800,
+        "factor_discovery": 463872,
+        "bl_construction": 5237760,
+        "local_work": 2776576,
+        "hnf_merge": 2087168,
+        "proof_check": 2061056
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21173248,
+      "basis_projection_ns": 1539584,
+      "cached_ns": 19200,
+      "stage_ns": {
+        "discriminant": 439552,
+        "factor_discovery": 482304,
+        "bl_construction": 5721088,
+        "local_work": 2853632,
+        "hnf_merge": 2180096,
+        "proof_check": 1994496
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 22354944,
+      "basis_projection_ns": 1605632,
+      "cached_ns": 11776,
+      "stage_ns": {
+        "discriminant": 473344,
+        "factor_discovery": 544256,
+        "bl_construction": 5393152,
+        "local_work": 3494400,
+        "hnf_merge": 2165504,
+        "proof_check": 1981952
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 21405952,
+      "basis_projection_ns": 1566720,
+      "cached_ns": 12288,
+      "stage_ns": {
+        "discriminant": 514816,
+        "factor_discovery": 480000,
+        "bl_construction": 5509632,
+        "local_work": 2833408,
+        "hnf_merge": 2147584,
+        "proof_check": 2120448
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 25324288,
+      "basis_projection_ns": 1348352,
+      "cached_ns": 14336,
+      "stage_ns": {
+        "discriminant": 546304,
+        "factor_discovery": 510208,
+        "bl_construction": 7859712,
+        "local_work": 2674176,
+        "hnf_merge": 2530560,
+        "proof_check": 2024192
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 22155776,
+      "basis_projection_ns": 1276672,
+      "cached_ns": 11520,
+      "stage_ns": {
+        "discriminant": 487680,
+        "factor_discovery": 472064,
+        "bl_construction": 5967872,
+        "local_work": 2869248,
+        "hnf_merge": 2140928,
+        "proof_check": 2407424
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    },
+    {
+      "public_ns": 19892992,
+      "basis_projection_ns": 1145088,
+      "cached_ns": 10240,
+      "stage_ns": {
+        "discriminant": 751104,
+        "factor_discovery": 440064,
+        "bl_construction": 4981760,
+        "local_work": 2544640,
+        "hnf_merge": 1861120,
+        "proof_check": 2086912
+      },
+      "events": [
+        {
+          "stage": "factor-discovery",
+          "state": "exact-small-prime-support-split",
+          "component_bits": 780,
+          "prime": 7,
+          "support_exponent": 1,
+          "complement_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "queued-word-prime",
+          "prime": 7,
+          "proof_kind": "trial-prime"
+        },
+        {
+          "stage": "bl-construction",
+          "state": "complete",
+          "component_bits": 777,
+          "index_bits": 777
+        },
+        {
+          "stage": "local-work",
+          "state": "complete",
+          "prime_count": 1,
+          "packed_prime_count": 1,
+          "native_fallback_count": 0,
+          "index_bits": 3
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "public_median_ns": 21348864,
+    "public_min_ns": 18954752,
+    "public_max_ns": 25324288,
+    "basis_projection_median_ns": 1442048,
+    "cached_median_ns": 13056,
+    "construction_median_ns": 17288448,
+    "checker_median_ns": 2014464
+  },
+  "gate_passed": true,
+  "generic_external_equivalence": true,
+  "field_discriminant": "-2147483648",
+  "equation_order_index": "3179557053031851899185109992371205233166102563054994659612778573877352351101815706666153685320008306418583370978265859646929314209130671444551656380504174391180190567870975750525148778143146969696718736142491176896345575184876739493887",
+  "trace_counters": {
+    "construct_composite_field_analysis": 1,
+    "native_order_from_polynomial": 0,
+    "_authenticated_default_field_analysis": 0,
+    "decompose_discriminant": 0,
+    "_authenticated_order_from_basis": 1,
+    "certify_global_order": 1
+  },
+  "native_compiled": {
+    "polynomial_discriminant": true,
+    "integer_square_root": true,
+    "order_lattice_checker": true
+  },
+  "environment": {
+    "source_commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
+    "node": "v26.7.0",
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "arch": "x64",
+    "cpu": "AMD EPYC 7B13"
+  }
+}

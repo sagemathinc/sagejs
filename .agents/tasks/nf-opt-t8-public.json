@@ -74,11 +74,37 @@
       "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
       "workspace_fingerprint": "c6c4c008fe567cc34b9e950ee9c43186baef04c00ceb896af5499b04699214d5",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-t8-fused-analysis.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.906,
+      "started_at": "2026-08-18T09:12:27.244Z",
+      "commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
+      "workspace_fingerprint": "c6083d1f4af8a1358a65b6f4e8285407272d50e33a686430061ed7cd83435fd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.23,
+      "started_at": "2026-08-18T09:12:31.913Z",
+      "commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
+      "workspace_fingerprint": "c6083d1f4af8a1358a65b6f4e8285407272d50e33a686430061ed7cd83435fd0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented a generic structural square-support path with packed discriminant/square-root/closure kernels, packed BL/Dedekind construction, exact CRT lattice merge, immutable authenticated proof envelope, lazy public basis and certificate projection, fail-closed fallback, focused corruption/equivalence tests, and a 17-sample checked public T8 receipt. On AMD EPYC 7B13 the final fresh-field public median is 21.349 ms against the 25 ms gate; the generic path has exactly the same canonical numerator, denominator, index, and discriminant.",
+    "risks": [
+      "The structural selector is intentionally narrow: monic integral inputs with at least 128 coefficient bits, one small proved residual prime, exact coprime square support, and the monomial Dedekind residual shape. All other cases retain the established generic path.",
+      "The final full production native/platform suite remains an integration-lane responsibility."
+    ],
+    "next_steps": [
+      "Register packed_polynomial_discriminant, packed_integer_square_root, and packed_order_lattice_is_valid in the root-owned production native registry.",
+      "Add the focused T8 test to the root-owned node test manifest, rebase onto current integration, and run strict/full native validation."
+    ]
   }
 }
