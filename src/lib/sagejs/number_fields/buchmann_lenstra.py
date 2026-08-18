@@ -1040,9 +1040,17 @@ def _check_composite_dedekind_overorder_certificate(
 
 
 def check_buchmann_lenstra_result(
-    polynomial_coefficients: list[int], result: BuchmannLenstraResult
+    polynomial_coefficients: list[int],
+    result: BuchmannLenstraResult,
+    *,
+    equation_discriminant: int | None = None,
 ) -> bool:
-    """Independently check a split, enlargement, or completed local result."""
+    """Independently check a split, enlargement, or completed local result.
+
+    `equation_discriminant` may be supplied when the caller has already
+    computed it independently from the equation order.  Omitting it retains
+    the standalone polynomial-discriminant replay.
+    """
     coefficients = [int(value) for value in polynomial_coefficients]
     if result.evidence.get("stage") == "q-radical-multiplier-cycle":
         events = result.evidence.get("events", [])
@@ -1082,7 +1090,11 @@ def check_buchmann_lenstra_result(
         return False
     if denominator_power // determinant != result.index:
         return False
-    equation_disc = polynomial_discriminant(coefficients)
+    equation_disc = (
+        polynomial_discriminant(coefficients)
+        if equation_discriminant is None
+        else int(equation_discriminant)
+    )
     if equation_disc != result.discriminant * result.index * result.index:
         return False
     if result.evidence.get("certificate") == "component-coprime-to-order-discriminant":

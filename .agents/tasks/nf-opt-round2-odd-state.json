@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round2-odd-state",
+  "title": "Pack odd-prime Round2 terminal state",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "nf_opt_round2_odd_state",
+  "objective": "Extend the exact packed Round2 terminal state from p=2 to odd word primes and reduce vector429 p=3 and p=5 local runtime without fixture-specific branches",
+  "base_commit": "da3c727c2d1201c83e1d565f5161468214155b87",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "test/number-field-order-resource-ffi.cjs",
+    "bench/number-field-order-resource-witness.c",
+    "bench/number-field-round2-native-state.cjs",
+    "bench/results/number-field-round2-odd-state-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "forced exact generic FLINT Round2 payload",
+      "deterministic randomized odd-prime differential"
+    ],
+    "exceptions": [
+      "Extend the existing audited FLINT/GMP packed order representation primitive only; no fixture-specific branch"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/nf-opt-round2-odd-state/packages/flint/.native/prefix node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.21,
+      "started_at": "2026-08-18T11:31:14.185Z",
+      "commit": "46f54749357328788e194cf88af85ec652996526",
+      "workspace_fingerprint": "fe2c54deaea92683b68eacafafc6b1c2800a4b1bb6b2935d67785d7f3e41f613",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/nf-opt-round2-odd-state/packages/flint/.native/prefix SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.44,
+      "started_at": "2026-08-18T11:31:45.093Z",
+      "commit": "46f54749357328788e194cf88af85ec652996526",
+      "workspace_fingerprint": "fe2c54deaea92683b68eacafafc6b1c2800a4b1bb6b2935d67785d7f3e41f613",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extended the terminal degree-at-most-64 Round-2 state from p=2 to odd word primes whose square fits a limb. The exact internal multiplication tensor now remains in packed p-adic limbs, consumes two certified digits per enlargement, publishes compact mod-p and mod-p-squared tables, and replays from an immutable exact prime-boundary checkpoint if its four-digit margin is reached. On degree-64 vector429, p=3 falls from 2.181s to 1.478s (1.476x) and p=5 from 0.852s to 0.699s (1.218x); together with p=2 at 0.604s the three local components total 2.781s. Vector010 remains 1.840x PARI. The p=3 and p=5 payloads agree byte-for-byte with forced exact FLINT, 32 mixed-prime randomized payloads agree, and ASan/UBSan lifecycle execution passes.",
+    "risks": [
+      "The packed path is intentionally terminal-prime, degree-at-most-64, and limited to primes at most 251; every unsupported boundary retains the exact generic FLINT tensor path.",
+      "Linux x64 exact differential and sanitizer execution passed. The final integration platform matrix must exercise native Windows x64, Linux arm64, and macOS arm64 before release."
+    ],
+    "next_steps": [
+      "Integration lane: refresh packages/flint/include/sagejs/number_field_order_ffi.h metrics and rationale in architecture/native-audit.json.",
+      "Integration lane: run pnpm architecture:check after the native audit refresh.",
+      "Integration lane: preserve bench/results/number-field-round2-odd-state-2026-08-18.json and rerun the final four-platform native lifecycle suite."
+    ]
+  }
+}

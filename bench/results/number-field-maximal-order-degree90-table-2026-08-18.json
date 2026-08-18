@@ -1,0 +1,42 @@
+{
+  "schema": "sagejs.number-fields/degree90-bl-table-receipt-v1",
+  "source_commit": "ac3f18eb",
+  "fixture": "hecke-degree-90",
+  "baseline": {
+    "outcome": "v8-sigtrap",
+    "requested_table_bytes": 51222456000,
+    "reason": "degree-cubed output multiplied by one degree-scaled word capacity"
+  },
+  "composite_child": {
+    "support_bits": 1277,
+    "state": "complete",
+    "elapsed_micros": 6717955,
+    "old_table_bytes": 41972904000,
+    "workspace_words": 49,
+    "output_words": 29,
+    "workspace_bytes": 3245368,
+    "table_execution_mode": "native-capable",
+    "membership_execution_mode": "native-capable"
+  },
+  "public_bound": {
+    "timeout_seconds": 120,
+    "wall_seconds": 120.248,
+    "user_seconds": 124.19,
+    "system_seconds": 1.749,
+    "outcome": "downstream-timeout-after-bl-completion",
+    "observed_instrumented_rss_kib": 621596,
+    "last_stage": "native_order_from_polynomial"
+  },
+  "instrumented_stages_millis": {
+    "composite_split": 373,
+    "composite_complete": 6839,
+    "first_merge": 0
+  },
+  "validation": {
+    "degree90_corruption_test": "pass",
+    "buchmann_lenstra_focused_tests": "3/3 pass",
+    "baselib_strict": "pass",
+    "architecture_check": "pass"
+  },
+  "handoff": "The BL allocation/crash boundary is complete. The remaining public timeout starts in downstream native Round-2 and is assigned to nf_opt_round2_degree90."
+}

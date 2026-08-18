@@ -137,6 +137,13 @@
       "rationale": "Standalone cross-platform lifecycle and exact-lattice witness for the direct number-field order resource boundary; it is compiled only by the focused test and is not linked into Sage.js."
     },
     {
+      "path": "packages/flint/test/number_field_order_ffi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone exact, corruption, forced-fallback, and sanitizer witness for independent coprime-prime Round-2 construction and lattice merging; it is compiled only by focused tests and is not linked into Sage.js."
+    },
+    {
       "path": "packages/flint/include/sagejs/exact_vector_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

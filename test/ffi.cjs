@@ -10,7 +10,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+const { join, relative } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
@@ -2396,6 +2396,64 @@ test("native foreign input identity hashes only selected platform links", () => 
       delete process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;
     } else {
       process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX = previous;
+    }
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("native foreign input identity follows repository header dependencies", () => {
+  const temporary = mkdtempSync(join(root, ".native-header-currentness-"));
+  const previous = process.env.SAGEJS_HEADER_CURRENTNESS_TEST_PREFIX;
+  try {
+    const include = join(temporary, "include");
+    mkdirSync(join(include, "sagejs"), { recursive: true });
+    const direct = join(include, "sagejs", "resource_ffi.h");
+    const transitive = join(include, "sagejs", "order_ffi.h");
+    writeFileSync(
+      direct,
+      '#include "sagejs/order_ffi.h"\n#define RESOURCE_ABI 1\n',
+    );
+    writeFileSync(
+      transitive,
+      '#include "sagejs/resource_ffi.h"\n#define ORDER_ABI 1\n',
+    );
+    process.env.SAGEJS_HEADER_CURRENTNESS_TEST_PREFIX = temporary;
+    const ir = {
+      foreignLibraries: [{
+        id: "header_currentness_test",
+        native: {
+          headers: ["sagejs/resource_ffi.h"],
+          link: { unix: [], windows: [] },
+          toolchain: {
+            prefix_environment: "SAGEJS_HEADER_CURRENTNESS_TEST_PREFIX",
+            unix_default: "unused",
+            windows_default: "unused",
+            include_dirs: [],
+            source_include_dirs: [relative(root, include)],
+          },
+        },
+      }],
+    };
+    const before = foreignCompilationInputs(ir)[0];
+    assert.deepEqual(
+      before.transitiveHeaders.map(({ name }) => name),
+      [relative(root, transitive).replaceAll("\\", "/")],
+    );
+    writeFileSync(
+      transitive,
+      '#include "sagejs/resource_ffi.h"\n#define ORDER_ABI 200\n',
+    );
+    const after = foreignCompilationInputs(ir)[0];
+    assert.notEqual(after.fingerprint, before.fingerprint);
+    assert.notEqual(
+      after.transitiveHeaders[0].sha256,
+      before.transitiveHeaders[0].sha256,
+    );
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SAGEJS_HEADER_CURRENTNESS_TEST_PREFIX;
+    } else {
+      process.env.SAGEJS_HEADER_CURRENTNESS_TEST_PREFIX = previous;
     }
     rmSync(temporary, { recursive: true, force: true });
   }
