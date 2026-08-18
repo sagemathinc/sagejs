@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { Worker } = require("node:worker_threads");
@@ -230,10 +231,35 @@ test("odd-degree group invariants multiply to Lp(1)", () => {
       `group order at ${p}`,
     );
   }
-  assert.equal(
-    flint.smalljacGroupBatch("x^6+x+1", 5n, 11n).status,
-    flint.smalljacCapabilities().statuses.UNSUPPORTED_CURVE,
-  );
+});
+
+test("unsupported even-degree groups do not emit upstream diagnostics", () => {
+  const script = `
+    const f = require(${JSON.stringify(addonPath)});
+    const models = ["x^6+x+1", "[x^5+x+1,x^3]"];
+    process.stdout.write(JSON.stringify(models.map((model) => {
+      const result = f.smalljacGroupBatch(model, 5n, 11n);
+      return {
+        status: result.status,
+        upstreamStatus: result.upstreamStatus.toString(),
+      };
+    })));
+  `;
+  const child = spawnSync(process.execPath, ["-e", script], {
+    encoding: "utf8",
+  });
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stderr, "");
+  assert.deepEqual(JSON.parse(child.stdout), [
+    {
+      status: flint.smalljacCapabilities().statuses.UNSUPPORTED_CURVE,
+      upstreamStatus: "-4",
+    },
+    {
+      status: flint.smalljacCapabilities().statuses.UNSUPPORTED_CURVE,
+      upstreamStatus: "-4",
+    },
+  ]);
 });
 
 test("elliptic and genus-2 calls safely share process-global ffpoly state", async () => {
