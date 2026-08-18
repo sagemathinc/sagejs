@@ -17,6 +17,7 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/hyperelliptic/smalljac.c",
         "src/matrix.c",
         "src/modsym_core.c",
         "src/number_field_factor.c",
