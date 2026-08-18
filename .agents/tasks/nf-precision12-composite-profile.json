@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Bound and attribute the Hecke precision-degree-12 composite maximal-order stage, preserving exact certificate evidence and handing off without engine optimization unless a theorem-shared cause is established",
-  "base_commit": "2da5793275d7f701121ed04176d082680da66b26",
+  "base_commit": "da3620b8bf093193b724ba306831a6d8176e06af",
   "claims": [
     "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json"
   ],
