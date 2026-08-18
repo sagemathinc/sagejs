@@ -242,6 +242,27 @@ True
   }
 });
 
+test("caller-supplied element-order factorizations require prime bases", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.hyperelliptic_curves.group_structure import validate_factorization",
+        "assert validate_factorization(12, [(2,2),(3,1)]) == [(2,2),(3,1)]",
+        "try:",
+        "    validate_factorization(12, [(12,1)])",
+        "    assert False",
+        "except ValueError as error:",
+        "    assert 'prime' in str(error)",
+        "True",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
 test("public genus-2 Jacobians validate native invariant factors", async () => {
   const session = await createSage();
   try {
