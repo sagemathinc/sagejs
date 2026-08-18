@@ -607,6 +607,88 @@ def packed_order_contains_vector_in_place(
     return valid
 
 
+@native
+def packed_order_contains_vectors_in_place(
+    workspace: IntegerBuffer,
+    numerator: IntegerBuffer,
+    vectors: IntegerBuffer,
+    vector_denominators: IntegerBuffer,
+    basis_denominator: int,
+    degree: uint64,
+    vector_count: uint64,
+) -> bool:
+    """Check a batch of rational vectors against an upper row-HNF basis.
+
+    `vectors` is a row-major `vector_count` by `degree` matrix whose rows have
+    the positive denominators in `vector_denominators`.  The scaled inverse is
+    constructed and checked once, proving equation-order containment before
+    every rational membership test.  A false result is mathematical rejection;
+    fixed-width overflow remains a capability failure handled by the wrapper.
+    """
+    square = degree * degree
+    valid = (
+        degree > 0
+        and vector_count > 0
+        and basis_denominator > 0
+        and len(workspace) == square
+        and len(numerator) == square
+        and len(vectors) == vector_count * degree
+        and len(vector_denominators) == vector_count
+    )
+    row = 0
+    while valid and row < degree:
+        column = 0
+        while column < row:
+            if numerator[row * degree + column] != 0:
+                valid = False
+            column += 1
+        row += 1
+    reverse_row = 0
+    while valid and reverse_row < degree:
+        row = degree - reverse_row - 1
+        diagonal = numerator[row * degree + row]
+        if diagonal == 0:
+            valid = False
+        column = 0
+        while valid and column < degree:
+            value = 0
+            if row == column:
+                value = basis_denominator
+            source = row + 1
+            while source < degree:
+                value -= (
+                    numerator[row * degree + source]
+                    * workspace[source * degree + column]
+                )
+                source += 1
+            if value % diagonal != 0:
+                valid = False
+            else:
+                workspace[row * degree + column] = value // diagonal
+            column += 1
+        reverse_row += 1
+    vector_index = 0
+    while valid and vector_index < vector_count:
+        vector_denominator = vector_denominators[vector_index]
+        if vector_denominator <= 0:
+            valid = False
+        coordinate = 0
+        while valid and coordinate < degree:
+            value = 0
+            source = 0
+            while source < degree:
+                value += (
+                    vectors[vector_index * degree + source]
+                    * workspace[source * degree + coordinate]
+                )
+                source += 1
+            if value % vector_denominator != 0:
+                valid = False
+            coordinate += 1
+        vector_index += 1
+    return valid
+
+
 def _packed_row_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -825,6 +907,7 @@ __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
     "packed_order_contains_vector_in_place",
+    "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",
     "packed_row_hnf_in_place",
 ]

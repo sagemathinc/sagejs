@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-degree90-checker",
+  "title": "Degree-90 BL checker proof",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce the exact degree-90 composite BL replay below 3.5 seconds with a theorem-backed packed batch membership proof while retaining dynamic fallback and corruption rejection",
+  "base_commit": "ab52ed3c09d4131b37443134992f4e301672cd44",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "test/number-field-maximal-order-degree90-checker.cjs",
+    "bench/number-field-maximal-order-degree90-checker.cjs",
+    "bench/results/number-field-maximal-order-degree90-checker-2026-08-18.json",
+    "bench/results/number-field-maximal-order-degree90-checker-2026-08-18.md"
+  ],
+  "dependencies": [
+    "nf-opt-degree90-table"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "independent-certificate",
+      "Sage-Hecke-frozen-lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

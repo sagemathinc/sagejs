@@ -31,7 +31,7 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
-    packed_order_contains_vector_in_place,
+    packed_order_contains_vectors_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
 )
@@ -652,59 +652,132 @@ def _dedekind_generator_lattice_is_order_reference(
     return True
 
 
+def _packed_membership_word_capacity(
+    basis: OrderBasis, vectors: list[list[int]]
+) -> int:
+    """Prove a fixed word bound for batched upper-HNF membership.
+
+    For the upper-triangular numerator `N` and denominator `d`, backward
+    substitution constructs `X = d*N^-1`.  The nonnegative recurrence below
+    inductively bounds every entry of `X`, including every intermediate sum.
+    Taking absolute dot products with the actual certificate vectors then
+    bounds every membership accumulator.  The extra word covers signed
+    fixed-width arithmetic.
+    """
+    degree = basis.degree
+    numerator = basis.numerator
+    denominator = basis.denominator
+    inverse_bounds = [[0 for _column in range(degree)] for _row in range(degree)]
+    for reverse_row in range(degree):
+        row = degree - reverse_row - 1
+        diagonal = abs(numerator[row][row])
+        if diagonal == 0:
+            raise ArithmeticError("singular order basis")
+        for column in range(degree):
+            value = denominator if row == column else 0
+            for source in range(row + 1, degree):
+                value += abs(numerator[row][source]) * inverse_bounds[source][column]
+            if value:
+                inverse_bounds[row][column] = (value + diagonal - 1) // diagonal
+
+    maximum = max(
+        (value for row in inverse_bounds for value in row),
+        default=0,
+    )
+    for vector in vectors:
+        if len(vector) != degree:
+            raise ValueError("membership vector has the wrong degree")
+        for column in range(degree):
+            value = 0
+            for source in range(degree):
+                value += abs(vector[source]) * inverse_bounds[source][column]
+            maximum = max(maximum, value)
+    return max(2, (maximum.bit_length() + 63) // 64 + 1)
+
+
 def _dedekind_generator_lattice_is_order(
     coefficients: list[int],
     modulus: int,
+    obstruction: list[int],
     generator: list[int],
     basis: OrderBasis,
 ) -> bool:
-    """Replay one Dedekind generator lattice through independent kernels.
+    """Replay one Dedekind generator lattice through one packed batch proof.
 
-    The multiplication-table kernel proves that the candidate is a ring
-    containing `Z[a]` without materializing any structure constants.  The
-    separate vector-membership kernel proves that `generator(a)/modulus` is
-    in that ring.  Thus the candidate contains the generator lattice; the
-    independently checked monic-quotient index identifies them exactly.
+    The batch membership kernel proves that the candidate contains `Z[a]`
+    and the first `degree(obstruction)` shifted rows of
+    `generator(a) Z[a] / modulus`.  These rows generate all the shifts: the
+    independently checked monic identity
+
+    `obstruction * generator = defining_polynomial (mod modulus)`
+
+    recursively expresses every later shift in terms of them plus an integral
+    vector.  The independently checked monic-quotient index therefore
+    identifies the candidate with
+    `L = Z[a] + (generator(a)/modulus) Z[a]`.  As `L` is a `Z[a]`-module, it is
+    a ring if and only if the one additional vector
+    `generator(a)^2 / modulus^2` belongs to it; the last batch row proves
+    exactly that.  No degree-cubed multiplication table is constructed or
+    checked.
 
     Fixed-width overflow is only a capability failure and falls back to the
     readable shifted-generator and generator-square proof above.
     """
     degree = basis.degree
-    if modulus <= 1 or len(coefficients) != degree + 1:
+    if (
+        modulus <= 1
+        or len(coefficients) != degree + 1
+        or not obstruction
+        or not generator
+        or obstruction[-1] != 1
+        or generator[-1] != 1
+        or len(obstruction) + len(generator) != degree + 2
+        or _trim_mod(_multiply(obstruction, generator), modulus)
+        != _trim_mod(coefficients, modulus)
+    ):
         return False
-    padded_generator = list(generator)
-    while len(padded_generator) < degree:
-        padded_generator.append(0)
-    if len(padded_generator) != degree:
+    shift_count = len(obstruction) - 1
+    multiplication = [
+        [0 for _column in range(shift)]
+        + list(generator)
+        + [0 for _column in range(degree - shift - len(generator))]
+        for shift in range(shift_count)
+    ]
+    product = _reduce_power_polynomial(_multiply(generator, generator), coefficients)
+    vectors = multiplication + [product]
+    if len(vectors) != shift_count + 1 or any(
+        len(vector) != degree for vector in vectors
+    ):
         return False
     try:
-        if not _packed_order_is_closed(coefficients, basis):
-            return False
-        workspace_words, _output_words = _packed_order_table_word_capacities(
-            coefficients, basis
-        )
+        workspace_words = _packed_membership_word_capacity(basis, vectors)
         workspace_bytes = degree * degree * workspace_words * 8
         if workspace_bytes > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
             return _dedekind_generator_lattice_is_order_reference(
                 coefficients, modulus, generator, basis
             )
         return bool(
-            packed_order_contains_vector_in_place(
+            packed_order_contains_vectors_in_place(
                 kernel_integer_zeros(
-                    packed_order_contains_vector_in_place,
+                    packed_order_contains_vectors_in_place,
                     degree * degree,
                     workspace_words,
                 ),
                 kernel_integer_buffer(
-                    packed_order_contains_vector_in_place,
+                    packed_order_contains_vectors_in_place,
                     [value for row in basis.numerator for value in row],
                 ),
                 kernel_integer_buffer(
-                    packed_order_contains_vector_in_place, padded_generator
+                    packed_order_contains_vectors_in_place,
+                    [value for vector in vectors for value in vector],
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vectors_in_place,
+                    [modulus for _vector in multiplication] + [modulus * modulus],
                 ),
                 basis.denominator,
-                modulus,
                 degree,
+                len(vectors),
             )
         )
     except OverflowError:
@@ -1018,7 +1091,7 @@ def _check_composite_dedekind_overorder_certificate(
     if result.index != expected_index:
         return False
     if not _dedekind_generator_lattice_is_order(
-        coefficients, modulus, generator, result.basis
+        coefficients, modulus, obstruction, generator, result.basis
     ):
         return False
 
