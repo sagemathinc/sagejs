@@ -9,9 +9,6 @@
   "objective": "Accelerate exact large-component strong-probable-prime screening with a source-transparent witness-only kernel, host witness replay, survivor no-proof semantics, dynamic and compiled differential oracles, portable fallback, and degree-90 phase evidence",
   "base_commit": "5a56328447409abffb1a11ef42fd026b26267a3b",
   "claims": [
-    "src/lib/sagejs/number_fields/discriminant_primality_kernel.py",
-    "test/number-field-discriminant-primality-screen.cjs",
-    "bench/number-field-discriminant-primality-screen.cjs",
     "bench/results/number-field-discriminant-primality-screen-2026-08-18.json"
   ],
   "dependencies": [
@@ -44,12 +41,10 @@
   "handoff": {
     "summary": "Rejected performance experiment. The source-transparent batched strong-probable-prime screen is mathematically exact: CPython, dynamic, and compiled paths agree; every reported witness is replayed once; malformed witnesses fail closed; survivors remain no-hint; and degree-90 component fingerprints and certificate replay match. Native execution is nevertheless slower than the readable host implementation. The sole bounded sample measured the full decomposition at 3.679024s compiled versus 3.322824s readable (0.90318x), the accumulated primality phase at 1.724021s versus 1.287526s (0.74682x), and the representative 7593-bit batch at 580.482ms versus 431.414ms (0.74320x). This backend is rejected and must not be production-selected.",
     "risks": [
-      "The integration base currently contains a public selector hook and production registry entry for this experiment. Enabling the compiled artifact causes a measured degree-90 regression; both must be removed or disabled before integration.",
+      "The rejected source and production selector were removed after the exact negative receipt was committed; the receipt remains bound to its historical source commit.",
       "The exact compiler fixes are useful only to make the negative comparison native-active; they are not evidence that the backend should ship."
     ],
     "next_steps": [
-      "Remove the shared compiled_strong_probable_prime_screen selection from discriminant_components.primality_status so the readable implementation remains selected.",
-      "Remove the number-field-discriminant-primality-screen production registry entry and do not ship the experimental module unless retained outside production solely as benchmark evidence.",
       "Use the remaining perfect_power_data phase, or a mature library modular-power primitive with a distinct cost model, as the next optimization target."
     ]
   }
