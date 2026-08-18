@@ -4,7 +4,7 @@
   "id": "ellrank-native",
   "title": "Portable native elliptic L-function boundary",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Expose eclib root numbers and implement a host-independent batched FLINT/Arb central-derivative accelerator with Node adapter and native tests",
   "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
