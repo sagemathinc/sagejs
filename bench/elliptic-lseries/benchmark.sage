@@ -33,12 +33,18 @@ for curve_id, a_invariants in CURVES:
     first_seconds, L = elapsed(curve.lseries)
     cold_seconds, cold_value = elapsed(lambda: L(1 + I))
     repeated = [elapsed(lambda: L(1 + I))[0] for _ in range(SAMPLES)]
-    independent = [elapsed(lambda point=point: L(point))[0] for point in POINTS]
+    independent_L = EllipticCurve(a_invariants).lseries()
+    independent = [
+        elapsed(lambda point=point: independent_L(point))[0] for point in POINTS
+    ]
     batch_seconds = None
     batch_checksum = None
-    if hasattr(L, "values"):
-        batch_seconds, batch = elapsed(lambda: L.values(POINTS))
-        batch_checksum = str(sum(abs(value) for value in batch))
+    batch_L = EllipticCurve(a_invariants).lseries()
+    if hasattr(batch_L, "values"):
+        batch_seconds, batch = elapsed(lambda: batch_L.values(POINTS))
+        batch_checksum = str(
+            sum((index + 1) * value for index, value in enumerate(batch))
+        )
     records.append(
         {
             "curve_id": curve_id,

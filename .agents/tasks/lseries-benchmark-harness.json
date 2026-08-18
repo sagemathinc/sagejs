@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "lseries-benchmark-harness",
+  "title": "Correct elliptic L-series benchmark batching",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure elliptic L-series batches on a fresh cache and emit a finite reproducible checksum",
+  "base_commit": "546785824d9cf859ca4bb84e9d654da5c086ebc7",
+  "claims": [
+    "bench/elliptic-lseries/benchmark.sage",
+    "bench/elliptic-lseries/README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage.js benchmark smoke output"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "python3 -m py_compile bench/elliptic-lseries/benchmark.sage",
+    "bin/sagejs bench/elliptic-lseries/benchmark.sage"
+  ],
+  "runs": [
+    {
+      "command": "python3 -m py_compile bench/elliptic-lseries/benchmark.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.062,
+      "started_at": "2026-08-18T09:54:13.015Z",
+      "commit": "546785824d9cf859ca4bb84e9d654da5c086ebc7",
+      "workspace_fingerprint": "2ba8426a7e4a682aca0f522e0a7551c951efe3c7705df98af800dc5db3749342",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/sagejs/bin/sagejs bench/elliptic-lseries/benchmark.sage",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.168,
+      "started_at": "2026-08-18T09:54:13.756Z",
+      "commit": "546785824d9cf859ca4bb84e9d654da5c086ebc7",
+      "workspace_fingerprint": "2ba8426a7e4a682aca0f522e0a7551c951efe3c7705df98af800dc5db3749342",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bin/sagejs bench/elliptic-lseries/benchmark.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.983,
+      "started_at": "2026-08-18T09:55:27.112Z",
+      "commit": "546785824d9cf859ca4bb84e9d654da5c086ebc7",
+      "workspace_fingerprint": "2ba8426a7e4a682aca0f522e0a7551c951efe3c7705df98af800dc5db3749342",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Give independent and batch workloads distinct fresh L-series objects, and replace abs-based batch checksums with an ordered weighted complex sum. The lane-local Sage.js smoke reports finite checksums and a genuine fresh-cache batch speedup (1.30s versus 3.96s for five independent evaluations of the user curve). Sage/PARI also parses and runs the shared source.",
+    "risks": [
+      "One recorded smoke against the integration worktree failed while that worktree was concurrently rebuilding dist; the subsequent lane-local runtime receipt passed."
+    ],
+    "next_steps": [
+      "Cherry-pick this benchmark-only commit into the integration branch."
+    ]
+  }
+}
