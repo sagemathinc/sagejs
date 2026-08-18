@@ -408,7 +408,61 @@ def integer_matrix_word_prime_minimal_polynomial_batch(
     return prime_count
 
 
+@native
+def integer_matrix_polynomial_annihilates_first_coordinate(
+    matrix: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    workspace: IntegerBuffer,
+    dimension: uint64,
+    coefficient_count: uint64,
+) -> uint64:
+    """Certify `f(matrix)e_0 = 0` by exact integer Horner evaluation.
+
+    Coefficients are ascending.  The caller owns a two-vector exact workspace
+    whose per-entry capacity is derived from the matrix infinity norm and the
+    actual coefficients.  The ordinary body is also the CPython/JavaScript
+    dynamic fallback.
+    """
+    zero = dimension - dimension
+    if dimension == zero:
+        return zero
+    one = dimension // dimension
+    if len(matrix) != dimension * dimension:
+        return zero
+    if coefficient_count == zero or coefficient_count > dimension + one:
+        return zero
+    if len(coefficients) != coefficient_count:
+        return zero
+    if len(workspace) != 2 * dimension:
+        return zero
+    current_offset = zero
+    next_offset = dimension
+    integer_zero = coefficients[zero] - coefficients[zero]
+    for index in range(dimension):
+        workspace[current_offset + index] = integer_zero
+    exponent = coefficient_count
+    while exponent:
+        exponent = exponent - one
+        for row in range(dimension):
+            total = integer_zero
+            row_offset = row * dimension
+            for column in range(dimension):
+                total = total + (
+                    matrix[row_offset + column] * workspace[current_offset + column]
+                )
+            workspace[next_offset + row] = total
+        workspace[next_offset] = workspace[next_offset] + coefficients[exponent]
+        for index in range(dimension):
+            workspace[current_offset + index] = workspace[next_offset + index]
+    answer = one
+    for index in range(dimension):
+        if workspace[current_offset + index] != integer_zero:
+            answer = zero
+    return answer
+
+
 __all__ = [
+    "integer_matrix_polynomial_annihilates_first_coordinate",
     "integer_matrix_word_prime_minimal_polynomial_batch",
     "word_prime_krylov_batch_workspace_length",
     "word_prime_krylov_minimal_polynomial",

@@ -74,6 +74,8 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
     const compiled = await compile({ sourcePath, cacheRoot: cache });
     const kernel = require(compiled.modulePath);
     const batch = kernel.integer_matrix_word_prime_minimal_polynomial_batch;
+    const annihilates =
+      kernel.integer_matrix_polynomial_annihilates_first_coordinate;
     const single = kernel.word_prime_krylov_minimal_polynomial;
     const declaration = compiled.ir.functions.find(
       (candidate) =>
@@ -82,6 +84,26 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
     assert.equal(declaration.kernelKind, "integer");
     const core = readFileSync(compiled.coreSourcePath, "utf8");
     assert.doesNotMatch(core, /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
+    assert.equal(
+      annihilates(
+        annihilates.packIntegerBuffer([0n, -2n, 1n, 0n]),
+        annihilates.packIntegerBuffer([2n, 0n, 1n]),
+        annihilates.createIntegerBuffer(4, 8),
+        2n,
+        3n,
+      ),
+      1n,
+    );
+    assert.equal(
+      annihilates(
+        annihilates.packIntegerBuffer([0n, -2n, 1n, 0n]),
+        annihilates.packIntegerBuffer([3n, 0n, 1n]),
+        annihilates.createIntegerBuffer(4, 8),
+        2n,
+        3n,
+      ),
+      0n,
+    );
 
     const primes = [3n, 5n, 97n, 65537n, 1073741789n];
     let state = 1729n;
@@ -248,12 +270,19 @@ print(len(records))
 import sys
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 from sagejs.kernels.matrix.word_prime_krylov import (
+    integer_matrix_polynomial_annihilates_first_coordinate,
     integer_matrix_word_prime_minimal_polynomial_batch,
     word_prime_krylov_batch_workspace_length,
     word_prime_krylov_minimal_polynomial,
     word_prime_krylov_workspace_length,
 )
 rows = [[0, -2], [1, 0]]
+assert integer_matrix_polynomial_annihilates_first_coordinate(
+    [value for row in rows for value in row], [2, 0, 1], [0] * 4, 2, 3,
+) == 1
+assert integer_matrix_polynomial_annihilates_first_coordinate(
+    [value for row in rows for value in row], [3, 0, 1], [0] * 4, 2, 3,
+) == 0
 primes = [3, 5, 97, 65537]
 degrees = [0] * len(primes)
 coefficients = [0] * (len(primes) * 3)

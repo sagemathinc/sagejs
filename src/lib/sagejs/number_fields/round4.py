@@ -37,6 +37,7 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.kernels.matrix.word_prime_krylov import (
+    integer_matrix_polynomial_annihilates_first_coordinate,
     integer_matrix_word_prime_minimal_polynomial_batch,
     word_prime_krylov_batch_workspace_length,
     word_prime_krylov_minimal_polynomial,
@@ -1005,6 +1006,37 @@ def _minimal_polynomial_coefficient_bounds(
     return bounds
 
 
+def _native_annihilates_first_coordinate(
+    rows: list[list[Any]],
+    coefficients: list[Any],
+    packed_matrix: Any,
+) -> bool:
+    """Run the exact Horner certificate in one source-transparent call."""
+    kernel = integer_matrix_polynomial_annihilates_first_coordinate
+    degree = len(rows)
+    root_bound = max(sum(abs(value) for value in row) for row in rows)
+    intermediate_bound = sage.ZZ(0)
+    for coefficient in reversed(coefficients):
+        intermediate_bound = root_bound * intermediate_bound + abs(coefficient)
+    word_capacity = max(
+        8,
+        (_positive_integer_bits(intermediate_bound) + 63) // 64 + 2,
+    )
+    packed_coefficients = kernel_integer_buffer(kernel, coefficients)
+    exact_workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+    return bool(
+        runtime.number(
+            kernel(
+                packed_matrix,
+                packed_coefficients,
+                exact_workspace,
+                degree,
+                len(coefficients),
+            )
+        )
+    )
+
+
 def _integer_polynomial_power(
     coefficients: list[Any],
     exponent: int,
@@ -1078,11 +1110,11 @@ def _batched_integer_field_element_characteristic_polynomial(
     # than 512 bits, so reserve eight limbs beyond the exact coefficient bound
     # (plus one sign/carry limb) without changing that mathematical bound.
     crt_word_capacity = max(8, (maximum_state_bits + 63) // 64 + 9)
-    # A batch contains at most 256 primes below `2^30`; unlike the global CRT
+    # A batch contains at most 32 primes below `2^30`; unlike the global CRT
     # its exact scratch never needs the much larger final coefficient bound.
     # Keeping this capacity tight avoids copying thousands of unused limbs on
     # every in-batch IntegerBuffer assignment.
-    batch_word_capacity = (256 * 30 + 63) // 64 + 2
+    batch_word_capacity = (32 * 30 + 63) // 64 + 2
     while prime_count < 4096:
         if batch_calls < 2:
             # Two tiny batches expose early stable exact candidates without
@@ -1097,7 +1129,11 @@ def _batched_integer_field_element_characteristic_polynomial(
             # absorb the conservative integer division and a possible low
             # modular-degree prime without turning the loop back into a
             # crossing-per-prime protocol.
-            batch_size = min(256, max(8, (missing_bits + 28) // 29 + 4))
+            # Cap speculative work: stable exact coefficients can be far
+            # smaller than the conservative norm bound.  A 32-prime window
+            # still removes at least 8x of the scalar crossings while limiting
+            # stabilization overshoot to fewer than 960 modulus bits.
+            batch_size = min(32, max(8, (missing_bits + 28) // 29 + 4))
         batch_primes = []
         for _index in range(min(batch_size, 4096 - prime_count)):
             prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
@@ -1148,7 +1184,15 @@ def _batched_integer_field_element_characteristic_polynomial(
         if not bound_reached and not stable_candidate:
             continue
         reconstruction_attempts += 1
-        if not _annihilates_first_coordinate(rows, centered):
+        if is_compiled(integer_matrix_polynomial_annihilates_first_coordinate):
+            annihilates = _native_annihilates_first_coordinate(
+                rows,
+                centered,
+                packed_matrix,
+            )
+        else:
+            annihilates = _annihilates_first_coordinate(rows, centered)
+        if not annihilates:
             continue
         if degree % minimal_degree != 0:
             raise Round4InvariantError(

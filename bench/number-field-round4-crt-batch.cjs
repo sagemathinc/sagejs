@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
-const { mkdtempSync, readFileSync } = require("node:fs");
-const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+const { readFileSync } = require("node:fs");
+const { dirname, join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
-const { removeLoadedNativeCache } = require("../test/helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
@@ -27,10 +25,11 @@ const fixture = JSON.parse(
 ).cases.find((record) => record.id === "pari-round4-vector-010-p2");
 
 async function main() {
-  const cache = mkdtempSync(join(tmpdir(), "sagejs-round4-crt-benchmark-"));
-  try {
-    const compiled = await compile({ sourcePath, cacheRoot: cache });
-    const program = String.raw`
+  const compiled = await compile({
+    sourcePath,
+    cacheRoot: join(dirname(sourcePath), ".sagejs-native-kernels"),
+  });
+  const program = String.raw`
 import time
 from sagejs.native import is_compiled
 from sagejs.kernels.matrix.word_prime_krylov import integer_matrix_word_prime_minimal_polynomial_batch
@@ -41,14 +40,19 @@ K = NumberField(R([${fixture.coefficients.join(",")}]), 'a')
 metrics = {}
 started = time.perf_counter()
 result = modified_round4_local_order(K.equation_order(), ${fixture.prime}, strict=True)
-elapsed_ms = 1000 * (time.perf_counter() - started)
+construction_ms = 1000 * (time.perf_counter() - started)
 assert result.certificate.local_index == ${fixture.local_index}
 assert result.order.discriminant() == ${fixture.local_output_discriminant}
+verification_started = time.perf_counter()
 assert verify_round4_local_result(result)
+verification_ms = 1000 * (time.perf_counter() - verification_started)
+elapsed_ms = construction_ms + verification_ms
 final = [stage for stage in result.plan.stages if stage.name == 'assemble-power-basis-hnf'][-1]
 metrics = final.evidence['characteristic_polynomial_metrics']
 print(repr({
     'elapsed_ms': elapsed_ms,
+    'construction_ms': construction_ms,
+    'verification_ms': verification_ms,
     'compiled_batch': is_compiled(integer_matrix_word_prime_minimal_polynomial_batch),
     'characteristic_calls': metrics['characteristic_polynomial_calls'],
     'modular_calls': metrics['modular_characteristic_calls'],
@@ -61,22 +65,21 @@ print(repr({
     'residue_degree': final.evidence['residue_degree'],
 }))
 `;
-    const run = spawnSync(process.execPath, [sagejs, "--python"], {
-      cwd: root,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        SAGEJS_NATIVE_CACHE_DIR: cache,
-        SAGEJS_NATIVE_REQUIRED: "1",
-      },
-      input: program,
-      timeout: 300_000,
-    });
-    if (run.error) throw run.error;
-    if (run.status !== 0) throw new Error(run.stderr || run.stdout);
-    const record = JSON.parse(run.stdout.trim().replaceAll("'", '"').replace("True", "true"));
-    process.stdout.write(
-      `${JSON.stringify({
+  const run = spawnSync(process.execPath, [sagejs, "--python"], {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    input: program,
+    timeout: 300_000,
+  });
+  if (run.error) throw run.error;
+  if (run.status !== 0) throw new Error(run.stderr || run.stdout);
+  const record = JSON.parse(
+    run.stdout.trim().replaceAll("'", '"').replace("True", "true"),
+  );
+  process.stdout.write(
+    `${JSON.stringify(
+      {
         schema: 1,
         workload: "PARI Round-4 vector010, exact p=2 local maximal order",
         sourceHash: compiled.sourceHash,
@@ -84,11 +87,11 @@ print(repr({
         proof:
           "exact minimal-polynomial coefficient bounds, unique centered CRT, exact integer annihilation, and charpoly=minpoly^(n/d)",
         ...record,
-      }, null, 2)}\n`,
-    );
-  } finally {
-    removeLoadedNativeCache(cache);
-  }
+      },
+      null,
+      2,
+    )}\n`,
+  );
 }
 
 main().catch((error) => {
