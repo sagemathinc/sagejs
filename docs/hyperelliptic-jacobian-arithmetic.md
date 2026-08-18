@@ -1,7 +1,6 @@
 ---
 title: "Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves"
 ---
-
 # Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves
 
 Sage.js implements an exact group law for Jacobians of genus-2 and genus-3
@@ -319,3 +318,4 @@ The principal implementation files are:
 - [`hyperelliptic-jacobian.cjs`](../test/hyperelliptic-jacobian.cjs) and
   [`hyperelliptic-genus3-jacobian-search-differential.cjs`](../test/hyperelliptic-genus3-jacobian-search-differential.cjs)
   for public and independent-native regression tests.
+

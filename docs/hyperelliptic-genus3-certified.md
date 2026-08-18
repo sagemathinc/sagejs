@@ -94,8 +94,7 @@ For every available genus-3 residue row the pipeline:
    exact exhaustive backend.
 
 The existing Mumford group law supports odd-degree models with one point at
-infinity. Degree-eight models and characteristic two therefore fall back
-honestly. An unavailable rforest backend, an excluded denominator, a failed
+infinity. Degree-eight models and characteristic 2 therefore fall back properly. An unavailable rforest backend, an excluded denominator, a failed
 native row, a candidate cap, a group-operation resource cap, or unresolved
 ambiguity also falls back. An arithmetic inconsistency—no Weil lift, a false
 certificate, or disagreement between rforest and the exact backend—is an
