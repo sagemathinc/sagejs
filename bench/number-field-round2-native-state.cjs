@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -88,6 +88,14 @@ try {
     schema: "sagejs.number-fields/round2-native-state-benchmark/v1",
     source: {
       commit: process.env.SAGEJS_BENCH_COMMIT || null,
+      headerSha256: hash(readFileSync(join(
+        root,
+        "packages",
+        "flint",
+        "include",
+        "sagejs",
+        "number_field_order_ffi.h",
+      ))),
     },
     environment: {
       platform: `${process.platform}-${process.arch}`,
