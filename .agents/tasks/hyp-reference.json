@@ -6,8 +6,8 @@
   "lane": "hyperelliptic-curves",
   "status": "active",
   "owner": "user",
-  "objective": "Implement CPython-parseable genus-2/3 hyperelliptic curve models, exhaustive point counting, exact Frobenius/L-polynomial reconstruction, derived cardinality/zeta APIs, and focused tests without native dependencies",
-  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "objective": "Implement the ordinary-Python genus-2/3 reference API and its checked genus-2 smalljac adapter, including exact Frobenius reconstruction, local-factor ranges, fallbacks, caching, and focused oracle tests",
+  "base_commit": "c794633eaaae0101c36bb85b2b96ff32ae66c5a0",
   "claims": [
     "src/baselib/hyperelliptic_curves.py",
     "src/lib/sagejs/hyperelliptic_curves/__init__.py",
@@ -39,12 +39,40 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/hyperelliptic-reference.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-reference.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.318,
+      "started_at": "2026-08-18T08:23:28.793Z",
+      "commit": "c794633eaaae0101c36bb85b2b96ff32ae66c5a0",
+      "workspace_fingerprint": "f83c33d264a2d5ecedd247150d5073063256575c667546a51823060fece6e311",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.355,
+      "started_at": "2026-08-18T08:23:41.195Z",
+      "commit": "c794633eaaae0101c36bb85b2b96ff32ae66c5a0",
+      "workspace_fingerprint": "f83c33d264a2d5ecedd247150d5073063256575c667546a51823060fece6e311",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added the checked ordinary-Python smalljac adapter for finite odd prime-field genus-2 Frobenius polynomials and QQ single/range local factors. The adapter serializes exact integral models, validates every packed native status/row/range/coefficient contract, reconstructs and checks full reciprocal degree-4 polynomials, skips bad/excluded primes in plural APIs, retains exhaustive fallbacks, caches exact results, and agrees with the independent oracle corpus.",
+    "risks": [
+      "The repository-wide architecture gate currently reports the three already-integrated smalljac native files as unclassified; this lane does not claim architecture/native-code.json or those native files.",
+      "Cross-platform native validation belongs to the smalljac boundary lane; this ordinary-Python lane was validated on linux-x64 against its packed addon contract."
+    ],
+    "next_steps": [
+      "Integrate this commit after the native boundary commits and rerun the repository architecture/native and platform CI gates.",
+      "Use local_lpolynomial_chunks as the bounded source for later global L-series consumers."
+    ]
   }
 }
