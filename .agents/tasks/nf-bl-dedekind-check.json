@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-bl-dedekind-check",
+  "title": "Bound composite Dedekind certificate replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace generic rational multiplication-closure replay for deterministic equation-order composite Dedekind certificates with an independent exact theorem replay while preserving fail-closed corruption rejection",
+  "base_commit": "52f2344bd4ce08e2f2fea35523754ca902009e99",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "test/number-field-buchmann-lenstra-fallback.cjs",
+    "bench/results/number-field-maximal-order-bl-checker-profile-2026-08-17.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "existing exact Buchmann-Lenstra checker",
+      "public corpus expected basis and discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.027,
+      "started_at": "2026-08-18T00:03:37.546Z",
+      "commit": "52f2344bd4ce08e2f2fea35523754ca902009e99",
+      "workspace_fingerprint": "04e771c991aaab2c7f1ec1e97115beadd48604b50faf8a026e4134a95b30d8e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.558,
+      "started_at": "2026-08-18T00:04:27.035Z",
+      "commit": "52f2344bd4ce08e2f2fea35523754ca902009e99",
+      "workspace_fingerprint": "04e771c991aaab2c7f1ec1e97115beadd48604b50faf8a026e4134a95b30d8e1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replay completed equation-order composite Dedekind certificates from their exact generator and canonical HNF instead of a generic rational multiplication table. Vector419's isolated checker falls from 23.375 seconds to 0.347 seconds; vectors 419, 007, and 104 now complete at the public boundary with frozen basis digests and discriminants.",
+    "risks": [
+      "Vector420 still exceeds the 30-second public bound after its Dedekind checker falls below 0.35 seconds, so later native or global-certificate work remains a separate bottleneck.",
+      "The lane base predates integration commit e88a2069, which raises an already-exceeded arithmetic package budget; this lane does not edit the package graph."
+    ],
+    "next_steps": [
+      "Integrate onto current main-1 and rerun the retained 13-case timeout tail.",
+      "Profile only the downstream stage for cases that remain bounded timeouts."
+    ]
+  }
+}

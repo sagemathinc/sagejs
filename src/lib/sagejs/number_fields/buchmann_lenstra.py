@@ -673,6 +673,76 @@ def buchmann_lenstra_overorder(
     )
 
 
+def _check_composite_dedekind_overorder_certificate(
+    coefficients: list[int],
+    result: BuchmannLenstraResult,
+    equation_discriminant: int,
+) -> bool:
+    """Replay a completed equation-order composite Dedekind certificate.
+
+    The theorem proves closure for the canonical HNF of the independently
+    replayed generator lattice. Other evidence shapes use the generic checker.
+    """
+    if result.state != "complete" or result.basis is None:
+        return False
+    if result.component.state not in (
+        "composite",
+        "unresolved-coprime-component",
+    ):
+        return False
+    evidence = result.evidence
+    if (
+        evidence.get("stage") != "composite-dedekind"
+        or evidence.get("source") != "Hecke dedekind_test_composite"
+        or evidence.get("certificate") != "component-coprime-to-order-discriminant"
+        or evidence.get("locally_maximal") is not True
+        or evidence.get("index_identity") is not True
+    ):
+        return False
+
+    modulus = result.component.value
+    replay = _composite_dedekind_data(coefficients, modulus)
+    if replay.get("status") != "enlarge":
+        return False
+    for key in (
+        "repeated_gcd",
+        "squarefree_quotient",
+        "correction",
+        "obstruction",
+        "generator",
+    ):
+        evidence_key = "overorder_generator" if key == "generator" else key
+        if evidence.get(evidence_key) != replay.get(key):
+            return False
+
+    degree = len(coefficients) - 1
+    generators: list[list[int]] = []
+    for index in range(degree):
+        row = [0 for _column in range(degree)]
+        row[index] = modulus
+        generators.append(row)
+    generators.extend(_multiplication_rows(replay["generator"], coefficients))
+    expected_basis = OrderBasis(_row_hnf(generators), modulus, canonical=True)
+    if result.basis.canonical_key() != expected_basis.canonical_key():
+        return False
+
+    determinant = abs(expected_basis.determinant_numerator)
+    denominator_power = expected_basis.denominator**degree
+    if determinant == 0 or denominator_power % determinant != 0:
+        return False
+    expected_index = denominator_power // determinant
+    if expected_index != result.index:
+        return False
+    index_square = expected_index * expected_index
+    if equation_discriminant % index_square != 0:
+        return False
+    expected_discriminant = equation_discriminant // index_square
+    if result.discriminant != expected_discriminant:
+        return False
+    remaining = _gcd(abs(expected_discriminant), modulus)
+    return remaining == 1 and evidence.get("remaining_component_gcd") == remaining
+
+
 def check_buchmann_lenstra_result(
     polynomial_coefficients: list[int], result: BuchmannLenstraResult
 ) -> bool:
@@ -719,6 +789,12 @@ def check_buchmann_lenstra_result(
     equation_disc = polynomial_discriminant(coefficients)
     if equation_disc != result.discriminant * result.index * result.index:
         return False
+    if result.evidence.get("certificate") == "component-coprime-to-order-discriminant":
+        return _check_composite_dedekind_overorder_certificate(
+            coefficients,
+            result,
+            equation_disc,
+        )
     if not _basis_defines_order(coefficients, basis):
         return False
     remaining = _gcd(abs(result.discriminant), result.component.value)
