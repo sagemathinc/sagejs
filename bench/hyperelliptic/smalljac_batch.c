@@ -27,13 +27,16 @@ int main(int argc, char **argv)
 {
     uint64_t stop = UINT64_C(100000);
     unsigned long repeat = 3;
+    const char *curve = "x^5+x+1";
     if (argc > 1)
         stop = (uint64_t) strtoull(argv[1], NULL, 10);
     if (argc > 2)
         repeat = strtoul(argv[2], NULL, 10);
+    if (argc > 3)
+        curve = argv[3];
     if (stop < 3 || stop > SAGEJS_SMALLJAC_LPOLY_MAX_PRIME || repeat < 1)
     {
-        fputs("usage: smalljac_batch [stop>=3] [repeat>=1]\n", stderr);
+        fputs("usage: smalljac_batch [stop>=3] [repeat>=1] [curve]\n", stderr);
         return 2;
     }
 
@@ -42,7 +45,7 @@ int main(int argc, char **argv)
         sagejs_smalljac_lpoly_batch batch;
         clock_t started = clock();
         int32_t status = sagejs_smalljac_lpoly_batch_compute(
-            "x^5+x+1", UINT64_C(3), stop, 0, &batch);
+            curve, UINT64_C(3), stop, 0, &batch);
         clock_t finished = clock();
         if (status != SAGEJS_SMALLJAC_STATUS_OK)
         {
@@ -74,4 +77,3 @@ int main(int argc, char **argv)
     }
     return 0;
 }
-

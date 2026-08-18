@@ -75,6 +75,24 @@ the complete packed stream, and an independent public-result checksum. Use a
 larger `--limits` value only when the several-minute native `10^6` workload is
 desired on the current host.
 
+At production-sized bounds, use `--packed-only` so the benchmark measures the
+single native traversal without also retaining tens of thousands of Python
+polynomials. `--curves quintic,sextic` compares the two supported model
+degrees, while `--public-mode streamed` measures the bounded public iterator
+without materializing the complete result:
+
+```bash
+node bench/hyperelliptic/benchmark-smalljac.cjs \
+  --limits 1000000,2000000 --repeat 1 --packed-only
+node bench/hyperelliptic/benchmark-smalljac.cjs \
+  --limits 100000 --repeat 1 --curves quintic,sextic \
+  --public-mode streamed
+```
+
+Every new-format sample records both SHA-256 and the same numeric FNV-1a
+stream digest as the standalone C harness, making exact
+boundary/standalone comparisons independent of timing.
+
 For the no-Node baseline, compile `smalljac_batch.c` against the same pinned
 archives and run it with a stop bound and repetition count:
 
@@ -87,7 +105,7 @@ cc -O2 -std=c11 -DSAGEJS_HAVE_SMALLJAC=1 \
   packages/flint/.native/prefix/lib/libff_poly.a \
   packages/flint/.native/prefix/lib/libgmp.a -pthread -lm \
   -o /tmp/sagejs-smalljac-batch
-/tmp/sagejs-smalljac-batch 100000 3
+/tmp/sagejs-smalljac-batch 100000 3 'x^5+x+1'
 ```
 
 The checked-in Linux x64 receipt is
