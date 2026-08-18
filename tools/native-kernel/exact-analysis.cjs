@@ -29,6 +29,8 @@ function operationInputs(operation) {
       return [operation.source];
     case "integer.pow_uint":
       return [operation.base];
+    case "integer.mod_uint64":
+      return [operation.left, operation.right];
     case "integer.binary":
     case "uint64.binary":
     case "integer.divmod":
@@ -56,6 +58,14 @@ function operationInputs(operation) {
     case "integer.buffer.get":
       return [operation.buffer, operation.index];
     case "integer.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
+    case "uint64.buffer.copy":
+      return [operation.source];
+    case "uint64.buffer.length":
+      return [operation.buffer];
+    case "uint64.buffer.get":
+      return [operation.buffer, operation.index];
+    case "uint64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
     case "native.call":
     case "ffi.call":
@@ -274,6 +284,7 @@ function executionProfile(fn) {
         operation.kind === "integer.binary" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
+        operation.kind === "integer.mod_uint64" ||
         operation.kind === "integer.round_sqrt"
       ) {
         profile.arithmeticOperations += 1;
@@ -339,7 +350,10 @@ function localEffects(fn) {
       localWrites += operationTargets(operation).length;
       if (
         operation.kind === "integer.divmod" ||
+        operation.kind === "integer.mod_uint64" ||
         (operation.kind === "integer.binary" &&
+          ["floordiv", "mod"].includes(operation.operation)) ||
+        (operation.kind === "uint64.binary" &&
           ["floordiv", "mod"].includes(operation.operation))
       ) {
         mayRaise.add("ZeroDivisionError");
@@ -360,7 +374,9 @@ function localEffects(fn) {
         operation.kind === "int64.buffer.set" ||
         operation.kind === "int64.record.view" ||
         operation.kind === "integer.buffer.get" ||
-        operation.kind === "integer.buffer.set"
+        operation.kind === "integer.buffer.set" ||
+        operation.kind === "uint64.buffer.get" ||
+        operation.kind === "uint64.buffer.set"
       ) {
         mayRaise.add("IndexError");
       }
@@ -429,12 +445,14 @@ function bufferWrites(fn, dependencyEffects) {
     let changed = false;
     for (const statement of statements) {
       if (statement.kind === "int64.buffer.copy" ||
-          statement.kind === "integer.buffer.copy") {
+          statement.kind === "integer.buffer.copy" ||
+          statement.kind === "uint64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
       } else if (statement.kind === "int64.record.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
-          statement.kind === "integer.buffer.set") {
+          statement.kind === "integer.buffer.set" ||
+          statement.kind === "uint64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
       } else if (statement.kind === "native.call") {
         const effect = dependencyEffects.get(statement.function);
