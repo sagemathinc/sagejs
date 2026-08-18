@@ -12,9 +12,17 @@ incomplete/unsupported result instead of guessing a basis.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
-from sagejs.native import IntegerBuffer, is_compiled, native, uint64
+from sagejs.native import (
+    IntegerBuffer,
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+    native,
+    uint64,
+)
 
 from .local_polygons import _row_hermite
 from .maximal_order_contracts import (
@@ -47,6 +55,198 @@ from .om_types import (
 FiniteValuation: TypeAlias = RationalValue | None
 
 
+@native
+def packed_incremental_row_hnf_in_place(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    workspace: IntegerBuffer,
+    row_count: uint64,
+    column_count: uint64,
+    batch_size: uint64,
+) -> bool:
+    """Canonicalize scalar-identity lattice rows in bounded batches.
+
+    The input uses the upper-HNF coordinate order expected by this kernel.
+    The first `column_count` output rows contain the canonical upper row-HNF;
+    callers reverse coordinates to obtain OM's increasing-degree lower HNF.
+    """
+    source_length = row_count * column_count
+    output_rows = column_count + batch_size
+    valid = (
+        column_count > 0
+        and row_count >= column_count
+        and batch_size > 0
+        and len(source) == source_length
+        and len(output) == output_rows * column_count
+        and len(workspace) == 2 * column_count
+    )
+    if not valid:
+        return False
+    for initial_index in range(column_count * column_count):
+        output[initial_index] = source[initial_index]
+    source_row = column_count
+    while source_row < row_count:
+        added = 0
+        while added < batch_size and source_row + added < row_count:
+            for column in range(column_count):
+                output[(column_count + added) * column_count + column] = source[
+                    (source_row + added) * column_count + column
+                ]
+            added += 1
+        active_rows = column_count + added
+        pivot_row = 0
+        for column in range(column_count):
+            candidate = pivot_row
+            while (
+                candidate < active_rows
+                and output[candidate * column_count + column] == 0
+            ):
+                candidate += 1
+            if candidate < active_rows:
+                if candidate != pivot_row:
+                    for index in range(column_count):
+                        upper_index = pivot_row * column_count + index
+                        lower_index = candidate * column_count + index
+                        temporary = output[upper_index]
+                        output[upper_index] = output[lower_index]
+                        output[lower_index] = temporary
+                for row in range(pivot_row + 1, active_rows):
+                    lower_column = row * column_count + column
+                    if output[lower_column] != 0:
+                        upper_column = pivot_row * column_count + column
+                        old_remainder = output[upper_column]
+                        remainder = output[lower_column]
+                        old_left = 1
+                        left = 0
+                        old_right = 0
+                        right = 1
+                        while remainder != 0:
+                            quotient = old_remainder // remainder
+                            next_remainder = old_remainder - quotient * remainder
+                            next_left = old_left - quotient * left
+                            next_right = old_right - quotient * right
+                            old_remainder = remainder
+                            remainder = next_remainder
+                            old_left = left
+                            left = next_left
+                            old_right = right
+                            right = next_right
+                        if old_remainder < 0:
+                            common = -old_remainder
+                            left_coefficient = -old_left
+                            right_coefficient = -old_right
+                        else:
+                            common = old_remainder
+                            left_coefficient = old_left
+                            right_coefficient = old_right
+                        if common == 0:
+                            return False
+                        upper_scale = output[upper_column] // common
+                        lower_scale = output[lower_column] // common
+                        for index in range(column_count):
+                            workspace[index] = output[pivot_row * column_count + index]
+                            workspace[column_count + index] = output[
+                                row * column_count + index
+                            ]
+                        for index in range(column_count):
+                            output[pivot_row * column_count + index] = (
+                                left_coefficient * workspace[index]
+                                + right_coefficient * workspace[column_count + index]
+                            )
+                            output[row * column_count + index] = (
+                                -lower_scale * workspace[index]
+                                + upper_scale * workspace[column_count + index]
+                            )
+                pivot_index = pivot_row * column_count + column
+                if output[pivot_index] < 0:
+                    for index in range(column_count):
+                        location = pivot_row * column_count + index
+                        output[location] = -output[location]
+                pivot = output[pivot_index]
+                for row in range(pivot_row):
+                    row_column = row * column_count + column
+                    quotient = output[row_column] // pivot
+                    for index in range(column_count):
+                        location = row * column_count + index
+                        output[location] -= (
+                            quotient * output[pivot_row * column_count + index]
+                        )
+                pivot_row += 1
+        if pivot_row < column_count:
+            return False
+        source_row = source_row + batch_size
+    return True
+
+
+def _packed_incremental_row_hnf(
+    rows: list[list[int]],
+    degree: int,
+) -> list[list[int]]:
+    """Call the fused bounded-batch row-HNF kernel once."""
+    if any(len(row) != degree for row in rows):
+        raise ValueError("lattice rows must have a common length")
+    batch_size = 2
+    flat = [value for row in rows for value in reversed(row)]
+    maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
+    word_capacity = max(16, (maximum_bits + 63) // 64 + 8 * degree)
+    source = kernel_integer_buffer(packed_incremental_row_hnf_in_place, flat)
+    output = kernel_integer_zeros(
+        packed_incremental_row_hnf_in_place,
+        (degree + batch_size) * degree,
+        word_capacity,
+    )
+    workspace = kernel_integer_zeros(
+        packed_incremental_row_hnf_in_place, 2 * degree, word_capacity
+    )
+    full_rank = packed_incremental_row_hnf_in_place(
+        output,
+        source,
+        workspace,
+        len(rows),
+        degree,
+        batch_size,
+    )
+    if not full_rank:
+        raise ArithmeticError("lattice generators do not have full rank")
+    values = integer_buffer_values(output)
+    upper = [
+        [int(values[row * degree + column]) for column in range(degree)]
+        for row in range(degree)
+    ]
+    return [list(reversed(row)) for row in reversed(upper)]
+
+
+def _packed_row_hnf_once(
+    rows: list[list[int]],
+    degree: int,
+    kernel: Any,
+) -> list[list[int]]:
+    """Run one bounded packed HNF after validating a common row shape."""
+    if any(len(row) != degree for row in rows):
+        raise ValueError("lattice rows must have a common length")
+    # The shared packed kernel computes the conventional upper row-HNF.  OM
+    # triangular bases use increasing polynomial degree, hence the equivalent
+    # lower row-HNF obtained by reversing coordinates before elimination and
+    # reversing both axes afterward.
+    flat = [value for row in rows for value in reversed(row)]
+    maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
+    # Extended-gcd elimination can add a constant number of limbs at each
+    # pivot.  Capacity is per entry, so it must grow linearly with `degree`.
+    word_capacity = max(16, (maximum_bits + 63) // 64 + 8 * degree)
+    source = kernel_integer_buffer(kernel, flat)
+    output = kernel_integer_zeros(kernel, len(flat), word_capacity)
+    workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+    full_rank = kernel(output, source, workspace, len(rows), degree)
+    if not full_rank:
+        raise ArithmeticError("lattice generators do not have full rank")
+    values = integer_buffer_values(output)
+    upper = [
+        [int(values[row * degree + column]) for column in range(degree)]
+        for row in range(degree)
+    ]
+    return [list(reversed(row)) for row in reversed(upper)]
+
+
 def _canonical_row_hnf(
     rows: list[list[int]],
     degree: int,
@@ -56,6 +256,21 @@ def _canonical_row_hnf(
     """Use the packed production HNF with the readable row-HNF as oracle."""
     from .buchmann_lenstra import _packed_row_hnf, packed_row_hnf_in_place
 
+    if incremental_fallback and is_compiled(packed_incremental_row_hnf_in_place):
+        return _packed_incremental_row_hnf(rows, degree)
+    if incremental_fallback and is_compiled(packed_row_hnf_in_place):
+        # Mixed higher-quotient matrices contain a full-rank scalar identity
+        # followed by quotient rows.  Canonicalizing two rows at a time avoids
+        # exponential intermediate coefficient swell in the whole matrix.
+        hermite = [list(row) for row in rows[:degree]]
+        batch_size = 2
+        for offset in range(degree, len(rows), batch_size):
+            hermite = _packed_row_hnf_once(
+                hermite + rows[offset : offset + batch_size],
+                degree,
+                packed_row_hnf_in_place,
+            )
+        return hermite
     maximum_bits = max(
         (abs(value).bit_length() for row in rows for value in row),
         default=0,

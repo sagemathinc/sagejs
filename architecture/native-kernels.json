@@ -432,14 +432,30 @@
       "id": "number-field-om-proof-production",
       "source": "src/lib/sagejs/number_fields/om_maxmin.py",
       "functions": [
+        "packed_incremental_row_hnf_in_place",
         "packed_maxmin_valuations_are_maximal",
         "packed_triangular_basis_is_closed"
       ],
-      "semantic_domain": "packed exact MaxMin quotient-valuation comparisons and independent triangular local-basis multiplication closure for complete certified OM types",
+      "semantic_domain": "bounded-batch exact row-HNF normalization, packed exact MaxMin quotient-valuation comparisons, and independent triangular local-basis multiplication closure for complete certified OM types",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "pari", "randomized-exact-controls"],
       "benchmark": "bench:number-field-om-maxmin",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-round4-state-production",
+      "source": "src/lib/sagejs/number_fields/round4_state_kernel.py",
+      "functions": [
+        "packed_round4_exact_characteristic",
+        "packed_round4_padic_characteristic",
+        "packed_round4_power_basis_covolume"
+      ],
+      "semantic_domain": "packed exact and p-adic characteristic-polynomial state events plus exact power-basis covolume proofs for certified modified Round-4 residue refinement",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-round4-native-state",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
@@ -448,9 +464,10 @@
       "functions": [
         "packed_row_hnf_in_place",
         "packed_composite_dedekind_basis_in_place",
-        "packed_order_table_in_place"
+        "packed_order_table_in_place",
+        "packed_order_contains_vector_in_place"
       ],
-      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, and order multiplication tables for certified Buchmann--Lenstra construction and compact replay",
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],

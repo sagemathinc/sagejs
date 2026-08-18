@@ -1,0 +1,154 @@
+{
+  "schema": "sagejs.benchmark/number-field-maximal-order-parallel-public-final-v1",
+  "generated_at": "2026-08-18T11:08:00Z",
+  "measurement_source": {
+    "commit": "fd7eec7f919084814e52256467c2b0149939fdd5",
+    "rebased_checkpoint": "b7c8d48b",
+    "base_integration": "55465aca",
+    "scoped_source_identity": {
+      "src/lib/sagejs/number_fields/local_parallel.py": "de3394079885b329da5a3e8e949e705caf7dd2e84a7230fb8fbc6dc2e3c70bf8",
+      "src/lib/sagejs/number_fields/local_parallel_worker.py": "51c5085bd2e12e9e81bc0189478e018e08e9ff70acb9760f93ac3d8bff2a6e28",
+      "bench/number-field-maximal-order-parallel-public.cjs": "613dc36b96c9517ca7846e6540910de60ea7574f82d83cbf902aee5019083114",
+      "test/number-field-local-parallel.cjs": "5b281169d3926c630cd4f51a74d1df4d3b3b5edd63f93ce9f62088a389b1be2a"
+    },
+    "identity_note": "The lane was rebased after measurement. Every scoped source digest is byte-identical between the measurement commit and the rebased checkpoint. The intervening integration changes register unrelated final-evidence and native Round-2 artifacts; the measured public run deliberately makes the native resource unavailable."
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "kernel": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpu_count": 16,
+    "physical_memory_bytes": 67418693632,
+    "node": "v26.7.0",
+    "pnpm": "11.9.0"
+  },
+  "case": {
+    "id": "pari-round4-vector-001",
+    "degree": 16,
+    "boundary": "fresh public NumberField.maximal_order(trace=True), after deliberate native resource unavailability",
+    "sample_policy": "three alternating fresh Node/Sage.js processes per mode; median",
+    "rss_scope": "whole fresh Node process sampled every 10ms",
+    "cached_calls": false,
+    "basis_sha256": "abc9ec14264391187b356481b915e6b3157c3bcbc455756a5ee67dffe6095669",
+    "discriminant": "691051969765063543658256000000000000",
+    "index": "43227060071940426696124826810860950344387053824334450388343805968384"
+  },
+  "sequential": {
+    "samples": [
+      {
+        "total_micros": 67032529,
+        "host_wall_micros": 67547370.188,
+        "peak_rss_bytes": 683802624,
+        "baseline_rss_bytes": 219340800,
+        "mode": "sequential",
+        "workers": 1,
+        "gate_selected": false,
+        "gate_reason": "precompiled-worker-module-unavailable",
+        "runtime_worker_capability": true
+      },
+      {
+        "total_micros": 67165177,
+        "host_wall_micros": 67675668.048,
+        "peak_rss_bytes": 676249600,
+        "baseline_rss_bytes": 219234304,
+        "mode": "sequential",
+        "workers": 1,
+        "gate_selected": false,
+        "gate_reason": "precompiled-worker-module-unavailable",
+        "runtime_worker_capability": true
+      },
+      {
+        "total_micros": 65878786,
+        "host_wall_micros": 66405783.943,
+        "peak_rss_bytes": 689319936,
+        "baseline_rss_bytes": 218583040,
+        "mode": "sequential",
+        "workers": 1,
+        "gate_selected": false,
+        "gate_reason": "precompiled-worker-module-unavailable",
+        "runtime_worker_capability": true
+      }
+    ],
+    "median_total_micros": 67032529,
+    "median_peak_rss_bytes": 683802624,
+    "control_note": "The precompiled graph was present, but the sequential control explicitly supplied worker_capability=False; the fail-closed gate reason therefore reports module unavailability for that requested capability."
+  },
+  "parallel": {
+    "samples": [
+      {
+        "total_micros": 63788909,
+        "host_wall_micros": 64383896.383,
+        "peak_rss_bytes": 1299509248,
+        "baseline_rss_bytes": 219348992,
+        "mode": "parallel",
+        "workers": 4,
+        "gate_selected": true,
+        "gate_reason": "measured-native-fallback-crossover",
+        "runtime_worker_capability": true
+      },
+      {
+        "total_micros": 63530781,
+        "host_wall_micros": 64133856.181,
+        "peak_rss_bytes": 1228836864,
+        "baseline_rss_bytes": 217853952,
+        "mode": "parallel",
+        "workers": 4,
+        "gate_selected": true,
+        "gate_reason": "measured-native-fallback-crossover",
+        "runtime_worker_capability": true
+      },
+      {
+        "total_micros": 63066972,
+        "host_wall_micros": 63587681.995,
+        "peak_rss_bytes": 1266020352,
+        "baseline_rss_bytes": 217788416,
+        "mode": "parallel",
+        "workers": 4,
+        "gate_selected": true,
+        "gate_reason": "measured-native-fallback-crossover",
+        "runtime_worker_capability": true
+      }
+    ],
+    "median_total_micros": 63530781,
+    "median_peak_rss_bytes": 1266020352,
+    "useful_job_count": 7,
+    "predicted_total_micros": 1392332000,
+    "predicted_critical_path_micros": 668260500,
+    "predicted_peak_rss_bytes": 1610633917,
+    "memory_budget_bytes": 4294967296,
+    "after_native_fallback": true
+  },
+  "result": {
+    "exact_equivalent": true,
+    "fresh_sample_count_per_mode": 3,
+    "median_speedup": 1.0551189194415853,
+    "minimum_required_speedup": 1.05,
+    "all_parallel_samples_beat_all_sequential_samples": true,
+    "peak_memory_within_policy": true,
+    "native_state": "unavailable",
+    "native_message": "benchmark-forced native unavailability"
+  },
+  "scheduler_profile": {
+    "sequential_branch_micros_by_prime": [
+      [[2, 13603107], [3, 19127338], [5, 77451], [37, 82412], [71, 244333], [139, 1347115], [641, 7201639]],
+      [[2, 13665507], [3, 19103639], [5, 77991], [37, 82025], [71, 253096], [139, 1447253], [641, 6999678]],
+      [[2, 13329557], [3, 18697283], [5, 77862], [37, 81238], [71, 242010], [139, 1340075], [641, 7130022]]
+    ],
+    "finding": "The branches are strongly skewed. Canonical-key waves stranded workers behind the 2- and 3-adic branches; deterministic longest-predicted-job-first queueing removes that wave barrier."
+  },
+  "capability_and_cancellation": {
+    "authorized_multiprocessing_modules": 39,
+    "worker_module_available_in_every_sample": true,
+    "pointer_free_graph_test": "passed",
+    "fatal_worker_stable_error_and_cancellation_test": "passed",
+    "sleeping_process_sibling_cancelled_under_millis": 3000,
+    "randomized_completion_exact_equivalence": "passed",
+    "native_first_boundary_test": "passed",
+    "commands": [
+      "node scripts/run-precompiled-worker-tests.cjs --prepare",
+      "node --test test/number-field-local-parallel.cjs",
+      "node bench/number-field-maximal-order-parallel-public.cjs"
+    ]
+  }
+}

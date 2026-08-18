@@ -102,6 +102,53 @@ print("schedule-policy-ok")
   assert.equal(output, "schedule-policy-ok");
 });
 
+test("parallel execution queues longest jobs first without wave barriers", () => {
+  const output = runCPython(String.raw`
+${fixtureSource}
+submitted = []
+first_get_submission_count = []
+class TrackingPool:
+    class Handle:
+        def __init__(self, value):
+            self.value = value
+        def ready(self):
+            return True
+        def wait(self, timeout=None):
+            return None
+        def get(self):
+            if not first_get_submission_count:
+                first_get_submission_count.append(len(submitted))
+            return self.value
+    def __init__(self, workers):
+        self.workers = workers
+    def apply_async(self, worker, arguments):
+        submitted.append(arguments[0])
+        return TrackingPool.Handle(worker(*arguments))
+    def close(self):
+        pass
+    def join(self):
+        pass
+    def terminate(self):
+        pass
+run = run_local_jobs(
+    jobs,
+    answer,
+    max_workers=3,
+    cpu_count=8,
+    pool_factory=TrackingPool,
+)
+assert [job[4] for job in submitted] == [9500000, 9300000, 9100000, 8900000]
+assert first_get_submission_count == [len(jobs)]
+assert run[2] == assemble_local_run(
+    jobs,
+    results,
+    make_schedule(jobs, max_workers=3, cpu_count=8),
+)[2]
+print("lpt-no-wave-barrier-ok")
+`);
+  assert.equal(output, "lpt-no-wave-barrier-ok");
+});
+
 test("randomized completion order has exact sequential merge equivalence", () => {
   const output = runCPython(String.raw`
 ${fixtureSource}

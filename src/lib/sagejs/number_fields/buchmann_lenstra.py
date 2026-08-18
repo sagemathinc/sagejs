@@ -31,6 +31,7 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
+    packed_order_contains_vector_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
 )
@@ -601,6 +602,117 @@ def _dedekind_overorder_basis(
     return basis, index
 
 
+def _dedekind_generator_lattice_is_order_reference(
+    coefficients: list[int],
+    modulus: int,
+    generator: list[int],
+    basis: OrderBasis,
+) -> bool:
+    """Dynamically check one Dedekind generator lattice.
+
+    The checker separately proves that the candidate and
+    `L = Z[a] + (generator(a)/modulus) Z[a]` have the same index.  Here the
+    integral scaled inverse first proves that the candidate contains `Z[a]`.
+    Exact membership of every shifted generator proves `L` is contained in
+    the candidate, so equal indices identify the two lattices.  Since `L` is
+    a `Z[a]`-module, it is a ring if and only if the square of its one extra
+    module generator belongs to it.  This compact certificate avoids both a
+    second HNF and a degree-cubed multiplication-table output.
+    """
+    degree = basis.degree
+    if modulus <= 1 or len(coefficients) != degree + 1:
+        return False
+    transposed = [
+        [basis.numerator[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    transposed_inverse = _scaled_integral_inverse(transposed, basis.denominator)
+    if transposed_inverse is None:
+        return False
+    scaled_inverse = [
+        [transposed_inverse[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    multiplication = _multiplication_rows(generator, coefficients)
+    for vector in multiplication:
+        for column in range(degree):
+            coordinate_numerator = 0
+            for source in range(degree):
+                coordinate_numerator += vector[source] * scaled_inverse[source][column]
+            if coordinate_numerator % modulus != 0:
+                return False
+    product = _reduce_power_polynomial(_multiply(generator, generator), coefficients)
+    denominator_squared = modulus * modulus
+    for column in range(degree):
+        coordinate_numerator = 0
+        for source in range(degree):
+            coordinate_numerator += product[source] * scaled_inverse[source][column]
+        if coordinate_numerator % denominator_squared != 0:
+            return False
+    return True
+
+
+def _dedekind_generator_lattice_is_order(
+    coefficients: list[int],
+    modulus: int,
+    generator: list[int],
+    basis: OrderBasis,
+) -> bool:
+    """Replay one Dedekind generator lattice through independent kernels.
+
+    The multiplication-table kernel proves that the candidate is a ring
+    containing `Z[a]` without materializing any structure constants.  The
+    separate vector-membership kernel proves that `generator(a)/modulus` is
+    in that ring.  Thus the candidate contains the generator lattice; the
+    independently checked monic-quotient index identifies them exactly.
+
+    Fixed-width overflow is only a capability failure and falls back to the
+    readable shifted-generator and generator-square proof above.
+    """
+    degree = basis.degree
+    if modulus <= 1 or len(coefficients) != degree + 1:
+        return False
+    padded_generator = list(generator)
+    while len(padded_generator) < degree:
+        padded_generator.append(0)
+    if len(padded_generator) != degree:
+        return False
+    try:
+        if not _packed_order_is_closed(coefficients, basis):
+            return False
+        workspace_words, _output_words = _packed_order_table_word_capacities(
+            coefficients, basis
+        )
+        workspace_bytes = degree * degree * workspace_words * 8
+        if workspace_bytes > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
+            return _dedekind_generator_lattice_is_order_reference(
+                coefficients, modulus, generator, basis
+            )
+        return bool(
+            packed_order_contains_vector_in_place(
+                kernel_integer_zeros(
+                    packed_order_contains_vector_in_place,
+                    degree * degree,
+                    workspace_words,
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vector_in_place,
+                    [value for row in basis.numerator for value in row],
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vector_in_place, padded_generator
+                ),
+                basis.denominator,
+                modulus,
+                degree,
+            )
+        )
+    except OverflowError:
+        return _dedekind_generator_lattice_is_order_reference(
+            coefficients, modulus, generator, basis
+        )
+
+
 class BuchmannLenstraResult:
     """One fail-closed composite local step.
 
@@ -888,22 +1000,30 @@ def _check_composite_dedekind_overorder_certificate(
         return False
 
     degree = len(coefficients) - 1
-    generators: list[list[int]] = []
-    for index in range(degree):
-        row = [0 for _column in range(degree)]
-        row[index] = modulus
-        generators.append(row)
-    generators.extend(_multiplication_rows(generator, coefficients))
-    expected_basis = OrderBasis(_row_hnf(generators), modulus, canonical=True)
-    if result.basis.canonical_key() != expected_basis.canonical_key():
+    if (
+        obstruction[-1] != 1
+        or generator[-1] != 1
+        or len(obstruction) + len(generator) != degree + 2
+    ):
         return False
-    try:
-        _order_multiplication_table(coefficients, result.basis)
-    except ArithmeticError:
+    # Modulo `q`, the checked identity `f = obstruction * generator` gives
+    #
+    #   Z[a] / (q, generator(a)) = (Z/qZ)[x] / (generator),
+    #
+    # a free module of rank `deg(generator)` because `generator` is monic.
+    # Hence `L/Z[a]` has size `q**deg(obstruction)`.  This exact index plus
+    # the containment checks below identifies the candidate with `L`; no HNF
+    # construction result is trusted or replayed.
+    expected_index = modulus ** (len(obstruction) - 1)
+    if result.index != expected_index:
+        return False
+    if not _dedekind_generator_lattice_is_order(
+        coefficients, modulus, generator, result.basis
+    ):
         return False
 
-    determinant = abs(expected_basis.determinant_numerator)
-    denominator_power = expected_basis.denominator**degree
+    determinant = abs(result.basis.determinant_numerator)
+    denominator_power = result.basis.denominator**degree
     if determinant == 0 or denominator_power % determinant != 0:
         return False
     expected_index = denominator_power // determinant
@@ -1098,8 +1218,8 @@ def _rational_product(
     return product[:degree]
 
 
-def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
-    """Check containment and closure with normalized integer matrices.
+def _basis_defines_order_reference(coefficients: list[int], basis: OrderBasis) -> bool:
+    """Check containment and closure with readable normalized integers.
 
     Canonical BL bases use upper row HNF, so transposed exact substitution
     computes the scaled inverse without a general rational matrix.  The
@@ -1149,6 +1269,25 @@ def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
                 if coordinate_numerator % denominator_squared != 0:
                     return False
     return True
+
+
+def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
+    """Check an order through packed streaming with a readable fallback."""
+    degree = basis.degree
+    upper = all(
+        basis.numerator[row][column] == 0
+        for row in range(degree)
+        for column in range(row)
+    )
+    if not upper:
+        return _basis_defines_order_reference(coefficients, basis)
+    try:
+        return _packed_order_is_closed(coefficients, basis)
+    except OverflowError:
+        # A fixed-width packed buffer is only a capability.  The independently
+        # maintained normalized-integer checker remains exact for exceptional
+        # coefficient growth or a missing compiled artifact.
+        return _basis_defines_order_reference(coefficients, basis)
 
 
 def _basis_contains_basis(containing: OrderBasis, contained: OrderBasis) -> bool:
@@ -1218,6 +1357,120 @@ def _order_multiplication_table_reference(
     return table
 
 
+_PACKED_ORDER_TABLE_CHUNK_BYTES = 32 * 1024 * 1024
+_PACKED_ORDER_TABLE_WORKSPACE_BYTES = 256 * 1024 * 1024
+
+
+def _packed_order_table_word_capacities(
+    coefficients: list[int], basis: OrderBasis
+) -> tuple[int, int]:
+    """Prove fixed word bounds for packed table workspace and output.
+
+    Write the upper-triangular numerator as `N` and the positive denominator
+    as `d`.  The packed kernel first constructs the integral scaled inverse
+    `X = d*N^-1` by backward substitution.  For every entry, the recurrence
+
+    `B[i,j] = ceil((d*[i=j] + sum(abs(N[i,k])*B[k,j]))) / abs(N[i,i])`
+
+    bounds `abs(X[i,j])` by induction.  Column-wise maxima of `abs(N)` then
+    bound every raw basis-product convolution.  Applying the defining
+    polynomial reduction recurrence to those nonnegative bounds proves a
+    bound for every reduced power-basis coefficient.  Finally,
+
+    `abs(c[j]) <= sum(P[i]*B[i,j]) / d^2`
+
+    bounds every integral structure constant.  One extra signed machine word
+    is retained at each boundary.  The result depends only on the actual
+    matrix and polynomial, is cheap compared with table construction, and is
+    dramatically tighter than multiplying the input bit size by the degree.
+    """
+    degree = basis.degree
+    numerator = basis.numerator
+    denominator = basis.denominator
+    if (
+        degree < 1
+        or len(coefficients) != degree + 1
+        or coefficients[-1] != 1
+        or denominator <= 0
+    ):
+        raise ValueError("packed order-table bounds require a monic matching basis")
+    inverse_bounds = [[0 for _column in range(degree)] for _row in range(degree)]
+    for reverse_row in range(degree):
+        row = degree - reverse_row - 1
+        diagonal = abs(numerator[row][row])
+        if diagonal == 0:
+            raise ArithmeticError("singular order basis")
+        for column in range(degree):
+            value = denominator if row == column else 0
+            for source in range(row + 1, degree):
+                value += abs(numerator[row][source]) * inverse_bounds[source][column]
+            if value:
+                inverse_bounds[row][column] = (value + diagonal - 1) // diagonal
+
+    coordinate_bounds = [
+        max(abs(numerator[row][column]) for row in range(degree))
+        for column in range(degree)
+    ]
+    product_bounds = [0 for _entry in range(2 * degree - 1)]
+    for left in range(degree):
+        for right in range(degree):
+            product_bounds[left + right] += (
+                coordinate_bounds[left] * coordinate_bounds[right]
+            )
+    for reverse_offset in range(degree - 1):
+        exponent = 2 * degree - 2 - reverse_offset
+        leading = product_bounds[exponent]
+        for coefficient in range(degree):
+            product_bounds[exponent - degree + coefficient] += leading * abs(
+                coefficients[coefficient]
+            )
+
+    output_bound = 0
+    denominator_squared = denominator * denominator
+    for column in range(degree):
+        value = 0
+        for source in range(degree):
+            value += product_bounds[source] * inverse_bounds[source][column]
+        if value:
+            value = (value + denominator_squared - 1) // denominator_squared
+            if value > output_bound:
+                output_bound = value
+    inverse_bits = max(
+        (value.bit_length() for row in inverse_bounds for value in row), default=0
+    )
+    product_bits = max((value.bit_length() for value in product_bounds), default=0)
+    output_bits = output_bound.bit_length()
+    workspace_words = max(2, (max(inverse_bits, product_bits) + 63) // 64 + 1)
+    output_words = max(2, (output_bits + 63) // 64 + 1)
+    return workspace_words, output_words
+
+
+def _packed_order_is_closed(coefficients: list[int], basis: OrderBasis) -> bool:
+    """Prove containment and closure without allocating a cubic output."""
+    degree = basis.degree
+    workspace_words, output_words = _packed_order_table_word_capacities(
+        coefficients, basis
+    )
+    workspace_length = degree * degree + 2 * degree - 1
+    if workspace_length * workspace_words * 8 > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
+        return _basis_defines_order_reference(coefficients, basis)
+    flat_numerator = [value for row in basis.numerator for value in row]
+    return bool(
+        packed_order_table_in_place(
+            kernel_integer_zeros(packed_order_table_in_place, 1, output_words),
+            kernel_integer_zeros(
+                packed_order_table_in_place, workspace_length, workspace_words
+            ),
+            kernel_integer_buffer(packed_order_table_in_place, flat_numerator),
+            kernel_integer_buffer(packed_order_table_in_place, coefficients),
+            basis.denominator,
+            degree,
+            0,
+            0,
+        )
+    )
+
+
 def _order_multiplication_table(
     coefficients: list[int], basis: OrderBasis
 ) -> list[list[list[int]]]:
@@ -1233,57 +1486,73 @@ def _order_multiplication_table(
         # oracle as the tested capability fallback for every other shape.
         return _order_multiplication_table_reference(coefficients, basis)
     flat_numerator = [value for row in basis.numerator for value in row]
-    maximum_bits = max(
-        (
-            abs(value).bit_length()
-            for value in flat_numerator + coefficients + [basis.denominator]
-        ),
-        default=1,
+    workspace_words, output_words = _packed_order_table_word_capacities(
+        coefficients, basis
     )
-    # Products, power-basis reduction, and the scaled triangular inverse all
-    # remain exact inside fixed-capacity packed output.  Overflow is a
-    # capability failure, never a mathematical result, and selects the same
-    # readable rational implementation below.
-    word_capacity = max(
-        16,
-        (4 * degree * (maximum_bits + 1) + 63) // 64 + 8,
+    workspace_length = degree * degree + 2 * degree - 1
+    row_bytes = degree * degree * output_words * 8
+    if (
+        workspace_length * workspace_words * 8 > _PACKED_ORDER_TABLE_WORKSPACE_BYTES
+        or row_bytes > _PACKED_ORDER_TABLE_CHUNK_BYTES
+    ):
+        return _order_multiplication_table_reference(coefficients, basis)
+    rows_per_chunk = max(
+        1,
+        min(degree, _PACKED_ORDER_TABLE_CHUNK_BYTES // max(1, row_bytes)),
     )
-    table_buffer = kernel_integer_zeros(
-        packed_order_table_in_place,
-        degree * degree * degree,
-        word_capacity,
+    packed_numerator = kernel_integer_buffer(
+        packed_order_table_in_place, flat_numerator
     )
-    workspace = kernel_integer_zeros(
-        packed_order_table_in_place,
-        degree * degree + 2 * degree - 1,
-        word_capacity,
+    packed_coefficients = kernel_integer_buffer(
+        packed_order_table_in_place, coefficients
     )
+    table = [
+        [[0 for _coordinate in range(degree)] for _right in range(degree)]
+        for _left in range(degree)
+    ]
+    left_start = 0
     try:
-        valid = packed_order_table_in_place(
-            table_buffer,
-            workspace,
-            kernel_integer_buffer(packed_order_table_in_place, flat_numerator),
-            kernel_integer_buffer(packed_order_table_in_place, coefficients),
-            basis.denominator,
-            degree,
-        )
+        while left_start < degree:
+            left_count = min(rows_per_chunk, degree - left_start)
+            table_buffer = kernel_integer_zeros(
+                packed_order_table_in_place,
+                left_count * degree * degree,
+                output_words,
+            )
+            workspace = kernel_integer_zeros(
+                packed_order_table_in_place,
+                workspace_length,
+                workspace_words,
+            )
+            valid = packed_order_table_in_place(
+                table_buffer,
+                workspace,
+                packed_numerator,
+                packed_coefficients,
+                basis.denominator,
+                degree,
+                left_start,
+                left_count,
+            )
+            if not valid:
+                raise ArithmeticError(
+                    "the supplied basis does not contain the equation order or is not closed"
+                )
+            values = integer_buffer_values(table_buffer)
+            for local_left in range(left_count):
+                left = left_start + local_left
+                for right in range(left, degree):
+                    offset = (local_left * degree + right) * degree
+                    coordinates = [
+                        int(values[offset + coordinate]) for coordinate in range(degree)
+                    ]
+                    table[left][right] = coordinates
+                    if right != left:
+                        table[right][left] = list(coordinates)
+            left_start += left_count
     except OverflowError:
         return _order_multiplication_table_reference(coefficients, basis)
-    if not valid:
-        raise ArithmeticError(
-            "the supplied basis does not contain the equation order or is not closed"
-        )
-    values = integer_buffer_values(table_buffer)
-    return [
-        [
-            [
-                int(values[(left * degree + right) * degree + coordinate])
-                for coordinate in range(degree)
-            ]
-            for right in range(degree)
-        ]
-        for left in range(degree)
-    ]
+    return table
 
 
 def _order_index(basis: OrderBasis) -> int:

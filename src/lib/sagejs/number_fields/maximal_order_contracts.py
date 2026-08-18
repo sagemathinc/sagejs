@@ -88,6 +88,22 @@ def _determinant(rows: list[list[int]]) -> int:
     degree = len(rows)
     if degree == 0:
         return 1
+    upper_triangular = True
+    lower_triangular = True
+    for row in range(degree):
+        for column in range(row):
+            if rows[row][column] != 0:
+                upper_triangular = False
+                break
+        for column in range(row + 1, degree):
+            if rows[row][column] != 0:
+                lower_triangular = False
+                break
+    if upper_triangular or lower_triangular:
+        determinant = 1
+        for index in range(degree):
+            determinant *= rows[index][index]
+        return determinant
     matrix = [list(row) for row in rows]
     sign = 1
     previous = 1

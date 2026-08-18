@@ -12,6 +12,7 @@ function sageSource(request) {
     .map((entry) => JSON.stringify(String(entry)))
     .join(",");
   const boundary = JSON.stringify(request.boundary);
+  const directEvidence = JSON.stringify(request.direct_evidence || null);
   const nativeKernelEligible = request.native_kernel_eligible === true ? "True" : "False";
   const warmups = Math.max(0, Number(request.warmups) || 0);
   const samples = Math.max(1, Number(request.samples) || 1);
@@ -20,10 +21,12 @@ function sageSource(request) {
     "import time",
     "import sagejs.runtime as runtime",
     "import sagejs.number_fields.maximal_order_engine as engine",
+    "import sagejs.number_fields.composite_field_analysis as composite_analysis",
     "from sagejs.number_fields.order_resource import native_order_from_polynomial",
     `coefficients = [int(value) for value in [${coefficients}]]`,
     `local_primes = [int(value) for value in [${localPrimes}]]`,
     `boundary = ${boundary}`,
+    `direct_evidence = json.loads(${JSON.stringify(directEvidence)})`,
     `native_kernel_eligible = ${nativeKernelEligible}`,
     "R = PolynomialRing(QQ, 'x')",
     "f = R(coefficients)",
@@ -35,6 +38,9 @@ function sageSource(request) {
     "def packed_basis_text(basis):",
     "    denominator = int(basis.denominator)",
     "    return [[str(int(value)) + '/' + str(denominator) for value in row] for row in basis.numerator]",
+    "def packed_basis_parts(numerator, denominator):",
+    "    denominator = int(denominator)",
+    "    return [[str(int(value)) + '/' + str(denominator) for value in row] for row in numerator]",
     "def trace_evidence(order):",
     "    trace = order.maximal_order_trace()",
     "    if trace is None:",
@@ -83,13 +89,27 @@ function sageSource(request) {
     "        engine.public_worker_decision = saved_decision",
     "def native_sample():",
     "    if not native_kernel_eligible:",
-    "        return {'boundary_supported': False, 'unsupported_reason': 'direct native evidence requires complete proven word-prime support'}",
+    "        reason = direct_evidence.get('reason') if direct_evidence else None",
+    "        return {'boundary_supported': False, 'unsupported_reason': reason or 'no exact direct polynomial-to-HNF strategy is available'}",
+    "    strategy = direct_evidence.get('strategy') if direct_evidence else 'certified-prime-resource'",
     "    started = time.perf_counter()",
+    "    if strategy == 'authenticated-composite-analysis':",
+    "        result = composite_analysis.construct_composite_field_analysis(coefficients, 1)",
+    "        elapsed = (time.perf_counter() - started) * 1000",
+    "        if not result.certified:",
+    "            return {'boundary_supported': False, 'unsupported_reason': 'authenticated composite analysis did not prove a complete direct order: ' + str(result.state) + ': ' + str(result.message)}",
+    "        basis = result.basis_numerator",
+    "        denominator = result.basis_denominator",
+    "        certificate = {'schema': 'sagejs.number-fields/direct-polynomial-hnf-certificate-v1', 'strategy': strategy, 'proof_schema': result.proof_schema, 'authenticated': bool(result.certified), 'index': str(result.index), 'equation_discriminant': str(result.equation_discriminant), 'order_discriminant': str(result.order_discriminant), 'support': direct_evidence.get('support', {})}",
+    "        return {'boundary_supported': True, 'timing_ms': elapsed, 'stages': {'direct_polynomial_to_hnf': elapsed, 'strategy': strategy}, 'basis': packed_basis_parts(basis, denominator), 'field_discriminant': str(result.order_discriminant), 'certified': bool(result.certified), 'direct_certificate': certificate, 'cache_identity': {'applicable': False, 'same_object': None, 'timed': False}, 'algorithm_selection': certificate, 'selected_algorithm': strategy, 'diagnostic_trace': None, 'scheduler': None}",
+    "    if strategy != 'certified-prime-resource':",
+    "        return {'boundary_supported': False, 'unsupported_reason': 'unknown direct polynomial-to-HNF strategy ' + str(strategy)}",
     "    result = native_order_from_polynomial(coefficients, local_primes)",
     "    elapsed = (time.perf_counter() - started) * 1000",
     "    if not result.complete:",
     "        return {'boundary_supported': False, 'unsupported_reason': 'native local resource was incomplete'}",
-    "    return {'boundary_supported': True, 'timing_ms': elapsed, 'stages': {'native_polynomial_to_hnf': elapsed, 'local_primes': [str(value) for value in local_primes]}, 'basis': packed_basis_text(result.basis), 'field_discriminant': str(result.order_discriminant), 'certified': bool(result.complete), 'cache_identity': {'applicable': False, 'same_object': None, 'timed': False}, 'algorithm_selection': {'schema': 'sagejs.number-fields/direct-native-evidence-v1', 'selected': 'native', 'local_primes': [str(value) for value in local_primes]}, 'selected_algorithm': 'native', 'diagnostic_trace': None, 'scheduler': None}",
+    "    certificate = {'schema': 'sagejs.number-fields/direct-polynomial-hnf-certificate-v1', 'strategy': strategy, 'proof_schema': 'sagejs.number-fields/native-order-result-v1', 'authenticated': bool(result.complete), 'status': int(result.status), 'supplied_primes': int(result.supplied_primes), 'resolved_primes': int(result.resolved_primes), 'index': str(result.index), 'equation_discriminant': str(result.equation_discriminant), 'order_discriminant': str(result.order_discriminant), 'local_primes': [str(value) for value in local_primes], 'support': direct_evidence.get('support', {})}",
+    "    return {'boundary_supported': True, 'timing_ms': elapsed, 'stages': {'direct_polynomial_to_hnf': elapsed, 'strategy': strategy, 'local_primes': [str(value) for value in local_primes]}, 'basis': packed_basis_text(result.basis), 'field_discriminant': str(result.order_discriminant), 'certified': bool(result.complete), 'direct_certificate': certificate, 'cache_identity': {'applicable': False, 'same_object': None, 'timed': False}, 'algorithm_selection': certificate, 'selected_algorithm': strategy, 'diagnostic_trace': None, 'scheduler': None}",
     "def one_sample():",
     "    if boundary == 'native-kernel':",
     "        return native_sample()",
@@ -176,7 +196,7 @@ function sageSource(request) {
     "        payload = {'status': 'unsupported', 'reason': final.get('unsupported_reason', 'boundary preconditions were not satisfied'), 'irreducible_verified': True}",
     "    else:",
     "        sample_timings = [{'timing_ms': item.get('timing_ms'), 'stages': item.get('stages')} for item in raw_samples]",
-    "        payload = {'status': 'ok', 'irreducible_verified': True, 'irreducibility_ms': irreducibility_ms, 'samples': sample_timings, 'basis': final.get('basis'), 'field_discriminant': final.get('field_discriminant'), 'certified': final.get('certified'), 'factorization': final.get('factorization'), 'cache_identity': final.get('cache_identity'), 'algorithm_selection': final.get('algorithm_selection'), 'selected_algorithm': final.get('selected_algorithm'), 'executed_algorithms': final.get('executed_algorithms'), 'diagnostic_trace': final.get('diagnostic_trace'), 'scheduler': final.get('scheduler')}",
+    "        payload = {'status': 'ok', 'irreducible_verified': True, 'irreducibility_ms': irreducibility_ms, 'samples': sample_timings, 'basis': final.get('basis'), 'field_discriminant': final.get('field_discriminant'), 'certified': final.get('certified'), 'factorization': final.get('factorization'), 'cache_identity': final.get('cache_identity'), 'algorithm_selection': final.get('algorithm_selection'), 'direct_certificate': final.get('direct_certificate'), 'selected_algorithm': final.get('selected_algorithm'), 'executed_algorithms': final.get('executed_algorithms'), 'diagnostic_trace': final.get('diagnostic_trace'), 'scheduler': final.get('scheduler')}",
     "print('@@NFMO_PAYLOAD@@' + json.dumps(payload, sort_keys=True))",
   ].join("\n");
 }

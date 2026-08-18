@@ -57,6 +57,48 @@ const SAGEJS_EVIDENCE_BOUNDARIES = Object.freeze([
   "parallel-public",
 ]);
 
+const MAX_NATIVE_WORD_PRIME = (1n << 64n) - 1n;
+
+function directEvidencePlan(entry) {
+  const factors = entry.localIndexFactors || [];
+  const unresolved = factors.filter((factor) => factor.state !== "proven-prime");
+  if (unresolved.length) {
+    return {
+      supported: true,
+      strategy: "authenticated-composite-analysis",
+      support: {
+        factor_count: factors.length,
+        proven_prime_count: factors.length - unresolved.length,
+        unresolved_component_count: unresolved.length,
+      },
+    };
+  }
+  const arbitrary = factors.filter(
+    (factor) => BigInt(factor.value) > MAX_NATIVE_WORD_PRIME,
+  );
+  if (arbitrary.length) {
+    return {
+      supported: false,
+      strategy: "unsupported",
+      reason: "complete proven support contains a prime outside the direct word-prime resource",
+      support: {
+        factor_count: factors.length,
+        proven_prime_count: factors.length,
+        arbitrary_prime_count: arbitrary.length,
+      },
+    };
+  }
+  return {
+    supported: true,
+    strategy: "certified-prime-resource",
+    support: {
+      factor_count: factors.length,
+      proven_prime_count: factors.length,
+      unresolved_component_count: 0,
+    },
+  };
+}
+
 const SELECTIONS = Object.freeze({
   standard: (entry) => entry.tier === "standard",
   stress: (entry) => entry.tier === "stress",
@@ -109,6 +151,7 @@ function selectCases(corpus, selection, explicitCaseIds = []) {
 }
 
 function caseSpec(entry) {
+  const directEvidence = directEvidencePlan(entry);
   return {
     id: entry.id,
     label: entry.id,
@@ -126,7 +169,8 @@ function caseSpec(entry) {
       .filter((factor) => factor.state === "proven-prime")
       .map((factor) => String(factor.value))
       .filter((value) => BigInt(value) <= (1n << 64n) - 1n),
-    native_kernel_eligible: entry.primeSupportCertified === true,
+    direct_evidence: directEvidence,
+    native_kernel_eligible: directEvidence.supported,
     profiles: ["final"],
     inner_iterations: 1,
     provenance: entry.provenance,
@@ -348,6 +392,7 @@ module.exports = {
   SYSTEM_BOUNDARIES,
   buildRandomizedEvidenceManifest,
   buildEvidenceManifest,
+  directEvidencePlan,
   loadCorpus,
   selectCases,
   translatePolynomial,

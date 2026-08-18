@@ -1006,28 +1006,33 @@ def run_local_jobs(
     pool = factory(worker_count)
     results: list[ResultPayload] = []
     try:
-        # Submit one bounded wave at a time.  Individual result handles let a
-        # fatal sibling cancel the whole pool without waiting for a slow or
-        # hung job.  Sage.js caches reconstructed callables by source, so this
-        # preserves the measured steady-state arithmetic crossover.
-        for offset in range(0, len(ordered_jobs), worker_count):
-            wave = ordered_jobs[offset : offset + worker_count]
-            pending = [pool.apply_async(worker, (job,)) for job in wave]
-            while pending:
-                ready = [handle for handle in pending if handle.ready()]
-                if not ready:
-                    pending[0].wait(0.01)
-                    continue
-                for handle in ready:
-                    pending.remove(handle)
-                    result = validate_local_result(handle.get())
-                    if result[2] == "fatal":
-                        pool.terminate()
-                        pool.join()
-                        raise LocalCertificationError(
-                            "local maximal-order certification failed"
-                        )
-                    results.append(result)
+        # Queue longest predicted jobs first and let the bounded pool pull the
+        # next branch whenever any worker becomes free.  The scheduling model
+        # uses the same deterministic LPT placement in its critical-path
+        # estimate.  Waiting for canonical-key waves made that estimate false:
+        # one long branch could strand every sibling until the whole wave
+        # finished.  All canonicalization remains parent-side, and retaining
+        # individual handles preserves prompt fatal-result cancellation.
+        execution_jobs = sorted(
+            ordered_jobs,
+            key=lambda job: (-int(job[4]), local_job_key(job)),
+        )
+        pending = [pool.apply_async(worker, (job,)) for job in execution_jobs]
+        while pending:
+            ready = [handle for handle in pending if handle.ready()]
+            if not ready:
+                pending[0].wait(0.01)
+                continue
+            for handle in ready:
+                pending.remove(handle)
+                result = validate_local_result(handle.get())
+                if result[2] == "fatal":
+                    pool.terminate()
+                    pool.join()
+                    raise LocalCertificationError(
+                        "local maximal-order certification failed"
+                    )
+                results.append(result)
         pool.close()
         pool.join()
     except LocalCertificationError:

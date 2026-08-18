@@ -48,6 +48,80 @@ static const char *const pari_1710_coefficients[] = {
     "-25772600", "0", "0", "0", "0", "-29080",
     "0", "0", "0", "0", "1"
 };
+static const char *const vector429_coefficients[] = {
+    "464167528830919430707812939827867130195290216481",
+    "0",
+    "-17664834640659843760086846517563699616091492848896",
+    "0",
+    "112835081178121597247315790519267337889550215700672",
+    "0",
+    "-293678194586629498753778041508197163621948960832960",
+    "0",
+    "377528109863340174709450199038785141413258084463900",
+    "0",
+    "-257022322568849250028056718999196809455429653200128",
+    "0",
+    "98647323369477358239247622147334076753681287255648",
+    "0",
+    "-23439111687336557701224954796394993807990875876416",
+    "0",
+    "3726806815195567658159272381046654302782322548810",
+    "0",
+    "-420671474677100937747713465131110877388775747840",
+    "0",
+    "35234824323208949432122287222843195049195649184",
+    "0",
+    "-2263985500383570937855397654604966209249105664",
+    "0",
+    "114452317987845573283355038818157554058821648",
+    "0",
+    "-4641329002870144811569747153738728312276480",
+    "0",
+    "153256282053016072956650306840248729289280",
+    "0",
+    "-4168270688350510971203431806915951526848",
+    "0",
+    "94205009985586665787286958769846028883",
+    "0",
+    "-1780798310985522419497792899399649536",
+    "0",
+    "28286761991498448324281307379182240",
+    "0",
+    "-378647131200860936657636244230400",
+    "0",
+    "4276794417515300890531785084048",
+    "0",
+    "-40745795222319658376664019968",
+    "0",
+    "326768343229764821604655296",
+    "0",
+    "-2197264040603188502904000",
+    "0",
+    "12312194148189466704810",
+    "0",
+    "-56979500534544010752",
+    "0",
+    "215057090579702112",
+    "0",
+    "-650301043097664",
+    "0",
+    "1535600481660",
+    "0",
+    "-2724744960",
+    "0",
+    "3413088",
+    "0",
+    "-2688",
+    "0",
+    "1",
+};
+static const char *const vector010_coefficients[] = {
+    "87782430961", "0", "73445288000", "0", "1769278869776", "0",
+    "2940754348320", "0", "3788371498452", "0", "3275906117440", "0",
+    "1764753386480", "0", "613283590880", "0", "143402547926", "0",
+    "23223642560", "0", "2645190320", "0", "212540000", "0",
+    "11928052", "0", "455360", "0", "11216", "0", "160", "0", "1",
+};
 static const char *const prime_2[] = {"2"};
 static const char *const primes_2_7[] = {"2", "7"};
 static const char *const primes_2_3_5_11[] = {"2", "3", "5", "11"};
@@ -112,6 +186,26 @@ static const benchmark_case cases[] = {
         "2450526376423118400000",
         "3311781756887166521006926156517503038317674993136440320000000000000000000000000000",
         "551496736222216254722000000000000000000",
+    },
+    {
+        "pari-round4-vector-429-p2",
+        vector429_coefficients,
+        sizeof(vector429_coefficients) / sizeof(*vector429_coefficients),
+        prime_2,
+        sizeof(prime_2) / sizeof(*prime_2),
+        "8749002899132047697490008908470485461412677723572849745703082425639811996797503692894052708092215296",
+        NULL,
+        NULL,
+    },
+    {
+        "pari-round4-vector-010-p2",
+        vector010_coefficients,
+        sizeof(vector010_coefficients) / sizeof(*vector010_coefficients),
+        prime_2,
+        sizeof(prime_2) / sizeof(*prime_2),
+        "6739986666787659948666753771754907668409286105635143120275902562304",
+        NULL,
+        NULL,
     },
 };
 
@@ -338,9 +432,11 @@ static void assert_result(
     read_fmpz(value, result->data, &offset); /* index */
     assert_fmpz_string(value, item->index);
     read_fmpz(value, result->data, &offset);
-    assert_fmpz_string(value, item->equation_discriminant);
+    if (item->equation_discriminant != NULL)
+        assert_fmpz_string(value, item->equation_discriminant);
     read_fmpz(value, result->data, &offset);
-    assert_fmpz_string(value, item->order_discriminant);
+    if (item->order_discriminant != NULL)
+        assert_fmpz_string(value, item->order_discriminant);
     fmpz_clear(value);
 }
 
@@ -400,6 +496,25 @@ static void run_case(size_t case_index, uint64_t warmups, uint64_t rounds)
     print_hex(final_result->data, final_result->length);
     printf("\"}\n");
     sagejs_number_field_order_resource_clear(final_result);
+    sagejs_fmpz_matrix_clear(hints);
+    sagejs_fmpz_polynomial_clear(polynomial);
+}
+
+static void run_payload(size_t case_index)
+{
+    assert(case_index < sizeof(cases) / sizeof(*cases));
+    const benchmark_case *item = cases + case_index;
+    sagejs_fmpz_polynomial_t polynomial;
+    sagejs_fmpz_matrix_t hints;
+    initialize_polynomial(polynomial, item);
+    initialize_primes(hints, item);
+    sagejs_number_field_order_resource_t result;
+    assert(sagejs_number_field_order_from_polynomial_resource(
+        result, polynomial, hints));
+    assert_result(result, item);
+    print_hex(result->data, result->length);
+    putchar('\n');
+    sagejs_number_field_order_resource_clear(result);
     sagejs_fmpz_matrix_clear(hints);
     sagejs_fmpz_polynomial_clear(polynomial);
 }
@@ -636,8 +751,45 @@ static void run_randomized(uint64_t seed, uint64_t count)
     assert(emitted == count);
 }
 
+static void check_power_two_remainders(void)
+{
+    static const char *const values[] = {
+        "0",
+        "1",
+        "-1",
+        "18446744073709551616",
+        "-18446744073709551616",
+        "340282366920938463463374607431768211507",
+        "-340282366920938463463374607431768211507",
+    };
+    fmpz_t value;
+    fmpz_init(value);
+    for (size_t index = 0; index < sizeof(values) / sizeof(*values); index++)
+    {
+        assert(fmpz_set_str(value, values[index], 10) == 0);
+        for (ulong exponent = 1; exponent <= 32; exponent++)
+        {
+            const ulong modulus = UWORD(1) << exponent;
+            assert(sagejs_nf_fmpz_fdiv_ui(value, modulus) ==
+                fmpz_fdiv_ui(value, modulus));
+        }
+    }
+    fmpz_clear(value);
+    puts("power-two remainders: exact");
+}
+
 int main(int argc, char **argv)
 {
+    if (argc == 3 && strcmp(argv[1], "--payload") == 0)
+    {
+        run_payload((size_t) strtoull(argv[2], NULL, 10));
+        return 0;
+    }
+    if (argc == 2 && strcmp(argv[1], "--check-power-two-remainders") == 0)
+    {
+        check_power_two_remainders();
+        return 0;
+    }
     if (argc == 4 && strcmp(argv[1], "--randomized") == 0)
     {
         const uint64_t seed = (uint64_t) strtoull(argv[2], NULL, 10);

@@ -17,6 +17,9 @@ const {
   verifyEvidenceIntegrity,
 } = require("./accounting.cjs");
 const { collectIdentity, loadSnapshot, sha256 } = require("./identity.cjs");
+const {
+  validatePlatformValidationReceipt,
+} = require("../../tools/number-field-maximal-order/platform-validation.cjs");
 
 function normalizeSystems(manifest, systems) {
   const selected = systems?.length ? systems : ["sagejs"];
@@ -74,18 +77,9 @@ function loadPlatformValidation(path, identity) {
   if (receipt.schema !== "sagejs.number-fields/platform-validation-v1") {
     throw new Error("platform validation receipt has an unsupported schema");
   }
-  const target = `${identity.platform.platform}-${identity.platform.architecture}`;
-  if (receipt.target !== target) {
-    throw new Error(`platform validation target ${receipt.target} does not match ${target}`);
-  }
-  if (receipt.source_commit !== identity.source.commit) {
-    throw new Error("platform validation source commit does not match the measured source");
-  }
-  for (const name of ["exactness", "production_autoload", "resource_lifecycle", "corruption"]) {
-    const check = receipt.checks?.[name];
-    if (check?.status !== "pass" || typeof check.command !== "string") {
-      throw new Error(`platform validation is missing a passing ${name} check`);
-    }
+  const validation = validatePlatformValidationReceipt(receipt, identity);
+  if (!validation.valid) {
+    throw new Error(`invalid platform validation receipt: ${validation.errors.join("; ")}`);
   }
   return { ...receipt, receipt_sha256: sha256(bytes), receipt_path: path };
 }

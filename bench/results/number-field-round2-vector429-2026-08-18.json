@@ -1,0 +1,150 @@
+{
+  "schema": "sagejs.number-fields/round2-high-degree-optimization/v1",
+  "date": "2026-08-18",
+  "source": {
+    "baselineCommit": "dc753f5a7fc8141949c4c173df53924df6c74494",
+    "headerSha256": "87a84e58e85872d1567c11518379922ac84e30a89f63620790976d01e561aff3",
+    "witnessSha256": "c03eb5769c82e78b24c9a409473aef363a27fb6f82fd227883ab9f38ddf6423f",
+    "testSha256": "2914edf475489d7cb187dfe2029f694ad04f0ae84673b00c17ad6a5bf02ef1fc"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "compiler": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flint": "3.6.0",
+    "openblasThreads": 1
+  },
+  "policy": {
+    "boundary": "sealed fmpz polynomial plus p=2 hint to compact canonical HNF order resource",
+    "samples": 1,
+    "sampleReason": "each degree-64 sample performs 83 exact order enlargements; one controlled profile is paired with exact payload and randomized differentials rather than repeated noisy shared-host runs",
+    "exactness": "optimized payloads agree byte-for-byte with the forced exact lattice-inverse multiplier and forced exact basis transform; the focused suite also covers 32 deterministic randomized fields and ASan/UBSan lifecycle checks",
+    "scope": "general storage and FLINT/GMP primitive improvements inside the existing audited Round-2 resource; no second algorithm or fixture-specific branch"
+  },
+  "cases": [
+    {
+      "id": "pari-round4-vector-429-p2",
+      "degree": 64,
+      "coefficientHeightBits": 169,
+      "localIndexValuation": 332,
+      "baseline": {
+        "isolatedRound2Us": 19398489,
+        "reportedIntegrationBoundaryUs": 22529000,
+        "phaseUs": {
+          "modularTable": 4271347,
+          "radical": 148500,
+          "multiplier": 4416774,
+          "basisTransform": 10525514
+        }
+      },
+      "optimized": {
+        "round2Us": 6128672.327031381,
+        "speedupFromIsolatedBaseline": 3.165202505,
+        "reductionPercent": 68.406444816,
+        "phaseUs": {
+          "setup": 8544.518961571,
+          "modularTable": 687118.790810928,
+          "radical": 142444.086144678,
+          "multiplier": 954585.075960495,
+          "basisPrepare": 1977.439969778,
+          "basisTransform": 4301711.402717046,
+          "basisOutput": 13389.821047895
+        },
+        "basisTransformPercent": 70.189939569,
+        "iterations": 84,
+        "enlargements": 83,
+        "meanRadicalDimension": 61.857142857,
+        "meanPositiveNullity": 4,
+        "allocatedEquationRows": 344064,
+        "distinctNonzeroEquationRows": 249685,
+        "multiplierRequestedBytes": 650252200
+      },
+      "exactPayloadSha256": "5a280b45048b47724958bb2a9e40228c32243b2b3c8913cb0ad54829832ed23a",
+      "forcedExactPayloadSha256": "5a280b45048b47724958bb2a9e40228c32243b2b3c8913cb0ad54829832ed23a",
+      "exact": true
+    },
+    {
+      "id": "pari-round4-vector-010-p2",
+      "degree": 32,
+      "coefficientHeightBits": 42,
+      "localIndexValuation": 222,
+      "baseline": {
+        "round2Us": 906113,
+        "phaseUs": {
+          "modularTable": 200466,
+          "radical": 15800,
+          "multiplier": 185028,
+          "basisTransform": 499273
+        }
+      },
+      "optimized": {
+        "round2Us": 233145.153033547,
+        "speedup": 3.886475821,
+        "reductionPercent": 74.269748582,
+        "phaseUs": {
+          "setup": 830.688979477,
+          "modularTable": 32556.606340222,
+          "radical": 13898.784178309,
+          "multiplier": 68701.773299836,
+          "basisPrepare": 564.021524042,
+          "basisTransform": 114098.36425446,
+          "basisOutput": 1738.262362778
+        },
+        "basisTransformPercent": 48.938767446,
+        "iterations": 112,
+        "enlargements": 111,
+        "meanRadicalDimension": 30.964285714,
+        "meanPositiveNullity": 2,
+        "allocatedEquationRows": 114688,
+        "distinctNonzeroEquationRows": 49537,
+        "multiplierRequestedBytes": 52524192
+      },
+      "references": {
+        "forcedRound4Us": 26500000,
+        "pariNfbasisUs": 37000,
+        "ratioToForcedRound4": 0.00879793,
+        "ratioToPari": 6.301220352,
+        "forcedPolygon": ">30000000us timeout",
+        "forcedOmMaxmin": ">30000000us timeout"
+      },
+      "exactPayloadSha256": "14138da4aa969483f6bb998bd7f6936a93476e3df7c89dd482e47ed26131a0aa",
+      "forcedExactPayloadSha256": "14138da4aa969483f6bb998bd7f6936a93476e3df7c89dd482e47ed26131a0aa",
+      "exact": true
+    }
+  ],
+  "generalOptimizations": [
+    "store each radical RREF row as reusable nonzero source/coefficient spans",
+    "compact zero and duplicate multiplier equations with an exact collision-checked hash table",
+    "reduce the exact multiplication tensor modulo p^2 once and derive its modulo-p table",
+    "use the exact low limb for power-of-two fmpz remainders, including signed correction",
+    "avoid zero initialization and generic addmul dispatch in sparse exact basis combinations",
+    "apply the Round-2 block form [I R; 0 pI] directly so unchanged generators avoid division, mixed products divide only by p, and only the pivot block divides by p^2",
+    "fill transposed input columns by exact commutativity instead of transforming them twice"
+  ],
+  "residual": {
+    "dominantKernel": "exact fmpz multiplication-tensor basis transformation",
+    "reason": "the direct block transform removes unnecessary full-tensor p^2 divisions and cuts the second-pass vector429 basis phase by 2.23x and vector010 by 3.86x; it still accounts for 70.2% and 48.9% of Round-2 respectively",
+    "boundedConclusion": "the requested block representation is now implemented; reaching the remaining vector010 PARI gap requires reducing the still-iterated multiplier/modular phases or a separately proved precision-tracked modular tensor"
+  },
+  "selector": {
+    "productionCandidate": "sealed native Round-2 resource",
+    "reason": "the current auto path already tries the complete word-prime native batch before local Round-4 fallback; on vector010 p=2 it is 113.7x faster than forced Round-4 while polygon and OM exceed 30 seconds",
+    "fixtureSpecificBranchAdded": false,
+    "centralSourceChangeRequired": false
+  },
+  "architectureAuditHandoff": {
+    "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "oldMetrics": { "lines": 1410, "bytes": 58164 },
+    "newMetrics": { "lines": 1639, "bytes": 68585 },
+    "registryChange": "update only lines/bytes and extend the existing p-squared multiplier/storage rationale in architecture/native-audit.json; the native-code category remains mathematical-algorithm",
+    "validation": "pnpm architecture:check"
+  },
+  "gates": {
+    "vector429MaterialReduction": true,
+    "vector010MaterialReduction": true,
+    "highDegreeForcedExactDifferential": true,
+    "randomizedExactDifferential": true,
+    "sanitizers": true,
+    "windowsFallbackPreserved": true
+  }
+}

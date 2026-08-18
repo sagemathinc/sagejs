@@ -30,6 +30,14 @@ const packedRationalSourcePath = join(
   "polynomial",
   "packed_rational.py",
 );
+const round4StateSourcePath = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "number_fields",
+  "round4_state_kernel.py",
+);
 
 function multiplicationMatrix(defining, beta) {
   const degree = defining.length - 1;
@@ -239,6 +247,7 @@ test("batched CRT reconstruction has native, JavaScript, and CPython oracles", a
   try {
     await compile({ sourcePath, cacheRoot: cache });
     await compile({ sourcePath: packedRationalSourcePath, cacheRoot: cache });
+    await compile({ sourcePath: round4StateSourcePath, cacheRoot: cache });
     const sageProgram = String.raw`
 from sagejs.native import is_compiled
 import sagejs.number_fields.round4 as round4

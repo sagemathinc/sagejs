@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { readdirSync } = require("node:fs");
+const { join, relative } = require("node:path");
 
 const manifest = require("./node-test-manifest.cjs");
 
@@ -28,9 +29,13 @@ test("every host test belongs to a runner tier", () => {
     "upstream-doctest-tools.cjs",
     "node-test-manifest.cjs",
   ]);
+  const nestedTests = readdirSync(__dirname, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name === "test.cjs")
+    .map((entry) => `test/${relative(__dirname, join(entry.parentPath, entry.name)).replaceAll("\\", "/")}`);
   const expected = readdirSync(__dirname)
     .filter((name) => name.endsWith(".cjs") && !specialized.has(name))
     .map((name) => `test/${name}`)
+    .concat(nestedTests)
     .sort();
 
   assert.deepEqual([...classified].sort(), expected);

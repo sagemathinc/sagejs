@@ -118,14 +118,16 @@
           "crt_bound_bits_cutoff": 4096
         },
         "modular_characteristic": {
-          "calls": 24,
-          "primes": 3936,
-          "max_bound_bits": 6097,
-          "max_modulus_bits": 4920,
-          "batch_calls": 168,
-          "batch_primes": 3936,
-          "reconstruction_attempts": 24,
-          "certifications": {"field-minimal-polynomial-crt": 24}
+          "calls": 0,
+          "primes": 0,
+          "max_bound_bits": 0,
+          "max_modulus_bits": 0,
+          "certifications": {}
+        },
+        "packed_exact_characteristic": {
+          "calls": 67,
+          "attempts": 67,
+          "certifications": {"integral": 67}
         }
       },
       "required_power_stages": [
