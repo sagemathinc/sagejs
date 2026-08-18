@@ -137,7 +137,7 @@ function run(executable, primes, timeout = 120_000) {
   return JSON.parse(result.stdout);
 }
 
-function basis(executable, primes, timeout = 120_000) {
+function basisAndReport(executable, primes, timeout = 120_000) {
   const result = spawnSync(executable, primes.map(String), {
     cwd: root,
     encoding: "utf8",
@@ -147,7 +147,14 @@ function basis(executable, primes, timeout = 120_000) {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   const marker = result.stdout.indexOf("BASIS\n");
   assert.notEqual(marker, -1);
-  return result.stdout.slice(marker + "BASIS\n".length);
+  return {
+    report: JSON.parse(result.stdout.slice(0, marker).trim()),
+    basis: result.stdout.slice(marker + "BASIS\n".length),
+  };
+}
+
+function basis(executable, primes, timeout = 120_000) {
+  return basisAndReport(executable, primes, timeout).basis;
 }
 
 try {
@@ -155,14 +162,19 @@ try {
   const individual = process.argv.includes("--individual");
   const differential = process.argv.includes("--differential");
   const hnfDifferential = process.argv.includes("--hnf-differential");
+  const scheduleDifferential = process.argv.includes("--schedule-differential");
   const genericHnf = process.argv.includes("--generic-hnf");
   const oneLane = process.argv.includes("--one-lane");
+  const staticSchedule = process.argv.includes("--static-schedule");
   const executable = compile(
     "profile",
     [
       ...(packed ? [] : ["SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1"]),
       ...(genericHnf ? ["SAGEJS_NF_ORDER_FORCE_GENERIC_HNF=1"] : []),
       ...(oneLane ? ["SAGEJS_NF_ORDER_FORCE_ONE_INDEPENDENT_WORKER=1"] : []),
+      ...(staticSchedule
+        ? ["SAGEJS_NF_ORDER_FORCE_STATIC_INDEPENDENT_SCHEDULE=1"]
+        : []),
     ],
   );
   const primes = process.argv.slice(2)
@@ -172,9 +184,30 @@ try {
     .filter((value) => value !== "--hnf-differential")
     .filter((value) => value !== "--vector429")
     .filter((value) => value !== "--one-lane")
+    .filter((value) => value !== "--static-schedule")
+    .filter((value) => value !== "--schedule-differential")
     .map(Number);
   assert(primes.length > 0, "pass one or more primes");
-  const report = hnfDifferential
+  const report = scheduleDifferential
+    ? (() => {
+        const staticExecutable = compile("static-schedule", [
+          ...(packed ? [] : ["SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1"]),
+          ...(genericHnf ? ["SAGEJS_NF_ORDER_FORCE_GENERIC_HNF=1"] : []),
+          "SAGEJS_NF_ORDER_FORCE_STATIC_INDEPENDENT_SCHEDULE=1",
+        ]);
+        const dynamicResult = basisAndReport(executable, primes);
+        const staticResult = basisAndReport(staticExecutable, primes);
+        assert.equal(dynamicResult.basis, staticResult.basis);
+        return {
+          primes,
+          basis_sha256: createHash("sha256")
+            .update(dynamicResult.basis).digest("hex"),
+          exact_schedule: true,
+          dynamic: dynamicResult.report,
+          static: staticResult.report,
+        };
+      })()
+    : hnfDifferential
     ? (() => {
         const generic = compile("generic-hnf", [
           "SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1",

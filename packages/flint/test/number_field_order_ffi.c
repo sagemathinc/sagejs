@@ -3,15 +3,32 @@
 #include <stdio.h>
 
 static int sagejs_test_fail_independent_prime(long index);
+static void sagejs_test_delay_independent_prime(long index);
 #define SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index) \
     sagejs_test_fail_independent_prime(index)
+#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY(index) \
+    sagejs_test_delay_independent_prime(index)
 #include "sagejs/number_field_order_resource_ffi.h"
 
 static int fail_independent_prime = 0;
+static int delay_independent_prime = 0;
 
 static int sagejs_test_fail_independent_prime(long index)
 {
     return fail_independent_prime && index == 1;
+}
+
+static void sagejs_test_delay_independent_prime(long index)
+{
+    if (!delay_independent_prime) return;
+    /* Seeded, index-dependent work perturbs completion order without clocks,
+     * sleeping APIs, shared writes, or platform-specific test behavior. */
+    const uint64_t state =
+        (uint64_t) index * UINT64_C(6364136223846793005) +
+        UINT64_C(1442695040888963407);
+    const uint64_t rounds = 1000 + ((state >> 29) & 16383);
+    for (volatile uint64_t round = 0; round < rounds; round++)
+        ;
 }
 
 static void set_polynomial(
@@ -270,9 +287,40 @@ static void check_transactional_worker_failure(void)
     sagejs_fmpz_polynomial_clear(polynomial);
 }
 
+static void check_delayed_independent_schedule(void)
+{
+    /* x^65 - 2 is Eisenstein at 2.  The selected primes are unramified, so
+     * every independent local result and their caller-order merge is exactly
+     * the equation-order identity. */
+    sagejs_fmpz_polynomial_t polynomial;
+    set_polynomial(polynomial, 65, 0, -2);
+    sagejs_fmpz_matrix_t table;
+    assert(sagejs_nf_order_polynomial_multiplication_table(
+        table, polynomial));
+    const uint64_t primes[] = {101, 103, 107, 109, 113, 127, 131};
+    sagejs_fmpq_matrix_t result;
+    delay_independent_prime = 1;
+    assert(sagejs_number_field_order_maximal_at_primes(
+        result, table, primes, sizeof(primes) / sizeof(*primes)));
+    delay_independent_prime = 0;
+    fmpz_mat_t numerator;
+    fmpz_mat_init(numerator, 65, 65);
+    fmpz_t denominator;
+    fmpz_init(denominator);
+    canonical_basis(numerator, denominator, result);
+    assert(fmpz_is_one(denominator));
+    assert(fmpz_mat_is_one(numerator));
+    fmpz_clear(denominator);
+    fmpz_mat_clear(numerator);
+    sagejs_fmpq_matrix_clear(result);
+    sagejs_fmpz_matrix_clear(table);
+    sagejs_fmpz_polynomial_clear(polynomial);
+}
+
 int main(void)
 {
     check_exact_coprime_merge();
+    check_delayed_independent_schedule();
     check_transactional_worker_failure();
 #if FLINT_USES_PTHREAD
     assert(sagejs_nf_order_independent_worker_bound(90, 18) == 5);
@@ -283,6 +331,14 @@ int main(void)
 #endif
     printf("{\"schema\":\"sagejs.number-field-round2/v1\","
            "\"merge\":\"exact\",\"worker_failure\":\"clean\","
+           "\"delayed_order\":\"identity\","
+#if !FLINT_USES_PTHREAD
+           "\"schedule\":\"sequential\","
+#elif defined(SAGEJS_NF_ORDER_FORCE_STATIC_INDEPENDENT_SCHEDULE)
+           "\"schedule\":\"static\","
+#else
+           "\"schedule\":\"dynamic\","
+#endif
            "\"platform_capability\":\"%s\"}\n", capability);
     flint_cleanup_master();
     return 0;
