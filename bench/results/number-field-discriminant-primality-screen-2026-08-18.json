@@ -1,0 +1,77 @@
+{
+  "case": "hecke-degree-90",
+  "certificate_replay": true,
+  "compiled_batch": {
+    "median_us": 580481.792,
+    "samples_us": [
+      580242.688,
+      580742.144,
+      580481.792,
+      580063.232,
+      580523.776
+    ]
+  },
+  "compiled_full_decomposition": {
+    "median_us": 3679023.616,
+    "samples_us": [
+      3679023.616
+    ]
+  },
+  "compiled_primality_phase_us": 1724021.248,
+  "components_exact": true,
+  "controls": [
+    {
+      "exact": true,
+      "id": "first-witness"
+    },
+    {
+      "exact": true,
+      "id": "later-witness"
+    },
+    {
+      "exact": true,
+      "id": "survivor"
+    }
+  ],
+  "degree": 90,
+  "dynamic_batch": {
+    "median_us": 893076.992,
+    "samples_us": [
+      893076.992
+    ]
+  },
+  "kernel_execution_mode": "native-capable",
+  "primality_call_count": 27,
+  "readable_batch": {
+    "median_us": 431414.016,
+    "samples_us": [
+      431414.016
+    ]
+  },
+  "readable_full_decomposition": {
+    "median_us": 3322823.68,
+    "samples_us": [
+      3322823.68
+    ]
+  },
+  "readable_primality_phase_us": 1287525.632,
+  "representative_bits": 7593,
+  "schema": "sagejs.number-fields/discriminant-primality-screen-benchmark-v1",
+  "speedup_full_decomposition": 0.9031808509054159,
+  "speedup_primality_phase": 0.746815408159053,
+  "speedup_representative_batch": 0.7431999107389745,
+  "generated_at": "2026-08-18T14:52:33.681Z",
+  "source_commit": "658de503a53a25ca19e1f15c944c95d6b19f6b4f",
+  "host": {
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      6.38,
+      7.64,
+      6.81
+    ]
+  }
+}
