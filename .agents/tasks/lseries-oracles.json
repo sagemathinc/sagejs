@@ -4,7 +4,7 @@
   "id": "lseries-oracles",
   "title": "Elliptic L-series oracle corpus",
   "lane": "elliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Create a pinned complex L-value corpus, Sage/PARI and Magma harnesses, and reproducible single/batch benchmarks",
   "base_commit": "9804aad23a6a277b469a2f7322b08c4574c714a7",
@@ -79,6 +79,76 @@
       "started_at": "2026-08-18T07:53:20.225Z",
       "commit": "822271dcffd187194c446df571c9e5b48b7dc621",
       "workspace_fingerprint": "32c59800cb16adeb21b277a9920cb7dee08a918de87cc752847d8e383e7f41f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.1,
+      "started_at": "2026-08-18T07:53:45.042Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1430.602,
+      "started_at": "2026-08-18T07:54:14.603Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 898.433,
+      "started_at": "2026-08-18T08:22:03.259Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:elliptic-curves",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.847,
+      "started_at": "2026-08-18T08:37:30.120Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/elliptic-lseries-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.057,
+      "started_at": "2026-08-18T08:37:52.760Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/elliptic-lseries/verify-sage-capture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.101,
+      "started_at": "2026-08-18T08:37:53.463Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/sagelite/sage bench/elliptic-lseries/benchmark.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.262,
+      "started_at": "2026-08-18T08:37:58.203Z",
+      "commit": "ea687603c522d87ef4a5222a850563db5eebc72a",
+      "workspace_fingerprint": "45adb8677114be738598749b7b18b3750f052624fc59ad53e0e34af554f89b64",
       "platform": "linux-x64"
     }
   ],
