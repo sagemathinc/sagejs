@@ -296,6 +296,23 @@ complete genus-3 workflow. It supports keeping `algorithm="auto"` on the exact
 reference path until the follow-up Jacobian certification lane accelerates
 the later stages.
 
+The final implementation commit `d66a43a7` was rebuilt from the pinned archive
+on all supported native hosts. Every extracted source contained the sanitizer
+fix, and every standalone genus-2/3 bridge passed:
+
+| Host | Toolchain | rforest library SHA-256 | bridge SHA-256 |
+| --- | --- | --- | --- |
+| Linux x86-64 | GCC 13.3.0 | `787eda27237e5ce7ffe77f2e985e97cb3cbccd2f675605890b133e12ec56e59c` | `19e49f2d7e032ea7806d5acfcd6dcca310b4019166b920c9edd380badef68169` |
+| Linux arm64 | GCC 13.3.0 | `a4eae4b07df1b753d267c3c16e56743adaf4fd28db08ce0d2e2c26d51a67a8d4` | `84270e5ac7e5f555e01c80562393f2ea506a7e0304853ff1ed4fa3ab3de6ee27` |
+| macOS arm64 | Apple clang 17.0.0 | `db05cba46003c3484bb44f2d07aad8bb3ccdf2c4d582fb6d3fdba159c2622794` | `866243c9f6ae21ef1bdc5d48a5861f91e8c5b379f2af415976996990ed9a3a8c` |
+| Windows x86-64 | clang-cl 19.1.5 | `dc009b11d7750eeb35dc09cb9044eceaf6b6971d434a58287677c8699b35d41c` | `5ca454680a88bd27edcf1fe71ca3fb9794c7d9c9ece36a0b8b2c2c73b563cab4` |
+
+The exact macOS addon additionally passed the combined rforest/smalljac tests
+13/13 and the public adapter tests 5/5. Local Linux passed the same tests and
+the full native composite, including lifecycle sanitizers and performance
+gates. The Windows adapter compiled with `/W4 /WX`; only the existing vcpkg
+FLINT/GMP import warnings remained at link time.
+
 - `generate_genus3_oracle.sage` regenerates the fixture using Sage only as a
   development oracle.
 - `genus3_candidates.mjs` is an executable exact specification and benchmark
