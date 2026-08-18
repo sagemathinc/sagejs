@@ -72,12 +72,14 @@ test("rank decisions use completed derivatives while returning raw L derivatives
             "[D0['completed_derivatives'][1] == '0.0',",
             " abs(float(D0['derivatives'][1])-0.3087085340) < 1e-9,",
             " D1['completed_derivatives'][2] == '0.0',",
-            " abs(float(D1['derivatives'][2])-0.3730955945) < 1e-9]",
+            " abs(float(D1['derivatives'][2])-0.3730955945) < 1e-9,",
+            " D0['coefficient_prefix_extensions'] == 1,",
+            " D1['coefficient_prefix_extensions'] == 1]",
           ].join("\n"),
           { timeout: 60_000 },
         )
       ).repr,
-      "[True, True, True, True]",
+      "[True, True, True, True, True, True]",
     );
   } finally {
     await session.close();
