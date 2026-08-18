@@ -151,7 +151,8 @@
         "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
-        "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py"
+        "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
     },
