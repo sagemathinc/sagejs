@@ -17,7 +17,7 @@ test("independent Python authenticates and corrupts fused field analysis", async
   try {
     const result = await session.evaluate([
       "import sagejs.ffi.flint as flint",
-      "from sagejs.number_fields.field_analysis_resource import decode_field_analysis_resource, native_field_analysis",
+      "from sagejs.number_fields.field_analysis_resource import NativeFieldAnalysisResult, authenticated_field_analysis_matches, decode_field_analysis_resource, native_field_analysis",
       "def packed(coefficients, scale=1, bound=1000):",
       "    polynomial = flint.fmpz_polynomial(len(coefficients))",
       "    try:",
@@ -138,6 +138,13 @@ test("independent Python authenticates and corrupts fused field analysis", async
       "except AttributeError:",
       "    pass",
       "checks.append(immutable and complete.certified)",
+      "checks.append(authenticated_field_analysis_matches(complete, polynomial=[-5, 0, 1], scale=3, trial_bound=1000, equation_discriminant=complete.equation_discriminant, basis_numerator=[list(row) for row in complete.basis_numerator], basis_denominator=complete.basis_denominator, index=complete.index, order_discriminant=complete.order_discriminant))",
+      "checks.append(not authenticated_field_analysis_matches(complete, polynomial=[-6, 0, 1], scale=3, trial_bound=1000))",
+      "complete.__dict__['status'] = 1",
+      "checks.append(not complete.certified and not authenticated_field_analysis_matches(complete, polynomial=[-5, 0, 1], scale=3, trial_bound=1000))",
+      "complete.__dict__['status'] = 0",
+      "direct = NativeFieldAnalysisResult(complete.status, complete.trial_bound, complete.resolved_components, complete.native_primes, complete.scale, list(complete.polynomial), list(complete.components), list(complete.fixed_point_witnesses), [list(row) for row in complete.basis_numerator], complete.basis_denominator, complete.index, complete.equation_discriminant, complete.order_discriminant)",
+      "checks.append(not direct.certified and not authenticated_field_analysis_matches(direct, polynomial=[-5, 0, 1], scale=3, trial_bound=1000))",
       "saved_analysis = flint.number_field_analyze_resource",
       "native_calls = [0]",
       "def counted_analysis(polynomial, scale, bound):",
@@ -152,7 +159,7 @@ test("independent Python authenticates and corrupts fused field analysis", async
       "[complete.certified, complete.locally_certified_primes, partial.certified, partial.locally_certified_primes, arbitrary.certified, wild.certified, wild.locally_certified_primes, tame.certified, tame.locally_certified_primes, multi.certified, multi.locally_certified_primes, checks]",
     ].join("\n"));
     assert.equal(result.repr,
-      "[True, [2], False, [2], False, True, [2, 3], True, [3, 5], True, [2, 3, 5], [True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]]");
+      "[True, [2], False, [2], False, True, [2, 3], True, [3, 5], True, [2, 3, 5], [True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]]");
   } finally {
     await session.close();
   }
@@ -189,7 +196,9 @@ for rows, selected in zip(radical_rows, selectors_by_prime):
         radicals.extend(row)
     radicals.extend([0] * ((degree - len(rows)) * degree))
     selectors.extend(selected)
-workspace = [0] * (degree ** 3 + 4 * degree ** 2 + 7 * degree)
+workspace = [0] * (
+    degree ** 3 + 4 * degree ** 2 + 7 * degree + (2 * degree - 1) ** 2
+)
 assert packed_field_analysis_fixed_points_are_valid(
     workspace,
     polynomial,
@@ -199,6 +208,7 @@ assert packed_field_analysis_fixed_points_are_valid(
     dimensions,
     radicals,
     selectors,
+    -108,
     degree,
     2,
 )
@@ -222,13 +232,17 @@ bad_radicals = list(radicals)
 bad_radicals[1] = 0
 assert not packed_field_analysis_fixed_points_are_valid(
     [0] * len(workspace), polynomial, numerator, 1, primes, dimensions,
-    bad_radicals, selectors, degree, 2,
+    bad_radicals, selectors, -108, degree, 2,
 )
 bad_selectors = list(selectors)
 bad_selectors[1] = 0
 assert not packed_field_analysis_fixed_points_are_valid(
     [0] * len(workspace), polynomial, numerator, 1, primes, dimensions,
-    radicals, bad_selectors, degree, 2,
+    radicals, bad_selectors, -108, degree, 2,
+)
+assert not packed_field_analysis_fixed_points_are_valid(
+    [0] * len(workspace), polynomial, numerator, 1, primes, dimensions,
+    radicals, selectors, -107, degree, 2,
 )
 print("CPYTHON_PACKED_FIELD_ANALYSIS_OK")
 `;
