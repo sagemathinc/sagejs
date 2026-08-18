@@ -40,7 +40,7 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "node --test --test-reporter=spec --test-name-pattern=deep primary Round-4 stages|vector 010 fails closed|bounded modular characteristic reconstruction test/number-field-round4.cjs"
   ],
   "runs": [
     {
