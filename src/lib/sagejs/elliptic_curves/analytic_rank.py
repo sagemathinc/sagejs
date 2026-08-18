@@ -34,6 +34,8 @@ from typing import Any
 
 from mpmath import mp
 
+from .lseries import CoefficientPrefix
+
 # Positive nodes and weights for the 16-point Gauss--Legendre rule on [-1,1].
 # Keeping this small fixed rule in source avoids generating an eigenproblem at
 # runtime (and makes the reference quadrature identical in CPython and Sage.js).
@@ -55,26 +57,6 @@ class NumericalIndeterminacyError(ArithmeticError):
     def __init__(self, message: str, diagnostics: dict[str, Any]) -> None:
         super().__init__(message)
         self.diagnostics = diagnostics
-
-
-class CoefficientPrefix:
-    """An extendable exact `a_n` prefix owned by one curve computation."""
-
-    def __init__(self, curve: Any) -> None:
-        self.curve = curve
-        self.values: list[int] = [0, 1]
-        self.backend = "elliptic-curve anlist"
-        self.extensions = 0
-
-    def through(self, cutoff: int) -> list[int]:
-        """Return `a_0,...,a_cutoff`, extending the cached prefix if needed."""
-        if cutoff < 1:
-            cutoff = 1
-        if cutoff >= len(self.values):
-            raw = self.curve.anlist(cutoff)
-            self.values = [int(value) for value in raw]
-            self.extensions += 1
-        return self.values[: cutoff + 1]
 
 
 def _factorial(value: int) -> int:

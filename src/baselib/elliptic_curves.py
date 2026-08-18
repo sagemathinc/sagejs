@@ -18,6 +18,7 @@ def _untyped(value: Any) -> Any:
 _elliptic_advanced_state = {"module": runtime.undefined}
 _elliptic_descent_state = {"module": runtime.undefined}
 _elliptic_analytic_rank_state = {"module": runtime.undefined}
+_elliptic_lseries_state = {"module": runtime.undefined}
 
 
 def _elliptic_lazy_module(state: dict[str, Any], name: str) -> Any:
@@ -46,6 +47,12 @@ def _elliptic_descent() -> Any:
 def _elliptic_analytic_rank() -> Any:
     return _elliptic_lazy_module(
         _elliptic_analytic_rank_state, "sagejs.elliptic_curves.analytic_rank"
+    )
+
+
+def _elliptic_lseries() -> Any:
+    return _elliptic_lazy_module(
+        _elliptic_lseries_state, "sagejs.elliptic_curves.lseries"
     )
 
 
@@ -649,6 +656,196 @@ class EllipticCurvePoint(sage.Element):
     toString = __repr__
 
 
+def _lseries_precision(value: Any) -> int:
+    precision = int(value)
+    if precision < 32 or precision > 512:
+        raise ValueError("precision must be between 32 and 512 bits")
+    return precision
+
+
+def _lseries_algorithm(value: Any) -> str:
+    algorithm = str(value)
+    if algorithm not in ("auto", "native", "reference"):
+        raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+    return algorithm
+
+
+def _lseries_raise_nonfinite() -> None:
+    raise ValueError("L-series points must be finite complex numbers")
+
+
+def _lseries_complex_argument(field: Any, value: Any) -> Any:
+    """Coerce exact/field values, including constant symbolic expressions."""
+    try:
+        return field(value)
+    except Exception:
+        evaluator_factory = getattr(value, "_plot_complex_callable", None)
+        if evaluator_factory is None:
+            raise
+        evaluator = evaluator_factory([])
+        evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+        real_part = runtime.reflect.get(evaluated, "real")
+        imag_part = runtime.reflect.get(evaluated, "imag")
+        if (
+            runtime.jstype(real_part) != "number"
+            or runtime.jstype(imag_part) != "number"
+            or not runtime.number.isFinite(real_part)
+            or not runtime.number.isFinite(imag_part)
+        ):
+            _lseries_raise_nonfinite()
+        return field(real_part, imag_part)
+
+
+@runtime.callable_instance_class
+class Lseries_ell:
+    """Numerical complex `L`-series attached to an elliptic curve over `QQ`.
+
+    Values use a portable split-Mellin evaluator at 32 through 512 bits and
+    moderate imaginary height.  Results are arbitrary-precision numerical
+    approximations: coefficient truncation and Acb rounding are tracked, but
+    the quadrature discretization error does not yet have a proved enclosure.
+    """
+
+    def __init__(self, curve: Any) -> None:
+        self._curve = curve
+        self._coefficient_prefix = _elliptic_lseries().CoefficientPrefix(curve)
+        self._value_cache = runtime.map()
+        self._value_cache_keys: list[str] = []
+        self._last_diagnostics: Any = runtime.undefined
+
+    def elliptic_curve(self) -> Any:
+        return self._curve
+
+    def _point_pair(self, value: Any, precision: int) -> list[str]:
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            precision
+        )
+        point = _lseries_complex_argument(complex_field, value)
+        return [str(point.real()), str(point.imag())]
+
+    def _cache_key(
+        self,
+        point: list[str],
+        precision: int,
+        algorithm: str,
+    ) -> str:
+        return algorithm + "|" + str(precision) + "|" + point[0] + "|" + point[1]
+
+    def _cache_result(self, key: str, value: Any) -> None:
+        if self._value_cache.get(key) is runtime.undefined:
+            self._value_cache_keys.append(key)
+        self._value_cache.set(key, value)
+        if len(self._value_cache_keys) > 64:
+            oldest = self._value_cache_keys.pop(0)
+            self._value_cache.delete(oldest)
+
+    def _evaluate(
+        self,
+        points: list[Any],
+        precision_value: Any,
+        algorithm_value: Any,
+    ) -> tuple[list[Any], int]:
+        precision = _lseries_precision(precision_value)
+        algorithm = _lseries_algorithm(algorithm_value)
+        point_pairs = [self._point_pair(point, precision) for point in points]
+        cached = []
+        missing_points = []
+        missing_keys = []
+        for point in point_pairs:
+            key = self._cache_key(point, precision, algorithm)
+            value = self._value_cache.get(key)
+            if value is runtime.undefined:
+                missing_points.append(point)
+                missing_keys.append(key)
+            else:
+                cached.append(value)
+        if missing_points:
+            result = _elliptic_lseries().lseries_values(
+                self._curve,
+                missing_points,
+                self._curve.root_number(),
+                precision,
+                algorithm=algorithm,
+                coefficient_prefix=self._coefficient_prefix,
+            )
+            if str(result.get("status")) != "ok":
+                raise ArithmeticError(
+                    "elliptic L-series evaluation failed with status "
+                    + str(result.get("status"))
+                )
+            new_values = list(result.get("values"))
+            if len(new_values) != len(missing_keys):
+                raise ArithmeticError(
+                    "elliptic L-series evaluator returned the wrong batch size"
+                )
+            for key, value in zip(missing_keys, new_values, strict=True):
+                self._cache_result(key, value)
+            self._last_diagnostics = result
+            cached = []
+            for point in point_pairs:
+                cached.append(
+                    self._value_cache.get(self._cache_key(point, precision, algorithm))
+                )
+        return cached, precision
+
+    def _coerce_results(
+        self,
+        values: list[Any],
+        precision: int,
+        completed: bool,
+    ) -> list[Any]:
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            precision
+        )
+        prefix = "completed_" if completed else "raw_"
+        return [
+            complex_field(value.get(prefix + "real"), value.get(prefix + "imag"))
+            for value in values
+        ]
+
+    def __call__(self, s: Any) -> Any:
+        return self.value(s)
+
+    def value(
+        self,
+        s: Any,
+        prec: Any = 53,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Return a non-rigorous numerical approximation to `L(E, s)`."""
+        values, precision = self._evaluate([s], prec, algorithm)
+        return self._coerce_results(values, precision, False)[0]
+
+    def values(
+        self,
+        points: Any,
+        prec: Any = 53,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Evaluate `L(E, s)` at several points using one shared batch."""
+        point_list = list(points)
+        if not point_list:
+            return []
+        values, precision = self._evaluate(point_list, prec, algorithm)
+        return self._coerce_results(values, precision, False)
+
+    def completed_value(
+        self,
+        s: Any,
+        prec: Any = 53,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Return canonical `A^s Gamma(s) L(E,s)`, where `A=sqrt(N)/(2*pi)`."""
+        values, precision = self._evaluate([s], prec, algorithm)
+        return self._coerce_results(values, precision, True)[0]
+
+    def __repr__(self) -> str:
+        return "Complex L-series of the " + str(self._curve)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class EllipticCurveParent(sage.Parent):
     def __init__(
         self,
@@ -668,6 +865,7 @@ class EllipticCurveParent(sage.Parent):
         self._rank_descent_cache = runtime.undefined
         self._saturated_rank_descent_cache = runtime.undefined
         self._analytic_rank_cache = runtime.map()
+        self._lseries_cache = runtime.undefined
         self._root_number = runtime.undefined
         self._label = label
         self._global_minimal_model_cache = runtime.undefined
@@ -996,6 +1194,14 @@ class EllipticCurveParent(sage.Parent):
         self._conductor = answer
         return answer
 
+    def lseries(self) -> Lseries_ell:
+        """Return the cached numerical complex `L`-series of this curve."""
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            raise NotImplementedError("elliptic L-series are only implemented over QQ")
+        if self._lseries_cache is runtime.undefined:
+            self._lseries_cache = Lseries_ell(self)
+        return self._lseries_cache
+
     def root_number(self) -> int:
         """Return the global root number of this elliptic curve over `QQ`."""
         if self._base is not sage.QQ and self._base is not sage.ZZ:
@@ -1023,6 +1229,115 @@ class EllipticCurveParent(sage.Parent):
             raise ArithmeticError("eclib returned an invalid global root number")
         self._root_number = answer
         return answer
+
+    def _lseries_values_native(
+        self,
+        coefficients: list[Any],
+        points: list[list[str]],
+        precision_bits: int,
+    ) -> dict[str, Any]:
+        """Call the optional batched Acb complex-value boundary."""
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecLseriesValues")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native Acb elliptic L-series evaluator is unavailable"
+            )
+        native = runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                runtime.integer_bigint(self.conductor()),
+                self.root_number(),
+                coefficients,
+                points,
+                precision_bits,
+            ],
+        )
+        values = []
+        for value in runtime.reflect.get(native, "values"):
+            raw = runtime.reflect.get(value, "raw")
+            completed = runtime.reflect.get(value, "completed")
+            values.append(
+                {
+                    "raw_real": str(runtime.reflect.get(raw, "realMidpoint")),
+                    "raw_imag": str(runtime.reflect.get(raw, "imagMidpoint")),
+                    "raw_real_radius": str(runtime.reflect.get(raw, "realRadius")),
+                    "raw_imag_radius": str(runtime.reflect.get(raw, "imagRadius")),
+                    "raw_accuracy_bits": int(runtime.reflect.get(raw, "accuracyBits")),
+                    "completed_real": str(
+                        runtime.reflect.get(completed, "realMidpoint")
+                    ),
+                    "completed_imag": str(
+                        runtime.reflect.get(completed, "imagMidpoint")
+                    ),
+                    "completed_real_radius": str(
+                        runtime.reflect.get(completed, "realRadius")
+                    ),
+                    "completed_imag_radius": str(
+                        runtime.reflect.get(completed, "imagRadius")
+                    ),
+                    "completed_accuracy_bits": int(
+                        runtime.reflect.get(completed, "accuracyBits")
+                    ),
+                    "coefficient_tail_bound": str(
+                        runtime.reflect.get(value, "coefficientTailBound")
+                    ),
+                    "grid_omission_bound": str(
+                        runtime.reflect.get(value, "gridOmissionBound")
+                    ),
+                    "outer_tail_bound": str(
+                        runtime.reflect.get(value, "outerTailBound")
+                    ),
+                    "raw_conversion_magnitude": str(
+                        runtime.reflect.get(value, "rawConversionMagnitude")
+                    ),
+                    "analytic_error_bound": str(
+                        runtime.reflect.get(value, "analyticErrorBound")
+                    ),
+                }
+            )
+        return {
+            "status": str(runtime.reflect.get(native, "status")),
+            "values": values,
+            "rigorous": bool(runtime.reflect.get(native, "rigorous")),
+            "analytic_error_status": str(
+                runtime.reflect.get(native, "analyticErrorStatus")
+            ),
+            "trapezoid_discretization_status": str(
+                runtime.reflect.get(native, "trapezoidDiscretizationStatus")
+            ),
+            "known_error_target_met": bool(
+                runtime.reflect.get(native, "knownErrorTargetMet")
+            ),
+            "precision_bits": int(runtime.reflect.get(native, "precisionBits")),
+            "work_precision_bits": int(
+                runtime.reflect.get(native, "workPrecisionBits")
+            ),
+            "cutoff": int(runtime.reflect.get(native, "cutoff")),
+            "required_cutoff": int(runtime.reflect.get(native, "requiredCutoff")),
+            "grid_points": int(runtime.reflect.get(native, "gridPoints")),
+            "coefficient_terms": int(runtime.reflect.get(native, "coefficientTerms")),
+            "point_count": int(runtime.reflect.get(native, "pointCount")),
+            "grid_step": str(runtime.reflect.get(native, "gridStep")),
+            "maximum_abs_imaginary": str(runtime.reflect.get(native, "maxAbsImag")),
+            "maximum_abs_real_offset": str(
+                runtime.reflect.get(native, "maxAbsRealOffset")
+            ),
+            "coefficient_tail_bound": str(
+                runtime.reflect.get(native, "coefficientTailBound")
+            ),
+            "grid_omission_bound": str(
+                runtime.reflect.get(native, "gridOmissionBound")
+            ),
+            "outer_tail_bound": str(runtime.reflect.get(native, "outerTailBound")),
+            "analytic_error_bound": str(
+                runtime.reflect.get(native, "analyticErrorBound")
+            ),
+            "raw_conversion_magnitude": str(
+                runtime.reflect.get(native, "rawConversionMagnitude")
+            ),
+        }
 
     def _rank_descent_data(self, saturate: bool = False) -> Any:
         if saturate:

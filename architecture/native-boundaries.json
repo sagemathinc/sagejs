@@ -16,7 +16,7 @@
     "classified-native-file": 73,
     "declared-ffi": 400,
     "declared-ffi-resource": 27,
-    "napi-export": 295,
+    "napi-export": 296,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -5226,6 +5226,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecCompletedCentralDerivatives",
       "symbol": "sagejs_ec_completed_central_derivatives",
+      "disposition": "retain-host-adapter",
+      "family": "elliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecLseriesValues",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecLseriesValues",
+      "symbol": "sagejs_ec_lseries_values",
       "disposition": "retain-host-adapter",
       "family": "elliptic"
     },

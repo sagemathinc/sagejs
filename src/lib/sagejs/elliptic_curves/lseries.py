@@ -31,6 +31,18 @@ from typing import Any, TypedDict
 
 from mpmath import mp
 
+__all__ = [
+    "CoefficientPrefix",
+    "ReferenceLseriesLimits",
+    "ReferenceLseriesNumericalIndeterminacyError",
+    "ReferenceLseriesResourceError",
+    "lseries_values",
+    "plan_reference_lseries",
+    "reference_incomplete_gamma_value",
+    "reference_lseries_value",
+    "reference_lseries_values",
+]
+
 
 # Positive nodes and weights for the 16-point Gauss--Legendre rule on [-1,1].
 # The same fixed rule is used by the central-derivative reference evaluator.
@@ -251,8 +263,8 @@ def _coerce_point(value: Any) -> Any:
         try:
             point = mp.mpc(value)
         except (TypeError, ValueError):
-            real_part = getattr(value, "real")
-            imaginary_part = getattr(value, "imag")
+            real_part = value.real
+            imaginary_part = value.imag
             if callable(real_part):
                 real_part = real_part()
             if callable(imaginary_part):
