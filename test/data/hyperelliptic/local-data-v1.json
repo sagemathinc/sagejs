@@ -1,0 +1,1986 @@
+{
+  "schema": "sagejs.hyperelliptic-local-data.v1",
+  "normalization": {
+    "equation": "y^2 + h(x)*y = f(x)",
+    "local_polynomial": "L_q(T) = det(1 - T*Frob_q)",
+    "coefficient_order": "ascending",
+    "integer_encoding": "decimal-string"
+  },
+  "generated_at_utc": "2026-08-18T07:54:58.010Z",
+  "cases_sha256": "39287e6d97cf233b883f05e622407b29b89aaaccdeadc27b4a773750d8adee76",
+  "sources": [
+    {
+      "id": "exhaustive-python-v1",
+      "backend": "exhaustive-python",
+      "version": "1",
+      "executable_sha256": "bdc711fac6e1ab5ffbeb4f4af56bc933f2037ab0a838d9e72b9e1fbc550bce8b",
+      "harness": "bench/hyperelliptic/exhaustive_oracle.py",
+      "harness_sha256": "52ef497f533bd52041d0786cc19ac9d1fa1adc85df9ae9d4881fe3e13f141c3e"
+    },
+    {
+      "id": "sage-10.9",
+      "backend": "sage",
+      "version": "10.9.post1",
+      "executable_sha256": "b190e6cec5027031be752260d9b21a8e23f11a313cc620e5dcd1be28390643c1",
+      "harness": "bench/hyperelliptic/sage_oracle.py",
+      "harness_sha256": "c5c3bbaeb1dbe525f180b6b1c62e82356556faaa8fd2102edadd9dea7774f706"
+    },
+    {
+      "id": "pari-2.17",
+      "backend": "pari-hyperellcharpoly",
+      "version": "2.17.1",
+      "executable_sha256": "b190e6cec5027031be752260d9b21a8e23f11a313cc620e5dcd1be28390643c1",
+      "harness": "bench/hyperelliptic/pari_oracle.py",
+      "harness_sha256": "54d82b52a10a7df84483cf45517a3b7d9f11540f12667fbebd0c53ffcf507cf5"
+    },
+    {
+      "id": "magma-2.18",
+      "backend": "magma",
+      "version": "2.18.5",
+      "executable_sha256": "ea6aac1bcb8633a40a958a46e0e1cfd0faa4aac0bbacc7c9bae399a0167dfc1f",
+      "harness": "bench/hyperelliptic/magma_oracle.cjs",
+      "harness_sha256": "603c838e46383067f78c6a70de4877208072575c1d065f94a5f5c9483cdb8667"
+    }
+  ],
+  "rows": [
+    {
+      "id": "g2-quintic-generic-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "10",
+        "0",
+        "25"
+      ],
+      "independent_coefficients": [
+        "0",
+        "10"
+      ],
+      "extension_point_counts": [
+        "6",
+        "46"
+      ],
+      "jacobian_order": "36",
+      "jacobian_invariants": [
+        "6",
+        "6"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-5",
+        "generic",
+        "p-rank-0",
+        "twist-base"
+      ],
+      "twist_pair": "g2-quintic-twist-p5",
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-twist-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "2"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "10",
+        "0",
+        "25"
+      ],
+      "independent_coefficients": [
+        "0",
+        "10"
+      ],
+      "extension_point_counts": [
+        "6",
+        "46"
+      ],
+      "jacobian_order": "36",
+      "jacobian_invariants": [
+        "6",
+        "6"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-5",
+        "p-rank-0",
+        "quadratic-twist"
+      ],
+      "twist_pair": "g2-quintic-generic-p5",
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-generic-p7",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "bad",
+        "reason": "singular-reduction"
+      },
+      "lpolynomial_coefficients_ascending": null,
+      "independent_coefficients": null,
+      "extension_point_counts": null,
+      "jacobian_order": null,
+      "jacobian_invariants": null,
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-5",
+        "bad-reduction",
+        "same-model-good-elsewhere"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18"
+      ],
+      "verification": {
+        "reduction_agreement": true
+      }
+    },
+    {
+      "id": "g2-quintic-generic-p11",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "11",
+      "field_order": "11",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "-4",
+        "14",
+        "-44",
+        "121"
+      ],
+      "independent_coefficients": [
+        "-4",
+        "14"
+      ],
+      "extension_point_counts": [
+        "8",
+        "134"
+      ],
+      "jacobian_order": "88",
+      "jacobian_invariants": [
+        "2",
+        "44"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "7",
+          "3"
+        ],
+        "modulus": "11",
+        "rows": [
+          [
+            "10",
+            "5"
+          ],
+          [
+            "5",
+            "5"
+          ]
+        ]
+      },
+      "p_rank": "2",
+      "tags": [
+        "degree-5",
+        "generic",
+        "ordinary",
+        "p-rank-2",
+        "same-model-bad-elsewhere"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-special-p7",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "49"
+      ],
+      "independent_coefficients": [
+        "0",
+        "0"
+      ],
+      "extension_point_counts": [
+        "8",
+        "50"
+      ],
+      "jacobian_order": "50",
+      "jacobian_invariants": [
+        "50"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0"
+        ],
+        "modulus": "7",
+        "rows": [
+          [
+            "0",
+            "3"
+          ],
+          [
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-5",
+        "p-rank-0",
+        "special"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-split-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "0",
+          "-1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "-10",
+        "0",
+        "25"
+      ],
+      "independent_coefficients": [
+        "0",
+        "-10"
+      ],
+      "extension_point_counts": [
+        "6",
+        "6"
+      ],
+      "jacobian_order": "16",
+      "jacobian_invariants": [
+        "2",
+        "2",
+        "2",
+        "2"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-5",
+        "p-rank-0",
+        "split-jacobian-candidate"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-sextic-generic-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "5",
+        "0",
+        "25"
+      ],
+      "independent_coefficients": [
+        "0",
+        "5"
+      ],
+      "extension_point_counts": [
+        "6",
+        "36"
+      ],
+      "jacobian_order": "31",
+      "jacobian_invariants": [
+        "31"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-6",
+        "generic"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-sextic-supersingular-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "-1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "10",
+        "0",
+        "25"
+      ],
+      "independent_coefficients": [
+        "0",
+        "10"
+      ],
+      "extension_point_counts": [
+        "6",
+        "46"
+      ],
+      "jacobian_order": "36",
+      "jacobian_invariants": [
+        "6",
+        "6"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-6",
+        "special",
+        "supersingular"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-prank1-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "3",
+        "10",
+        "15",
+        "25"
+      ],
+      "independent_coefficients": [
+        "3",
+        "10"
+      ],
+      "extension_point_counts": [
+        "9",
+        "37"
+      ],
+      "jacobian_order": "54",
+      "jacobian_invariants": [
+        "54"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "3",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "2"
+          ],
+          [
+            "0",
+            "2"
+          ]
+        ]
+      },
+      "p_rank": "1",
+      "tags": [
+        "degree-5",
+        "p-rank-1",
+        "p-rank-witness"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-quintic-prank2-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "1",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "1",
+        "4",
+        "5",
+        "25"
+      ],
+      "independent_coefficients": [
+        "1",
+        "4"
+      ],
+      "extension_point_counts": [
+        "7",
+        "33"
+      ],
+      "jacobian_order": "36",
+      "jacobian_invariants": [
+        "36"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "1",
+          "4"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "2",
+            "2"
+          ],
+          [
+            "0",
+            "2"
+          ]
+        ]
+      },
+      "p_rank": "2",
+      "tags": [
+        "degree-5",
+        "ordinary",
+        "p-rank-2",
+        "p-rank-witness"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-generalized-p7",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "3",
+          "2",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0",
+          "1"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "-1",
+        "-2",
+        "-7",
+        "49"
+      ],
+      "independent_coefficients": [
+        "-1",
+        "-2"
+      ],
+      "extension_point_counts": [
+        "7",
+        "45"
+      ],
+      "jacobian_order": "40",
+      "jacobian_invariants": [
+        "40"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-5",
+        "nonzero-h"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-characteristic2",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "1",
+          "1",
+          "1"
+        ]
+      },
+      "prime": "2",
+      "field_order": "2",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "-2",
+        "3",
+        "-4",
+        "4"
+      ],
+      "independent_coefficients": [
+        "-2",
+        "3"
+      ],
+      "extension_point_counts": [
+        "1",
+        "7"
+      ],
+      "jacobian_order": "2",
+      "jacobian_invariants": [
+        "2"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "characteristic-2",
+        "degree-5",
+        "nonzero-h"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g2-bad-p5",
+      "genus": 2,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "bad",
+        "reason": "singular-reduction"
+      },
+      "lpolynomial_coefficients_ascending": null,
+      "independent_coefficients": null,
+      "extension_point_counts": null,
+      "jacobian_order": null,
+      "jacobian_invariants": null,
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-5",
+        "bad-reduction"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18"
+      ],
+      "verification": {
+        "reduction_agreement": true
+      }
+    },
+    {
+      "id": "g3-septic-generic-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "3",
+        "9",
+        "17",
+        "45",
+        "75",
+        "125"
+      ],
+      "independent_coefficients": [
+        "3",
+        "9",
+        "17"
+      ],
+      "extension_point_counts": [
+        "9",
+        "35",
+        "123"
+      ],
+      "jacobian_order": "275",
+      "jacobian_invariants": [
+        "275"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "3",
+          "4",
+          "2"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0",
+            "1"
+          ],
+          [
+            "0",
+            "2",
+            "2"
+          ],
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "3",
+      "tags": [
+        "degree-7",
+        "generic",
+        "ordinary",
+        "p-rank-3",
+        "twist-base"
+      ],
+      "twist_pair": "g3-septic-twist-p5",
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-twist-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "-3",
+        "9",
+        "-17",
+        "45",
+        "-75",
+        "125"
+      ],
+      "independent_coefficients": [
+        "-3",
+        "9",
+        "-17"
+      ],
+      "extension_point_counts": [
+        "3",
+        "35",
+        "129"
+      ],
+      "jacobian_order": "85",
+      "jacobian_invariants": [
+        "85"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "2",
+          "4",
+          "3"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0",
+            "4"
+          ],
+          [
+            "0",
+            "3",
+            "3"
+          ],
+          [
+            "4",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "3",
+      "tags": [
+        "degree-7",
+        "ordinary",
+        "p-rank-3",
+        "quadratic-twist"
+      ],
+      "twist_pair": "g3-septic-generic-p5",
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-special-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "0",
+          "-1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "2",
+        "-1",
+        "-12",
+        "-5",
+        "50",
+        "125"
+      ],
+      "independent_coefficients": [
+        "2",
+        "-1",
+        "-12"
+      ],
+      "extension_point_counts": [
+        "8",
+        "20",
+        "104"
+      ],
+      "jacobian_order": "160",
+      "jacobian_invariants": [
+        "2",
+        "2",
+        "2",
+        "20"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "2",
+          "4",
+          "3"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0",
+            "1"
+          ],
+          [
+            "0",
+            "3",
+            "0"
+          ],
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "3",
+      "tags": [
+        "degree-7",
+        "ordinary",
+        "p-rank-3",
+        "special"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-supersingular-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "125"
+      ],
+      "independent_coefficients": [
+        "0",
+        "0",
+        "0"
+      ],
+      "extension_point_counts": [
+        "6",
+        "26",
+        "126"
+      ],
+      "jacobian_order": "126",
+      "jacobian_invariants": [
+        "126"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "2"
+          ],
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-7",
+        "p-rank-0",
+        "special",
+        "supersingular"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-prank1-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "3",
+        "0",
+        "-10",
+        "0",
+        "75",
+        "125"
+      ],
+      "independent_coefficients": [
+        "3",
+        "0",
+        "-10"
+      ],
+      "extension_point_counts": [
+        "9",
+        "17",
+        "123"
+      ],
+      "jacobian_order": "194",
+      "jacobian_invariants": [
+        "194"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "3",
+          "0",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "2"
+          ],
+          [
+            "1",
+            "0",
+            "2"
+          ]
+        ]
+      },
+      "p_rank": "1",
+      "tags": [
+        "degree-7",
+        "p-rank-1",
+        "p-rank-witness"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-prank2-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "3",
+          "0",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "3",
+        "7",
+        "20",
+        "35",
+        "75",
+        "125"
+      ],
+      "independent_coefficients": [
+        "3",
+        "7",
+        "20"
+      ],
+      "extension_point_counts": [
+        "9",
+        "31",
+        "150"
+      ],
+      "jacobian_order": "266",
+      "jacobian_invariants": [
+        "266"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "3",
+          "2",
+          "0"
+        ],
+        "modulus": "5",
+        "rows": [
+          [
+            "1",
+            "2",
+            "4"
+          ],
+          [
+            "0",
+            "1",
+            "2"
+          ],
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "2",
+      "tags": [
+        "degree-7",
+        "p-rank-2",
+        "p-rank-witness"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-septic-generic-p7",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "21",
+        "0",
+        "147",
+        "0",
+        "343"
+      ],
+      "independent_coefficients": [
+        "0",
+        "21",
+        "0"
+      ],
+      "extension_point_counts": [
+        "8",
+        "92",
+        "344"
+      ],
+      "jacobian_order": "512",
+      "jacobian_invariants": [
+        "8",
+        "8",
+        "8"
+      ],
+      "hasse_witt": {
+        "characteristic_polynomial_mod_p": [
+          "1",
+          "0",
+          "0",
+          "0"
+        ],
+        "modulus": "7",
+        "rows": [
+          [
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      "p_rank": "0",
+      "tags": [
+        "degree-7",
+        "generic",
+        "p-rank-0"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-octic-generic-p5",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "5",
+      "field_order": "5",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "3",
+        "10",
+        "20",
+        "50",
+        "75",
+        "125"
+      ],
+      "independent_coefficients": [
+        "3",
+        "10",
+        "20"
+      ],
+      "extension_point_counts": [
+        "9",
+        "37",
+        "123"
+      ],
+      "jacobian_order": "284",
+      "jacobian_invariants": [
+        "284"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-8",
+        "generic"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-octic-special-p7",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "0",
+        "21",
+        "0",
+        "147",
+        "0",
+        "343"
+      ],
+      "independent_coefficients": [
+        "0",
+        "21",
+        "0"
+      ],
+      "extension_point_counts": [
+        "8",
+        "92",
+        "344"
+      ],
+      "jacobian_order": "512",
+      "jacobian_invariants": [
+        "2",
+        "4",
+        "8",
+        "8"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-8",
+        "special"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-generalized-p7",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "2",
+          "3",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "1",
+          "0",
+          "1"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "4",
+        "8",
+        "12",
+        "56",
+        "196",
+        "343"
+      ],
+      "independent_coefficients": [
+        "4",
+        "8",
+        "12"
+      ],
+      "extension_point_counts": [
+        "12",
+        "50",
+        "348"
+      ],
+      "jacobian_order": "620",
+      "jacobian_invariants": [
+        "2",
+        "310"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-7",
+        "nonzero-h"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18",
+        "pari-2.17"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": true,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-characteristic2",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "1",
+          "1",
+          "0",
+          "1"
+        ]
+      },
+      "prime": "2",
+      "field_order": "2",
+      "reduction": {
+        "status": "good",
+        "reason": null
+      },
+      "lpolynomial_coefficients_ascending": [
+        "1",
+        "-2",
+        "2",
+        "-1",
+        "4",
+        "-8",
+        "8"
+      ],
+      "independent_coefficients": [
+        "-2",
+        "2",
+        "-1"
+      ],
+      "extension_point_counts": [
+        "1",
+        "5",
+        "10"
+      ],
+      "jacobian_order": "4",
+      "jacobian_invariants": [
+        "4"
+      ],
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "characteristic-2",
+        "degree-7",
+        "nonzero-h"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18"
+      ],
+      "verification": {
+        "exhaustive_point_counts": true,
+        "sage_lpolynomial": true,
+        "magma_lpolynomial_and_counts": true,
+        "pari_lpolynomial": false,
+        "magma_group_order_histogram": true
+      }
+    },
+    {
+      "id": "g3-bad-p7",
+      "genus": 3,
+      "model": {
+        "equation": "y^2 + h(x)*y = f(x)",
+        "base_ring": "QQ",
+        "f_coefficients_ascending": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "h_coefficients_ascending": [
+          "0"
+        ]
+      },
+      "prime": "7",
+      "field_order": "7",
+      "reduction": {
+        "status": "bad",
+        "reason": "singular-reduction"
+      },
+      "lpolynomial_coefficients_ascending": null,
+      "independent_coefficients": null,
+      "extension_point_counts": null,
+      "jacobian_order": null,
+      "jacobian_invariants": null,
+      "hasse_witt": null,
+      "p_rank": null,
+      "tags": [
+        "degree-7",
+        "bad-reduction"
+      ],
+      "sources": [
+        "exhaustive-python-v1",
+        "sage-10.9",
+        "magma-2.18"
+      ],
+      "verification": {
+        "reduction_agreement": true
+      }
+    }
+  ],
+  "fixture_sha256": "b06b4b89df65d699f82091b99b223690eb22c83faea9e6680f4a72441eaa6fa9"
+}

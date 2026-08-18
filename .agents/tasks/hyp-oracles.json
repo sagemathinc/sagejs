@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-oracles",
+  "title": "Higher-genus oracle corpus and benchmarks",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create compact offline Sage/Magma/PARI/exhaustive genus-2/3 local-polynomial, Hasse-Witt, point-count, Jacobian-order, and group-structure fixtures plus reproducible benchmark harnesses",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "test/data/hyperelliptic/",
+    "test/hyperelliptic-oracles.cjs",
+    "bench/hyperelliptic/"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagelite",
+    "/home/user/bin/magma",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
