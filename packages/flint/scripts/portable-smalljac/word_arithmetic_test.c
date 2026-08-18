@@ -6,11 +6,27 @@
 
 #if defined(_MSC_VER) || !defined(__SIZEOF_INT128__) || __SIZEOF_INT128__ != 16
 int main(void) {
-  /* clang-cl compilation validates the intrinsic implementation. Full exact
-     runtime comparison is performed by the smalljac trace harness. */
-  uint64_t high = 0, low = 0;
+  uint64_t high = 0, low = 0, quotient = 0;
   _asm_mult_1_1(high, low, UINT64_C(0xffffffffffffffff), UINT64_C(2));
-  return high == UINT64_C(1) && low == UINT64_C(0xfffffffffffffffe) ? 0 : 1;
+  if (high != UINT64_C(1) || low != UINT64_C(0xfffffffffffffffe)) return 1;
+  high = UINT64_C(0xffffffffffffffff);
+  low = UINT64_C(0xffffffffffffffff);
+  _asm_addto_2_2(high, low, UINT64_C(0), UINT64_C(1));
+  if (high != 0 || low != 0) return 2;
+  _asm_subfrom_2_2(high, low, UINT64_C(0), UINT64_C(1));
+  if (high != UINT64_C(0xffffffffffffffff) ||
+      low != UINT64_C(0xffffffffffffffff))
+    return 3;
+  high = UINT64_C(0x123456789abcdef0);
+  low = UINT64_C(0xfedcba9876543210);
+  _asm_div_q_q(quotient, high, low, UINT64_C(0xf123456789abcdef));
+  if (quotient != UINT64_C(0x13539261fdbc34c7) ||
+      high != UINT64_C(0x703884e61d6e9147))
+    return 4;
+  if (sagejs_ffpoly_highbit64(UINT64_C(0x8000000000001000)) != 63 ||
+      sagejs_ffpoly_lowbit64(UINT64_C(0x8000000000001000)) != 12)
+    return 5;
+  return 0;
 }
 #else
 typedef __uint128_t native_u128;

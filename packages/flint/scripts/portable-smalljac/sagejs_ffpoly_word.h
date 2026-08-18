@@ -12,6 +12,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef struct {
   uint64_t hi;
@@ -23,6 +24,20 @@ typedef struct {
   uint64_t word1;
   uint64_t word0;
 } sagejs_ffpoly_u192;
+
+static inline int64_t sagejs_ffpoly_atol64(const char *text) {
+  return (int64_t)strtoll(text, NULL, 10);
+}
+
+static inline uint64_t sagejs_ffpoly_random64(void) {
+  uint64_t result = 0;
+  unsigned bits = 0;
+  while (bits < 64) {
+    result = (result << 15) ^ (uint64_t)(rand() & 0x7fff);
+    bits += 15;
+  }
+  return result;
+}
 
 #if defined(_MSC_VER) && defined(_M_X64)
 #include <intrin.h>
@@ -68,6 +83,18 @@ static __forceinline sagejs_ffpoly_u128 sagejs_ffpoly_sub128(
   return result;
 }
 
+static __forceinline unsigned sagejs_ffpoly_highbit64(uint64_t value) {
+  unsigned long index;
+  _BitScanReverse64(&index, value);
+  return (unsigned)index;
+}
+
+static __forceinline unsigned sagejs_ffpoly_lowbit64(uint64_t value) {
+  unsigned long index;
+  _BitScanForward64(&index, value);
+  return (unsigned)index;
+}
+
 #else
 
 #if !defined(__SIZEOF_INT128__) || __SIZEOF_INT128__ != 16
@@ -110,6 +137,14 @@ static inline sagejs_ffpoly_u128 sagejs_ffpoly_sub128(
   sagejs_ffpoly_u128 result = {(uint64_t)(difference >> 64),
                                (uint64_t)difference};
   return result;
+}
+
+static inline unsigned sagejs_ffpoly_highbit64(uint64_t value) {
+  return (unsigned)(63 - __builtin_clzll(value));
+}
+
+static inline unsigned sagejs_ffpoly_lowbit64(uint64_t value) {
+  return (unsigned)__builtin_ctzll(value);
 }
 
 #endif
