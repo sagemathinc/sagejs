@@ -49,16 +49,16 @@ resource = polynomial._exact_polynomial_resource()
 startup_and_setup_ns = perf_counter_ns() - program_started
 
 flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+analysis_module = __import__(
+    "sagejs.number_fields.field_analysis_resource",
+    fromlist=["field_analysis_resource"],
+)
 raw_order_ns = []
 proof_producer_ns = []
 proof_direct_auth_ns = []
 original_raw_order = flint.number_field_order_from_polynomial_resource
 original_proof_producer = flint.number_field_round2_proof_resource
-order_module = __import__(
-    "sagejs.number_fields.order_resource",
-    fromlist=["order_resource"],
-)
-original_direct_auth = order_module.native_round2_order_proof_from_resources
+original_direct_auth = analysis_module.native_round2_order_proof_from_resources
 
 def timed_raw_order(*args, **kwargs):
     started = perf_counter_ns()
@@ -80,7 +80,7 @@ def timed_direct_auth(*args, **kwargs):
 
 flint.number_field_order_from_polynomial_resource = timed_raw_order
 flint.number_field_round2_proof_resource = timed_proof_producer
-order_module.native_round2_order_proof_from_resources = timed_direct_auth
+analysis_module.native_round2_order_proof_from_resources = timed_direct_auth
 elapsed = []
 byte_sizes = []
 certified_primes = [
