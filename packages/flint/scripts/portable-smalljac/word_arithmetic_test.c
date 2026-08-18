@@ -4,7 +4,7 @@
 
 #include "sagejs_ffpoly_word.h"
 
-#if !defined(__SIZEOF_INT128__) || __SIZEOF_INT128__ != 16
+#if defined(_MSC_VER) || !defined(__SIZEOF_INT128__) || __SIZEOF_INT128__ != 16
 int main(void) {
   /* clang-cl compilation validates the intrinsic implementation. Full exact
      runtime comparison is performed by the smalljac trace harness. */
