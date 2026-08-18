@@ -40,13 +40,43 @@ Implemented on 2026-08-18:
   than one;
 - the pack manifest records ABI, source, foreign-input, platform, byte-size,
   and SHA-256 identities;
-- a machine-readable size report gates gross deduplication regressions.
+- a machine-readable size report gates gross deduplication regressions and
+  names the ten largest duplicated standalone addons.
 
 The implemented portable Linux x86-64 release pack is 23,454,896 bytes versus
 229,898,624 bytes for its 22 standalone addons, a 89.8% reduction. The
 complete portable `sagejs` SEA is 359,684,558 bytes, down from 581,884,366
 bytes after the first two reductions and from the original 623,938,756-byte
 baseline.
+
+### Four-platform release receipt
+
+The complete executables and SEA smoke tests were validated at `713f7e06`;
+`42310a6a` then added the report's diagnostic largest-addon list without
+changing any native or executable bytes. All four platforms passed the seven
+focused production-pack tests. The pack ratios are measured against the same
+22 kernels built as standalone development addons on that platform.
+
+| Platform | Standalone addons | One pack | Pack ratio | `sagejs` SEA | `sagepython` SEA |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Linux x86-64 | 229,898,624 B | 23,454,896 B | 10.20% | 359,684,558 B | 284,359,118 B |
+| Linux arm64 | 189,360,136 B | 18,344,048 B | 9.69% | 344,279,431 B | 282,274,183 B |
+| macOS arm64 | 213,654,432 B | 20,368,016 B | 9.53% | 343,366,400 B | 275,962,320 B |
+| Windows x64 | 101,319,680 B | 14,691,328 B | 14.50% | 312,355,656 B | 264,741,704 B |
+
+The complete SEA smoke suite passed on every platform, including strict
+autoload from the embedded pack. The startup budget passed on macOS arm64 and
+Windows x64. It remains a separate pre-existing Linux issue: at the exact
+pre-pack commit `0761e857`, Linux x86-64 already measured 370.3 ms normalized
+against the 300 ms budget. The packed build therefore does not claim to close
+that existing startup-performance gate.
+
+Windows testing also found a host-runtime regression worth guarding against:
+official Node 26.5.1 crashed when a renamed executable loaded ordinary native
+addons, whereas official 22.22.2 and 26.7.0 did not. The SEA builder does not
+hard-code those versions. It now preflights every embedded addon through a
+renamed copy of the selected host and fails with an actionable error before it
+can emit a broken Windows release.
 
 ## Measured baseline and validated savings
 
