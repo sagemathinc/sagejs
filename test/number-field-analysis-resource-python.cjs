@@ -373,6 +373,7 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
       [
         "import sagejs.number_fields.field_analysis_resource as _field_analysis",
         "_field_analysis.packed_field_analysis_fixed_points_are_valid = getattr(_field_analysis.packed_field_analysis_fixed_points_are_valid, '__sagejs_native_source__', _field_analysis.packed_field_analysis_fixed_points_are_valid)",
+        "_field_analysis.packed_field_analysis_decode_integers = getattr(_field_analysis.packed_field_analysis_decode_integers, '__sagejs_native_source__', _field_analysis.packed_field_analysis_decode_integers)",
         program,
       ].join("\n"),
     );
