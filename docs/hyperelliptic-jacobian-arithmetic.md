@@ -319,4 +319,3 @@ The principal implementation files are:
 - [`hyperelliptic-jacobian.cjs`](../test/hyperelliptic-jacobian.cjs) and
   [`hyperelliptic-genus3-jacobian-search-differential.cjs`](../test/hyperelliptic-genus3-jacobian-search-differential.cjs)
   for public and independent-native regression tests.
-
