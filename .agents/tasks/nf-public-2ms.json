@@ -7,12 +7,14 @@
   "status": "active",
   "owner": "user",
   "objective": "Authenticate one fused field-analysis payload in one source-transparent crossing and return an immutable lazily materialized NumberFieldOrder projection with exact corruption differentials and phase benchmarks",
-  "base_commit": "00f2f141616b0de709e9ffb459a1046ce1eb8a09",
+  "base_commit": "13d233427a92fa4ee8c796d30f9e8e311a2f4c85",
   "claims": [
     "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
     "src/baselib/number_fields.py",
     "test/number-field-analysis-projection.cjs",
     "test/number-field-lazy-authenticated-order.cjs",
+    "test/number-field-analysis-public-hook.cjs",
     "bench/number-field-analysis-projection.cjs",
     "bench/results/number-field-analysis-projection-current.json"
   ],
@@ -39,10 +41,37 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.955,
+      "started_at": "2026-08-18T09:38:41.308Z",
+      "commit": "1f4ede4a6a3fa29e1f9dd9eae6ab29bc45dbbc69",
+      "workspace_fingerprint": "6d4ae4d710a978df4f3ee7bb68e8893aa2fb42e8b9b0928c54c4713a64930fbc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-projection.cjs test/number-field-lazy-authenticated-order.cjs test/number-field-analysis-public-hook.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.697,
+      "started_at": "2026-08-18T09:39:04.976Z",
+      "commit": "1f4ede4a6a3fa29e1f9dd9eae6ab29bc45dbbc69",
+      "workspace_fingerprint": "6d4ae4d710a978df4f3ee7bb68e8893aa2fb42e8b9b0928c54c4713a64930fbc",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "The ordinary public maximal-order path now borrows the field-owned sealed integral polynomial, authenticates one packed projection, installs an immutable lazy NumberFieldOrder, and defers decomposition, basis rows, witnesses, and certificate serialization. Reusable shape-keyed native scratch removes allocator cost without caching any proof result. All three 101-sample warm-public medians are below 2ms (1.572ms cubic, 1.443ms essential cubic, 1.714ms degree 7).",
+    "risks": [
+      "The shape-keyed scratch buffers assume synchronous kernel calls within one JavaScript isolate; worker isolates have independent module state.",
+      "The degree-7 p90 was 2.044ms although the explicit median gate is green."
+    ],
+    "next_steps": [
+      "Integrate onto maximal-order and rebuild the production native registry so its source hash matches field_analysis_resource.py.",
+      "Run pnpm test:native and the full maximal-order benchmark corpus after integration to watch tail latency outside the ordinary microcases."
+    ]
   }
 }
