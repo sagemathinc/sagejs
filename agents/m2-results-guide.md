@@ -4,11 +4,11 @@ M2 is a closed, measured compatibility pilot. It is not a branch that should
 be merged wholesale. Its value is a set of independently reviewed results that
 can be selected one at a time for implementation PRs and roadmap decisions.
 
-The authoritative branch is:
-
-```text
-origin/agent/sage-compatibility-m2-pilot
-```
+The authoritative archive is
+[`sagemathinc/sagejs-m2`](https://github.com/sagemathinc/sagejs-m2). Its
+[`ARCHIVE-MANIFEST.md`](https://github.com/sagemathinc/sagejs-m2/blob/main/ARCHIVE-MANIFEST.md)
+records the exact 54 source branch tips preserved before the experimental
+lineage was removed from the main Sage.js repository.
 
 The closed pilot tip is:
 
@@ -29,13 +29,13 @@ material. Do not open a PR from the entire branch.
 
 ## Inspect the closed pilot
 
-Create a detached worktree without disturbing another checkout:
+Clone the preserved pilot branch and detach at the immutable closure commit:
 
 ```sh
-git fetch origin agent/sage-compatibility-m2-pilot
-git worktree add --detach ../sagejs-m2-results \
-  origin/agent/sage-compatibility-m2-pilot
+git clone --single-branch --branch agent/sage-compatibility-m2-pilot \
+  https://github.com/sagemathinc/sagejs-m2 ../sagejs-m2-results
 cd ../sagejs-m2-results
+git checkout --detach 0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e
 ```
 
 Start with these files:
@@ -75,21 +75,29 @@ reviewed Sage-compatible implementation, differential evidence, and required
 platform acceptance. It does not mean complete compatibility with every API in
 the surrounding Sage module.
 
-| Cluster | Result | Main production paths | Evidence |
+| Cluster | Result | Main disposition or production paths | Evidence |
 | --- | --- | --- | --- |
-| `clu-003998` | `Feature`, `PythonModule`, `InterfaceFeature`, `JoinFeature`, and named interface features | `src/baselib/features.py` | `docs/sage-compatibility/m2/interface-feature/` |
-| `clu-001307` | Plot helpers including `FastCallablePlotWrapper`, `get_matplotlib_linestyle`, `setup_for_eval_on_grid`, and `unify_arguments` | `src/baselib/graphics.py` | `docs/sage-compatibility/m2/implementations/clu-001307/` |
-| `clu-000073` | Complete Conway polynomial database, Sage mapping behavior, provenance, caching, and deterministic no-filesystem failure | `src/lib/conway_polynomials/`, `src/lib/sage/databases/` | `docs/sage-compatibility/m2/clusters/clu-000073/` |
-| `clu-005118` | Provider-free P/PQ/Q trees, reductions, orderings, and `reorder_sets` | `src/lib/sage/graphs/pq_trees.py` | `docs/sage-compatibility/m2/feasibility/clu-005118/` |
-| `clu-004868` | Puiseux series rings and elements with rational exponents, precision, ring changes, and a dynamic fallback | `src/lib/sage/rings/puiseux_series_ring.py`, `src/baselib/series.py` | `docs/sage-compatibility/m2/feasibility/clu-004868/` |
+| `clu-003998` | `Feature`, `PythonModule`, `InterfaceFeature`, `JoinFeature`, and named interface features | Archive only; deliberately not extracted | [Pilot evidence](https://github.com/sagemathinc/sagejs-m2/tree/0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e/docs/sage-compatibility/m2/interface-feature) |
+| `clu-001307` | Plot helpers including `FastCallablePlotWrapper`, `get_matplotlib_linestyle`, `setup_for_eval_on_grid`, and `unify_arguments` | `src/baselib/graphics.py` | [Pilot evidence](https://github.com/sagemathinc/sagejs-m2/tree/0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e/docs/sage-compatibility/m2/implementations/clu-001307) |
+| `clu-000073` | Complete Conway polynomial database, Sage mapping behavior, provenance, caching, and deterministic no-filesystem failure | `src/lib/conway_polynomials/`, `src/lib/sage/databases/` | [Pilot evidence](https://github.com/sagemathinc/sagejs-m2/tree/0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e/docs/sage-compatibility/m2/clusters/clu-000073) |
+| `clu-005118` | Provider-free P/PQ/Q trees, reductions, orderings, and `reorder_sets` | `src/lib/sage/graphs/pq_trees.py` | [Pilot evidence](https://github.com/sagemathinc/sagejs-m2/tree/0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e/docs/sage-compatibility/m2/feasibility/clu-005118) |
+| `clu-004868` | Puiseux series rings and elements with rational exponents, precision, ring changes, and a dynamic fallback | `src/lib/sage/rings/puiseux_series_ring.py`, `src/baselib/series.py` | [Pilot evidence](https://github.com/sagemathinc/sagejs-m2/tree/0c0dbfe11605dd32498fdc7dfa8b789264aa5d5e/docs/sage-compatibility/m2/feasibility/clu-004868) |
 
-The reusable-session name-resolution corrections developed while integrating
-M2 are also a strong independent PR candidate. They prevent deleted Python
-module globals from falling through to JavaScript host globals and preserve
-Python cases such as `i = CC(i)`. The relevant source/test changes are in
-commits `d4304fd6` and `2744ccb6`; those commits also contain M2 bookkeeping,
-so extract the runtime and regression-test hunks rather than cherry-picking the
-commits unchanged.
+`clu-003998` was a valid result under the compatibility pilot's acceptance
+contract, but it is intentionally not a Sage.js product commitment. It detects
+the presence of nine Sage external-CAS interfaces without implementing those
+interfaces, carries process-global singleton and hide/unhide semantics, and
+was integrated through a `sage.features` bootstrap alias that predates the
+current ordinary `src/lib/sage` package. Its exact implementation and tests
+remain available in the archive if a future concrete capability use case
+justifies redesigning it for agents.
+
+The reusable-session name-resolution corrections observed while integrating
+M2 are already represented by the current compiler/runtime implementation on
+`main`: deleted or uninitialized Python module bindings do not fall through to
+same-named JavaScript hosts, while cases such as `i = CC(i)` retain Python
+lookup behavior. Archive commits `d4304fd6` and `2744ccb6` remain useful
+historical provenance, not pending cherry-pick instructions.
 
 ## Turn one accepted result into a PR
 
@@ -180,12 +188,11 @@ Interpret the evidence conservatively:
 
 ## What should be preserved on `main`
 
-A compact planning PR can preserve this guide plus the closure index, a concise
-summary of each reviewed cluster, and links to immutable branch artifacts. Raw
-oracle transcripts, generated schemas, benchmark samples, and large receipts
-can remain on the M2 branch or be published as release artifacts. Git object
-IDs and SHA-256 receipts make those artifacts auditable without adding the
-entire research corpus to every future checkout.
+This guide and its immutable archive links are the compact planning record on
+`main`. Raw oracle transcripts, generated schemas, benchmark samples, and
+large receipts remain in `sagemathinc/sagejs-m2`. Git object IDs and SHA-256
+receipts keep those artifacts auditable without adding the entire research
+corpus to every future Sage.js clone.
 
 The intended long-term loop is:
 
