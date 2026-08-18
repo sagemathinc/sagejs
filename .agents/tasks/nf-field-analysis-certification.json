@@ -149,6 +149,56 @@
       "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
       "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.127,
+      "started_at": "2026-08-18T01:19:39.155Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.311,
+      "started_at": "2026-08-18T01:19:44.033Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.068,
+      "started_at": "2026-08-18T01:19:48.103Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.285,
+      "started_at": "2026-08-18T01:19:55.900Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.405,
+      "started_at": "2026-08-18T01:20:16.890Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
