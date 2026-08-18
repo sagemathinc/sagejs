@@ -66,6 +66,7 @@ const integration = [
   "test/number-field-maximal-order-timeout-recovery.cjs",
   "test/number-field-t8-fused-analysis.cjs",
   "test/number-field-discriminant-components.cjs",
+  "test/number-field-coprime-composite-merge.cjs",
   "test/number-field-buchmann-lenstra.cjs",
   "test/number-field-buchmann-lenstra-fallback.cjs",
   "test/number-field-buchmann-lenstra-fast.cjs",
