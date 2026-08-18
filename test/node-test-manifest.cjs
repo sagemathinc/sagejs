@@ -214,6 +214,7 @@ const integration = [
   "test/elliptic-lseries-native.cjs",
   "test/elliptic-lseries-oracles.cjs",
   "test/elliptic-lseries-reference.cjs",
+  "test/doc-examples.cjs",
   "test/elliptic-curves.cjs",
   "test/number-fields.cjs",
   "test/polynomial-ideals.cjs",
