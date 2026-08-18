@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 127,
+    "pass": 130,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -880,6 +880,21 @@
       "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/hyperelliptic_curves.py#795c664f1fca1e0a-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/hyperelliptic_curves.py#4f291915802e5acb-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/hyperelliptic_curves.py#214119a1bbf071a5-d4735e3a265e16ee",
+      "status": "pass",
+      "actual": "2\n"
     }
   ],
   "revision": "working-tree"

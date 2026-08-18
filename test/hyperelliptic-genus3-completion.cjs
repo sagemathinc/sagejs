@@ -259,3 +259,47 @@ print(json.dumps({
   assert.equal(observed.callback_type_error[0], "TypeError");
   assert.match(observed.callback_type_error[1], /must return bool/);
 });
+
+test("completion rejects inexact integer evidence instead of truncating it", () => {
+  const observed = python(String.raw`
+import json
+from fractions import Fraction
+from sagejs.hyperelliptic_curves.genus3_completion import (
+    complete_genus3_lpolynomial,
+    enumerate_genus3_weil_candidates,
+)
+
+failures = []
+calls = [
+    lambda: complete_genus3_lpolynomial(
+        101, (12, 56, 85), jacobian_order=Fraction(2317249, 2)
+    ),
+    lambda: complete_genus3_lpolynomial(
+        101, (12, 56, 85), jacobian_exponent_witnesses=(149.5,)
+    ),
+    lambda: enumerate_genus3_weil_candidates(101, (12, 56, 85.5)),
+    lambda: enumerate_genus3_weil_candidates(
+        101, (12, 56, 85), max_candidates=1.5
+    ),
+    lambda: enumerate_genus3_weil_candidates(
+        101, (12, 56, 85), max_combinations=True
+    ),
+]
+for call in calls:
+    try:
+        call()
+    except Exception as error:
+        failures.append([type(error).__name__, str(error)])
+integral_primes = [
+    enumerate_genus3_weil_candidates(value, (12, 56, 85))["prime"]
+    for value in (101.0, Fraction(101, 1))
+]
+print(json.dumps([failures, integral_primes]))
+`);
+  assert.equal(observed[0].length, 5);
+  assert.ok(
+    observed[0].every(([name]) => ["TypeError", "ValueError"].includes(name)),
+  );
+  assert.ok(observed[0].every(([, message]) => /integer/.test(message)));
+  assert.deepEqual(observed[1], [101, 101]);
+});

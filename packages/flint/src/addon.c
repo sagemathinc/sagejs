@@ -4370,7 +4370,7 @@ napi_value sagejs_rforest_capabilities_value(
         SAGEJS_RFOREST_ROW_##name)) return NULL
     SET_RFOREST_ROW_STATUS(FOREST);
     SET_RFOREST_ROW_STATUS(DIRECT);
-    SET_RFOREST_ROW_STATUS(BAD_REDUCTION);
+    SET_RFOREST_ROW_STATUS(SINGULAR_MODEL);
     SET_RFOREST_ROW_STATUS(UNSUPPORTED_CHARACTERISTIC);
     SET_RFOREST_ROW_STATUS(RESOURCE_LIMIT);
 #undef SET_RFOREST_ROW_STATUS
@@ -4969,19 +4969,19 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,
             NULL, NULL, NULL, napi_default, NULL},
-        {SAGEJS_SMALLJAC_LPOLY_EXPORT, NULL,
+        {"smalljacLpolyBatch", NULL,
             sagejs_smalljac_lpoly_batch_value,
             NULL, NULL, NULL, napi_default, NULL},
-        {SAGEJS_SMALLJAC_GROUP_EXPORT, NULL,
+        {"smalljacGroupBatch", NULL,
             sagejs_smalljac_group_batch_value,
             NULL, NULL, NULL, napi_default, NULL},
-        {SAGEJS_SMALLJAC_CAPABILITIES_EXPORT, NULL,
+        {"smalljacCapabilities", NULL,
             sagejs_smalljac_capabilities_value,
             NULL, NULL, NULL, napi_default, NULL},
-        {SAGEJS_RFOREST_BATCH_EXPORT, NULL,
+        {"rforestHasseWittBatch", NULL,
             sagejs_rforest_hasse_witt_batch_value,
             NULL, NULL, NULL, napi_default, NULL},
-        {SAGEJS_RFOREST_CAPABILITIES_EXPORT, NULL,
+        {"rforestCapabilities", NULL,
             sagejs_rforest_capabilities_value,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecScalarMulPrime", NULL, elliptic_scalar_mul_prime,

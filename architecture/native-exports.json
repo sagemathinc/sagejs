@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 10,
+    "retain-host-adapter": 15,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -147,7 +147,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4214,
+        "line": 4448,
         "lines": 16,
         "sha256": "409bad240e5f70fbd1c23111062903d0600dfd04efb76c1756539062fb7e87f3",
         "calls": [
@@ -4205,7 +4205,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4194,
+        "line": 4428,
         "lines": 5,
         "sha256": "b93b2564514c055d247081ec8990b737afb2b6177ca20e04cb736051d3ccedae",
         "calls": [
@@ -6000,7 +6000,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4188,
+        "line": 4422,
         "lines": 5,
         "sha256": "410eec0af09e0df2e0c095f9e5e525ee8743bb8218e0d58678424fc62bb40f63",
         "calls": [
@@ -6032,7 +6032,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4182,
+        "line": 4416,
         "lines": 5,
         "sha256": "c3d6c929e1876b3e4a0e45cf51f9ebacbf17d2153b156f70e7a8b1b2155bf1d6",
         "calls": [
@@ -7012,7 +7012,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4160,
+        "line": 4394,
         "lines": 10,
         "sha256": "e06ff2d4c4953a7b949b3ee2d15670b367fad62213b8a11252009c245399ad89",
         "calls": [
@@ -11348,6 +11348,231 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:rforestCapabilities",
+      "package": "@sagemath/sagejs-flint",
+      "export": "rforestCapabilities",
+      "callback": "sagejs_rforest_capabilities_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 4325,
+        "lines": 57,
+        "sha256": "fafc148f40ec1c88440f20a802db96207ca1c22d7619550e9c750940b3233dee",
+        "calls": [
+          "SET_RFOREST_ROW_STATUS",
+          "SET_RFOREST_STATUS",
+          "check_napi",
+          "napi_create_array_with_length",
+          "napi_create_object",
+          "napi_create_uint32",
+          "napi_set_element",
+          "napi_set_named_property",
+          "sagejs_rforest_available",
+          "sagejs_rforest_backend_version",
+          "smalljac_set_boolean",
+          "smalljac_set_number",
+          "smalljac_set_string",
+          "smalljac_set_uint64_bigint"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/rforest.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:rforestHasseWittBatch",
+      "package": "@sagemath/sagejs-flint",
+      "export": "rforestHasseWittBatch",
+      "callback": "sagejs_rforest_hasse_witt_batch_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 4250,
+        "lines": 74,
+        "sha256": "498698d66f37a1f227c95bbf14d24545b34efca6ea8188b7af4a050c12da853d",
+        "calls": [
+          "check_napi",
+          "napi_create_object",
+          "rforest_batch_arguments",
+          "sagejs_rforest_backend_version",
+          "sagejs_rforest_batch_clear",
+          "sagejs_rforest_hasse_witt_batch_compute",
+          "sagejs_rforest_status_name",
+          "smalljac_set_boolean",
+          "smalljac_set_number",
+          "smalljac_set_size",
+          "smalljac_set_string",
+          "smalljac_typed_array"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/rforest.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacCapabilities",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacCapabilities",
+      "callback": "sagejs_smalljac_capabilities_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 4084,
+        "lines": 64,
+        "sha256": "a41e51b344b4a5ff45a7db414533f373fcaf9f0f2f117edc283d62d7798f5b2b",
+        "calls": [
+          "SET_SMALLJAC_STATUS",
+          "check_napi",
+          "napi_create_object",
+          "napi_set_named_property",
+          "sagejs_smalljac_available",
+          "sagejs_smalljac_backend_version",
+          "smalljac_set_boolean",
+          "smalljac_set_number",
+          "smalljac_set_number_array",
+          "smalljac_set_string",
+          "smalljac_set_uint64_bigint"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/smalljac.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacGroupBatch",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacGroupBatch",
+      "callback": "sagejs_smalljac_group_batch_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 3976,
+        "lines": 76,
+        "sha256": "35eba215326210b3fd9c80afee726cbc4728b01d0b9360c370ce69e8138d0a4e",
+        "calls": [
+          "check_napi",
+          "free",
+          "napi_create_object",
+          "napi_throw_range_error",
+          "sagejs_smalljac_group_batch_clear",
+          "sagejs_smalljac_group_batch_compute",
+          "smalljac_batch_arguments",
+          "smalljac_common_batch_properties",
+          "smalljac_typed_array"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/smalljac.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacLpolyBatch",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacLpolyBatch",
+      "callback": "sagejs_smalljac_lpoly_batch_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 3915,
+        "lines": 60,
+        "sha256": "5d02ecbb95d6365c3e56e9c7d8f617ece19dd0d9a01c8cad39c39629b9b3276b",
+        "calls": [
+          "check_napi",
+          "free",
+          "napi_create_object",
+          "sagejs_smalljac_lpoly_batch_clear",
+          "sagejs_smalljac_lpoly_batch_compute",
+          "smalljac_batch_arguments",
+          "smalljac_common_batch_properties",
+          "smalljac_typed_array"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/rforest.cjs",
+        "packages/flint/test/hyperelliptic/smalljac.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:smalljacVersion",
       "package": "@sagemath/sagejs-flint",
       "export": "smalljacVersion",
@@ -11357,7 +11582,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4200,
+        "line": 4434,
         "lines": 13,
         "sha256": "ed65b49ad723a350bcb65f2608181df0fd803d87df7d5b9a800780734d134c3b",
         "calls": [
@@ -11390,7 +11615,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4149,
+        "line": 4383,
         "lines": 10,
         "sha256": "89079d7fea4034f172606828b79afe145f22ce4bfbc1f5ba276982f83ec56de1",
         "calls": [

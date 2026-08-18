@@ -215,6 +215,7 @@ const integration = [
   "test/hyperelliptic-jacobian.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",
+  "test/hyperelliptic-rforest.cjs",
   "test/number-fields.cjs",
   "test/polynomial-ideals.cjs",
   "test/symbolic.cjs",

@@ -4792,6 +4792,38 @@ Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `HyperellipticCurve`
+
+```sage
+HyperellipticCurve(f: Any, h: Any=0, names: Any=None, check_squarefree: bool=True) -> Any
+```
+
+Construct a genus-2 or genus-3 hyperelliptic curve.
+
+The equation is `y^2 + h(x)y = f(x)`. Substantial model validation,
+point counting, and Frobenius arithmetic live in the lazy
+`sagejs.hyperelliptic_curves` package.
+
+```sage
+sage: R.<x> = PolynomialRing(GF(5))
+sage: C = HyperellipticCurve(x^5 + x + 1)
+sage: C.genus()
+2
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes.hyperelliptic_curves.constructor`
+- Tags: hyperelliptic curves, finite fields, point counting, L-polynomials
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Genus-2 and genus-3 models over QQ and finite fields, with an exact exhaustive finite-field Frobenius fallback.
+- Limitations: The exhaustive reference algorithm is intended for modest finite fields. Genus-2 local factors use native smalljac; the genus-3 rforest backend currently exposes modular development diagnostics rather than public completed local factors.
+
+### Provenance
+
+- `sage-derived` — [SageMath hyperelliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/); license GPL-2.0-or-later
+
 ## `icosahedron`
 
 ```sage

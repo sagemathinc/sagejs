@@ -14,7 +14,6 @@ explicit results.
 
 from __future__ import annotations
 
-from math import gcd, isqrt
 from typing import Any, Callable, Iterable
 
 from sagejs.hyperelliptic_curves.hasse_witt import _is_prime
@@ -23,13 +22,36 @@ Rational = tuple[int, int]
 Candidate = tuple[int, int, int]
 
 
+def _integer_gcd(left: int, right: int) -> int:
+    """Return a nonnegative gcd without depending on an optional stdlib shim."""
+    left = abs(left)
+    right = abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
+def _integer_isqrt(value: int) -> int:
+    """Return `floor(sqrt(value))` by exact integer Newton iteration."""
+    if value < 0:
+        raise ValueError("integer square root needs a nonnegative input")
+    if value < 2:
+        return value
+    root = 1 << ((value.bit_length() + 1) // 2)
+    while True:
+        next_root = (root + value // root) // 2
+        if next_root >= root:
+            return root
+        root = next_root
+
+
 def _rational(numerator: int, denominator: int = 1) -> Rational:
     if denominator == 0:
         raise ZeroDivisionError("rational denominator is zero")
     if denominator < 0:
         numerator = -numerator
         denominator = -denominator
-    divisor = gcd(abs(numerator), denominator)
+    divisor = _integer_gcd(numerator, denominator)
     return numerator // divisor, denominator // divisor
 
 
@@ -176,32 +198,47 @@ def _congruent_values(residue: int, lower: int, upper: int, modulus: int) -> ran
     return range(first, upper + 1, modulus)
 
 
+def _checked_exact_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool):
+        raise TypeError(name + " must be an integer")
+    try:
+        integer = int(value)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise TypeError(name + " must be an integer") from error
+    try:
+        exact = value == integer
+    except Exception:
+        exact = False
+    if exact is not True:
+        raise ValueError(name + " must be an exact integer")
+    return integer
+
+
 def _checked_inputs(
     prime: int, residues: Iterable[int], max_candidates: int, max_combinations: int
-) -> tuple[tuple[int, int, int], int, int]:
-    if (
-        not isinstance(prime, int)
-        or isinstance(prime, bool)
-        or prime <= 2
-        or prime > 2**64 - 1
-        or not _is_prime(prime)
-    ):
+) -> tuple[int, tuple[int, int, int], int, int]:
+    prime = _checked_exact_integer(prime, "prime")
+    if prime <= 2 or prime > 2**64 - 1 or not _is_prime(prime):
         raise ValueError("prime must be an odd prime below 2^64")
-    normalized = tuple(int(value) % prime for value in residues)
+    normalized = tuple(
+        _checked_exact_integer(value, "residue") % prime for value in residues
+    )
     if len(normalized) != 3:
         raise ValueError("genus-3 completion requires exactly three residues")
+    max_candidates = _checked_exact_integer(max_candidates, "max_candidates")
+    max_combinations = _checked_exact_integer(max_combinations, "max_combinations")
     if max_candidates < 1:
         raise ValueError("max_candidates must be positive")
     if max_combinations < 1:
         raise ValueError("max_combinations must be positive")
-    return normalized, int(max_candidates), int(max_combinations)
+    return prime, normalized, max_candidates, max_combinations
 
 
 def _candidate_iterator(
     prime: int, residues: tuple[int, int, int]
 ) -> Iterable[Candidate]:
-    coefficient1_bound = isqrt(36 * prime)
-    coefficient3_bound = isqrt(400 * prime * prime * prime)
+    coefficient1_bound = _integer_isqrt(36 * prime)
+    coefficient3_bound = _integer_isqrt(400 * prime * prime * prime)
     for coefficient1 in _congruent_values(
         residues[0], -coefficient1_bound, coefficient1_bound, prime
     ):
@@ -335,7 +372,7 @@ def enumerate_genus3_weil_candidates(
     `truncated` is true, and `candidates` is empty so a partial list cannot be
     mistaken for the complete answer.
     """
-    normalized, max_candidates, max_combinations = _checked_inputs(
+    prime, normalized, max_candidates, max_combinations = _checked_inputs(
         prime, residues, max_candidates, max_combinations
     )
     scan = _scan_candidate_lifts(
@@ -369,14 +406,14 @@ def enumerate_genus3_weil_candidates(
 def _checked_positive_optional(value: int | None, name: str) -> int | None:
     if value is None:
         return None
-    value = int(value)
+    value = _checked_exact_integer(value, name)
     if value <= 0:
         raise ValueError(name + " must be positive")
     return value
 
 
 def _checked_witnesses(values: Iterable[int], name: str) -> tuple[int, ...]:
-    witnesses = tuple(int(value) for value in values)
+    witnesses = tuple(_checked_exact_integer(value, name) for value in values)
     if any(value <= 0 for value in witnesses):
         raise ValueError(name + " must contain only positive integers")
     return witnesses
@@ -438,7 +475,7 @@ def complete_genus3_lpolynomial(
     twist_tests = _checked_annihilation_tests(
         twist_annihilation_tests, "twist_annihilation_tests"
     )
-    normalized, max_candidates, max_combinations = _checked_inputs(
+    prime, normalized, max_candidates, max_combinations = _checked_inputs(
         prime, residues, max_candidates, max_combinations
     )
     filters: list[dict[str, Any]] = []

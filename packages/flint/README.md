@@ -144,7 +144,9 @@ both checked license files are installed with the dependency.  The build uses
 the exact 20-translation-unit closure of the pinned upstream makefile.  The
 Windows build uses clang-cl, fixed-width carry arithmetic, and the same GMP
 64-bit limb requirement as Unix; rforest's private `long` ABI never crosses
-the Sage.js boundary.
+the Sage.js boundary.  The narrow downstream patch also frees the temporary
+GMP vector allocated by upstream `mproduct`; ASan/UBSan/LeakSanitizer covers
+the standalone genus-2/3 bridge.
 
 `rforestHasseWittBatch(coefficients, genus, start, stop, options)` accepts a
 `BigUint64Array` containing the ascending coefficients of the already
@@ -153,9 +155,9 @@ Thus every coefficient must lie in `[-2^63,2^63-1]`; negative `BigInt` values
 are encoded with `BigInt.asUintN(64, value)`.  Genus must be 2 or 3, and `F`
 must have exact degree `2*g+1` or `2*g+2`.  The closed prime interval starts at
 2 and is capped at `2^31-1`; `options.maxRows` may cap storage while retaining
-the full `requiredRows` count.  Results are row-aligned typed arrays: `primes`, `good`,
-`coefficientCounts`, `rowStatus`, and a stride-three `coefficients` array.  A
-good row contains the coefficients `(c1,...,cg)` modulo `p` of
+the full `requiredRows` count. Results are row-aligned typed arrays: `primes`,
+`good`, `coefficientCounts`, `rowStatus`, and a stride-three `coefficients` array. An
+available residue row contains the coefficients `(c1,...,cg)` modulo `p` of
 `det(I-T*W)`, where `W` is the Hasse--Witt matrix; unused stride entries are
 zero.  These residues are not local L-polynomials.  The mathematical layer
 owns model completion and uses the residues only as congruence input for exact
@@ -165,9 +167,10 @@ The matrix-factorial forest handles ordinary rows in one batch.  Primes where
 the chosen translations or transition normalizers degenerate use a direct
 FLINT polynomial-power fallback through `p <= 100000`; larger exceptional
 primes receive an explicit `RESOURCE_LIMIT` row rather than a guessed value.
-Characteristic two and bad reduction likewise retain aligned rows with
-explicit statuses.  `rforestCapabilities()` publishes the normalization,
-limits, backend revision, and complete status table.  The rforest and
+Characteristic two and a singular reduction of the supplied integral model
+likewise retain aligned rows with explicit statuses. This does not by itself
+prove bad reduction of the rational curve. `rforestCapabilities()` publishes
+the normalization, limits, backend revision, and complete status table. The rforest and
 smalljac entry points share the same process-global native mutex.
 
 Prime-field elliptic-curve scalar multiplication uses a portable native

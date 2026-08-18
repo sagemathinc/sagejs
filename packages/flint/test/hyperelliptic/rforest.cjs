@@ -56,7 +56,7 @@ test("rforest capability and packed residue contract is explicit", () => {
     INTERNAL_ERROR: -6,
     ROW_FOREST: 0,
     ROW_DIRECT: 1,
-    ROW_BAD_REDUCTION: 2,
+    ROW_SINGULAR_MODEL: 2,
     ROW_UNSUPPORTED_CHARACTERISTIC: 3,
     ROW_RESOURCE_LIMIT: 4,
   });
@@ -123,7 +123,7 @@ test("genus-2 residues and exact-root factorial forests are normalized", () => {
   }]);
 });
 
-test("exceptional, bad, characteristic-two, and truncation rows stay aligned", () => {
+test("exceptional, singular-model, characteristic-two, and truncation rows stay aligned", () => {
   const coefficients = integralCoefficients([1, 1, 0, 0, 0, 0, 0, 1]);
   const batch = flint.rforestHasseWittBatch(coefficients, 3, 2n, 7n);
   assert.deepEqual(Array.from(batch.primes), [2n, 3n, 5n, 7n]);

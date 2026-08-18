@@ -69,7 +69,8 @@
 
 ## Mathematical Projects
 
-- [ ] Extend functionality of (now portable) smalljac to genus bigger than 1.
+- [x] Extend portable smalljac to full genus-2 local polynomials and supported
+      Jacobian structure; retain genus 3 as the separately tracked certified
+      rforest/Jacobian-completion project.
 - [ ] Class groups of number fields
 - [ ] Evaluation of elliptic curve lseries at any complex point.
-

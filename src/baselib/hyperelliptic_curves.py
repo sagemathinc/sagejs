@@ -80,7 +80,9 @@ runtime.register_doc(
         "limitations": [
             (
                 "The exhaustive reference algorithm is intended for modest "
-                "finite fields; production-sized ranges use native accelerators."
+                "finite fields. Genus-2 local factors use native smalljac; the "
+                "genus-3 rforest backend currently exposes modular development "
+                "diagnostics rather than public completed local factors."
             )
         ],
     },

@@ -360,6 +360,9 @@ async function buildWindowsRforest() {
   const expectedBuild = {
     rforest: dependency.version,
     sourceClosure: "upstream-20-tu-v1",
+    portabilityPatch: digest(
+      join(packageRoot, "patches", "rforest-portability.patch"),
+    ),
     arithmetic: "gmp-64-bit-limbs-v1",
     abi: "private-fixed-width-v1",
   };
@@ -799,6 +802,9 @@ async function main() {
     openblasBuild: "threaded-cblas-dynamic-v1",
     rforest:
       dependencies.find(({ name }) => name === "rforest").version,
+    rforestPortabilityPatch: digest(
+      join(packageRoot, "patches", "rforest-portability.patch"),
+    ),
     rforestSourceClosure: "upstream-20-tu-v1",
     smalljacArithmetic:
       forcePortableSmalljac || process.arch !== "x64"

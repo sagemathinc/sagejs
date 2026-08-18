@@ -26,3 +26,12 @@ index 9a27d1d..8da2bb0 100644
  
  void hw_mpz_setup ();
  void hw_mpz_clear ();
+diff --git a/rforest.c b/rforest.c
+--- a/rforest.c
++++ b/rforest.c
+@@ -93,4 +93,5 @@ void mproduct (mpz_t z, mpz_t *m, long n)
+     mpz_t *w = mpz_vec_alloc_and_init (n);
+     mpz_vec_set (w, m, n);
+     mpz_vec_product (z, w, n);
++    mpz_vec_clear_and_free (w, n);
+ }

@@ -43,8 +43,8 @@ At the pinned commit the repository has 7,550 lines of C/header source.
   production source slice is therefore the complete static `librforest`, not
   just `rforest.c` and `rtree.c`.
 
-The narrow reproducible vendor slice is the 21 translation units named by the
-upstream `MPZFFTOBJECTS` and `RFORESTOBJECTS` lists: the 19 root-level library
+The narrow reproducible vendor slice is the 20 translation units named by the
+upstream `MPZFFTOBJECTS` and `RFORESTOBJECTS` lists: the 18 root-level library
 sources plus `fft62/mod62.c` and `fft62/fft62.c`, their headers, `LICENSE`, and
 `COPYING`.  Exclude the test/profile programs and export only `rforest` and
 `mproduct` from the private adapter.  There is no smaller demonstrated link
@@ -97,8 +97,8 @@ macOS and Linux arm64 build after deleting the makefile's inappropriate
 `-m64`; no source changes were needed.
 
 Native Windows x64 compiled all library sources with clang-cl 19.1.5 and linked
-against Sage.js's existing vcpkg GMP.  It needs exactly one semantic source
-portability change:
+against Sage.js's existing vcpkg GMP.  The downstream patch contains one
+Windows semantic portability correction:
 
 ```diff
 -64-__builtin_clzl(x)
@@ -112,6 +112,13 @@ the smalljac Windows port: `/MD`, no `-m64`, and
 `clang_rt.builtins-x86_64.lib` for `__udivti3` and `__umodti3`.  The upstream
 test program itself is Unix-only; `portable_trace_harness.c` is the appropriate
 cross-platform smoke test.
+
+A final ASan/UBSan/LeakSanitizer run found that upstream `mproduct` allocated a
+temporary GMP vector without releasing it. The pinned patch adds the missing
+`mpz_vec_clear_and_free(w,n)`. Rebuilding all 20 translation units with both
+sanitizers then ran the complete genus-2/3 bridge with no memory or undefined-
+behavior report. This is independent of the LLP64 correction and should be
+proposed upstream.
 
 ## Exact coefficient lifting
 
@@ -251,6 +258,43 @@ Jacobian law and exact candidate list.  Do not copy smalljac's floating bounds,
 policy.
 
 ## Included evidence
+
+`benchmark-rforest.cjs` measures the production boundary without conflating
+its stages. It reports the raw packed native residue stream, checked Python
+row construction, exact Weil-candidate enumeration, and exact filtering with
+oracle-derived Jacobian/twist order values separately. Those values are
+computed from the checked-in local polynomial as `L(1)` and `L(-1)`; this
+benchmark checks filtering cost and correctness, not independent Jacobian
+witness generation or certification:
+
+```bash
+node bench/rforest/benchmark-rforest.cjs --limit 1009 --repeat 3 \
+  > bench/rforest/rforest-benchmark.json
+```
+
+Rows without order evidence remain explicitly `indeterminate`; consequently
+the completion sample reports both unique and unresolved counts. The raw
+stage is the rforest throughput measurement, while the later stages measure
+what is still required before Sage.js may return an exact local polynomial.
+
+One warm three-sample Linux x86-64 run under Node 26.7.0 on the development
+host, for `y^2=x^7+x+1` and the closed interval `[2,101]`, gave these median
+wall times:
+
+| Stage | Median wall time | Result |
+| --- | ---: | --- |
+| packed native rforest | 38.198 ms | 26 aligned rows |
+| checked Python modular rows | 71.415 ms | 24 available rows |
+| exact Weil-candidate enumeration | 3442.971 ms | 872 candidates, maximum 63 |
+| oracle order/twist filtering | 3418.819 ms | 23 unique, 1 indeterminate |
+
+All three packed streams had SHA-256
+`b6e048e71541a9324d7070c7f06715f6ff498f7bd2a1774422ae6107c8e2484c`.
+This measurement is intentionally sobering: the production remainder forest
+is fast, but ordinary transpiled candidate lifting currently dominates the
+complete genus-3 workflow. It supports keeping `algorithm="auto"` on the exact
+reference path until the follow-up Jacobian certification lane accelerates
+the later stages.
 
 - `generate_genus3_oracle.sage` regenerates the fixture using Sage only as a
   development oracle.

@@ -1,8 +1,8 @@
 """Exact hyperelliptic curves and local Frobenius data.
 
-The curve model needs the Sage.js runtime, while several exact helper modules
+The curve model needs the Sage.js runtime boundary, while several exact helper modules
 are intentionally usable from ordinary CPython.  Keep the model export lazy so
-importing `hasse_witt` or `genus3_completion` does not pull in that runtime.
+importing `hasse_witt` or `genus3_completion` does not pull in that boundary.
 """
 
 from __future__ import annotations

@@ -82,8 +82,9 @@ Also use the direct fallback for:
 - endpoint/word-size or native resource-limit failures.
 
 With `a_i=0,...,g-1`, translation collisions occur only among the already tiny
-primes.  Bad-reduction primes should be returned as bad rows, not fed to either
-the forest or exact completion.
+primes. A singular reduction of the supplied integral model should be returned
+as an unavailable row, not fed to either the forest or exact completion; this
+status alone does not prove bad reduction of the rational curve.
 
 The direct fallback needed here is simple and exact: reduce `F` modulo `p`,
 compute the ordinary polynomial power `F(x)^((p-1)/2)` (without quotienting by
@@ -314,7 +315,7 @@ Production fixtures should add:
 - a nonzero original `h(x)` tested via `h^2+4f`;
 - primes dividing a chosen translated constant (direct fallback);
 - good even-degree reduction with leading-term loss;
-- bad reduction and characteristic 2 status rows;
+- singular supplied-model reduction and characteristic 2 status rows;
 - raw-linear versus paired-matrix equality;
 - native `rforest` output versus direct coefficients, not just the pure
   recurrence prototype;
@@ -330,6 +331,8 @@ These are adapter requirements revealed by the current C implementation:
 - Internal limb-size helpers must use 64-bit count-leading-zero operations
   (`clzll`, not `clzl`) on Windows.
 - The FFT code assumes 64-bit GMP limbs and has process-global setup state.
+- Pinned upstream `mproduct` omits the matching clear/free for its temporary
+  GMP vector; keep the one-line downstream fix until it is accepted upstream.
 - The Windows build needs the same runtime/CRT discipline as the existing
   smalljac port; the portability audit observed clang runtime dependencies for
   128-bit division helpers.
@@ -342,7 +345,7 @@ operation with a documented prime bound, explicit per-row status, and direct
 fallback for the finite exceptional set.  It should return either the full
 `g x g` matrix modulo `p` or, preferably for the exact-L-polynomial pipeline,
 the normalized residues `(c_1,...,c_g)` plus enough diagnostic status to
-distinguish bad reduction, fallback, and resource limits.
+distinguish singular supplied-model reduction, fallback, and resource limits.
 
 ## 9. Primary sources
 

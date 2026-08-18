@@ -173,6 +173,7 @@ Options:
   const mathematicalLanes = new Set([
     "arithmetic-algebra",
     "elliptic-curves",
+    "hyperelliptic-curves",
     "modular-forms",
     "symbolic",
     "combinatorics-groups",

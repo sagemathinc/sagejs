@@ -750,7 +750,7 @@ int32_t sagejs_rforest_hasse_witt_batch_compute(
         else if (!good_reduction(
             coefficients, coefficient_count, genus, prime))
         {
-            row->status = SAGEJS_RFOREST_ROW_BAD_REDUCTION;
+            row->status = SAGEJS_RFOREST_ROW_SINGULAR_MODEL;
         }
         else if (exceptional_prime(
             coefficients, coefficient_count, models, genus, prime))

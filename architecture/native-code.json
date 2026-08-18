@@ -158,6 +158,13 @@
       "rationale": "Host-neutral fixed-width ABI for batched genus-2 local factors and supported smalljac Jacobian group invariants."
     },
     {
+      "path": "packages/flint/include/sagejs/hyperelliptic/rforest.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-width ABI for batched genus-2/3 rforest Hasse--Witt residues with explicit modular normalization and row statuses."
+    },
+    {
       "path": "packages/flint/include/sagejs/native.h",
       "category": "public-abi",
       "review_status": "accepted",
@@ -340,6 +347,13 @@
       "rationale": "Narrow validated adapter from smalljac callbacks to bounded packed local-factor and Jacobian-invariant buffers, with an exact ordinary-Python fallback."
     },
     {
+      "path": "packages/flint/src/hyperelliptic/rforest.c",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Checked Harvey--Sutherland curve-transition construction around the pinned rforest matrix-product library, returning only modular Hasse--Witt residues."
+    },
+    {
       "path": "packages/flint/src/matrix.c",
       "category": "mixed-native",
       "review_status": "audited",
@@ -464,6 +478,13 @@
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
       "rationale": "Standalone C regression harness for the host-neutral genus-2 smalljac boundary and packed result contract."
+    },
+    {
+      "path": "packages/flint/test/hyperelliptic/rforest_bridge.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone cross-platform regression harness for exact genus-2/3 modular streams at the rforest boundary."
     },
     {
       "path": "packages/graph/src/addon.c",
