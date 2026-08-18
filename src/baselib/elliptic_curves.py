@@ -17,6 +17,7 @@ def _untyped(value: Any) -> Any:
 
 _elliptic_advanced_state = {"module": runtime.undefined}
 _elliptic_descent_state = {"module": runtime.undefined}
+_elliptic_analytic_rank_state = {"module": runtime.undefined}
 
 
 def _elliptic_lazy_module(state: dict[str, Any], name: str) -> Any:
@@ -40,6 +41,12 @@ def _elliptic_advanced() -> Any:
 
 def _elliptic_descent() -> Any:
     return _elliptic_lazy_module(_elliptic_descent_state, "sagejs_elliptic_descent")
+
+
+def _elliptic_analytic_rank() -> Any:
+    return _elliptic_lazy_module(
+        _elliptic_analytic_rank_state, "sagejs.elliptic_curves.analytic_rank"
+    )
 
 
 class _EllipticPositiveInfinity:
@@ -660,6 +667,8 @@ class EllipticCurveParent(sage.Parent):
         self._rank = rank_value
         self._rank_descent_cache = runtime.undefined
         self._saturated_rank_descent_cache = runtime.undefined
+        self._analytic_rank_cache = runtime.map()
+        self._root_number = runtime.undefined
         self._label = label
         self._global_minimal_model_cache = runtime.undefined
         self._local_data_cache = runtime.map()
@@ -987,6 +996,34 @@ class EllipticCurveParent(sage.Parent):
         self._conductor = answer
         return answer
 
+    def root_number(self) -> int:
+        """Return the global root number of this elliptic curve over `QQ`."""
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            raise NotImplementedError("root numbers are only implemented over QQ")
+        if self._root_number is not runtime.undefined:
+            return int(self._root_number)
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecRootNumber")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native eclib root-number evaluator is unavailable"
+            )
+        native_arguments = []
+        for coefficient in self._ainvs:
+            if hasattr(coefficient, "_denominator"):
+                native_arguments.append(runtime.integer_bigint(coefficient._numerator))
+                native_arguments.append(
+                    runtime.integer_bigint(coefficient._denominator)
+                )
+            else:
+                native_arguments.append(runtime.integer_bigint(coefficient))
+                native_arguments.append(runtime.bigint(1))
+        answer = int(runtime.reflect.apply(native_function, backend, native_arguments))
+        if answer not in (-1, 1):
+            raise ArithmeticError("eclib returned an invalid global root number")
+        self._root_number = answer
+        return answer
+
     def _rank_descent_data(self, saturate: bool = False) -> Any:
         if saturate:
             if self._saturated_rank_descent_cache is runtime.undefined:
@@ -1038,6 +1075,143 @@ class EllipticCurveParent(sage.Parent):
             )
         self._rank = data[0]
         return int(data[0])
+
+    def _analytic_rank_prime_traces(self, bound: int) -> list[Any]:
+        """Return `(p,a_p)` pairs below `bound` in one coefficient sweep."""
+        primes = [
+            candidate for candidate in range(2, bound) if sage.is_prime(candidate)
+        ]
+        traces = self.aplist(bound)
+        return [[prime, trace] for prime, trace in zip(primes, traces, strict=True)]
+
+    def _analytic_completed_derivatives_native(
+        self,
+        coefficients: list[Any],
+        first_order: int,
+        derivative_count: int,
+        precision_bits: int,
+    ) -> dict[str, Any]:
+        """Call the optional batched Arb completed-derivative boundary."""
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecCompletedCentralDerivatives")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native Arb analytic-rank evaluator is unavailable"
+            )
+        native = runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                runtime.integer_bigint(self.conductor()),
+                self.root_number(),
+                coefficients,
+                first_order,
+                derivative_count,
+                precision_bits,
+            ],
+        )
+        derivatives = []
+        for derivative in runtime.reflect.get(native, "derivatives"):
+            derivatives.append(
+                {
+                    "order": int(runtime.reflect.get(derivative, "order")),
+                    "midpoint": str(runtime.reflect.get(derivative, "midpoint")),
+                    "radius": str(runtime.reflect.get(derivative, "radius")),
+                    "contains_zero": bool(
+                        runtime.reflect.get(derivative, "containsZero")
+                    ),
+                    "accuracy_bits": int(
+                        runtime.reflect.get(derivative, "accuracyBits")
+                    ),
+                }
+            )
+        return {
+            "status": str(runtime.reflect.get(native, "status")),
+            "rigorous": bool(runtime.reflect.get(native, "rigorous")),
+            "analytic_error_status": str(
+                runtime.reflect.get(native, "analyticErrorStatus")
+            ),
+            "precision_bits": int(runtime.reflect.get(native, "precisionBits")),
+            "work_precision_bits": int(
+                runtime.reflect.get(native, "workPrecisionBits")
+            ),
+            "cutoff": int(runtime.reflect.get(native, "cutoff")),
+            "required_cutoff": int(runtime.reflect.get(native, "requiredCutoff")),
+            "grid_points": int(runtime.reflect.get(native, "gridPoints")),
+            "grid_step": str(runtime.reflect.get(native, "gridStep")),
+            "tail_bound": str(runtime.reflect.get(native, "tailBound")),
+            "derivatives": derivatives,
+        }
+
+    def _analytic_rank_result(
+        self,
+        algorithm: str = "auto",
+        prec: Any = None,
+    ) -> Any:
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            raise NotImplementedError("analytic rank is only implemented over QQ")
+        precision = None if prec is None else int(prec)
+        key = algorithm + ":" + ("auto" if precision is None else str(precision))
+        cached = self._analytic_rank_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        result = _elliptic_analytic_rank().probable_analytic_rank(
+            self,
+            self.root_number(),
+            precision,
+            6,
+            algorithm,
+        )
+        self._analytic_rank_cache.set(key, result)
+        return result
+
+    def analytic_rank(
+        self,
+        algorithm: str = "auto",
+        leading_coefficient: bool = False,
+        prec: Any = None,
+    ) -> Any:
+        """Return an integer that is probably the analytic rank.
+
+        The computation uses arbitrary-precision numerical evaluation and a
+        numerical vanishing test; it does not in general prove the order of
+        vanishing.  With `leading_coefficient=True`, return the first
+        nonzero derivative `L^(r)(E,1)`, not its value divided by `r!`.
+        """
+        result = self._analytic_rank_result(algorithm, prec)
+        rank = int(result["rank"])
+        if not leading_coefficient:
+            return rank
+        precision = 53 if prec is None else int(prec)
+        real_field = runtime.reflect.get(runtime.global_object, "RealField")
+        field = runtime.reflect.apply(real_field, runtime.undefined, [precision])
+        derivative = runtime.reflect.apply(
+            field, runtime.undefined, [result["leading_derivative"]]
+        )
+        return runtime.math_tuple([rank, derivative])
+
+    def analytic_rank_upper_bound(
+        self,
+        Delta: Any = None,
+        adaptive: bool = True,
+    ) -> int:
+        """Return a GRH-conditional upper bound for the analytic rank.
+
+        This sinc-squared explicit-formula computation assumes the Generalized
+        Riemann Hypothesis.  The result may be strictly larger than the rank
+        and is not an unconditional certificate.
+        """
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            raise NotImplementedError(
+                "analytic-rank upper bounds are only implemented over QQ"
+            )
+        result = _elliptic_analytic_rank().analytic_rank_upper_bound(
+            self,
+            self.root_number(),
+            None if Delta is None else float(Delta),
+            bool(adaptive),
+        )
+        return int(result["bound"])
 
     def quadratic_twist(self, value: Any) -> EllipticCurveParent:
         twist = sage.QQ(value)
