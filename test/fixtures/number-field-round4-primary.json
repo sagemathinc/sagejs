@@ -118,11 +118,16 @@
           "crt_bound_bits_cutoff": 4096
         },
         "modular_characteristic": {
-          "calls": 24,
-          "primes": 2901,
-          "max_bound_bits": 6097,
-          "max_modulus_bits": 3810,
-          "certifications": {"cyclic-krylov": 24}
+          "calls": 0,
+          "primes": 0,
+          "max_bound_bits": 0,
+          "max_modulus_bits": 0,
+          "certifications": {}
+        },
+        "packed_exact_characteristic": {
+          "calls": 67,
+          "attempts": 67,
+          "certifications": {"integral": 67}
         }
       },
       "required_power_stages": [

@@ -2826,6 +2826,12 @@ def round4_primary_power_basis(
     characteristic_metrics.setdefault("characteristic_polynomial_inputs", [])
     characteristic_metrics.setdefault("modular_characteristic_calls", 0)
     characteristic_metrics.setdefault("modular_characteristic_primes", 0)
+    characteristic_metrics.setdefault("modular_characteristic_max_bound_bits", 0)
+    characteristic_metrics.setdefault("modular_characteristic_max_modulus_bits", 0)
+    characteristic_metrics.setdefault("modular_characteristic_certifications", {})
+    characteristic_metrics.setdefault("packed_exact_characteristic_calls", 0)
+    characteristic_metrics.setdefault("packed_exact_characteristic_attempts", 0)
+    characteristic_metrics.setdefault("packed_exact_characteristic_certifications", {})
     characteristic_metrics["_round4_prime"] = prime
     characteristic_cache: dict[Any, list[Any]] = {}
     phi = field.gen()

@@ -188,10 +188,11 @@ test("vector 010 completes with compiled exact Round-4 evidence", async () => {
     const result = await session.evaluate(
       [
         "R.<x> = ZZ[]",
-        "from sagejs.kernels.matrix.word_prime_krylov import word_prime_krylov_minimal_polynomial",
+        "from sagejs.number_fields.round4_state_kernel import packed_round4_exact_characteristic, packed_round4_power_basis_covolume",
         "from sagejs.native import is_compiled",
         "from sagejs.number_fields.round4 import Round4InvariantError, modified_round4_local_order, verify_round4_local_result",
-        "assert is_compiled(word_prime_krylov_minimal_polynomial)",
+        "assert is_compiled(packed_round4_exact_characteristic)",
+        "assert is_compiled(packed_round4_power_basis_covolume)",
         `K = NumberField(R([${record.coefficients.join(",")}]), 'a')`,
         `expected_basis = ${JSON.stringify(record.basis_numerator.map((row) => row.map(Number)))}`,
         `result = modified_round4_local_order(K.equation_order(), ${record.prime}, strict=True)`,
@@ -233,6 +234,9 @@ test("vector 010 completes with compiled exact Round-4 evidence", async () => {
         `assert metrics['modular_characteristic_max_bound_bits'] == ${record.characteristic_polynomial_metrics.modular_characteristic.max_bound_bits}`,
         `assert metrics['modular_characteristic_max_modulus_bits'] == ${record.characteristic_polynomial_metrics.modular_characteristic.max_modulus_bits}`,
         `assert metrics['modular_characteristic_certifications'] == ${JSON.stringify(record.characteristic_polynomial_metrics.modular_characteristic.certifications)}`,
+        `assert metrics['packed_exact_characteristic_calls'] == ${record.characteristic_polynomial_metrics.packed_exact_characteristic.calls}`,
+        `assert metrics['packed_exact_characteristic_attempts'] == ${record.characteristic_polynomial_metrics.packed_exact_characteristic.attempts}`,
+        `assert metrics['packed_exact_characteristic_certifications'] == ${JSON.stringify(record.characteristic_polynomial_metrics.packed_exact_characteristic.certifications)}`,
         "assert verify_round4_local_result(result)",
         "certificate.basis_numerator[0][0] += 1",
         "corruption_rejected = False",
@@ -242,12 +246,12 @@ test("vector 010 completes with compiled exact Round-4 evidence", async () => {
         "    corruption_rejected = 'certificate basis' in str(error)",
         "certificate.basis_numerator[0][0] -= 1",
         "assert corruption_rejected",
-        "(is_compiled(word_prime_krylov_minimal_polynomial), certificate.local_index_valuation, final['ramification_degree'], final['residue_degree'], metrics['characteristic_polynomial_calls'], metrics['modular_characteristic_calls'], corruption_rejected)",
+        "(is_compiled(packed_round4_exact_characteristic) and is_compiled(packed_round4_power_basis_covolume), certificate.local_index_valuation, final['ramification_degree'], final['residue_degree'], metrics['characteristic_polynomial_calls'], metrics['modular_characteristic_calls'], corruption_rejected)",
       ].join("\n"),
     );
     assert.equal(
       result.repr,
-      "(True, 222, 16, 2, 67, 24, True)",
+      "(True, 222, 16, 2, 67, 0, True)",
     );
   } finally {
     await session.close();
