@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "g3-public-certified",
+  "title": "Genus-3 certified public pipeline",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the ordinary-Python rforest residue to uniquely certified genus-3 local-factor pipeline with deterministic Jacobian/twist filtering and exact fallbacks",
+  "base_commit": "d63d107ef21cc222d67dddf94ff1b0ad9c4ed996",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+    "test/hyperelliptic-genus3-certified.cjs",
+    "docs/hyperelliptic-genus3-certified.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-genus3-certified-completion-plan.md",
+    "https://arxiv.org/abs/1410.5222"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "checked-in Sage/Magma/PARI local-factor corpus",
+      "exact exhaustive reference backend"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm docs:check",
+    "node --test test/hyperelliptic-genus3-certified.cjs",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+    "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/certified_genus3.py"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
