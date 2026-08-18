@@ -6,7 +6,7 @@
     "required_introspection": ["explain", "ir", "emit-c", "emit-core-c", "emit-header"],
     "host_isolation": "mandatory-after-marshalling",
     "host_isolation_statuses": ["certified"],
-    "optional_foreign_libraries": ["m4ri"],
+    "optional_foreign_libraries": ["fflas", "m4ri"],
     "required_oracles": ["cpython", "javascript"]
   },
   "kernels": [
@@ -33,7 +33,7 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
-      "id": "dense-binary-m4ri-production",
+      "id": "dense-binary-m4ri-optional",
       "source": "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
       "functions": [
         "m4ri_dense_matrix_entry",
@@ -64,13 +64,11 @@
         "sparse_random_fmpz",
         "sparse_random_fmpq",
         "sparse_random_binary",
-        "sparse_random_prime",
-        "sparse_random_m4ri"
+        "sparse_random_prime"
       ],
       "semantic_domain": "one-boundary sparse random construction over exact integers, rationals, binary fields, and packed word-prime fields with Sage-compatible seeded stream semantics",
       "fallback": "same-source",
       "host_isolation": "certified",
-      "optional_foreign_libraries": ["m4ri"],
       "oracles": ["cpython", "javascript", "sage", "flint", "m4ri", "packed-prime"],
       "benchmark": "bench:matrix:sparse-random",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
@@ -139,7 +137,7 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
-      "id": "dense-prime-fflas-production",
+      "id": "dense-prime-fflas-optional",
       "source": "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
       "functions": [
         "fflas_dense_prime_field_available",
@@ -151,6 +149,7 @@
       "semantic_domain": "optional production FFLAS/FFPACK acceleration over canonical packed compiler-owned GF(p) matrix records for primes below 256",
       "fallback": "same-source",
       "host_isolation": "certified",
+      "optional_foreign_libraries": ["fflas"],
       "oracles": ["cpython", "javascript", "flint"],
       "benchmark": "bench:fflas:dense-prime",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]

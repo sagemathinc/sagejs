@@ -10,8 +10,8 @@ The immediate release design should contain:
 
 - one stripped Node executable template;
 - one shared Sage/Python bootstrap source and two mode-specific V8 caches;
-- one production-kernel addon containing a namespace for every production
-  kernel available on the build platform;
+- one production-kernel addon containing the same portable production-kernel
+  namespaces on every release platform;
 - the existing host addons until their API and ownership boundaries can be
   consolidated independently.
 
@@ -32,6 +32,9 @@ Implemented on 2026-08-18:
 - generated adapters support both standalone and pack initializers;
 - dynamic development caches retain standalone addons;
 - production publishing emits one pack and no per-source addons;
+- FFLAS and M4RI accelerators remain outside the release pack until their
+  existing Windows capability gaps are removed; the portable sparse-matrix
+  source contributes only its platform-independent functions;
 - wrappers resolve their exact cache-key namespace from the pack first;
 - SEA construction rejects incomplete capability sets or pack counts other
   than one;

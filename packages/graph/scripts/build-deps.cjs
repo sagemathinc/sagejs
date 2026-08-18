@@ -88,6 +88,66 @@ function run(command, arguments_, options = {}) {
   }
 }
 
+function cmakeCommand(platform = process.platform) {
+  if (process.env.SAGEJS_CMAKE) return resolve(process.env.SAGEJS_CMAKE);
+  const available = spawnSync("cmake", ["--version"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (!available.error && available.status === 0) return "cmake";
+  if (platform !== "win32") return "cmake";
+
+  const programFilesX86 = process.env["ProgramFiles(x86)"] ||
+    "C:\\Program Files (x86)";
+  const vswhere = join(
+    programFilesX86,
+    "Microsoft Visual Studio",
+    "Installer",
+    "vswhere.exe",
+  );
+  if (existsSync(vswhere)) {
+    const discovered = spawnSync(vswhere, [
+      "-latest",
+      "-products",
+      "*",
+      "-requires",
+      "Microsoft.VisualStudio.Component.VC.CMake.Project",
+      "-property",
+      "installationPath",
+    ], { encoding: "utf8", windowsHide: true });
+    if (discovered.status === 0 && discovered.stdout.trim()) {
+      const candidate = join(
+        discovered.stdout.trim(),
+        "Common7",
+        "IDE",
+        "CommonExtensions",
+        "Microsoft",
+        "CMake",
+        "CMake",
+        "bin",
+        "cmake.exe",
+      );
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  const buildTools = join(
+    "C:\\BuildTools",
+    "Common7",
+    "IDE",
+    "CommonExtensions",
+    "Microsoft",
+    "CMake",
+    "CMake",
+    "bin",
+    "cmake.exe",
+  );
+  if (existsSync(buildTools)) return buildTools;
+  throw new Error(
+    "CMake is required to build igraph; install the Visual Studio CMake " +
+      "component or set SAGEJS_CMAKE",
+  );
+}
+
 function digest(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
 }
@@ -135,6 +195,7 @@ async function obtainArchive() {
 }
 
 function configureAndBuild(source) {
+  const cmake = cmakeCommand();
   mkdirSync(build, { recursive: true });
   const configure = [
     "-S",
@@ -165,8 +226,8 @@ function configureAndBuild(source) {
       `-DCMAKE_OSX_DEPLOYMENT_TARGET=${process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"}`,
     );
   }
-  run("cmake", configure);
-  run("cmake", [
+  run(cmake, configure);
+  run(cmake, [
     "--build",
     build,
     "--config",
@@ -200,11 +261,12 @@ async function main() {
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);
     return;
   }
+  const cmake = cmakeCommand();
   const archive = await obtainArchive();
   const source = join(sources, `igraph-${dependency.version}`);
   if (!existsSync(join(source, "CMakeLists.txt"))) {
     mkdirSync(sources, { recursive: true });
-    run("cmake", ["-E", "tar", "xzf", archive], { cwd: sources });
+    run(cmake, ["-E", "tar", "xzf", archive], { cwd: sources });
   }
   configureAndBuild(source);
   installSagejsHeader();
@@ -217,4 +279,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { expectedStamp, igraphLtoSetting };
+module.exports = { cmakeCommand, expectedStamp, igraphLtoSetting };

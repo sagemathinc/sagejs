@@ -58,22 +58,14 @@ const generatedFlintAdapter = join(
   "generated-ffi",
   "sagejs_flint_ffi.node",
 );
-const generatedFflasAdapter = join(
-  root,
-  "packages",
-  "fflas",
-  "build",
-  "generated-ffi",
-  "sagejs_fflas_ffi.node",
-);
-if (existsSync(generatedFlintAdapter) && existsSync(generatedFflasAdapter)) {
+if (existsSync(generatedFlintAdapter)) {
   run(process.execPath, [
     join(root, "scripts", "build-production-native-kernels.cjs"),
   ]);
 } else {
   process.stdout.write(
-    "Skipping production native kernels because the generated FLINT and " +
-      "FFLAS adapters are not both available; run `pnpm bootstrap` for a " +
+    "Skipping production native kernels because the generated FLINT " +
+      "adapter is not available; run `pnpm --dir packages/flint build` for a " +
       "complete native runtime.\n",
   );
 }
