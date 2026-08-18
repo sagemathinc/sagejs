@@ -26,20 +26,11 @@ static void initialize_polynomial(
     sagejs_fmpz_polynomial_t polynomial, ulong constant)
 {
     assert(sagejs_fmpz_polynomial_init(polynomial, UINT64_C(4)));
-    fmpz_t value;
-    fmpz_init(value);
-    fmpz_neg_ui(value, constant);
-    assert(sagejs_fmpz_polynomial_set_coefficient(
-        polynomial, UINT64_C(0), value));
-    fmpz_zero(value);
-    assert(sagejs_fmpz_polynomial_set_coefficient(
-        polynomial, UINT64_C(1), value));
-    assert(sagejs_fmpz_polynomial_set_coefficient(
-        polynomial, UINT64_C(2), value));
-    fmpz_one(value);
-    assert(sagejs_fmpz_polynomial_set_coefficient(
-        polynomial, UINT64_C(3), value));
-    fmpz_clear(value);
+    fmpz_neg_ui(polynomial->value->coeffs, constant);
+    fmpz_zero(polynomial->value->coeffs + 1);
+    fmpz_zero(polynomial->value->coeffs + 2);
+    fmpz_one(polynomial->value->coeffs + 3);
+    _fmpz_poly_set_length(polynomial->value, 4);
     assert(sagejs_fmpz_polynomial_seal(polynomial));
 }
 
