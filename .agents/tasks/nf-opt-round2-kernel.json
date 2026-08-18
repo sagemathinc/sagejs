@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round2-kernel",
+  "title": "Optimize native Round2 order resource",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "nf_opt_round2_kernel",
+  "objective": "Profile and optimize the shared FLINT/GMP native Round2 order resource for PARI regressions 2510 and 1710 to within 2x and then 1.25 geometric mean without changing the mathematical algorithm",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "packages/flint/test/number_field_order_resource_ffi.c",
+    "test/number-field-order-resource-ffi.cjs",
+    "bench/number-field-order-resource-witness.c",
+    "bench/results/number-field-round2-resource-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary Python Round2 exact local HNF",
+      "randomized dynamic/native differential",
+      "direct PARI and Hecke hard-case references"
+    ],
+    "exceptions": [
+      "Existing audited shared FLINT/GMP representation primitive only; no new handwritten mathematical algorithm"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.931,
+      "started_at": "2026-08-18T08:39:45.313Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "2d8ef280fcf051714017fec5f010634d5a373a608cccabe0d50bfb522eb7b642",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.293,
+      "started_at": "2026-08-18T08:40:01.762Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "2d8ef280fcf051714017fec5f010634d5a373a608cccabe0d50bfb522eb7b642",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Optimized the existing shared Zassenhaus Round-2 resource without changing its mathematical algorithm. The hard-case medians fell from 1989.901 to 373.284 microseconds for PARI #2510 and from 5523.624 to 1015.344 microseconds for #1710. Both are within 2x of the faster direct reference and the geometric-mean ratio is 1.102. Exact frozen payloads, an exact lattice-inverse differential, 32 deterministic randomized differentials, lifecycle stress, ASan/UBSan, the full build, and the Round-4 agreement suite pass.",
+    "risks": [
+      "The checked sparse word accumulator is enabled only where __int128 is available; native Windows x64 keeps the tested exact packed-fmpz transform fallback until a portable checked double-limb accumulator is added and benchmarked.",
+      "architecture/native-audit.json still records the old 502-line/18889-byte audit metrics and old rational-transform wording for number_field_order_ffi.h; the integration lane must refresh it to 1077 lines/43540 bytes and review the updated packed-integer/p^2 responsibilities."
+    ],
+    "next_steps": [
+      "Integration lane: refresh the number_field_order_ffi.h entry in architecture/native-audit.json, then run pnpm architecture:check.",
+      "Integration lane: rerun the focused Windows lifecycle witness; exact fallback is exercised by SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER on Unix and remains the Windows path.",
+      "Use bench/results/number-field-round2-resource-2026-08-18.json as the Milestone 3 performance receipt."
+    ]
+  }
+}

@@ -8,6 +8,14 @@
 #include <string.h>
 #include <time.h>
 
+static void nf_profile_begin(const char *phase);
+static void nf_profile_end(const char *phase);
+static void nf_profile_iteration(long radical_dimension, long nullity);
+
+#define SAGEJS_NF_ORDER_PROFILE_BEGIN(phase) nf_profile_begin(phase)
+#define SAGEJS_NF_ORDER_PROFILE_END(phase) nf_profile_end(phase)
+#define SAGEJS_NF_ORDER_PROFILE_ITERATION(radical_dimension, nullity) \
+    nf_profile_iteration(radical_dimension, nullity)
 #include "sagejs/number_field_order_resource_ffi.h"
 
 typedef struct
@@ -109,6 +117,144 @@ static double monotonic_seconds(void)
     struct timespec now;
     assert(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
     return (double) now.tv_sec + (double) now.tv_nsec / 1000000000.0;
+}
+
+typedef struct
+{
+    const char *name;
+    double seconds;
+    uint64_t allocation_calls;
+    uint64_t free_calls;
+    uint64_t requested_bytes;
+} profile_phase;
+
+static profile_phase profile_phases[] = {
+    {"setup", 0.0, 0, 0, 0},
+    {"modular-table", 0.0, 0, 0, 0},
+    {"radical", 0.0, 0, 0, 0},
+    {"multiplier", 0.0, 0, 0, 0},
+    {"basis-prepare", 0.0, 0, 0, 0},
+    {"basis-transform", 0.0, 0, 0, 0},
+    {"basis-output", 0.0, 0, 0, 0},
+    {"publish", 0.0, 0, 0, 0},
+    {"cleanup", 0.0, 0, 0, 0},
+};
+static slong profile_current = -1;
+static double profile_started = 0.0;
+static uint64_t profile_iterations = 0;
+static uint64_t profile_enlargements = 0;
+static uint64_t profile_radical_dimension_sum = 0;
+static uint64_t profile_nullity_sum = 0;
+
+static void *(*profile_original_alloc)(size_t) = NULL;
+static void *(*profile_original_calloc)(size_t, size_t) = NULL;
+static void *(*profile_original_realloc)(void *, size_t) = NULL;
+static void (*profile_original_free)(void *) = NULL;
+static void *(*profile_original_aligned_alloc)(size_t, size_t) = NULL;
+static void (*profile_original_aligned_free)(void *) = NULL;
+
+static slong nf_profile_phase_index(const char *name)
+{
+    const slong count = (slong) (sizeof(profile_phases) / sizeof(*profile_phases));
+    for (slong index = 0; index < count; index++)
+        if (strcmp(profile_phases[index].name, name) == 0)
+            return index;
+    assert(!"unknown Round-2 profile phase");
+    return -1;
+}
+
+static void nf_profile_begin(const char *phase)
+{
+    assert(profile_current == -1);
+    profile_current = nf_profile_phase_index(phase);
+    profile_started = monotonic_seconds();
+}
+
+static void nf_profile_end(const char *phase)
+{
+    const slong index = nf_profile_phase_index(phase);
+    assert(index == profile_current);
+    profile_phases[index].seconds += monotonic_seconds() - profile_started;
+    profile_current = -1;
+}
+
+static void nf_profile_iteration(long radical_dimension, long nullity)
+{
+    profile_iterations++;
+    profile_radical_dimension_sum += (uint64_t) radical_dimension;
+    if (nullity > 0)
+    {
+        profile_enlargements++;
+        profile_nullity_sum += (uint64_t) nullity;
+    }
+}
+
+static void nf_profile_allocation(size_t bytes)
+{
+    if (profile_current >= 0)
+    {
+        profile_phases[profile_current].allocation_calls++;
+        profile_phases[profile_current].requested_bytes += (uint64_t) bytes;
+    }
+}
+
+static void *nf_profile_alloc(size_t bytes)
+{
+    nf_profile_allocation(bytes);
+    return profile_original_alloc(bytes);
+}
+
+static void *nf_profile_calloc(size_t count, size_t bytes)
+{
+    assert(bytes == 0 || count <= SIZE_MAX / bytes);
+    nf_profile_allocation(count * bytes);
+    return profile_original_calloc(count, bytes);
+}
+
+static void *nf_profile_realloc(void *pointer, size_t bytes)
+{
+    nf_profile_allocation(bytes);
+    return profile_original_realloc(pointer, bytes);
+}
+
+static void nf_profile_free(void *pointer)
+{
+    if (profile_current >= 0)
+        profile_phases[profile_current].free_calls++;
+    profile_original_free(pointer);
+}
+
+static void *nf_profile_aligned_alloc(size_t alignment, size_t bytes)
+{
+    nf_profile_allocation(bytes);
+    return profile_original_aligned_alloc(alignment, bytes);
+}
+
+static void nf_profile_aligned_free(void *pointer)
+{
+    if (profile_current >= 0)
+        profile_phases[profile_current].free_calls++;
+    profile_original_aligned_free(pointer);
+}
+
+static void nf_profile_install_allocator(void)
+{
+    __flint_get_all_memory_functions(
+        &profile_original_alloc, &profile_original_calloc,
+        &profile_original_realloc, &profile_original_free,
+        &profile_original_aligned_alloc, &profile_original_aligned_free);
+    __flint_set_all_memory_functions(
+        nf_profile_alloc, nf_profile_calloc, nf_profile_realloc,
+        nf_profile_free, nf_profile_aligned_alloc,
+        nf_profile_aligned_free);
+}
+
+static void nf_profile_restore_allocator(void)
+{
+    __flint_set_all_memory_functions(
+        profile_original_alloc, profile_original_calloc,
+        profile_original_realloc, profile_original_free,
+        profile_original_aligned_alloc, profile_original_aligned_free);
 }
 
 static void initialize_polynomial(
@@ -263,6 +409,19 @@ static void run_profile(size_t case_index, uint64_t rounds)
     double evidence_seconds = 0.0;
     double pack_seconds = 0.0;
     double cleanup_seconds = 0.0;
+    for (size_t phase = 0;
+         phase < sizeof(profile_phases) / sizeof(*profile_phases); phase++)
+    {
+        profile_phases[phase].seconds = 0.0;
+        profile_phases[phase].allocation_calls = 0;
+        profile_phases[phase].free_calls = 0;
+        profile_phases[phase].requested_bytes = 0;
+    }
+    profile_iterations = 0;
+    profile_enlargements = 0;
+    profile_radical_dimension_sum = 0;
+    profile_nullity_sum = 0;
+    nf_profile_install_allocator();
 
     for (uint64_t round = 0; round < rounds; round++)
     {
@@ -348,24 +507,128 @@ static void run_profile(size_t case_index, uint64_t rounds)
         fmpz_clear(equation_discriminant);
         cleanup_seconds += monotonic_seconds() - started;
     }
+    nf_profile_restore_allocator();
     const double scale = 1000000.0 / (double) rounds;
     printf("{\"schema\":\"sagejs.number-field-order-resource-profile/v1\"," 
            "\"id\":\"%s\",\"rounds\":%" PRIu64 ","
            "\"stageMeanUs\":{\"discriminant\":%.9f,\"hints\":%.9f,"
            "\"multiplicationTable\":%.9f,\"round2\":%.9f,"
            "\"normalizeHnf\":%.9f,\"evidence\":%.9f,"
-           "\"pack\":%.9f,\"cleanup\":%.9f}}\n",
+           "\"pack\":%.9f,\"cleanup\":%.9f},"
+           "\"round2Detail\":{\"phases\":{",
         item->id, rounds,
         discriminant_seconds * scale, hint_seconds * scale,
         table_seconds * scale, round2_seconds * scale,
         normalize_seconds * scale, evidence_seconds * scale,
         pack_seconds * scale, cleanup_seconds * scale);
+    for (size_t phase = 0;
+         phase < sizeof(profile_phases) / sizeof(*profile_phases); phase++)
+    {
+        if (phase != 0) putchar(',');
+        printf("\"%s\":{\"meanUs\":%.9f,\"allocationsPerRound\":%.9f,"
+               "\"freesPerRound\":%.9f,\"requestedBytesPerRound\":%.9f}",
+            profile_phases[phase].name,
+            profile_phases[phase].seconds * scale,
+            (double) profile_phases[phase].allocation_calls / (double) rounds,
+            (double) profile_phases[phase].free_calls / (double) rounds,
+            (double) profile_phases[phase].requested_bytes / (double) rounds);
+    }
+    const double iterations = (double) profile_iterations;
+    const double enlargements = (double) profile_enlargements;
+    printf("}},\"iterationSummary\":{\"iterationsPerRound\":%.9f,"
+           "\"enlargementsPerRound\":%.9f,"
+           "\"meanRadicalDimension\":%.9f,"
+           "\"meanPositiveNullity\":%.9f}}\n",
+        iterations / (double) rounds,
+        enlargements / (double) rounds,
+        iterations == 0.0 ? 0.0 :
+            (double) profile_radical_dimension_sum / iterations,
+        enlargements == 0.0 ? 0.0 :
+            (double) profile_nullity_sum / enlargements);
     sagejs_fmpz_matrix_clear(hints);
     sagejs_fmpz_polynomial_clear(polynomial);
 }
 
+static uint64_t randomized_state;
+
+static uint64_t randomized_word(void)
+{
+    randomized_state = randomized_state * UINT64_C(6364136223846793005) +
+        UINT64_C(1442695040888963407);
+    return randomized_state;
+}
+
+static void run_randomized(uint64_t seed, uint64_t count)
+{
+    static const ulong candidate_primes[] = {2, 3, 5, 7, 11};
+    randomized_state = seed;
+    uint64_t emitted = 0;
+    for (uint64_t attempt = 0; emitted < count && attempt < count * 1000; attempt++)
+    {
+        const slong degree = 2 + (slong) (randomized_word() % 5);
+        sagejs_fmpz_polynomial_t polynomial;
+        assert(sagejs_fmpz_polynomial_init(polynomial, (uint64_t) degree + 1));
+        fmpz_t coefficient, discriminant;
+        fmpz_init(coefficient);
+        fmpz_init(discriminant);
+        for (slong index = 0; index < degree; index++)
+        {
+            slong value = (slong) (randomized_word() % 19) - 9;
+            if (index == 0 && value == 0) value = 1;
+            fmpz_set_si(coefficient, value);
+            assert(sagejs_fmpz_polynomial_set_coefficient(
+                polynomial, (uint64_t) index, coefficient));
+        }
+        fmpz_one(coefficient);
+        assert(sagejs_fmpz_polynomial_set_coefficient(
+            polynomial, (uint64_t) degree, coefficient));
+        assert(sagejs_fmpz_polynomial_seal(polynomial));
+        fmpz_poly_discriminant(discriminant, polynomial->value);
+        ulong primes[sizeof(candidate_primes) / sizeof(*candidate_primes)];
+        size_t prime_count = 0;
+        if (!fmpz_is_zero(discriminant))
+            for (size_t index = 0;
+                 index < sizeof(candidate_primes) / sizeof(*candidate_primes);
+                 index++)
+                if (fmpz_divisible_ui(discriminant, candidate_primes[index]))
+                    primes[prime_count++] = candidate_primes[index];
+        if (prime_count != 0)
+        {
+            sagejs_fmpz_matrix_t hints;
+            assert(sagejs_fmpz_matrix_init(hints, prime_count, 1));
+            for (size_t index = 0; index < prime_count; index++)
+            {
+                fmpz_set_ui(coefficient, primes[index]);
+                assert(sagejs_fmpz_matrix_set_entry(
+                    hints, (uint64_t) index, 0, coefficient));
+            }
+            sagejs_number_field_order_resource_t result;
+            assert(sagejs_number_field_order_from_polynomial_resource(
+                result, polynomial, hints));
+            printf("%" PRIu64 ":", emitted);
+            print_hex(result->data, result->length);
+            putchar('\n');
+            sagejs_number_field_order_resource_clear(result);
+            sagejs_fmpz_matrix_clear(hints);
+            emitted++;
+        }
+        fmpz_clear(discriminant);
+        fmpz_clear(coefficient);
+        sagejs_fmpz_polynomial_clear(polynomial);
+    }
+    assert(emitted == count);
+}
+
 int main(int argc, char **argv)
 {
+    if (argc == 4 && strcmp(argv[1], "--randomized") == 0)
+    {
+        const uint64_t seed = (uint64_t) strtoull(argv[2], NULL, 10);
+        const uint64_t count = (uint64_t) strtoull(argv[3], NULL, 10);
+        assert(count > 0);
+        run_randomized(seed, count);
+        return 0;
+    }
     if (argc == 4 && strcmp(argv[1], "--profile") == 0)
     {
         const size_t case_index = (size_t) strtoull(argv[2], NULL, 10);
