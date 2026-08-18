@@ -160,9 +160,11 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
         "    assert metrics['characteristic_polynomial_cache_hits'] == expected_metrics['cache_hits']",
         "    assert metrics['max_input_coefficient_bits'] == expected_metrics['max_input_coefficient_bits']",
         "    assert metrics['max_denominator_bits'] == expected_metrics['max_denominator_bits']",
-        "    assert metrics['modular_characteristic_calls'] > 0",
-        "    assert metrics['modular_characteristic_primes'] >= metrics['modular_characteristic_calls']",
-        "    assert sum(metrics['modular_characteristic_certifications'].values()) == metrics['modular_characteristic_calls']",
+        "    strategy = expected_metrics['residue_beta_strategy']",
+        "    assert metrics['characteristic_strategy_counts'] == strategy['counts']",
+        "    assert metrics.get('modular_characteristic_calls', 0) == 0",
+        "    assert metrics['characteristic_strategy_max_bound_bits'] == strategy['max_hadamard_bound_bits']",
+        "    assert all(decision['crt_bound_bits_cutoff'] == strategy['crt_bound_bits_cutoff'] for decision in metrics['characteristic_strategy_decisions'])",
         "    answer.append((case['id'], names, final['output_discriminant']))",
         "answer",
       ].join("\n"),
@@ -190,7 +192,15 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
         `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
         "except Round4Unsupported as error:",
         "    failed_closed = 'diagnostic' in str(error)",
-        "(failed_closed, metrics)",
+        "first_metrics = metrics",
+        `metrics = {'characteristic_polynomial_call_limit': ${record.post_reconstruction.characteristic_polynomial_call_limit}}`,
+        "post_failed_closed = False",
+        "try:",
+        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
+        "except Round4Unsupported as error:",
+        "    post_failed_closed = 'diagnostic' in str(error)",
+        "post_summary = (post_failed_closed, metrics['characteristic_polynomial_calls'], metrics['characteristic_strategy_counts'], metrics['characteristic_strategy_max_bound_bits'], metrics['modular_characteristic_calls'], metrics['modular_characteristic_primes'], metrics['modular_characteristic_max_modulus_bits'], metrics['modular_characteristic_certifications'], metrics['characteristic_polynomial_inputs'][-1]['label'])",
+        "(failed_closed, first_metrics, post_summary)",
       ].join("\n"),
     );
     const normalized = result.repr.replaceAll("'", '"').replace("(true,", "[true,");
@@ -217,6 +227,13 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
     assert.match(
       result.repr,
       new RegExp(`'max_denominator_bits': ${record.max_denominator_bits}`),
+    );
+    const post = record.post_reconstruction;
+    assert.match(
+      result.repr,
+      new RegExp(
+        `\\(True, ${post.attempted_calls}, \\{'direct-exact': ${post.strategy_counts["direct-exact"]}, 'modular-crt': ${post.strategy_counts["modular-crt"]}\\}, ${post.max_hadamard_bound_bits}, ${post.modular_characteristic_calls}, ${post.modular_characteristic_primes}, ${post.modular_characteristic_max_modulus_bits}, \\{'${post.modular_characteristic_certification}': 1\\}, '${post.next_bound_label}'\\)`,
+      ),
     );
   } finally {
     await session.close();
@@ -293,7 +310,7 @@ test("bounded modular characteristic reconstruction equals direct exact arithmet
         await session.evaluate(
           [
             "R.<x> = QQ[]",
-            "from sagejs.number_fields.round4 import _characteristic_coefficient_bounds, _element_characteristic_polynomial, _integer_multiplication_matrix_data, _modular_characteristic_polynomial",
+            "from sagejs.number_fields.round4 import _characteristic_coefficient_bounds, _element_characteristic_polynomial, _integer_multiplication_matrix_data, _modular_characteristic_polynomial, residue_characteristic_strategy",
             "state = 1729",
             "checked = 0",
             "prime_count = 0",
@@ -334,6 +351,12 @@ test("bounded modular characteristic reconstruction equals direct exact arithmet
             "metrics = {}",
             "assert _modular_characteristic_polynomial(K, shifted_generator, metrics) == _element_characteristic_polynomial(K, shifted_generator)",
             "assert metrics['modular_characteristic_certifications'] == {'cyclic-krylov': 1}",
+            "assert residue_characteristic_strategy(K, shifted_generator)['strategy'] == 'direct-exact'",
+            "larger_shift = 2^300",
+            "L = NumberField((x-larger_shift)^4+2*(x-larger_shift)+2, 'd')",
+            "large_decision = residue_characteristic_strategy(L, L.gen()-larger_shift)",
+            "assert large_decision['strategy'] == 'modular-crt'",
+            "assert large_decision['hadamard_bound_bits'] >= large_decision['crt_bound_bits_cutoff']",
             "cyclic_certificates += 1",
             "checked += 1",
             "(checked, prime_count > 0, cyclic_certificates > 0)",
