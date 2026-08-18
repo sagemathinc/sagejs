@@ -4,7 +4,7 @@
   "id": "nf-high-degree-discriminant",
   "title": "Fast split-aware discriminant prefactorization",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Accelerate exact split-aware polynomial prefactorization of large discriminant components with a source-transparent packed kernel, preserving the ordinary-Python oracle, fail-closed fallback, corruption rejection, and degree-90 performance evidence",
   "base_commit": "049732200e72be31e722f02a9a0825b574a64b8b",
@@ -17,7 +17,7 @@
   ],
   "dependencies": [],
   "references": [
-      "FLINT fmpz_mod_poly_gcd_f split-aware Euclidean semantics"
+    "FLINT fmpz_mod_poly_gcd_f split-aware Euclidean semantics"
   ],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -41,10 +41,60 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-discriminant-prefactorization.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.101,
+      "started_at": "2026-08-18T14:20:06.168Z",
+      "commit": "dd2fdd850310e2b7a5394e69ecc811a9554fbcb5",
+      "workspace_fingerprint": "03600714a131a7524cab60b23f648d973c92fa8e0caa422e0271338a6ecc132e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.028,
+      "started_at": "2026-08-18T14:20:07.889Z",
+      "commit": "dd2fdd850310e2b7a5394e69ecc811a9554fbcb5",
+      "workspace_fingerprint": "03600714a131a7524cab60b23f648d973c92fa8e0caa422e0271338a6ecc132e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.707,
+      "started_at": "2026-08-18T14:20:27.536Z",
+      "commit": "dd2fdd850310e2b7a5394e69ecc811a9554fbcb5",
+      "workspace_fingerprint": "03600714a131a7524cab60b23f648d973c92fa8e0caa422e0271338a6ecc132e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-discriminant-prefactorization.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.324,
+      "started_at": "2026-08-18T14:21:38.710Z",
+      "commit": "dd2fdd850310e2b7a5394e69ecc811a9554fbcb5",
+      "workspace_fingerprint": "67421fd28e10a1f9583f7e37acd8ac833319d4ce2870d52f25ed7a12f99a06f6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Adds an ordinary-Python, source-transparent packed composite polynomial gcd traversal and selects it only for compiled high-workload discriminant prefactorization. The host validates every exported divisor and falls back to the readable oracle on unavailable compilation, overflow, malformed status, or corrupt output. CPython, generated-dynamic, and compiled differentials cover split, no-split, unresolved, invalid-storage, and corruption outcomes. The degree-90 receipt records exact component equality, certificate replay, a 3.94x isolated gcd speedup, and a 2.04x full decomposition speedup (6.582s to 3.224s).",
+    "risks": [
+      "The new mathematical source raises the number-field-algorithms lazy package from below its 1,000,000-byte budget to 1,002,539 bytes; architecture:check reaches and passes FFI lowering, then fails this existing central manifest budget. Integration must make an explicit package-budget decision.",
+      "A temporary docstring-only source fingerprint experiment after the validated dd2fdd85 checkpoint caused the native registry to select dynamic execution; it was fully reverted. The earlier passing compiled differential and benchmark both bind to dd2fdd85.",
+      "The remaining 3.224-second degree-90 decomposition tail is not closed and still contains repeated perfect-power and probable-primality classification work."
+    ],
+    "next_steps": [
+      "Register packed_composite_polynomial_split_hint_in_place in the shared production native-kernel registry and add the focused test to shared manifests.",
+      "Add discriminant_prefactor_kernel.py to the shared strict-Python configuration if the integration branch uses explicit module enumeration.",
+      "Resolve the 2,539-byte number-field-algorithms lazy-budget overage explicitly, then rerun architecture:check and the production native suite.",
+      "Profile the compiled residual using counters before selecting the next theorem-backed perfect-power or primality boundary."
+    ]
   }
 }
