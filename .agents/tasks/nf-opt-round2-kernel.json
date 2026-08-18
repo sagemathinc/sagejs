@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "nf_opt_round2_kernel",
   "objective": "Profile and optimize the shared FLINT/GMP native Round2 order resource for PARI regressions 2510 and 1710 to within 2x and then 1.25 geometric mean without changing the mathematical algorithm",
-  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "base_commit": "80b7847ab0ebf6c56f33ba4f29e41b0edeb9bd45",
   "claims": [
     "packages/flint/include/sagejs/number_field_order_ffi.h",
     "packages/flint/test/number_field_order_resource_ffi.c",
