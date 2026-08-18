@@ -66,3 +66,10 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+
+## Mathematical Projects
+
+- [ ] Extend functionality of (now portable) smalljac to genus bigger than 1.
+- [ ] Class groups of number fields
+- [ ] Evaluation of elliptic curve lseries at any complex point.
+
