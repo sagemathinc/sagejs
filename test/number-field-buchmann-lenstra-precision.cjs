@@ -158,15 +158,24 @@ function run(command, args, environment = {}) {
     timeout: 120_000,
     maxBuffer: 50 * 1024 * 1024,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(
+    result.status,
+    0,
+    result.error?.stack ||
+      result.stderr ||
+      result.stdout ||
+      `${command} exited without a status`,
+  );
   return JSON.parse(result.stdout.trim());
 }
 
 test("2772-bit BL construction and independent replay agree exactly", () => {
   const python = run(pythonExecutable(), ["-"]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
-    SAGEJS_NATIVE_DISABLE: "1",
-  });
+  const sagejs = run(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python", "-"],
+    { SAGEJS_NATIVE_DISABLE: "1" },
+  );
 
   assert.ok(python.construction_ns < 5_000_000_000);
   assert.ok(python.checker_ns < 5_000_000_000);

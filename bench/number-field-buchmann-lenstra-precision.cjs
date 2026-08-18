@@ -117,7 +117,8 @@ const report = {
   native_disabled: true,
   runtimes: [
     runRuntime("CPython", pythonExecutable(), ["-"]),
-    runRuntime("Sage.js dynamic", join(root, "bin", "sagejs"), [
+    runRuntime("Sage.js dynamic", process.execPath, [
+      join(root, "bin", "sagejs"),
       "--python",
       "-",
     ]),
