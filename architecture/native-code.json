@@ -113,28 +113,28 @@
       "category": "mathematical-algorithm",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle."
+      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Its optional proof-carrying mode performs a distinct exact terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot; it does not replay enlargement."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; arbitrary-size unsupported local work is returned intact to the strict fallback."
+      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; optional terminal-proof slots are transferred only for a complete construction, and arbitrary-size unsupported local work is returned intact to the strict fallback."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. In addition to discriminant decomposition and canonical order evidence, it provides a bounded parallel verifier for terminal Round-2 fixed points from a sealed polynomial, completed order, and exact caller prime list. This is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s while the three-prime FLINT resource producer took 2.356s. The ordinary source remains the dynamic mathematical oracle; generated-call authentication immediately binds the canonical projection, external payloads still use full mathematical replay, and Windows uses the exact sequential worker path."
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It packs a proof-carrying construction result that binds the nested canonical order, sealed polynomial, full caller-prime tuple, local canonical bases, and independently rederived terminal radicals and full-rank multiplier minors. This representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, while a FLINT resource producer took 2.356s for three primes; the later full 12-prime standalone verifier still cost 3.776s and was rejected from the hot path. The ordinary source remains the external mathematical oracle, immediate generated-call authentication is linear and source-bound, and Windows retains an exact sequential fallback."
     },
     {
       "path": "bench/number-field-round2-proof-resource-witness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration",
-      "rationale": "Focused test-only witness for deterministic parallel/sequential Round-2 proof equivalence, pthread-creation fallback, injected worker failure, and sanitizer lifecycle coverage; it is never linked into Sage.js."
+      "rationale": "Focused test-only witness for deterministic construction-carried terminal-proof equivalence across bounded parallel, forced-one-worker, and pthread-creation fallback paths, plus injected terminal-check failure and sanitizer lifecycle coverage; it is never linked into Sage.js."
     },
     {
       "path": "packages/flint/test/number_field_order_resource_ffi.c",

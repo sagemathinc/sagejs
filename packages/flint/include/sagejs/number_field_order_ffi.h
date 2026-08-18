@@ -55,6 +55,11 @@
 #ifndef SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL
 #define SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL(prime) 0
 #endif
+#if FLINT_USES_PTHREAD && \
+    !defined(SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE)
+#define SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(thread, entry, argument) \
+    pthread_create((thread), NULL, (entry), (argument))
+#endif
 
 /*
  * Zassenhaus Round 2 over an integral multiplication table.
@@ -3389,7 +3394,8 @@ static inline void sagejs_nf_order_run_independent_primes(
     pthread_t workers[4];
     int started[4] = {0, 0, 0, 0};
     for (slong lane = 1; lane < worker_count; lane++)
-        if (pthread_create(workers + lane - 1, NULL,
+        if (SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(
+                workers + lane - 1,
                 sagejs_nf_order_independent_prime_thread,
                 lanes + lane) == 0)
             started[lane - 1] = 1;

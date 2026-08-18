@@ -4,7 +4,7 @@
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const { cpus, platform, arch } = require("node:os");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -36,9 +36,6 @@ from sagejs.number_fields.field_analysis_resource import (
     authenticated_round2_order_proof_matches,
 )
 from sagejs.number_fields.maximal_order import integral_equation_polynomial
-from sagejs.number_fields.order_resource import (
-    _native_order_with_round2_proof_from_polynomial_resource_bound,
-)
 
 case = json.loads(r'''${JSON.stringify(vector)}''')
 coefficients = [int(value) for value in case["polynomial"]["coefficients"]]
@@ -53,47 +50,49 @@ analysis_module = __import__(
     "sagejs.number_fields.field_analysis_resource",
     fromlist=["field_analysis_resource"],
 )
-raw_order_ns = []
-proof_producer_ns = []
-proof_direct_auth_ns = []
-original_raw_order = flint.number_field_order_from_polynomial_resource
-original_proof_producer = flint.number_field_round2_proof_resource
-original_direct_auth = analysis_module.native_round2_order_proof_from_resources
-
-def timed_raw_order(*args, **kwargs):
-    started = perf_counter_ns()
-    answer = original_raw_order(*args, **kwargs)
-    raw_order_ns.append(perf_counter_ns() - started)
-    return answer
-
-def timed_proof_producer(*args, **kwargs):
-    started = perf_counter_ns()
-    answer = original_proof_producer(*args, **kwargs)
-    proof_producer_ns.append(perf_counter_ns() - started)
-    return answer
-
-def timed_direct_auth(*args, **kwargs):
-    started = perf_counter_ns()
-    answer = original_direct_auth(*args, **kwargs)
-    proof_direct_auth_ns.append(perf_counter_ns() - started)
-    return answer
-
-flint.number_field_order_from_polynomial_resource = timed_raw_order
-flint.number_field_round2_proof_resource = timed_proof_producer
-analysis_module.native_round2_order_proof_from_resources = timed_direct_auth
-elapsed = []
-byte_sizes = []
 certified_primes = [
     2, 3, 5, 37, 59, 277, 311, 613, 719, 1319, 2894951, 6222169
 ]
+hints = flint.fmpz_matrix(len(certified_primes), 1)
+for row, prime in enumerate(certified_primes):
+    flint.fmpz_matrix_set_entry(hints, row, 0, prime)
+
+raw_order_ns = []
+carried_native_ns = []
+carried_decode_ns = []
+original_raw_order = flint.number_field_order_from_polynomial_resource
+original_carried = flint.number_field_order_with_round2_proof_resource
+original_decode = analysis_module._decode_current_carried_round2_order_resource
+
+def timed_carried(*args, **kwargs):
+    started = perf_counter_ns()
+    answer = original_carried(*args, **kwargs)
+    carried_native_ns.append(perf_counter_ns() - started)
+    return answer
+
+def timed_decode(*args, **kwargs):
+    started = perf_counter_ns()
+    answer = original_decode(*args, **kwargs)
+    carried_decode_ns.append(perf_counter_ns() - started)
+    return answer
+
+flint.number_field_order_with_round2_proof_resource = timed_carried
+analysis_module._decode_current_carried_round2_order_resource = timed_decode
+carried_total_ns = []
+byte_sizes = []
 for unused in range(${samples}):
     started = perf_counter_ns()
-    order, proof = _native_order_with_round2_proof_from_polynomial_resource_bound(
+    raw = original_raw_order(resource, hints)
+    raw_order_ns.append(perf_counter_ns() - started)
+    raw.close()
+    started = perf_counter_ns()
+    order, proof = analysis_module.native_carried_round2_order_from_resources(
         resource,
-        coefficients,
-        certified_primes,
+        hints,
+        coefficients_low_to_high=coefficients,
+        certified_primes=certified_primes,
     )
-    elapsed.append(perf_counter_ns() - started)
+    carried_total_ns.append(perf_counter_ns() - started)
     if not order.complete or proof is None or not proof.certified:
         raise AssertionError("vector429 full native proof did not certify")
     rows = [list(row) for row in order.basis.numerator]
@@ -115,29 +114,40 @@ for unused in range(${samples}):
     )
 
 print(json.dumps({
-    "schema": "sagejs.benchmark/number-field-round2-proof-resource-v1",
+    "schema": "sagejs.benchmark/number-field-round2-carried-proof-resource-v1",
     "case_id": case["id"],
     "degree": len(coefficients) - 1,
     "primes": certified_primes,
-    "sample_count": len(elapsed),
+    "sample_count": len(carried_total_ns),
     "startup_and_setup_ns": startup_and_setup_ns,
     "raw_native_order_ns": raw_order_ns,
-    "proof_native_independent_check_ns": proof_producer_ns,
-    "proof_direct_auth_total_ns": proof_direct_auth_ns,
-    "proof_projection_decode_snapshot_ns": [
-        total - native
-        for total, native in zip(proof_direct_auth_ns, proof_producer_ns)
+    "carried_native_construction_ns": carried_native_ns,
+    "carried_terminal_proof_delta_ns": [
+        carried - raw
+        for carried, raw in zip(carried_native_ns, raw_order_ns)
     ],
-    "combined_order_and_proof_ns": elapsed,
+    "carried_projection_decode_snapshot_ns": carried_decode_ns,
+    "carried_order_and_proof_total_ns": carried_total_ns,
     "authenticated_projection_integer_count": byte_sizes,
     "exact": True,
-    "round2_replays_during_proof": 0,
+    "post_construction_round2_replays": 0,
 }))
+hints.close()
 `;
 
+const timePath = "/usr/bin/time";
+const timed = process.platform === "linux" && existsSync(timePath);
 const result = spawnSync(
-  process.execPath,
-  [join(root, "bin/sagejs"), "--python"],
+  timed ? timePath : process.execPath,
+  timed
+    ? [
+        "-f",
+        "__SAGEJS_MAX_RSS_KIB__=%M",
+        process.execPath,
+        join(root, "bin/sagejs"),
+        "--python",
+      ]
+    : [join(root, "bin/sagejs"), "--python"],
   {
     cwd: root,
     encoding: "utf8",
@@ -150,18 +160,21 @@ const result = spawnSync(
 if (result.error) throw result.error;
 assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 const report = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
-const ordered = [...report.combined_order_and_proof_ns].sort(
+const peakMatch = result.stderr.match(/__SAGEJS_MAX_RSS_KIB__=(\d+)/);
+report.peak_rss_kib = peakMatch ? Number(peakMatch[1]) : null;
+const ordered = [...report.carried_order_and_proof_total_ns].sort(
   (left, right) => left - right,
 );
 report.statistics = {
   combined_median_ms: ordered[Math.floor(ordered.length / 2)] / 1e6,
   startup_and_setup_ms: report.startup_and_setup_ns / 1e6,
   raw_native_order_ms: report.raw_native_order_ns[0] / 1e6,
-  proof_native_independent_check_ms:
-    report.proof_native_independent_check_ns[0] / 1e6,
-  proof_direct_auth_total_ms: report.proof_direct_auth_total_ns[0] / 1e6,
-  proof_projection_decode_snapshot_ms:
-    report.proof_projection_decode_snapshot_ns[0] / 1e6,
+  carried_native_construction_ms:
+    report.carried_native_construction_ns[0] / 1e6,
+  carried_terminal_proof_delta_ms:
+    report.carried_terminal_proof_delta_ns[0] / 1e6,
+  carried_projection_decode_snapshot_ms:
+    report.carried_projection_decode_snapshot_ns[0] / 1e6,
   target_ms: 5000,
   target_met: ordered[Math.floor(ordered.length / 2)] < 5e9,
 };

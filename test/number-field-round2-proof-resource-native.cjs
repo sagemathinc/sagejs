@@ -42,7 +42,7 @@ function compile(output, defines = [], sanitize = false) {
   );
   run(process.env.CC || "cc", [
     "-std=c11",
-    "-O2",
+    sanitize ? "-O1" : "-O2",
     "-Wall",
     "-Wextra",
     "-Werror",
@@ -59,21 +59,23 @@ function compile(output, defines = [], sanitize = false) {
   ]);
 }
 
-test("parallel Round-2 proofs equal sequential and pthread-fallback proofs", {
-  skip: process.platform === "win32" ? "native Windows uses the generated sequential boundary" : false,
+test("construction-carried proofs agree across parallel and fallback lanes", {
+  skip: process.platform === "win32"
+    ? "native Windows uses the generated sequential correctness fallback"
+    : false,
 }, () => {
-  const temporary = mkdtempSync(join(tmpdir(), "sagejs-round2-proof-native-"));
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-round2-carried-native-"));
   try {
     const normal = join(temporary, "normal");
     const sequential = join(temporary, "sequential");
     const pthreadFallback = join(temporary, "pthread-fallback");
     const injectedFailure = join(temporary, "injected-failure");
     compile(normal);
-    compile(sequential, ["SAGEJS_NF_ANALYSIS_PROOF_FORCE_ONE_WORKER=1"]);
-    compile(pthreadFallback, ["SAGEJS_NF_ANALYSIS_PROOF_TEST_PTHREAD_FALLBACK=1"]);
+    compile(sequential, ["SAGEJS_NF_ORDER_FORCE_ONE_INDEPENDENT_WORKER=1"]);
+    compile(pthreadFallback, ["SAGEJS_NF_ORDER_TEST_PTHREAD_FALLBACK=1"]);
     compile(injectedFailure, [
-      "SAGEJS_NF_ANALYSIS_PROOF_TEST_FAIL(index)=((index)==1)",
-      "SAGEJS_NF_ANALYSIS_PROOF_EXPECT_FAILURE=1",
+      "SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL(prime)=((prime)==103)",
+      "SAGEJS_NF_ORDER_TERMINAL_PROOF_EXPECT_FAILURE=1",
     ]);
     const normalResult = run(normal, []);
     assert.equal(run(sequential, []), normalResult);
@@ -97,20 +99,19 @@ test("parallel Round-2 proofs equal sequential and pthread-fallback proofs", {
   }
 });
 
-test("current native proof and ordinary replay agree on deterministic random cubics", () => {
+test("current carried proof and external ordinary replay agree on random cubics", () => {
   const program = String.raw`
 from sagejs.number_fields.field_analysis_resource import (
     authenticated_round2_order_proof_matches,
-    decode_round2_order_proof_resource,
-    native_round2_order_proof_from_resources,
+    decode_carried_round2_order_resource,
+    native_carried_round2_order_from_resources,
 )
-from sagejs.number_fields.order_resource import decode_order_resource
 import sagejs.ffi.flint as flint
 
 def prime_divisors(value):
     answer = []
     prime = 2
-    remaining = value
+    remaining = abs(value)
     while prime * prime <= remaining:
         if remaining % prime == 0:
             answer.append(prime)
@@ -121,134 +122,136 @@ def prime_divisors(value):
         answer.append(remaining)
     return answer
 
+def integer_locations(payload, offset, count):
+    answer = []
+    for unused in range(count):
+        start = offset
+        header = sum(payload[offset + index] << (8 * index) for index in range(4))
+        length = header & 2147483647
+        offset += 4 + length
+        answer.append((start, offset))
+    return answer, offset
+
+def corrupt_integer(payload, location):
+    answer = list(payload)
+    start, end = location
+    if end == start + 4:
+        answer[start + 3] |= 128
+        return answer
+    answer[start + 4] ^= 1
+    return answer
+
 state = 17
 checked = 0
-for unused in range(12):
+for unused in range(16):
     state = (1103515245 * state + 12345) % 2147483648
     constant = 2 + state % 97
-    primes = prime_divisors(3 * constant)
-    if len(primes) < 2:
-        continue
     coefficients = [-constant, 0, 0, 1]
+    primes = prime_divisors(27 * constant * constant)
+    prime = primes[0]
     polynomial = flint.fmpz_polynomial(4)
-    hints = flint.fmpz_matrix(len(primes), 1)
+    hints = flint.fmpz_matrix(1, 1)
     try:
         for index, value in enumerate(coefficients):
             flint.fmpz_polynomial_set_coefficient(polynomial, index, value)
         flint.fmpz_polynomial_seal(polynomial)
-        for row, prime in enumerate(primes):
-            flint.fmpz_matrix_set_entry(hints, row, 0, prime)
-        order_resource = flint.number_field_order_from_polynomial_resource(
+        flint.fmpz_matrix_set_entry(hints, 0, 0, prime)
+        resource = flint.number_field_order_with_round2_proof_resource(
             polynomial, hints
         )
         try:
-            order = decode_order_resource(order_resource.copy_bytes())
-            proof_resource = flint.number_field_round2_proof_resource(
-                polynomial, order_resource, hints
-            )
-            try:
-                payload = list(proof_resource.copy_bytes())
-            finally:
-                proof_resource.close()
-            rows = [list(row) for row in order.basis.numerator]
-            replay = decode_round2_order_proof_resource(
-                payload,
-                expected_polynomial=coefficients,
-                expected_primes=primes,
-                expected_basis_numerator=rows,
-                expected_basis_denominator=order.basis.denominator,
-                expected_index=order.index,
-                expected_equation_discriminant=order.equation_discriminant,
-                expected_order_discriminant=order.order_discriminant,
-            )
-            direct = native_round2_order_proof_from_resources(
-                polynomial,
-                order_resource,
-                hints,
-                coefficients_low_to_high=coefficients,
-                certified_primes=primes,
-                basis_numerator=rows,
-                basis_denominator=order.basis.denominator,
-                index=order.index,
-                equation_discriminant=order.equation_discriminant,
-                order_discriminant=order.order_discriminant,
-            )
-            assert replay.verification_tier == "packed-mathematical-replay"
-            assert direct.verification_tier == "current-generated-native-fixed-point"
-            for proof in (replay, direct):
-                assert authenticated_round2_order_proof_matches(
-                    proof,
-                    polynomial=coefficients,
-                    certified_primes=primes,
-                    basis_numerator=rows,
-                    basis_denominator=order.basis.denominator,
-                    index=order.index,
-                    equation_discriminant=order.equation_discriminant,
-                    order_discriminant=order.order_discriminant,
-                )
-            if checked == 0:
-                mismatches = [
-                    {
-                        "coefficients_low_to_high": [
-                            coefficients[0] + 1,
-                            *coefficients[1:],
-                        ]
-                    },
-                    {"certified_primes": [primes[0] + 1, *primes[1:]]},
-                    {
-                        "basis_numerator": [
-                            [rows[0][0] + 1, *rows[0][1:]],
-                            *rows[1:],
-                        ]
-                    },
-                ]
-                direct_arguments = {
-                    "coefficients_low_to_high": coefficients,
-                    "certified_primes": primes,
-                    "basis_numerator": rows,
-                    "basis_denominator": order.basis.denominator,
-                    "index": order.index,
-                    "equation_discriminant": order.equation_discriminant,
-                    "order_discriminant": order.order_discriminant,
-                }
-                for mismatch in mismatches:
-                    arguments = {**direct_arguments, **mismatch}
-                    try:
-                        native_round2_order_proof_from_resources(
-                            polynomial,
-                            order_resource,
-                            hints,
-                            **arguments,
-                        )
-                        raise AssertionError(
-                            "mismatched current proof projection was accepted"
-                        )
-                    except ValueError:
-                        pass
-            corrupted = list(payload)
-            corrupted[-1] ^= 1
-            try:
-                decode_round2_order_proof_resource(
-                    corrupted,
-                    expected_polynomial=coefficients,
-                    expected_primes=primes,
-                    expected_basis_numerator=rows,
-                    expected_basis_denominator=order.basis.denominator,
-                    expected_index=order.index,
-                    expected_equation_discriminant=order.equation_discriminant,
-                    expected_order_discriminant=order.order_discriminant,
-                )
-                raise AssertionError("corrupted external proof was accepted")
-            except ValueError:
-                pass
-            checked += 1
+            payload = list(resource.copy_bytes())
         finally:
-            order_resource.close()
+            resource.close()
+        replay_order, replay = decode_carried_round2_order_resource(
+            payload,
+            expected_polynomial=coefficients,
+            expected_primes=[prime],
+        )
+        direct_order, direct = native_carried_round2_order_from_resources(
+            polynomial,
+            hints,
+            coefficients_low_to_high=coefficients,
+            certified_primes=[prime],
+        )
+        assert replay_order.to_dict() == direct_order.to_dict()
+        assert replay.verification_tier == "ordinary-mathematical-proof-carrying-round2"
+        assert direct.verification_tier == "current-generated-proof-carrying-round2"
+        rows = [list(row) for row in direct_order.basis.numerator]
+        for proof in (replay, direct):
+            assert authenticated_round2_order_proof_matches(
+                proof,
+                polynomial=coefficients,
+                certified_primes=[prime],
+                basis_numerator=rows,
+                basis_denominator=direct_order.basis.denominator,
+                index=direct_order.index,
+                equation_discriminant=direct_order.equation_discriminant,
+                order_discriminant=direct_order.order_discriminant,
+            )
+
+        if checked == 0:
+            order_length = sum(payload[32 + index] << (8 * index) for index in range(8))
+            degree = 3
+            nested_locations, unused_offset = integer_locations(
+                payload, 72 + 64, 5 + degree * degree
+            )
+            stream = 72 + order_length
+            source_locations, stream = integer_locations(payload, stream, degree + 1)
+            prime_locations, stream = integer_locations(payload, stream, 1)
+            metadata_locations, stream = integer_locations(payload, stream, 3)
+            local_locations, stream = integer_locations(payload, stream, degree * degree)
+            radical_dimension_location = metadata_locations[2]
+            radical_header = sum(
+                payload[radical_dimension_location[0] + index] << (8 * index)
+                for index in range(4)
+            )
+            radical_length = radical_header & 2147483647
+            radical_dimension = 0 if radical_length == 0 else payload[
+                radical_dimension_location[0] + 4
+            ]
+            radical_locations, stream = integer_locations(
+                payload, stream, radical_dimension * degree
+            )
+            selector_locations, stream = integer_locations(payload, stream, degree)
+            minor_locations, stream = integer_locations(payload, stream, degree * degree)
+            assert stream == len(payload)
+            corruptions = [
+                corrupt_integer(payload, source_locations[0]),
+                corrupt_integer(payload, prime_locations[0]),
+                corrupt_integer(payload, nested_locations[5]),
+                corrupt_integer(payload, local_locations[0]),
+                corrupt_integer(payload, minor_locations[-1]),
+            ]
+            for corrupted in corruptions:
+                try:
+                    decode_carried_round2_order_resource(
+                        corrupted,
+                        expected_polynomial=coefficients,
+                        expected_primes=[prime],
+                    )
+                    raise AssertionError("same-length carried corruption was accepted")
+                except ValueError:
+                    pass
+            for mismatched_polynomial, mismatched_primes in (
+                ([coefficients[0] + 1, *coefficients[1:]], [prime]),
+                (coefficients, [prime + 1]),
+            ):
+                try:
+                    decode_carried_round2_order_resource(
+                        payload,
+                        expected_polynomial=mismatched_polynomial,
+                        expected_primes=mismatched_primes,
+                    )
+                    raise AssertionError("mismatched carried source was accepted")
+                except ValueError:
+                    pass
+        checked += 1
     finally:
         hints.close()
         polynomial.close()
-assert checked >= 8
-print("ROUND2_PROOF_RANDOM_DIFFERENTIAL_OK")
+assert checked == 16
+print("ROUND2_CARRIED_RANDOM_DIFFERENTIAL_OK")
 `;
   const result = spawnSync(process.execPath, [join(root, "bin/sagejs"), "--python"], {
     cwd: root,
@@ -259,5 +262,5 @@ print("ROUND2_PROOF_RANDOM_DIFFERENTIAL_OK")
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /ROUND2_PROOF_RANDOM_DIFFERENTIAL_OK/);
+  assert.match(result.stdout, /ROUND2_CARRIED_RANDOM_DIFFERENTIAL_OK/);
 });

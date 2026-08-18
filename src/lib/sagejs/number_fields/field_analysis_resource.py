@@ -2856,7 +2856,9 @@ def _decode_current_carried_round2_order_resource(
             raise ValueError("proof-carrying order omitted a native prime")
         square = degree * degree
         carried_witnesses: list[
-            tuple[int, list[list[int]], int, list[list[int]], list[int], list[list[int]]]
+            tuple[
+                int, list[list[int]], int, list[list[int]], list[int], list[list[int]]
+            ]
         ] = []
         for expected_prime in native_primes:
             prime = read()
@@ -2882,14 +2884,11 @@ def _decode_current_carried_round2_order_resource(
             if canonical_radical != radical:
                 raise ValueError("carried terminal radical is not canonical")
             selectors = [read() for _unused in range(degree)]
-            if (
-                len(set(selectors)) != degree
-                or any(selector < 0 or selector >= square for selector in selectors)
+            if len(set(selectors)) != degree or any(
+                selector < 0 or selector >= square for selector in selectors
             ):
                 raise ValueError("carried terminal selectors are invalid")
-            minor = [
-                [read() for _column in range(degree)] for _row in range(degree)
-            ]
+            minor = [[read() for _column in range(degree)] for _row in range(degree)]
             if any(value < 0 or value >= prime for row in minor for value in row):
                 raise ValueError("carried terminal minor is not reduced")
             reduced_minor, _pivots = _modular_rref(minor, prime)
@@ -2964,8 +2963,7 @@ def _ordinary_validate_carried_round2_order(
         or final_denominator < 1
         or not _canonical_row_hnf(final_numerator)
         or final_determinant == 0
-        or final_denominator**len(polynomial[:-1])
-        != order.index * final_determinant
+        or final_denominator ** len(polynomial[:-1]) != order.index * final_determinant
         or equation_discriminant != order.order_discriminant * order.index**2
         or not certification.check_order_lattice(
             polynomial, final_numerator, final_denominator
@@ -3020,10 +3018,7 @@ def _ordinary_validate_carried_round2_order(
             content = _gcd(content, value)
     merged_denominator = common_denominator // content
     merged_numerator = [[value // content for value in row] for row in merged]
-    if (
-        merged_denominator != final_denominator
-        or merged_numerator != final_numerator
-    ):
+    if merged_denominator != final_denominator or merged_numerator != final_numerator:
         raise ValueError("carried terminal local orders do not merge to the result")
 
 
@@ -3055,8 +3050,10 @@ def native_carried_round2_order_from_resources(
     actual current generated call.  The returned native owner remains
     unexposed and is closed immediately after its canonical bytes are bound.
     """
-    resource = _field_analysis_flint_module().number_field_order_with_round2_proof_resource(
-        polynomial, prime_hints
+    resource = (
+        _field_analysis_flint_module().number_field_order_with_round2_proof_resource(
+            polynomial, prime_hints
+        )
     )
     try:
         return _decode_current_carried_round2_order_resource(

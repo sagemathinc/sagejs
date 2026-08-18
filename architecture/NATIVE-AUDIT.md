@@ -115,6 +115,29 @@ and oversized writes fail explicitly. This makes exact vector exchange a
 portable representation boundary rather than an array of host-language GMP
 objects.
 
+## Number-field terminal-proof exception
+
+The readable packed Round-2 checker remains the ordinary-Python mathematical
+oracle, but its degree-64 `O(n^4)` exact replay measured 18.185 seconds.  A
+handwritten FLINT representation boundary produced three terminal witnesses in
+2.356 seconds; extending the same post-construction design to vector429's full
+12-prime native support still cost 3.776 seconds and raised the combined path
+to 6.247 seconds.  That standalone verifier is therefore not a production
+hot-path export.
+
+The retained exception is proof-carrying construction.  Each independent
+local Round-2 worker performs a second terminal check against its stable final
+exact order state, independently derives the canonical radical and a selected
+full-rank multiplier minor, and only then publishes its immutable slot.  The
+single packed result binds those slots in caller-prime order to the sealed
+polynomial and nested canonical order bytes.  Immediate authentication is
+linear and exists only around the actual current generated call.  External or
+copied bytes use ordinary exact Python to recompute the polynomial
+discriminant, order arithmetic, every local fixed point, and the coprime merge
+to the final HNF basis.  Forced-one-worker, pthread-creation fallback, injected
+terminal-check failure, randomized corruption, and sanitizer witnesses guard
+this lifecycle.
+
 At `p=1009`, weight 4, the compiled typed-Python action stage writes 49,284
 coefficients in median 0.745 milliseconds with GCC and 0.447 milliseconds with
 Clang on the dedicated 16-vCPU AMD EPYC 7B13 host. The standalone C
