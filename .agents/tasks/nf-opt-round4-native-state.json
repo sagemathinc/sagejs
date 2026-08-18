@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Reduce vector010 modified-Round4 construction by at least one order of magnitude with a reusable source-transparent packed residue/type-state kernel while preserving exact certificates and same-source fallback",
-  "base_commit": "285c223da7f42e69ee5e91e6f1d214f6bcf7cfe5",
+  "base_commit": "55551a59bc4f92396d6b82dd7a6c5ae26062fd6c",
   "claims": [
     "src/lib/sagejs/number_fields/round4.py",
     "src/lib/sagejs/number_fields/round4_state_kernel.py",
@@ -39,8 +39,13 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated source-transparent exact characteristic replay and delayed covolume containment for modified Round 4, with canonical packed certificates, monotone transcript binding, dynamic capability fallbacks, focused random/real-trace/corruption differentials, and compact verification. On vector010 this reduced exact construction from about 26.7s to 10.2s; the broader optimization program selected the faster Round-2 native-state public path for the final ratio instead of continuing whole-state Round-4 fusion.",
+    "risks": [
+      "The branch-only 4cf63c1a packed exact-quotient experiment is correct under focused/strict/architecture checks and measured 1.167s across the 17 vector010 events, but is intentionally not selected for integration after the public path moved to Round 2.",
+      "A cold compact-verifier process falls back to dynamic closure and takes about 16.5s; with the normal field-analysis closure kernel compiled, verification is about 3.5s."
+    ],
+    "next_steps": [
+      "Retain the integrated hook and certificate fixture through 55551a59; do not integrate the branch-only quotient experiment unless the Round-4 public path is explicitly reopened."
+    ]
   }
 }
