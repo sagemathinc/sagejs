@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-parallel-public-evidence",
+  "title": "Nf Opt Parallel Public Evidence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Close the production many-prime public parallel crossover gate with fresh exact sequential/parallel evidence and generic scheduler improvements only if needed",
+  "base_commit": "89d08932f80ef917b839118c0b1dda0506cf4082",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-local-parallel.cjs",
+    "test/number-field-maximal-order-parallel-public.cjs",
+    "bench/number-field-maximal-order-parallel-public.cjs",
+    "bench/results/number-field-maximal-order-parallel-public-final.json",
+    "bench/results/number-field-maximal-order-parallel-public-final.md",
+    "test/number-field-maximal-order-parallel-public-receipt.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
