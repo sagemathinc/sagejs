@@ -65,6 +65,11 @@ complex_plot(L, (0, 2), (-20, 20), plot_points=100)
 ```
 
 It must not lower that expression to 10,000 independent calls to `L(s)`.
+Plotting should default to an adaptive visual-accuracy policy rather than
+computing 53 accurate bits at every pixel. An explicit override such as
+`plot_precision=32` may request a numerical floor, but the default
+`plot_precision="auto"` should stop when refinement no longer changes the
+rendered color perceptibly.
 
 ## Current implementation and measured gaps
 
@@ -418,15 +423,49 @@ an L-series by class name or by the existence of a generic `values` method.
 
 ### Precision policy for images
 
-Pixels do not need a 53-bit `ComplexField` object plus decimal diagnostics per
-sample. Start with a documented plotting precision, at least 32 bits, and
-compute at sufficient internal guard precision to make phase and magnitude
-stable at display resolution.
+Pixels do not need a 53-bit `ComplexField` result plus decimal diagnostics per
+sample. Two reliable decimal digits are often visually ample, but a fixed
+two-decimal-place test is not the right contract: it is scale-dependent, and
+phase is ill-conditioned near a zero. The acceptance criterion should instead
+be stability of the final domain-color mapping.
+
+Keep ordinary `L(s)`, `L.values(...)`, and `values_along_line(...)` at their
+requested numerical precision. Only the private plotting protocol may use the
+following adaptive visual policy:
+
+1. Choose a low initial target from the image dimensions, rectangle, and color
+   map. With the current native minimum, 16 target bits is a reasonable first
+   implementation; it is already more conservative than a literal two-digit
+   requirement.
+2. Evaluate a coarse and fine version with guard precision, map both complex
+   values through exactly the same phase/magnitude-to-color function, and
+   compare the resulting display colors.
+3. Accept a pixel when every rendered channel changes by at most one 8-bit
+   color level by default. Make this perceptual tolerance explicit and
+   configurable, for example as `color_tolerance=1/255`.
+4. Re-evaluate only ambiguous pixel groups or tiles at successively higher
+   targets such as 24 and 32 bits. Do not force the entire rectangle to the
+   precision needed by a few difficult pixels.
+5. If `abs(L(s))` is comparable to its numerical uncertainty, treat phase as
+   undefined. Refine that pixel; if it remains unstable at the plotting
+   ceiling, render it with an explicit missing/neutral policy rather than a
+   plausible arbitrary hue. Never snap a near-zero value to zero.
+6. For color maps with contour bands or discrete classifications, require the
+   band/classification itself to be stable in addition to the RGB tolerance.
+
+The rectangle and pixel dimensions should influence the initial target:
+spatial sampling error normally dominates tiny numerical changes in a small
+image. They do not by themselves certify a pixel, however; the coarse/fine
+color comparison is the final acceptance check. Report aggregate counts of
+pixels accepted at each precision and pixels left unstable so performance and
+image quality remain inspectable.
 
 The first implementation may reuse the arbitrary-precision batch and convert
 its results. Measure before adding a specialized path. If object/string output
 dominates, add a separate packed plotting result containing interleaved
 binary64 real and imaginary components plus one aggregate diagnostic record.
+Binary64 is only the transport representation in that design; it does not
+imply that 53 accurate bits were computed internally.
 
 A packed plotting path remains non-rigorous, but it must be derived from a
 coarse/fine stabilized evaluation. Nonfinite or unstable pixels must be
@@ -533,6 +572,13 @@ independent Magma values. Add focused performance-route fixtures for:
 - Large batch results versus independent single evaluations.
 - Batched `complex_plot` sample colors versus the scalar sampler on a small
   grid.
+- Auto-precision plot colors versus a 53-bit scalar baseline, accepting only
+  pixels within the configured rendered-channel tolerance.
+- Difficult pixels near zeros and phase/color boundaries refine to a higher
+  target or become explicitly unstable; ordinary pixels remain on the cheap
+  low-precision path.
+- Explicit `plot_precision` overrides retain their requested numerical floor
+  without changing the precision contract of ordinary `L(s)` calls.
 
 ### Failure and resource tests
 
@@ -579,6 +625,11 @@ Initial goals at default precision for the user curve:
   process/module initialization;
 - make a 100-by-100 default plotting rectangle complete in at most 10 seconds
   without unbounded cache growth;
+- make the default adaptive visual-accuracy plot materially faster than the
+  same rectangle forced to 53 target bits, with a goal of at least 2x on the
+  reference x64 host;
+- keep all accepted auto-precision pixels within one 8-bit channel level of
+  the 53-bit baseline under the default color map;
 - keep identical cached calls below 5 ms;
 - keep analytic-rank central-kernel timing within 10% of its pre-project
   median, or improve it through the shared Horner grid.
@@ -647,6 +698,14 @@ complete evaluations.
 - Permit large batches according to explicit point-grid and memory limits.
 - Group ordinary point sets by compatible regional cost.
 - Use one prepared/fused coarse-and-fine computation per plot region.
+- Add `plot_precision="auto"`: begin at a low target (initially 16 bits),
+  compare final rendered colors, and refine only unstable pixel groups.
+- Add a configurable rendered-color tolerance and an explicit numerical
+  precision override for reproducibility.
+- Track and expose aggregate accepted-at-16/24/32-bit and unstable-pixel
+  counts in plot diagnostics.
+- Treat near-zero phase and contour-boundary ambiguity explicitly; do not
+  manufacture a stable-looking color from an unresolved value.
 - Bypass the individual LRU for image pixels.
 - Measure ordinary complex output first; add packed binary64 plotting output
   only if conversion dominates.
@@ -655,7 +714,8 @@ complete evaluations.
 - Document `complex_plot(L, ...)` with a reproducible example.
 
 Exit criterion: a 100-by-100 plot uses bounded batched native calls, meets the
-plotting performance target, and matches scalar sample colors.
+plotting performance target, and its accepted auto-precision pixels match the
+53-bit scalar baseline within the declared rendered-color tolerance.
 
 ### P5 — Cross-platform and repository gates
 
@@ -760,6 +820,12 @@ The project is complete when:
 - `values_along_line` matches Sage-compatible points and values;
 - `complex_plot(L, ...)` invokes a bounded regional batch path rather than one
   independent L-series evaluation per pixel;
+- default plots use adaptive visual accuracy, preserve ordinary evaluation's
+  precision contract, and refine or explicitly mark pixels whose phase,
+  contour class, or rendered color is unstable;
+- accepted default-plot pixels match the 53-bit color baseline within one
+  8-bit channel level, and diagnostics report how many pixels required each
+  precision tier;
 - 16-by-16 and 100-by-100 plotting benchmarks meet their targets or record a
   reviewed, quantified blocker rather than silently shipping a slow path;
 - Horner, recurrence, packed-coefficient, and nested-refinement differentials
