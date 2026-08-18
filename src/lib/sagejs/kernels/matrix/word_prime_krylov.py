@@ -51,6 +51,10 @@ def word_prime_krylov_minimal_polynomial(
     has exactly `word_prime_krylov_workspace_length(dimension)` entries.
     A zero return reports an invalid zero-dimensional input; shape errors raise
     before output is changed.
+
+    Matrix-vector products reduce after eight terms.  Since every modulus is
+    below `2^30`, eight products plus one reduced partial sum are strictly
+    below `2^64`; delayed reduction is therefore exact unsigned arithmetic.
     """
     if dimension > 4294967295:
         raise ValueError("Krylov matrix dimension is too large")
@@ -74,6 +78,9 @@ def word_prime_krylov_minimal_polynomial(
 
     zero = modulus - modulus
     one = modulus // modulus
+    chunk_limit = one + one
+    chunk_limit = chunk_limit + chunk_limit
+    chunk_limit = chunk_limit + chunk_limit
 
     for index in range(dimension + 1):
         output[index] = zero
@@ -143,15 +150,18 @@ def word_prime_krylov_minimal_polynomial(
 
         for row in range(dimension):
             total = zero
+            chunk_count = zero
             row_offset = row * dimension
             for column in range(dimension):
-                product = prime_mul(
-                    matrix[row_offset + column],
-                    workspace[vector_offset + column],
-                    modulus,
+                total = (
+                    total
+                    + matrix[row_offset + column] * workspace[vector_offset + column]
                 )
-                total = prime_add(total, product, modulus)
-            workspace[reduced_offset + row] = total
+                chunk_count = chunk_count + one
+                if chunk_count == chunk_limit:
+                    total = total % modulus
+                    chunk_count = zero
+            workspace[reduced_offset + row] = total % modulus
         for index in range(dimension):
             workspace[vector_offset + index] = workspace[reduced_offset + index]
 
@@ -189,10 +199,11 @@ def integer_matrix_word_prime_minimal_polynomial_batch(
     degree resets either state; an equal degree extends it by exact CRT.
 
     Every accepted modulus is at most `2^30 - 1`.  Consequently each modular
-    product is below `2^60`, so the explicit `uint64` arithmetic cannot wrap.
-    Prime certification remains the caller's responsibility.  A zero return
-    reports a malformed shape, dimension, modulus range, or missing relation;
-    no such result is accepted by the caller.
+    product is below `2^60`; accumulating eight products plus one reduced
+    partial sum remains below `2^64`, so delayed matrix-vector reduction cannot
+    wrap.  Prime certification remains the caller's responsibility.  A zero
+    return reports a malformed shape, dimension, modulus range, or missing
+    relation; no such result is accepted by the caller.
     """
     zero = dimension - dimension
     if dimension > 4294967295:
@@ -202,6 +213,9 @@ def integer_matrix_word_prime_minimal_polynomial_batch(
     if prime_count == zero:
         return zero
     one = dimension // dimension
+    chunk_limit = one + one
+    chunk_limit = chunk_limit + chunk_limit
+    chunk_limit = chunk_limit + chunk_limit
     matrix_count = dimension * dimension
     relation_width = dimension + one
     if len(matrix) != matrix_count:
@@ -333,14 +347,19 @@ def integer_matrix_word_prime_minimal_polynomial_batch(
 
                     for row in range(dimension):
                         total = modulus - modulus
+                        chunk_count = zero
                         row_offset = modular_matrix_offset + row * dimension
                         for column in range(dimension):
-                            product = (
-                                workspace[row_offset + column]
+                            total = (
+                                total
+                                + workspace[row_offset + column]
                                 * workspace[vector_offset + column]
-                            ) % modulus
-                            total = (total + product) % modulus
-                        workspace[reduced_offset + row] = total
+                            )
+                            chunk_count = chunk_count + one
+                            if chunk_count == chunk_limit:
+                                total = total % modulus
+                                chunk_count = zero
+                        workspace[reduced_offset + row] = total % modulus
                     for index in range(dimension):
                         workspace[vector_offset + index] = workspace[
                             reduced_offset + index
