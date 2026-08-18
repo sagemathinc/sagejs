@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round2-ceiling",
+  "title": "Probe Round2 eligible-native ceiling",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Determine whether the integrated shared Round2 resource can safely reach the 0.25ms eligible-native ceiling on PARI 2510 using only general exact representation or storage optimizations",
+  "base_commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "test/number-field-order-resource-ffi.cjs",
+    "bench/number-field-order-resource-witness.c",
+    "bench/results/number-field-round2-ceiling-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary Python Round2 exact local HNF",
+      "forced exact lattice-inverse native differential",
+      "deterministic randomized optimized/exact differential"
+    ],
+    "exceptions": [
+      "Bounded optimization of the existing audited FLINT/GMP Round2 representation primitive; no new handwritten mathematical algorithm"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.052,
+      "started_at": "2026-08-18T08:54:59.357Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "345b89f3520ed662c446d07ff2dcf60e0ac869958e8f7ed3a1c6696560deed94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.619,
+      "started_at": "2026-08-18T08:55:08.169Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "345b89f3520ed662c446d07ff2dcf60e0ac869958e8f7ed3a1c6696560deed94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.865,
+      "started_at": "2026-08-18T09:02:07.865Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "fe509d9841ebc71bc2033aa7946255da9307943216b63959a1f59d035b2c1bb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.585,
+      "started_at": "2026-08-18T09:02:17.494Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "fe509d9841ebc71bc2033aa7946255da9307943216b63959a1f59d035b2c1bb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.986,
+      "started_at": "2026-08-18T09:03:15.853Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "c0bb73acd455bf0249343712c2d537be262bfcf0d2206d0c44fe72fda952ddd7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.333,
+      "started_at": "2026-08-18T09:03:24.573Z",
+      "commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+      "workspace_fingerprint": "c0bb73acd455bf0249343712c2d537be262bfcf0d2206d0c44fe72fda952ddd7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The integrated shared Round-2 resource now reaches the final eligible-native ceiling without a fixture branch: PARI #2510 has a 242.460 microsecond nine-sample median versus the 250 microsecond gate and 241.274 microsecond direct Hecke reference. A checked persistent word representation removes repeated fmpz conversion, with lazy exact synchronization and the existing exact FLINT fallback. Exact zero/duplicate multiplier equations are compacted before the mature FLINT nullspace primitive (896 rows reduce to 164 on #2510). #1710 improves to 798.933 microseconds and all four ordinary controls improve. Focused randomized optimized/exact differentials, ASan/UBSan, and the full build pass.",
+    "risks": [
+      "The persistent signed-word transform is enabled only when a conservative bit bound proves every intermediate fits; __int128 provides the next checked tier, while native Windows and overflow cases retain the exact fmpz transform.",
+      "architecture/native-audit.json must be refreshed by the integration lane from 1077 lines/43540 bytes to 1309 lines/53642 bytes and reviewed for the persistent checked-word representation and exact equation compaction responsibilities."
+    ],
+    "next_steps": [
+      "Integration lane: refresh the number_field_order_ffi.h native-audit metrics and wording, then run pnpm architecture:check.",
+      "Use bench/results/number-field-round2-ceiling-2026-08-18.json as the final eligible-native ceiling receipt."
+    ]
+  }
+}

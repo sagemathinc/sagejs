@@ -282,6 +282,7 @@ try {
     const optimized = compileHardWitness("hard-optimized");
     const exact = compileHardWitness("hard-exact", [
       "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
+      "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
     ]);
     for (const caseIndex of [4, 5]) {
       assert.equal(
