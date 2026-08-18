@@ -30,7 +30,7 @@ Runner options:
   --systems LIST          comma-separated systems (default: sagejs)
   --sagejs-boundaries L   comma-separated Sage.js evidence boundaries
   --cases LIST            exact comma-separated corpus case ids
-  --samples N             retained samples (default: 1)
+  --samples N             retained samples (default: 3; randomized/cold exactness: 1)
   --warmups N             discarded warmups (default: 0)
   --timeout-ms N          uniform per-record timeout
   --memory-mb N           process memory policy
