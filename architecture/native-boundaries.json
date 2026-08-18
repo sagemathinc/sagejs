@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 68,
+    "classified-native-file": 69,
     "declared-ffi": 408,
     "declared-ffi-resource": 29,
     "napi-export": 292,
@@ -8241,6 +8241,14 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/test/number_field_order_ffi.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/number_field_order_ffi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/test/number_field_order_resource_ffi.c",
