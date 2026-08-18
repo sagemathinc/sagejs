@@ -20,6 +20,7 @@ const addonPath = require.resolve(
 );
 const samplesIndex = process.argv.indexOf("--samples");
 const samples = samplesIndex === -1 ? 7 : Number(process.argv[samplesIndex + 1]);
+const warmupSamples = 10;
 
 if (!Number.isSafeInteger(samples) || samples < 1) {
   throw new Error("--samples must be a positive integer");
@@ -60,7 +61,9 @@ async function numeric(session, source) {
 }
 
 async function measure(session, functionName) {
-  await session.evaluate(`${functionName}()`);
+  for (let index = 0; index < warmupSamples; index += 1) {
+    await session.evaluate(`${functionName}()`);
+  }
   const values = [];
   for (let index = 0; index < samples; index += 1) {
     values.push(await numeric(session, `${functionName}()`));
@@ -153,7 +156,7 @@ async function main() {
         precisionBits: 64,
         refinementPrecisionBits: 88,
         coefficientCutoff: await numeric(session, "analytic_benchmark_cutoff"),
-        warmupSamples: 1,
+        warmupSamples,
       },
       timings: {
         coldProcessStartupCurveAndPublicCall: {
