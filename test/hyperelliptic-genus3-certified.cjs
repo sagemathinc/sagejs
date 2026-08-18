@@ -167,7 +167,7 @@ test("an interval uses one residue traversal and falls back per row", async () =
             "        return (1,3,9,17,45,75,125)",
             "    return (1,0,21,0,147,0,343)",
             "rows = rforest_genus3_local_factors(",
-            "    C, 5, 7, exact_fallback=exact,",
+            "    C, 5, 11, exact_fallback=exact,",
             "    max_combinations=1, max_x_values=7, max_elements=1,",
             "    stage_observer=observe)",
             "([(p, row['status'], row['coefficients']) for p,row in rows],",
@@ -178,7 +178,8 @@ test("an interval uses one residue traversal and falls back per row", async () =
         )
       ).repr,
       "([(5, 'fallback', (1, 3, 9, 17, 45, 75, 125)), " +
-        "(7, 'fallback', (1, 0, 21, 0, 147, 0, 343))], 1, 1, 2)",
+        "(7, 'fallback', (1, 0, 21, 0, 147, 0, 343)), " +
+        "(11, 'omitted', None)], 1, 1, 2)",
     );
   } finally {
     await session.close();
