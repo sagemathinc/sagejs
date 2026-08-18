@@ -23,12 +23,8 @@ from sagejs.ffi.flint import (
     fmpz_matrix_nrows,
     fmpz_matrix_set_entry,
 )
-from sagejs.ffi.m4ri import (
-    M4riMatrix,
-    matrix_ncols,
-    matrix_nrows,
-    matrix_set_entry,
-)
+from sagejs.ffi.m4ri import M4riMatrix
+from sagejs.ffi.m4ri import available as m4ri_available
 from sagejs.native import (
     IntegerBuffer,
     PrimeFieldModulus,
@@ -402,7 +398,6 @@ def sparse_random_prime(
     return True
 
 
-@native
 def sparse_random_m4ri(
     target: M4riMatrix,
     threshold: uint64,
@@ -412,25 +407,27 @@ def sparse_random_m4ri(
     multiplier: uint64,
     increment: uint64,
 ) -> bool:
-    """Fill `GF(2)` storage by Sage's inclusive per-entry Bernoulli rule."""
-    rows: uint64 = matrix_nrows(target)
-    columns: uint64 = matrix_ncols(target)
-    if len(final_state) != 1 or word_base == 0 or initial_state >= word_base:
-        return False
+    """Lazily enter the optional M4RI-native bulk implementation."""
+    from sagejs.linear_algebra.sparse_random_m4ri import (
+        sparse_random_m4ri_native,
+    )
 
-    state: uint64 = initial_state
-    consumed = 0
-    one: uint64 = word_base // word_base
-    for row in range(rows):
-        for column in range(columns):
-            if consumed != 0:
-                state = (multiplier * state + increment) % word_base
-            consumed = 1
-            if state <= threshold:
-                if not matrix_set_entry(target, row, column, one):
-                    return False
-    final_state[0] = state
-    return True
+    return sparse_random_m4ri_native(
+        target,
+        threshold,
+        initial_state,
+        final_state,
+        word_base,
+        multiplier,
+        increment,
+    )
+
+
+try:
+    _sparse_random_m4ri_available = bool(m4ri_available())
+except Exception:
+    _sparse_random_m4ri_available = False
+sparse_random_m4ri.nativeAvailable = _sparse_random_m4ri_available  # type: ignore[attr-defined]
 
 
 __all__ = [

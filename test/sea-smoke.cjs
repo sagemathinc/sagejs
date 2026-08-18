@@ -29,7 +29,7 @@ const mathExecutable = join(
   `sagejs${executableSuffix}`,
 );
 const pythonOnly = process.argv.includes("--python-only");
-const fflasOnly = process.argv.includes("--fflas-only");
+const densePrimeOnly = process.argv.includes("--dense-prime-only");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
 
 function run(executable, filename, extraArguments = []) {
@@ -50,11 +50,10 @@ function runArguments(executable, arguments_) {
   return result.stdout.trim();
 }
 
-function testFflasSea() {
-  if (process.platform === "win32") return;
-  const fflasProgram = join(temporaryDirectory, "fflas-sea.sage");
+function testDensePrimeSea() {
+  const densePrimeProgram = join(temporaryDirectory, "dense-prime-sea.sage");
   writeFileSync(
-    fflasProgram,
+    densePrimeProgram,
     [
       "field = GF(97)",
       "size = 64",
@@ -62,7 +61,7 @@ function testFflasSea() {
       "assert source * source == source",
       "assert source.rank() == size",
       "assert source.rref() == source",
-      "print('fflas sea ok')",
+      "print('dense prime sea ok')",
       "",
     ].join("\n"),
   );
@@ -70,7 +69,7 @@ function testFflasSea() {
     [false, "isolated"],
     [true, "adapter"],
   ]) {
-    const result = spawnSync(mathExecutable, [fflasProgram], {
+    const result = spawnSync(mathExecutable, [densePrimeProgram], {
       cwd: temporaryDirectory,
       encoding: "utf8",
       env: {
@@ -92,22 +91,22 @@ function testFflasSea() {
         result.stdout,
         new RegExp(
           `Matrix\\.${operation} GF\\(97\\) 64x64 -> ` +
-          `declared-fflas-${expectedPath}`,
+          `declared-flint-${expectedPath}`,
         ),
       );
     }
-    assert.match(result.stdout, /fflas sea ok/);
+    assert.match(result.stdout, /dense prime sea ok/);
   }
 }
 
-if (fflasOnly) {
+if (densePrimeOnly) {
   try {
     if (process.platform !== "win32") chmodSync(mathExecutable, 0o755);
-    testFflasSea();
+    testDensePrimeSea();
   } finally {
     rmSync(temporaryDirectory, { recursive: true, force: true });
   }
-  console.log("Sage.js FFLAS single-executable paths passed.");
+  console.log("Sage.js dense-prime single-executable paths passed.");
   process.exit(0);
 }
 
@@ -320,7 +319,7 @@ try {
         "['3', '5', '5']",
     );
 
-    testFflasSea();
+    testDensePrimeSea();
   }
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });

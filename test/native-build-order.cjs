@@ -65,9 +65,17 @@ test("selected native functions retain only foreign libraries they use", async (
   const flint = await lowerSource(source, sourcePath, {
     functions: ["sparse_random_fmpz"],
   });
-  const m4ri = await lowerSource(source, sourcePath, {
-    functions: ["sparse_random_m4ri"],
-  });
+  const m4riSourcePath = resolve(
+    repositoryRoot,
+    "src/lib/sagejs/linear_algebra/sparse_random_m4ri.py",
+  );
+  const m4ri = await lowerSource(
+    readFileSync(m4riSourcePath, "utf8"),
+    m4riSourcePath,
+    {
+      functions: ["sparse_random_m4ri_native"],
+    },
+  );
   assert.deepEqual(
     flint.foreignLibraries.map((library) => library.id),
     ["flint"],

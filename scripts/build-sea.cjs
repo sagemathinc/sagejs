@@ -61,15 +61,6 @@ const graphFfiAddon = join(
   "sagejs_igraph_ffi.node",
 );
 const graphFfiManifest = join(dirname(graphFfiAddon), "manifest.json");
-const fflasFfiAddon = join(
-  root,
-  "packages",
-  "fflas",
-  "build",
-  "generated-ffi",
-  "sagejs_fflas_ffi.node",
-);
-const fflasFfiManifest = join(dirname(fflasFfiAddon), "manifest.json");
 
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
@@ -387,19 +378,6 @@ function buildExecutable(name, withFlint, seaNode) {
         "run `pnpm --dir packages/graph build` first",
     );
   }
-  if (withFlint && !existsSync(fflasFfiAddon)) {
-    throw new Error(
-      `generated FFLAS FFI addon not found at ${relative(root, fflasFfiAddon)}; ` +
-        "run `pnpm --dir packages/fflas build` first",
-    );
-  }
-  if (withFlint && !existsSync(fflasFfiManifest)) {
-    throw new Error(
-      `generated FFLAS FFI manifest not found at ` +
-        `${relative(root, fflasFfiManifest)}; ` +
-        "run `pnpm --dir packages/fflas build` first",
-    );
-  }
   const output = join(outputDirectory, name);
   const assets = {
     "compiler/compiler.js": join(root, "dist", "compiler", "compiler.js"),
@@ -500,8 +478,6 @@ function buildExecutable(name, withFlint, seaNode) {
     assets["native/sagejs_graph.node"] = graphAddon;
     assets["native/sagejs_igraph_ffi.node"] = graphFfiAddon;
     assets["native/sagejs_igraph_ffi_manifest.json"] = graphFfiManifest;
-    assets["native/sagejs_fflas_ffi.node"] = fflasFfiAddon;
-    assets["native/sagejs_fflas_ffi_manifest.json"] = fflasFfiManifest;
     Object.assign(assets, collectNativeKernelAssets());
   }
 

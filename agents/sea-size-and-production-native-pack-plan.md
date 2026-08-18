@@ -42,10 +42,11 @@ Implemented on 2026-08-18:
   and SHA-256 identities;
 - a machine-readable size report gates gross deduplication regressions.
 
-The implemented Linux x86-64 pack is 23,996,896 bytes versus 237,933,088
-bytes for the 24 standalone addons. The complete `sagejs` SEA is 368,007,630
-bytes, down from 581,884,366 bytes after the first two reductions and from the
-original 623,938,756-byte baseline.
+The implemented portable Linux x86-64 release pack is 23,454,896 bytes versus
+229,898,624 bytes for its 22 standalone addons, a 89.8% reduction. The
+complete portable `sagejs` SEA is 359,684,558 bytes, down from 581,884,366
+bytes after the first two reductions and from the original 623,938,756-byte
+baseline.
 
 ## Measured baseline and validated savings
 

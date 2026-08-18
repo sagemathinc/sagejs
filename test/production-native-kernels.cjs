@@ -222,6 +222,31 @@ test("the production pack eliminates repeated static dependency payloads", () =>
   );
 });
 
+test("release packs exclude accelerators with native Windows capability gaps", () => {
+  const manifest = JSON.parse(readFileSync(
+    join(root, "architecture", "native-kernels.json"),
+    "utf8",
+  ));
+  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  for (const id of [
+    "dense-binary-m4ri-optional",
+    "dense-prime-fflas-optional",
+  ]) {
+    const kernel = manifest.kernels.find((entry) => entry.id === id);
+    assert.ok(kernel, `${id} is not classified`);
+    assert.equal(
+      index.logicalSources[kernel.source.slice("src/lib/".length)],
+      undefined,
+      `${id} must not enter an official release pack`,
+    );
+  }
+  const sparse = manifest.kernels.find((entry) =>
+    entry.id === "sparse-random-matrix-production"
+  );
+  assert.ok(sparse);
+  assert.equal(sparse.functions.includes("sparse_random_m4ri"), false);
+});
+
 test("the field-analysis checker is current and required-autoloadable", () => {
   const source = "src/lib/sagejs/number_fields/field_analysis_resource.py";
   const functionNames = [

@@ -130,6 +130,7 @@
     "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
     "src/lib/sagejs/linear_algebra/sparse_random.py",
     "src/lib/sagejs/linear_algebra/sparse_random_public.py",
+    "src/lib/sagejs/linear_algebra/sparse_random_m4ri.py",
     "src/lib/sagejs/linear_algebra/matrix_selection_public.py",
     "src/lib/sagejs/linear_algebra/vector_contract.py",
     "src/lib/sagejs/polynomial_algorithms/__init__.py",
