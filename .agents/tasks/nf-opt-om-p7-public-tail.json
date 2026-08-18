@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-om-p7-public-tail",
+  "title": "Close vector429 OM p=7 public tail",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce the general Sage.js OM p=7 local-order construction cost enough to close the vector429 public maximal-order budget while preserving complete exact OM certificates, frozen HNF equivalence, portable fallback, and fail-closed corruption behavior",
+  "base_commit": "ce10fcabaefbeb7c78752be6c207255e356789e5",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_authenticated_projection.py",
+    "test/number-field-om-p7-public-tail.cjs",
+    "bench/number-field-om-p7-public-tail.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "existing complete OM implementation",
+      "frozen vector429 local HNF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Source-only checkpoint: adds a module-issued live projection that authenticates complete first-order p-regular OM trees from exact retained factor, Newton-side, residual-factor, representative-update, degree, precision, Ore-index, and certificate relations. The downstream validator reuses the existing packed closure proof without rebuilding the tree. Focused CPython/Sage.js source covers vector429 p=7 against its frozen HNF, relation-level corruption, mutation invalidation, native proof-kernel presence, and deeper-type fallback; the paired benchmark is ready but deliberately unrun.",
+    "risks": [
+      "The production om_maxmin call site is intentionally untouched; integration must select the projection validator only when authentication succeeds and retain validate_type_tree as the fallback.",
+      "No build, focused execution, or timing was run because another lane owns the heavy validation window. Only Python/JavaScript syntax, Ruff, Pyright, diff, and lane-contract checks have passed.",
+      "The direct retained-factor irreducibility proof is ordinary exact residual-field arithmetic; the bounded benchmark must establish that it saves at least 500 ms on Sage.js vector429 p=7 before production selection."
+    ],
+    "next_steps": [
+      "When the validation window is released, run test/number-field-om-p7-public-tail.cjs first in isolation and correct any relation mismatch without weakening the theorem.",
+      "Run the three-sample bounded benchmark and require exact CPython/Sage.js basis equality plus at least 500 ms saved on the Sage.js median.",
+      "If accepted, integrate a narrow fail-closed call in regular_local_basis, add the module to strict Python and package/test manifests, then rerun architecture and native gates."
+    ]
+  }
+}
