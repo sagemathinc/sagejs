@@ -342,7 +342,7 @@ def _flint_modular_row_hnf(
         return None
     columns = len(rows[0])
     try:
-        from sagejs.ffi.flint import fmpz_mat_hnf_modular_eldiv
+        flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
 
         flat = [int(value) for row in rows for value in row]
         source = _rt.integer_buffer(flat)
@@ -351,7 +351,7 @@ def _flint_modular_row_hnf(
             max(2, (elementary_divisor.bit_length() + 63) // 64 + 2),
         )
         divisor = _rt.integer_buffer([elementary_divisor])
-        if not fmpz_mat_hnf_modular_eldiv(
+        if not flint.fmpz_mat_hnf_modular_eldiv(
             output,
             source,
             len(rows),
