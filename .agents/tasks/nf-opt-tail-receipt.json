@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-tail-receipt",
+  "title": "Maximal-order tail evidence receipt",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Commit immutable final rows for the three maximal-order tail cases, the exact degree-90 stage diagnosis, and a focused integrity test",
+  "base_commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+  "claims": [
+    "bench/results/number-field-maximal-order-tail-final-2dbfd840-2026-08-18.json",
+    "bench/results/number-field-maximal-order-tail-final-2dbfd840-2026-08-18.md",
+    "test/number-field-maximal-order-tail-final-receipt.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "SHA-256 authenticated source reports and exact row invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/number-field-maximal-order-tail-final-receipt.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-tail-final-receipt.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.156,
+      "started_at": "2026-08-18T10:19:32.005Z",
+      "commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+      "workspace_fingerprint": "bd5daa10657fa5932ee699cdfde4c182192e886febd0fcc69e489d9a3ad2c845",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-tail-final-receipt.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.145,
+      "started_at": "2026-08-18T10:26:13.184Z",
+      "commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+      "workspace_fingerprint": "bd5daa10657fa5932ee699cdfde4c182192e886febd0fcc69e489d9a3ad2c845",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-tail-final-receipt.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.151,
+      "started_at": "2026-08-18T10:26:32.205Z",
+      "commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+      "workspace_fingerprint": "bd5daa10657fa5932ee699cdfde4c182192e886febd0fcc69e489d9a3ad2c845",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Committed the three exact warm-public tail rows with their source report, payload, and row digests; preserved the degree-90 stage marker stream and eager packed-table capacity diagnosis; and added a focused integrity test.",
+    "risks": [
+      "This is an evidence-only receipt measured at commit 2dbfd840; it does not claim that the later receipt commit itself was benchmarked.",
+      "The broad test:changed expansion was stopped because it selected the branch-wide 279-file optimization delta and contended with the active degree-90 fix lane; the focused receipt test is the applicable validation."
+    ],
+    "next_steps": [
+      "Integrate the receipt commit and retain the embedded 2dbfd840 source/native identity when citing these rows.",
+      "Use the recorded 1277-bit multiplier-cycle boundary to evaluate the degree-90 packed-table fix."
+    ]
+  }
+}
