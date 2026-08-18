@@ -43,10 +43,60 @@
     "pnpm test:native",
     "node bench/number-field-om-length8.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/number-field-om-length8.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.682,
+      "started_at": "2026-08-18T05:56:04.958Z",
+      "commit": "773a0cb0b10a0bef5846128a226c69ece7a5b1af",
+      "workspace_fingerprint": "500241a920a6900ffb69b6454ce6df7a61f038d3484bd6714d89f5354b1dc265",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-om-length8.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 65.224,
+      "started_at": "2026-08-18T05:57:01.613Z",
+      "commit": "773a0cb0b10a0bef5846128a226c69ece7a5b1af",
+      "workspace_fingerprint": "500241a920a6900ffb69b6454ce6df7a61f038d3484bd6714d89f5354b1dc265",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.62,
+      "started_at": "2026-08-18T05:58:12.826Z",
+      "commit": "773a0cb0b10a0bef5846128a226c69ece7a5b1af",
+      "workspace_fingerprint": "500241a920a6900ffb69b6454ce6df7a61f038d3484bd6714d89f5354b1dc265",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.691,
+      "started_at": "2026-08-18T05:58:38.842Z",
+      "commit": "773a0cb0b10a0bef5846128a226c69ece7a5b1af",
+      "workspace_fingerprint": "500241a920a6900ffb69b6454ce6df7a61f038d3484bd6714d89f5354b1dc265",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Certifies the v429 p=2 F4 effective-length-eight boundary through a generic bounded recursive residual operator and exact finite-field mixed-radix lifts. The tree has two degree-32 terminal branches and local index 332; its independently multiplication-closed quotient HNF is byte-for-byte equal to the localization of the frozen PARI maximal-order lattice. CPython and Sage.js focused witnesses pass, a corrupted basis is rejected, and the benchmark records 1.84s versus 48.74s while keeping automatic selection disabled.",
+    "risks": [
+      "The proved recursive domain is bounded to active depth four, effective residual length eight, linear residual towers after the first extension, and sixteen representative refinements per level; every exceeded bound fails closed.",
+      "The broad pnpm test:native run was intentionally interrupted with exit 130 at the coordinator's request after cache restoration and the compiler/build stages, to release resources for final degree-90 corpus verification. No native failure had appeared, but no passing receipt was recorded.",
+      "The inherited length-four test still asserts that this p=2 case is incomplete and must be updated by the integration lane alongside registration of the new focused test.",
+      "Only linux-x64 was exercised in this lane; integration CI retains responsibility for the other declared first-class platforms."
+    ],
+    "next_steps": [
+      "Update the inherited p=2 incomplete assertions and register test/number-field-om-length8.cjs from the integration lane.",
+      "Rerun the broad native and platform matrix when it no longer contends with corpus certification.",
+      "Keep public automatic OM selection disabled until the measured 48.74s Sage.js certificate establishes a favorable end-to-end crossover."
+    ]
   }
 }
