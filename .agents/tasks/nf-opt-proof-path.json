@@ -39,12 +39,53 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/number-field-analysis-resource-python.cjs",
+    "node --test test/number-field-analysis-public-hook.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.627,
+      "started_at": "2026-08-18T08:30:42.080Z",
+      "commit": "a53b98f76102a57412086010fe3a6135a93180cc",
+      "workspace_fingerprint": "9b4feac50ee095956a343bc7cd708802b23274157b26b5a83ed162b9b31b6c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource-python.cjs test/number-field-analysis-public-hook.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 59.492,
+      "started_at": "2026-08-18T08:31:10.059Z",
+      "commit": "a53b98f76102a57412086010fe3a6135a93180cc",
+      "workspace_fingerprint": "9b4feac50ee095956a343bc7cd708802b23274157b26b5a83ed162b9b31b6c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.97,
+      "started_at": "2026-08-18T08:32:24.482Z",
+      "commit": "a53b98f76102a57412086010fe3a6135a93180cc",
+      "workspace_fingerprint": "9b4feac50ee095956a343bc7cd708802b23274157b26b5a83ed162b9b31b6c30",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a source-bound immutable authenticated field-analysis envelope, an exact packed discriminant/fixed-point checker, and a one-pass canonical signed-integer decoder. Direct construction, payload mutation, wrong-source metadata, truncation, noncanonical integers, and wrong discriminants fail closed; the same source remains executable dynamically and the independent generic lattice checker remains the public oracle. The integrated default public path authenticates its equation discriminant before equation-order construction and reuses the proof during global certification, eliminating equation-order materialization and duplicate generic lattice replay. The exact pre-Round4 seven-sample integrated medians were 17.0833, 11.7579, 11.4284, 12.5821, 24.4200, and 49.2175 ms for the degree-7, essential-discriminant, cubic, quintic, PARI #2510, and PARI #1710 cases respectively, with equal bases, discriminants, and certificates.",
+    "risks": [
+      "The 2 ms public-path gate is not met. Remaining host graph decoding, decomposition adaptation, order construction, certificate serialization, and interpreter orchestration dominate the ordinary cases; the hard cases also retain native-resource and validation cost.",
+      "The shared engine, certification, and production-registry integration belongs to the integration lane. A lane-local public-hook run therefore records the expected fallback-only failure while the same tests pass 2/2 in the integrated tree.",
+      "The full native suite and non-Linux platform matrix remain delegated integration validation. The integrated number-field package also needs an explicit source-budget decision because concurrent optimization lanes exceed the former package ratchet."
+    ],
+    "next_steps": [
+      "Cherry-pick the dynamic-decoder test correction a53b98f7 and durable benchmark receipt 82720433 after the resource and decoder commits already integrated.",
+      "Update the production-kernel currentness test's hard-coded field-analysis function list, rebuild, and run the integrated full native and supported-platform suites.",
+      "If the 2 ms gate remains required, retain an owned immutable native analysis resource across certification and expose borrowed exact views or lazy certificate materialization so the public path no longer copies and reconstructs the complete Python object graph."
+    ]
   }
 }
