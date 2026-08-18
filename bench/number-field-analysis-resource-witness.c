@@ -136,7 +136,7 @@ static void run_benchmark(size_t case_index, uint64_t warmups, uint64_t rounds)
     sagejs_number_field_analysis_resource_t final_result;
     assert(sagejs_number_field_analyze_resource(
         final_result, polynomial, scale, UINT64_C(1000)));
-    printf("{\"schema\":\"sagejs.number-field-analysis-resource-kernel/v1\"," 
+    printf("{\"schema\":\"sagejs.number-field-analysis-resource-kernel/v2\","
            "\"id\":\"%s\",\"degree\":%zu,\"warmups\":%" PRIu64 ","
            "\"rounds\":%" PRIu64 ",\"elapsedMs\":%.9f,"
            "\"meanUs\":%.9f,\"transferredBytes\":%zu,\"payloadHex\":\"",
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         sagejs_number_field_analysis_resource_clear(resource);
     }
 
-    printf("{\"schema\":\"sagejs.number-field-analysis-resource/v1\",");
+    printf("{\"schema\":\"sagejs.number-field-analysis-resource/v2\",");
     print_result("sqrt5", sqrt5_result, 0);
     print_result("cubic", cubic_result, 0);
     print_result("unresolved", unresolved_result, 0);

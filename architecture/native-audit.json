@@ -204,14 +204,15 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 364,
-      "bytes": 14094,
+      "lines": 758,
+      "bytes": 30535,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "bounded exact discriminant decomposition without eager full factorization",
         "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
-        "canonical compact source, component, and HNF evidence ownership"
+        "canonical compact source, component, and HNF evidence ownership",
+        "terminal local fixed-point witness construction after final HNF rebasing"
       ],
       "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. FLINT owns the mature arithmetic and the existing audited Round-2 helper owns local completion; the durable part is the resource representation and fail-closed status protocol.",
       "fallback": "The packed result is never trusted directly. An ordinary-Python checker independently recomputes the discriminant, authenticates components, HNF/index/order closure, and word-prime local maximality; unresolved composite and arbitrary-size probable-prime states remain incomplete and available to strict fallback.",

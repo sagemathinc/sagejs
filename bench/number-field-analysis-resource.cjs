@@ -118,7 +118,7 @@ try {
     };
   });
   process.stdout.write(`${JSON.stringify({
-    schema: "sagejs.number-field-analysis-resource-benchmark/v1",
+    schema: "sagejs.number-field-analysis-resource-benchmark/v2",
     commit: run("git", ["rev-parse", "HEAD"]),
     environment: {
       platform: `${process.platform}-${process.arch}`,
