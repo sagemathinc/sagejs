@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement and validate a bounded portable packed genus-3 Mumford scalar-annihilation kernel with Python-recheckable certificates",
-  "base_commit": "2754498d6d06374df569b6e79b2aac6ec2b7f6a3",
+  "base_commit": "ad1316f798e4151fa9aedb9237073dc1be7e8d38",
   "claims": [
     "packages/flint/src/hyperelliptic/",
     "packages/flint/include/sagejs/hyperelliptic/",
