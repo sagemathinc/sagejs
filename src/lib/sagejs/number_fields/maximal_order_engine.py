@@ -1020,16 +1020,48 @@ def _replace_component_by_certified_split(
     support = int(record["base"])
     if split.source != support or split.left * split.right != support:
         raise ArithmeticError("Buchmann--Lenstra split evidence has the wrong source")
+    # A zero divisor gives an exact factorization of the working modulus, but
+    # the two factors need not be coprime.  In particular, one side can carry
+    # every prime in the support while the other still isolates a proper
+    # support branch.  Select a side only after the exact component splitter
+    # proves that it yields two coprime-support children; never infer this from
+    # factor size or from the construction path's zero-divisor evidence.
+    if not check_decomposition_certificate(decomposition, require_proven=False):
+        raise ValueError("cannot split an invalid discriminant decomposition")
+    selected_divisor = None
+    selected_side = None
+    refinement = None
+    for side, divisor in (("left", split.left), ("right", split.right)):
+        if selected_divisor is not None or (
+            side == "right" and split.right == split.left
+        ):
+            continue
+        try:
+            candidate = split_decomposition_component(
+                decomposition,
+                int(record["value"]),
+                divisor,
+                reason="buchmann-lenstra-component-split",
+            )
+        except ValueError:
+            # The decomposition was independently checked above, so the only
+            # remaining ValueError is that this exact factor carries the full
+            # prime support rather than separating a proper support branch.
+            continue
+        else:
+            selected_divisor = divisor
+            selected_side = side
+            refinement = candidate
+    if selected_divisor is None:
+        raise ArithmeticError(
+            "Buchmann--Lenstra factors do not separate this component support"
+        )
     token = trace.begin(
         "component-split-restart",
         {"component_bits": support.bit_length()},
     )
-    refinement = split_decomposition_component(
-        decomposition,
-        int(record["value"]),
-        split.left,
-        reason="buchmann-lenstra-component-split",
-    )
+    if refinement is None:
+        raise ArithmeticError("Buchmann--Lenstra split refinement is missing")
     updated = refinement["decomposition"]
     decomposition.clear()
     decomposition.update(updated)
@@ -1041,6 +1073,7 @@ def _replace_component_by_certified_split(
             "branch_count": len(children),
             "retired": refinement["restart"]["retired"],
             "preserved": refinement["restart"]["preserved"],
+            "selected_factor_side": selected_side,
         },
     )
     return children

@@ -136,3 +136,55 @@ test("the completeness fallback refines only its unresolved component", async ()
     await session.close();
   }
 });
+
+test("the Hecke degree-90 overlapping split selects the proper support side", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.number_fields.buchmann_lenstra import BuchmannLenstraResult, check_buchmann_lenstra_result",
+        "from sagejs.number_fields.discriminant_components import check_decomposition_certificate, integer_gcd",
+        "from sagejs.number_fields.maximal_order_contracts import ComponentSplit, DiscriminantComponent, MaximalOrderTrace",
+        "from sagejs.number_fields.maximal_order_engine import _replace_component_by_certified_split",
+        "support = int('28375108932411734495304601228067800245485592196890940187801716657219585656835089965133181588155080740947480506001981898084965705935131049805539942397526104316057755540125253448659497227913616528607006608275968017109416161011102945573223152501463260399044323436928847993151317153557005283972664233104841283074493334400552621639617588639868929384162815109857840642830414871514198525036790939585431490942393')",
+        "left = int('10574465728767666555228536610641579811842533373963078463092262523462026040042726254549120147514658199529426158463949464155201520009842525774780188874149286777313136600004715522309334162609360622222282655325156778051636049346734541335743924317847378865178529253771239871620448069997665347291200935358619761960650592447513629973610553570641046577095968492445794897827916136335811143203166081487146713')",
+        "right = 2683361",
+        "component_value = support^10",
+        "record = {'value': component_value, 'state': 'composite', 'base': support, 'exponent': 10, 'evidence': {'base': 2, 'kind': 'miller-rabin-witness'}}",
+        "decomposition = {'version': 1, 'original': component_value, 'components': [dict(record)], 'events': [], 'certified': False}",
+        "component = DiscriminantComponent(support, 'composite')",
+        "split = ComponentSplit(support, left, right, {'coefficient': left})",
+        "split_result = BuchmannLenstraResult('split', component, split=split, evidence={'stage': 'composite-dedekind', 'zero_divisor': True})",
+        "trace = MaximalOrderTrace(True)",
+        "children = _replace_component_by_certified_split(decomposition, record, split_result, trace)",
+        "event = trace.to_dict()['events'][0]",
+        "exact_partition = len(children) == 2 and children[0]['value'] * children[1]['value'] == component_value and integer_gcd(children[0]['value'], children[1]['value']) == 1",
+        "right_branch = [child for child in children if child['base'] == right]",
+        "source_rejected = False",
+        "try:",
+        "    bad_source = BuchmannLenstraResult('split', component, split=ComponentSplit(6, 2, 3))",
+        "    _replace_component_by_certified_split({'version': 1, 'original': component_value, 'components': [dict(record)], 'events': [], 'certified': False}, record, bad_source, MaximalOrderTrace(False))",
+        "except ArithmeticError:",
+        "    source_rejected = True",
+        "invalid_decomposition_rejected = False",
+        "try:",
+        "    bad_decomposition = {'version': 1, 'original': component_value + 1, 'components': [dict(record)], 'events': [], 'certified': False}",
+        "    _replace_component_by_certified_split(bad_decomposition, record, split_result, MaximalOrderTrace(False))",
+        "except ValueError:",
+        "    invalid_decomposition_rejected = True",
+        "inseparable_rejected = False",
+        "try:",
+        "    power_record = {'value': 49^2, 'state': 'composite', 'base': 49, 'exponent': 2, 'evidence': {'kind': 'factor', 'factor': 7}}",
+        "    power_decomposition = {'version': 1, 'original': 49^2, 'components': [dict(power_record)], 'events': [], 'certified': False}",
+        "    power_result = BuchmannLenstraResult('split', DiscriminantComponent(49, 'composite'), split=ComponentSplit(49, 7, 7))",
+        "    _replace_component_by_certified_split(power_decomposition, power_record, power_result, MaximalOrderTrace(False))",
+        "except ArithmeticError:",
+        "    inseparable_rejected = True",
+        "[left % right == 0, exact_partition, check_decomposition_certificate(decomposition, require_proven=False), len(right_branch) == 1 and right_branch[0]['exponent'] == 30, event['details']['selected_factor_side'], source_rejected, invalid_decomposition_rejected, inseparable_rejected]",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "[True, True, True, True, 'right', True, True, True]");
+  } finally {
+    await session.close();
+  }
+});
