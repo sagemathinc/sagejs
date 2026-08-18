@@ -64,6 +64,7 @@ const integration = [
   "test/number-field-discriminant-components.cjs",
   "test/number-field-buchmann-lenstra.cjs",
   "test/number-field-buchmann-lenstra-fallback.cjs",
+  "test/number-field-buchmann-lenstra-fast.cjs",
   "test/number-field-buchmann-lenstra-precision.cjs",
   "test/number-field-local-polygons.cjs",
   "test/number-field-local-parallel.cjs",

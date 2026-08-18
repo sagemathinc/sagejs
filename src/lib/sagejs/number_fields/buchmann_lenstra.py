@@ -24,6 +24,13 @@ from __future__ import annotations
 import math as _math
 from typing import Any
 
+from sagejs.native import (
+    integer_buffer_values,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
+from sagejs.number_fields.bl_composite_kernel import packed_row_hnf_in_place
+
 try:
     import sagejs.runtime as _rt
 except ImportError:
@@ -318,6 +325,42 @@ def _row_hnf(rows: list[list[int]]) -> list[list[int]]:
     return answer[:columns]
 
 
+def _packed_row_hnf(rows: list[list[int]]) -> list[list[int]]:
+    """Run the same row-HNF algorithm through one packed integer kernel."""
+    if not rows:
+        return []
+    columns = len(rows[0])
+    if any(len(row) != columns for row in rows):
+        raise ValueError("lattice rows must have a common length")
+    flat = [value for row in rows for value in row]
+    maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
+    # Extended-gcd combinations may temporarily exceed an input entry.  Four
+    # limbs per column is a conservative exact bound for these small dense
+    # lattices and keeps overflow fail-closed in the packed ABI.
+    word_capacity = max(8, (maximum_bits + 63) // 64 + 4 * columns)
+    source = kernel_integer_buffer(packed_row_hnf_in_place, flat)
+    output = kernel_integer_zeros(packed_row_hnf_in_place, len(flat), word_capacity)
+    workspace = kernel_integer_zeros(
+        packed_row_hnf_in_place, 2 * columns, word_capacity
+    )
+    try:
+        full_rank = packed_row_hnf_in_place(
+            output, source, workspace, len(rows), columns
+        )
+    except OverflowError:
+        # Packed buffers are deliberately bounded.  An unusually severe
+        # coefficient-swell case remains correct through the same readable
+        # dynamic algorithm instead of guessing a larger mathematical bound.
+        return _row_hnf(rows)
+    if not full_rank:
+        raise ArithmeticError("lattice generators do not have full rank")
+    values = integer_buffer_values(output)
+    return [
+        [int(values[row * columns + column]) for column in range(columns)]
+        for row in range(columns)
+    ]
+
+
 def _reduce_power_polynomial(
     polynomial: list[int], defining_polynomial: list[int]
 ) -> list[int]:
@@ -440,7 +483,7 @@ def _dedekind_overorder_basis(
         row[index] = modulus
         generators.append(row)
     generators.extend(multiplication)
-    numerator = _row_hnf(generators)
+    numerator = _packed_row_hnf(generators)
     basis = OrderBasis(numerator, modulus, canonical=True)
     determinant = abs(basis.determinant_numerator)
     denominator_power = basis.denominator**degree
@@ -726,7 +769,7 @@ def _check_composite_dedekind_overorder_certificate(
         row[index] = modulus
         generators.append(row)
     generators.extend(_multiplication_rows(replay["generator"], coefficients))
-    expected_basis = OrderBasis(_row_hnf(generators), modulus, canonical=True)
+    expected_basis = OrderBasis(_packed_row_hnf(generators), modulus, canonical=True)
     if result.basis.canonical_key() != expected_basis.canonical_key():
         return False
 
