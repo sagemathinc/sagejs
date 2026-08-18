@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const {
   cpSync,
   existsSync,
@@ -162,6 +163,38 @@ test("all production native kernels are published and autoloadable", () => {
     result.stdout.trim(),
     production.map(() => "True").join("\n"),
   );
+});
+
+test("the field-analysis checker is current and required-autoloadable", () => {
+  const source = "src/lib/sagejs/number_fields/field_analysis_resource.py";
+  const functionName = "packed_field_analysis_fixed_points_are_valid";
+  const manifest = JSON.parse(readFileSync(
+    join(root, "architecture", "native-kernels.json"),
+    "utf8",
+  ));
+  const kernel = manifest.kernels.find((entry) =>
+    entry.id === "field-analysis-fixed-point-checker-production"
+  );
+  assert.equal(kernel?.source, source);
+  assert.deepEqual(kernel?.functions, [functionName]);
+
+  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  const sourceKey = source.slice("src/lib/".length);
+  const record = index.logicalSources[sourceKey];
+  const expectedHash = createHash("sha256")
+    .update(readFileSync(join(root, source)))
+    .digest("hex");
+  assert.equal(record?.sourceHash, expectedHash);
+
+  const loaded = runWithCache(published, [
+    "from sagejs.native import is_compiled",
+    `from sagejs.number_fields.field_analysis_resource import ${functionName}`,
+    `print(is_compiled(${functionName}))`,
+    `print(${functionName}.nativeAvailable)`,
+    "",
+  ].join("\n"));
+  assert.equal(loaded.status, 0, loaded.stdout + loaded.stderr);
+  assert.equal(loaded.stdout.trim(), "True\nTrue");
 });
 
 test("stale FFI declaration metadata fails before a native wrapper loads", () => {

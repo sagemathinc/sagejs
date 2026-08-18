@@ -100,13 +100,19 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
   }
 });
 
-test("independent native certification replays all primes in one batch", async () => {
+test("fused public certification crosses the native boundary once", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
       [
         "R.<x> = QQ[]",
         "import sagejs.number_fields.maximal_order_engine as maximal_order_engine",
+        "analysis_calls = []",
+        "original_analysis = maximal_order_engine.field_analysis_resource.native_field_analysis",
+        "def counted_analysis(coefficients, scale, bound):",
+        "    analysis_calls.append((tuple(coefficients), scale, bound))",
+        "    return original_analysis(coefficients, scale, bound)",
+        "maximal_order_engine.field_analysis_resource.native_field_analysis = counted_analysis",
         "native_calls = []",
         "original_native_order = maximal_order_engine.native_order_from_polynomial",
         "def counted_native_order(coefficients, primes):",
@@ -128,12 +134,12 @@ test("independent native certification replays all primes in one batch", async (
         "wrong_support['local_witnesses'] = wrong_witnesses",
         "from sagejs.number_fields.maximal_order_certification import check_certificate",
         "corruptions = [check_certificate(value)['reason'] for value in [bad_index, omitted, duplicated, wrong_support]]",
-        "[O.discriminant(), O.is_maximal(), len(native_calls), native_calls[0] == native_calls[1], corruptions]",
+        "[O.discriminant(), O.is_maximal(), len(analysis_calls), len(native_calls), corruptions]",
       ].join("\n"),
     );
     assert.equal(
       result.repr,
-      "[551496736222216254722000000000000000000, True, 2, True, ['discriminant-index', 'missing-local-witness', 'duplicate-local-witness', 'missing-local-witness']]",
+      "[551496736222216254722000000000000000000, True, 1, 0, ['discriminant-index', 'missing-local-witness', 'duplicate-local-witness', 'missing-local-witness']]",
     );
   } finally {
     await session.close();
