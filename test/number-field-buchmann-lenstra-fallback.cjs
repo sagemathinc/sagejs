@@ -19,6 +19,31 @@ const fixture = JSON.parse(
     "utf8",
   ),
 );
+const corpus = JSON.parse(
+  readFileSync(
+    join(
+      root,
+      "test",
+      "fixtures",
+      "number-field-maximal-order-corpus.json",
+    ),
+    "utf8",
+  ),
+);
+const tailCorpusCase = corpus.cases.find(
+  (entry) => entry.id === "pari-round4-vector-419",
+);
+assert.ok(tailCorpusCase);
+const tailFactor = tailCorpusCase.localIndexFactors.find(
+  (factor) => factor.state === "composite-unresolved",
+);
+assert.ok(tailFactor);
+const tailCase = {
+  id: tailCorpusCase.id,
+  coefficients: tailCorpusCase.polynomial.coefficients,
+  equationDiscriminant: tailCorpusCase.equationDiscriminant,
+  component: tailFactor.value,
+};
 
 const source = String.raw`
 import json
@@ -37,6 +62,7 @@ from sagejs.number_fields.maximal_order_contracts import (
 )
 
 fixtures = json.loads(${JSON.stringify(JSON.stringify(fixture))})
+tail_case = json.loads(${JSON.stringify(JSON.stringify(tailCase))})
 results = {}
 for name in (
     "irregular_prime_fixed",
@@ -124,9 +150,72 @@ assert split_result.split.evidence["operation"] == split_case["expected_operatio
 assert check_buchmann_lenstra_result(split_coefficients, split_result)
 assert split_result.to_local_result().algorithm == "buchmann-lenstra"
 
+# The retained timeout tail uses a completed equation-order Dedekind theorem
+# certificate.  Its deterministic generator/HNF replay must remain exact and
+# fail closed for every independent invariant that the fast checker consumes.
+tail_coefficients = [int(value) for value in tail_case["coefficients"]]
+tail_component = DiscriminantComponent(int(tail_case["component"]), "composite")
+tail_result = buchmann_lenstra_overorder(
+    tail_coefficients,
+    tail_component,
+    equation_discriminant=int(tail_case["equationDiscriminant"]),
+)
+assert tail_result.state == "complete"
+assert tail_result.evidence["certificate"] == (
+    "component-coprime-to-order-discriminant"
+)
+tail_basis = tail_result.basis
+tail_index = tail_result.index
+tail_discriminant = tail_result.discriminant
+tail_generator = list(tail_result.evidence["overorder_generator"])
+
+started = time.perf_counter_ns()
+assert check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_check_elapsed_ns = time.perf_counter_ns() - started
+
+tail_result.evidence["overorder_generator"] = tail_generator[:-1] + [
+    tail_generator[-1] + 1
+]
+assert not check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_result.evidence["overorder_generator"] = tail_generator
+
+corrupt_rows = [list(row) for row in tail_basis.numerator]
+for row in corrupt_rows:
+    row[0] = -row[0]
+tail_result.basis = OrderBasis(corrupt_rows, tail_basis.denominator)
+assert not check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_result.basis = tail_basis
+
+tail_result.index = tail_index + 1
+assert not check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_result.index = tail_index
+
+tail_result.discriminant = tail_discriminant + 1
+assert not check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_result.discriminant = tail_discriminant
+
+tail_result.component = DiscriminantComponent(abs(tail_discriminant), "composite")
+assert not check_buchmann_lenstra_result(tail_coefficients, tail_result)
+tail_result.component = tail_component
+assert check_buchmann_lenstra_result(tail_coefficients, tail_result)
+
 print(json.dumps({
     "prime_results": results,
     "split": split_result.split.to_dict(),
+    "retained_tail": {
+        "case_id": tail_case["id"],
+        "basis": tail_basis.to_dict(),
+        "index": tail_index,
+        "discriminant": tail_discriminant,
+        "check_elapsed_ns": tail_check_elapsed_ns,
+        "corruptions_rejected": [
+            "generator",
+            "basis",
+            "index",
+            "discriminant",
+            "shared-factor",
+        ],
+    },
 }, sort_keys=True))
 `;
 
@@ -143,7 +232,9 @@ function run(command, args, environment = {}) {
 }
 
 test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
-  const python = run(pythonExecutable(), ["-c", source]);
+  // CPython 3.14 lazily imports decimal for very large integer division. Load
+  // the stdlib module before the test adds Sage.js' source tree to sys.path.
+  const python = run(pythonExecutable(), ["-c", `import decimal\n${source}`]);
   const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });
@@ -155,5 +246,9 @@ test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
     assert.ok(result.elapsed_ns < 10_000_000_000);
     delete result.elapsed_ns;
   }
+  assert.ok(python.retained_tail.check_elapsed_ns < 2_000_000_000);
+  assert.ok(sagejs.retained_tail.check_elapsed_ns < 5_000_000_000);
+  delete python.retained_tail.check_elapsed_ns;
+  delete sagejs.retained_tail.check_elapsed_ns;
   assert.deepEqual(sagejs, python);
 });
