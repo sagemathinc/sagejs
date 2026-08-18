@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rforest-native",
+  "title": "Rforest Native",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Pin and port rforest 3103d396, implement the Harvey-Sutherland genus-2/3 Hasse-Witt batch adapter and packed N-API boundary, and validate exact modular streams on Linux x64/arm64, macOS arm64, and native Windows x64",
+  "base_commit": "5c2f5da189a09bd6d40121b8d275859d36b852ce",
+  "claims": [
+    "packages/flint/scripts/build-deps.cjs",
+    "packages/flint/scripts/portable-rforest/",
+    "packages/flint/patches/rforest-portability.patch",
+    "packages/flint/binding.gyp",
+    "packages/flint/src/addon.c",
+    "packages/flint/src/addon.h",
+    "packages/flint/src/hyperelliptic/rforest.c",
+    "packages/flint/include/sagejs/hyperelliptic/rforest.h",
+    "packages/flint/test/hyperelliptic/rforest.cjs",
+    "packages/flint/test/hyperelliptic/rforest_bridge.c",
+    "packages/flint/README.md",
+    "packages/flint/package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
