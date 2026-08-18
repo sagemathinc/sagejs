@@ -4,7 +4,7 @@
   "id": "nf-opt-hard-locals",
   "title": "PARI hard-local portfolio and selector",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Profile #2510 and #1710 per prime across every complete local algorithm, implement a generic input-derived local strategy/cost improvement outside Round4, OM, BL, and fused analysis files, and preserve forced-path exact certificate equivalence",
   "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
@@ -42,10 +42,39 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.582,
+      "started_at": "2026-08-18T07:54:00.564Z",
+      "commit": "a46f04cc5bcd15f8fa80c36837269275fd82230b",
+      "workspace_fingerprint": "1775d1470adce6225124ab87c1d4bcf3fffe764767678414d0554b91d99b61f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 824.716,
+      "started_at": "2026-08-18T07:54:38.315Z",
+      "commit": "a46f04cc5bcd15f8fa80c36837269275fd82230b",
+      "workspace_fingerprint": "1775d1470adce6225124ab87c1d4bcf3fffe764767678414d0554b91d99b61f6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Profiles #2510 and #1710 across every complete local path, adds exact zero-root primary recognition and linear phi synthetic division, and supplies an inspectable feature-derived selector. #2510 factoring improves from about 2.53 ms to 0.34 ms on the measured host; exact selected and forced local lattices agree. The shared native Round-2 kernel remains the limiting boundary and the original <=2x/<=1.25 parity gates remain unmet.",
+    "risks": [
+      "The selector cost scores are inspectable deterministic estimates, but they have not yet been calibrated across the complete 489-case standard corpus.",
+      "The new selector module is individually strict-Pyright clean but still needs the integration lane to add its path to pyrightconfig.json.",
+      "The isolated native #2510/#1710 ratios remain 7.98x and 4.66x versus the faster PARI/Hecke reference; this lane does not modify the shared native Round-2 kernel."
+    ],
+    "next_steps": [
+      "Add src/lib/sagejs/number_fields/local_algorithm_selector.py to pyrightconfig.json during integration.",
+      "Wire the selector into maximal_order_engine.py only after corpus-wide forced-path and ordinary-microcase calibration.",
+      "Use the recorded per-stage receipt to optimize the shared native Round-2 kernel for irregular #1710; benchmark a source-transparent polygon kernel before auto-selecting the regular #2510 path end to end."
+    ]
   }
 }
