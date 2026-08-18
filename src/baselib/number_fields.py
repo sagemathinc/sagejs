@@ -1436,9 +1436,33 @@ class NumberFieldOrder(sage.Parent):
         rows: list[list[Any]],
         is_maximal: bool,
         check_closure: bool = True,
+        authenticated_basis: Any = runtime.undefined,
     ) -> None:
         self._field = field
-        if check_closure:
+        self._basis_rows_cache: Any = None
+        self._authenticated_basis_projection: Any = None
+        if authenticated_basis is not runtime.undefined:
+            if check_closure:
+                raise ValueError(
+                    "an authenticated basis cannot request generic closure replay"
+                )
+            projection = list(authenticated_basis)
+            if len(projection) != 3:
+                raise ValueError("an authenticated basis projection has three fields")
+            flat = tuple(runtime.integer_bigint(value) for value in projection[0])
+            denominator = runtime.integer_bigint(projection[1])
+            scale = runtime.integer_bigint(projection[2])
+            degree = field.degree()
+            if len(flat) != degree * degree or denominator < 1 or scale < 1:
+                raise ValueError("an authenticated basis projection is malformed")
+            # The tuple is an immutable representation snapshot.  Rational
+            # rows are deliberately absent until a public operation needs
+            # them, so a later mutation of the source projection cannot alter
+            # this order or its cache identity.
+            self._authenticated_basis_projection = runtime.math_tuple(
+                [flat, denominator, scale]
+            )
+        elif check_closure:
             self._basis_rows = _nf_order_closure(field, rows)
         else:
             # Multiplier rings are orders by construction. Canonicalizing the
@@ -1447,11 +1471,42 @@ class NumberFieldOrder(sage.Parent):
             self._basis_rows = _nf_canonical_lattice(rows, field.degree())
         self._is_maximal = is_maximal
         self._maximal_order_certificate = runtime.undefined
+        self._maximal_order_certificate_factory: Any = None
         self._maximal_order_local_evidence = runtime.undefined
         self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
+
+    @property
+    def _basis_rows(self) -> list[list[Any]]:
+        if self._basis_rows_cache is None:
+            projection = self._authenticated_basis_projection
+            if projection is None:
+                raise ArithmeticError("an order has no basis representation")
+            flat = projection[0]
+            denominator = projection[1]
+            scale = projection[2]
+            degree = self._field.degree()
+            rows = []
+            for row_index in range(degree):
+                row = []
+                power = runtime.bigint(1)
+                for column in range(degree):
+                    row.append(
+                        _untyped(sage.QQ)(
+                            flat[row_index * degree + column] * power,
+                            denominator,
+                        )
+                    )
+                    power *= scale
+                rows.append(row)
+            self._basis_rows_cache = rows
+        return self._basis_rows_cache
+
+    @_basis_rows.setter
+    def _basis_rows(self, rows: list[list[Any]]) -> None:
+        self._basis_rows_cache = rows
 
     def number_field(self) -> NumberFieldParent:
         return self._field
@@ -1497,13 +1552,42 @@ class NumberFieldOrder(sage.Parent):
         return self._discriminant_cache
 
     def is_maximal(self) -> bool:
-        return (
+        return self._maximal_order_certificate_factory is not None or (
             self._maximal_order_certificate is not runtime.undefined
             and self._maximal_order_certificate.get("certified") is True
         )
 
+    def _install_authenticated_maximal_order_certificate(self, factory: Any) -> None:
+        """Defer public certificate serialization after packed authentication.
+
+        The maximal-order engine calls this only after its independent proof
+        kernel has accepted an immutable projection.  A closure over that
+        projection can then construct the ordinary public dictionary on first
+        request without adding work to the cacheable `maximal_order()` return.
+        """
+        if not callable(factory):
+            raise TypeError("an authenticated certificate factory must be callable")
+        if (
+            self._maximal_order_certificate is not runtime.undefined
+            or self._maximal_order_certificate_factory is not None
+        ):
+            raise ValueError("a maximal-order certificate is already installed")
+        self._maximal_order_certificate_factory = factory
+
     def maximality_certificate(self) -> Any:
         """Return the independently checked global certificate, if any."""
+        if self._maximal_order_certificate_factory is not None:
+            factory = self._maximal_order_certificate_factory
+            certificate = factory()
+            if (
+                not isinstance(certificate, dict)
+                or certificate.get("certified") is not True
+            ):
+                raise ArithmeticError(
+                    "an authenticated certificate factory returned invalid evidence"
+                )
+            self._maximal_order_certificate = certificate
+            self._maximal_order_certificate_factory = None
         if self._maximal_order_certificate is runtime.undefined:
             return None
         return self._maximal_order_certificate

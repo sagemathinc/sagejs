@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-public-2ms",
+  "title": "Packed authenticated order projection",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate one fused field-analysis payload in one source-transparent crossing and return an immutable lazily materialized NumberFieldOrder projection with exact corruption differentials and phase benchmarks",
+  "base_commit": "4b5363d88a8677fe2b51714292e34236ee2831e1",
+  "claims": [
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-analysis-projection.cjs",
+    "test/number-field-lazy-authenticated-order.cjs",
+    "bench/number-field-analysis-projection.cjs",
+    "bench/results/number-field-analysis-projection-current.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing generic field-analysis decoder and lattice checker",
+      "controlled packed-resource corruptions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

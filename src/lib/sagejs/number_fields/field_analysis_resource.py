@@ -156,6 +156,136 @@ def _integer_power_product(
     return product[:degree]
 
 
+def _packed_gcd(left: int, right: int) -> int:
+    """Return a nonnegative gcd inside a source-transparent call graph."""
+    a = left
+    if a < 0:
+        a = -a
+    b = right
+    if b < 0:
+        b = -b
+    while b:
+        remainder = a % b
+        a = b
+        b = remainder
+    return a
+
+
+def _packed_modular_power(base: int, exponent: int, modulus: int) -> int:
+    """Compute one exact modular power without allocating Python integers."""
+    answer = 1
+    current = base % modulus
+    power = exponent
+    while power:
+        if power % 2:
+            answer = answer * current % modulus
+        power //= 2
+        if power:
+            current = current * current % modulus
+    return answer
+
+
+def _packed_miller_rabin_witness(number: int, base: int) -> bool:
+    """Return whether `base` proves that the word-sized number is composite."""
+    if base % number == 0:
+        return False
+    odd = number - 1
+    shifts = 0
+    while odd % 2 == 0:
+        odd //= 2
+        shifts += 1
+    value = _packed_modular_power(base, odd, number)
+    if value == 1 or value == number - 1:
+        return False
+    step = 1
+    while step < shifts:
+        value = value * value % number
+        if value == number - 1:
+            return False
+        step += 1
+    return True
+
+
+def _packed_word_prime_is_proven(number: int) -> bool:
+    """Deterministically prove primality throughout the unsigned-64-bit range."""
+    if number < 2 or number >= 18446744073709551616:
+        return False
+    small_index = 0
+    while small_index < 15:
+        small = 2
+        if small_index == 1:
+            small = 3
+        elif small_index == 2:
+            small = 5
+        elif small_index == 3:
+            small = 7
+        elif small_index == 4:
+            small = 11
+        elif small_index == 5:
+            small = 13
+        elif small_index == 6:
+            small = 17
+        elif small_index == 7:
+            small = 19
+        elif small_index == 8:
+            small = 23
+        elif small_index == 9:
+            small = 29
+        elif small_index == 10:
+            small = 31
+        elif small_index == 11:
+            small = 37
+        elif small_index == 12:
+            small = 41
+        elif small_index == 13:
+            small = 43
+        elif small_index == 14:
+            small = 47
+        if number == small:
+            return True
+        if number % small == 0:
+            return False
+        small_index += 1
+    witness_index = 0
+    while witness_index < 7:
+        base = 2
+        if witness_index == 1:
+            base = 325
+        elif witness_index == 2:
+            base = 9375
+        elif witness_index == 3:
+            base = 28178
+        elif witness_index == 4:
+            base = 450775
+        elif witness_index == 5:
+            base = 9780504
+        elif witness_index == 6:
+            base = 1795265022
+        if _packed_miller_rabin_witness(number, base):
+            return False
+        witness_index += 1
+    return True
+
+
+def _packed_unsigned(
+    payload: IntegerBuffer,
+    offset: int,
+    width: int,
+) -> int:
+    """Read one bounded little-endian unsigned header field."""
+    answer = 0
+    factor = 1
+    index = 0
+    while index < width:
+        byte = payload[offset + index]
+        if byte > 255:
+            return -1
+        answer += byte * factor
+        factor *= 256
+        index += 1
+    return answer
+
+
 @native
 def packed_field_analysis_decode_integers(
     payload: IntegerBuffer,
@@ -850,6 +980,281 @@ def packed_field_analysis_fixed_points_are_valid(
     return valid
 
 
+@native
+def packed_field_analysis_authenticate_projection(
+    payload: IntegerBuffer,
+    decoded: IntegerBuffer,
+    projection: IntegerBuffer,
+    polynomial: IntegerBuffer,
+    numerator: IntegerBuffer,
+    primes: IntegerBuffer,
+    radical_dimensions: IntegerBuffer,
+    radicals: IntegerBuffer,
+    selectors: IntegerBuffer,
+    workspace: IntegerBuffer,
+    expected_polynomial: IntegerBuffer,
+    expected_scale: int,
+    expected_trial_bound: uint64,
+    degree: uint64,
+    component_count: uint64,
+    witness_count: uint64,
+    entry_count: uint64,
+) -> bool:
+    """Authenticate and project one complete packed analysis in one crossing.
+
+    The host allocates bounded buffers after inspecting the fixed-size header.
+    This body then decodes the canonical arbitrary-precision stream, binds it
+    to the exact request, proves the discriminant decomposition and canonical
+    lattice metadata, and invokes the independent packed closure/fixed-point
+    checker without first constructing certificate objects.  Only the compact
+    polynomial/component/basis projection leaves the isolated core.
+    """
+    if (
+        degree == 0
+        or len(payload) < 80
+        or len(expected_polynomial) != degree + 1
+        or len(decoded) != entry_count
+        or len(projection) != 11 + 3 * component_count + degree * degree
+        or len(polynomial) != degree + 1
+        or len(numerator) != degree * degree
+        or len(primes) != witness_count
+        or len(radical_dimensions) != witness_count
+        or len(radicals) != witness_count * degree * degree
+        or len(selectors) != witness_count * degree
+    ):
+        return False
+    if (
+        payload[0] != 83
+        or payload[1] != 74
+        or payload[2] != 78
+        or payload[3] != 70
+        or payload[4] != 65
+        or payload[5] != 2
+        or payload[6] != 0
+        or payload[7] != 0
+    ):
+        return False
+    header_degree = _packed_unsigned(payload, 8, 8)
+    status = _packed_unsigned(payload, 16, 8)
+    trial_bound = _packed_unsigned(payload, 24, 8)
+    header_components = _packed_unsigned(payload, 32, 8)
+    resolved_components = _packed_unsigned(payload, 40, 8)
+    native_primes = _packed_unsigned(payload, 48, 8)
+    header_entries = _packed_unsigned(payload, 56, 8)
+    version = _packed_unsigned(payload, 64, 8)
+    header_witnesses = _packed_unsigned(payload, 72, 8)
+    if (
+        header_degree != degree
+        or status != 0
+        or trial_bound != expected_trial_bound
+        or header_components != component_count
+        or header_witnesses != witness_count
+        or header_entries != entry_count
+        or version != 2
+    ):
+        return False
+    if not packed_field_analysis_decode_integers(payload, decoded, entry_count):
+        return False
+    minimum_entries = (
+        5
+        + degree
+        + 1
+        + 3 * component_count
+        + witness_count * (2 + degree)
+        + degree * degree
+    )
+    if entry_count < minimum_entries:
+        return False
+
+    scale = decoded[0]
+    denominator = decoded[1]
+    index = decoded[2]
+    equation_discriminant = decoded[3]
+    order_discriminant = decoded[4]
+    if (
+        scale != expected_scale
+        or expected_trial_bound > 65536
+        or denominator < 1
+        or index < 1
+        or equation_discriminant == 0
+    ):
+        return False
+    polynomial_start = 5
+    coefficient = 0
+    while coefficient <= degree:
+        value = decoded[polynomial_start + coefficient]
+        polynomial[coefficient] = value
+        if value != expected_polynomial[coefficient]:
+            return False
+        coefficient += 1
+    if polynomial[degree] != 1:
+        return False
+
+    # A fast projection is intentionally complete-only.  Every incomplete or
+    # failed status returns to the readable decoder/fallback before an order
+    # can become cacheable.
+    component_start = polynomial_start + degree + 1
+    component_product = 1
+    proven_components = 0
+    required_primes = 0
+    component = 0
+    while component < component_count:
+        start = component_start + 3 * component
+        value = decoded[start]
+        exponent = decoded[start + 1]
+        state = decoded[start + 2]
+        if exponent < 1 or state != 0:
+            return False
+        if not _packed_word_prime_is_proven(value):
+            return False
+        previous = 0
+        while previous < component:
+            previous_value = decoded[component_start + 3 * previous]
+            if _packed_gcd(value, previous_value) != 1:
+                return False
+            previous += 1
+        factor = 1
+        power = 0
+        while power < exponent:
+            factor *= value
+            power += 1
+        component_product *= factor
+        proven_components += 1
+        if exponent >= 2:
+            required_primes += 1
+        projection[11 + 3 * component] = value
+        projection[11 + 3 * component + 1] = exponent
+        projection[11 + 3 * component + 2] = state
+        component += 1
+    absolute_discriminant = equation_discriminant
+    if absolute_discriminant < 0:
+        absolute_discriminant = -absolute_discriminant
+    if (
+        component_product != absolute_discriminant
+        or required_primes != witness_count
+        or resolved_components != proven_components
+        or native_primes != required_primes
+    ):
+        return False
+
+    witness_cursor = component_start + 3 * component_count
+    required_component = 0
+    witness = 0
+    while witness < witness_count:
+        while (
+            required_component < component_count
+            and decoded[component_start + 3 * required_component + 1] < 2
+        ):
+            required_component += 1
+        if required_component >= component_count or witness_cursor + 2 > entry_count:
+            return False
+        prime = decoded[witness_cursor]
+        dimension = decoded[witness_cursor + 1]
+        expected_prime = decoded[component_start + 3 * required_component]
+        if prime != expected_prime or dimension < 0 or dimension > degree:
+            return False
+        primes[witness] = prime
+        radical_dimensions[witness] = dimension
+        witness_cursor += 2
+        radical_entry = 0
+        while radical_entry < degree * degree:
+            radicals[witness * degree * degree + radical_entry] = 0
+            radical_entry += 1
+        supplied_entries = dimension * degree
+        radical_entry = 0
+        while radical_entry < supplied_entries:
+            radical_value = decoded[witness_cursor + radical_entry]
+            if radical_value < 0 or radical_value >= prime:
+                return False
+            radicals[witness * degree * degree + radical_entry] = radical_value
+            radical_entry += 1
+        witness_cursor += supplied_entries
+        selector = 0
+        while selector < degree:
+            selected = decoded[witness_cursor + selector]
+            if selected < 0 or selected >= degree * degree:
+                return False
+            previous_selector = 0
+            while previous_selector < selector:
+                if decoded[witness_cursor + previous_selector] == selected:
+                    return False
+                previous_selector += 1
+            selectors[witness * degree + selector] = selected
+            selector += 1
+        witness_cursor += degree
+        required_component += 1
+        witness += 1
+
+    basis_start = witness_cursor
+    if basis_start + degree * degree != entry_count:
+        return False
+    content = denominator
+    determinant = 1
+    row = 0
+    projection_basis_start = 11 + 3 * component_count
+    while row < degree:
+        diagonal = decoded[basis_start + row * degree + row]
+        if diagonal <= 0:
+            return False
+        determinant *= diagonal
+        column = 0
+        while column < degree:
+            basis_value = decoded[basis_start + row * degree + column]
+            if column < row and basis_value != 0:
+                return False
+            if column > row:
+                later_diagonal = decoded[basis_start + column * degree + column]
+                if basis_value < 0 or basis_value >= later_diagonal:
+                    return False
+            numerator[row * degree + column] = basis_value
+            projection[projection_basis_start + row * degree + column] = basis_value
+            content = _packed_gcd(content, basis_value)
+            column += 1
+        row += 1
+    if content != 1:
+        return False
+    denominator_power = 1
+    power = 0
+    while power < degree:
+        denominator_power *= denominator
+        power += 1
+    if determinant == 0 or denominator_power % determinant != 0:
+        return False
+    computed_index = denominator_power // determinant
+    if (
+        computed_index != index
+        or order_discriminant * index * index != equation_discriminant
+    ):
+        return False
+    if not packed_field_analysis_fixed_points_are_valid(
+        workspace,
+        polynomial,
+        numerator,
+        denominator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        equation_discriminant,
+        degree,
+        witness_count,
+    ):
+        return False
+
+    projection[0] = 0
+    projection[1] = expected_trial_bound
+    projection[2] = proven_components
+    projection[3] = required_primes
+    projection[4] = scale
+    projection[5] = denominator
+    projection[6] = index
+    projection[7] = equation_discriminant
+    projection[8] = order_discriminant
+    projection[9] = degree
+    projection[10] = component_count
+    return True
+
+
 def _order_arithmetic(
     polynomial: list[int], numerator: list[list[int]], denominator: int
 ) -> tuple[list[list[list[int]]], list[int]]:
@@ -1259,6 +1664,159 @@ class NativeFieldAnalysisResult(_ImmutableCertificatePart):
         }
 
 
+class AuthenticatedFieldAnalysisProjection(_ImmutableCertificatePart):
+    """Immutable compact result of the one-crossing packed proof checker.
+
+    `_packed` contains only scalar metadata, flat component triples, and the
+    canonical numerator matrix.  Witness radicals and multiplier selectors
+    never become host objects.  Polynomial binding is copied into an immutable
+    tuple, and module-issued authentication captures both tuples by value.
+    """
+
+    def __init__(self, polynomial: list[int], packed: list[int]) -> None:
+        self._polynomial = tuple(int(value) for value in polynomial)
+        self._packed = tuple(int(value) for value in packed)
+        self._freeze_certificate()
+
+    @property
+    def status(self) -> int:
+        return self._packed[0]
+
+    @property
+    def trial_bound(self) -> int:
+        return self._packed[1]
+
+    @property
+    def resolved_components(self) -> int:
+        return self._packed[2]
+
+    @property
+    def native_primes(self) -> int:
+        return self._packed[3]
+
+    @property
+    def scale(self) -> int:
+        return self._packed[4]
+
+    @property
+    def basis_denominator(self) -> int:
+        return self._packed[5]
+
+    @property
+    def index(self) -> int:
+        return self._packed[6]
+
+    @property
+    def equation_discriminant(self) -> int:
+        return self._packed[7]
+
+    @property
+    def order_discriminant(self) -> int:
+        return self._packed[8]
+
+    @property
+    def degree(self) -> int:
+        return self._packed[9]
+
+    @property
+    def component_count(self) -> int:
+        return self._packed[10]
+
+    @property
+    def polynomial(self) -> tuple[int, ...]:
+        return self._polynomial
+
+    @property
+    def components_flat(self) -> tuple[int, ...]:
+        end = 11 + 3 * self.component_count
+        return self._packed[11:end]
+
+    @property
+    def basis_flat(self) -> tuple[int, ...]:
+        return self._packed[11 + 3 * self.component_count :]
+
+    @property
+    def components(self) -> tuple[FieldAnalysisComponent, ...]:
+        flat = self.components_flat
+        return tuple(
+            FieldAnalysisComponent(flat[start], flat[start + 1], flat[start + 2])
+            for start in range(0, len(flat), 3)
+        )
+
+    @property
+    def basis_numerator(self) -> tuple[tuple[int, ...], ...]:
+        flat = self.basis_flat
+        return tuple(
+            tuple(flat[row * self.degree : (row + 1) * self.degree])
+            for row in range(self.degree)
+        )
+
+    @property
+    def locally_certified_primes(self) -> list[int]:
+        flat = self.components_flat
+        return [flat[start] for start in range(0, len(flat), 3) if flat[start + 1] >= 2]
+
+    @property
+    def certified(self) -> bool:
+        return self.status == ANALYSIS_COMPLETE_CANDIDATE and self.__dict__.get(
+            "_authentication_snapshot"
+        ) == (
+            AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA,
+            self._polynomial,
+            self._packed,
+        )
+
+    @property
+    def proof_schema(self) -> str:
+        return AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.number-fields/authenticated-field-analysis-projection-v1",
+            "status": self.status,
+            "certified": self.certified,
+            "trial_bound": self.trial_bound,
+            "resolved_components": self.resolved_components,
+            "native_primes": self.native_primes,
+            "scale": self.scale,
+            "polynomial": list(self.polynomial),
+            "components": [component.to_dict() for component in self.components],
+            "locally_certified_primes": self.locally_certified_primes,
+            "basis_numerator": [list(row) for row in self.basis_numerator],
+            "basis_denominator": self.basis_denominator,
+            "index": self.index,
+            "equation_discriminant": self.equation_discriminant,
+            "order_discriminant": self.order_discriminant,
+        }
+
+
+def _seal_authenticated_projection(
+    result: AuthenticatedFieldAnalysisProjection,
+) -> None:
+    result.__dict__["_authentication_snapshot"] = (
+        AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA,
+        result._polynomial,
+        result._packed,
+    )
+
+
+def authenticated_field_analysis_projection_matches(
+    result: Any,
+    *,
+    polynomial: list[int],
+    scale: int,
+    trial_bound: int,
+) -> bool:
+    """Bind a live compact projection to the exact public request."""
+    return bool(
+        type(result) is AuthenticatedFieldAnalysisProjection
+        and result.certified is True
+        and tuple(int(value) for value in polynomial) == result.polynomial
+        and int(scale) == result.scale
+        and int(trial_bound) == result.trial_bound
+    )
+
+
 def _analysis_authentication_snapshot(
     result: NativeFieldAnalysisResult,
 ) -> tuple[Any, ...]:
@@ -1625,6 +2183,160 @@ def decode_field_analysis_resource(
         raise ValueError("field-analysis certificate used another trial bound")
     _seal_authenticated_analysis(result)
     return result
+
+
+def decode_field_analysis_projection(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_scale: int,
+    expected_trial_bound: int = 1000,
+) -> AuthenticatedFieldAnalysisProjection:
+    """Authenticate a complete resource without decoding its witness graph."""
+    coefficients = [int(value) for value in expected_polynomial]
+    scale = int(expected_scale)
+    trial_bound = int(expected_trial_bound)
+    if len(payload) < 80:
+        raise ValueError("truncated field-analysis resource")
+    if [_byte(payload, index) for index in range(8)] != [83, 74, 78, 70, 65, 2, 0, 0]:
+        raise ValueError("unsupported field-analysis resource schema")
+    degree = _unsigned(payload, 8, 8)
+    status = _unsigned(payload, 16, 8)
+    packed_trial_bound = _unsigned(payload, 24, 8)
+    component_count = _unsigned(payload, 32, 8)
+    entry_count = _unsigned(payload, 56, 8)
+    version = _unsigned(payload, 64, 8)
+    witness_count = _unsigned(payload, 72, 8)
+    if (
+        degree == 0
+        or degree + 1 != len(coefficients)
+        or status != ANALYSIS_COMPLETE_CANDIDATE
+        or packed_trial_bound != trial_bound
+        or trial_bound < 0
+        or trial_bound > 65536
+        or component_count > entry_count
+        or witness_count > component_count
+        or version != 2
+        or entry_count > (len(payload) - 80) // 4
+    ):
+        raise ValueError("field-analysis resource cannot produce a complete projection")
+    minimum_entries = (
+        5
+        + degree
+        + 1
+        + 3 * component_count
+        + witness_count * (2 + degree)
+        + degree * degree
+    )
+    if entry_count < minimum_entries:
+        raise ValueError("field-analysis entry count is inconsistent")
+
+    kernel = packed_field_analysis_authenticate_projection
+    decoded = kernel_integer_zeros(kernel, entry_count, 64)
+    projection = kernel_integer_zeros(
+        kernel, 11 + 3 * component_count + degree * degree, 64
+    )
+    polynomial = kernel_integer_zeros(kernel, degree + 1, 64)
+    numerator = kernel_integer_zeros(kernel, degree * degree, 64)
+    primes = kernel_integer_zeros(kernel, witness_count, 64)
+    radical_dimensions = kernel_integer_zeros(kernel, witness_count, 64)
+    radicals = kernel_integer_zeros(kernel, witness_count * degree * degree, 64)
+    selectors = kernel_integer_zeros(kernel, witness_count * degree, 64)
+    square = degree * degree
+    workspace_length = degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
+    workspace = kernel_integer_zeros(kernel, workspace_length, 64)
+    if not kernel(
+        kernel_integer_buffer(kernel, payload),
+        decoded,
+        projection,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+        kernel_integer_buffer(kernel, coefficients),
+        scale,
+        trial_bound,
+        degree,
+        component_count,
+        witness_count,
+        entry_count,
+    ):
+        raise ValueError("field-analysis packed projection failed authentication")
+    values = [int(value) for value in integer_buffer_values(projection)]
+    result = AuthenticatedFieldAnalysisProjection(coefficients, values)
+    _seal_authenticated_projection(result)
+    return result
+
+
+def native_field_analysis_projection(
+    coefficients_low_to_high: list[int],
+    scale: int = 1,
+    trial_bound: int = 1000,
+) -> AuthenticatedFieldAnalysisProjection:
+    """Produce one independently checked compact analysis projection."""
+    coefficients = [int(value) for value in coefficients_low_to_high]
+    scale_value = int(scale)
+    bound = int(trial_bound)
+    if len(coefficients) < 2 or coefficients[-1] != 1:
+        raise ValueError("field analysis requires a monic integral polynomial")
+    if scale_value < 1:
+        raise ValueError("field analysis requires a positive generator scale")
+    if bound < 0 or bound > 65536:
+        raise ValueError("field-analysis trial bound must be between 0 and 65536")
+
+    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    polynomial = flint.fmpz_polynomial(len(coefficients))
+    try:
+        for index, coefficient in enumerate(coefficients):
+            flint.fmpz_polynomial_set_coefficient(polynomial, index, coefficient)
+        flint.fmpz_polynomial_seal(polynomial)
+        return native_field_analysis_projection_from_polynomial(
+            polynomial,
+            coefficients,
+            scale_value,
+            bound,
+        )
+    finally:
+        polynomial.close()
+
+
+def native_field_analysis_projection_from_polynomial(
+    polynomial: Any,
+    coefficients_low_to_high: list[int],
+    scale: int = 1,
+    trial_bound: int = 1000,
+) -> AuthenticatedFieldAnalysisProjection:
+    """Analyze an existing sealed integral-polynomial resource.
+
+    Exact `ZZ` polynomials already own this generated FLINT resource.  Borrowing
+    it removes per-coefficient FFI traffic while retaining one immutable
+    analysis result and the same independent packed proof check.  The caller
+    retains ownership of `polynomial`.
+    """
+    coefficients = [int(value) for value in coefficients_low_to_high]
+    scale_value = int(scale)
+    bound = int(trial_bound)
+    if len(coefficients) < 2 or coefficients[-1] != 1:
+        raise ValueError("field analysis requires a monic integral polynomial")
+    if scale_value < 1:
+        raise ValueError("field analysis requires a positive generator scale")
+    if bound < 0 or bound > 65536:
+        raise ValueError("field-analysis trial bound must be between 0 and 65536")
+    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    resource = flint.number_field_analyze_resource(polynomial, scale_value, bound)
+    try:
+        payload = resource.copy_bytes()
+        return decode_field_analysis_projection(
+            payload,
+            expected_polynomial=coefficients,
+            expected_scale=scale_value,
+            expected_trial_bound=bound,
+        )
+    finally:
+        resource.close()
 
 
 def native_field_analysis(
