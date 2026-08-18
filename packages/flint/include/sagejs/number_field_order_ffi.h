@@ -640,11 +640,12 @@ static inline slong sagejs_nf_multiplier_kernel(
 /* A terminal p=2 multiplier cycle does not publish its multiplication tensor:
  * only the exact accumulated basis escapes.  Keep the tensor modulo a proved
  * power of two instead of rewriting n^3 arbitrary-precision integers after
- * every enlargement.  If D is the trace discriminant of the current order,
- * at most v_2(D)/2 strict enlargements are possible.  Starting modulo
- * 2^(v_2(D)+4) therefore leaves at least four certified bits after the two
- * bits of precision lost by each basis change.  The old exact tensor path is
- * retained for nonterminal primes and as a compile-time differential oracle.
+ * every enlargement.  Each basis change consumes exactly two certified bits.
+ * If a cycle reaches its four-bit proof margin before stabilising, restore its
+ * immutable prime-boundary snapshot and double the initial precision.  Since
+ * every strict enlargement lowers the trace-discriminant valuation, a finite
+ * retry is exact and sufficient.  The old exact tensor path is retained for
+ * nonterminal primes and as a compile-time differential oracle.
  *
  * Limiting this packed representation to degree <= 64 makes every GF(2)
  * vector one machine word.  Larger degrees use the exact generic path. */
@@ -653,7 +654,6 @@ typedef struct
     slong degree;
     slong limbs;
     ulong precision;
-    ulong maximum_precision;
     ulong *tensor;
     ulong *next_tensor;
     ulong *linear;
@@ -854,46 +854,9 @@ static inline int sagejs_nf_binary_tensor_workspace_init(
     const fmpz_mat_t *multiplication, slong degree,
     ulong requested_precision)
 {
-    if (degree < 1 || degree > 64) return 0;
-    fmpz_mat_t trace_form;
-    fmpz_mat_init(trace_form, degree, degree);
-    fmpz *traces = _fmpz_vec_init(degree);
-    for (slong basis = 0; basis < degree; basis++)
-    {
-        fmpz_zero(traces + basis);
-        for (slong diagonal = 0; diagonal < degree; diagonal++)
-            fmpz_add(traces + basis, traces + basis,
-                fmpz_mat_entry(multiplication[basis], diagonal, diagonal));
-    }
-    for (slong left = 0; left < degree; left++)
-        for (slong right = 0; right < degree; right++)
-        {
-            fmpz_zero(fmpz_mat_entry(trace_form, left, right));
-            for (slong output = 0; output < degree; output++)
-                fmpz_addmul(fmpz_mat_entry(trace_form, left, right),
-                    fmpz_mat_entry(multiplication[left], output, right),
-                    traces + output);
-        }
-    fmpz_t determinant, quotient, two;
-    fmpz_init(determinant);
-    fmpz_init(quotient);
-    fmpz_init(two);
-    fmpz_set_ui(two, 2);
-    fmpz_mat_det(determinant, trace_form);
-    slong valuation = fmpz_is_zero(determinant) ? -1 :
-        fmpz_remove(quotient, determinant, two);
-    fmpz_clear(two);
-    fmpz_clear(quotient);
-    fmpz_clear(determinant);
-    _fmpz_vec_clear(traces, degree);
-    fmpz_mat_clear(trace_form);
-    if (valuation < 0) return 0;
-
+    if (degree < 1 || degree > 64 || requested_precision < 4) return 0;
     workspace->degree = degree;
-    workspace->maximum_precision = (ulong) valuation + 4;
-    workspace->precision = requested_precision == 0 ||
-        requested_precision > workspace->maximum_precision ?
-        workspace->maximum_precision : requested_precision;
+    workspace->precision = requested_precision;
     workspace->limbs = (slong)
         ((workspace->precision + FLINT_BITS - 1) / FLINT_BITS);
     const size_t entries =
@@ -2300,24 +2263,16 @@ binary_restart:
                 break;
             if (binary_initialized && binary_workspace.precision < 4)
             {
-                const ulong maximum_precision =
-                    binary_workspace.maximum_precision;
                 sagejs_nf_binary_tensor_workspace_clear(&binary_workspace);
                 binary_initialized = 0;
                 fmpz_mat_set(basis_numerator, prime_basis_start);
                 fmpz_set(basis_denominator, prime_denominator_start);
                 for (slong index = 0; index < degree; index++)
                     fmpz_set(identity + index, prime_identity_start + index);
-                if (binary_requested_precision >= maximum_precision)
+                if (binary_requested_precision > UWORD_MAX / 2)
                     binary_candidate = 0;
-                else if (binary_requested_precision > UWORD_MAX / 2)
-                    binary_requested_precision = maximum_precision;
                 else
-                {
                     binary_requested_precision *= 2;
-                    if (binary_requested_precision > maximum_precision)
-                        binary_requested_precision = maximum_precision;
-                }
                 goto binary_restart;
             }
             const int changed = sagejs_nf_change_basis(
