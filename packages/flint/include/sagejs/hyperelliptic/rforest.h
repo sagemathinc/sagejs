@@ -55,7 +55,7 @@ int sagejs_rforest_available(void);
 const char *sagejs_rforest_backend_version(void);
 const char *sagejs_rforest_status_name(int32_t status);
 
-/* `coefficients` are ascending integral coefficients of F in y^2=F(x).
+/* `coefficients` are ascending signed-int64 coefficients of F in y^2=F(x).
  * The supported degrees are 2*g+1 and 2*g+2 for g=2,3.  All public integer
  * widths are fixed; the private upstream long/GMP ABI is never exposed. */
 int32_t sagejs_rforest_hasse_witt_batch_compute(

@@ -4181,7 +4181,9 @@ static int rforest_batch_arguments(
         return 0;
     if (!is_typed_array)
     {
-        napi_throw_type_error(env, NULL, "coefficients must be a BigInt64Array");
+        napi_throw_type_error(
+            env, NULL,
+            "coefficients must be a BigUint64Array of int64 words");
         return 0;
     }
     if (!check_napi(env,
@@ -4189,9 +4191,11 @@ static int rforest_batch_arguments(
             env, args[0], &array_type, coefficient_count,
             (void **) coefficients, &array_buffer, &byte_offset)))
         return 0;
-    if (array_type != napi_bigint64_array)
+    if (array_type != napi_biguint64_array)
     {
-        napi_throw_type_error(env, NULL, "coefficients must be a BigInt64Array");
+        napi_throw_type_error(
+            env, NULL,
+            "coefficients must be a BigUint64Array of int64 words");
         return 0;
     }
     if (!number_to_ulong(env, args[1], &word))
