@@ -61,6 +61,41 @@ node bench/hyperelliptic/benchmark-oracles.cjs --repeat 3 \
   > bench/hyperelliptic/oracle-benchmark.json
 ```
 
+The production genus-2 benchmark separates the one-crossing packed smalljac
+stream from exact public polynomial materialization:
+
+```bash
+node bench/hyperelliptic/benchmark-smalljac.cjs \
+  --limits 10000,100000 --repeat 3 \
+  > bench/hyperelliptic/smalljac-benchmark.json
+```
+
+It records wall/CPU/RSS samples, prime and good-row counts, a SHA-256 digest of
+the complete packed stream, and an independent public-result checksum. Use a
+larger `--limits` value only when the several-minute native `10^6` workload is
+desired on the current host.
+
+For the no-Node baseline, compile `smalljac_batch.c` against the same pinned
+archives and run it with a stop bound and repetition count:
+
+```bash
+cc -O2 -std=c11 -DSAGEJS_HAVE_SMALLJAC=1 \
+  -Ipackages/flint/include -Ipackages/flint/.native/prefix/include \
+  packages/flint/src/hyperelliptic/smalljac.c \
+  bench/hyperelliptic/smalljac_batch.c \
+  packages/flint/.native/prefix/lib/libsmalljac.a \
+  packages/flint/.native/prefix/lib/libff_poly.a \
+  packages/flint/.native/prefix/lib/libgmp.a -pthread -lm \
+  -o /tmp/sagejs-smalljac-batch
+/tmp/sagejs-smalljac-batch 100000 3
+```
+
+The checked-in Linux x64 receipt is
+`smalljac-benchmark-linux-x64.json`. At `10^5`, the packed Node boundary used
+1.953246% more CPU than the median standalone C sample, comfortably within the
+15% gate. Exact public polynomial materialization is intentionally reported as
+a separate cost rather than hidden inside the foreign-library boundary.
+
 The output path is intentionally not prescribed or checked in: benchmark
 receipts are meaningful only with their host identity. This harness is an
 oracle-cost baseline, including exhaustive counts and group-structure checks;

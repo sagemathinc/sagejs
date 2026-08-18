@@ -18,6 +18,13 @@
   },
   "files": [
     {
+      "path": "bench/hyperelliptic/smalljac_batch.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone packed genus-2 smalljac timing and exact-stream checksum baseline; it is not linked into Sage.js."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",

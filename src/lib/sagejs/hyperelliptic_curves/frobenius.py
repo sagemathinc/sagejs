@@ -11,6 +11,9 @@ MAX_EXHAUSTIVE_FIELD_ORDER = 2_000_000
 MAX_LOCAL_FACTOR_CHUNK_SIZE = 65_536
 _LPOLYNOMIAL_BACKENDS: dict[str, Any] = {}
 _smalljac_capability_cache: Any = runtime.undefined
+_lpolynomial_ring_cache: Any = runtime.undefined
+_frobenius_ring_cache: Any = runtime.undefined
+_zeta_ring_cache: Any = runtime.undefined
 
 
 def _property(value: Any, name: str) -> Any:
@@ -895,17 +898,24 @@ def reference_lpolynomial_coefficients(curve: Any) -> list[int]:
 
 
 def lpolynomial(coefficients: list[int]) -> Any:
-    ring = sage.PolynomialRing(sage.ZZ, "T")
-    return ring(coefficients)
+    global _lpolynomial_ring_cache
+    if _lpolynomial_ring_cache is runtime.undefined:
+        _lpolynomial_ring_cache = sage.PolynomialRing(sage.ZZ, "T")
+    return _lpolynomial_ring_cache(coefficients)
 
 
 def frobenius_polynomial(coefficients: list[int]) -> Any:
-    ring = sage.PolynomialRing(sage.ZZ, "x")
-    return ring(list(reversed(coefficients)))
+    global _frobenius_ring_cache
+    if _frobenius_ring_cache is runtime.undefined:
+        _frobenius_ring_cache = sage.PolynomialRing(sage.ZZ, "x")
+    return _frobenius_ring_cache(list(reversed(coefficients)))
 
 
 def zeta_function(q_value: int, coefficients: list[int]) -> Any:
-    ring = sage.PolynomialRing(sage.QQ, "x")
+    global _zeta_ring_cache
+    if _zeta_ring_cache is runtime.undefined:
+        _zeta_ring_cache = sage.PolynomialRing(sage.QQ, "x")
+    ring = _zeta_ring_cache
     fraction_field = ring.fraction_field()
     numerator = fraction_field(ring(coefficients))
     denominator = fraction_field(ring([1, -(q_value + 1), q_value]))

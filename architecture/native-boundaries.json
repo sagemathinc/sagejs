@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 78,
+    "classified-native-file": 79,
     "declared-ffi": 400,
     "declared-ffi-resource": 27,
     "napi-export": 295,
@@ -7761,6 +7761,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/hyperelliptic/smalljac_batch.c",
+      "kind": "classified-native-file",
+      "path": "bench/hyperelliptic/smalljac_batch.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:bench/native-p1-heilbronn-reference.c",

@@ -242,6 +242,36 @@ True
   }
 });
 
+test("public genus-2 Jacobians validate native invariant factors", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R=PolynomialRing(GF(5),'x')",
+        "x=R.gen()",
+        "J=HyperellipticCurve(x^5+x+1).jacobian()",
+        "native=J.group_structure(algorithm='smalljac')",
+        "reference=J.group_structure(algorithm='exhaustive')",
+        "assert native == reference == (6,6)",
+        "assert native[0]*native[1] == J.order() == 36",
+        "[native,reference,J.order()]",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[(6, 6), (6, 6), 36]");
+    await assert.rejects(
+      session.evaluate(
+        "R=PolynomialRing(GF(5),'x'); x=R.gen(); " +
+          "HyperellipticCurve(x^7+x+1).jacobian()" +
+          ".group_structure(algorithm='smalljac')",
+      ),
+      /odd-degree genus-2 curve/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("Cantor arithmetic uses the extension-field polynomial fallback", async () => {
   const session = await createSage();
   try {
