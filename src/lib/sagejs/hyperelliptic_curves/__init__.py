@@ -7,7 +7,14 @@ importing `hasse_witt` or `genus3_completion` does not pull in that runtime.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .model import (
+        HyperellipticCurve,
+        HyperellipticCurve_generic,
+        HyperellipticCurvePoint,
+    )
 
 __all__ = [
     "HyperellipticCurve",

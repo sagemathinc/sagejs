@@ -19,7 +19,6 @@ from typing import Any, Callable, Iterable
 
 from sagejs.hyperelliptic_curves.hasse_witt import _is_prime
 
-
 Rational = tuple[int, int]
 Candidate = tuple[int, int, int]
 

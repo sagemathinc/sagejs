@@ -9,7 +9,6 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-
 _hyperelliptic_module_cache = runtime.undefined
 
 

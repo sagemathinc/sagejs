@@ -6,7 +6,6 @@ from typing import Any, Iterator
 
 import sagejs as sage
 
-
 MAX_EXHAUSTIVE_FIELD_ORDER = 2_000_000
 _LPOLYNOMIAL_BACKENDS: dict[str, Any] = {}
 

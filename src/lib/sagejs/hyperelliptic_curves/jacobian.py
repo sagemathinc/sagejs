@@ -12,7 +12,6 @@ from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
-
 from sagejs.hyperelliptic_curves.group_structure import (
     JacobianResourceLimitError,
     element_order_from_multiple,
