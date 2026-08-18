@@ -30,8 +30,10 @@ Options:
   --coefficient-cutoff N      Sage anlist probe cutoff (default: 64)
   --sage PATH                 Sage launcher (default: $SAGE_ORACLE or /home/user/sagelite/sage)
   --magma PATH                Magma launcher (default: $MAGMA_ORACLE or /home/user/bin/magma)
+  --lcalc PATH                optional standalone lcalc executable (default: $LCALC_ORACLE or lcalc)
   --no-sage                   skip Sage/PARI explicitly
   --no-magma                  skip Magma explicitly
+  --no-lcalc                  skip the lcalc capability probe explicitly
   --require-sage              fail instead of recording an unavailable Sage oracle
   --require-magma             fail instead of recording an unavailable Magma oracle
   --manifest PATH             alternate offline manifest
@@ -51,8 +53,10 @@ function parseArguments(argv) {
     coefficientCutoff: 64,
     sage: process.env.SAGE_ORACLE || "/home/user/sagelite/sage",
     magma: process.env.MAGMA_ORACLE || "/home/user/bin/magma",
+    lcalc: process.env.LCALC_ORACLE || "lcalc",
     runSage: true,
     runMagma: true,
+    runLcalc: true,
     requireSage: false,
     requireMagma: false,
     manifest: defaultManifest,
@@ -66,6 +70,7 @@ function parseArguments(argv) {
     "--coefficient-cutoff",
     "--sage",
     "--magma",
+    "--lcalc",
     "--manifest",
     "--baseline",
     "--output",
@@ -78,6 +83,7 @@ function parseArguments(argv) {
     }
     if (argument === "--no-sage") options.runSage = false;
     else if (argument === "--no-magma") options.runMagma = false;
+    else if (argument === "--no-lcalc") options.runLcalc = false;
     else if (argument === "--require-sage") options.requireSage = true;
     else if (argument === "--require-magma") options.requireMagma = true;
     else if (argument === "--check") options.check = true;
@@ -90,6 +96,7 @@ function parseArguments(argv) {
         "--coefficient-cutoff": "coefficientCutoff",
         "--sage": "sage",
         "--magma": "magma",
+        "--lcalc": "lcalc",
         "--manifest": "manifest",
         "--baseline": "baseline",
         "--output": "output",
@@ -178,6 +185,45 @@ function unavailable(family, executable, reason) {
     status: "unavailable",
     executable,
     reason,
+    records: [],
+  };
+}
+
+function resolveExecutable(command) {
+  if (path.isAbsolute(command) || command.includes(path.sep)) {
+    return fs.existsSync(command) ? path.resolve(command) : null;
+  }
+  for (const directory of (process.env.PATH || "").split(path.delimiter)) {
+    const candidate = path.join(directory, command);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function probeLcalc(options) {
+  if (!options.runLcalc) return unavailable("lcalc", options.lcalc, "disabled");
+  const executable = resolveExecutable(options.lcalc);
+  if (!executable) {
+    return unavailable(
+      "lcalc",
+      options.lcalc,
+      "standalone executable not found; the installed Sage wrapper also delegates to this CLI",
+    );
+  }
+  const probe = childProcess.spawnSync(executable, ["--version"], {
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  return {
+    implementation_family: "lcalc",
+    status: "skipped",
+    executable,
+    reason:
+      "executable found, but no result is accepted until the adapter records and validates coefficient sufficiency",
+    probe: {
+      exit_code: probe.status,
+      output: `${probe.stdout || ""}${probe.stderr || ""}`.trim(),
+    },
     records: [],
   };
 }
@@ -438,6 +484,7 @@ function main() {
 
   const sage = runSage(options);
   const magma = runMagma(options, curves);
+  const lcalc = probeLcalc(options);
   if (options.requireSage && sage.status !== "ok") throw new Error(sage.reason);
   if (options.requireMagma && magma.status !== "ok") throw new Error(magma.reason);
 
@@ -458,7 +505,7 @@ function main() {
     },
     timing_note:
       "Medians exclude process startup. process_total_seconds includes startup, all work, and shutdown. Magma uses CPU time internally; Sage uses monotonic wall time.",
-    oracles: [sage, magma],
+    oracles: [sage, magma, lcalc],
   };
 
   const failures = [];

@@ -35,9 +35,9 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm test:baselib:strict",
-    "pnpm test:native",
-    "pnpm bench:elliptic-curves"
+    "node bench/elliptic-analytic-rank/run-oracles.cjs --tier core --check --require-sage --require-magma",
+    "/home/user/sagelite/sage -c load(\"upstream-tests/sage/elliptic-analytic-rank.sage\")",
+    "pnpm test:changed"
   ],
   "runs": [],
   "handoff": {

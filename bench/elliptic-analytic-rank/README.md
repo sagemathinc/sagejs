@@ -22,7 +22,8 @@ node bench/elliptic-analytic-rank/run-oracles.cjs --tier core \
 ```
 
 Paths are configurable, and missing optional systems produce explicit
-`unavailable` records:
+`unavailable` records. The harness also probes `$LCALC_ORACLE` (or `lcalc` on
+`PATH`):
 
 ```bash
 SAGE_ORACLE=/path/to/sage MAGMA_ORACLE=/path/to/magma \
@@ -131,6 +132,14 @@ gates.
 The checked-in baseline captures one-sample stable data, including the first 64
 exact `a_n` values as a prefix plus SHA-256 digest. Timing fields are retained
 as historical context but ignored by `--check`.
+
+No standalone `lcalc` executable was present during the baseline capture; the
+Sage `lcalc` wrapper failed for the same reason because it shells out to that
+program. The harness records this as an explicit capability skip. Even when an
+executable is found, it is not counted as an oracle result until a future
+adapter records its coefficient request/cutoff and verifies that the supplied
+coefficients are sufficient; lcalc can otherwise warn and return an inaccurate
+rank.
 
 ## Adding a curve
 

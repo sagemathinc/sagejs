@@ -183,6 +183,13 @@
         { "id": "additive-at-2-and-3", "conductor": "36", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.70109105266272742", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.70109105266272742", "raw_value_convention": "L^(r)(1)/r!" },
         { "id": "large-conductor-stress", "conductor": "1456559178048", "root_number": -1, "probable_analytic_rank": 1, "leading_derivative": "54.14501445506323307", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "54.14501445506323307", "raw_value_convention": "L^(r)(1)/r!" }
       ]
+    },
+    {
+      "implementation_family": "lcalc",
+      "status": "unavailable",
+      "executable": "lcalc",
+      "reason": "standalone executable not found; the installed Sage wrapper also delegates to this CLI",
+      "records": []
     }
   ],
   "validation": { "status": "passed" }
