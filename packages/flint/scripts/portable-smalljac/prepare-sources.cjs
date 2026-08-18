@@ -55,7 +55,11 @@ function transformDirectory(directory) {
     if (!/\.[ch]$/.test(name) || name === "sagejs_ffpoly_word.h") continue;
     const path = join(directory, name);
     normalize(path);
-    writeFileSync(path, fixedWidthWindowsSource(readFileSync(path, "utf8")));
+    const transformed = fixedWidthWindowsSource(readFileSync(path, "utf8"));
+    writeFileSync(
+      path,
+      name.endsWith(".c") ? `#include <stdint.h>\n${transformed}` : transformed,
+    );
   }
 }
 
