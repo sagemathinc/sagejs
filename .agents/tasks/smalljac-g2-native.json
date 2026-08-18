@@ -43,7 +43,9 @@
   "validation": [
     "pnpm test:portable",
     "pnpm test:native",
-    "pnpm test:sea"
+    "pnpm test:sea",
+    "node --test --test-reporter=spec packages/flint/test/hyperelliptic/smalljac.cjs",
+    "pnpm --dir packages/flint test"
   ],
   "runs": [
     {
@@ -75,11 +77,79 @@
       "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
       "workspace_fingerprint": "10d610e72f67445afb8703bfe1f9b354daefb6ae3b8a89e2053c8d3bed9363f8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec packages/flint/test/hyperelliptic/smalljac.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.753,
+      "started_at": "2026-08-18T08:09:32.089Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "cc -O2 -std=c11 -DSAGEJS_HAVE_SMALLJAC=1 -Ipackages/flint/include -Ipackages/flint/.native/prefix/include packages/flint/src/hyperelliptic/smalljac.c packages/flint/test/hyperelliptic/smalljac_bridge.c packages/flint/.native/prefix/lib/libsmalljac.a packages/flint/.native/prefix/lib/libff_poly.a packages/flint/.native/prefix/lib/libgmp.a -pthread -lm -o /tmp/sagejs_smalljac_bridge_test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.998,
+      "started_at": "2026-08-18T08:09:45.058Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/tmp/sagejs_smalljac_bridge_test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.208,
+      "started_at": "2026-08-18T08:09:52.446Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.114,
+      "started_at": "2026-08-18T08:10:14.428Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.075,
+      "started_at": "2026-08-18T08:10:32.385Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 95.97,
+      "started_at": "2026-08-18T08:11:10.057Z",
+      "commit": "9df7aa112204a5216fe333d394c7b77f274d45a5",
+      "workspace_fingerprint": "1ea24dc4d83a495c5444bd5d70f5c30b76a29b8b9590f675efabfa8ecad9d002",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Adds a process-global-mutex-protected, packed genus-2 smalljac boundary for complete local L-polynomial coefficient streams and supported odd-degree Jacobian invariant factors. The stable N-API results include aligned prime/good/status rows, exact fixed-width typed arrays, truncation accounting, backend and normalization metadata, explicit batch/row statuses, and capability bounds. Exact quintic, sextic, nonmonic, negative-leading, nonzero-h, bad-reduction, group-order, concurrency, and silent unsupported-group behavior are covered. The standalone bridge passes on Linux x64, Linux arm64, macOS arm64, and native Windows x64 against the portable libraries.",
+    "risks": [
+      "Allocation and callback-cancellation statuses are implemented but do not yet have deterministic fault-injection tests.",
+      "The standalone bridge validates the exact native boundary on all required platforms, but regular CI must still exercise the complete Node addon build on Windows x64, Linux arm64, and macOS arm64.",
+      "The portable repository gate remains integration-blocked until the centrally owned native-code classifications and hyperelliptic lane registry changes are present; this lane intentionally did not duplicate those edits."
+    ],
+    "next_steps": [
+      "The integration lane should register packages/flint/test/hyperelliptic/smalljac.cjs in the package test script.",
+      "The integration lane should update the repository native-code and export-policy inventories for the new bridge and N-API exports.",
+      "Merge commits 2acc07a9, c4308f45, and 9df7aa11, then run the full native matrix and architecture checks."
+    ]
   }
 }
