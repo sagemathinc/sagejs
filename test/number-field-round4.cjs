@@ -113,6 +113,7 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
   const session = await createSage();
   try {
     const cases = primaryFixture.cases
+      .filter((record) => record.id !== "pari-round4-vector-010-p2")
       .map(
         (record) =>
           `{` +
@@ -177,74 +178,76 @@ test("deep primary Round-4 stages construct frozen PARI local orders", async () 
   }
 });
 
-test("vector 010 fails closed at its measured coefficient-growth boundary", async () => {
-  const record = primaryFixture.diagnostic_cases[0];
+test("vector 010 completes with compiled exact Round-4 evidence", async () => {
+  const record = primaryFixture.cases.find(
+    (entry) => entry.id === "pari-round4-vector-010-p2",
+  );
+  assert.ok(record);
   const session = await createSage();
   try {
     const result = await session.evaluate(
       [
         "R.<x> = ZZ[]",
-        "from sagejs.number_fields.round4 import round4_primary_power_basis, Round4Unsupported",
+        "from sagejs.kernels.matrix.word_prime_krylov import word_prime_krylov_minimal_polynomial",
+        "from sagejs.native import is_compiled",
+        "from sagejs.number_fields.round4 import Round4InvariantError, modified_round4_local_order, verify_round4_local_result",
+        "assert is_compiled(word_prime_krylov_minimal_polynomial)",
         `K = NumberField(R([${record.coefficients.join(",")}]), 'a')`,
-        `metrics = {'characteristic_polynomial_call_limit': ${record.characteristic_polynomial_call_limit}}`,
-        "failed_closed = False",
+        `expected_basis = ${JSON.stringify(record.basis_numerator.map((row) => row.map(Number)))}`,
+        `result = modified_round4_local_order(K.equation_order(), ${record.prime}, strict=True)`,
+        "certificate = result.certificate",
+        "assert certificate.algorithm == 'modified-round4-primary-power-basis'",
+        "assert certificate.fallback_reason is None",
+        `assert certificate.local_index == ${record.local_index}`,
+        `assert certificate.local_index_valuation == ${record.local_index_valuation}`,
+        `assert certificate.input_discriminant_valuation == ${record.input_discriminant_valuation}`,
+        `assert certificate.output_discriminant_valuation == ${record.output_discriminant_valuation}`,
+        `assert result.order.discriminant() == ${record.local_output_discriminant}`,
+        `assert certificate.basis_denominator == ${record.basis_denominator}`,
+        "assert certificate.basis_numerator == expected_basis",
+        "power_stages = [stage for stage in result.plan.stages if 'power-basis' in stage.name]",
+        "names = [stage.name for stage in power_stages]",
+        ...record.required_power_stages.map(
+          (stage) => `assert ${JSON.stringify(stage)} in names`,
+        ),
+        "final = power_stages[-1].evidence",
+        `assert final['ramification_degree'] == ${record.ramification_degree}`,
+        `assert final['residue_degree'] == ${record.residue_degree}`,
+        `assert final['local_index'] == ${record.local_index}`,
+        "assert final['output_discriminant'] == result.order.discriminant()",
+        "assert final['closure_checked']",
+        "assert final['p_maximality_verifier'] == 'ford-letard-ef-degree-certificate'",
+        "metrics = final['characteristic_polynomial_metrics']",
+        `assert metrics['characteristic_polynomial_calls'] == ${record.characteristic_polynomial_metrics.calls}`,
+        `assert metrics['characteristic_polynomial_cache_hits'] == ${record.characteristic_polynomial_metrics.cache_hits}`,
+        `assert metrics['input_coefficient_bits_total'] == ${record.characteristic_polynomial_metrics.input_coefficient_bits_total}`,
+        `assert metrics['max_input_coefficient_bits'] == ${record.characteristic_polynomial_metrics.max_input_coefficient_bits}`,
+        `assert metrics['max_denominator_bits'] == ${record.characteristic_polynomial_metrics.max_denominator_bits}`,
+        `assert metrics['characteristic_strategy_counts'] == ${JSON.stringify(record.characteristic_polynomial_metrics.residue_beta_strategy.counts)}`,
+        `assert metrics['characteristic_strategy_max_bound_bits'] == ${record.characteristic_polynomial_metrics.residue_beta_strategy.max_hadamard_bound_bits}`,
+        `assert all(decision['crt_bound_bits_cutoff'] == ${record.characteristic_polynomial_metrics.residue_beta_strategy.crt_bound_bits_cutoff} for decision in metrics['characteristic_strategy_decisions'])`,
+        `assert metrics['exact_field_quotient_calls'] == ${record.characteristic_polynomial_metrics.exact_field_quotient_calls}`,
+        `assert metrics['exact_field_quotient_recoveries'] == ${record.characteristic_polynomial_metrics.exact_field_quotient_recoveries}`,
+        `assert metrics['modular_characteristic_calls'] == ${record.characteristic_polynomial_metrics.modular_characteristic.calls}`,
+        `assert metrics['modular_characteristic_primes'] == ${record.characteristic_polynomial_metrics.modular_characteristic.primes}`,
+        `assert metrics['modular_characteristic_max_bound_bits'] == ${record.characteristic_polynomial_metrics.modular_characteristic.max_bound_bits}`,
+        `assert metrics['modular_characteristic_max_modulus_bits'] == ${record.characteristic_polynomial_metrics.modular_characteristic.max_modulus_bits}`,
+        `assert metrics['modular_characteristic_certifications'] == ${JSON.stringify(record.characteristic_polynomial_metrics.modular_characteristic.certifications)}`,
+        "assert verify_round4_local_result(result)",
+        "certificate.basis_numerator[0][0] += 1",
+        "corruption_rejected = False",
         "try:",
-        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
-        "except Round4Unsupported as error:",
-        "    failed_closed = 'diagnostic' in str(error)",
-        "first_metrics = metrics",
-        `metrics = {'characteristic_polynomial_call_limit': ${record.post_root_error.characteristic_polynomial_call_limit}}`,
-        "post_failed_closed = False",
-        "try:",
-        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
-        "except Round4Unsupported as error:",
-        "    post_failed_closed = 'diagnostic' in str(error)",
-        "post_summary = (post_failed_closed, metrics['characteristic_polynomial_calls'], metrics['characteristic_strategy_counts'], metrics['characteristic_strategy_max_bound_bits'], metrics['modular_characteristic_calls'], metrics['modular_characteristic_primes'], metrics['modular_characteristic_max_modulus_bits'], metrics['modular_characteristic_certifications'], metrics['characteristic_polynomial_inputs'][-1]['label'])",
-        "metrics = {'characteristic_polynomial_call_limit': 48}",
-        "quotient_failed_closed = False",
-        "try:",
-        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
-        "except Round4Unsupported as error:",
-        "    quotient_failed_closed = 'diagnostic' in str(error)",
-        "quotient_summary = (quotient_failed_closed, metrics['characteristic_polynomial_calls'], metrics['characteristic_strategy_counts'], metrics['characteristic_strategy_max_bound_bits'], metrics['modular_characteristic_calls'], metrics['modular_characteristic_primes'], metrics['modular_characteristic_max_modulus_bits'], metrics['modular_characteristic_certifications'], metrics['characteristic_polynomial_inputs'][-1]['label'], metrics['characteristic_polynomial_inputs'][-1]['coefficient_bits'], metrics['characteristic_polynomial_inputs'][-1]['denominator_bits'], metrics['exact_field_quotient_calls'], metrics['exact_field_quotient_recoveries'], metrics['exact_field_quotient_inputs'][-1])",
-        "(failed_closed, first_metrics, post_summary, quotient_summary)",
+        "    verify_round4_local_result(result)",
+        "except Round4InvariantError as error:",
+        "    corruption_rejected = 'certificate basis' in str(error)",
+        "certificate.basis_numerator[0][0] -= 1",
+        "assert corruption_rejected",
+        "(is_compiled(word_prime_krylov_minimal_polynomial), certificate.local_index_valuation, final['ramification_degree'], final['residue_degree'], metrics['characteristic_polynomial_calls'], metrics['modular_characteristic_calls'], corruption_rejected)",
       ].join("\n"),
     );
-    const normalized = result.repr.replaceAll("'", '"').replace("(true,", "[true,");
-    assert.match(normalized, /characteristic_polynomial_calls/);
-    assert.match(result.repr, /True/);
-    assert.match(result.repr, /progress-reused-uniformizer/);
-    assert.match(result.repr, new RegExp(record.remaining_bound_label));
-    assert.match(
+    assert.equal(
       result.repr,
-      new RegExp(`'characteristic_polynomial_calls': ${record.attempted_calls}`),
-    );
-    assert.match(
-      result.repr,
-      new RegExp(`'characteristic_polynomial_cache_hits': ${record.cache_hits}`),
-    );
-    assert.match(
-      result.repr,
-      new RegExp(`'input_coefficient_bits_total': ${record.input_coefficient_bits_total}`),
-    );
-    assert.match(
-      result.repr,
-      new RegExp(`'max_input_coefficient_bits': ${record.max_input_coefficient_bits}`),
-    );
-    assert.match(
-      result.repr,
-      new RegExp(`'max_denominator_bits': ${record.max_denominator_bits}`),
-    );
-    const post = record.post_root_error;
-    assert.match(
-      result.repr,
-      new RegExp(
-        `\\(True, ${post.attempted_calls}, \\{'direct-exact': ${post.strategy_counts["direct-exact"]}, 'modular-crt': ${post.strategy_counts["modular-crt"]}\\}, ${post.max_hadamard_bound_bits}, ${post.modular_characteristic_calls}, ${post.modular_characteristic_primes}, ${post.modular_characteristic_max_modulus_bits}, \\{'${post.modular_characteristic_certification}': ${post.modular_characteristic_certification_calls}\\}, '${post.next_bound_label}'\\)`,
-      ),
-    );
-    assert.match(
-      result.repr,
-      /\(True, 49, \{'direct-exact': 15, 'modular-crt': 13\}, 5970, 13, 1537, 3660, \{'cyclic-krylov': 13\}, 'residue-gamma', 2773, 13, 12, 12, \{'label': 'residue-gamma-normalization', 'degree': 32, 'matrix_denominator_bits': 13\}\)/,
+      "(True, 222, 16, 2, 67, 24, True)",
     );
   } finally {
     await session.close();
