@@ -642,6 +642,8 @@ static inline slong sagejs_nf_multiplier_kernel(
 static inline void sagejs_nf_fmpz_addmul_sparse_coefficient(
     fmpz_t target, const fmpz_t value, const fmpz_t coefficient)
 {
+    if (*coefficient == 0)
+        return;
     if (*coefficient == 1)
         fmpz_add(target, target, value);
     else if (*coefficient == -1)
@@ -650,6 +652,21 @@ static inline void sagejs_nf_fmpz_addmul_sparse_coefficient(
         fmpz_addmul_si(target, value, fmpz_get_si(coefficient));
     else
         fmpz_addmul(target, value, coefficient);
+}
+
+static inline void sagejs_nf_fmpz_submul_sparse_coefficient(
+    fmpz_t target, const fmpz_t value, const fmpz_t coefficient)
+{
+    if (*coefficient == 0)
+        return;
+    if (*coefficient == 1)
+        fmpz_sub(target, target, value);
+    else if (*coefficient == -1)
+        fmpz_add(target, target, value);
+    else if (fmpz_fits_si(coefficient))
+        fmpz_submul_si(target, value, fmpz_get_si(coefficient));
+    else
+        fmpz_submul(target, value, coefficient);
 }
 
 static inline void sagejs_nf_fmpz_mul_right_transpose_sparse(
@@ -694,6 +711,7 @@ typedef struct
 {
     slong degree;
     slong *pivots;
+    slong *nonpivots;
     unsigned char *is_pivot;
     fmpz_mat_t change_numerator;
     fmpz_mat_t inverse;
@@ -724,6 +742,8 @@ static inline void sagejs_nf_change_basis_workspace_init(
 {
     workspace->degree = degree;
     workspace->pivots =
+        (slong *) flint_malloc((size_t) degree * sizeof(slong));
+    workspace->nonpivots =
         (slong *) flint_malloc((size_t) degree * sizeof(slong));
     workspace->is_pivot = (unsigned char *) flint_calloc(
         (size_t) degree, sizeof(unsigned char));
@@ -788,6 +808,7 @@ static inline void sagejs_nf_change_basis_workspace_clear(
     fmpz_mat_clear(workspace->inverse);
     fmpz_mat_clear(workspace->change_numerator);
     flint_free(workspace->is_pivot);
+    flint_free(workspace->nonpivots);
     flint_free(workspace->pivots);
 }
 
@@ -1032,6 +1053,195 @@ static inline void sagejs_nf_change_basis_sync_fmpz_multiplication(
 }
 #endif
 
+/* A Round-2 enlargement replaces only the pivot generators.  In pivot /
+ * nonpivot coordinates its numerator is
+ *
+ *     A = [I R; 0 pI],       p A^-1 = [pI -R; 0 I].
+ *
+ * Hence every nonpivot basis element is literally unchanged.  Updating the
+ * full tensor with three generic matrix products obscures that structure and
+ * performs an exact p^2 division on all n^3 entries.  Build the transformed
+ * tensor by blocks instead: unchanged/nonpivot products need no division,
+ * mixed products need one division by p, and only the small pivot/pivot block
+ * needs p^2.  Commutativity supplies the transposed input column. */
+static inline int sagejs_nf_change_basis_structured_transform(
+    fmpz_mat_t *multiplication, slong nullity, slong degree,
+    sagejs_nf_change_basis_workspace *workspace)
+{
+    const slong nonpivot_count = degree - nullity;
+    const slong *pivots = workspace->pivots;
+    const slong *nonpivots = workspace->nonpivots;
+    const fmpz_mat_struct *change = workspace->change_numerator;
+    fmpz_mat_t *updated = workspace->new_multiplication;
+    fmpz_mat_struct *linear = workspace->linear_combination;
+    fmpz *product = workspace->new_identity;
+    const fmpz *prime = workspace->prime_value;
+    const fmpz *prime_squared = workspace->prime_squared;
+    fmpz_t residual;
+    fmpz_init(residual);
+
+    /* Products of two unchanged generators.  Only conversion of the output
+     * coordinates through p A^-1 remains. */
+    for (slong left_position = 0;
+         left_position < nonpivot_count; left_position++)
+    {
+        const slong left_old = nonpivots[left_position];
+        const slong left_new = nullity + left_position;
+        for (slong right_position = left_position;
+             right_position < nonpivot_count; right_position++)
+        {
+            const slong right_old = nonpivots[right_position];
+            const slong right_new = nullity + right_position;
+            for (slong pivot = 0; pivot < nullity; pivot++)
+                fmpz_mul(
+                    fmpz_mat_entry(updated[left_new], pivot, right_new),
+                    fmpz_mat_entry(
+                        multiplication[left_old], pivots[pivot], right_old),
+                    prime);
+            for (slong output_position = 0;
+                 output_position < nonpivot_count; output_position++)
+            {
+                const slong output_old = nonpivots[output_position];
+                fmpz_set(residual, fmpz_mat_entry(
+                    multiplication[left_old], output_old, right_old));
+                /* The inverse tail is -R. */
+                for (slong pivot = 0; pivot < nullity; pivot++)
+                {
+                    const fmpz *coefficient =
+                        fmpz_mat_entry(change, pivot, output_old);
+                    if (fmpz_is_zero(coefficient)) continue;
+                    sagejs_nf_fmpz_submul_sparse_coefficient(residual,
+                        fmpz_mat_entry(multiplication[left_old],
+                            pivots[pivot], right_old),
+                        coefficient);
+                }
+                fmpz_set(fmpz_mat_entry(updated[left_new],
+                    nullity + output_position, right_new), residual);
+            }
+            if (left_position != right_position)
+                for (slong output = 0; output < degree; output++)
+                    fmpz_set(fmpz_mat_entry(updated[right_new],
+                        output, left_new),
+                        fmpz_mat_entry(updated[left_new], output, right_new));
+        }
+
+        /* One unchanged and one divided generator. */
+        for (slong divided = 0; divided < nullity; divided++)
+        {
+            for (slong output = 0; output < degree; output++)
+            {
+                fmpz_set(product + output,
+                    fmpz_mat_entry(multiplication[left_old],
+                        output, pivots[divided]));
+                for (slong source_position = 0;
+                     source_position < nonpivot_count; source_position++)
+                    sagejs_nf_fmpz_addmul_sparse_coefficient(
+                        product + output,
+                        fmpz_mat_entry(multiplication[left_old], output,
+                            nonpivots[source_position]),
+                        fmpz_mat_entry(change, divided,
+                            nonpivots[source_position]));
+            }
+            for (slong pivot = 0; pivot < nullity; pivot++)
+                fmpz_set(fmpz_mat_entry(updated[left_new], pivot, divided),
+                    product + pivots[pivot]);
+            for (slong output_position = 0;
+                 output_position < nonpivot_count; output_position++)
+            {
+                const slong output_old = nonpivots[output_position];
+                fmpz_set(residual, product + output_old);
+                for (slong pivot = 0; pivot < nullity; pivot++)
+                {
+                    const fmpz *coefficient =
+                        fmpz_mat_entry(change, pivot, output_old);
+                    if (fmpz_is_zero(coefficient)) continue;
+                    sagejs_nf_fmpz_submul_sparse_coefficient(
+                        residual, product + pivots[pivot], coefficient);
+                }
+                if (!fmpz_divisible(residual, prime)) goto fail;
+                fmpz_divexact(residual, residual, prime);
+                fmpz_set(fmpz_mat_entry(updated[left_new],
+                    nullity + output_position, divided), residual);
+            }
+            for (slong output = 0; output < degree; output++)
+                fmpz_set(fmpz_mat_entry(updated[divided], output, left_new),
+                    fmpz_mat_entry(updated[left_new], output, divided));
+        }
+    }
+
+    /* Products of two divided generators.  Form each first-factor linear
+     * combination once, then read all second-factor columns from it. */
+    for (slong left = 0; left < nullity; left++)
+    {
+        fmpz_mat_set(linear, multiplication[pivots[left]]);
+        for (slong source_position = 0;
+             source_position < nonpivot_count; source_position++)
+        {
+            const fmpz *coefficient = fmpz_mat_entry(
+                change, left, nonpivots[source_position]);
+            if (fmpz_is_zero(coefficient)) continue;
+            if (fmpz_fits_si(coefficient))
+                fmpz_mat_scalar_addmul_si(linear,
+                    multiplication[nonpivots[source_position]],
+                    fmpz_get_si(coefficient));
+            else
+                fmpz_mat_scalar_addmul_fmpz(linear,
+                    multiplication[nonpivots[source_position]], coefficient);
+        }
+        for (slong right = left; right < nullity; right++)
+        {
+            for (slong output = 0; output < degree; output++)
+            {
+                fmpz_set(product + output,
+                    fmpz_mat_entry(linear, output, pivots[right]));
+                for (slong source_position = 0;
+                     source_position < nonpivot_count; source_position++)
+                    sagejs_nf_fmpz_addmul_sparse_coefficient(
+                        product + output,
+                        fmpz_mat_entry(linear, output,
+                            nonpivots[source_position]),
+                        fmpz_mat_entry(change, right,
+                            nonpivots[source_position]));
+            }
+            for (slong pivot = 0; pivot < nullity; pivot++)
+            {
+                fmpz_set(residual, product + pivots[pivot]);
+                if (!fmpz_divisible(residual, prime)) goto fail;
+                fmpz_divexact(residual, residual, prime);
+                fmpz_set(fmpz_mat_entry(updated[left], pivot, right), residual);
+            }
+            for (slong output_position = 0;
+                 output_position < nonpivot_count; output_position++)
+            {
+                const slong output_old = nonpivots[output_position];
+                fmpz_set(residual, product + output_old);
+                for (slong pivot = 0; pivot < nullity; pivot++)
+                {
+                    const fmpz *coefficient =
+                        fmpz_mat_entry(change, pivot, output_old);
+                    if (fmpz_is_zero(coefficient)) continue;
+                    sagejs_nf_fmpz_submul_sparse_coefficient(
+                        residual, product + pivots[pivot], coefficient);
+                }
+                if (!fmpz_divisible(residual, prime_squared)) goto fail;
+                fmpz_divexact(residual, residual, prime_squared);
+                fmpz_set(fmpz_mat_entry(updated[left],
+                    nullity + output_position, right), residual);
+            }
+            if (left != right)
+                for (slong output = 0; output < degree; output++)
+                    fmpz_set(fmpz_mat_entry(updated[right], output, left),
+                        fmpz_mat_entry(updated[left], output, right));
+        }
+    }
+    fmpz_clear(residual);
+    return 1;
+
+fail:
+    fmpz_clear(residual);
+    return -1;
+}
+
 static inline int sagejs_nf_change_basis(
     fmpz_mat_t *multiplication, fmpz_mat_t total_basis_numerator,
     fmpz_t total_basis_denominator, fmpz *identity,
@@ -1066,10 +1276,15 @@ static inline int sagejs_nf_change_basis(
         }
     }
     slong row = nullity;
+    slong nonpivot_count = 0;
     for (slong column = 0; column < degree; column++)
         if (!is_pivot[column])
+        {
+            workspace->nonpivots[nonpivot_count++] = column;
             fmpz_set(fmpz_mat_entry(change_numerator, row++, column),
                 prime_value);
+        }
+    if (nonpivot_count != degree - nullity) goto fail;
 
     /* The kernel rows are in RREF.  If P and N are its pivot and nonpivot
      * columns, the change numerator is [K; p I_N].  Build
@@ -1126,7 +1341,14 @@ static inline int sagejs_nf_change_basis(
         change_numerator, inverse, degree, prime, workspace);
     if (word_transform < 0) goto fail;
 #endif
+    int structured_transform = 0;
+#if !defined(SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS)
     if (word_transform == 0)
+        structured_transform = sagejs_nf_change_basis_structured_transform(
+            multiplication, nullity, degree, workspace);
+    if (structured_transform < 0) goto fail;
+#endif
+    if (word_transform == 0 && structured_transform == 0)
     {
         sagejs_nf_change_basis_sync_fmpz_multiplication(
             workspace, multiplication, degree);
@@ -1178,6 +1400,13 @@ static inline int sagejs_nf_change_basis(
             fmpz_mat_scalar_divexact_fmpz(
                 new_multiplication[i], combined, prime_squared);
         }
+        for (slong i = 0; i < degree; i++)
+            fmpz_mat_swap(multiplication[i], new_multiplication[i]);
+        workspace->word_multiplication_valid = 0;
+        workspace->fmpz_multiplication_current = 1;
+    }
+    else if (structured_transform > 0)
+    {
         for (slong i = 0; i < degree; i++)
             fmpz_mat_swap(multiplication[i], new_multiplication[i]);
         workspace->word_multiplication_valid = 0;
