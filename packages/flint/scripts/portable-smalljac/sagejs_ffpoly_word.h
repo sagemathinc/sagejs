@@ -36,8 +36,19 @@ static __forceinline sagejs_ffpoly_u128 sagejs_ffpoly_mul64(uint64_t x,
 
 static __forceinline sagejs_ffpoly_u128 sagejs_ffpoly_div128by64(
     uint64_t hi, uint64_t lo, uint64_t divisor) {
-  sagejs_ffpoly_u128 result;
-  result.lo = _udiv128(hi, lo, divisor, &result.hi);
+  sagejs_ffpoly_u128 result = {hi, 0};
+  int bit;
+  /* clang-cl does not expose MSVC's _udiv128.  The upstream macro is not on
+     smalljac's genus-1 hot path, so use exact restoring division here.  As
+     with x86 divq, callers must provide hi < divisor. */
+  for (bit = 63; bit >= 0; bit -= 1) {
+    uint64_t carry = result.hi >> 63;
+    result.hi = (result.hi << 1) | ((lo >> bit) & UINT64_C(1));
+    if (carry || result.hi >= divisor) {
+      result.hi -= divisor;
+      result.lo |= UINT64_C(1) << bit;
+    }
+  }
   return result;
 }
 
