@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5101,
-      "bytes": 166090,
+      "lines": 5107,
+      "bytes": 166379,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,099-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,107-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -238,6 +238,49 @@
         "native Windows fixed-width regression harness"
       ],
       "next": "Keep native Windows CI at the public fixed-width smalljac ABI and propose the conversion boundary upstream."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian.c",
+      "lines": 1016,
+      "bytes": 31157,
+      "decision": "retain-primitive",
+      "priority": "medium",
+      "responsibilities": [
+        "exact odd-degree generalized genus-3 Cantor arithmetic over prime fields",
+        "bounded and cancellable congruence-strided baby-step/giant-step searches",
+        "exact element-order stripping and recheckable prime-factor certificates"
+      ],
+      "rationale": "The ordinary Python Jacobian law is the readable source of truth, but its object and polynomial representation cannot currently be lowered source-transparently and measured all-candidate scalar multiplication dominates certified completion. Keep this bounded representation primitive while Python independently rechecks every returned certificate and decides uniqueness.",
+      "fallback": "The ordinary Python Mumford-divisor law derives and verifies exact element orders when the optional native capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SageMath",
+        "cross-platform exact C vectors",
+        "ASan and UBSan"
+      ],
+      "next": "Maintain cross-platform differential vectors and operation-budget tests; reconsider source-transparent lowering when finite-field polynomial resources can represent the ordinary Python law efficiently."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+      "lines": 326,
+      "bytes": 10981,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "checked fixed-width model and Mumford-divisor ingress",
+        "lossless conversion between JavaScript BigInt and bounded native integers",
+        "Node-API capability, status, diagnostics, and certificate conversion"
+      ],
+      "rationale": "This file is a narrow host adapter around the separately audited genus-3 representation primitive. It contains no candidate-selection or uniqueness policy and exposes explicit bounds, cancellation, and resource statuses.",
+      "fallback": "The Python certification pipeline detects an unavailable capability and uses its ordinary exact Jacobian implementation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "Node-API focused integration tests",
+        "native Windows x64"
+      ],
+      "next": "Keep the adapter limited to one packed search call and capability metadata; do not move certification policy across this boundary."
     },
     {
       "path": "packages/flint/src/hyperelliptic/rforest.c",

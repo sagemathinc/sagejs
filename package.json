@@ -152,6 +152,7 @@
     "bench:matrix:word-prime-resource": "node bench/word-prime-matrix-public.cjs",
     "bench:hyperelliptic-genus3-candidates": "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_benchmark_genus3_candidates.py",
     "bench:hyperelliptic-genus3-certified": "node bench/rforest/benchmark-genus3-certified.cjs",
+    "bench:hyperelliptic-genus3-jacobian": "node bench/hyperelliptic/benchmark-genus3-jacobian-kernel.cjs",
     "bench:dense-prime:public": "./bin/sagejs bench/dense-prime-v2.sage",
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",
