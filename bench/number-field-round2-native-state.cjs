@@ -56,12 +56,17 @@ function hash(value) {
 
 try {
   const optimized = compile("optimized");
+  const generic = compile("generic", ["SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1"]);
   const exact = compile("exact", [
     "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
     "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
   ]);
   const vector010Profile = JSON.parse(run(optimized, ["--profile", "7", "7"]));
   const vector429Profile = JSON.parse(run(optimized, ["--profile", "6", "1"]));
+  const vector429P3Profile = JSON.parse(run(optimized, ["--profile", "8", "1"]));
+  const vector429P3GenericProfile = JSON.parse(run(generic, ["--profile", "8", "1"]));
+  const vector429P5Profile = JSON.parse(run(optimized, ["--profile", "9", "1"]));
+  const vector429P5GenericProfile = JSON.parse(run(generic, ["--profile", "9", "1"]));
   const vector010Payload = run(optimized, ["--payload", "7"]);
   const vector010ExactPayload = run(exact, ["--payload", "7"]);
   assert.equal(vector010Payload, vector010ExactPayload);
@@ -73,6 +78,12 @@ try {
     vector429Hash,
     "b28344d042188afbe0098851928665faaae0268ad8b5cf0e03d790468cb6a644",
   );
+  const vector429P3Payload = run(optimized, ["--payload", "8"]);
+  const vector429P3ExactPayload = run(exact, ["--payload", "8"]);
+  assert.equal(vector429P3Payload, vector429P3ExactPayload);
+  const vector429P5Payload = run(optimized, ["--payload", "9"]);
+  const vector429P5ExactPayload = run(exact, ["--payload", "9"]);
+  assert.equal(vector429P5Payload, vector429P5ExactPayload);
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.number-fields/round2-native-state-benchmark/v1",
     source: {
@@ -87,7 +98,7 @@ try {
       vector010Rounds: 7,
       vector429Rounds: 1,
       pariVector010ReferenceUs: 37000,
-      exactness: "byte-identical forced exact vector010, frozen forced-exact vector429 SHA-256, and 32 deterministic randomized differentials",
+      exactness: "byte-identical forced exact vector010 and vector429 p=3/p=5 payloads, frozen forced-exact vector429 p=2 SHA-256, and 32 deterministic randomized differentials",
     },
     vector010: {
       profile: vector010Profile,
@@ -98,6 +109,22 @@ try {
     vector429: {
       profile: vector429Profile,
       payloadSha256: vector429Hash,
+    },
+    vector429P3: {
+      profile: vector429P3Profile,
+      genericProfile: vector429P3GenericProfile,
+      speedup: vector429P3GenericProfile.stageMeanUs.round2 /
+        vector429P3Profile.stageMeanUs.round2,
+      payloadSha256: hash(vector429P3Payload),
+      forcedExactPayloadSha256: hash(vector429P3ExactPayload),
+    },
+    vector429P5: {
+      profile: vector429P5Profile,
+      genericProfile: vector429P5GenericProfile,
+      speedup: vector429P5GenericProfile.stageMeanUs.round2 /
+        vector429P5Profile.stageMeanUs.round2,
+      payloadSha256: hash(vector429P5Payload),
+      forcedExactPayloadSha256: hash(vector429P5ExactPayload),
     },
     randomized: {
       seed: 23063,

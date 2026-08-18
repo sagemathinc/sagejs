@@ -123,6 +123,8 @@ static const char *const vector010_coefficients[] = {
     "11928052", "0", "455360", "0", "11216", "0", "160", "0", "1",
 };
 static const char *const prime_2[] = {"2"};
+static const char *const prime_3[] = {"3"};
+static const char *const prime_5[] = {"5"};
 static const char *const primes_2_7[] = {"2", "7"};
 static const char *const primes_2_3_5_11[] = {"2", "3", "5", "11"};
 
@@ -204,6 +206,26 @@ static const benchmark_case cases[] = {
         prime_2,
         sizeof(prime_2) / sizeof(*prime_2),
         "6739986666787659948666753771754907668409286105635143120275902562304",
+        NULL,
+        NULL,
+    },
+    {
+        "pari-round4-vector-429-p3",
+        vector429_coefficients,
+        sizeof(vector429_coefficients) / sizeof(*vector429_coefficients),
+        prime_3,
+        sizeof(prime_3) / sizeof(*prime_3),
+        NULL,
+        NULL,
+        NULL,
+    },
+    {
+        "pari-round4-vector-429-p5",
+        vector429_coefficients,
+        sizeof(vector429_coefficients) / sizeof(*vector429_coefficients),
+        prime_5,
+        sizeof(prime_5) / sizeof(*prime_5),
+        NULL,
         NULL,
         NULL,
     },
@@ -430,7 +452,8 @@ static void assert_result(
     fmpz_init(value);
     read_fmpz(value, result->data, &offset); /* denominator */
     read_fmpz(value, result->data, &offset); /* index */
-    assert_fmpz_string(value, item->index);
+    if (item->index != NULL)
+        assert_fmpz_string(value, item->index);
     read_fmpz(value, result->data, &offset);
     if (item->equation_discriminant != NULL)
         assert_fmpz_string(value, item->equation_discriminant);
