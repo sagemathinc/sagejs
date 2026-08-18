@@ -34,6 +34,14 @@
     "publishMicros": 1393,
     "cleanupMicros": 427,
     "genericMergeMicros": 3214790,
-    "status": "native direct batch below five seconds; full-18 generic-HNF and public frozen-lattice receipts pending"
+    "canonicalSha256": "2c5dade462e02facdccd5a8fa41fdcbb1791ddbe16bf2fc002d41ffc3a9920a3",
+    "forcedGenericHnfEqual": true,
+    "public": {
+      "status": "timeout",
+      "boundSeconds": 120,
+      "observation": "censored after the bound with no stage record because the diagnostic emitted only on completion",
+      "inference": "the separately bounded 4.55-second native batch rules out the former native Round-2 tail; the residual is downstream, but this run cannot distinguish merge, materialization, or certification"
+    },
+    "status": "native direct batch below five seconds and full-18 generic-HNF oracle exact; public path still exceeds 120 seconds downstream"
   }
 }

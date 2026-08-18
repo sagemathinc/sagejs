@@ -4,10 +4,10 @@
   "id": "nf-opt-round2-degree90",
   "title": "Degree-90 packed Round-2 tail",
   "lane": "distribution",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Extend the exact proof-carrying packed Round-2 terminal state safely through degree 90, profile the degree-90 public tail, and reduce its native batch below five seconds when attainable while preserving exact generic equality and lifecycle safety",
-  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
+  "base_commit": "284f150125c2246c7263ed67e8de3e032952f650",
   "claims": [
     "packages/flint/include/sagejs/number_field_order_ffi.h",
     "packages/flint/test/number_field_order_ffi.c",
@@ -23,7 +23,7 @@
     "fallback": "tested-capability",
     "oracles": [
       "forced generic FLINT order payload equality",
-      "randomized degree >64 differential controls"
+      "randomized degree >=64 differential controls"
     ],
     "exceptions": [
       "Extends the existing FLINT host adapter and packed fmpz representation primitive; no mathematical algorithm is selected by function name and exact generic FLINT remains the tested capability fallback."
@@ -42,8 +42,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Independent immutable-source p-maximal solves now cover degrees 64 through 96 with a deterministic RSS-bounded pthread schedule and exact sequential non-pthread fallback. Pairwise-coprime local orders are combined as scaled generators in the shared power basis. Equation-order containment supplies the exact largest-elementary-divisor bound for FLINT modular row HNF. Degree90's 18-prime batch is 4.55s and byte-identical to forced generic HNF; vector429's degree64 p=2,3,5 production boundary is 1.85s and byte-identical to the compounded sequential result.",
+    "risks": [
+      "The fresh degree90 public path still exceeded 120 seconds after the native tail was reduced to 4.55 seconds. The censored diagnostic emitted no stage marker, so the remaining downstream merge/materialization/certification stage must be isolated with an externally bounded marker-emitting probe.",
+      "Native Windows FLINT intentionally uses the exact one-lane fallback because FLINT_USES_PTHREAD is false; it has correctness coverage but not the pthread performance capability.",
+      "Current performance receipts are Linux x64. Linux arm64, macOS arm64, and native Windows x64 remain integration CI requirements."
+    ],
+    "next_steps": [
+      "Integrate commit 11bf5fd05ef81a61f3686d51ff0735fa135abb2f and the final receipt follow-up.",
+      "Profile the degree90 public path with an external process-group timeout and streaming stage markers to locate the downstream >120-second residual without repeating native work.",
+      "Run the registered focused normal/sanitized witness and architecture checks at final integration, then exercise the non-pthread fallback on native Windows CI."
+    ]
   }
 }
