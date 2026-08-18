@@ -57,6 +57,8 @@ if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
 const jobs =
   configuredJobs ||
   String(Math.min(8, availableParallelism?.() || cpus().length || 2));
+const forcePortableSmalljac =
+  process.env.SAGEJS_FORCE_PORTABLE_SMALLJAC === "1";
 const macosDeploymentTarget = process.platform === "darwin"
   ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
   : undefined;
@@ -474,14 +476,53 @@ function installFiles(source, paths, destination) {
   }
 }
 
+function preparePortableSmalljacSource(source, name) {
+  const cstd = join(source, "cstd.h");
+  // Both upstream archives ship cstd.h with CRLF line endings.  Normalize this
+  // one patched file so the checked-in patch applies identically on Unix and
+  // native Windows checkouts.
+  writeFileSync(cstd, readFileSync(cstd, "utf8").replace(/\r\n/g, "\n"));
+  if (name === "ffpoly") {
+    copyFileSync(
+      join(
+        packageRoot,
+        "scripts",
+        "portable-smalljac",
+        "sagejs_ffpoly_word.h",
+      ),
+      join(source, "sagejs_ffpoly_word.h"),
+    );
+  }
+  run(
+    "git",
+    [
+      "apply",
+      "--whitespace=nowarn",
+      join(packageRoot, "patches", `${name}-portability.patch`),
+    ],
+    {
+      cwd: source,
+      env: { GIT_CEILING_DIRECTORIES: packageRoot },
+    },
+  );
+}
+
 function buildFfpoly(source) {
-  const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  const forcePortable = forcePortableSmalljac || process.arch !== "x64";
+  const cflags = [
+    "-O3",
+    "-fPIC",
+    "-fomit-frame-pointer",
+    "-funroll-loops",
+    "-std=gnu99",
+    ...(forcePortable ? ["-DSAGEJS_FFPOLY_PORTABLE=1"] : []),
+  ].join(" ");
   run(
     "make",
     [
       `-j${jobs}`,
       "libff_poly.a",
+      `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
@@ -504,6 +545,7 @@ function buildFfpoly(source) {
       "ffpolysmall.h",
       "ntutil.h",
       "polyparse.h",
+      "sagejs_ffpoly_word.h",
     ],
     join(prefix, "include", "ff_poly")
   );
@@ -511,12 +553,13 @@ function buildFfpoly(source) {
 
 function buildSmalljac(source) {
   const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -std=gnu99";
   run(
     "make",
     [
       `-j${jobs}`,
       "libsmalljac.a",
+      `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
@@ -532,13 +575,12 @@ async function main() {
     buildWindowsDependencies();
     return;
   }
-  const smalljacAccelerator =
-    process.platform === "linux" && process.arch === "x64";
   const supportedUnix =
     (process.platform === "linux" &&
       (process.arch === "x64" || process.arch === "arm64")) ||
     (process.platform === "darwin" &&
       (process.arch === "arm64" || process.arch === "x64"));
+  const smalljacAccelerator = supportedUnix;
   if (!supportedUnix) {
     throw new Error(
       `the native FLINT backend does not yet support ${process.platform}/${process.arch}`
@@ -557,7 +599,7 @@ async function main() {
     "flint",
     prefix,
     prebuiltRequired,
-  )) {
+  ) && !forcePortableSmalljac) {
     process.stdout.write(`Using prebuilt FLINT dependencies in ${prefix}\n`);
     return;
   }
@@ -573,6 +615,10 @@ async function main() {
     openblas:
       dependencies.find(({ name }) => name === "openblas").version,
     openblasBuild: "threaded-cblas-dynamic-v1",
+    smalljacArithmetic:
+      forcePortableSmalljac || process.arch !== "x64"
+        ? "portable-v1"
+        : "gnu-x86-64-asm",
     ...(smalljacAccelerator
       ? {
           smalljac:
@@ -621,8 +667,12 @@ async function main() {
   buildOpenBlas(source("openblas"));
   buildFlint(source("flint"));
   if (smalljacAccelerator) {
-    buildFfpoly(source("ffpoly"));
-    buildSmalljac(source("smalljac"));
+    const ffpolySource = source("ffpoly");
+    const smalljacSource = source("smalljac");
+    preparePortableSmalljacSource(ffpolySource, "ffpoly");
+    preparePortableSmalljacSource(smalljacSource, "smalljac");
+    buildFfpoly(ffpolySource);
+    buildSmalljac(smalljacSource);
   }
   const buildStamp = {
     build: expectedBuild,

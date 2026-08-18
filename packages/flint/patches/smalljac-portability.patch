@@ -1,0 +1,14 @@
+diff --git a/cstd.h b/cstd.h
+--- a/cstd.h
++++ b/cstd.h
+@@ -76,8 +76,8 @@ static inline unsigned long cstd_seed(void)
+ #define _min(a,b)		((a)<(b)?(a):(b))		// generic min, not safe with side-effects
+ 
+ // Some handy utility functions
+-static inline unsigned long _asm_highbit (unsigned long x) { asm ("bsrq %0, %0" : "=r" (x) : "0" (x)); return x; }
+-static inline unsigned long _asm_lowbit (unsigned long x) { asm ("bsfq %0, %0" : "=r" (x) : "0" (x)); return x; }
++static inline unsigned long _asm_highbit (unsigned long x) { return (unsigned long)(LONG_BITS-1-__builtin_clzl(x)); }
++static inline unsigned long _asm_lowbit (unsigned long x) { return (unsigned long)__builtin_ctzl(x); }
+ static inline unsigned long ui_ceil_ratio (unsigned long a, unsigned long b)
+ 	{ register unsigned long x = a/b;  return ( x*b<a ? x+1 : x ); }
+ static inline int ui_len (unsigned long x) { return LONG_BITS-__builtin_clzl(x); }
