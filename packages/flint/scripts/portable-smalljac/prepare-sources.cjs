@@ -69,6 +69,8 @@ function transformDirectory(directory) {
 function prepareSources(ffpolySource, smalljacSource, options = {}) {
   normalize(join(ffpolySource, "cstd.h"));
   normalize(join(smalljacSource, "cstd.h"));
+  normalize(join(smalljacSource, "smalljac.c"));
+  normalize(join(smalljacSource, "smalljac_tiny.c"));
   copyFileSync(
     join(__dirname, "sagejs_ffpoly_word.h"),
     join(ffpolySource, "sagejs_ffpoly_word.h"),

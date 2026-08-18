@@ -1,0 +1,3566 @@
+{
+  "schema": "sagejs.elliptic-lseries/sage-pari-oracles-v1",
+  "description": "Pinned non-rigorous arbitrary-precision complex L-value oracles from Sage/PARI.",
+  "semantic_warning": "Values are numerical approximations. Analytic-rank labels, especially ranks 4 and 5, are not proofs of exact vanishing.",
+  "normalization": {
+    "raw": "L(E,s) = sum_(n>=1) a_n*n^(-s), continued analytically",
+    "completed": "Lambda(E,s) = (sqrt(N)/(2*pi))^s*Gamma(s)*L(E,s)",
+    "functional_equation": "Lambda(E,s) = root_number*Lambda(E,2-s)"
+  },
+  "source_spec": {
+    "path": "test/data/elliptic-lseries/corpus-spec.json",
+    "sha256": "1075224bba52197056a3ef3d26db7e5ed6e473e19f3f7bcfd561f5049205312a"
+  },
+  "provenance": {
+    "captured_on": "2026-08-18",
+    "sage_version": "10.9.post1",
+    "sage_git_revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+    "pari_version": "[2, 17, 1]",
+    "python_version": "3.14.4",
+    "platform": "Linux-6.17.0-1022-gcp-x86_64-with-glibc2.43",
+    "algorithm": "PARI lfuninit/lfun/lfunlambda through Sage",
+    "pari_completed_to_canonical_factor": "1/2",
+    "pari_completed_normalization_note": "For elliptic gammaV=[0,1], PARI lfunlambda is twice (sqrt(N)/(2*pi))^s*Gamma(s)*L(E,s). Stored completed values divide PARI's result by two.",
+    "single_process": true,
+    "working_precision_bits": 264,
+    "initialization_domain": {
+      "center": "1",
+      "width": "4",
+      "height": "11",
+      "derivative_order": 0,
+      "guard_bits_above_maximum_output_precision": 64
+    },
+    "total_capture_seconds": 3.0274943170006736
+  },
+  "precisions_bits": [
+    53,
+    100,
+    200
+  ],
+  "points": [
+    {
+      "id": "s2",
+      "real": "2",
+      "imag": "0",
+      "purposes": [
+        "real-axis",
+        "direct-series-check"
+      ]
+    },
+    {
+      "id": "center-plus-i",
+      "real": "1",
+      "imag": "1",
+      "purposes": [
+        "critical-line",
+        "public-example",
+        "conjugation"
+      ]
+    },
+    {
+      "id": "center-minus-i",
+      "real": "1",
+      "imag": "-1",
+      "purposes": [
+        "critical-line",
+        "conjugation"
+      ]
+    },
+    {
+      "id": "center-plus-10i",
+      "real": "1",
+      "imag": "10",
+      "purposes": [
+        "moderate-height",
+        "gamma-guard-bits"
+      ]
+    },
+    {
+      "id": "center-minus-10i",
+      "real": "1",
+      "imag": "-10",
+      "purposes": [
+        "moderate-height",
+        "conjugation"
+      ]
+    },
+    {
+      "id": "half-plus-i",
+      "real": "1/2",
+      "imag": "1",
+      "purposes": [
+        "critical-strip",
+        "functional-equation"
+      ]
+    },
+    {
+      "id": "three-halves-minus-i",
+      "real": "3/2",
+      "imag": "-1",
+      "purposes": [
+        "critical-strip",
+        "functional-equation"
+      ]
+    },
+    {
+      "id": "zero",
+      "real": "0",
+      "imag": "0",
+      "purposes": [
+        "trivial-zero"
+      ]
+    },
+    {
+      "id": "minus-one",
+      "real": "-1",
+      "imag": "0",
+      "purposes": [
+        "trivial-zero",
+        "left-half-plane"
+      ]
+    },
+    {
+      "id": "near-minus-one",
+      "real": "-1048575/1048576",
+      "imag": "0",
+      "purposes": [
+        "near-trivial-zero",
+        "no-zero-snapping",
+        "large-functional-factor"
+      ]
+    },
+    {
+      "id": "minus-two",
+      "real": "-2",
+      "imag": "0",
+      "purposes": [
+        "trivial-zero",
+        "left-half-plane"
+      ]
+    }
+  ],
+  "records": [
+    {
+      "id": "11a1",
+      "a_invariants": [
+        "0",
+        "-1",
+        "1",
+        "-10",
+        "-20"
+      ],
+      "conductor": "11",
+      "root_number": 1,
+      "probable_analytic_rank": 0,
+      "profile": "moderate-height",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "252247a9dc3cb9a5684a9cf91fa085e6a07cb3a963ec9cabbb6cd419b3218d1a"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 120,
+        "100": 227,
+        "200": 491
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.54604803621501352",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "-0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.028781515608044643",
+            "imag": "-0.061078203070402418"
+          },
+          "completed": {
+            "real": "4.2575106732342545e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.028781515608044643",
+            "imag": "0.061078203070402418"
+          },
+          "completed": {
+            "real": "4.2575106732342545e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.033828093781262093",
+            "imag": "0.32023034106843346"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.44560335471462897",
+            "imag": "-0.31488599017639257"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251128",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034216",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.54604803621501351833412666043343",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "-0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.028781515608044642908701813454452",
+            "imag": "-0.061078203070402417683471855934543"
+          },
+          "completed": {
+            "real": "4.2575106732342546404385050287298e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.028781515608044642908701813454452",
+            "imag": "0.061078203070402417683471855934543"
+          },
+          "completed": {
+            "real": "4.2575106732342546404385050287298e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.033828093781262090808699927640499",
+            "imag": "0.32023034106843343259747709410508"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.44560335471462898329084574287681",
+            "imag": "-0.31488599017639258636911316222745"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705901",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413237",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.54604803621501351833412666043344433859065366199738223842218924",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "-0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.028781515608044642908701813454462859623865848254982769077635173",
+            "imag": "-0.061078203070402417683471855934555688792215769807111187321796797"
+          },
+          "completed": {
+            "real": "4.2575106732342546404385050287305860547767442541952336305910813e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.028781515608044642908701813454462859623865848254982769077635173",
+            "imag": "0.061078203070402417683471855934555688792215769807111187321796797"
+          },
+          "completed": {
+            "real": "4.2575106732342546404385050287305860547767442541952336305910813e-8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.033828093781262090808699927640517445181434734279807222019973306",
+            "imag": "0.32023034106843343259747709410490224912156631268218587979344937"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.44560335471462898329084574287699130117231637077138480763096353",
+            "imag": "-0.31488599017639258636911316222728584768922927190683284454100870"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705895983109431045579277519964256148",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413251694092082537650415396540216395",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.030808919000264723
+    },
+    {
+      "id": "37a1",
+      "a_invariants": [
+        "0",
+        "0",
+        "1",
+        "-1",
+        "0"
+      ],
+      "conductor": "37",
+      "root_number": -1,
+      "probable_analytic_rank": 1,
+      "profile": "moderate-height",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "6855e53bc8fb68b3e896a68c3eecead10cb07fca027fb7d443e2a114204c6b6e"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 220,
+        "100": 416,
+        "200": 900
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.38157540826071124",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.35762046612749765",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.15892526330137721",
+            "imag": "0.45791106676511545"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "0.24474110864091975"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.15892526330137721",
+            "imag": "-0.45791106676511545"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-0.24474110864091975"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.12523229140732198",
+            "imag": "0.096879750852474855"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1.8310324602231788e-7"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.12523229140732198",
+            "imag": "-0.096879750852474855"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1.8310324602231788e-7"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.53426462621296322",
+            "imag": "0.17193092197144078"
+          },
+          "completed": {
+            "real": "-0.077242359748119646",
+            "imag": "0.27691135947408607"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.19798056084379079",
+            "imag": "-0.47925235518706660"
+          },
+          "completed": {
+            "real": "0.077242359748119646",
+            "imag": "-0.27691135947408607"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-0.35762046612749765",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.2401943305121250",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4662327415251344",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.38157540826071121129371040957990",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.35762046612749764999894256921367",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.15892526330137719911066343211106",
+            "imag": "0.45791106676511544815193538931316"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "0.24474110864091973769992186003833"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.15892526330137719911066343211106",
+            "imag": "-0.45791106676511544815193538931316"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-0.24474110864091973769992186003833"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.12523229140732198274409776637966",
+            "imag": "0.096879750852474855037725555619861"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1.8310324602231787098236572562931e-7"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.12523229140732198274409776637966",
+            "imag": "-0.096879750852474855037725555619861"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1.8310324602231787098236572562931e-7"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.53426462621296317745322296086146",
+            "imag": "0.17193092197144078579277371824506"
+          },
+          "completed": {
+            "real": "-0.077242359748119643133040011367458",
+            "imag": "0.27691135947408608696133273024450"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.19798056084379079915952357880497",
+            "imag": "-0.47925235518706661534706095099062"
+          },
+          "completed": {
+            "real": "0.077242359748119643133040011367458",
+            "imag": "-0.27691135947408608696133273024450"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-0.35762046612749764999894256921367",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.2401943305121250745527303062257",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4662327415251345747502732862270",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.38157540826071121129371040958008663667709753398892116067100311",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.35762046612749764999894256921379694386496885544587066659774919",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.15892526330137719911066343211103092304460066413791141144500813",
+            "imag": "0.45791106676511544815193538931312204288528435247845393722520255"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "0.24474110864091973769992186003823290201905115138943100932532904"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.15892526330137719911066343211103092304460066413791141144500813",
+            "imag": "-0.45791106676511544815193538931312204288528435247845393722520255"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-0.24474110864091973769992186003823290201905115138943100932532904"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.12523229140732198274409776637963775586070119025682127581985086",
+            "imag": "0.096879750852474855037725555619814379065360541105174378540499882"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1.8310324602231787098236572562924392292932563066835521415951497e-7"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.12523229140732198274409776637963775586070119025682127581985086",
+            "imag": "-0.096879750852474855037725555619814379065360541105174378540499882"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1.8310324602231787098236572562924392292932563066835521415951497e-7"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.53426462621296317745322296086164202399780203425687043092813870",
+            "imag": "0.17193092197144078579277371824512454033144940506333672075304833"
+          },
+          "completed": {
+            "real": "-0.077242359748119643133040011367459553975808277319870480674442284",
+            "imag": "0.27691135947408608696133273024462837775432430593802260301500112"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.19798056084379079915952357880506065263684438693847402646518569",
+            "imag": "-0.47925235518706661534706095099047404188660055052322668142417251"
+          },
+          "completed": {
+            "real": "0.077242359748119643133040011367459553975808277319870480674442284",
+            "imag": "-0.27691135947408608696133273024462837775432430593802260301500112"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-0.35762046612749764999894256921379694386496885544587066659774919",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.2401943305121250745527303062258533723319473963699513296525950",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4662327415251345747502732862300595824148305501591242893068108",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.01134425999771338
+    },
+    {
+      "id": "389a1",
+      "a_invariants": [
+        "0",
+        "1",
+        "1",
+        "-2",
+        "0"
+      ],
+      "conductor": "389",
+      "root_number": 1,
+      "probable_analytic_rank": 2,
+      "profile": "standard",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "3813564a6ef8f94a646d55f34f24d7be37db02b90f9fd6b3e0ec1486bc0033c3"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 714,
+        "100": 1351,
+        "200": 2920
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.36009286357888071",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.63840993858803874",
+            "imag": "0.71549523920466740"
+          },
+          "completed": {
+            "real": "-1.5699239241148841",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.63840993858803874",
+            "imag": "-0.71549523920466740"
+          },
+          "completed": {
+            "real": "-1.5699239241148841",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-2.2749825273656312",
+            "imag": "-0.74457539427312702"
+          },
+          "completed": {
+            "real": "-1.9320324968836675",
+            "imag": "-1.0685694117008182"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.15580231426050931",
+            "imag": "-0.66403065839030950"
+          },
+          "completed": {
+            "real": "-1.9320324968836675",
+            "imag": "-1.0685694117008182"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "42.847172682455451",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "497.97550091496805",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.36009286357888072969800409205496",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352789550440390474",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.63840993858803874552930425128934",
+            "imag": "0.71549523920466737289281158591193"
+          },
+          "completed": {
+            "real": "-1.5699239241148841888979827170698",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.63840993858803874552930425128934",
+            "imag": "-0.71549523920466737289281158591193"
+          },
+          "completed": {
+            "real": "-1.5699239241148841888979827170698",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-2.2749825273656312312463534747799",
+            "imag": "-0.74457539427312698339246389576894"
+          },
+          "completed": {
+            "real": "-1.9320324968836674490214707258025",
+            "imag": "-1.0685694117008181251322455842474"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.15580231426050931576339813288355",
+            "imag": "-0.66403065839030953489370438129499"
+          },
+          "completed": {
+            "real": "-1.9320324968836674490214707258025",
+            "imag": "-1.0685694117008181251322455842474"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352789550440390474",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "42.847172682455450629333743661049",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "497.97550091496807182093336193386",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.36009286357888072969800409205483284502559868347846348449327886",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352789550440390489563699845463285785842525201907",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.63840993858803874552930425128962606427781470113191886637942880",
+            "imag": "0.71549523920466737289281158591192309420033856359972594654817079"
+          },
+          "completed": {
+            "real": "-1.5699239241148841888979827170691488304929601164744038396403894",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.63840993858803874552930425128962606427781470113191886637942880",
+            "imag": "-0.71549523920466737289281158591192309420033856359972594654817079"
+          },
+          "completed": {
+            "real": "-1.5699239241148841888979827170691488304929601164744038396403894",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-2.2749825273656312312463534747810670253682089893797301084871721",
+            "imag": "-0.74457539427312698339246389576895083135362367025224953028413366"
+          },
+          "completed": {
+            "real": "-1.9320324968836674490214707258021606303147092668720434465086602",
+            "imag": "-1.0685694117008181251322455842467355932340525931119288374653602"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.15580231426050931576339813288355914124641083747210553530569925",
+            "imag": "-0.66403065839030953489370438129522820895733120473617580725223453"
+          },
+          "completed": {
+            "real": "-1.9320324968836674490214707258021606303147092668720434465086602",
+            "imag": "-1.0685694117008181251322455842467355932340525931119288374653602"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.5481696692099352789550440390489563699845463285785842525201907",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "42.847172682455450629333743661024586240400602863468475272878244",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "497.97550091496807182093336193375182262867860901514161351200489",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.010870940001041163
+    },
+    {
+      "id": "5077a1",
+      "a_invariants": [
+        "0",
+        "0",
+        "1",
+        "-7",
+        "6"
+      ],
+      "conductor": "5077",
+      "root_number": -1,
+      "probable_analytic_rank": 3,
+      "profile": "standard",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "9421c2c2b06fe099ba8f97b0770113ada1292d2a9fcf3abba313e65d5c326d19"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 2579,
+        "100": 4883,
+        "200": 10550
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.30563707099939436",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "39.305511811918571",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-1.3085436607849494",
+            "imag": "0.81298000036784357"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-9.1117256202703327"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-1.3085436607849494",
+            "imag": "-0.81298000036784357"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "9.1117256202703327"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-7.0937171811123321",
+            "imag": "-6.0528115967037497"
+          },
+          "completed": {
+            "real": "9.3509983777331129",
+            "imag": "-13.409408921767573"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.035180864862575260",
+            "imag": "-0.73464414383948173"
+          },
+          "completed": {
+            "real": "-9.3509983777331129",
+            "imag": "13.409408921767573"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-39.305511811918571",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1936.3098904855335",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-83695.626379171023",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.30563707099939436655490031665056",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "39.305511811918571091845671192526",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-1.3085436607849493358323930438319",
+            "imag": "0.81298000036784359634835412129371"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-9.1117256202703319905456163627673"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-1.3085436607849493358323930438319",
+            "imag": "-0.81298000036784359634835412129371"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "9.1117256202703319905456163627673"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-7.0937171811123324628590513560752",
+            "imag": "-6.0528115967037497172345228112619"
+          },
+          "completed": {
+            "real": "9.3509983777331128796747926257919",
+            "imag": "-13.409408921767573182885656759116"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.035180864862575257682355715895685",
+            "imag": "-0.73464414383948174219011707160769"
+          },
+          "completed": {
+            "real": "-9.3509983777331128796747926257919",
+            "imag": "13.409408921767573182885656759116"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-39.305511811918571091845671192526",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1936.3098904855334742842335303998",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-83695.626379171016105354054682894",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.30563707099939436655490031665043871098781853000769634317177877",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "39.305511811918571091845671192540380360788845325914302920484033",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-1.3085436607849493358323930438325033508580292124208198212285189",
+            "imag": "0.81298000036784359634835412129362168530876143498511315919229550"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-9.1117256202703319905456163627683231932503248359032840560674015"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-1.3085436607849493358323930438325033508580292124208198212285189",
+            "imag": "-0.81298000036784359634835412129362168530876143498511315919229550"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "9.1117256202703319905456163627683231932503248359032840560674015"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-7.0937171811123324628590513560771367766562465287501160326461312",
+            "imag": "-6.0528115967037497172345228112636223013681136493334488044175363"
+          },
+          "completed": {
+            "real": "9.3509983777331128796747926257954107681563857915272012560689543",
+            "imag": "-13.409408921767573182885656759113534901269703850424257164169779"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.035180864862575257682355715895666719100807409700759844244454271",
+            "imag": "-0.73464414383948174219011707160760200565322773064559654496826684"
+          },
+          "completed": {
+            "real": "-9.3509983777331128796747926257954107681563857915272012560689543",
+            "imag": "13.409408921767573182885656759113534901269703850424257164169779"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-39.305511811918571091845671192540380360788845325914302920484033",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1936.3098904855334742842335303998554297448333293898999387497230",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-83695.626379171016105354054682845185750708007651376778281671238",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.01658612999744946
+    },
+    {
+      "id": "234446a1",
+      "a_invariants": [
+        "1",
+        "-1",
+        "0",
+        "-79",
+        "289"
+      ],
+      "conductor": "234446",
+      "root_number": 1,
+      "probable_analytic_rank": 4,
+      "profile": "standard",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "024292226e113f005d6ada8faa60483ec5ee73231bacc47d1d53b2c5c7e32c9a"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 17531,
+        "100": 33182,
+        "200": 71694
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.37547727769173567",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279984",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-2.7477955745157550",
+            "imag": "3.4724895782066634"
+          },
+          "completed": {
+            "real": "177.98036417955728",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-2.7477955745157550",
+            "imag": "-3.4724895782066634"
+          },
+          "completed": {
+            "real": "177.98036417955728",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-96.732352102117332",
+            "imag": "-22.270725896800123"
+          },
+          "completed": {
+            "real": "403.55758643093742",
+            "imag": "207.18134755635563"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.29469645750008605",
+            "imag": "-1.1137733816938726"
+          },
+          "completed": {
+            "real": "403.55758643093742",
+            "imag": "207.18134755635563"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279984",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "688750.19363901496",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.9018411846204367e8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.37547727769173566902827029067868",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279982264070374460174",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-2.7477955745157547451816799747094",
+            "imag": "3.4724895782066633824326061140607"
+          },
+          "completed": {
+            "real": "177.98036417955728729452783405127",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-2.7477955745157547451816799747094",
+            "imag": "-3.4724895782066633824326061140607"
+          },
+          "completed": {
+            "real": "177.98036417955728729452783405127",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-96.732352102117338512409701229412",
+            "imag": "-22.270725896800122047604779017244"
+          },
+          "completed": {
+            "real": "403.55758643093741212618366685654",
+            "imag": "207.18134755635561861691876918506"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.29469645750008607642809039553930",
+            "imag": "-1.1137733816938726330612657540243"
+          },
+          "completed": {
+            "real": "403.55758643093741212618366685654",
+            "imag": "207.18134755635561861691876918506"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279982264070374460174",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "688750.19363901498421859861481284",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.9018411846204366590892714445680e8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.37547727769173566902827029067882762352463794947971120307673175",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279982264070374460186059031133748343515203136145470",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-2.7477955745157547451816799747086007491477401688914364128282228",
+            "imag": "3.4724895782066633824326061140595147755115797879840948698287877"
+          },
+          "completed": {
+            "real": "177.98036417955728729452783405118600569470623814355809871866143",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-2.7477955745157547451816799747086007491477401688914364128282228",
+            "imag": "-3.4724895782066633824326061140595147755115797879840948698287877"
+          },
+          "completed": {
+            "real": "177.98036417955728729452783405118600569470623814355809871866143",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-96.732352102117338512409701229382795157480993394104699628404909",
+            "imag": "-22.270725896800122047604779017252842991875799172359347929459570"
+          },
+          "completed": {
+            "real": "403.55758643093741212618366685662976249838677763462858723359635",
+            "imag": "207.18134755635561861691876918503431070125810503231969558003144"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.29469645750008607642809039553946530735435749097775375268632939",
+            "imag": "-1.1137733816938726330612657540239332918487105146170219067624410"
+          },
+          "completed": {
+            "real": "403.55758643093741212618366685662976249838677763462858723359635",
+            "imag": "207.18134755635561861691876918503431070125810503231969558003144"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "2229.8043130279982264070374460186059031133748343515203136145470",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "688750.19363901498421859861481322802932801110940570696972502293",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.9018411846204366590892714445672581674736766509752398006995076e8",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.06354703899705783
+    },
+    {
+      "id": "rank5-sage",
+      "a_invariants": [
+        "0",
+        "0",
+        "1",
+        "-79",
+        "342"
+      ],
+      "conductor": "19047851",
+      "root_number": -1,
+      "probable_analytic_rank": 5,
+      "profile": "standard",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "82ee9f0922011d75290bb3830c0276bd4760311feb7f5060591e04778d0e333f"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 158024,
+        "100": 299095,
+        "200": 646234
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.30209910412664887",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "145759.10261415233",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.20618477865787080",
+            "imag": "4.9690189884949749"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1801.7518651304038"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.20618477865787080",
+            "imag": "-4.9690189884949749"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1801.7518651304038"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-361.25342040834158",
+            "imag": "595.06094829981907"
+          },
+          "completed": {
+            "real": "1419.9919049840526",
+            "imag": "9445.1130107110475"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.23311618020911626",
+            "imag": "-0.86554132629060687"
+          },
+          "completed": {
+            "real": "-1419.9919049840526",
+            "imag": "-9445.1130107110475"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-145759.10261415233",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4771246242246097e8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.1798752653726597e12",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.30209910412664887601230181574045",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "145759.10261415232561840492455359",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.20618477865787079762843203097941",
+            "imag": "4.9690189884949749247632034695393"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1801.7518651304037406081536584929"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.20618477865787079762843203097941",
+            "imag": "-4.9690189884949749247632034695393"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1801.7518651304037406081536584929"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-361.25342040834156778358716754038",
+            "imag": "595.06094829981903115887214992704"
+          },
+          "completed": {
+            "real": "1419.9919049840524941882332493950",
+            "imag": "9445.1130107110467429373803212434"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.23311618020911626100770853152061",
+            "imag": "-0.86554132629060687900292764444141"
+          },
+          "completed": {
+            "real": "-1419.9919049840524941882332493950",
+            "imag": "-9445.1130107110467429373803212434"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-145759.10261415232561840492455359",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4771246242246098041381858326467e8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.1798752653726597228425314871029e12",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.30209910412664887601230181574062475628733368327021813338646501",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "145759.10261415232561840492455356495121637032633264268233727160",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.20618477865787079762843203097935177675011246636831738697109282",
+            "imag": "4.9690189884949749247632034695374142225637237091785038869700358"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "1801.7518651304037406081536584932077532884503619231438619995081"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.20618477865787079762843203097935177675011246636831738697109282",
+            "imag": "-4.9690189884949749247632034695374142225637237091785038869700358"
+          },
+          "completed": {
+            "real": "0",
+            "imag": "-1801.7518651304037406081536584932077532884503619231438619995081"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-361.25342040834156778358716754019400506377663736732015455714227",
+            "imag": "595.06094829981903115887214992689924829642904053463813022942086"
+          },
+          "completed": {
+            "real": "1419.9919049840524941882332493944464777781480331584015444137909",
+            "imag": "9445.1130107110467429373803212428519963875503231965393054981230"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.23311618020911626100770853152053290394486057723631429749953791",
+            "imag": "-0.86554132629060687900292764444106835723989262467640668438289655"
+          },
+          "completed": {
+            "real": "-1419.9919049840524941882332493944464777781480331584015444137909",
+            "imag": "-9445.1130107110467429373803212428519963875503231965393054981230"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-145759.10261415232561840492455356495121637032633264268233727160",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-4.4771246242246098041381858326483975045555909478347713247021020e8",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "-1.1798752653726597228425314871032475250922668175513577635632161e12",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.4939122369978577
+    },
+    {
+      "id": "user-rank2",
+      "a_invariants": [
+        "2",
+        "3",
+        "1",
+        "4",
+        "50"
+      ],
+      "conductor": "1008811",
+      "root_number": 1,
+      "probable_analytic_rank": 2,
+      "profile": "standard",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "d233fafcae3ebc2a39594a8e1d96050e61b34ccf91cfcb8ac0850c811cfa106f"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 36366,
+        "100": 68832,
+        "200": 148720
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.49992068727327665",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.0016531982433007708",
+            "imag": "0.027412553308213662"
+          },
+          "completed": {
+            "real": "2.2896574706639314",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.0016531982433007708",
+            "imag": "-0.027412553308213662"
+          },
+          "completed": {
+            "real": "2.2896574706639314",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-67.838446796287968",
+            "imag": "36.377925451594109"
+          },
+          "completed": {
+            "real": "448.12626508199025",
+            "imag": "236.40891695099049"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.36229940836447727",
+            "imag": "-0.23290607521264148"
+          },
+          "completed": {
+            "real": "448.12626508199025",
+            "imag": "236.40891695099049"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "5.9369424319292512e6",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.3761316805140715e9",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.49992068727327664862836467389662",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191248929070523384",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.0016531982433007707303381824325672",
+            "imag": "0.027412553308213663431501642678147"
+          },
+          "completed": {
+            "real": "2.2896574706639313049747432827126",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.0016531982433007707303381824325672",
+            "imag": "-0.027412553308213663431501642678147"
+          },
+          "completed": {
+            "real": "2.2896574706639313049747432827126",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-67.838446796287971033773859910896",
+            "imag": "36.377925451594110499877573896565"
+          },
+          "completed": {
+            "real": "448.12626508199023216815334230067",
+            "imag": "236.40891695099047945982863396110"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.36229940836447726239788684404981",
+            "imag": "-0.23290607521264148670418065917560"
+          },
+          "completed": {
+            "real": "448.12626508199023216815334230067",
+            "imag": "236.40891695099047945982863396110"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191248929070523384",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "5.9369424319292509908561872553086e6",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.3761316805140712334311834190754e9",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.49992068727327664862836467389677037250647457437991800899467693",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191248929070523381656053279610292890257106970116",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.0016531982433007707303381824325664478248234124799073598121260705",
+            "imag": "0.027412553308213663431501642678150332353690728192170280141099718"
+          },
+          "completed": {
+            "real": "2.2896574706639313049747432827121212703011873362595173715951413",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.0016531982433007707303381824325664478248234124799073598121260705",
+            "imag": "-0.027412553308213663431501642678150332353690728192170280141099718"
+          },
+          "completed": {
+            "real": "2.2896574706639313049747432827121212703011873362595173715951413",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-67.838446796287971033773859910911776610823018148856850683877060",
+            "imag": "36.377925451594110499877573896572362476506537624697951536835534"
+          },
+          "completed": {
+            "real": "448.12626508199023216815334230068117270666478356151963407779687",
+            "imag": "236.40891695099047945982863396104827353369764125030527174596831"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.36229940836447726239788684404979442161629582380662311666438259",
+            "imag": "-0.23290607521264148670418065917551875423216964292018427736539403"
+          },
+          "completed": {
+            "real": "448.12626508199023216815334230068117270666478356151963407779687",
+            "imag": "236.40891695099047945982863396104827353369764125030527174596831"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "12774.713857659191248929070523381656053279610292890257106970116",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "5.9369424319292509908561872553066267302503836998239997073800299e6",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "3.3761316805140712334311834190766655819358864303280050326861015e9",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.11643768900103169
+    },
+    {
+      "id": "user-evaluation",
+      "a_invariants": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "999"
+      ],
+      "conductor": "430250329",
+      "root_number": 1,
+      "probable_analytic_rank": 0,
+      "profile": "public-stress",
+      "isomorphic_to": null,
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "a1e29035e557968b8cc07f52cdf0896c6de19d97583f9eafae2a76c827f94334"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 751039,
+        "100": 1421500,
+        "200": 3071339
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "1.1363304117193180",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.0053103195260299210",
+            "imag": "0.099052027739678167"
+          },
+          "completed": {
+            "real": "-170.79493215595534",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-0.0053103195260299210",
+            "imag": "-0.099052027739678167"
+          },
+          "completed": {
+            "real": "-170.79493215595534",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.20711504535394010",
+            "imag": "-0.13444109002105567"
+          },
+          "completed": {
+            "real": "0.00097375731824185345",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.20711504535394010",
+            "imag": "0.13444109002105567"
+          },
+          "completed": {
+            "real": "0.00097375731824185345",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-5025.6603925996824",
+            "imag": "-1338.2320885900845"
+          },
+          "completed": {
+            "real": "-67199.895332905435",
+            "imag": "-140299.47091158957"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "1.4075501157772226",
+            "imag": "-0.065449141644500358"
+          },
+          "completed": {
+            "real": "-67199.895332905435",
+            "imag": "-140299.47091158957"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9855023440979828e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "near-minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "-2.5140610412436676e8",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9854340078617767e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.5537882796795375e14",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "1.1363304117193179292308106008958",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945147400532808600e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.0053103195260299207325292689378633",
+            "imag": "0.099052027739678168544361108900239"
+          },
+          "completed": {
+            "real": "-170.79493215595534978525507767134",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-0.0053103195260299207325292689378633",
+            "imag": "-0.099052027739678168544361108900239"
+          },
+          "completed": {
+            "real": "-170.79493215595534978525507767134",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.20711504535394010003342132095575",
+            "imag": "-0.13444109002105566117559536541124"
+          },
+          "completed": {
+            "real": "0.00097375731824185345160592820471119",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.20711504535394010003342132095575",
+            "imag": "0.13444109002105566117559536541124"
+          },
+          "completed": {
+            "real": "0.00097375731824185345160592820471119",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-5025.6603925996826367683821048705",
+            "imag": "-1338.2320885900845476714519968547"
+          },
+          "completed": {
+            "real": "-67199.895332905437160955109285364",
+            "imag": "-140299.47091158956254220404806881"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "1.4075501157772225740283361159944",
+            "imag": "-0.065449141644500355147381135091953"
+          },
+          "completed": {
+            "real": "-67199.895332905437160955109285364",
+            "imag": "-140299.47091158956254220404806881"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945147400532808600e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9855023440979827929100819795360e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "near-minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "-2.5140610412436272218622294692027e8",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9854340078617762159517619291764e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.5537882796795376410524131640400e14",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "1.1363304117193179292308106008951931615946807259877070777068745",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945147400532808599383943539744986080444846316385e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.0053103195260299207325292689378627437445560501836092422193751633",
+            "imag": "0.099052027739678168544361108900268634963000831613324629039921101"
+          },
+          "completed": {
+            "real": "-170.79493215595534978525507767131698517896501212020718891035069",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-0.0053103195260299207325292689378627437445560501836092422193751633",
+            "imag": "-0.099052027739678168544361108900268634963000831613324629039921101"
+          },
+          "completed": {
+            "real": "-170.79493215595534978525507767131698517896501212020718891035069",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.20711504535394010003342132095576455738514057645691945907611525",
+            "imag": "-0.13444109002105566117559536541129886266855359902300944837247380"
+          },
+          "completed": {
+            "real": "0.00097375731824185345160592820471100427651631690576181479982684644",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-10i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.20711504535394010003342132095576455738514057645691945907611525",
+            "imag": "0.13444109002105566117559536541129886266855359902300944837247380"
+          },
+          "completed": {
+            "real": "0.00097375731824185345160592820471100427651631690576181479982684644",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-5025.6603925996826367683821048684334462721552332749913128755026",
+            "imag": "-1338.2320885900845476714519968554640964902858061213077583274163"
+          },
+          "completed": {
+            "real": "-67199.895332905437160955109285319437222632078095666401119871018",
+            "imag": "-140299.47091158956254220404806882668411216762802720228196867254"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "1.4075501157772225740283361159938121905903808256113613871561167",
+            "imag": "-0.065449141644500355147381135091974714084604920409419425806568912"
+          },
+          "completed": {
+            "real": "-67199.895332905437160955109285319437222632078095666401119871018",
+            "imag": "-140299.47091158956254220404806882668411216762802720228196867254"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "1.2384147166044945147400532808599383943539744986080444846316385e7",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9855023440979827929100819795313138178192445613577430226294128e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "near-minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "-2.5140610412436272218622294692026523566212107093271311682330717e8",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.9854340078617762159517619291815576331771268908668962141559916e10",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "7.5537882796795376410524131640405578471028697999416816019313319e14",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 2.26651819300605
+    },
+    {
+      "id": "11a1-nonminimal-integral",
+      "a_invariants": [
+        "0",
+        "-4",
+        "8",
+        "-160",
+        "-1280"
+      ],
+      "conductor": "11",
+      "root_number": 1,
+      "probable_analytic_rank": 0,
+      "profile": "standard",
+      "isomorphic_to": "11a1",
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "252247a9dc3cb9a5684a9cf91fa085e6a07cb3a963ec9cabbb6cd419b3218d1a"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 120,
+        "100": 227,
+        "200": 491
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.54604803621501352",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "-0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.033828093781262093",
+            "imag": "0.32023034106843346"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.44560335471462897",
+            "imag": "-0.31488599017639257"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251128",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034216",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.54604803621501351833412666043343",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "-0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.033828093781262090808699927640499",
+            "imag": "0.32023034106843343259747709410508"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.44560335471462898329084574287681",
+            "imag": "-0.31488599017639258636911316222745"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705901",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413237",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.54604803621501351833412666043344433859065366199738223842218924",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "-0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.033828093781262090808699927640517445181434734279807222019973306",
+            "imag": "0.32023034106843343259747709410490224912156631268218587979344937"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.44560335471462898329084574287699130117231637077138480763096353",
+            "imag": "-0.31488599017639258636911316222728584768922927190683284454100870"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705895983109431045579277519964256148",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413251694092082537650415396540216395",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.008316890998685267
+    },
+    {
+      "id": "11a1-nonintegral",
+      "a_invariants": [
+        "0",
+        "-1/4",
+        "1/8",
+        "-5/8",
+        "-5/16"
+      ],
+      "conductor": "11",
+      "root_number": 1,
+      "probable_analytic_rank": 0,
+      "profile": "standard",
+      "isomorphic_to": "11a1",
+      "coefficient_probe": {
+        "cutoff": 256,
+        "length": 257,
+        "canonical_encoding": "utf8 comma-separated base-ten a_0..a_K plus newline",
+        "sha256": "252247a9dc3cb9a5684a9cf91fa085e6a07cb3a963ec9cabbb6cd419b3218d1a"
+      },
+      "pari_coefficient_cost_by_precision": {
+        "53": 120,
+        "100": 227,
+        "200": 491
+      },
+      "values": [
+        {
+          "point_id": "s2",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.54604803621501352",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.25232984431224526",
+            "imag": "-0.34591234236210699"
+          },
+          "completed": {
+            "real": "0.11787882421801923",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.033828093781262093",
+            "imag": "0.32023034106843346"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0.44560335471462897",
+            "imag": "-0.31488599017639257"
+          },
+          "completed": {
+            "real": "0.12079192877478694",
+            "imag": "-0.015593917998926217"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591806",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251128",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 53,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034216",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.54604803621501351833412666043343",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.25232984431224526635169521524271",
+            "imag": "-0.34591234236210700213618597723905"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480555",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.033828093781262090808699927640499",
+            "imag": "0.32023034106843343259747709410508"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0.44560335471462898329084574287681",
+            "imag": "-0.31488599017639258636911316222745"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286053",
+            "imag": "-0.015593917998926216766843488464345"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747859",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705901",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 100,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413237",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "s2",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.54604803621501351833412666043344433859065366199738223842218924",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "center-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.25232984431224526635169521524253052213039815390537353875382805",
+            "imag": "-0.34591234236210700213618597723915248382182272366201939834462755"
+          },
+          "completed": {
+            "real": "0.11787882421801923914880007480552830202619787111043216539157114",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "half-plus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.033828093781262090808699927640517445181434734279807222019973306",
+            "imag": "0.32023034106843343259747709410490224912156631268218587979344937"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "three-halves-minus-i",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0.44560335471462898329084574287699130117231637077138480763096353",
+            "imag": "-0.31488599017639258636911316222728584768922927190683284454100870"
+          },
+          "completed": {
+            "real": "0.12079192877478693864264014286057422872611965691720489376205334",
+            "imag": "-0.015593917998926216766843488464343236674865034220530616385650751"
+          }
+        },
+        {
+          "point_id": "zero",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.15214714172591804948622729747863449562814358916422612280988979",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-one",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.22141890046251126728359824705895983109431045579277519964256148",
+            "imag": "0"
+          }
+        },
+        {
+          "point_id": "minus-two",
+          "precision_bits": 200,
+          "raw": {
+            "real": "0",
+            "imag": "0"
+          },
+          "completed": {
+            "real": "0.40639013570034215351375177413251694092082537650415396540216395",
+            "imag": "0"
+          }
+        }
+      ],
+      "capture_seconds": 0.00810319100128254
+    }
+  ]
+}

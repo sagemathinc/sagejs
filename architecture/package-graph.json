@@ -245,7 +245,7 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 65000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
@@ -270,10 +270,10 @@
       "prefixes": []
     },
     {
-      "id": "elliptic-curves-analytic-rank",
+      "id": "elliptic-curves-lfunctions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 30000,
+      "max_source_bytes": 130000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "elliptic-curves",
         "numeric-compat"

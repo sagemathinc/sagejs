@@ -307,6 +307,12 @@ async function buildWindowsSmalljac() {
   const expectedBuild = {
     ffpoly: ffpoly.version,
     smalljac: smalljac.version,
+    ffpolyPortability: digest(
+      join(packageRoot, "patches", "ffpoly-portability.patch"),
+    ),
+    smalljacPortability: digest(
+      join(packageRoot, "patches", "smalljac-portability.patch"),
+    ),
     arithmetic: "portable-fixed-width-v2",
     abi: "int64-v1",
   };
@@ -578,37 +584,6 @@ function installFiles(source, paths, destination) {
   }
 }
 
-function preparePortableSmalljacSource(source, name) {
-  const cstd = join(source, "cstd.h");
-  // Both upstream archives ship cstd.h with CRLF line endings.  Normalize this
-  // one patched file so the checked-in patch applies identically on Unix and
-  // native Windows checkouts.
-  writeFileSync(cstd, readFileSync(cstd, "utf8").replace(/\r\n/g, "\n"));
-  if (name === "ffpoly") {
-    copyFileSync(
-      join(
-        packageRoot,
-        "scripts",
-        "portable-smalljac",
-        "sagejs_ffpoly_word.h",
-      ),
-      join(source, "sagejs_ffpoly_word.h"),
-    );
-  }
-  run(
-    "git",
-    [
-      "apply",
-      "--whitespace=nowarn",
-      join(packageRoot, "patches", `${name}-portability.patch`),
-    ],
-    {
-      cwd: source,
-      env: { GIT_CEILING_DIRECTORIES: packageRoot },
-    },
-  );
-}
-
 function buildFfpoly(source) {
   const forcePortable = forcePortableSmalljac || process.arch !== "x64";
   const cflags = [
@@ -721,6 +696,12 @@ async function main() {
     openblas:
       dependencies.find(({ name }) => name === "openblas").version,
     openblasBuild: "threaded-cblas-dynamic-v1",
+    ffpolyPortability: digest(
+      join(packageRoot, "patches", "ffpoly-portability.patch"),
+    ),
+    smalljacPortability: digest(
+      join(packageRoot, "patches", "smalljac-portability.patch"),
+    ),
     smalljacArithmetic:
       forcePortableSmalljac || process.arch !== "x64"
         ? "portable-v1"
@@ -775,8 +756,7 @@ async function main() {
   if (smalljacAccelerator) {
     const ffpolySource = source("ffpoly");
     const smalljacSource = source("smalljac");
-    preparePortableSmalljacSource(ffpolySource, "ffpoly");
-    preparePortableSmalljacSource(smalljacSource, "smalljac");
+    prepareSources(ffpolySource, smalljacSource);
     buildFfpoly(ffpolySource);
     buildSmalljac(smalljacSource);
   }

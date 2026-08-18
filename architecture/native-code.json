@@ -302,21 +302,21 @@
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "elliptic-curves",
-      "rationale": "Host-neutral Arb ABI for the canonical completed elliptic L-function jet, with explicit coefficient-tail diagnostics and an ordinary-Python differential fallback."
+      "rationale": "Host-neutral Arb/Acb ABI for the canonical completed elliptic L-function central jet and moderate-complex values, with explicit analytic-tail diagnostics and ordinary-Python differential fallbacks."
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "elliptic-curves",
-      "rationale": "Combines the compact Molin/Arb completed-L-function kernel with exact coefficient conversion and its batched Node-API adapter."
+      "rationale": "Combines the compact Molin Arb/Acb completed-L-function kernels with exact coefficient conversion and batched Node-API adapters for central jets and moderate-complex values."
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.h",
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "elliptic-curves",
-      "rationale": "Internal addon declaration for the batched completed elliptic L-function boundary."
+      "rationale": "Internal addon declarations for the batched central-jet and moderate-complex elliptic L-function boundaries."
     },
     {
       "path": "packages/flint/src/extension_field.c",

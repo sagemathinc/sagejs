@@ -42,6 +42,30 @@ test("Unix smalljac builds expose dependency headers to implicit Make rules", ()
   );
   assert.match(implementation, /`CPPFLAGS=\$\{includes\}`/);
   assert.match(implementation, /`INCLUDES=\$\{includes\}`/);
+  assert.equal(buildScript.match(/smalljacPortability: digest\(/g)?.length, 2);
+  assert.match(
+    buildScript,
+    /prepareSources\(ffpolySource, smalljacSource\);/,
+  );
+});
+
+test("tiny-prime traces retain their sign when plain char is unsigned", () => {
+  const patch = readFileSync(
+    join(packageRoot, "patches", "smalljac-portability.patch"),
+    "utf8",
+  );
+  assert.match(patch, /\+signed char ws2a1tab\[32\]/);
+  assert.match(patch, /\+signed char ws3a1tab\[243\]/);
+  assert.match(patch, /\+#if defined\(_WIN32\)[\s\S]*\+\s*badpk = 0;/);
+  const preparation = readFileSync(
+    join(packageRoot, "scripts", "portable-smalljac", "prepare-sources.cjs"),
+    "utf8",
+  );
+  assert.match(preparation, /normalize\(join\(smalljacSource, "smalljac\.c"\)\)/);
+  assert.match(
+    preparation,
+    /normalize\(join\(smalljacSource, "smalljac_tiny\.c"\)\)/,
+  );
 });
 
 function run(command, args, options = {}) {
