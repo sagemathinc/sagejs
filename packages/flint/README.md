@@ -147,11 +147,13 @@ Windows build uses clang-cl, fixed-width carry arithmetic, and the same GMP
 the Sage.js boundary.
 
 `rforestHasseWittBatch(coefficients, genus, start, stop, options)` accepts a
-`BigInt64Array` containing the ascending integral coefficients of the already
-completed model `y^2 = F(x)`.  Genus must be 2 or 3, and `F` must have exact
-degree `2*g+1` or `2*g+2`.  The closed prime interval starts at 2 and is capped
-at `2^31-1`; `options.maxRows` may cap storage while retaining the full
-`requiredRows` count.  Results are row-aligned typed arrays: `primes`, `good`,
+`BigUint64Array` containing the ascending coefficients of the already
+completed model `y^2 = F(x)`, encoded as two's-complement signed 64-bit words.
+Thus every coefficient must lie in `[-2^63,2^63-1]`; negative `BigInt` values
+are encoded with `BigInt.asUintN(64, value)`.  Genus must be 2 or 3, and `F`
+must have exact degree `2*g+1` or `2*g+2`.  The closed prime interval starts at
+2 and is capped at `2^31-1`; `options.maxRows` may cap storage while retaining
+the full `requiredRows` count.  Results are row-aligned typed arrays: `primes`, `good`,
 `coefficientCounts`, `rowStatus`, and a stride-three `coefficients` array.  A
 good row contains the coefficients `(c1,...,cg)` modulo `p` of
 `det(I-T*W)`, where `W` is the Hasse--Witt matrix; unused stride entries are

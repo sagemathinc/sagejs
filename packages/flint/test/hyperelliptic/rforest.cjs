@@ -17,7 +17,9 @@ const flint = require(addonPath);
 const oracle = require("../../../../test/data/hyperelliptic-rforest/genus3-oracle.json");
 
 function integralCoefficients(values) {
-  return new BigInt64Array(values.map(BigInt));
+  return new BigUint64Array(
+    values.map((value) => BigInt.asUintN(64, BigInt(value))),
+  );
 }
 
 function rows(batch) {
@@ -168,7 +170,7 @@ test("model, interval, and typed ingress failures are distinct", () => {
   );
   assert.throws(
     () => flint.rforestHasseWittBatch([1n, 1n], 2, 5n, 7n),
-    /BigInt64Array|typedarray/i,
+    /BigUint64Array|typedarray/i,
   );
   assert.throws(
     () => flint.rforestHasseWittBatch(
@@ -182,7 +184,7 @@ test("rforest and smalljac share their process-global native lock", async () => 
   const workerSource = `
     const { parentPort, workerData } = require("node:worker_threads");
     const f = require(workerData);
-    const c = new BigInt64Array([1n,1n,0n,0n,0n,0n,0n,1n]);
+    const c = new BigUint64Array([1n,1n,0n,0n,0n,0n,0n,1n]);
     for (let iteration = 0; iteration < 6; iteration += 1) {
       const r = f.rforestHasseWittBatch(c, 3, 5n, 101n);
       const s = f.smalljacLpolyBatch("x^5+x+1", 5n, 101n);
