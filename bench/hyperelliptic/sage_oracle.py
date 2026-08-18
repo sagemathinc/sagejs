@@ -9,6 +9,7 @@ import argparse
 import json
 import platform
 import sys
+import time
 
 from sage.all import GF, HyperellipticCurve, PolynomialRing, set_random_seed
 from sage.env import SAGE_VERSION
@@ -37,7 +38,7 @@ def raw_hasse_witt(curve, genus, prime):
     }
 
 
-def case_result(case):
+def case_result(case, include_group=True):
     prime = int(case["prime"])
     field = GF(prime)
     ring = PolynomialRing(field, "x")
@@ -65,10 +66,18 @@ def case_result(case):
     )
     jacobian_order = str(curve.jacobian().cardinality())
 
-    try:
-        invariants = integer_strings(curve.jacobian().abelian_group().invariants())
-    except (ArithmeticError, NotImplementedError, RuntimeError, TypeError, ValueError):
-        invariants = None
+    invariants = None
+    if include_group:
+        try:
+            invariants = integer_strings(curve.jacobian().abelian_group().invariants())
+        except (
+            ArithmeticError,
+            NotImplementedError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
+            invariants = None
 
     tags = []
     p_rank = None
@@ -97,18 +106,32 @@ def case_result(case):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("cases")
+    parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--benchmark-core", action="store_true")
     arguments = parser.parse_args()
     with open(arguments.cases, encoding="utf-8") as stream:
         cases = json.load(stream)
 
     set_random_seed(20260818)
+    if arguments.repeat < 1:
+        parser.error("--repeat must be positive")
+    timings = []
+    rows = None
+    for _ in range(arguments.repeat):
+        started = time.perf_counter()
+        rows = [
+            case_result(case, include_group=not arguments.benchmark_core)
+            for case in cases["cases"]
+        ]
+        timings.append((time.perf_counter() - started) * 1000)
     output = {
         "oracle": {
             "name": "sage",
             "version": SAGE_VERSION,
             "python": platform.python_version(),
         },
-        "rows": [case_result(case) for case in cases["cases"]],
+        "timings_ms": timings,
+        "rows": rows,
     }
     json.dump(output, sys.stdout, sort_keys=True, separators=(",", ":"))
     sys.stdout.write("\n")

@@ -46,6 +46,26 @@ The fixture contains source, harness, and executable SHA-256 provenance. Its
 own deterministic hash excludes only `generated_at_utc`, so timestamps do not
 make verification flaky.
 
+## Benchmark the oracle baselines
+
+`benchmark-oracles.cjs` measures the complete 25-row local-polynomial,
+extension-count, and Jacobian-order workload. Each backend performs several
+repetitions inside one resident process, separating the first algorithm
+evaluation from warm evaluations while also reporting total process wall time.
+The JSON result records the host, versions, exact workload and harness hashes,
+and a result digest. Group enumeration is intentionally excluded from repeated
+warm samples because it measures a different stage and can retain large caches.
+
+```sh
+node bench/hyperelliptic/benchmark-oracles.cjs --repeat 3 \
+  > bench/hyperelliptic/oracle-benchmark.json
+```
+
+The output path is intentionally not prescribed or checked in: benchmark
+receipts are meaningful only with their host identity. This harness is an
+oracle-cost baseline, including exhaustive counts and group-structure checks;
+it is not a claim about the eventual Sage.js production backend.
+
 ## Scope
 
 The cases deliberately stay small enough for exhaustive reproduction while

@@ -23,7 +23,7 @@ function magmaList(coefficients) {
   return `[${coefficients.join(",")}]`;
 }
 
-function emitCase(caseData) {
+function emitCase(caseData, includeGroup) {
   const id = caseData.id;
   if (caseData.expect_bad) return `printf "BAD|${id}\\n";`;
   const p = caseData.prime;
@@ -52,7 +52,7 @@ function emitCase(caseData) {
       J := Jacobian(C);
       jacorder := #J;
       printf "ROW|${id}|%o|%o|%o|", lpoly, counts, jacorder;
-      try
+      ${includeGroup ? "try" : "if false then"}
         points := Points(J);
         for divisor in Divisors(jacorder) do
           multiplicity := #[ point : point in points | Order(point) eq divisor ];
@@ -60,9 +60,9 @@ function emitCase(caseData) {
             printf "%o:%o,", divisor, multiplicity;
           end if;
         end for;
-      catch innerException;
+      ${includeGroup ? "catch innerException;" : "else"}
         printf "NA";
-      end try;
+      ${includeGroup ? "end try;" : "end if;"}
       printf "\\n";
     catch exception;
       printf "ERROR|${id}|%o\\n", exception;
@@ -91,12 +91,20 @@ function parseHistogram(text) {
 
 function main() {
   const casesPath = resolve(process.argv[2] ?? "bench/hyperelliptic/cases-v1.json");
+  const repeatIndex = process.argv.indexOf("--repeat");
+  const repeat = repeatIndex < 0 ? 1 : Number(process.argv[repeatIndex + 1]);
+  const includeGroup = !process.argv.includes("--benchmark-core");
+  if (!Number.isInteger(repeat) || repeat < 1) throw new Error("--repeat must be a positive integer");
   const magma = process.env.MAGMA ?? "/home/user/bin/magma";
   const cases = JSON.parse(readFileSync(casesPath, "utf8"));
   const source = [
     'major, minor, patch := GetVersion(); printf "VERSION|%o.%o.%o\\n", major, minor, patch;',
     "SetSeed(20260818);",
-    ...cases.cases.map(emitCase),
+    `for repetition in [1..${repeat}] do`,
+    "started := Realtime();",
+    ...cases.cases.map((caseData) => emitCase(caseData, includeGroup)),
+    'printf "TIMING|%o|%o\\n", repetition, 1000*Realtime(started);',
+    "end for;",
     "quit;",
   ].join("\n");
   const execution = spawnSync(magma, ["-b"], {
@@ -110,9 +118,11 @@ function main() {
     throw new Error(`Magma exited with status ${execution.status}`);
   }
   const rows = new Map();
+  const timings = [];
   let version = null;
   for (const line of execution.stdout.split(/\r?\n/)) {
     if (line.startsWith("VERSION|")) version = line.slice("VERSION|".length);
+    if (line.startsWith("TIMING|")) timings.push(Number(line.split("|")[2]));
     if (line.startsWith("BAD|")) {
       const id = line.slice("BAD|".length);
       rows.set(id, { id, good: false, reason: "marked singular reduction" });
@@ -142,6 +152,7 @@ function main() {
     `${JSON.stringify(
       {
         oracle: { name: "magma", version, executable: magma },
+        timings_ms: timings,
         rows: cases.cases.map((entry) => rows.get(entry.id)),
       },
       null,

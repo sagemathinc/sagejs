@@ -6,7 +6,7 @@
     "coefficient_order": "ascending",
     "integer_encoding": "decimal-string"
   },
-  "generated_at_utc": "2026-08-18T07:54:58.010Z",
+  "generated_at_utc": "2026-08-18T08:02:01.803Z",
   "cases_sha256": "39287e6d97cf233b883f05e622407b29b89aaaccdeadc27b4a773750d8adee76",
   "sources": [
     {
@@ -15,7 +15,7 @@
       "version": "1",
       "executable_sha256": "bdc711fac6e1ab5ffbeb4f4af56bc933f2037ab0a838d9e72b9e1fbc550bce8b",
       "harness": "bench/hyperelliptic/exhaustive_oracle.py",
-      "harness_sha256": "52ef497f533bd52041d0786cc19ac9d1fa1adc85df9ae9d4881fe3e13f141c3e"
+      "harness_sha256": "a080bfed7dfcf33fcb45a56311603cea53fefa96170ccd4004c55f25e0419776"
     },
     {
       "id": "sage-10.9",
@@ -23,7 +23,7 @@
       "version": "10.9.post1",
       "executable_sha256": "b190e6cec5027031be752260d9b21a8e23f11a313cc620e5dcd1be28390643c1",
       "harness": "bench/hyperelliptic/sage_oracle.py",
-      "harness_sha256": "c5c3bbaeb1dbe525f180b6b1c62e82356556faaa8fd2102edadd9dea7774f706"
+      "harness_sha256": "bf31157ff491e663f100178d029d60b7a71f824eb98c8e48cbd0481fd6c81471"
     },
     {
       "id": "pari-2.17",
@@ -31,7 +31,7 @@
       "version": "2.17.1",
       "executable_sha256": "b190e6cec5027031be752260d9b21a8e23f11a313cc620e5dcd1be28390643c1",
       "harness": "bench/hyperelliptic/pari_oracle.py",
-      "harness_sha256": "54d82b52a10a7df84483cf45517a3b7d9f11540f12667fbebd0c53ffcf507cf5"
+      "harness_sha256": "abf88e1ca2df6000daf145ea053aba86df5557941228f7f9ceeade902705e978"
     },
     {
       "id": "magma-2.18",
@@ -39,7 +39,7 @@
       "version": "2.18.5",
       "executable_sha256": "ea6aac1bcb8633a40a958a46e0e1cfd0faa4aac0bbacc7c9bae399a0167dfc1f",
       "harness": "bench/hyperelliptic/magma_oracle.cjs",
-      "harness_sha256": "603c838e46383067f78c6a70de4877208072575c1d065f94a5f5c9483cdb8667"
+      "harness_sha256": "c4e2319e9caca8ac26f7cea1bde990a68f4ba441fbe8522f6f25f75f1d2befae"
     }
   ],
   "rows": [
@@ -1982,5 +1982,5 @@
       }
     }
   ],
-  "fixture_sha256": "b06b4b89df65d699f82091b99b223690eb22c83faea9e6680f4a72441eaa6fa9"
+  "fixture_sha256": "56360a3e61a944154d0154f2421e2fafe1e61a777070d01dc79dc8b9a4f283fd"
 }
