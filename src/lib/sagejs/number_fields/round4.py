@@ -963,6 +963,61 @@ def _modular_characteristic_polynomial(
     return coefficients
 
 
+_RESIDUE_BETA_CRT_BOUND_BITS = 2048
+
+
+def residue_characteristic_strategy(field: Any, element: Any) -> dict[str, Any]:
+    """Choose direct or modular characteristic arithmetic from exact cost data.
+
+    The cutoff is a measured crossover for the Round-4 corpus.  Direct FLINT
+    arithmetic wins for the #2510 and vector008 residue matrices, whose
+    largest observed bounds are 246 and 955 bits.  Vector010's obstructing
+    matrix has a 5970-bit bound and requires the modular path.  The decision
+    depends only on the matrix dimension and its deterministic Hadamard bound,
+    never on a polynomial identity or corpus label.
+    """
+    _rows, _denominator, row_bounds = _integer_multiplication_matrix_data(
+        field,
+        element,
+    )
+    coefficient_bounds = _characteristic_coefficient_bounds(row_bounds)
+    bound_bits = _positive_integer_bits(max(coefficient_bounds))
+    strategy = (
+        "modular-crt" if bound_bits >= _RESIDUE_BETA_CRT_BOUND_BITS else "direct-exact"
+    )
+    return {
+        "strategy": strategy,
+        "degree": field.degree(),
+        "hadamard_bound_bits": bound_bits,
+        "estimated_crt_primes": (bound_bits + 29) // 30,
+        "crt_bound_bits_cutoff": _RESIDUE_BETA_CRT_BOUND_BITS,
+    }
+
+
+def _record_characteristic_strategy(
+    metrics: dict[str, Any],
+    metric_label: str,
+    decision: dict[str, Any],
+) -> None:
+    strategy_counts = metrics.get("characteristic_strategy_counts")
+    if strategy_counts is None:
+        strategy_counts = {}
+        metrics["characteristic_strategy_counts"] = strategy_counts
+    strategy = decision["strategy"]
+    strategy_counts[strategy] = strategy_counts.get(strategy, 0) + 1
+    metrics["characteristic_strategy_max_bound_bits"] = max(
+        metrics.get("characteristic_strategy_max_bound_bits", 0),
+        decision["hadamard_bound_bits"],
+    )
+    decisions = metrics.get("characteristic_strategy_decisions")
+    if decisions is None:
+        decisions = []
+        metrics["characteristic_strategy_decisions"] = decisions
+    recorded = dict(decision)
+    recorded["label"] = metric_label
+    decisions.append(recorded)
+
+
 def _record_characteristic_input(
     element: Any,
     metrics: dict[str, Any],
@@ -1052,11 +1107,17 @@ def _integral_characteristic_polynomial(
     if metric_label == "residue-beta":
         if metrics is not None:
             _record_characteristic_input(element, metrics, metric_label)
-        coefficients = _modular_characteristic_polynomial(
-            field,
-            element,
-            metrics,
-        )
+        decision = residue_characteristic_strategy(field, element)
+        if metrics is not None:
+            _record_characteristic_strategy(metrics, metric_label, decision)
+        if decision["strategy"] == "modular-crt":
+            coefficients = _modular_characteristic_polynomial(
+                field,
+                element,
+                metrics,
+            )
+        else:
+            coefficients = _element_characteristic_polynomial(field, element)
     else:
         coefficients = _element_characteristic_polynomial(
             field,
