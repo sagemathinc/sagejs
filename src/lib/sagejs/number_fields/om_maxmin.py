@@ -16,6 +16,7 @@ from typing import TypeAlias
 
 from sagejs.native import IntegerBuffer, native, uint64
 
+from .local_polygons import _row_hermite
 from .maximal_order_contracts import (
     DiscriminantComponent,
     LocalOrderResult,
@@ -24,6 +25,7 @@ from .maximal_order_contracts import (
 from .om_types import (
     ImmutableOMRecord,
     OMDomainError,
+    OMLevel,
     OMTypeTree,
     Polynomial,
     RationalValue,
@@ -909,6 +911,199 @@ def _bounded_branch_table(
     return LocalNumeratorTable(branch.branch_id, tuple(numerators), tuple(valuations))
 
 
+def _reduce_power_numerator(
+    polynomial: Polynomial,
+    defining_polynomial: Polynomial,
+) -> Polynomial:
+    degree = polynomial_degree(defining_polynomial)
+    values = list(polynomial)
+    while len(values) - 1 >= degree:
+        leading = values[-1]
+        shift = len(values) - 1 - degree
+        if leading:
+            for index, coefficient in enumerate(defining_polynomial):
+                values[shift + index] -= leading * coefficient
+        while len(values) > 1 and values[-1] == 0:
+            values.pop()
+    return normalize_polynomial(tuple(values))
+
+
+def _order_two_quotient_hnf_selection(
+    tree: OMTypeTree,
+) -> MaxMinCertificate | None:
+    """Build the exact GMN quotient basis for bounded order-two terminal sides."""
+    if len(tree.initial_factors) != 1 or not tree.types:
+        return None
+    if any(
+        len(branch.levels) != 2
+        or any(level.optimized_away for level in branch.levels)
+        or branch.levels[-1].order != 2
+        for branch in tree.types
+    ):
+        return None
+    groups: list[tuple[OMLevel, OMLevel]] = []
+    signatures = []
+    for branch in tree.types:
+        first, higher = branch.levels
+        signature = (
+            first.key_polynomial,
+            first.slope,
+            first.residual_factor,
+            higher.key_polynomial,
+            higher.slope,
+        )
+        if signature not in signatures:
+            signatures.append(signature)
+            groups.append((first, higher))
+    polynomial = tree.polynomial
+    prime = tree.prime
+    degree = polynomial_degree(polynomial)
+    initial_degree = polynomial_degree(tree.initial_factors[0].polynomial)
+    if initial_degree <= 1:
+        return None
+    elements: list[tuple[Polynomial, int]] = []
+    expected_degrees = 0
+    for first_object, higher_object in groups:
+        first = first_object
+        higher = higher_object
+        first_sides = tuple(
+            side
+            for side in newton_polygon(polynomial, prime, first.key_polynomial)
+            if side.slope == first.slope
+        )
+        higher_sides = tuple(
+            side
+            for side in higher_newton_polygon(
+                polynomial,
+                prime,
+                higher.key_polynomial,
+                (first,),
+            )
+            if side.slope == higher.slope
+        )
+        if len(first_sides) != 1 or len(higher_sides) != 1:
+            return None
+        first_side = first_sides[0]
+        higher_side = higher_sides[0]
+        first_count = first.ramification_index * first.residue_degree
+        terminal_count = higher_side.right.abscissa - higher_side.left.abscissa
+        if first_count <= 0 or terminal_count <= 0:
+            return None
+        expected_degrees += initial_degree * first_count * terminal_count
+        first_quotients = phi_quotients(polynomial, first.key_polynomial)
+        higher_quotients = phi_quotients(polynomial, higher.key_polynomial)
+        first_value = maclane_integer_valuation(first.key_polynomial, prime, ())
+        higher_value = maclane_integer_valuation(
+            higher.key_polynomial,
+            prime,
+            (first,),
+        )
+        if first_value is None or higher_value is None:
+            return None
+        for first_index in range(first_count):
+            first_number = first_side.right.abscissa - first_index
+            if first_number <= 0 or first_number > len(first_quotients):
+                return None
+            first_height = first_side.ordinate_at(first_number) - (
+                first_number * first_value
+            )
+            first_quotient = first_quotients[first_number - 1]
+            for terminal_index in range(terminal_count):
+                higher_number = higher_side.right.abscissa - terminal_index
+                if higher_number <= 0 or higher_number > len(higher_quotients):
+                    return None
+                higher_height = (
+                    higher_side.ordinate_at(higher_number)
+                    - higher_number * higher_value
+                ) / first.ramification_index
+                denominator_exponent = (first_height + higher_height).floor()
+                if denominator_exponent < 0:
+                    raise ArithmeticError("a quotient basis denominator is negative")
+                product = _reduce_power_numerator(
+                    polynomial_multiply(
+                        first_quotient,
+                        higher_quotients[higher_number - 1],
+                    ),
+                    polynomial,
+                )
+                for initial_index in range(initial_degree):
+                    numerator = _reduce_power_numerator(
+                        polynomial_multiply(
+                            product,
+                            (0,) * initial_index + (1,),
+                        ),
+                        polynomial,
+                    )
+                    elements.append((numerator, denominator_exponent))
+    if expected_degrees != degree or len(elements) != degree:
+        return None
+    common_exponent = max((exponent for _numerator, exponent in elements), default=0)
+    common_denominator = prime**common_exponent
+    rows = []
+    for numerator, exponent in elements:
+        scale = prime ** (common_exponent - exponent)
+        rows.append(
+            [
+                (numerator[index] if index < len(numerator) else 0)
+                * scale
+                % common_denominator
+                for index in range(degree)
+            ]
+        )
+    rows.extend(
+        [
+            [common_denominator if row == column else 0 for column in range(degree)]
+            for row in range(degree)
+        ]
+    )
+    hermite = _row_hermite(rows, degree)
+    candidates: list[MaxMinCandidate] = []
+    local_index = 0
+    for candidate_degree, row in enumerate(hermite):
+        diagonal = row[candidate_degree]
+        if (
+            diagonal <= 0
+            or common_denominator % diagonal
+            or any(row[index] for index in range(candidate_degree + 1, degree))
+            or any(row[index] % diagonal for index in range(candidate_degree + 1))
+        ):
+            raise ArithmeticError("quotient HNF is not monic triangular")
+        denominator = common_denominator // diagonal
+        denominator_exponent = 0
+        remaining = denominator
+        while remaining % prime == 0:
+            denominator_exponent += 1
+            remaining //= prime
+        if remaining != 1:
+            raise ArithmeticError("quotient HNF denominator is not a prime power")
+        local_index += denominator_exponent
+        numerator = normalize_polynomial(
+            tuple(row[index] // diagonal for index in range(candidate_degree + 1))
+        )
+        value = RationalValue(denominator_exponent)
+        candidates.append(
+            MaxMinCandidate(
+                candidate_degree,
+                (),
+                numerator,
+                tuple(value for _branch in tree.types),
+                value,
+                0,
+            )
+        )
+    if local_index != tree.expected_index_valuation:
+        raise ArithmeticError("quotient HNF index differs from the OM polygon index")
+    return MaxMinCertificate(
+        "gmn-order-two-quotient-hnf",
+        tuple(branch.branch_id for branch in tree.types),
+        tuple(candidates),
+        (),
+        len(elements),
+        True,
+        (),
+    )
+
+
 def _higher_terminal_quotient_selection(
     tree: OMTypeTree,
 ) -> MaxMinCertificate | None:
@@ -1117,6 +1312,8 @@ def regular_local_basis(
         )
     try:
         terminal_selection = _higher_terminal_quotient_selection(tree)
+        if terminal_selection is None:
+            terminal_selection = _order_two_quotient_hnf_selection(tree)
         if terminal_selection is None:
             tables = tuple(
                 _bounded_branch_table(tree, branch_index)
