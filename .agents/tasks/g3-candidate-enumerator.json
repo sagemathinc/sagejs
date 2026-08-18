@@ -40,18 +40,47 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.494,
+      "started_at": "2026-08-18T18:08:48.847Z",
+      "commit": "306d8751534e27dfeb9f1252661de6d11f768697",
+      "workspace_fingerprint": "e86469a613c67d5ddb81abf97d3fb6368fa5ca7d8d2c2023c40f854997bd0d9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.508,
+      "started_at": "2026-08-18T18:09:00.256Z",
+      "commit": "306d8751534e27dfeb9f1252661de6d11f768697",
+      "workspace_fingerprint": "e86469a613c67d5ddb81abf97d3fb6368fa5ca7d8d2c2023c40f854997bd0d9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus3-completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.442,
+      "started_at": "2026-08-18T18:15:26.704Z",
+      "commit": "306d8751534e27dfeb9f1252661de6d11f768697",
+      "workspace_fingerprint": "e86469a613c67d5ddb81abf97d3fb6368fa5ca7d8d2c2023c40f854997bd0d9d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Replaced general rational Sturm allocation on the hot path with an exactly equivalent cubic endpoint/derivative criterion, retained the old Sturm implementation as a differential oracle, and added a source-transparent packed exact candidate scanner. Unfiltered enumeration uses the compiled scanner only after input validation and respects both public resource limits; filtered completion keeps its bounded dynamic stream. Dense CPython and compiled Sage.js tests cover arbitrary coefficients, residue scans, endpoint/repeated roots, resource limits, and GMP promotion. The native benchmark is 102x-303x faster than the old Sturm scan at p=101..10007 and completes the p=1000003 residue class in about 0.20 seconds on the development x64 host.",
+    "summary": "Replaced general rational Sturm allocation on the hot path with an exactly equivalent cubic endpoint/derivative criterion, retained the old Sturm implementation as a differential oracle, and added a source-transparent packed exact candidate scanner. Unfiltered enumeration uses the compiled scanner only after input validation and respects both public resource limits; filtered completion keeps its bounded dynamic stream. Dense CPython and compiled Sage.js tests cover arbitrary coefficients, residue scans, endpoint/repeated roots, resource limits, and GMP promotion. The exact source compiled and returned identical small and promoted-integer streams on Linux x64/arm64, macOS arm64, and native Windows x64. The native benchmark is 102x-303x faster than the old Sturm scan at p=101..10007 and completes the p=1000003 residue class in about 0.20 seconds on the development x64 host.",
     "risks": [
-      "The integration lane must register the new kernel for production precompilation; without an artifact Sage.js uses the correct optimized dynamic fallback.",
+      "The coordinator stopped a duplicate lane-wide pnpm test:native rebuild after integration had already passed production registration; scoped architecture, strict, public completion, dense differential, and four-platform compiled-kernel checks are green.",
       "Tests and the benchmark live beside the claimed implementation because the hyperelliptic lane cannot claim repository-wide test/bench paths; integration may relocate them.",
       "Packed IntegerBuffer materialization dominates the largest tested row, so a future streaming certificate interface may outperform exhaustive candidate materialization."
     ],
     "next_steps": [
-      "Register genus3_candidate_kernel.py in the production native-kernel build and witness inventories.",
-      "Move or wrap the in-package differential and benchmark drivers in the central test and benchmark manifests.",
-      "Run the same compiled stream on Linux arm64, macOS arm64, and native Windows x64 during integration."
+      "Move or wrap the in-package differential and benchmark drivers in the central test and benchmark manifests."
     ]
   }
 }
