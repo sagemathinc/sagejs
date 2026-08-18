@@ -57,6 +57,8 @@ if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
 const jobs =
   configuredJobs ||
   String(Math.min(8, availableParallelism?.() || cpus().length || 2));
+const forcePortableSmalljac =
+  process.env.SAGEJS_FORCE_PORTABLE_SMALLJAC === "1";
 const macosDeploymentTarget = process.platform === "darwin"
   ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
   : undefined;
@@ -65,6 +67,9 @@ const {
   ECLIB_SOURCE_NAME,
   ECLIB_SOURCE_PATH,
 } = require("./eclib-source.cjs");
+const {
+  prepareSources,
+} = require("./portable-smalljac/prepare-sources.cjs");
 
 const dependencies = [
   {
@@ -132,6 +137,7 @@ function run(command, args, options = {}) {
   process.stdout.write(`+ ${command} ${args.join(" ")}\n`);
   const result = spawnSync(command, args, {
     cwd: options.cwd,
+    windowsVerbatimArguments: options.windowsVerbatimArguments,
     env: {
       ...process.env,
       ...(macosDeploymentTarget
@@ -243,6 +249,98 @@ function buildWindowsDependencies() {
   );
   patchWindowsFlintHeaders();
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
+}
+
+function capture(command, args) {
+  const result = spawnSync(command, args, { encoding: "utf8" });
+  if (result.error || result.status !== 0) return undefined;
+  return result.stdout.trim();
+}
+
+function findVisualStudioEnvironment() {
+  const candidates = [];
+  if (process.env.VSINSTALLDIR) {
+    candidates.push(
+      join(process.env.VSINSTALLDIR, "VC", "Auxiliary", "Build", "vcvars64.bat"),
+    );
+  }
+  candidates.push("C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat");
+  const programFilesX86 = process.env["ProgramFiles(x86)"];
+  if (programFilesX86) {
+    const vswhere = join(
+      programFilesX86,
+      "Microsoft Visual Studio",
+      "Installer",
+      "vswhere.exe",
+    );
+    if (existsSync(vswhere)) {
+      const installation = capture(vswhere, [
+        "-latest",
+        "-products",
+        "*",
+        "-requires",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-property",
+        "installationPath",
+      ]);
+      if (installation) {
+        candidates.push(
+          join(installation, "VC", "Auxiliary", "Build", "vcvars64.bat"),
+        );
+      }
+    }
+  }
+  const vcvars = candidates.find((candidate) => existsSync(candidate));
+  if (!vcvars) {
+    throw new Error(
+      "smalljac requires Visual Studio C++ tools with clang-cl on native Windows",
+    );
+  }
+  return vcvars;
+}
+
+async function buildWindowsSmalljac() {
+  const ffpoly = dependencies.find(({ name }) => name === "ffpoly");
+  const smalljac = dependencies.find(({ name }) => name === "smalljac");
+  const stampPath = join(prefix, ".sagejs-smalljac-dependencies.json");
+  const expectedBuild = {
+    ffpoly: ffpoly.version,
+    smalljac: smalljac.version,
+    arithmetic: "portable-fixed-width-v2",
+    abi: "int64-v1",
+  };
+  if (
+    existsSync(join(prefix, "lib", "ff_poly.lib")) &&
+    existsSync(join(prefix, "lib", "smalljac.lib")) &&
+    existsSync(join(prefix, "include", "smalljac.h")) &&
+    existsSync(stampPath) &&
+    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8")).build) ===
+      JSON.stringify(expectedBuild)
+  ) {
+    process.stdout.write(`Using portable smalljac dependencies in ${prefix}\n`);
+    return;
+  }
+
+  const ffpolySource = extract(await obtainArchive(ffpoly), ffpoly);
+  const smalljacSource = extract(await obtainArchive(smalljac), smalljac);
+  prepareSources(ffpolySource, smalljacSource, { windows: true });
+  const vcvars = findVisualStudioEnvironment();
+  const powershell = [
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File",
+    `"${join(__dirname, "portable-smalljac", "build-windows.ps1")}"`,
+    `-FfpolySource "${ffpolySource}"`,
+    `-SmalljacSource "${smalljacSource}"`,
+    `-Prefix "${prefix}"`,
+  ].join(" ");
+  const command = `call "${vcvars}" >nul && ${powershell}`;
+  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command], {
+    windowsVerbatimArguments: true,
+  });
+  writeFileSync(
+    stampPath,
+    `${JSON.stringify({ build: expectedBuild }, null, 2)}\n`,
+  );
+  process.stdout.write(`Portable smalljac installed in ${prefix}\n`);
 }
 
 function digest(path) {
@@ -474,14 +572,53 @@ function installFiles(source, paths, destination) {
   }
 }
 
+function preparePortableSmalljacSource(source, name) {
+  const cstd = join(source, "cstd.h");
+  // Both upstream archives ship cstd.h with CRLF line endings.  Normalize this
+  // one patched file so the checked-in patch applies identically on Unix and
+  // native Windows checkouts.
+  writeFileSync(cstd, readFileSync(cstd, "utf8").replace(/\r\n/g, "\n"));
+  if (name === "ffpoly") {
+    copyFileSync(
+      join(
+        packageRoot,
+        "scripts",
+        "portable-smalljac",
+        "sagejs_ffpoly_word.h",
+      ),
+      join(source, "sagejs_ffpoly_word.h"),
+    );
+  }
+  run(
+    "git",
+    [
+      "apply",
+      "--whitespace=nowarn",
+      join(packageRoot, "patches", `${name}-portability.patch`),
+    ],
+    {
+      cwd: source,
+      env: { GIT_CEILING_DIRECTORIES: packageRoot },
+    },
+  );
+}
+
 function buildFfpoly(source) {
-  const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  const forcePortable = forcePortableSmalljac || process.arch !== "x64";
+  const cflags = [
+    "-O3",
+    "-fPIC",
+    "-fomit-frame-pointer",
+    "-funroll-loops",
+    "-std=gnu99",
+    ...(forcePortable ? ["-DSAGEJS_FFPOLY_PORTABLE=1"] : []),
+  ].join(" ");
   run(
     "make",
     [
       `-j${jobs}`,
       "libff_poly.a",
+      `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
@@ -504,6 +641,7 @@ function buildFfpoly(source) {
       "ffpolysmall.h",
       "ntutil.h",
       "polyparse.h",
+      "sagejs_ffpoly_word.h",
     ],
     join(prefix, "include", "ff_poly")
   );
@@ -511,12 +649,13 @@ function buildFfpoly(source) {
 
 function buildSmalljac(source) {
   const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -std=gnu99";
   run(
     "make",
     [
       `-j${jobs}`,
       "libsmalljac.a",
+      `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
@@ -530,15 +669,15 @@ async function main() {
   await prepareEclibSource();
   if (process.platform === "win32") {
     buildWindowsDependencies();
+    await buildWindowsSmalljac();
     return;
   }
-  const smalljacAccelerator =
-    process.platform === "linux" && process.arch === "x64";
   const supportedUnix =
     (process.platform === "linux" &&
       (process.arch === "x64" || process.arch === "arm64")) ||
     (process.platform === "darwin" &&
       (process.arch === "arm64" || process.arch === "x64"));
+  const smalljacAccelerator = supportedUnix;
   if (!supportedUnix) {
     throw new Error(
       `the native FLINT backend does not yet support ${process.platform}/${process.arch}`
@@ -557,7 +696,7 @@ async function main() {
     "flint",
     prefix,
     prebuiltRequired,
-  )) {
+  ) && !forcePortableSmalljac) {
     process.stdout.write(`Using prebuilt FLINT dependencies in ${prefix}\n`);
     return;
   }
@@ -573,6 +712,10 @@ async function main() {
     openblas:
       dependencies.find(({ name }) => name === "openblas").version,
     openblasBuild: "threaded-cblas-dynamic-v1",
+    smalljacArithmetic:
+      forcePortableSmalljac || process.arch !== "x64"
+        ? "portable-v1"
+        : "gnu-x86-64-asm",
     ...(smalljacAccelerator
       ? {
           smalljac:
@@ -621,8 +764,12 @@ async function main() {
   buildOpenBlas(source("openblas"));
   buildFlint(source("flint"));
   if (smalljacAccelerator) {
-    buildFfpoly(source("ffpoly"));
-    buildSmalljac(source("smalljac"));
+    const ffpolySource = source("ffpoly");
+    const smalljacSource = source("smalljac");
+    preparePortableSmalljacSource(ffpolySource, "ffpoly");
+    preparePortableSmalljacSource(smalljacSource, "smalljac");
+    buildFfpoly(ffpolySource);
+    buildSmalljac(smalljacSource);
   }
   const buildStamp = {
     build: expectedBuild,
