@@ -22,6 +22,9 @@ try {
 import json
 import time
 import sagejs.number_fields.maximal_order_engine as engine
+import sagejs.number_fields.field_analysis_resource as analysis_resource
+import sagejs.number_fields.maximal_order_certification as certification
+import sagejs.ffi.flint as flint
 
 identifiers = ${JSON.stringify([
     "motivating-degree-7",
@@ -67,6 +70,44 @@ def public_order(coefficients):
     assert order.is_maximal()
     return order
 
+def profile_public_order(coefficients):
+    timings = {}
+    calls = {}
+    originals = []
+
+    def instrument(owner, attribute, label):
+        original = getattr(owner, attribute)
+        def measured(*args, **kwds):
+            started = time.perf_counter()
+            try:
+                return original(*args, **kwds)
+            finally:
+                timings[label] = timings.get(label, 0.0) + 1000 * (time.perf_counter() - started)
+                calls[label] = calls.get(label, 0) + 1
+        setattr(owner, attribute, measured)
+        originals.append((owner, attribute, original))
+
+    probe = NumberField(ring(coefficients), "profile_probe")
+    equation_order = probe.equation_order()
+    instrument(flint, "number_field_analyze_resource", "nativeResource")
+    instrument(flint.NumberFieldAnalysisResource, "copy_bytes", "resourceCopyBytes")
+    instrument(analysis_resource, "decode_field_analysis_resource", "decodeAndAuthenticate")
+    instrument(analysis_resource, "_validate_analysis", "validateAnalysis")
+    instrument(engine, "_proven_decomposition_from_field_analysis", "decompositionAdapter")
+    instrument(engine, "_order_from_basis", "orderMaterialization")
+    instrument(engine, "certify_global_order", "globalCertification")
+    instrument(certification, "check_order_lattice", "duplicateGenericLatticeCheck")
+    instrument(type(probe), "equation_order", "equationOrderMaterialization")
+    instrument(type(equation_order), "discriminant", "publicOrderDiscriminant")
+    started = time.perf_counter()
+    try:
+        order = public_order(coefficients)
+        total = 1000 * (time.perf_counter() - started)
+    finally:
+        for owner, attribute, original in reversed(originals):
+            setattr(owner, attribute, original)
+    return {"totalMs": total, "inclusiveMs": timings, "calls": calls}
+
 results = []
 for identifier, coefficients, rounds in zip(
     identifiers, coefficient_cases, round_cases
@@ -83,6 +124,7 @@ for identifier, coefficients, rounds in zip(
     control = measure(lambda: public_order(coefficients), rounds)
     engine._authenticated_default_field_analysis = saved_hook
     fused = measure(lambda: public_order(coefficients), rounds)
+    profile = profile_public_order(coefficients)
 
     analysis_calls = [0]
     order_calls = [0]
@@ -107,6 +149,7 @@ for identifier, coefficients, rounds in zip(
         "fusedAnalysisCalls": analysis_calls[0],
         "fusedOrderResourceCalls": order_calls[0],
         "certificateEqual": True,
+        "phaseProfile": profile,
     })
 
 engine._authenticated_default_field_analysis = saved_hook
