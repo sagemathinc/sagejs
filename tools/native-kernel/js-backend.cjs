@@ -197,6 +197,24 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   ) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
+  if (operation.kind === "integer.mod_uint64") {
+    return `${indent}${operation.target} = integerModUInt64(` +
+      `${operation.left}, ${operation.right});`;
+  }
+  if (operation.kind === "uint64.buffer.copy") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "uint64.buffer.length") {
+    return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
+  }
+  if (operation.kind === "uint64.buffer.get") {
+    return `${indent}${operation.target} = uint64BufferGet(` +
+      `${operation.buffer}, ${operation.index});`;
+  }
+  if (operation.kind === "uint64.buffer.set") {
+    return `${indent}uint64BufferSet(${operation.buffer}, ` +
+      `${operation.index}, ${operation.value});`;
+  }
   if (operation.kind === "int64.buffer.copy") {
     return `${indent}${operation.target} = ${operation.source};`;
   }
@@ -1381,6 +1399,34 @@ function uint64BufferView(value, argument = "buffer") {
   return value;
 }
 
+function uint64BufferGet(buffer, index) {
+  const view = uint64BufferView(buffer);
+  const exact = typeof index === "bigint" ? index : BigInt(index);
+  if (exact < -BigInt(view.length) || exact >= BigInt(view.length)) {
+    throw new RangeError("UInt64Buffer index out of range");
+  }
+  const position = exact < 0n ? BigInt(view.length) + exact : exact;
+  return BigInt(Reflect.get(view, String(Number(position))));
+}
+
+function uint64BufferSet(buffer, index, value) {
+  const view = uint64BufferView(buffer);
+  const exactIndex = typeof index === "bigint" ? index : BigInt(index);
+  if (exactIndex < -BigInt(view.length) ||
+      exactIndex >= BigInt(view.length)) {
+    throw new RangeError("UInt64Buffer index out of range");
+  }
+  const exactValue = typeof value === "bigint" ? value : BigInt(value);
+  if (exactValue < 0n || exactValue > 18446744073709551615n) {
+    throw new RangeError("UInt64Buffer value is outside unsigned 64-bit");
+  }
+  const position = exactIndex < 0n
+    ? BigInt(view.length) + exactIndex : exactIndex;
+  if (!Reflect.set(view, String(Number(position)), exactValue)) {
+    throw new TypeError("UInt64Buffer is not writable");
+  }
+}
+
 function uint64NativeBuffer(value, argument) {
   const view = uint64BufferView(value, argument);
   if (isTypedArrayKind(view, "BigUint64Array")) {
@@ -1604,6 +1650,12 @@ function integerFloorDiv(left, right) {
 
 function integerMod(left, right) {
   return left - integerFloorDiv(left, right) * right;
+}
+
+function integerModUInt64(left, right) {
+  if (right === 0n) throw new RangeError("integer division or modulo by zero");
+  const remainder = left % right;
+  return remainder < 0n ? remainder + right : remainder;
 }
 
 function integerDivmod(left, right) {

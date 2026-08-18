@@ -183,6 +183,57 @@ function emitWordOperation(operation, context, indent) {
     return `${indent}${target} = ${value(operation.left)} ${operator} ` +
       `${value(operation.right)};`;
   }
+  if (operation.kind === "integer.mod_uint64") {
+    const divisor = value(operation.right);
+    return [
+      `${indent}if (${divisor} == 0)`,
+      `${indent}{`,
+      emitDivisionError(`${indent}    `, context.failure),
+      `${indent}}`,
+      `${indent}${target} = sagejs_int64_mod_uint64(` +
+        `${value(operation.left)}, ${divisor});`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.buffer.copy") {
+    return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "uint64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
+  }
+  if (operation.kind === "uint64.buffer.get" ||
+      operation.kind === "uint64.buffer.set") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    const position = operation.indexType === "Integer"
+      ? "sagejs_buffer_position" : `(size_t) ${index}`;
+    const access = operation.kind === "uint64.buffer.get"
+      ? `${target} = ${buffer}.data[${position}];`
+      : `${buffer}.data[${position}] = ${value(operation.value)};`;
+    if (operation.indexType === "Integer") {
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!sagejs_signed_buffer_index(` +
+          `${buffer}.length, ${index}, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"UInt64Buffer index out of range");`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    return [
+      `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"UInt64Buffer index out of range");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${access}`,
+    ].join("\n");
+  }
   if (operation.kind === "int64.buffer.copy") {
     return `${indent}${target} = ${value(operation.source)};`;
   }
