@@ -33,6 +33,7 @@
 #include <smalljac.h>
 #endif
 
+#include "addon.h"
 #include "algebraic.h"
 #include "dirichlet.h"
 #include "eclib_rank.h"
@@ -889,9 +890,6 @@ typedef struct
 } elliptic_smalljac_result;
 
 #ifdef SAGEJS_HAVE_SMALLJAC
-/* ffpoly deliberately uses one global finite-field context. */
-static pthread_mutex_t elliptic_smalljac_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #ifdef _WIN32
 typedef uint64_t sagejs_smalljac_prime_t;
 typedef int64_t sagejs_smalljac_coefficient_t;
@@ -968,12 +966,12 @@ static int elliptic_smalljac_ap_values(
     curve_text = elliptic_smalljac_curve_string(coefficients);
     if (curve_text == NULL)
         return 0;
-    pthread_mutex_lock(&elliptic_smalljac_mutex);
+    sagejs_smalljac_lock();
     curve = smalljac_curve_init(curve_text, &error);
     free(curve_text);
     if (curve == NULL || error != 0)
     {
-        pthread_mutex_unlock(&elliptic_smalljac_mutex);
+        sagejs_smalljac_unlock();
         return 0;
     }
 
@@ -989,7 +987,7 @@ static int elliptic_smalljac_ap_values(
         elliptic_smalljac_callback,
         &result);
     smalljac_curve_clear(curve);
-    pthread_mutex_unlock(&elliptic_smalljac_mutex);
+    sagejs_smalljac_unlock();
     return status >= 0 && !result.failed;
 }
 
@@ -1031,12 +1029,12 @@ static int elliptic_smalljac_single_ap(
     curve_text = elliptic_smalljac_curve_string(coefficients);
     if (curve_text == NULL)
         return 0;
-    pthread_mutex_lock(&elliptic_smalljac_mutex);
+    sagejs_smalljac_lock();
     curve = smalljac_curve_init(curve_text, &error);
     free(curve_text);
     if (curve == NULL || error != 0)
     {
-        pthread_mutex_unlock(&elliptic_smalljac_mutex);
+        sagejs_smalljac_unlock();
         return 0;
     }
 
@@ -1051,7 +1049,7 @@ static int elliptic_smalljac_single_ap(
         elliptic_smalljac_single_callback,
         &result);
     smalljac_curve_clear(curve);
-    pthread_mutex_unlock(&elliptic_smalljac_mutex);
+    sagejs_smalljac_unlock();
     if (status < 0 || !result.found)
         return 0;
     *value = result.value;
@@ -3718,6 +3716,436 @@ cleanup_pow:
     return result;
 }
 
+static int smalljac_batch_arguments(
+    napi_env env,
+    napi_callback_info info,
+    char **curve_text,
+    uint64_t *start,
+    uint64_t *stop,
+    size_t *maximum_rows)
+{
+    napi_value args[4];
+    napi_valuetype type;
+    size_t argc = 4;
+    size_t length;
+    size_t written;
+    bool present;
+    ulong word;
+
+    *curve_text = NULL;
+    *maximum_rows = 0;
+    if (!check_napi(env,
+        napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return 0;
+    if (argc < 3 || argc > 4)
+    {
+        napi_throw_type_error(env, NULL, "expected 3 or 4 arguments");
+        return 0;
+    }
+    if (!check_napi(env, napi_typeof(env, args[0], &type)))
+        return 0;
+    if (type != napi_string)
+    {
+        napi_throw_type_error(env, NULL, "curveText must be a string");
+        return 0;
+    }
+    if (!check_napi(env,
+        napi_get_value_string_utf8(env, args[0], NULL, 0, &length)))
+        return 0;
+    if (length == 0 || length >= 1024 || length == SIZE_MAX)
+    {
+        napi_throw_range_error(
+            env, NULL, "curveText must contain 1 through 1023 UTF-8 bytes");
+        return 0;
+    }
+    *curve_text = malloc(length + 1);
+    if (*curve_text == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate smalljac curve text");
+        return 0;
+    }
+    if (!check_napi(env,
+        napi_get_value_string_utf8(
+            env, args[0], *curve_text, length + 1, &written)))
+        goto fail;
+    if (written != length || memchr(*curve_text, '\0', length) != NULL)
+    {
+        napi_throw_range_error(env, NULL, "curveText contains an embedded NUL");
+        goto fail;
+    }
+    if (!bigint_to_ulong(env, args[1], &word))
+        goto fail;
+    *start = (uint64_t) word;
+    if (!bigint_to_ulong(env, args[2], &word))
+        goto fail;
+    *stop = (uint64_t) word;
+
+    if (argc == 4)
+    {
+        if (!check_napi(env, napi_typeof(env, args[3], &type)))
+            goto fail;
+        if (type != napi_undefined)
+        {
+            napi_value maximum;
+            if (type != napi_object)
+            {
+                napi_throw_type_error(env, NULL, "options must be an object");
+                goto fail;
+            }
+            if (!check_napi(env,
+                napi_has_named_property(env, args[3], "maxRows", &present)))
+                goto fail;
+            if (present)
+            {
+                if (!check_napi(env,
+                    napi_get_named_property(
+                        env, args[3], "maxRows", &maximum)) ||
+                    !number_to_ulong(env, maximum, &word))
+                    goto fail;
+                if ((uint64_t) word > (uint64_t) SIZE_MAX)
+                {
+                    napi_throw_range_error(env, NULL, "maxRows exceeds size_t");
+                    goto fail;
+                }
+                *maximum_rows = (size_t) word;
+            }
+        }
+    }
+    return 1;
+
+fail:
+    free(*curve_text);
+    *curve_text = NULL;
+    return 0;
+}
+
+static int smalljac_set_number(
+    napi_env env, napi_value object, const char *name, int32_t number)
+{
+    napi_value value;
+    return check_napi(env, napi_create_int32(env, number, &value)) &&
+        check_napi(env, napi_set_named_property(env, object, name, value));
+}
+
+static int smalljac_set_size(
+    napi_env env, napi_value object, const char *name, size_t number)
+{
+    napi_value value;
+    if (number > UINT32_MAX)
+    {
+        napi_throw_range_error(env, NULL, "smalljac row count exceeds uint32");
+        return 0;
+    }
+    return check_napi(env,
+        napi_create_uint32(env, (uint32_t) number, &value)) &&
+        check_napi(env, napi_set_named_property(env, object, name, value));
+}
+
+static int smalljac_set_boolean(
+    napi_env env, napi_value object, const char *name, int truth)
+{
+    napi_value value;
+    return check_napi(env, napi_get_boolean(env, truth != 0, &value)) &&
+        check_napi(env, napi_set_named_property(env, object, name, value));
+}
+
+static int smalljac_set_string(
+    napi_env env, napi_value object, const char *name, const char *text)
+{
+    napi_value value;
+    return check_napi(env,
+        napi_create_string_utf8(env, text, NAPI_AUTO_LENGTH, &value)) &&
+        check_napi(env, napi_set_named_property(env, object, name, value));
+}
+
+static int smalljac_typed_array(
+    napi_env env,
+    napi_value object,
+    const char *name,
+    napi_typedarray_type type,
+    size_t length,
+    size_t element_size,
+    void **data)
+{
+    napi_value buffer;
+    napi_value array;
+    if (length != 0 && element_size > SIZE_MAX / length)
+    {
+        napi_throw_range_error(env, NULL, "smalljac packed result is too large");
+        return 0;
+    }
+    return check_napi(env,
+        napi_create_arraybuffer(
+            env, length * element_size, data, &buffer)) &&
+        check_napi(env,
+            napi_create_typedarray(env, type, length, buffer, 0, &array)) &&
+        check_napi(env, napi_set_named_property(env, object, name, array));
+}
+
+static int smalljac_common_batch_properties(
+    napi_env env,
+    napi_value object,
+    int32_t status,
+    int64_t upstream_status,
+    uint8_t genus,
+    size_t row_count,
+    size_t required_rows,
+    uint8_t truncated)
+{
+    napi_value upstream_value;
+    return smalljac_set_number(env, object, "status", status) &&
+        smalljac_set_string(
+            env, object, "statusName", sagejs_smalljac_status_name(status)) &&
+        check_napi(env,
+            napi_create_bigint_int64(env, upstream_status, &upstream_value)) &&
+        check_napi(env,
+            napi_set_named_property(
+                env, object, "upstreamStatus", upstream_value)) &&
+        smalljac_set_number(env, object, "genus", genus) &&
+        smalljac_set_size(env, object, "rowCount", row_count) &&
+        smalljac_set_size(env, object, "requiredRows", required_rows) &&
+        smalljac_set_boolean(env, object, "truncated", truncated) &&
+        smalljac_set_string(
+            env, object, "backendVersion",
+            sagejs_smalljac_backend_version()) &&
+        smalljac_set_string(
+            env, object, "normalization", "det(1-T*Frob)");
+}
+
+napi_value sagejs_smalljac_lpoly_batch_value(
+    napi_env env, napi_callback_info info)
+{
+    char *curve_text;
+    uint64_t start;
+    uint64_t stop;
+    size_t maximum_rows;
+    sagejs_smalljac_lpoly_batch batch;
+    napi_value result;
+    uint64_t *primes;
+    uint8_t *good;
+    uint8_t *counts;
+    int64_t *coefficients;
+    int32_t *row_status;
+
+    if (!smalljac_batch_arguments(
+        env, info, &curve_text, &start, &stop, &maximum_rows))
+        return NULL;
+    sagejs_smalljac_lpoly_batch_compute(
+        curve_text, start, stop, maximum_rows, &batch);
+    free(curve_text);
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !smalljac_common_batch_properties(
+            env, result, batch.status, batch.upstream_status, batch.genus,
+            batch.row_count, batch.required_rows, batch.truncated) ||
+        !smalljac_typed_array(
+            env, result, "primes", napi_biguint64_array,
+            batch.row_count, sizeof(*primes), (void **) &primes) ||
+        !smalljac_typed_array(
+            env, result, "good", napi_uint8_array,
+            batch.row_count, sizeof(*good), (void **) &good) ||
+        !smalljac_typed_array(
+            env, result, "coefficientCounts", napi_uint8_array,
+            batch.row_count, sizeof(*counts), (void **) &counts) ||
+        !smalljac_typed_array(
+            env, result, "coefficients", napi_bigint64_array,
+            batch.row_count * SAGEJS_SMALLJAC_MAX_GENUS,
+            sizeof(*coefficients), (void **) &coefficients) ||
+        !smalljac_typed_array(
+            env, result, "rowStatus", napi_int32_array,
+            batch.row_count, sizeof(*row_status), (void **) &row_status))
+    {
+        sagejs_smalljac_lpoly_batch_clear(&batch);
+        return NULL;
+    }
+    for (size_t index = 0; index < batch.row_count; index += 1)
+    {
+        const sagejs_smalljac_lpoly_row *row = &batch.rows[index];
+        primes[index] = row->prime;
+        good[index] = row->good;
+        counts[index] = row->coefficient_count;
+        row_status[index] = row->status;
+        for (size_t coefficient = 0;
+             coefficient < SAGEJS_SMALLJAC_MAX_GENUS; coefficient += 1)
+            coefficients[SAGEJS_SMALLJAC_MAX_GENUS * index + coefficient] =
+                row->coefficients[coefficient];
+    }
+    sagejs_smalljac_lpoly_batch_clear(&batch);
+    return result;
+}
+
+napi_value sagejs_smalljac_group_batch_value(
+    napi_env env, napi_callback_info info)
+{
+    char *curve_text;
+    uint64_t start;
+    uint64_t stop;
+    size_t maximum_rows;
+    size_t invariant_total = 0;
+    sagejs_smalljac_group_batch batch;
+    napi_value result;
+    uint64_t *primes;
+    uint8_t *good;
+    uint8_t *counts;
+    uint32_t *offsets;
+    uint64_t *invariants;
+    int32_t *row_status;
+
+    if (!smalljac_batch_arguments(
+        env, info, &curve_text, &start, &stop, &maximum_rows))
+        return NULL;
+    sagejs_smalljac_group_batch_compute(
+        curve_text, start, stop, maximum_rows, &batch);
+    free(curve_text);
+    for (size_t index = 0; index < batch.row_count; index += 1)
+    {
+        if (batch.rows[index].invariant_count > UINT32_MAX - invariant_total)
+        {
+            sagejs_smalljac_group_batch_clear(&batch);
+            napi_throw_range_error(env, NULL, "too many group invariants");
+            return NULL;
+        }
+        invariant_total += batch.rows[index].invariant_count;
+    }
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !smalljac_common_batch_properties(
+            env, result, batch.status, batch.upstream_status, batch.genus,
+            batch.row_count, batch.required_rows, batch.truncated) ||
+        !smalljac_typed_array(
+            env, result, "primes", napi_biguint64_array,
+            batch.row_count, sizeof(*primes), (void **) &primes) ||
+        !smalljac_typed_array(
+            env, result, "good", napi_uint8_array,
+            batch.row_count, sizeof(*good), (void **) &good) ||
+        !smalljac_typed_array(
+            env, result, "invariantCounts", napi_uint8_array,
+            batch.row_count, sizeof(*counts), (void **) &counts) ||
+        !smalljac_typed_array(
+            env, result, "invariantOffsets", napi_uint32_array,
+            batch.row_count + 1, sizeof(*offsets), (void **) &offsets) ||
+        !smalljac_typed_array(
+            env, result, "invariants", napi_biguint64_array,
+            invariant_total, sizeof(*invariants), (void **) &invariants) ||
+        !smalljac_typed_array(
+            env, result, "rowStatus", napi_int32_array,
+            batch.row_count, sizeof(*row_status), (void **) &row_status))
+    {
+        sagejs_smalljac_group_batch_clear(&batch);
+        return NULL;
+    }
+    invariant_total = 0;
+    offsets[0] = 0;
+    for (size_t index = 0; index < batch.row_count; index += 1)
+    {
+        const sagejs_smalljac_group_row *row = &batch.rows[index];
+        primes[index] = row->prime;
+        good[index] = row->good;
+        counts[index] = row->invariant_count;
+        row_status[index] = row->status;
+        for (size_t invariant = 0;
+             invariant < row->invariant_count; invariant += 1)
+            invariants[invariant_total++] = row->invariants[invariant];
+        offsets[index + 1] = (uint32_t) invariant_total;
+    }
+    sagejs_smalljac_group_batch_clear(&batch);
+    return result;
+}
+
+static int smalljac_set_uint64_bigint(
+    napi_env env, napi_value object, const char *name, uint64_t number)
+{
+    napi_value value;
+    return check_napi(env,
+        napi_create_bigint_uint64(env, number, &value)) &&
+        check_napi(env, napi_set_named_property(env, object, name, value));
+}
+
+static int smalljac_set_number_array(
+    napi_env env,
+    napi_value object,
+    const char *name,
+    const uint32_t *numbers,
+    size_t count)
+{
+    napi_value array;
+    if (!check_napi(env, napi_create_array_with_length(env, count, &array)))
+        return 0;
+    for (size_t index = 0; index < count; index += 1)
+    {
+        napi_value value;
+        if (!check_napi(env,
+            napi_create_uint32(env, numbers[index], &value)) ||
+            !check_napi(env,
+                napi_set_element(env, array, (uint32_t) index, value)))
+            return 0;
+    }
+    return check_napi(env, napi_set_named_property(env, object, name, array));
+}
+
+napi_value sagejs_smalljac_capabilities_value(
+    napi_env env, napi_callback_info info)
+{
+    static const uint32_t full_genera[] = {2};
+    static const uint32_t group_genera[] = {2};
+    napi_value result;
+    napi_value bounds;
+    napi_value statuses;
+    (void) info;
+
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !smalljac_set_boolean(
+            env, result, "available", sagejs_smalljac_available()) ||
+        !smalljac_set_string(
+            env, result, "backendVersion",
+            sagejs_smalljac_backend_version()) ||
+        !smalljac_set_string(
+            env, result, "normalization", "det(1-T*Frob)") ||
+        !smalljac_set_number(
+            env, result, "maxGenus", SAGEJS_SMALLJAC_MAX_GENUS) ||
+        !smalljac_set_number_array(
+            env, result, "fullLpolynomialGenus", full_genera, 1) ||
+        !smalljac_set_number_array(
+            env, result, "groupStructureGenus", group_genera, 1) ||
+        !smalljac_set_boolean(
+            env, result, "groupRequiresOddDegree", 1) ||
+        !check_napi(env, napi_create_object(env, &bounds)) ||
+        !smalljac_set_uint64_bigint(
+            env, bounds, "lpolynomial",
+            SAGEJS_SMALLJAC_LPOLY_MAX_PRIME) ||
+        !smalljac_set_uint64_bigint(
+            env, bounds, "groupStructure",
+            SAGEJS_SMALLJAC_GROUP_MAX_PRIME) ||
+        !check_napi(env,
+            napi_set_named_property(env, result, "primeUpperBounds", bounds)) ||
+        !check_napi(env, napi_create_object(env, &statuses)))
+        return NULL;
+
+#define SET_SMALLJAC_STATUS(name) \
+    if (!smalljac_set_number(env, statuses, #name, \
+        SAGEJS_SMALLJAC_STATUS_##name)) return NULL
+    SET_SMALLJAC_STATUS(OK);
+    SET_SMALLJAC_STATUS(TRUNCATED);
+    SET_SMALLJAC_STATUS(UNAVAILABLE);
+    SET_SMALLJAC_STATUS(INVALID_ARGUMENT);
+    SET_SMALLJAC_STATUS(PARSE_ERROR);
+    SET_SMALLJAC_STATUS(UNSUPPORTED_CURVE);
+    SET_SMALLJAC_STATUS(SINGULAR_CURVE);
+    SET_SMALLJAC_STATUS(INVALID_INTERVAL);
+    SET_SMALLJAC_STATUS(ALLOCATION_FAILED);
+    SET_SMALLJAC_STATUS(CALLBACK_CANCELLED);
+    SET_SMALLJAC_STATUS(COEFFICIENT_RANGE);
+    SET_SMALLJAC_STATUS(INTERNAL_ERROR);
+#undef SET_SMALLJAC_STATUS
+    if (!smalljac_set_number(
+            env, statuses, "ROW_GOOD", SAGEJS_SMALLJAC_ROW_GOOD) ||
+        !smalljac_set_number(
+            env, statuses, "ROW_BAD_REDUCTION",
+            SAGEJS_SMALLJAC_ROW_BAD_REDUCTION) ||
+        !check_napi(env,
+            napi_set_named_property(env, result, "statuses", statuses)))
+        return NULL;
+    return result;
+}
+
 static napi_value version(napi_env env, napi_callback_info info)
 {
     napi_value result;
@@ -4306,6 +4734,15 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,
+            NULL, NULL, NULL, napi_default, NULL},
+        {SAGEJS_SMALLJAC_LPOLY_EXPORT, NULL,
+            sagejs_smalljac_lpoly_batch_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {SAGEJS_SMALLJAC_GROUP_EXPORT, NULL,
+            sagejs_smalljac_group_batch_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {SAGEJS_SMALLJAC_CAPABILITIES_EXPORT, NULL,
+            sagejs_smalljac_capabilities_value,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecScalarMulPrime", NULL, elliptic_scalar_mul_prime,
             NULL, NULL, NULL, napi_default, NULL},

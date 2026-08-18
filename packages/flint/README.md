@@ -103,6 +103,38 @@ is based on Kiran Kedlaya and Andrew Sutherland, “Computing L-series of
 hyperelliptic curves,” ANTS VIII (2008), 312–326. The pinned upstream release
 is GPL-2.0-or-later and depends on Andrew Sutherland's `ffpoly` 1.2.7.
 
+The same dependency now has a packed, in-process genus-2 boundary for the
+hyperelliptic layer. `smalljacLpolyBatch(curveText, start, stop, options)`
+accepts a private checked integral smalljac model string, traverses the closed
+prime interval once, and returns aligned typed arrays. `primes`, `good`,
+`coefficientCounts`, and `rowStatus` have one entry per emitted callback;
+`coefficients` stores row-major `(c1,c2)` for `det(1-T*Frob)`. Bad-reduction
+rows remain present with count zero. A finite `options.maxRows` limits stored
+rows while `requiredRows` reports the complete callback count and `truncated`
+records the loss. The accepted upstream grammar used by this adapter is an
+integral quintic or sextic `f(x)`, or the integral pair `[f(x),h(x)]` defining
+`y^2+h(x)y=f(x)`. The public mathematical layer, not this private adapter,
+owns model transformations and excluded denominator primes.
+
+`smalljacGroupBatch` uses the same row alignment and returns invariant factors
+as packed `BigUint64Array` storage with `invariantOffsets`. Upstream supports
+this only for odd-degree genus-2 models over `QQ`; even-degree calls return the
+explicit `UNSUPPORTED_CURVE` status. `smalljacCapabilities()` publishes the
+backend version, normalization, exact numeric status table, supported genera,
+and fixed-width prime limits. Full genus-2 coefficients are admitted only
+through `p < 2^32`: the Weil bounds give `|c1| <= 4*sqrt(p)` and
+`|c2| <= 6*p`, safely inside `int64`. Group invariants use the stricter
+`p < 2^30` capability, where the genus-2 Jacobian order bound is below signed
+64-bit upstream arithmetic; positivity, invariant-factor divisibility, and
+product overflow are checked before conversion. These are capability limits,
+not promises to coerce an unsupported result.
+
+All elliptic and hyperelliptic calls share one native mutex because ffpoly's
+finite-field context is process-global. Callback allocation/range failures
+cancel the upstream traversal, clean up the curve, release the mutex, and
+return a distinct batch status; mathematical parse, singularity, model, and
+interval failures retain their own statuses.
+
 Prime-field elliptic-curve scalar multiplication uses a portable native
 Jacobian ladder over arbitrary-size FLINT integers. General Weierstrass models
 are moved exactly to short form in characteristic greater than three, the
@@ -226,8 +258,9 @@ The upstream sources assume the LP64 ABI. During a native Windows build,
 Sage.js prepares a fixed-width `uint64_t`/`int64_t` source tree and routes
 GMP's C-`long` `_ui` and `_si` interfaces through exact 64-bit adapters. This
 avoids silently truncating primes at the 32-bit LLP64 boundary. The Windows
-library is the complete `smalljac_Lpolys` genus-one link closure. It omits
-`STgroups.c` and `smalljac_moments.c`, which implement a separate public
+library is the complete `smalljac_Lpolys` genus-one and genus-two link closure,
+including the supported odd-degree group-structure path. It omits `STgroups.c`
+and `smalljac_moments.c`, which implement a separate public
 Sato--Tate statistics API and are unreachable from that entry point.
 
 The portable word layer is differentially checked against an independent
