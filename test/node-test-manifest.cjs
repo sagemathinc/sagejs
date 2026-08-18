@@ -103,6 +103,7 @@ const integration = [
   "test/number-field-order-resource-ffi.cjs",
   "test/number-field-order-resource-python.cjs",
   "test/number-field-round2-degree90.cjs",
+  "test/number-field-round2-proof-resource-native.cjs",
   "test/number-field-analysis-resource.cjs",
   "test/number-field-analysis-resource-python.cjs",
   "test/number-field-analysis-projection.cjs",

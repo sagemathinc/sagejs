@@ -219,6 +219,7 @@
     "bench:number-field-discriminant-prefactorization": "node bench/number-field-discriminant-prefactorization.cjs",
     "bench:number-field-round2-native-state": "node bench/number-field-round2-native-state.cjs",
     "bench:number-field-round2-degree90": "node bench/number-field-round2-degree90.cjs",
+    "bench:number-field-round2-proof-resource": "node bench/number-field-round2-proof-resource.cjs",
     "bench:number-field-round4": "node bench/number-field-round4.cjs",
     "bench:number-field-round4-primary": "node bench/number-field-round4-primary.cjs",
     "bench:number-field-round4-crt-batch": "node bench/number-field-round4-crt-batch.cjs",
