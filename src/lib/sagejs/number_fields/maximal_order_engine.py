@@ -1557,22 +1557,25 @@ def compute_maximal_order(
                 scale,
                 int(analysis.order_discriminant),
             )
-            adapter = _CertificateAdapter(
-                coefficients,
-                scale,
-                int(analysis.equation_discriminant),
-                {},
-                [],
-                authenticated_composite_analysis=analysis,
-            )
-            adapter.bind_candidate(order)
-            certificate = certify_global_order(
-                adapter,
-                order,
-                decomposition,
-                local_witnesses,
-            )
-            order._maximal_order_certificate = certificate
+
+            def certificate_factory() -> dict[str, Any]:
+                adapter = _CertificateAdapter(
+                    coefficients,
+                    scale,
+                    int(analysis.equation_discriminant),
+                    {},
+                    [],
+                    authenticated_composite_analysis=analysis,
+                )
+                adapter.bind_candidate(order)
+                return certify_global_order(
+                    adapter,
+                    order,
+                    decomposition,
+                    local_witnesses,
+                )
+
+            order._install_authenticated_maximal_order_certificate(certificate_factory)
             order._maximal_order_local_evidence = runtime.undefined
             public_trace = trace.to_dict()
             public_trace["analysis_trace"] = dict(analysis.trace)
