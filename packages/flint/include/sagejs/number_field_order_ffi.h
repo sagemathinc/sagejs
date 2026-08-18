@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <gmp.h>
+
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
 #include <flint/fmpz.h>
@@ -635,6 +637,484 @@ static inline slong sagejs_nf_multiplier_kernel(
         degree, prime);
 }
 
+/* A terminal p=2 multiplier cycle does not publish its multiplication tensor:
+ * only the exact accumulated basis escapes.  Keep the tensor modulo a proved
+ * power of two instead of rewriting n^3 arbitrary-precision integers after
+ * every enlargement.  If D is the trace discriminant of the current order,
+ * at most v_2(D)/2 strict enlargements are possible.  Starting modulo
+ * 2^(v_2(D)+4) therefore leaves at least four certified bits after the two
+ * bits of precision lost by each basis change.  The old exact tensor path is
+ * retained for nonterminal primes and as a compile-time differential oracle.
+ *
+ * Limiting this packed representation to degree <= 64 makes every GF(2)
+ * vector one machine word.  Larger degrees use the exact generic path. */
+typedef struct
+{
+    slong degree;
+    slong limbs;
+    ulong precision;
+    ulong maximum_precision;
+    ulong *tensor;
+    ulong *next_tensor;
+    ulong *linear;
+    ulong *product;
+    ulong *table_low;
+    ulong *table_high;
+    ulong *next_table_low;
+    ulong *next_table_high;
+    ulong *equation_rows;
+    ulong *matrix_rows;
+    ulong *kernel_rows;
+} sagejs_nf_binary_tensor_workspace;
+
+static inline ulong *sagejs_nf_binary_tensor_entry(
+    sagejs_nf_binary_tensor_workspace *workspace,
+    slong left, slong right, slong output)
+{
+    return workspace->tensor +
+        (((size_t) left * (size_t) workspace->degree + (size_t) right) *
+            (size_t) workspace->degree + (size_t) output) *
+        (size_t) workspace->limbs;
+}
+
+static inline ulong *sagejs_nf_binary_next_entry(
+    sagejs_nf_binary_tensor_workspace *workspace,
+    slong left, slong right, slong output)
+{
+    return workspace->next_tensor +
+        (((size_t) left * (size_t) workspace->degree + (size_t) right) *
+            (size_t) workspace->degree + (size_t) output) *
+        (size_t) workspace->limbs;
+}
+
+static inline ulong sagejs_nf_binary_high_mask(ulong precision)
+{
+    const ulong remainder = precision % FLINT_BITS;
+    return remainder == 0 ? UWORD_MAX : (UWORD(1) << remainder) - 1;
+}
+
+static inline void sagejs_nf_binary_mask(
+    ulong *target, slong limbs, ulong precision)
+{
+    (void) limbs;
+    const slong active = (slong) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    target[active - 1] &= sagejs_nf_binary_high_mask(precision);
+}
+
+static inline void sagejs_nf_binary_copy(
+    ulong *target, const ulong *source, ulong precision)
+{
+    const size_t active =
+        (size_t) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    memcpy(target, source, active * sizeof(ulong));
+}
+
+static inline void sagejs_nf_binary_zero(ulong *target, slong limbs)
+{
+    memset(target, 0, (size_t) limbs * sizeof(ulong));
+}
+
+static inline void sagejs_nf_binary_add(
+    ulong *target, const ulong *source, slong limbs, ulong precision)
+{
+    (void) limbs;
+    const slong active = (slong) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    mpn_add_n(target, target, source, (mp_size_t) active);
+}
+
+static inline void sagejs_nf_binary_sub(
+    ulong *target, const ulong *source, slong limbs, ulong precision)
+{
+    (void) limbs;
+    const slong active = (slong) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    mpn_sub_n(target, target, source, (mp_size_t) active);
+}
+
+static inline void sagejs_nf_binary_shift_left_one(
+    ulong *target, const ulong *source, slong limbs, ulong precision)
+{
+    const slong active = (slong) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    ulong carry = 0;
+    for (slong limb = 0; limb < active; limb++)
+    {
+        const ulong value = source[limb];
+        target[limb] = (value << 1) | carry;
+        carry = value >> (FLINT_BITS - 1);
+    }
+    sagejs_nf_binary_mask(target, limbs, precision);
+}
+
+static inline int sagejs_nf_binary_shift_right_exact(
+    ulong *target, const ulong *source, slong limbs,
+    ulong precision, ulong shift)
+{
+    if ((source[0] & ((UWORD(1) << shift) - 1)) != 0) return 0;
+    const slong active = (slong) ((precision + FLINT_BITS - 1) / FLINT_BITS);
+    const ulong reverse = FLINT_BITS - shift;
+    for (slong limb = 0; limb < active; limb++)
+    {
+        const ulong high = limb + 1 < active ? source[limb + 1] : 0;
+        target[limb] = (source[limb] >> shift) | (high << reverse);
+    }
+    sagejs_nf_binary_mask(target, limbs, precision - shift);
+    return 1;
+}
+
+static inline slong sagejs_nf_binary_rref(
+    ulong *rows, slong row_count, slong degree, slong *pivots)
+{
+    slong rank = 0;
+    for (slong column = 0; column < degree && rank < row_count; column++)
+    {
+        const ulong bit = UWORD(1) << column;
+        slong selected = rank;
+        while (selected < row_count && (rows[selected] & bit) == 0)
+            selected++;
+        if (selected == row_count) continue;
+        const ulong swap = rows[rank];
+        rows[rank] = rows[selected];
+        rows[selected] = swap;
+        for (slong row = 0; row < row_count; row++)
+            if (row != rank && (rows[row] & bit) != 0)
+                rows[row] ^= rows[rank];
+        pivots[rank++] = column;
+    }
+    return rank;
+}
+
+static inline slong sagejs_nf_binary_right_kernel(
+    ulong *kernel_rows, ulong *matrix_rows, slong row_count,
+    slong degree, slong *pivots)
+{
+    const slong rank = sagejs_nf_binary_rref(
+        matrix_rows, row_count, degree, pivots);
+    unsigned char free_columns[64];
+    memset(free_columns, 1, (size_t) degree);
+    for (slong row = 0; row < rank; row++) free_columns[pivots[row]] = 0;
+    slong nullity = 0;
+    for (slong column = 0; column < degree; column++)
+        if (free_columns[column])
+        {
+            ulong value = UWORD(1) << column;
+            for (slong row = 0; row < rank; row++)
+                if ((matrix_rows[row] & (UWORD(1) << column)) != 0)
+                    value |= UWORD(1) << pivots[row];
+            kernel_rows[nullity++] = value;
+        }
+    /* Canonicalise the row basis exactly as the nmod path does. */
+    slong kernel_pivots[64];
+    return sagejs_nf_binary_rref(
+        kernel_rows, nullity, degree, kernel_pivots);
+}
+
+static inline slong sagejs_nf_binary_sparse_right_kernel(
+    ulong *kernel_rows, ulong *source_rows, slong row_count,
+    slong degree, ulong *echelon_rows, slong *pivots)
+{
+    memset(echelon_rows, 0, (size_t) degree * sizeof(ulong));
+    for (slong row = 0; row < row_count; row++)
+    {
+        ulong value = source_rows[row];
+        while (value != 0)
+        {
+            const slong pivot = (slong) flint_ctz(value);
+            if (echelon_rows[pivot] == 0)
+            {
+                echelon_rows[pivot] = value;
+                break;
+            }
+            value ^= echelon_rows[pivot];
+        }
+    }
+    slong rank = 0;
+    for (slong pivot = 0; pivot < degree; pivot++)
+        if (echelon_rows[pivot] != 0)
+            source_rows[rank++] = echelon_rows[pivot];
+    return sagejs_nf_binary_right_kernel(
+        kernel_rows, source_rows, rank, degree, pivots);
+}
+
+static inline ulong sagejs_nf_binary_popcount(ulong value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (ulong) __builtin_popcountll((unsigned long long) value);
+#else
+    ulong count = 0;
+    while (value != 0)
+    {
+        value &= value - 1;
+        count++;
+    }
+    return count;
+#endif
+}
+
+static inline int sagejs_nf_binary_tensor_workspace_init(
+    sagejs_nf_binary_tensor_workspace *workspace,
+    const fmpz_mat_t *multiplication, slong degree,
+    ulong requested_precision)
+{
+    if (degree < 1 || degree > 64) return 0;
+    fmpz_mat_t trace_form;
+    fmpz_mat_init(trace_form, degree, degree);
+    fmpz *traces = _fmpz_vec_init(degree);
+    for (slong basis = 0; basis < degree; basis++)
+    {
+        fmpz_zero(traces + basis);
+        for (slong diagonal = 0; diagonal < degree; diagonal++)
+            fmpz_add(traces + basis, traces + basis,
+                fmpz_mat_entry(multiplication[basis], diagonal, diagonal));
+    }
+    for (slong left = 0; left < degree; left++)
+        for (slong right = 0; right < degree; right++)
+        {
+            fmpz_zero(fmpz_mat_entry(trace_form, left, right));
+            for (slong output = 0; output < degree; output++)
+                fmpz_addmul(fmpz_mat_entry(trace_form, left, right),
+                    fmpz_mat_entry(multiplication[left], output, right),
+                    traces + output);
+        }
+    fmpz_t determinant, quotient, two;
+    fmpz_init(determinant);
+    fmpz_init(quotient);
+    fmpz_init(two);
+    fmpz_set_ui(two, 2);
+    fmpz_mat_det(determinant, trace_form);
+    slong valuation = fmpz_is_zero(determinant) ? -1 :
+        fmpz_remove(quotient, determinant, two);
+    fmpz_clear(two);
+    fmpz_clear(quotient);
+    fmpz_clear(determinant);
+    _fmpz_vec_clear(traces, degree);
+    fmpz_mat_clear(trace_form);
+    if (valuation < 0) return 0;
+
+    workspace->degree = degree;
+    workspace->maximum_precision = (ulong) valuation + 4;
+    workspace->precision = requested_precision == 0 ||
+        requested_precision > workspace->maximum_precision ?
+        workspace->maximum_precision : requested_precision;
+    workspace->limbs = (slong)
+        ((workspace->precision + FLINT_BITS - 1) / FLINT_BITS);
+    const size_t entries =
+        (size_t) degree * (size_t) degree * (size_t) degree;
+    const size_t words = entries * (size_t) workspace->limbs;
+    workspace->tensor = (ulong *) flint_malloc(words * sizeof(ulong));
+    workspace->next_tensor = (ulong *) flint_malloc(words * sizeof(ulong));
+    workspace->linear = (ulong *) flint_malloc(
+        (size_t) degree * (size_t) degree *
+        (size_t) workspace->limbs * sizeof(ulong));
+    workspace->product = (ulong *) flint_malloc(
+        (size_t) degree * (size_t) workspace->limbs * sizeof(ulong));
+    const size_t products = (size_t) degree * (size_t) degree;
+    workspace->table_low =
+        (ulong *) flint_calloc(products, sizeof(ulong));
+    workspace->table_high =
+        (ulong *) flint_calloc(products, sizeof(ulong));
+    workspace->next_table_low =
+        (ulong *) flint_malloc(products * sizeof(ulong));
+    workspace->next_table_high =
+        (ulong *) flint_malloc(products * sizeof(ulong));
+    workspace->equation_rows = (ulong *) flint_malloc(
+        (size_t) degree * (size_t) degree * sizeof(ulong));
+    workspace->matrix_rows =
+        (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
+    workspace->kernel_rows =
+        (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
+    fmpz_t residue;
+    fmpz_init(residue);
+    for (slong left = 0; left < degree; left++)
+        for (slong right = 0; right < degree; right++)
+            for (slong output = 0; output < degree; output++)
+            {
+                ulong *target = sagejs_nf_binary_tensor_entry(
+                    workspace, left, right, output);
+                const fmpz *source =
+                    fmpz_mat_entry(multiplication[left], output, right);
+                if (fmpz_fits_si(source))
+                {
+                    const slong value = fmpz_get_si(source);
+                    target[0] = (ulong) value;
+                    for (slong limb = 1; limb < workspace->limbs; limb++)
+                        target[limb] = value < 0 ? UWORD_MAX : 0;
+                }
+                else
+                {
+                    fmpz_fdiv_r_2exp(residue, source, workspace->precision);
+                    fmpz_get_ui_array(target, workspace->limbs, residue);
+                }
+                sagejs_nf_binary_mask(
+                    target, workspace->limbs, workspace->precision);
+                const size_t product =
+                    (size_t) left * (size_t) degree + (size_t) right;
+                workspace->table_low[product] |=
+                    (target[0] & 1) << output;
+                workspace->table_high[product] |=
+                    ((target[0] >> 1) & 1) << output;
+            }
+    fmpz_clear(residue);
+    return 1;
+}
+
+static inline void sagejs_nf_binary_tensor_workspace_clear(
+    sagejs_nf_binary_tensor_workspace *workspace)
+{
+    flint_free(workspace->kernel_rows);
+    flint_free(workspace->matrix_rows);
+    flint_free(workspace->equation_rows);
+    flint_free(workspace->next_table_high);
+    flint_free(workspace->next_table_low);
+    flint_free(workspace->table_high);
+    flint_free(workspace->table_low);
+    flint_free(workspace->product);
+    flint_free(workspace->linear);
+    flint_free(workspace->next_tensor);
+    flint_free(workspace->tensor);
+}
+
+static inline slong sagejs_nf_binary_radical(
+    nmod_mat_t radical, sagejs_nf_binary_tensor_workspace *workspace,
+    slong *pivots)
+{
+    const slong degree = workspace->degree;
+    ulong columns[64];
+    ulong composed[64];
+    for (slong column = 0; column < degree; column++)
+    {
+        columns[column] = workspace->table_low[
+            (size_t) column * (size_t) degree + (size_t) column];
+    }
+    ulong bound = 2;
+    while (bound < (ulong) degree)
+    {
+        for (slong column = 0; column < degree; column++)
+        {
+            ulong source = columns[column];
+            ulong value = 0;
+            while (source != 0)
+            {
+                const slong bit = (slong) flint_ctz(source);
+                value ^= columns[bit];
+                source &= source - 1;
+            }
+            composed[column] = value;
+        }
+        memcpy(columns, composed, (size_t) degree * sizeof(ulong));
+        bound *= 2;
+    }
+    for (slong row = 0; row < degree; row++)
+    {
+        ulong value = 0;
+        for (slong column = 0; column < degree; column++)
+            if ((columns[column] & (UWORD(1) << row)) != 0)
+                value |= UWORD(1) << column;
+        workspace->matrix_rows[row] = value;
+    }
+    const slong dimension = sagejs_nf_binary_right_kernel(
+        workspace->kernel_rows, workspace->matrix_rows,
+        degree, degree, pivots);
+    nmod_mat_zero(radical);
+    for (slong row = 0; row < dimension; row++)
+        for (slong column = 0; column < degree; column++)
+            nmod_mat_entry(radical, row, column) =
+                (workspace->kernel_rows[row] >> column) & 1;
+    return dimension;
+}
+
+static inline slong sagejs_nf_binary_multiplier_kernel(
+    nmod_mat_t kernel, const nmod_mat_t radical, slong radical_dimension,
+    sagejs_nf_binary_tensor_workspace *workspace, slong *pivots)
+{
+    const slong degree = workspace->degree;
+    unsigned char is_pivot[64];
+    slong nonpivots[64];
+    ulong radical_words[64];
+    ulong tail_output_words[64];
+    memset(is_pivot, 0, (size_t) degree);
+    sagejs_nf_pivot_columns(pivots, radical, radical_dimension, degree);
+    for (slong row = 0; row < radical_dimension; row++)
+    {
+        is_pivot[pivots[row]] = 1;
+        ulong value = 0;
+        for (slong column = 0; column < degree; column++)
+            if (nmod_mat_entry(radical, row, column) != 0)
+                value |= UWORD(1) << column;
+        radical_words[row] = value;
+    }
+    slong nonpivot_count = 0;
+    for (slong column = 0; column < degree; column++)
+        if (!is_pivot[column]) nonpivots[nonpivot_count++] = column;
+    for (slong row = 0; row < nonpivot_count; row++)
+    {
+        ulong value = 0;
+        for (slong pivot = 0; pivot < radical_dimension; pivot++)
+            if ((radical_words[pivot] &
+                    (UWORD(1) << nonpivots[row])) != 0)
+                value |= UWORD(1) << pivots[pivot];
+        tail_output_words[row] = value;
+    }
+    memset(workspace->equation_rows, 0,
+        (size_t) degree * (size_t) degree * sizeof(ulong));
+    for (slong ideal = 0; ideal < degree; ideal++)
+        for (slong basis = 0; basis < degree; basis++)
+        {
+            ulong product_low = 0;
+            ulong product_high = 0;
+            if (ideal < radical_dimension)
+            {
+                ulong sources = radical_words[ideal];
+                while (sources != 0)
+                {
+                    const slong source = (slong) flint_ctz(sources);
+                    const size_t table_index =
+                        (size_t) basis * (size_t) degree + (size_t) source;
+                    const ulong source_low =
+                        workspace->table_low[table_index];
+                    const ulong carry = product_low & source_low;
+                    product_low ^= source_low;
+                    product_high ^=
+                        workspace->table_high[table_index] ^ carry;
+                    sources &= sources - 1;
+                }
+            }
+            else
+                product_high = workspace->table_low[
+                    (size_t) basis * (size_t) degree +
+                    (size_t) nonpivots[ideal - radical_dimension]];
+            for (slong row = 0; row < radical_dimension; row++)
+                if ((product_low & (UWORD(1) << pivots[row])) != 0)
+                    workspace->equation_rows[
+                        (size_t) ideal * (size_t) degree + (size_t) row] |=
+                        UWORD(1) << basis;
+            for (slong row = 0; row < nonpivot_count; row++)
+            {
+                const slong output = nonpivots[row];
+                ulong residual = ((product_low >> output) & 1) |
+                    (((product_high >> output) & 1) << 1);
+                const ulong tail_outputs = tail_output_words[row];
+                const ulong selected_low = product_low & tail_outputs;
+                const ulong selected_high = product_high & tail_outputs;
+                residual -= sagejs_nf_binary_popcount(selected_low);
+                residual -= 2 * sagejs_nf_binary_popcount(selected_high);
+                if ((residual & 1) != 0) return -1;
+                if (((residual >> 1) & 1) != 0)
+                    workspace->equation_rows[(size_t) ideal *
+                        (size_t) degree + (size_t) radical_dimension +
+                        (size_t) row] |= UWORD(1) << basis;
+            }
+        }
+    const slong equation_count = degree * degree;
+    const slong nullity = sagejs_nf_binary_sparse_right_kernel(
+        workspace->kernel_rows, workspace->equation_rows,
+        equation_count, degree, workspace->matrix_rows, pivots);
+    nmod_mat_zero(kernel);
+    for (slong row = 0; row < nullity; row++)
+        for (slong column = 0; column < degree; column++)
+            nmod_mat_entry(kernel, row, column) =
+                (workspace->kernel_rows[row] >> column) & 1;
+    return nullity;
+}
+
 /* Small Round-2 changes are sparse even when the multiplication matrices are
  * dense.  FLINT's general matrix product pays dispatch and temporary-allocation
  * costs at degrees 2--10, so apply the sparse factor explicitly while keeping
@@ -1242,10 +1722,203 @@ fail:
     return -1;
 }
 
+static inline int sagejs_nf_binary_store_product(
+    sagejs_nf_binary_tensor_workspace *binary,
+    slong left, slong right, const ulong *product, ulong divisor_shift,
+    const fmpz_mat_t change, const slong *pivots,
+    const slong *nonpivots, slong nullity, slong nonpivot_count)
+{
+    const slong limbs = binary->limbs;
+    const ulong precision = binary->precision;
+    const ulong next_precision = precision - 2;
+    const size_t table_index =
+        (size_t) left * (size_t) binary->degree + (size_t) right;
+    binary->next_table_low[table_index] = 0;
+    binary->next_table_high[table_index] = 0;
+    for (slong pivot = 0; pivot < nullity; pivot++)
+    {
+        const ulong *source = product + (size_t) pivots[pivot] * (size_t) limbs;
+        ulong *target = sagejs_nf_binary_next_entry(
+            binary, left, right, pivot);
+        if (divisor_shift == 0)
+            sagejs_nf_binary_shift_left_one(
+                target, source, limbs, precision);
+        else if (divisor_shift == 1)
+            sagejs_nf_binary_copy(target, source, precision);
+        else if (!sagejs_nf_binary_shift_right_exact(
+                target, source, limbs, precision, 1))
+            return 0;
+        sagejs_nf_binary_mask(target, limbs, next_precision);
+        binary->next_table_low[table_index] |=
+            (target[0] & 1) << pivot;
+        binary->next_table_high[table_index] |=
+            ((target[0] >> 1) & 1) << pivot;
+    }
+    for (slong output_position = 0;
+         output_position < nonpivot_count; output_position++)
+    {
+        const slong output = nonpivots[output_position];
+        ulong *target = sagejs_nf_binary_next_entry(
+            binary, left, right, nullity + output_position);
+        sagejs_nf_binary_copy(target,
+            product + (size_t) output * (size_t) limbs, precision);
+        for (slong pivot = 0; pivot < nullity; pivot++)
+            if (!fmpz_is_zero(fmpz_mat_entry(change, pivot, output)))
+                sagejs_nf_binary_sub(target,
+                    product + (size_t) pivots[pivot] * (size_t) limbs,
+                    limbs, precision);
+        if (divisor_shift != 0 && !sagejs_nf_binary_shift_right_exact(
+                target, target, limbs, precision, divisor_shift))
+            return 0;
+        sagejs_nf_binary_mask(target, limbs, next_precision);
+        const slong new_output = nullity + output_position;
+        binary->next_table_low[table_index] |=
+            (target[0] & 1) << new_output;
+        binary->next_table_high[table_index] |=
+            ((target[0] >> 1) & 1) << new_output;
+    }
+    if (left != right)
+        for (slong output = 0; output < binary->degree; output++)
+            sagejs_nf_binary_copy(
+                sagejs_nf_binary_next_entry(binary, right, left, output),
+                sagejs_nf_binary_next_entry(binary, left, right, output),
+                next_precision);
+    if (left != right)
+    {
+        const size_t reverse_index =
+            (size_t) right * (size_t) binary->degree + (size_t) left;
+        binary->next_table_low[reverse_index] =
+            binary->next_table_low[table_index];
+        binary->next_table_high[reverse_index] =
+            binary->next_table_high[table_index];
+    }
+    return 1;
+}
+
+static inline int sagejs_nf_change_basis_binary_transform(
+    sagejs_nf_binary_tensor_workspace *binary, slong nullity,
+    const fmpz_mat_t change, const slong *pivots,
+    const slong *nonpivots, slong nonpivot_count)
+{
+    if (binary->precision < 4) return 0;
+    const slong degree = binary->degree;
+    const slong limbs = binary->limbs;
+    ulong *product = binary->product;
+
+    /* Products of two unchanged generators need no input expansion. */
+    for (slong left_position = 0;
+         left_position < nonpivot_count; left_position++)
+    {
+        const slong left_old = nonpivots[left_position];
+        const slong left_new = nullity + left_position;
+        for (slong right_position = left_position;
+             right_position < nonpivot_count; right_position++)
+        {
+            const slong right_old = nonpivots[right_position];
+            const slong right_new = nullity + right_position;
+            for (slong output = 0; output < degree; output++)
+                sagejs_nf_binary_copy(
+                    product + (size_t) output * (size_t) limbs,
+                    sagejs_nf_binary_tensor_entry(
+                        binary, left_old, right_old, output),
+                    binary->precision);
+            if (!sagejs_nf_binary_store_product(binary,
+                    left_new, right_new, product, 0, change,
+                    pivots, nonpivots, nullity, nonpivot_count))
+                return 0;
+        }
+    }
+
+    /* Reuse the first divided generator's linear combination for all second
+     * divided generators, matching the exact block transform. */
+    for (slong left = 0; left < nullity; left++)
+    {
+        for (slong right_old = 0; right_old < degree; right_old++)
+            for (slong output = 0; output < degree; output++)
+            {
+                ulong *target = binary->linear +
+                    ((size_t) right_old * (size_t) degree +
+                        (size_t) output) * (size_t) limbs;
+                sagejs_nf_binary_copy(target,
+                    sagejs_nf_binary_tensor_entry(
+                        binary, pivots[left], right_old, output),
+                    binary->precision);
+                for (slong source_position = 0;
+                     source_position < nonpivot_count; source_position++)
+                {
+                    const slong source = nonpivots[source_position];
+                    if (!fmpz_is_zero(fmpz_mat_entry(change, left, source)))
+                        sagejs_nf_binary_add(target,
+                            sagejs_nf_binary_tensor_entry(
+                                binary, source, right_old, output),
+                            limbs, binary->precision);
+                }
+            }
+        /* The same linear combination already contains every mixed product
+         * with an unchanged generator; do not form those n-r products a
+         * second time. */
+        for (slong right_position = 0;
+             right_position < nonpivot_count; right_position++)
+        {
+            const slong right_old = nonpivots[right_position];
+            const slong right_new = nullity + right_position;
+            for (slong output = 0; output < degree; output++)
+                sagejs_nf_binary_copy(
+                    product + (size_t) output * (size_t) limbs,
+                    binary->linear +
+                        ((size_t) right_old * (size_t) degree +
+                            (size_t) output) * (size_t) limbs,
+                    binary->precision);
+            if (!sagejs_nf_binary_store_product(binary,
+                    left, right_new, product, 1, change,
+                    pivots, nonpivots, nullity, nonpivot_count))
+                return 0;
+        }
+        for (slong right = left; right < nullity; right++)
+        {
+            for (slong output = 0; output < degree; output++)
+            {
+                ulong *target = product +
+                    (size_t) output * (size_t) limbs;
+                sagejs_nf_binary_copy(target, binary->linear +
+                    ((size_t) pivots[right] * (size_t) degree +
+                        (size_t) output) * (size_t) limbs,
+                    binary->precision);
+                for (slong source_position = 0;
+                     source_position < nonpivot_count; source_position++)
+                {
+                    const slong source = nonpivots[source_position];
+                    if (!fmpz_is_zero(fmpz_mat_entry(change, right, source)))
+                        sagejs_nf_binary_add(target, binary->linear +
+                            ((size_t) source * (size_t) degree +
+                                (size_t) output) * (size_t) limbs,
+                            limbs, binary->precision);
+                }
+            }
+            if (!sagejs_nf_binary_store_product(binary,
+                    left, right, product, 2, change,
+                    pivots, nonpivots, nullity, nonpivot_count))
+                return 0;
+        }
+    }
+    ulong *swap = binary->tensor;
+    binary->tensor = binary->next_tensor;
+    binary->next_tensor = swap;
+    ulong *table_swap = binary->table_low;
+    binary->table_low = binary->next_table_low;
+    binary->next_table_low = table_swap;
+    table_swap = binary->table_high;
+    binary->table_high = binary->next_table_high;
+    binary->next_table_high = table_swap;
+    binary->precision -= 2;
+    return 1;
+}
+
 static inline int sagejs_nf_change_basis(
     fmpz_mat_t *multiplication, fmpz_mat_t total_basis_numerator,
     fmpz_t total_basis_denominator, fmpz *identity,
     const nmod_mat_t kernel, slong nullity, slong degree, ulong prime,
+    sagejs_nf_binary_tensor_workspace *binary,
     sagejs_nf_change_basis_workspace *workspace)
 {
     SAGEJS_NF_ORDER_PROFILE_BEGIN("basis-prepare");
@@ -1334,6 +2007,14 @@ static inline int sagejs_nf_change_basis(
     SAGEJS_NF_ORDER_PROFILE_END("basis-prepare");
     SAGEJS_NF_ORDER_PROFILE_BEGIN("basis-transform");
     fmpz_mat_t *new_multiplication = workspace->new_multiplication;
+    if (binary != NULL)
+    {
+        if (!sagejs_nf_change_basis_binary_transform(
+                binary, nullity, change_numerator, pivots,
+                workspace->nonpivots, nonpivot_count))
+            goto fail;
+        goto basis_transform_complete;
+    }
     int word_transform = 0;
 #if defined(__SIZEOF_INT128__) && \
     !defined(SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS)
@@ -1412,6 +2093,7 @@ static inline int sagejs_nf_change_basis(
         workspace->word_multiplication_valid = 0;
         workspace->fmpz_multiplication_current = 1;
     }
+basis_transform_complete:
     SAGEJS_NF_ORDER_PROFILE_END("basis-transform");
     SAGEJS_NF_ORDER_PROFILE_BEGIN("basis-output");
 
@@ -1503,57 +2185,92 @@ static inline int sagejs_number_field_order_maximal_at_primes(
         sagejs_nf_multiplier_workspace multiplier_workspace;
         sagejs_nf_multiplier_workspace_init(
             &multiplier_workspace, degree, prime);
+        sagejs_nf_binary_tensor_workspace binary_workspace;
+        fmpz_mat_t prime_basis_start;
+        fmpz_mat_init_set(prime_basis_start, basis_numerator);
+        fmpz_t prime_denominator_start;
+        fmpz_init_set(prime_denominator_start, basis_denominator);
+        fmpz *prime_identity_start = _fmpz_vec_init(degree);
+        for (slong index = 0; index < degree; index++)
+            fmpz_set(prime_identity_start + index, identity + index);
+        int binary_initialized = 0;
+        int binary_candidate = 0;
+        /* Four limbs cover the common high-index binary cycles without a
+         * restart; larger cycles double from this exact checkpoint. */
+        ulong binary_requested_precision = 4 * FLINT_BITS;
+#if !defined(SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER) && \
+    !defined(SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS)
+        binary_candidate = prime == 2 &&
+            prime_index + 1 == prime_count && degree <= 64;
+        if (binary_candidate)
+        {
+            sagejs_nf_change_basis_sync_fmpz_multiplication(
+                &change_workspace, multiplication, degree);
+        }
+#endif
+binary_restart:
+        binary_initialized = 0;
+        if (binary_candidate)
+            binary_initialized = sagejs_nf_binary_tensor_workspace_init(
+                &binary_workspace, multiplication, degree,
+                binary_requested_precision);
         for (;;)
         {
             /* Refresh the compact modular table after each basis change. */
             SAGEJS_NF_ORDER_PROFILE_BEGIN("modular-table");
-            for (slong i = 0; i < degree; i++)
-                for (slong j = 0; j < degree; j++)
-                    for (slong k = 0; k < degree; k++)
-                    {
-#if defined(__SIZEOF_INT128__)
-                        if (change_workspace.word_multiplication_valid)
+            if (!binary_initialized)
+                for (slong i = 0; i < degree; i++)
+                    for (slong j = 0; j < degree; j++)
+                        for (slong k = 0; k < degree; k++)
                         {
-                            const slong entry =
-                                change_workspace.word_multiplication[
-                                    (i * degree + k) * degree + j];
+#if defined(__SIZEOF_INT128__)
+                            if (change_workspace.word_multiplication_valid)
+                            {
+                                const slong entry =
+                                    change_workspace.word_multiplication[
+                                        (i * degree + k) * degree + j];
+                                if (square_fits)
+                                {
+                                    const ulong squared =
+                                        sagejs_nf_slong_fdiv_ui(
+                                            entry, prime_squared);
+                                    table_squared[
+                                        (i * degree + j) * degree + k] = squared;
+                                    table[(i * degree + j) * degree + k] =
+                                        prime == 2 ? squared & 1 :
+                                            squared % prime;
+                                }
+                                else
+                                    table[(i * degree + j) * degree + k] =
+                                        sagejs_nf_slong_fdiv_ui(entry, prime);
+                                continue;
+                            }
+#endif
+                            const fmpz *entry =
+                                fmpz_mat_entry(multiplication[i], k, j);
                             if (square_fits)
                             {
                                 const ulong squared =
-                                    sagejs_nf_slong_fdiv_ui(
-                                        entry, prime_squared);
-                                table_squared[
-                                    (i * degree + j) * degree + k] = squared;
+                                    sagejs_nf_fmpz_fdiv_ui(entry, prime_squared);
+                                table_squared[(i * degree + j) * degree + k] =
+                                    squared;
                                 table[(i * degree + j) * degree + k] =
                                     prime == 2 ? squared & 1 : squared % prime;
                             }
                             else
                                 table[(i * degree + j) * degree + k] =
-                                    sagejs_nf_slong_fdiv_ui(entry, prime);
-                            continue;
+                                    sagejs_nf_fmpz_fdiv_ui(entry, prime);
                         }
-#endif
-                        const fmpz *entry =
-                            fmpz_mat_entry(multiplication[i], k, j);
-                        if (square_fits)
-                        {
-                            const ulong squared =
-                                sagejs_nf_fmpz_fdiv_ui(entry, prime_squared);
-                            table_squared[(i * degree + j) * degree + k] =
-                                squared;
-                            table[(i * degree + j) * degree + k] =
-                                prime == 2 ? squared & 1 : squared % prime;
-                        }
-                        else
-                            table[(i * degree + j) * degree + k] =
-                                sagejs_nf_fmpz_fdiv_ui(entry, prime);
-                    }
             SAGEJS_NF_ORDER_PROFILE_END("modular-table");
             slong radical_dimension;
             SAGEJS_NF_ORDER_PROFILE_BEGIN("radical");
-            sagejs_nf_p_radical_with_workspace(
-                radical, &radical_dimension, table,
-                identity, degree, prime, prime_inverse, &radical_workspace);
+            if (binary_initialized)
+                radical_dimension = sagejs_nf_binary_radical(
+                    radical, &binary_workspace, change_workspace.pivots);
+            else
+                sagejs_nf_p_radical_with_workspace(
+                    radical, &radical_dimension, table,
+                    identity, degree, prime, prime_inverse, &radical_workspace);
             SAGEJS_NF_ORDER_PROFILE_END("radical");
             SAGEJS_NF_ORDER_PROFILE_BEGIN("multiplier");
 #if defined(SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER)
@@ -1564,10 +2281,14 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 sagejs_nf_change_basis_sync_fmpz_multiplication(
                     &change_workspace, multiplication, degree);
 #endif
-            const slong nullity = sagejs_nf_multiplier_kernel(
-                kernel, multiplication, square_fits ? table_squared : NULL,
-                radical, radical_dimension,
-                degree, prime, &multiplier_workspace);
+            const slong nullity = binary_initialized ?
+                sagejs_nf_binary_multiplier_kernel(
+                    kernel, radical, radical_dimension, &binary_workspace,
+                    change_workspace.pivots) :
+                sagejs_nf_multiplier_kernel(
+                    kernel, multiplication, square_fits ? table_squared : NULL,
+                    radical, radical_dimension,
+                    degree, prime, &multiplier_workspace);
             SAGEJS_NF_ORDER_PROFILE_END("multiplier");
             SAGEJS_NF_ORDER_PROFILE_ITERATION(radical_dimension, nullity);
             if (nullity < 0)
@@ -1577,15 +2298,44 @@ static inline int sagejs_number_field_order_maximal_at_primes(
             }
             if (nullity == 0)
                 break;
+            if (binary_initialized && binary_workspace.precision < 4)
+            {
+                const ulong maximum_precision =
+                    binary_workspace.maximum_precision;
+                sagejs_nf_binary_tensor_workspace_clear(&binary_workspace);
+                binary_initialized = 0;
+                fmpz_mat_set(basis_numerator, prime_basis_start);
+                fmpz_set(basis_denominator, prime_denominator_start);
+                for (slong index = 0; index < degree; index++)
+                    fmpz_set(identity + index, prime_identity_start + index);
+                if (binary_requested_precision >= maximum_precision)
+                    binary_candidate = 0;
+                else if (binary_requested_precision > UWORD_MAX / 2)
+                    binary_requested_precision = maximum_precision;
+                else
+                {
+                    binary_requested_precision *= 2;
+                    if (binary_requested_precision > maximum_precision)
+                        binary_requested_precision = maximum_precision;
+                }
+                goto binary_restart;
+            }
             const int changed = sagejs_nf_change_basis(
                 multiplication, basis_numerator, basis_denominator, identity,
-                kernel, nullity, degree, prime, &change_workspace);
+                kernel, nullity, degree, prime,
+                binary_initialized ? &binary_workspace : NULL,
+                &change_workspace);
             if (!changed)
             {
                 success = 0;
                 break;
             }
         }
+        if (binary_initialized)
+            sagejs_nf_binary_tensor_workspace_clear(&binary_workspace);
+        _fmpz_vec_clear(prime_identity_start, degree);
+        fmpz_clear(prime_denominator_start);
+        fmpz_mat_clear(prime_basis_start);
         sagejs_nf_multiplier_workspace_clear(&multiplier_workspace);
         sagejs_nf_p_radical_workspace_clear(&radical_workspace);
         nmod_mat_clear(kernel);

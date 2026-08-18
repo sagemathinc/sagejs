@@ -295,7 +295,7 @@ try {
       "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
       "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
     ]);
-    for (const caseIndex of [4, 5]) {
+    for (const caseIndex of [4, 5, 7]) {
       assert.equal(
         hardPayload(optimized, caseIndex),
         hardPayload(exact, caseIndex),

@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round2-native-state",
+  "title": "Fuse Round2 native packed state",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "nf_opt_round2_native_state",
+  "objective": "Reduce the remaining vector010 Round-2 direct-reference gap using a general exact packed FLINT-owned state across cycle stages, preserving forced exact fallbacks and differential/lifecycle evidence",
+  "base_commit": "285c223da7f42e69ee5e91e6f1d214f6bcf7cfe5",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "test/number-field-order-resource-ffi.cjs",
+    "bench/number-field-round2-native-state.cjs",
+    "bench/results/number-field-round2-native-state-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "forced exact generic FLINT tensor transform",
+      "deterministic randomized byte-identical Round2 differential"
+    ],
+    "exceptions": [
+      "Extend the existing audited FLINT/GMP packed order representation primitive only; no fixture-specific branch"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
