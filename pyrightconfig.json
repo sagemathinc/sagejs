@@ -90,6 +90,7 @@
     "src/lib/sagejs/elliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/__init__.py",
     "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
     "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
     "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
     "src/lib/sagejs/hyperelliptic_curves/hasse_witt.py",
