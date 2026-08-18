@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "sagejs/number_field_analysis_resource_ffi.h"
 
 typedef struct
@@ -47,9 +51,16 @@ static const benchmark_case benchmark_cases[] = {
 
 static double monotonic_seconds(void)
 {
+#ifdef _WIN32
+    LARGE_INTEGER frequency, counter;
+    assert(QueryPerformanceFrequency(&frequency));
+    assert(QueryPerformanceCounter(&counter));
+    return (double) counter.QuadPart / (double) frequency.QuadPart;
+#else
     struct timespec now;
     assert(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
     return (double) now.tv_sec + (double) now.tv_nsec / 1000000000.0;
+#endif
 }
 
 static void initialize_polynomial(
