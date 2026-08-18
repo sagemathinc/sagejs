@@ -295,8 +295,8 @@ class HyperellipticJacobian(sage.Parent):
         base = curve.base_ring()
         if hasattr(base, "characteristic") and base.characteristic() == 2:
             raise NotImplementedError(
-                "characteristic-2 Jacobians require the even-degree infinity "
-                "representation, which is not implemented"
+                "characteristic-2 generalized Jacobian arithmetic has not yet "
+                "been validated in this implementation"
             )
         model_degree = max(f.degree(), 2 * h.degree())
         if model_degree != 2 * genus + 1:
@@ -707,7 +707,32 @@ class HyperellipticJacobian(sage.Parent):
         max_elements: int = 50_000,
         max_candidates: int = 5_000_000,
         max_trial_divisions: int = 1_000_000,
+        algorithm: str = "auto",
     ) -> tuple[Any, ...]:
+        if algorithm not in ["auto", "smalljac", "exhaustive"]:
+            raise ValueError(
+                "unknown Jacobian group-structure algorithm " + repr(algorithm)
+            )
+        frobenius = __import__(
+            "sagejs.hyperelliptic_curves.frobenius",
+            fromlist=["smalljac_group_invariants"],
+        )
+        use_smalljac = frobenius.smalljac_supports_group_structure(self._curve)
+        if algorithm == "smalljac" and not use_smalljac:
+            raise NotImplementedError(
+                "smalljac group structure requires an odd-degree genus-2 curve "
+                "over a supported odd prime field"
+            )
+        if use_smalljac and algorithm != "exhaustive":
+            invariants = frobenius.smalljac_group_invariants(self._curve)
+            exponent = invariants[-1]
+            for element in self.random_elements(count=5, max_attempts=20):
+                if not (exponent * element).is_zero():
+                    raise ArithmeticError(
+                        "a sampled Jacobian element is not killed by the "
+                        "smalljac group exponent"
+                    )
+            return invariants
         order = self.order()
         factors = (
             factor_integer_bounded(order, max_trial_divisions)

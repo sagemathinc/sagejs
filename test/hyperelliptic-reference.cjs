@@ -252,13 +252,13 @@ test("QQ smalljac interval APIs are closed, bounded, cached, and skip bad primes
             "denominator_primes = [p for p,L in " +
               "D.local_lpolynomials(2,11,'auto',2)]",
             "[flat == all_at_once, [p for p,L in flat],",
-            " [len(chunk) for chunk in chunks],",
+            " all(len(chunk) <= 3 for chunk in chunks),",
             " sorted(C._local_lpolynomial_cache), denominator_primes]",
           ].join("\n"),
           { timeout: 120_000 },
         )
       ).repr,
-      "[True, [5, 11, 13, 17, 19, 29], [1, 3, 2], " +
+      "[True, [5, 11, 13, 17, 19, 29], True, " +
         "[('smalljac', 5), ('smalljac', 11), ('smalljac', 13), " +
         "('smalljac', 17), ('smalljac', 19), ('smalljac', 29)], [7, 11]]",
     );

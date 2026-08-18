@@ -63,6 +63,14 @@ def _smalljac_prime_bound() -> Any:
     return runtime.integer_bigint(_property(bounds, "lpolynomial"))
 
 
+def _smalljac_group_prime_bound() -> Any:
+    capability = _smalljac_capabilities()
+    if capability is None:
+        return runtime.bigint(0)
+    bounds = _property(capability, "primeUpperBounds")
+    return runtime.integer_bigint(_property(bounds, "groupStructure"))
+
+
 def _smalljac_supports_finite_curve(curve: Any) -> bool:
     base = curve.base_ring()
     return (
@@ -71,6 +79,19 @@ def _smalljac_supports_finite_curve(curve: Any) -> bool:
         and getattr(base, "_kind", None) == "GF"
         and int(base.characteristic()) != 2
         and runtime.integer_bigint(base.order()) <= _smalljac_prime_bound()
+    )
+
+
+def smalljac_supports_group_structure(curve: Any) -> bool:
+    """Whether the checked native invariant-factor boundary accepts `curve`."""
+    if not _smalljac_supports_finite_curve(curve):
+        return False
+    f_value, h_value = curve.hyperelliptic_polynomials()
+    effective_degree = max(int(f_value.degree()), 2 * int(h_value.degree()))
+    return (
+        effective_degree == 2 * int(curve.genus()) + 1
+        and runtime.integer_bigint(curve.base_ring().order())
+        <= _smalljac_group_prime_bound()
     )
 
 
@@ -313,6 +334,74 @@ def _smalljac_finite_lpolynomial_coefficients(curve: Any) -> list[int]:
     if coefficients is None:
         raise ArithmeticError("the curve has bad reduction at " + str(prime))
     return coefficients
+
+
+def smalljac_group_invariants(curve: Any) -> tuple[Any, ...]:
+    """Return checked smalljac invariant factors for one finite-field curve."""
+    if not smalljac_supports_group_structure(curve):
+        raise NotImplementedError(
+            "smalljac group structure requires an odd-degree genus-2 curve "
+            "over a supported odd prime field"
+        )
+    prime = runtime.integer_bigint(curve.base_ring().order())
+    backend = runtime.flint_backend()
+    function = _property(backend, "smalljacGroupBatch")
+    if function is runtime.undefined:
+        raise NotImplementedError("the native smalljac group backend is unavailable")
+    batch = runtime.reflect.apply(
+        function,
+        backend,
+        [_finite_smalljac_curve_text(curve), prime, prime],
+    )
+    status = int(_property(batch, "status"))
+    status_name = str(_property(batch, "statusName"))
+    if status != _smalljac_status("OK"):
+        _raise_smalljac_batch_error(status, status_name)
+    if (
+        status_name != "ok"
+        or bool(_property(batch, "truncated"))
+        or int(_property(batch, "genus")) != 2
+        or int(_property(batch, "rowCount")) != 1
+        or int(_property(batch, "requiredRows")) != 1
+        or _property(batch, "normalization") != "det(1-T*Frob)"
+        or _property(batch, "backendVersion")
+        != _property(_smalljac_capabilities(), "backendVersion")
+    ):
+        raise RuntimeError("smalljac returned inconsistent group metadata")
+    primes = _property(batch, "primes")
+    good = _property(batch, "good")
+    counts = _property(batch, "invariantCounts")
+    offsets = _property(batch, "invariantOffsets")
+    invariants = _property(batch, "invariants")
+    row_status = _property(batch, "rowStatus")
+    if (
+        len(primes) != 1
+        or len(good) != 1
+        or len(counts) != 1
+        or len(offsets) != 2
+        or len(row_status) != 1
+        or runtime.integer_bigint(primes[0]) != prime
+        or int(good[0]) != 1
+        or int(row_status[0]) != _smalljac_status("ROW_GOOD")
+        or int(offsets[0]) != 0
+        or int(offsets[1]) != len(invariants)
+        or int(counts[0]) != len(invariants)
+    ):
+        raise RuntimeError("smalljac returned a malformed packed group row")
+    if len(invariants) < 1 or len(invariants) > 4:
+        raise RuntimeError("smalljac returned an invalid Jacobian group rank")
+    answer = tuple(sage.ZZ(runtime.integer_bigint(value)) for value in invariants)
+    product = sage.ZZ(1)
+    previous = sage.ZZ(1)
+    for value in answer:
+        if value <= 0 or value % previous != 0:
+            raise RuntimeError("smalljac returned invalid invariant factors")
+        product *= value
+        previous = value
+    coefficients = _smalljac_finite_lpolynomial_coefficients(curve)
+    if product != sum(coefficients):
+        raise RuntimeError("smalljac group factors disagree with the local polynomial")
+    return answer
 
 
 def register_lpolynomial_backend(name: str, backend: Any) -> None:
@@ -1017,13 +1106,16 @@ def rational_local_lpolynomial_chunks(
     data = rational_smalljac_model(curve)
     excluded = int(data["excluded_denominator"])
     cursor = start
-    output = []
     while cursor <= stop:
-        rows, truncated = _smalljac_rows(data["curve_text"], cursor, stop, chunk_size)
-        if len(rows) == 0:
-            if truncated:
-                raise RuntimeError("smalljac truncated an empty prime stream")
-            break
+        # Apart from 2, primes are odd.  An inclusive interval containing at
+        # most `2*chunk_size-1` integers therefore contains at most
+        # `chunk_size` primes.  Split by value rather than repeatedly asking a
+        # truncated smalljac traversal to scan the entire remaining suffix.
+        window_stop = min(stop, cursor + 2 * chunk_size - 2)
+        rows, truncated = _smalljac_rows(data["curve_text"], cursor, window_stop, 0)
+        if truncated:
+            raise RuntimeError("an unbounded smalljac window was truncated")
+        output = []
         for prime, coefficients in rows:
             if excluded % prime == 0 or coefficients is None:
                 continue
@@ -1033,13 +1125,7 @@ def rational_local_lpolynomial_chunks(
             )
         if len(output) != 0:
             yield output
-            output = []
-        if not truncated:
-            break
-        next_cursor = rows[-1][0] + 1
-        if next_cursor <= cursor:
-            raise RuntimeError("smalljac batch iteration did not advance")
-        cursor = next_cursor
+        cursor = window_stop + 1
 
 
 def rational_local_lpolynomials(
