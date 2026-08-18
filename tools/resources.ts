@@ -24,7 +24,9 @@ const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
 const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
-const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
+const RUNTIME_BOOTSTRAP_SOURCE_ASSET =
+  "runtime-cache/runtime-bootstrap.js";
+const RUNTIME_BOOTSTRAP_CACHE_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const TASK_RUNTIME_MODULE_MANIFEST = "task-runtime-modules.json";
 const TASK_RUNTIME_MODULE_SCHEMA = "sagejs.task-runtime-modules/v2";
@@ -250,11 +252,14 @@ export function readBaselibSource(fallbackFilename: string): string {
 }
 
 export function readRuntimeBootstrapSource(
-  mode: "sage" | "python",
+  _mode: "sage" | "python",
   fallbackFilename: string,
 ): string | undefined {
-  const key = `${RUNTIME_BOOTSTRAP_PREFIX}${mode}.js`;
-  if (isSea()) return hasAsset(key) ? assetText(key) : undefined;
+  if (isSea()) {
+    return hasAsset(RUNTIME_BOOTSTRAP_SOURCE_ASSET)
+      ? assetText(RUNTIME_BOOTSTRAP_SOURCE_ASSET)
+      : undefined;
+  }
   return existsSync(fallbackFilename)
     ? readFileSync(fallbackFilename, "utf8")
     : undefined;
@@ -264,7 +269,7 @@ export function readRuntimeBootstrapCachedData(
   mode: "sage" | "python",
   fallbackFilename: string,
 ): Uint8Array | undefined {
-  const key = `${RUNTIME_BOOTSTRAP_PREFIX}${mode}.bin`;
+  const key = `${RUNTIME_BOOTSTRAP_CACHE_PREFIX}${mode}.bin`;
   if (isSea()) return hasAsset(key) ? assetBytes(key) : undefined;
   return existsSync(fallbackFilename)
     ? new Uint8Array(readFileSync(fallbackFilename))

@@ -47,4 +47,10 @@ for (const mode of ["sage", "python"]) {
   );
 }
 
+assert.deepEqual(
+  readFileSync(join(cacheDirectory, "runtime-bootstrap-sage.js")),
+  readFileSync(join(cacheDirectory, "runtime-bootstrap-python.js")),
+  "the SEA stores one shared runtime bootstrap source",
+);
+
 console.log("Compiler and runtime V8 caches passed.");

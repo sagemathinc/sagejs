@@ -2,15 +2,20 @@
 
 const { buildSync } = require("esbuild");
 const {
+  chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("fs");
 const { createHash } = require("crypto");
 const { execFileSync } = require("child_process");
+const { tmpdir } = require("os");
 const { dirname, join, relative } = require("path");
 
 const root = join(__dirname, "..");
@@ -186,6 +191,76 @@ function seaBuilderExecutable() {
   return executable;
 }
 
+function prepareSeaBuilderExecutable() {
+  const source = seaBuilderExecutable();
+  // Official Windows Node releases do not carry an ELF/Mach-O symbol table;
+  // their debug information is distributed separately in PDB files.
+  if (process.platform === "win32") {
+    return { executable: source, cleanup() {} };
+  }
+
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-sea-node-"));
+  const executable = join(directory, "node");
+  try {
+    copyFileSync(source, executable);
+    chmodSync(executable, 0o755);
+    if (process.platform === "darwin") {
+      // `-x` removes local symbols while retaining the dynamic symbols needed
+      // by native addons. Stripping invalidates Apple's upstream signature, so
+      // install an ad-hoc signature before using this copy as the SEA template.
+      execFileSync("strip", ["-x", executable], { stdio: "inherit" });
+      execFileSync("codesign", ["--sign", "-", "--force", executable], {
+        stdio: "inherit",
+      });
+    } else if (process.platform === "linux") {
+      execFileSync("strip", ["--strip-unneeded", executable], {
+        stdio: "inherit",
+      });
+    } else {
+      return {
+        executable: source,
+        cleanup: () =>
+          rmSync(directory, { recursive: true, force: true }),
+      };
+    }
+    const before = statSync(source).size;
+    const after = statSync(executable).size;
+    console.log(
+      `Stripped Node SEA base: ${(before / 2 ** 20).toFixed(1)} MiB -> ` +
+        `${(after / 2 ** 20).toFixed(1)} MiB`,
+    );
+    return {
+      executable,
+      cleanup: () => rmSync(directory, { recursive: true, force: true }),
+    };
+  } catch (error) {
+    rmSync(directory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function sharedRuntimeBootstrapSource() {
+  const sage = join(
+    root,
+    "dist",
+    "runtime-cache",
+    "runtime-bootstrap-sage.js",
+  );
+  const python = join(
+    root,
+    "dist",
+    "runtime-cache",
+    "runtime-bootstrap-python.js",
+  );
+  if (!readFileSync(sage).equals(readFileSync(python))) {
+    throw new Error(
+      "Sage and Python runtime bootstrap sources diverged; the SEA shared " +
+        "bootstrap asset must be redesigned before packaging either source",
+    );
+  }
+  return sage;
+}
+
 function collectStandardLibraryAssets() {
   const directory = join(root, "src", "lib");
   const assets = {};
@@ -255,7 +330,7 @@ function collectNativeKernelAssets() {
   return assets;
 }
 
-function buildExecutable(name, withFlint) {
+function buildExecutable(name, withFlint, seaNode) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
       `FLINT addon not found at ${relative(root, flintAddon)}; run ` +
@@ -328,23 +403,12 @@ function buildExecutable(name, withFlint) {
       "runtime-cache",
       "compiler.bin",
     ),
-    "runtime-cache/runtime-bootstrap-sage.js": join(
-      root,
-      "dist",
-      "runtime-cache",
-      "runtime-bootstrap-sage.js",
-    ),
+    "runtime-cache/runtime-bootstrap.js": sharedRuntimeBootstrapSource(),
     "runtime-cache/runtime-bootstrap-sage.bin": join(
       root,
       "dist",
       "runtime-cache",
       "runtime-bootstrap-sage.bin",
-    ),
-    "runtime-cache/runtime-bootstrap-python.js": join(
-      root,
-      "dist",
-      "runtime-cache",
-      "runtime-bootstrap-python.js",
     ),
     "runtime-cache/runtime-bootstrap-python.bin": join(
       root,
@@ -440,7 +504,6 @@ function buildExecutable(name, withFlint) {
       2,
     )}\n`,
   );
-  const seaNode = seaBuilderExecutable();
   execFileSync(seaNode, ["--build-sea", configFilename], {
     cwd: root,
     stdio: "inherit",
@@ -495,5 +558,18 @@ buildSync({
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
-if (buildPython) buildExecutable(`sagepython${executableSuffix}`, false);
-if (buildMath) buildExecutable(`sagejs${executableSuffix}`, true);
+const seaBuilder = prepareSeaBuilderExecutable();
+try {
+  if (buildPython) {
+    buildExecutable(
+      `sagepython${executableSuffix}`,
+      false,
+      seaBuilder.executable,
+    );
+  }
+  if (buildMath) {
+    buildExecutable(`sagejs${executableSuffix}`, true, seaBuilder.executable);
+  }
+} finally {
+  seaBuilder.cleanup();
+}
