@@ -3416,6 +3416,7 @@ def _verify_packed_round4_closure(
     field: Any,
     numerator: list[list[Any]],
     denominator: Any,
+    equation_discriminant: Any | None = None,
 ) -> bool | None:
     """Check one HNF's full multiplication table in an isolated exact call."""
     module = __import__(
@@ -3431,6 +3432,9 @@ def _verify_packed_round4_closure(
         if coefficient._denominator != 1:
             return False
         polynomial.append(coefficient._numerator)
+    if equation_discriminant is None:
+        polynomial_ring = _nf_global("PolynomialRing")(sage.ZZ, "x")
+        equation_discriminant = polynomial_ring(polynomial).discriminant()
     maximum_numerator = max(
         sage.ZZ(1),
         max(abs(value) for row in numerator for value in row),
@@ -3456,7 +3460,7 @@ def _verify_packed_round4_closure(
         (_positive_integer_bits(table_bound) + 63) // 64 + 2,
     )
     square = degree * degree
-    workspace_length = degree * square + 4 * square + 7 * degree
+    workspace_length = degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
     empty = kernel_integer_buffer(kernel, [])
     return bool(
         runtime.number(
@@ -3472,6 +3476,7 @@ def _verify_packed_round4_closure(
                 empty,
                 empty,
                 empty,
+                equation_discriminant,
                 degree,
                 runtime.integer_bigint(0),
             )
@@ -3653,7 +3658,12 @@ def verify_round4_local_result(result: Round4LocalResult) -> bool:
     if input_discriminant != output_discriminant * local_index * local_index:
         raise Round4InvariantError("the Round-4 index does not explain discriminant")
     field = order.number_field()
-    closure = _verify_packed_round4_closure(field, numerator, denominator)
+    closure = _verify_packed_round4_closure(
+        field,
+        numerator,
+        denominator,
+        equation_discriminant,
+    )
     if closure is False:
         raise Round4InvariantError("the packed Round-4 lattice is not closed")
     if closure is None:
