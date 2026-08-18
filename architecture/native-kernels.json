@@ -209,6 +209,7 @@
         "flint_dense_integer_matrix_charpoly",
         "flint_dense_integer_matrix_rank",
         "flint_dense_integer_matrix_hnf",
+        "flint_dense_integer_matrix_hnf_modular_eldiv",
         "flint_dense_integer_matrix_hnf_transform",
         "flint_dense_integer_matrix_snf_transform",
         "flint_dense_integer_matrix_right_kernel",

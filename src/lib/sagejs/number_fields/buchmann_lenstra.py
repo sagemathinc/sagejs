@@ -342,21 +342,26 @@ def _flint_modular_row_hnf(
         return None
     columns = len(rows[0])
     try:
-        flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+        module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["flint_dense_integer_matrix_hnf_modular_eldiv"],
+        )
+        kernel = module.flint_dense_integer_matrix_hnf_modular_eldiv
 
         flat = [int(value) for row in rows for value in row]
-        source = _rt.integer_buffer(flat)
-        output = _rt.integer_buffer(
-            [0] * len(flat),
+        source = kernel_integer_buffer(kernel, flat)
+        output = kernel_integer_zeros(
+            kernel,
+            len(flat),
             max(2, (elementary_divisor.bit_length() + 63) // 64 + 2),
         )
-        divisor = _rt.integer_buffer([elementary_divisor])
-        if not flint.fmpz_mat_hnf_modular_eldiv(
+        divisor = kernel_integer_buffer(kernel, [elementary_divisor])
+        if not kernel(
             output,
             source,
+            divisor,
             len(rows),
             columns,
-            divisor,
             1,
         ):
             return None
