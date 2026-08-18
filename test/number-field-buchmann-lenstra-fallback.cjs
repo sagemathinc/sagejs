@@ -54,8 +54,11 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 from sagejs.number_fields.buchmann_lenstra import (
     buchmann_lenstra_multiplier_cycle,
     buchmann_lenstra_overorder,
+    check_buchmann_lenstra_general_result,
     check_buchmann_lenstra_result,
 )
+from sagejs.number_fields.local_polygons import analyze_local_polygons
+from sagejs.number_fields.maximal_order_certification import check_order_lattice
 from sagejs.number_fields.maximal_order_contracts import (
     DiscriminantComponent,
     OrderBasis,
@@ -134,6 +137,135 @@ for name in (
         "events": events,
         "elapsed_ns": elapsed_ns,
     }
+
+# The smallest irregular arbitrary-prime public fixture is the translated pure
+# cubic (x+p)^3+p^4.  Its first residual polynomial is (y+1)^3, while the
+# generator (a+p)/p satisfies the Eisenstein polynomial y^3+p.  The frozen
+# basis, index, and discriminant below agree with Sage 10.9/PARI nfmaxord.
+p = 18446744073709551629
+arbitrary_coefficients = [p**3 + p**4, 3*p**2, 3*p, 1]
+arbitrary_equation_discriminant = -27*p**8
+arbitrary_polygon = analyze_local_polygons(
+    arbitrary_coefficients,
+    p,
+    discriminant_valuation=8,
+)
+assert arbitrary_polygon.status == "fallback-required"
+assert arbitrary_polygon.predicted_index_exponent == 3
+identity_cubic = OrderBasis([[1, 0, 0], [0, 1, 0], [0, 0, 1]], 1)
+arbitrary_started = time.perf_counter_ns()
+arbitrary_result = buchmann_lenstra_multiplier_cycle(
+    arbitrary_coefficients,
+    DiscriminantComponent(p, "proven-prime"),
+    identity_cubic,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+arbitrary_elapsed_ns = time.perf_counter_ns() - arbitrary_started
+assert arbitrary_result.state == "complete"
+assert arbitrary_result.basis is not None
+assert arbitrary_result.basis.numerator == [
+    [p**2, 0, 0],
+    [0, p, 0],
+    [0, 0, 1],
+]
+assert arbitrary_result.basis.denominator == p**2
+assert arbitrary_result.index == p**3
+assert arbitrary_result.discriminant == -27*p**2
+assert arbitrary_result.evidence["certificate"] == (
+    "p-radical-multiplier-fixed-point"
+)
+arbitrary_stages = [
+    event["stage"] for event in arbitrary_result.evidence["events"]
+]
+assert arbitrary_stages == [
+    "component-reduction",
+    "q-radical",
+    "multiplier-ring",
+    "component-reduction",
+    "q-radical",
+    "multiplier-ring",
+    "component-reduction",
+    "q-radical",
+]
+assert check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+lattice = check_order_lattice(
+    arbitrary_coefficients,
+    arbitrary_result.basis.numerator,
+    arbitrary_result.basis.denominator,
+)
+assert lattice["valid"]
+
+arbitrary_basis = arbitrary_result.basis
+arbitrary_index = arbitrary_result.index
+arbitrary_discriminant = arbitrary_result.discriminant
+arbitrary_events = arbitrary_result.evidence["events"]
+
+corrupt_basis_rows = [list(row) for row in arbitrary_basis.numerator]
+corrupt_basis_rows[0][0] += 1
+arbitrary_result.basis = OrderBasis(
+    corrupt_basis_rows,
+    arbitrary_basis.denominator,
+)
+assert not check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+arbitrary_result.basis = arbitrary_basis
+
+arbitrary_result.index = arbitrary_index + 1
+assert not check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+arbitrary_result.index = arbitrary_index
+
+arbitrary_result.discriminant = arbitrary_discriminant + 1
+assert not check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+arbitrary_result.discriminant = arbitrary_discriminant
+
+arbitrary_result.evidence["events"] = [dict(event) for event in arbitrary_events]
+arbitrary_result.evidence["events"][1]["kernel_rank"] += 1
+assert not check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+arbitrary_result.evidence["events"] = arbitrary_events
+assert check_buchmann_lenstra_general_result(
+    arbitrary_coefficients,
+    identity_cubic,
+    arbitrary_result,
+    equation_discriminant=arbitrary_equation_discriminant,
+)
+results["arbitrary_prime_over_word"] = {
+    "state": arbitrary_result.state,
+    "basis_numerator": [
+        [str(value) for value in row] for row in arbitrary_basis.numerator
+    ],
+    "basis_denominator": str(arbitrary_basis.denominator),
+    "index": str(arbitrary_index),
+    "discriminant": str(arbitrary_discriminant),
+    "certificate": arbitrary_result.evidence["certificate"],
+    "stages": arbitrary_stages,
+    "closure_checked": lattice["valid"],
+    "corruptions_rejected": ["basis", "index", "discriminant", "event"],
+    "elapsed_ns": arbitrary_elapsed_ns,
+}
 
 split_case = fixtures["composite_zero_divisor"]
 split_coefficients = [int(value) for value in split_case["coefficients_low_to_high"]]
