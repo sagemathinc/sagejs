@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Profile vector429, Hecke degree90, and Hecke precision degree12 through completed public sessions with 120-second bounds, fix the exact overlapping-factor support split exposed by degree90, and preserve fail-closed certificate evidence",
-  "base_commit": "eb34bf5378c4e38fb1be147c8c7a4edcdd42503e",
+  "base_commit": "eb34bf531b08b04a342543943ad30c58f6fdb73b",
   "claims": [
     "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
