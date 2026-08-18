@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-high-degree-discriminant",
+  "title": "Fast split-aware discriminant prefactorization",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate exact split-aware polynomial prefactorization of large discriminant components with a source-transparent packed kernel, preserving the ordinary-Python oracle, fail-closed fallback, corruption rejection, and degree-90 performance evidence",
+  "base_commit": "049732200e72be31e722f02a9a0825b574a64b8b",
+  "claims": [
+    "src/lib/sagejs/number_fields/discriminant_components.py",
+    "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
+    "test/number-field-discriminant-prefactorization.cjs",
+    "bench/number-field-discriminant-prefactorization.cjs",
+    "bench/results/number-field-discriminant-prefactorization-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [
+      "FLINT fmpz_mod_poly_gcd_f split-aware Euclidean semantics"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Existing polynomial_gcd_mod_composite CPython implementation",
+      "Generated JavaScript dynamic source execution",
+      "Compiled packed kernel differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
