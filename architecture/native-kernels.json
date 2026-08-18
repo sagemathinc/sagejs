@@ -458,9 +458,10 @@
       "source": "src/lib/sagejs/number_fields/field_analysis_resource.py",
       "functions": [
         "packed_field_analysis_fixed_points_are_valid",
-        "packed_field_analysis_decode_integers"
+        "packed_field_analysis_decode_integers",
+        "packed_field_analysis_authenticate_projection"
       ],
-      "semantic_domain": "one-pass signed integer decoding plus exact reconstruction of order multiplication, defining discriminant, canonical nilradicals, and full-rank terminal fixed-point witnesses for authenticated fused number-field analysis",
+      "semantic_domain": "one-pass signed integer decoding, compact authenticated order projection, and exact reconstruction of order multiplication, defining discriminant, canonical nilradicals, and full-rank terminal fixed-point witnesses for fused number-field analysis",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "native-resource"],
