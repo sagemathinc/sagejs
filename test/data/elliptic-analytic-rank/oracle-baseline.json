@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "description": "Pinned offline analytic-rank oracle values",
+  "semantic_warning": "Ranks are probable numerical results, not proofs of exact vanishing.",
+  "manifest_sha256": "62a7f6a93b8877179a6ff6f18afd4d03226fb488d1c1ce812012d6d4fae7005e",
+  "selected_tier": "all",
+  "selected_curve_ids": [
+    "11a1",
+    "37a1",
+    "389a1",
+    "5077a1",
+    "234446a1",
+    "user-rank2",
+    "256944c1",
+    "rank5-sage",
+    "11a1-nonminimal",
+    "additive-at-2",
+    "additive-at-2-and-3",
+    "large-conductor-stress"
+  ],
+  "capture": {
+    "date": "2026-08-18",
+    "host_platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "sage_process_total_seconds": 34.34,
+    "magma_process_total_seconds": 28.78,
+    "note": "One fresh sample per curve. Process totals include startup, all twelve curves, and shutdown; use the harness with at least five samples for performance work."
+  },
+  "oracles": [
+    {
+      "implementation_family": "Sage/PARI",
+      "versions": { "sage": "10.9.post1", "pari": "2.17.1" },
+      "settings": {
+        "algorithm": "pari",
+        "pari_real_precision_bits": 53,
+        "coefficient_cutoff": 64,
+        "samples": 1,
+        "tier": "all"
+      },
+      "records": [
+        {
+          "id": "11a1",
+          "conductor": "11",
+          "root_number": 1,
+          "probable_analytic_rank": 0,
+          "leading_derivative": "0.253841860855910684",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "5558dd62dc6025e0f4e5ed61891437421e6af1ea028e14ed56fddfb988b80f4d" },
+          "zero_sum_upper_bounds": [{ "delta": 1, "bound": 0 }]
+        },
+        {
+          "id": "37a1",
+          "conductor": "37",
+          "root_number": -1,
+          "probable_analytic_rank": 1,
+          "leading_derivative": "0.305999773834052302",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "377316984bcde4dd26e8b2846a2ee6b16d532384d18b3569d675f251e759cbb2" },
+          "zero_sum_upper_bounds": [{ "delta": 1, "bound": 1 }]
+        },
+        {
+          "id": "389a1",
+          "conductor": "389",
+          "root_number": 1,
+          "probable_analytic_rank": 2,
+          "leading_derivative": "1.51863300057685354",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "336887603e4c9770619834dcd543ae617944b97824da4dc8732c5e4b04eaae15" },
+          "zero_sum_upper_bounds": [{ "delta": 1, "bound": 2 }]
+        },
+        {
+          "id": "5077a1",
+          "conductor": "5077",
+          "root_number": -1,
+          "probable_analytic_rank": 3,
+          "leading_derivative": "10.3910994007158041",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "916d506a903e573fafa3fd7ebeddbc8a6102993d55a46e5a86d05f94afe3f4a4" },
+          "zero_sum_upper_bounds": [{ "delta": 1, "bound": 3 }]
+        },
+        {
+          "id": "234446a1",
+          "conductor": "234446",
+          "root_number": 1,
+          "probable_analytic_rank": 4,
+          "leading_derivative": "214.652337501621337",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "9becc9a19de6e90e0853123e2cbf6655bf42a693076d452904c716d9b2dd8f2b" },
+          "zero_sum_upper_bounds": [{ "delta": 1, "bound": 4 }]
+        },
+        {
+          "id": "user-rank2",
+          "conductor": "1008811",
+          "root_number": 1,
+          "probable_analytic_rank": 2,
+          "leading_derivative": "14.7552475203802700",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "50000456fd1af83eb9cd5c3b275d80853a28d49f8c6946890d3c9e6cab79d7c4" }
+        },
+        {
+          "id": "256944c1",
+          "conductor": "256944",
+          "root_number": 1,
+          "probable_analytic_rank": 0,
+          "leading_derivative": "0.00577750108784272178",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "6dcecfebc8240b7e993024bcbe9f8ce134ede5195acb6d208802673c069fafbc" },
+          "zero_sum_upper_bounds": [
+            { "delta": 0.5, "bound": 2 },
+            { "delta": 0.6, "bound": 2 },
+            { "delta": 1, "bound": 2 },
+            { "delta": 1.5, "bound": 2 },
+            { "delta": 2, "bound": 2 }
+          ]
+        },
+        {
+          "id": "rank5-sage",
+          "conductor": "19047851",
+          "root_number": -1,
+          "probable_analytic_rank": 5,
+          "leading_derivative": "3634.28250646374201",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "f4fc1b6dda18c8b235a43f78c68c7f9487f97a17e3c759b84db3c4023064d77e" }
+        },
+        {
+          "id": "11a1-nonminimal",
+          "conductor": "11",
+          "root_number": 1,
+          "probable_analytic_rank": 0,
+          "leading_derivative": "0.253841860855910684",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "5558dd62dc6025e0f4e5ed61891437421e6af1ea028e14ed56fddfb988b80f4d" }
+        },
+        {
+          "id": "additive-at-2",
+          "conductor": "32",
+          "root_number": 1,
+          "probable_analytic_rank": 0,
+          "leading_derivative": "0.655514388573029953",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "fdabadf667f6dc436d6bf958b82f6b7ae206261983416760165e85553e3871c5" }
+        },
+        {
+          "id": "additive-at-2-and-3",
+          "conductor": "36",
+          "root_number": 1,
+          "probable_analytic_rank": 0,
+          "leading_derivative": "0.701091052662727131",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "ccc045883a244ef6add86b612d1c86d40eb80fbe5b0785a718ab4bc0a1165413" }
+        },
+        {
+          "id": "large-conductor-stress",
+          "conductor": "1456559178048",
+          "root_number": -1,
+          "probable_analytic_rank": 1,
+          "leading_derivative": "54.1450144550632105",
+          "leading_value_convention": "L^(r)(1)",
+          "coefficient_probe": { "cutoff": 64, "length": 65, "sha256": "6188b22b80aa4ec0ccc95a9f13006dfaef1d20c94f867dea11b22ffb90f65c59" }
+        }
+      ]
+    },
+    {
+      "implementation_family": "Magma",
+      "versions": { "magma": "2.18.5" },
+      "settings": {
+        "intrinsic": "AnalyticRank",
+        "decimal_precision": 15,
+        "samples": 1,
+        "tier": "all"
+      },
+      "records": [
+        { "id": "11a1", "conductor": "11", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.25384186085591054", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.25384186085591054", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "37a1", "conductor": "37", "root_number": -1, "probable_analytic_rank": 1, "leading_derivative": "0.30599977383405230", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.30599977383405230", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "389a1", "conductor": "389", "root_number": 1, "probable_analytic_rank": 2, "leading_derivative": "1.51863300057685358", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.75931650028842679", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "5077a1", "conductor": "5077", "root_number": -1, "probable_analytic_rank": 3, "leading_derivative": "10.39109940071580240", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "1.73184990011930040", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "234446a1", "conductor": "234446", "root_number": 1, "probable_analytic_rank": 4, "leading_derivative": "214.65233750162133219", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "8.94384739590088884", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "user-rank2", "conductor": "1008811", "root_number": 1, "probable_analytic_rank": 2, "leading_derivative": "14.75524752038026577", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "7.37762376019013288", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "256944c1", "conductor": "256944", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.00577750108784272", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.00577750108784272", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "rank5-sage", "conductor": "19047851", "root_number": -1, "probable_analytic_rank": 5, "leading_derivative": "3634.28250646373999189", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "30.28568755386450562", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "11a1-nonminimal", "conductor": "11", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.25384186085591054", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.25384186085591054", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "additive-at-2", "conductor": "32", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.65551438857302990", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.65551438857302990", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "additive-at-2-and-3", "conductor": "36", "root_number": 1, "probable_analytic_rank": 0, "leading_derivative": "0.70109105266272742", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "0.70109105266272742", "raw_value_convention": "L^(r)(1)/r!" },
+        { "id": "large-conductor-stress", "conductor": "1456559178048", "root_number": -1, "probable_analytic_rank": 1, "leading_derivative": "54.14501445506323307", "leading_value_convention": "L^(r)(1)", "raw_taylor_coefficient": "54.14501445506323307", "raw_value_convention": "L^(r)(1)/r!" }
+      ]
+    },
+    {
+      "implementation_family": "lcalc",
+      "status": "unavailable",
+      "executable": "lcalc",
+      "reason": "standalone executable not found; the installed Sage wrapper also delegates to this CLI",
+      "records": []
+    }
+  ],
+  "validation": { "status": "passed" }
+}
