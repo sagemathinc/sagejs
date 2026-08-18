@@ -1,0 +1,86 @@
+{
+  "schema": "sagejs.number-fields/om-auto-calibration/v1",
+  "case_id": "pari-round4-vector-429",
+  "units": "milliseconds",
+  "policy": {
+    "fresh_process": true,
+    "hard_timeout_ms": 30000,
+    "end_to_end_boundary": true,
+    "cached_public_call": false,
+    "exactness": "completed boundaries return their certified local order; selector equality is checked in test/number-field-om-auto-selector.cjs",
+    "host_caveat": "The dc753f5a reruns overlapped another sustained project profiler, so censored current-source samples are lower bounds and are not used to claim a crossover."
+  },
+  "source_identity": {
+    "isolated_matrix_commit": "13d233427a92fa4ee8c796d30f9e8e311a2f4c85",
+    "current_round4_commit": "dc753f5a7fc8141949c4c173df53924df6c74494",
+    "om_and_native_changed_between_commits": false,
+    "current_engine_commit": "3ad58f0073d05e9d24c934aeabeda9037b94fee7"
+  },
+  "isolated_matrix": [
+    {
+      "prime": 2,
+      "om": { "censored": true, "lower_bound_ms": 30678 },
+      "native": { "censored": false, "elapsed_ms": 22528.74, "complete": true },
+      "round4": { "censored": true, "lower_bound_ms": 30000 },
+      "auto_eligible": false
+    },
+    {
+      "prime": 3,
+      "om": { "censored": true, "lower_bound_ms": 30612 },
+      "native": { "censored": false, "elapsed_ms": 6396.37, "complete": true },
+      "round4": { "censored": true, "lower_bound_ms": 29938.54 },
+      "auto_eligible": false
+    },
+    {
+      "prime": 5,
+      "om": { "censored": true, "lower_bound_ms": 30617 },
+      "native": { "censored": false, "elapsed_ms": 2401.21, "complete": true },
+      "round4": { "censored": true, "lower_bound_ms": 29942.09 },
+      "auto_eligible": false
+    },
+    {
+      "prime": 7,
+      "om": {
+        "censored": false,
+        "elapsed_ms": 2889.04,
+        "complete": true,
+        "local_index_valuation": 480,
+        "maximum_type_depth": 1,
+        "type_count": 4,
+        "expected_combinations": 83521
+      },
+      "native": { "censored": false, "elapsed_ms": 5568.91, "complete": true },
+      "speedup_over_native": 1.9276,
+      "auto_eligible": true,
+      "measured_crossover_region": "deep-index-shallow-types-v1"
+    }
+  ],
+  "current_source_reruns": [
+    {
+      "label": "production-auto-om-p7-local-hook",
+      "censored": false,
+      "wall_ms": 12190.84,
+      "elapsed_ms": 3324.85,
+      "selected": true,
+      "algorithm": "om-maxmin",
+      "measured_crossover_region": "deep-index-shallow-types-v1"
+    },
+    { "label": "native-p2", "censored": true, "lower_bound_ms": 29948.15 },
+    { "label": "native-p3", "censored": true, "lower_bound_ms": 29940.33 },
+    { "label": "round4-p2", "censored": true, "lower_bound_ms": 24700 },
+    { "label": "round4-p3", "censored": true, "lower_bound_ms": 29938.54 },
+    { "label": "round4-p5", "censored": true, "lower_bound_ms": 29942.09 }
+  ],
+  "full_public_bound": {
+    "commit": "156c50099b43e6d3f49267f54993baed427255b6",
+    "censored": true,
+    "lower_bound_ms": 61074,
+    "note": "The full fresh public vector429 call retained a batch tail; later selector-only changes do not expand OM eligibility."
+  },
+  "decision": {
+    "selected_primes": [7],
+    "censored_primes": [2, 3, 5],
+    "reason": "No complete end-to-end OM crossover is measured for p=2, p=3, or p=5. They remain fail-closed on the native/Round-2/Round-4 portfolio.",
+    "remaining_tail": "The p=2 native boundary is the largest measured residual vector429 component. Extending OM auto-selection would slow or censor it with the current implementation."
+  }
+}
