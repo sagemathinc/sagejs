@@ -158,7 +158,7 @@
     },
     {
       "id": "number-field-algorithms",
-      "layer": 4,
+      "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 625000,
       "depends_on": [
@@ -166,6 +166,7 @@
         "native-integration",
         "arithmetic",
         "linear-algebra",
+        "matrix-native-kernels",
         "python-stdlib"
       ],
       "modules": ["sagejs.number_fields"],
