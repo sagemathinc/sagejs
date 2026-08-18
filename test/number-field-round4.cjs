@@ -359,11 +359,18 @@ test("bounded modular characteristic reconstruction equals direct exact arithmet
             "assert large_decision['hadamard_bound_bits'] >= large_decision['crt_bound_bits_cutoff']",
             "cyclic_certificates += 1",
             "checked += 1",
+            "M = NumberField((x-larger_shift)^4-2, 'e')",
+            "proper_subfield_element = (M.gen()-larger_shift)^2",
+            "metrics = {}",
+            "assert _modular_characteristic_polynomial(M, proper_subfield_element, metrics) == _element_characteristic_polynomial(M, proper_subfield_element)",
+            "assert metrics['modular_characteristic_certifications'] == {'field-minimal-polynomial-crt': 1}",
+            "assert metrics['modular_characteristic_primes'] > 0",
+            "checked += 1",
             "(checked, prime_count > 0, cyclic_certificates > 0)",
           ].join("\n"),
         )
       ).repr,
-      "(17, True, True)",
+      "(18, True, True)",
     );
   } finally {
     await session.close();

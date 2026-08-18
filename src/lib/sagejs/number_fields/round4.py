@@ -36,6 +36,11 @@ from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.kernels.matrix.word_prime_krylov import (
+    word_prime_krylov_minimal_polynomial,
+    word_prime_krylov_workspace_length,
+)
+from sagejs.native import is_compiled
 
 
 class Round4Unsupported(ArithmeticError):
@@ -862,6 +867,132 @@ def _annihilates_first_coordinate(
     return all(value == 0 for value in vector)
 
 
+def _word_prime_first_coordinate_minimal_polynomial(
+    rows: list[list[Any]],
+    prime: int,
+) -> list[int]:
+    """Use the packed kernel for a first-coordinate relation modulo `prime`."""
+    degree = len(rows)
+    entries = [runtime.number(value % prime) for row in rows for value in row]
+    workspace_length = word_prime_krylov_workspace_length(degree)
+    if is_compiled(word_prime_krylov_minimal_polynomial):
+        matrix = runtime.uint64_buffer(entries)
+        output = runtime.uint64_buffer(degree + 1)
+        workspace = runtime.uint64_buffer(workspace_length)
+        modulus = runtime.integer_bigint(prime)
+    else:
+        matrix = entries
+        output = [0 for _index in range(degree + 1)]
+        workspace = [0 for _index in range(workspace_length)]
+        modulus = prime
+    minimal_degree = word_prime_krylov_minimal_polynomial(
+        output,
+        matrix,
+        workspace,
+        degree,
+        modulus,
+    )
+    if minimal_degree <= 0 or minimal_degree > degree:
+        raise Round4InvariantError(
+            "the packed word-prime Krylov kernel returned an invalid degree"
+        )
+    return [runtime.number(output[index]) for index in range(minimal_degree + 1)]
+
+
+def _minimal_polynomial_coefficient_bounds(
+    rows: list[list[Any]],
+    minimal_degree: int,
+) -> list[Any]:
+    """Bound minimal coefficients using the exact infinity operator norm."""
+    root_bound = max(sum(abs(value) for value in row) for row in rows)
+    binomial = sage.ZZ(1)
+    bounds = []
+    for power in range(minimal_degree, -1, -1):
+        index = minimal_degree - power
+        if index:
+            binomial = binomial * (minimal_degree - index + 1) // index
+        bounds.append(binomial * root_bound**power)
+    return bounds
+
+
+def _integer_polynomial_power(
+    coefficients: list[Any],
+    exponent: int,
+) -> list[Any]:
+    """Raise an ascending integer polynomial by exact convolution."""
+    answer = [sage.ZZ(1)]
+    for _index in range(exponent):
+        product = [
+            sage.ZZ(0) for _coefficient in range(len(answer) + len(coefficients) - 1)
+        ]
+        for left, left_coefficient in enumerate(answer):
+            for right, right_coefficient in enumerate(coefficients):
+                product[left + right] += left_coefficient * right_coefficient
+        answer = product
+    return answer
+
+
+def _integer_field_element_characteristic_polynomial(
+    rows: list[list[Any]],
+    first_prime: int,
+    first_modular_minimal: list[int],
+) -> tuple[list[Any], int, int]:
+    """Recover a noncyclic field element characteristic polynomial by CRT.
+
+    The infinity norm bounds the coefficients of the element's minimal
+    polynomial. A modular degree witness plus exact annihilation certifies that
+    degree over `QQ`. For multiplication by `beta` on a number field `K`, the
+    characteristic polynomial is then the minimal polynomial raised to
+    `[K:QQ(beta)]`.
+    """
+    degree = len(rows)
+    candidate_prime = first_prime - 2
+    minimal_degree = len(first_modular_minimal) - 1
+    residues = [sage.ZZ(value) for value in first_modular_minimal]
+    modulus = sage.ZZ(first_prime)
+    prime_count = 1
+    bounds = _minimal_polynomial_coefficient_bounds(rows, minimal_degree)
+    while prime_count <= 4096:
+        if modulus > 2 * max(bounds):
+            half_modulus = modulus // 2
+            centered = [
+                residue - modulus if residue > half_modulus else residue
+                for residue in residues
+            ]
+            if _annihilates_first_coordinate(rows, centered):
+                if minimal_degree <= 0 or degree % minimal_degree != 0:
+                    raise Round4InvariantError(
+                        "a field element has an invalid minimal-polynomial degree"
+                    )
+                characteristic = _integer_polynomial_power(
+                    centered,
+                    degree // minimal_degree,
+                )
+                return characteristic, prime_count, _positive_integer_bits(modulus)
+        prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
+        modular_minimal = _word_prime_first_coordinate_minimal_polynomial(rows, prime)
+        modular_degree = len(modular_minimal) - 1
+        prime_count += 1
+        if modular_degree > minimal_degree:
+            minimal_degree = modular_degree
+            residues = [sage.ZZ(value) for value in modular_minimal]
+            modulus = sage.ZZ(prime)
+            bounds = _minimal_polynomial_coefficient_bounds(rows, minimal_degree)
+            continue
+        if modular_degree < minimal_degree:
+            continue
+        inverse = _modular_inverse(runtime.number(modulus % prime), prime)
+        for index, coefficient in enumerate(modular_minimal):
+            correction = (
+                (coefficient - runtime.number(residues[index] % prime)) * inverse
+            ) % prime
+            residues[index] += modulus * correction
+        modulus *= prime
+    raise Round4Unsupported(
+        "exact modular minimal-polynomial reconstruction exceeded 4096 primes"
+    )
+
+
 def _modular_characteristic_polynomial(
     field: Any,
     element: Any,
@@ -884,6 +1015,7 @@ def _modular_characteristic_polynomial(
     degree = field.degree()
     bounds = _characteristic_coefficient_bounds(row_bounds)
     largest_bound = max(bounds)
+    largest_bound_bits = _positive_integer_bits(largest_bound)
     residues = [sage.ZZ(0) for _index in range(degree + 1)]
     modulus = sage.ZZ(1)
     candidate_prime = 1073741823
@@ -892,8 +1024,27 @@ def _modular_characteristic_polynomial(
     integer_coefficients = None
     cyclic = False
     certification = "coefficient-bound"
+    minimal_modulus_bits = 0
     while integer_coefficients is None:
         prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
+        modular_minimal = None
+        if largest_bound_bits >= _ROUND4_CRT_BOUND_BITS:
+            modular_minimal = _word_prime_first_coordinate_minimal_polynomial(
+                rows,
+                prime,
+            )
+            if len(modular_minimal) != degree + 1:
+                (
+                    integer_coefficients,
+                    prime_count,
+                    minimal_modulus_bits,
+                ) = _integer_field_element_characteristic_polynomial(
+                    rows,
+                    prime,
+                    modular_minimal,
+                )
+                certification = "field-minimal-polynomial-crt"
+                break
         residue_field = _nf_global("GF")(prime)
         modular_rows = [[residue_field(value % prime) for value in row] for row in rows]
         modular_coefficients = list(
@@ -909,7 +1060,10 @@ def _modular_characteristic_polynomial(
             residues[index] += modulus * correction
         modulus *= prime
         prime_count += 1
-        cyclic = cyclic or _modular_power_basis_is_cyclic(rows, prime)
+        if modular_minimal is None:
+            cyclic = cyclic or _modular_power_basis_is_cyclic(rows, prime)
+        else:
+            cyclic = True
         if prime_count > 4096:
             raise Round4Unsupported(
                 "exact modular characteristic reconstruction exceeded 4096 primes"
@@ -952,6 +1106,7 @@ def _modular_characteristic_polynomial(
         metrics["modular_characteristic_max_modulus_bits"] = max(
             metrics.get("modular_characteristic_max_modulus_bits", 0),
             _positive_integer_bits(modulus),
+            minimal_modulus_bits,
         )
         certification_counts = metrics.get("modular_characteristic_certifications")
         if certification_counts is None:
