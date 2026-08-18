@@ -4,8 +4,9 @@ The public algorithm name for this pipeline is `rforest`. It means a complete,
 exact local-factor computation; it never means “return the Hasse–Witt
 residues.” The diagnostic `rforest_hasse_witt_rows` function remains the only
 API that exposes `det(I-TW) mod p`. `exhaustive` names the deterministic exact
-fallback. `auto` must not select `rforest` until the complete workflow passes
-the documented performance and platform gates.
+fallback. `auto` selects `rforest` only in the measured complete-workflow
+envelope documented below; explicit `rforest` remains available outside that
+automatic envelope.
 
 ## Examples
 
