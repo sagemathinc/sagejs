@@ -36,6 +36,30 @@
     "genericMergeMicros": 3214790,
     "canonicalSha256": "2c5dade462e02facdccd5a8fa41fdcbb1791ddbe16bf2fc002d41ffc3a9920a3",
     "forcedGenericHnfEqual": true,
+    "dynamicScheduling": {
+      "processGroup": 487170,
+      "dynamicRound2Micros": 3922759,
+      "staticRound2Micros": 4050572,
+      "dynamicLocalCriticalMicros": 3906130,
+      "staticLocalCriticalMicros": 4029060,
+      "speedup": 1.032583,
+      "canonicalEqual": true,
+      "dynamicReconstructedLanes": [
+        {"initialSlot": 0, "primes": [151, 281, 479156551], "jobWallMicros": 1927858},
+        {"initialSlot": 1, "primes": [449, 4373, 7, 31], "jobWallMicros": 2828357},
+        {"initialSlot": 2, "primes": [233, 7901, 1620217, 1597], "jobWallMicros": 3232615},
+        {"initialSlot": 3, "primes": [683, 3037, 11, 2683361], "jobWallMicros": 3905893},
+        {"initialSlot": 4, "primes": [1093, 129113, 953], "jobWallMicros": 2199591}
+      ],
+      "staticModuloLanes": [
+        {"lane": 0, "primes": [151, 3037, 7, 31], "jobWallMicros": 2909345},
+        {"lane": 1, "primes": [449, 4373, 1620217, 1597], "jobWallMicros": 3405733},
+        {"lane": 2, "primes": [233, 7901, 11, 2683361], "jobWallMicros": 4028836},
+        {"lane": 3, "primes": [683, 281, 953], "jobWallMicros": 2456436},
+        {"lane": 4, "primes": [1093, 129113, 479156551], "jobWallMicros": 1795418}
+      ],
+      "note": "one quiet dynamic/static pair; dynamic lanes are reconstructed from the mutex FIFO claim rule and measured per-job wall durations"
+    },
     "public": {
       "status": "timeout",
       "boundSeconds": 120,

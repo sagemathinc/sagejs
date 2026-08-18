@@ -46,6 +46,12 @@
 #ifndef SAGEJS_NF_ORDER_PROFILE_LOCAL_END
 #define SAGEJS_NF_ORDER_PROFILE_LOCAL_END(index) ((void) 0)
 #endif
+#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL
+#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index) 0
+#endif
+#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY
+#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY(index) ((void) 0)
+#endif
 
 /*
  * Zassenhaus Round 2 over an integral multiplication table.
@@ -2927,9 +2933,6 @@ static inline void sagejs_nf_order_independent_prime_worker(
 {
     sagejs_nf_independent_prime_work *work =
         (sagejs_nf_independent_prime_work *) argument;
-#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL
-#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index) 0
-#endif
     if (SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index))
     {
         work->success[index] = 0;
@@ -2938,6 +2941,7 @@ static inline void sagejs_nf_order_independent_prime_worker(
     /* Publish success only after the local result is fully initialized.  The
      * caller zeroes every slot and clears precisely the successfully
      * published resources, including after a sibling worker fails. */
+    SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY(index);
     SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN(index);
     work->success[index] =
         sagejs_number_field_order_maximal_at_primes_sequential(
@@ -2963,10 +2967,55 @@ static inline void sagejs_nf_order_run_independent_prime_lane(
 }
 
 #if FLINT_USES_PTHREAD
-static inline void *sagejs_nf_order_independent_prime_thread(void *argument)
+static inline void *sagejs_nf_order_independent_static_thread(void *argument)
 {
     sagejs_nf_order_run_independent_prime_lane(
         (sagejs_nf_independent_prime_lane *) argument);
+    return NULL;
+}
+
+typedef struct
+{
+    sagejs_nf_independent_prime_work *work;
+    slong item_count;
+    slong next_index;
+    int fatal;
+    pthread_mutex_t mutex;
+} sagejs_nf_independent_prime_queue;
+
+static inline void sagejs_nf_order_run_independent_prime_queue(
+    sagejs_nf_independent_prime_queue *queue)
+{
+    /* Claim indices monotonically, but never encode worker assignment into
+     * the result: each job owns its caller-order slot.  A failed job closes
+     * the queue to new claims; already claimed jobs publish or fail before
+     * the caller joins every worker and transactionally clears all published
+     * slots. */
+    for (;;)
+    {
+        slong index = -1;
+        if (pthread_mutex_lock(&queue->mutex) != 0) return;
+        if (!queue->fatal && queue->next_index < queue->item_count)
+            index = queue->next_index++;
+        (void) pthread_mutex_unlock(&queue->mutex);
+        if (index < 0) return;
+        sagejs_nf_order_independent_prime_worker(index, queue->work);
+        if (!queue->work->success[index])
+        {
+            if (pthread_mutex_lock(&queue->mutex) == 0)
+            {
+                queue->fatal = 1;
+                (void) pthread_mutex_unlock(&queue->mutex);
+            }
+            return;
+        }
+    }
+}
+
+static inline void *sagejs_nf_order_independent_queue_thread(void *argument)
+{
+    sagejs_nf_order_run_independent_prime_queue(
+        (sagejs_nf_independent_prime_queue *) argument);
     return NULL;
 }
 #endif
@@ -3008,6 +3057,33 @@ static inline void sagejs_nf_order_run_independent_primes(
     sagejs_nf_independent_prime_work *work,
     slong item_count, slong worker_count)
 {
+#if FLINT_USES_PTHREAD && \
+    !defined(SAGEJS_NF_ORDER_FORCE_STATIC_INDEPENDENT_SCHEDULE)
+    if (worker_count > 1)
+    {
+        sagejs_nf_independent_prime_queue queue;
+        queue.work = work;
+        queue.item_count = item_count;
+        queue.next_index = 0;
+        queue.fatal = 0;
+        if (pthread_mutex_init(&queue.mutex, NULL) == 0)
+        {
+            pthread_t workers[4];
+            int started[4] = {0, 0, 0, 0};
+            for (slong worker = 1; worker < worker_count; worker++)
+                if (pthread_create(workers + worker - 1, NULL,
+                        sagejs_nf_order_independent_queue_thread,
+                        &queue) == 0)
+                    started[worker - 1] = 1;
+            sagejs_nf_order_run_independent_prime_queue(&queue);
+            for (slong worker = 1; worker < worker_count; worker++)
+                if (started[worker - 1])
+                    (void) pthread_join(workers[worker - 1], NULL);
+            (void) pthread_mutex_destroy(&queue.mutex);
+            return;
+        }
+    }
+#endif
     sagejs_nf_independent_prime_lane lanes[5];
     for (slong lane = 0; lane < worker_count; lane++)
     {
@@ -3021,7 +3097,7 @@ static inline void sagejs_nf_order_run_independent_primes(
     int started[4] = {0, 0, 0, 0};
     for (slong lane = 1; lane < worker_count; lane++)
         if (pthread_create(workers + lane - 1, NULL,
-                sagejs_nf_order_independent_prime_thread,
+                sagejs_nf_order_independent_static_thread,
                 lanes + lane) == 0)
             started[lane - 1] = 1;
         else
