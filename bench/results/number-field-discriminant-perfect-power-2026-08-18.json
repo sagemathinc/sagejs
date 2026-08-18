@@ -1,0 +1,77 @@
+{
+  "case": "hecke-degree-90",
+  "certificate_replay": true,
+  "compiled_full_decomposition": {
+    "median_us": 6887716.096,
+    "samples_us": [
+      6887716.096
+    ]
+  },
+  "compiled_perfect_power_phase_us": 1716365.312,
+  "components_exact": true,
+  "controls": [
+    {
+      "exact": true,
+      "id": "positive-mixed-power"
+    },
+    {
+      "exact": true,
+      "id": "negative-odd-power"
+    },
+    {
+      "exact": true,
+      "id": "negative-even-magnitude"
+    },
+    {
+      "exact": true,
+      "id": "large-nonpower"
+    }
+  ],
+  "degree": 90,
+  "dynamic_control": {
+    "median_us": 2053.12,
+    "samples_us": [
+      2053.12
+    ]
+  },
+  "kernel_execution_mode": "native-capable",
+  "perfect_power_call_count": 22,
+  "readable_full_decomposition": {
+    "median_us": 6624623.36,
+    "samples_us": [
+      6624623.36
+    ]
+  },
+  "readable_perfect_power_phase_us": 1348779.776,
+  "representative_bits": 15186,
+  "representative_compiled": {
+    "median_us": 562950.912,
+    "samples_us": [
+      562950.912
+    ]
+  },
+  "representative_readable": {
+    "median_us": 424449.792,
+    "samples_us": [
+      424449.792
+    ]
+  },
+  "schema": "sagejs.number-fields/discriminant-perfect-power-benchmark-v1",
+  "speedup_full_decomposition": 0.9618026160873865,
+  "speedup_perfect_power_phase": 0.7858349073882938,
+  "speedup_representative": 0.7539730071527089,
+  "generated_at": "2026-08-18T15:24:40.863Z",
+  "source_commit": "ee40f289bbdd22974b3afb891e24defe1e800f81",
+  "host": {
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      3.37,
+      3.74,
+      4.16
+    ]
+  }
+}
