@@ -620,6 +620,7 @@ function buildFfpoly(source) {
       "libff_poly.a",
       `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
+      `CPPFLAGS=-I${join(prefix, "include")}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
     { cwd: source }
@@ -657,6 +658,7 @@ function buildSmalljac(source) {
       "libsmalljac.a",
       `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
+      `CPPFLAGS=-I${join(prefix, "include")}`,
       `INCLUDES=-I${join(prefix, "include")}`,
     ],
     { cwd: source }

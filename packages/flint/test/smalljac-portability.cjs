@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { existsSync, mkdtempSync } = require("node:fs");
+const { existsSync, mkdtempSync, readFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
@@ -21,6 +21,17 @@ const gmpSource = join(
   "gmp_word_test.c",
 );
 const include = join(packageRoot, "scripts", "portable-smalljac");
+
+test("Unix smalljac builds expose dependency headers to implicit Make rules", () => {
+  const buildScript = readFileSync(
+    join(packageRoot, "scripts", "build-deps.cjs"),
+    "utf8",
+  );
+  assert.equal(
+    buildScript.match(/`CPPFLAGS=-I\$\{join\(prefix, "include"\)\}`/g)?.length,
+    2,
+  );
+});
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { encoding: "utf8", ...options });
