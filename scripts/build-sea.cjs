@@ -14,7 +14,7 @@ const {
   writeFileSync,
 } = require("fs");
 const { createHash } = require("crypto");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawnSync } = require("child_process");
 const { tmpdir } = require("os");
 const { dirname, join, relative } = require("path");
 
@@ -61,6 +61,13 @@ const graphFfiAddon = join(
   "sagejs_igraph_ffi.node",
 );
 const graphFfiManifest = join(dirname(graphFfiAddon), "manifest.json");
+const productionPackAddon = join(
+  root,
+  "dist",
+  "native-kernels",
+  "pack",
+  "sagejs_native_kernel_pack.node",
+);
 
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
@@ -227,6 +234,37 @@ function prepareSeaBuilderExecutable() {
   } catch (error) {
     rmSync(directory, { recursive: true, force: true });
     throw error;
+  }
+}
+
+function validateWindowsRenamedNativeHost(executable, addons) {
+  if (process.platform !== "win32" || addons.length === 0) return;
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-sea-host-test-"));
+  const renamed = join(directory, "sagejs-native-host-test.exe");
+  const probe = join(directory, "load-addon.cjs");
+  try {
+    copyFileSync(executable, renamed);
+    const version = spawnSync(executable, ["--version"], {
+      encoding: "utf8",
+    }).stdout.trim() || "unknown version";
+    for (const addon of addons) {
+      writeFileSync(probe, `require(${JSON.stringify(addon)});\n`);
+      const result = spawnSync(renamed, [probe], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      if (result.status !== 0) {
+        throw new Error(
+          `Windows SEA host ${version} cannot load ` +
+            `${relative(root, addon)} after its executable is renamed ` +
+            `(status ${result.status ?? result.signal ?? "unknown"}). ` +
+            "Use a current official Node release or set SAGEJS_SEA_NODE " +
+            "to one that passes native-addon rename loading.",
+        );
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 }
 
@@ -554,6 +592,18 @@ buildSync({
 
 const seaBuilder = prepareSeaBuilderExecutable();
 try {
+  validateWindowsRenamedNativeHost(seaBuilder.executable, [
+    zeroMQAddonFilename(),
+    ...(buildMath
+      ? [
+        flintAddon,
+        flintFfiAddon,
+        graphAddon,
+        graphFfiAddon,
+        productionPackAddon,
+      ]
+      : []),
+  ]);
   if (buildPython) {
     buildExecutable(
       `sagepython${executableSuffix}`,

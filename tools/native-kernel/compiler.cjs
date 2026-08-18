@@ -665,7 +665,10 @@ function bindingGyp(
   const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
-    win_delay_load_hook: "false",
+    // SEA executables do not retain the `node.exe` filename.  Keep node-gyp's
+    // delay-load hook so the addon resolves Node-API symbols from the actual
+    // process image on Windows.
+    win_delay_load_hook: "true",
     sources: ["kernel.c", ...(hasExceptionShims ? ["ffi_shims.cc"] : [])],
     include_dirs: compilationIncludeDirectories(ir, platform),
     defines: [

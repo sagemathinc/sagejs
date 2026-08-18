@@ -21,8 +21,8 @@ const {
   NATIVE_PACK_ABI_VERSION,
 } = require("./js-backend.cjs");
 
-const PACK_IDENTITY_SCHEMA = "sagejs.native-pack-identity/v1";
-const PACK_MANIFEST_SCHEMA = "sagejs.native-pack/v1";
+const PACK_IDENTITY_SCHEMA = "sagejs.native-pack-identity/v2";
+const PACK_MANIFEST_SCHEMA = "sagejs.native-pack/v2";
 const PACK_FILENAME = "sagejs_native_kernel_pack.node";
 
 function sha256Bytes(value) {
@@ -77,6 +77,7 @@ function packIdentity(items) {
     }));
   const identity = {
     schema: PACK_IDENTITY_SCHEMA,
+    builderFingerprint: sha256File(__filename),
     packAbi: NATIVE_PACK_ABI_VERSION,
     nativeAbi: NATIVE_ABI_VERSION,
     platform: process.platform,
@@ -227,7 +228,10 @@ function packBinding(items, packDirectory) {
   return {
     targets: [{
       target_name: "sagejs_native_kernel_pack",
-      win_delay_load_hook: "false",
+      // The production pack is extracted from a SEA whose executable is not
+      // named `node.exe`; node-gyp's hook redirects delayed Node-API imports
+      // to the running process image on Windows.
+      win_delay_load_hook: "true",
       sources,
       include_dirs: unique(includeDirectories),
       defines: ["NAPI_VERSION=8"],

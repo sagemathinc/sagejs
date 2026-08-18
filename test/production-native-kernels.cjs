@@ -121,6 +121,10 @@ test("all production native kernels are published and autoloadable", () => {
   assert.equal(pack.__sagejsPackIdentity, index.packs[0].packKey);
   assert.equal(packManifest.packKey, index.packs[0].packKey);
   assert.equal(packManifest.bytes, statSync(packPath).size);
+  assert.match(
+    packManifest.identity?.builderFingerprint ?? "",
+    /^[a-f0-9]{64}$/,
+  );
   const production = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production"),
   );

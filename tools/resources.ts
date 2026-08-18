@@ -111,10 +111,8 @@ function attachEmbeddedFfiManifest(
 function loadExtractedNativeAddon(
   filename: string,
 ): Record<PropertyKey, unknown> {
-  // Let Node construct the real CommonJS Module record for an extracted
-  // addon. Calling `process.dlopen` with a hand-written `{ exports: {} }`
-  // record works on Unix and in an ordinary Windows Node process, but can
-  // access-violate when the same addon is loaded from a Windows SEA.
+  // Use a real CommonJS Module record and normal native-module cache semantics
+  // for each extracted addon.
   return createRequire(filename)(filename) as Record<PropertyKey, unknown>;
 }
 
@@ -212,7 +210,7 @@ export function loadPrecompiledNativeKernel(
       )
       : undefined;
     if (
-      manifest?.schema !== "sagejs.native-pack/v1" ||
+      manifest?.schema !== "sagejs.native-pack/v2" ||
       manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
       manifest.nativeAbi !== NATIVE_KERNEL_COMPILER_ABI_VERSION ||
       manifest.platform !== process.platform ||
