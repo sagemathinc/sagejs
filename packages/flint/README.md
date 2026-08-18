@@ -135,6 +135,39 @@ cancel the upstream traversal, clean up the curve, release the mutex, and
 return a distinct batch status; mathematical parse, singularity, model, and
 interval failures retain their own statuses.
 
+Genus-2 and genus-3 hyperelliptic curves also have a private packed
+Hasse--Witt batch boundary backed by Edgar Costa and Andrew Sutherland's
+[`rforest`](https://github.com/edgarcosta/rforest), pinned at commit
+`3103d396c67cb1685131b1f11e84975cca335bdf`.  The upstream library and its
+bundled `zz` arithmetic layer are respectively MIT-licensed and BSD-licensed;
+both checked license files are installed with the dependency.  The build uses
+the exact 20-translation-unit closure of the pinned upstream makefile.  The
+Windows build uses clang-cl, fixed-width carry arithmetic, and the same GMP
+64-bit limb requirement as Unix; rforest's private `long` ABI never crosses
+the Sage.js boundary.
+
+`rforestHasseWittBatch(coefficients, genus, start, stop, options)` accepts a
+`BigInt64Array` containing the ascending integral coefficients of the already
+completed model `y^2 = F(x)`.  Genus must be 2 or 3, and `F` must have exact
+degree `2*g+1` or `2*g+2`.  The closed prime interval starts at 2 and is capped
+at `2^31-1`; `options.maxRows` may cap storage while retaining the full
+`requiredRows` count.  Results are row-aligned typed arrays: `primes`, `good`,
+`coefficientCounts`, `rowStatus`, and a stride-three `coefficients` array.  A
+good row contains the coefficients `(c1,...,cg)` modulo `p` of
+`det(I-T*W)`, where `W` is the Hasse--Witt matrix; unused stride entries are
+zero.  These residues are not local L-polynomials.  The mathematical layer
+owns model completion and uses the residues only as congruence input for exact
+coefficient lifting.
+
+The matrix-factorial forest handles ordinary rows in one batch.  Primes where
+the chosen translations or transition normalizers degenerate use a direct
+FLINT polynomial-power fallback through `p <= 100000`; larger exceptional
+primes receive an explicit `RESOURCE_LIMIT` row rather than a guessed value.
+Characteristic two and bad reduction likewise retain aligned rows with
+explicit statuses.  `rforestCapabilities()` publishes the normalization,
+limits, backend revision, and complete status table.  The rforest and
+smalljac entry points share the same process-global native mutex.
+
 Prime-field elliptic-curve scalar multiplication uses a portable native
 Jacobian ladder over arbitrary-size FLINT integers. General Weierstrass models
 are moved exactly to short form in characteristic greater than three, the

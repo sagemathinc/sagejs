@@ -2,7 +2,7 @@ diff --git a/hwmpz.h b/hwmpz.h
 index 9a27d1d..8da2bb0 100644
 --- a/hwmpz.h
 +++ b/hwmpz.h
-@@ -8,14 +8,18 @@
+@@ -8,14 +8,21 @@
  #include "hwmem.h"
  #include "hwmpz_tune.h"
  
@@ -19,7 +19,10 @@ index 9a27d1d..8da2bb0 100644
 -static inline int _ui_len (uint64_t x) { return x?64-__builtin_clzl(x):0; }
 -static inline int _si_len (int64_t x) { return 64-__builtin_clzl(x<0?-x:x); }
 +static inline int _ui_len (uint64_t x) { return x?64-__builtin_clzll(x):0; }
-+static inline int _si_len (int64_t x) { return 64-__builtin_clzll(x<0?-x:x); }
++static inline int _si_len (int64_t x) {
++    uint64_t u = x < 0 ? UINT64_C(0) - (uint64_t)x : (uint64_t)x;
++    return u ? 64 - __builtin_clzll(u) : 0;
++}
  
  void hw_mpz_setup ();
  void hw_mpz_clear ();

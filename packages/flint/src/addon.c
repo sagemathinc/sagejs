@@ -4146,6 +4146,236 @@ napi_value sagejs_smalljac_capabilities_value(
     return result;
 }
 
+static int rforest_batch_arguments(
+    napi_env env,
+    napi_callback_info info,
+    const int64_t **coefficients,
+    size_t *coefficient_count,
+    uint8_t *genus,
+    uint64_t *start,
+    uint64_t *stop,
+    size_t *maximum_rows)
+{
+    napi_value args[5];
+    size_t argc = 5;
+    napi_typedarray_type array_type;
+    napi_value array_buffer;
+    size_t byte_offset;
+    ulong word;
+    napi_valuetype value_type;
+    bool present;
+    bool is_typed_array;
+
+    *coefficients = NULL;
+    *coefficient_count = 0;
+    *maximum_rows = 0;
+    if (!check_napi(env,
+        napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return 0;
+    if (argc < 4 || argc > 5)
+    {
+        napi_throw_type_error(env, NULL, "expected 4 or 5 arguments");
+        return 0;
+    }
+    if (!check_napi(env, napi_is_typedarray(env, args[0], &is_typed_array)))
+        return 0;
+    if (!is_typed_array)
+    {
+        napi_throw_type_error(env, NULL, "coefficients must be a BigInt64Array");
+        return 0;
+    }
+    if (!check_napi(env,
+        napi_get_typedarray_info(
+            env, args[0], &array_type, coefficient_count,
+            (void **) coefficients, &array_buffer, &byte_offset)))
+        return 0;
+    if (array_type != napi_bigint64_array)
+    {
+        napi_throw_type_error(env, NULL, "coefficients must be a BigInt64Array");
+        return 0;
+    }
+    if (!number_to_ulong(env, args[1], &word))
+        return 0;
+    if (word > UINT8_MAX)
+    {
+        napi_throw_range_error(env, NULL, "genus exceeds uint8");
+        return 0;
+    }
+    *genus = (uint8_t) word;
+    if (!bigint_to_ulong(env, args[2], &word))
+        return 0;
+    *start = (uint64_t) word;
+    if (!bigint_to_ulong(env, args[3], &word))
+        return 0;
+    *stop = (uint64_t) word;
+
+    if (argc == 5)
+    {
+        if (!check_napi(env, napi_typeof(env, args[4], &value_type)))
+            return 0;
+        if (value_type != napi_undefined)
+        {
+            napi_value maximum;
+            if (value_type != napi_object)
+            {
+                napi_throw_type_error(env, NULL, "options must be an object");
+                return 0;
+            }
+            if (!check_napi(env,
+                napi_has_named_property(env, args[4], "maxRows", &present)))
+                return 0;
+            if (present)
+            {
+                if (!check_napi(env,
+                    napi_get_named_property(
+                        env, args[4], "maxRows", &maximum)) ||
+                    !number_to_ulong(env, maximum, &word))
+                    return 0;
+                if ((uint64_t) word > (uint64_t) SIZE_MAX)
+                {
+                    napi_throw_range_error(env, NULL, "maxRows exceeds size_t");
+                    return 0;
+                }
+                *maximum_rows = (size_t) word;
+            }
+        }
+    }
+    return 1;
+}
+
+napi_value sagejs_rforest_hasse_witt_batch_value(
+    napi_env env, napi_callback_info info)
+{
+    const int64_t *coefficients;
+    size_t coefficient_count;
+    uint8_t genus;
+    uint64_t start;
+    uint64_t stop;
+    size_t maximum_rows;
+    sagejs_rforest_batch batch;
+    napi_value result;
+    uint64_t *primes;
+    uint8_t *good;
+    uint8_t *counts;
+    uint64_t *residues;
+    int32_t *row_status;
+
+    if (!rforest_batch_arguments(
+        env, info, &coefficients, &coefficient_count, &genus,
+        &start, &stop, &maximum_rows))
+        return NULL;
+    sagejs_rforest_hasse_witt_batch_compute(
+        coefficients, coefficient_count, genus, start, stop,
+        maximum_rows, &batch);
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !smalljac_set_number(env, result, "status", batch.status) ||
+        !smalljac_set_string(
+            env, result, "statusName",
+            sagejs_rforest_status_name(batch.status)) ||
+        !smalljac_set_number(env, result, "genus", batch.genus) ||
+        !smalljac_set_size(env, result, "rowCount", batch.row_count) ||
+        !smalljac_set_size(
+            env, result, "requiredRows", batch.required_rows) ||
+        !smalljac_set_boolean(env, result, "truncated", batch.truncated) ||
+        !smalljac_set_string(
+            env, result, "backendVersion",
+            sagejs_rforest_backend_version()) ||
+        !smalljac_set_string(
+            env, result, "normalization", "det(I-T*W) mod p") ||
+        !smalljac_typed_array(
+            env, result, "primes", napi_biguint64_array,
+            batch.row_count, sizeof(*primes), (void **) &primes) ||
+        !smalljac_typed_array(
+            env, result, "good", napi_uint8_array,
+            batch.row_count, sizeof(*good), (void **) &good) ||
+        !smalljac_typed_array(
+            env, result, "coefficientCounts", napi_uint8_array,
+            batch.row_count, sizeof(*counts), (void **) &counts) ||
+        !smalljac_typed_array(
+            env, result, "coefficients", napi_biguint64_array,
+            batch.row_count * SAGEJS_RFOREST_MAX_GENUS,
+            sizeof(*residues), (void **) &residues) ||
+        !smalljac_typed_array(
+            env, result, "rowStatus", napi_int32_array,
+            batch.row_count, sizeof(*row_status), (void **) &row_status))
+    {
+        sagejs_rforest_batch_clear(&batch);
+        return NULL;
+    }
+    for (size_t index = 0; index < batch.row_count; index += 1)
+    {
+        const sagejs_rforest_row *row = &batch.rows[index];
+        primes[index] = row->prime;
+        good[index] = row->good;
+        counts[index] = row->coefficient_count;
+        row_status[index] = row->status;
+        for (size_t coefficient = 0;
+             coefficient < SAGEJS_RFOREST_MAX_GENUS; coefficient += 1)
+            residues[SAGEJS_RFOREST_MAX_GENUS * index + coefficient] =
+                row->coefficients[coefficient];
+    }
+    sagejs_rforest_batch_clear(&batch);
+    return result;
+}
+
+napi_value sagejs_rforest_capabilities_value(
+    napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    napi_value statuses;
+    napi_value genera;
+    napi_value value;
+    (void) info;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !smalljac_set_boolean(
+            env, result, "available", sagejs_rforest_available()) ||
+        !smalljac_set_string(
+            env, result, "backendVersion",
+            sagejs_rforest_backend_version()) ||
+        !smalljac_set_string(
+            env, result, "normalization", "det(I-T*W) mod p") ||
+        !smalljac_set_uint64_bigint(
+            env, result, "primeUpperBound", SAGEJS_RFOREST_MAX_PRIME) ||
+        !smalljac_set_uint64_bigint(
+            env, result, "directFallbackUpperBound",
+            SAGEJS_RFOREST_DIRECT_MAX_PRIME) ||
+        !check_napi(env, napi_create_array_with_length(env, 2, &genera)) ||
+        !check_napi(env, napi_create_uint32(env, 2, &value)) ||
+        !check_napi(env, napi_set_element(env, genera, 0, value)) ||
+        !check_napi(env, napi_create_uint32(env, 3, &value)) ||
+        !check_napi(env, napi_set_element(env, genera, 1, value)) ||
+        !check_napi(env,
+            napi_set_named_property(env, result, "genera", genera)) ||
+        !check_napi(env, napi_create_object(env, &statuses)))
+        return NULL;
+
+#define SET_RFOREST_STATUS(name) \
+    if (!smalljac_set_number(env, statuses, #name, \
+        SAGEJS_RFOREST_STATUS_##name)) return NULL
+    SET_RFOREST_STATUS(OK);
+    SET_RFOREST_STATUS(TRUNCATED);
+    SET_RFOREST_STATUS(UNAVAILABLE);
+    SET_RFOREST_STATUS(INVALID_ARGUMENT);
+    SET_RFOREST_STATUS(UNSUPPORTED_MODEL);
+    SET_RFOREST_STATUS(INVALID_INTERVAL);
+    SET_RFOREST_STATUS(ALLOCATION_FAILED);
+    SET_RFOREST_STATUS(INTERNAL_ERROR);
+#undef SET_RFOREST_STATUS
+#define SET_RFOREST_ROW_STATUS(name) \
+    if (!smalljac_set_number(env, statuses, "ROW_" #name, \
+        SAGEJS_RFOREST_ROW_##name)) return NULL
+    SET_RFOREST_ROW_STATUS(FOREST);
+    SET_RFOREST_ROW_STATUS(DIRECT);
+    SET_RFOREST_ROW_STATUS(BAD_REDUCTION);
+    SET_RFOREST_ROW_STATUS(UNSUPPORTED_CHARACTERISTIC);
+    SET_RFOREST_ROW_STATUS(RESOURCE_LIMIT);
+#undef SET_RFOREST_ROW_STATUS
+    if (!check_napi(env,
+        napi_set_named_property(env, result, "statuses", statuses)))
+        return NULL;
+    return result;
+}
+
 static napi_value version(napi_env env, napi_callback_info info)
 {
     napi_value result;
@@ -4743,6 +4973,12 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {SAGEJS_SMALLJAC_CAPABILITIES_EXPORT, NULL,
             sagejs_smalljac_capabilities_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {SAGEJS_RFOREST_BATCH_EXPORT, NULL,
+            sagejs_rforest_hasse_witt_batch_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {SAGEJS_RFOREST_CAPABILITIES_EXPORT, NULL,
+            sagejs_rforest_capabilities_value,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecScalarMulPrime", NULL, elliptic_scalar_mul_prime,
             NULL, NULL, NULL, napi_default, NULL},
