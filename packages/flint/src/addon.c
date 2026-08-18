@@ -4995,6 +4995,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"ecCompletedCentralDerivatives", NULL,
             sagejs_ec_completed_central_derivatives,
             NULL, NULL, NULL, napi_default, NULL},
+        {"ecLseriesValues", NULL, sagejs_ec_lseries_values,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,

@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-tail-profile",
+  "title": "Profile maximal-order high-degree tail",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile vector429, Hecke degree90, and Hecke precision degree12 through completed public sessions with 120-second bounds, fix the exact overlapping-factor support split exposed by degree90, and preserve fail-closed certificate evidence",
+  "base_commit": "ecf468afd1fc9614a91574f742e8b8277d867afe",
+  "claims": [
+    "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-maximal-order-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Completed fresh-worker public adapter output with exact certified lattice/discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.806,
+      "started_at": "2026-08-18T00:47:02.129Z",
+      "commit": "ecf468afd1fc9614a91574f742e8b8277d867afe",
+      "workspace_fingerprint": "42e1f53c8b6c9968026b5b4fdb75f13b8efdf63ebd5b3065c0c024a229bda8f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 21.057,
+      "started_at": "2026-08-18T00:47:12.604Z",
+      "commit": "ecf468afd1fc9614a91574f742e8b8277d867afe",
+      "workspace_fingerprint": "42e1f53c8b6c9968026b5b4fdb75f13b8efdf63ebd5b3065c0c024a229bda8f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.208,
+      "started_at": "2026-08-18T00:48:54.195Z",
+      "commit": "ecf468afd1fc9614a91574f742e8b8277d867afe",
+      "workspace_fingerprint": "6da857e8a0b7e956f47716723e1592723cc0003434f214ff94b3a6a59cbb60d7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

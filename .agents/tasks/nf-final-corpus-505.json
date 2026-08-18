@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-final-corpus-505",
+  "title": "Nf Final Corpus 505",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Record one bounded current-head maximal-order report over all 505 corpus cases with raw terminal states, exact source/native identities, fresh-worker recovery, and independent verification",
+  "base_commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+  "claims": [
+    "bench/results/number-field-maximal-order-corpus-505-0abc59da-2026-08-18.json",
+    "bench/results/number-field-maximal-order-corpus-505-0abc59da-2026-08-18.md",
+    "test/number-field-maximal-order-corpus-report-505.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Frozen exact maximal-order corpus certificates plus the independent rational-lattice verifier",
+      "Bounded public Sage.js worker execution with preserved terminal states"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-maximal-order-corpus.cjs test/number-field-maximal-order-corpus-report-505.cjs",
+    "node tools/number-field-maximal-order/cli.cjs validate"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-corpus.cjs test/number-field-maximal-order-corpus-report-505.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.577,
+      "started_at": "2026-08-18T06:26:12.113Z",
+      "commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+      "workspace_fingerprint": "a316508f8165d0e61358ff249e7efdfa5cc7ebe2836fa00984a83773d55cedb8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node tools/number-field-maximal-order/cli.cjs validate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.223,
+      "started_at": "2026-08-18T06:26:13.443Z",
+      "commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+      "workspace_fingerprint": "a316508f8165d0e61358ff249e7efdfa5cc7ebe2836fa00984a83773d55cedb8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.048,
+      "started_at": "2026-08-18T06:26:54.162Z",
+      "commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+      "workspace_fingerprint": "a316508f8165d0e61358ff249e7efdfa5cc7ebe2836fa00984a83773d55cedb8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Recorded all 505 corpus cases at 0abc59da: 489 immutable uniform 5-second public rows, 16 explicitly scoped structural/oracle stress rows, 23 verified fresh-worker prime/recovery rows, and 11 separate 30-second timeout diagnostics. The uniform sweep has 477 verified successes, 11 timeouts, and one preserved frozen-certificate mismatch. Bounded GP/PARI adjudication proves the mismatch is a corpus defect, leaving zero independently wrong lattices.",
+    "risks": [
+      "The 16 stress HNFs are digest-only, so their rows verify frozen structure and recorded bounded oracle evidence but do not claim current public Sage.js execution, containment, or multiplication closure.",
+      "A brief competing build overlapped the named-case tail; exact verification is unaffected, but tail timings are not uncontended benchmark-quality data.",
+      "The addprimes-degree-7 frozen corpus certificate is wrong and should be corrected in a separate fixture lane; this report intentionally preserves the uniform invalid row.",
+      "The broad pnpm test:native receipt is delegated to the already-green integrated native lane because this lane changes only generated report data and its integrity test; an attempted duplicate run was stopped by the coordinator during its rebuild phase."
+    ],
+    "next_steps": [
+      "Correct the addprimes-degree-7 corpus discriminant, equation-order index, and canonical basis digest from the independently agreeing Sage.js and GP/PARI lattice.",
+      "Continue engine work on the five cases that remain timeouts under the separate 30-second diagnostic bound."
+    ]
+  }
+}

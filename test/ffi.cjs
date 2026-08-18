@@ -750,7 +750,7 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
     JSON.parse(readFileSync(filename, "utf8")), { root },
   );
   assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
-  assert.equal(inventory.exports.length, 300);
+  assert.equal(inventory.exports.length, 301);
   assert.equal(inventory.exports.filter((item) =>
     item.family.startsWith("dense-matrix")).length, 50);
   assert.equal(inventory.exports.filter((item) =>

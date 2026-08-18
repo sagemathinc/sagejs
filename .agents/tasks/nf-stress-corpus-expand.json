@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-stress-corpus-expand",
+  "title": "Maximal-order scalable stress corpus",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "codex",
+  "objective": "Expand the durable maximal-order corpus with exact high-degree, deep-index, wild-small-prime, and many-prime stress families without changing arithmetic algorithms",
+  "base_commit": "90667dd0fdfd559f3a5947c73d18fbd482c9a50a",
+  "claims": [
+    "test/fixtures/number-field-maximal-order-corpus.json",
+    "test/number-field-maximal-order-corpus.cjs",
+    "test/number-field-maximal-order-profiler.cjs",
+    "upstream-tests/sage/number-fields/maximal-order/build_stress_families.py",
+    "bench/number-field-maximal-order-manifest.json",
+    "docs/number-field-maximal-order-corpus.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "PARI/GP 2.17.3 nfbasis and nfdisc",
+      "exact resultant and power-basis transition identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "python upstream-tests/sage/number-fields/maximal-order/build_stress_families.py --check-corpus test/fixtures/number-field-maximal-order-corpus.json",
+    "node --test test/number-field-maximal-order-corpus.cjs test/number-field-maximal-order-profiler.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds eleven exact digest-only scalable stress records: four degree-112--160 bad generators, two degree-32 depth-512/2048 generators, three wild-at-2 scaled generators, and two many-prime scaled generators. Exact resultant/transition formulas, deterministic local proof states, bounded GP HNF/discriminant evidence, structural regeneration checks, and opt-in profiler selection are all durable.",
+    "risks": [
+      "Sage and Hecke were unavailable on the regeneration host, so the eleven new cases have PARI plus construction-identity evidence but no new independent cross-family lattice agreement.",
+      "The largest k=2048 record has a 295,949-digit index and is intentionally opt-in; loading the whole corpus remains suitable for structural tests but not tiny startup paths."
+    ],
+    "next_steps": [
+      "Run selected high-degree and deep-index cases through Sage/Hecke on a provisioned oracle host and append only completed bounded outcomes.",
+      "Use the stress profile to measure OM/MaxMin and parallel-local scaling without copying polynomial definitions into benchmark policy."
+    ]
+  }
+}

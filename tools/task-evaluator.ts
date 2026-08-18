@@ -4,6 +4,7 @@ import { runInThisContext } from "node:vm";
 import { installNodeHost } from "./host";
 import type { SageLanguageMode } from "./kernel-evaluator";
 import {
+  installPrecompiledTaskModuleLoader,
   readResourceBytes,
   readTaskRuntimeSource,
   runtimeRequire,
@@ -55,6 +56,7 @@ export function createTaskEvaluator({
     readTaskRuntimeSource(join(libraryPath, "task-runtime.js")),
     { filename: "<multiprocessing-baselib>" },
   );
+  installPrecompiledTaskModuleLoader();
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__multiprocessing__"; show_js = false;');
 
@@ -68,7 +70,42 @@ export function createTaskEvaluator({
 
   const callableCache = new Map<string, (...args: unknown[]) => unknown>();
 
+  function ensureCallableModule(callable: CallableSpec): void {
+    const moduleName = callable.module;
+    const authorized = Reflect.get(
+      globalThis,
+      "__sagejs_precompiled_task_modules__",
+    );
+    if (
+      !Array.isArray(authorized) ||
+      typeof moduleName !== "string" ||
+      moduleName === "__main__" ||
+      moduleName === "__multiprocessing__" ||
+      moduleName === "multiprocessing"
+    ) return;
+    const registry = Reflect.get(globalThis, "ρσ_modules") as
+      | Record<string, unknown>
+      | undefined;
+    const baselib = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    ) as Record<string, unknown> | undefined;
+    if (
+      (registry && Object.hasOwn(registry, moduleName)) ||
+      (baselib && Object.hasOwn(baselib, moduleName))
+    ) return;
+    const loader = Reflect.get(globalThis, "__sagejs_load_module__");
+    if (typeof loader !== "function") {
+      throw new Error("precompiled multiprocessing module loader is unavailable");
+    }
+    // The loader owns the exact allowlist and returns Python ImportError for
+    // unknown module identities. Do this before creating a namespace from
+    // serialized source so an uncompiled module cannot bypass the boundary.
+    Reflect.apply(loader, undefined, [moduleName]);
+  }
+
   function reconstruct(callable: CallableSpec): (...args: unknown[]) => unknown {
+    ensureCallableModule(callable);
     const bindings = callable.bindings ?? {};
     const names = Object.keys(bindings);
     const moduleGlobals = callable.moduleGlobals ?? {};

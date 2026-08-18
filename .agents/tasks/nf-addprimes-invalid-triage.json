@@ -1,0 +1,66 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-addprimes-invalid-triage",
+  "title": "Nf Addprimes Invalid Triage",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Independently certify the addprimes degree-7 maximal order, repair stale fixture generation or isolate an engine certificate theorem failure, and preserve exact oracle evidence",
+  "base_commit": "1d6d23aeb6ebfb64d3fd206cd8fee5bd2ad8178b",
+  "claims": [
+    "test/fixtures/number-field-maximal-order-corpus.json",
+    "test/number-field-maximal-order-corpus.cjs",
+    "docs/number-field-maximal-order-corpus.md",
+    "upstream-tests/sage/number-fields/maximal-order/build_pari_round4.py",
+    "upstream-tests/sage/number-fields/maximal-order/addprimes-degree-7-oracle.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI/GP nfinit and nfbasis",
+    "Sage/Pari maximal_order",
+    "Hecke maximal_order"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "/usr/bin/gp",
+      "Sage",
+      "Hecke 0.39.21"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-maximal-order-corpus.cjs",
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.692,
+      "started_at": "2026-08-18T06:31:04.613Z",
+      "commit": "1d6d23aeb6ebfb64d3fd206cd8fee5bd2ad8178b",
+      "workspace_fingerprint": "18237c8d06dcab7170454081797b36c98118099f3cb96c26f6f0913444c5b0b8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Corrects addprimes-degree-7 to the full global maximal order independently agreed by GP 2.17.3, Sage 10.9, and Hecke 0.39.21: field discriminant -1654803061237150235374988302272, equation index 558573, and canonical HNF digest 8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b. The Round-4 generator no longer passes the factor-presentation bound as a PARI local-maximality bound, and a focused GP regeneration test freezes the corrected exact row.",
+    "risks": [
+      "The exact index factor 186191 remains probable-prime under the corpus's deliberately bounded 80000 factor-presentation policy, so primeSupportCertified is false even though three global maximal-order oracles agree."
+    ],
+    "next_steps": [
+      "Integrate this corpus correction without rewriting the historical raw mismatch report that exposed it."
+    ]
+  }
+}

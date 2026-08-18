@@ -36,9 +36,6 @@
       "id": "dense-binary-m4ri-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
       "functions": [
-        "m4ri_dense_matrix_nonzero_count",
-        "m4ri_dense_matrix_nonzero_rows",
-        "m4ri_dense_matrix_is_one",
         "m4ri_dense_matrix_entry",
         "m4ri_dense_matrix_set_entry",
         "m4ri_dense_matrix_mul_vector",
@@ -47,7 +44,10 @@
         "m4ri_dense_matrix_swap_columns",
         "m4ri_dense_matrix_set_sequence",
         "m4ri_dense_matrix_set_block",
-        "m4ri_dense_matrix_pivots"
+        "m4ri_dense_matrix_pivots",
+        "m4ri_dense_matrix_nonzero_count",
+        "m4ri_dense_matrix_nonzero_rows",
+        "m4ri_dense_matrix_is_one"
       ],
       "semantic_domain": "source-transparent traversal of generated borrowed M4RI resources used by public dense GF(2) matrices",
       "fallback": "same-source",
@@ -84,31 +84,31 @@
         "dense_prime_field_matrix_negate",
         "dense_prime_field_matrix_scalar_multiply",
         "dense_prime_field_matrix_transpose",
+        "dense_prime_field_matrix_mul_vector",
+        "dense_prime_field_vector_mul_matrix",
         "dense_prime_field_matrix_equal",
         "dense_prime_field_matrix_is_zero",
         "dense_prime_field_matrix_is_one",
         "dense_prime_field_matrix_nonzero_count",
-        "dense_prime_field_matrix_trace",
-        "dense_prime_field_matrix_stack",
-        "dense_prime_field_matrix_augment",
-        "dense_prime_field_matrix_select_rows",
-        "dense_prime_field_matrix_select_columns",
-        "dense_prime_field_matrix_random_fill",
-        "dense_prime_field_matrix_rank",
-        "dense_prime_field_matrix_rref",
-        "dense_prime_field_matrix_right_kernel",
-        "dense_prime_field_matrix_solve",
-        "dense_prime_field_matrix_mul_vector",
-        "dense_prime_field_vector_mul_matrix",
         "dense_prime_field_matrix_pivots",
+        "dense_prime_field_matrix_trace",
         "dense_prime_field_matrix_identity",
         "dense_prime_field_matrix_set_diagonal",
         "dense_prime_field_matrix_set_sequence",
         "dense_prime_field_matrix_swap_rows",
         "dense_prime_field_matrix_swap_columns",
         "dense_prime_field_matrix_set_block",
+        "dense_prime_field_matrix_stack",
+        "dense_prime_field_matrix_augment",
+        "dense_prime_field_matrix_select_rows",
+        "dense_prime_field_matrix_select_columns",
+        "dense_prime_field_matrix_random_fill",
         "dense_prime_field_matrix_space_random_fill",
-        "dense_prime_field_matrix_solution_from_rref"
+        "dense_prime_field_matrix_rank",
+        "dense_prime_field_matrix_rref",
+        "dense_prime_field_matrix_right_kernel",
+        "dense_prime_field_matrix_solution_from_rref",
+        "dense_prime_field_matrix_solve"
       ],
       "semantic_domain": "production structural operations and independent elimination witnesses over canonical packed compiler-owned GF(p) matrix records",
       "fallback": "same-source",
@@ -213,10 +213,10 @@
         "flint_dense_integer_matrix_snf_transform",
         "flint_dense_integer_matrix_right_kernel",
         "flint_dense_integer_resource_import",
+        "flint_dense_integer_resource_set_diagonal",
         "flint_dense_integer_resource_random_fill",
         "flint_dense_integer_resource_random_fill_default",
         "flint_dense_integer_resource_nonzero_count",
-        "flint_dense_integer_resource_set_diagonal",
         "flint_dense_integer_matrix_space_random_fill"
       ],
       "semantic_domain": "production dense ZZ FLINT algorithms and typed resource construction/traversal through generated owned FmpzMatrix declarations",
@@ -269,6 +269,7 @@
       "functions": [
         "flint_dense_rational_matrix_entry",
         "flint_dense_rational_matrix_import",
+        "flint_dense_rational_matrix_set_diagonal",
         "flint_dense_rational_matrix_nonzero_count",
         "flint_byte_region_copy",
         "flint_dense_rational_matrix_mul",
@@ -277,8 +278,7 @@
         "flint_dense_rational_matrix_inverse",
         "flint_dense_rational_matrix_solve",
         "flint_dense_rational_matrix_determinant",
-        "flint_dense_rational_matrix_charpoly",
-        "flint_dense_rational_matrix_set_diagonal"
+        "flint_dense_rational_matrix_charpoly"
       ],
       "semantic_domain": "production dense QQ construction, traversal, serialization, and mature FLINT algorithms over generated owned FmpqMatrix resources",
       "fallback": "same-source",
@@ -316,9 +316,12 @@
         "packed_rational_polynomial_subtract",
         "packed_rational_polynomial_negate",
         "packed_rational_polynomial_multiply",
-        "packed_rational_polynomial_equal"
+        "packed_rational_polynomial_equal",
+        "packed_integral_number_field_multiply_reduce",
+        "packed_integral_number_field_power_basis",
+        "packed_integral_number_field_exact_quotient"
       ],
-      "semantic_domain": "production normalized QQ[x] numerator and denominator arithmetic over compiler-owned IntegerBuffer storage",
+      "semantic_domain": "production normalized QQ[x] arithmetic, canonical integral-monic number-field multiply-reduce, exact power-basis orbit construction, and certified exact field quotients over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
@@ -353,23 +356,23 @@
         "flint_packed_integer_polynomial_multiply",
         "flint_packed_rational_polynomial_multiply",
         "flint_packed_prime_field_polynomial_multiply",
-        "flint_packed_integer_polynomial_divexact",
-        "flint_packed_rational_polynomial_divexact",
-        "flint_packed_prime_field_polynomial_divexact",
-        "flint_packed_prime_field_polynomial_gcd",
-        "flint_packed_prime_field_polynomial_is_irreducible",
-        "flint_packed_prime_field_polynomial_factor",
-        "flint_packed_prime_field_polynomial_roots",
-        "flint_packed_integer_polynomial_factor",
-        "flint_packed_rational_polynomial_factor",
         "flint_packed_prime_field_polynomial_add",
         "flint_packed_prime_field_polynomial_subtract",
         "flint_packed_prime_field_polynomial_negate",
         "flint_packed_prime_field_polynomial_equal",
         "flint_packed_prime_field_polynomial_derivative",
         "flint_packed_prime_field_polynomial_evaluate",
+        "flint_packed_integer_polynomial_divexact",
+        "flint_packed_rational_polynomial_divexact",
+        "flint_packed_prime_field_polynomial_divexact",
         "flint_packed_prime_field_polynomial_divrem",
-        "flint_packed_prime_field_polynomial_xgcd"
+        "flint_packed_prime_field_polynomial_gcd",
+        "flint_packed_prime_field_polynomial_xgcd",
+        "flint_packed_prime_field_polynomial_is_irreducible",
+        "flint_packed_prime_field_polynomial_factor",
+        "flint_packed_prime_field_polynomial_roots",
+        "flint_packed_integer_polynomial_factor",
+        "flint_packed_rational_polynomial_factor"
       ],
       "semantic_domain": "mature FLINT polynomial algorithms over caller-owned packed ZZ, QQ, and GF(p) coefficient storage through declared FFI",
       "fallback": "same-source",
@@ -408,6 +411,97 @@
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "sage"],
       "benchmark": "bench:native:ffi:arbitrary-prime-polynomial",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "word-prime-krylov-production",
+      "source": "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
+      "functions": [
+        "word_prime_krylov_minimal_polynomial",
+        "integer_matrix_word_prime_minimal_polynomial_batch",
+        "integer_matrix_polynomial_annihilates_first_coordinate"
+      ],
+      "semantic_domain": "packed Krylov minimal-polynomial relations, exact persistent CRT batches over machine-word prime fields, and exact integer Horner certificates for square regular-representation matrices",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint"],
+      "benchmark": "bench:word-prime-krylov",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-om-proof-production",
+      "source": "src/lib/sagejs/number_fields/om_maxmin.py",
+      "functions": [
+        "packed_incremental_row_hnf_in_place",
+        "packed_maxmin_valuations_are_maximal",
+        "packed_triangular_basis_is_closed"
+      ],
+      "semantic_domain": "bounded-batch exact row-HNF normalization, packed exact MaxMin quotient-valuation comparisons, and independent triangular local-basis multiplication closure for complete certified OM types",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "pari", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-om-maxmin",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-round4-state-production",
+      "source": "src/lib/sagejs/number_fields/round4_state_kernel.py",
+      "functions": [
+        "packed_round4_exact_characteristic",
+        "packed_round4_padic_characteristic",
+        "packed_round4_power_basis_covolume"
+      ],
+      "semantic_domain": "packed exact and p-adic characteristic-polynomial state events plus exact power-basis covolume proofs for certified modified Round-4 residue refinement",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-round4-native-state",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "buchmann-lenstra-row-hnf-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": [
+        "packed_row_hnf_in_place",
+        "packed_composite_dedekind_basis_in_place",
+        "packed_order_table_in_place",
+        "packed_order_contains_vector_in_place"
+      ],
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-buchmann-lenstra-fast",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-composite-analysis-production",
+      "source": "src/lib/sagejs/number_fields/composite_field_analysis.py",
+      "functions": [
+        "packed_polynomial_discriminant",
+        "packed_integer_square_root",
+        "packed_order_lattice_is_valid"
+      ],
+      "semantic_domain": "packed exact discriminant, integer square-root, and independent canonical order-lattice proof for authenticated composite square-support maximal-order analysis",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "generic-maximal-order", "pari"],
+      "benchmark": "bench:number-field-t8-fused-analysis",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "field-analysis-fixed-point-checker-production",
+      "source": "src/lib/sagejs/number_fields/field_analysis_resource.py",
+      "functions": [
+        "packed_field_analysis_fixed_points_are_valid",
+        "packed_field_analysis_decode_integers",
+        "packed_field_analysis_authenticate_projection"
+      ],
+      "semantic_domain": "one-pass signed integer decoding, compact authenticated order projection, and exact reconstruction of order multiplication, defining discriminant, canonical nilradicals, and full-rank terminal fixed-point witnesses for fused number-field analysis",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "native-resource"],
+      "benchmark": "bench:number-field-maximal-orders",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

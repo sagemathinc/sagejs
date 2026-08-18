@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "caseId": "addprimes-degree-7",
+  "source": {
+    "repository": "https://pari.math.u-bordeaux.fr/git/pari.git",
+    "tag": "pari-2.17.3",
+    "commit": "708fa90a7dff1a5a7b8bbd3c74b008014fae85d4",
+    "inputSha256": "894edfe7a1ab323f81425f916c6fb3c58135022a7d3ed3c37402fde4c7822d55",
+    "locator": "src/test/in/round4 lines 505-507",
+    "context": "The upstream regression calls addprimes(100830379193747691689) before nfdisc(T). addprimes affects factor discovery; it is not a local-maximality bound."
+  },
+  "diagnosis": {
+    "staleCall": "nfbasis([T,80000]); nfdisc([T,80000])",
+    "pariMeaning": "The second component asks for an order maximal only at the supplied primes or primes up to the supplied bound.",
+    "correction": "Use nfbasis(T,&field_discriminant) for the global maximal order; retain 80000 only as the bounded factor presentation policy for the already exact index."
+  },
+  "polynomial": {
+    "coefficientOrder": "ascending",
+    "coefficients": [
+      "63119721602",
+      "606920400",
+      "223654496",
+      "2150524",
+      "264160",
+      "2540",
+      "104",
+      "1"
+    ]
+  },
+  "generatedRow": {
+    "ordinal": 1,
+    "coefficients": [
+      "63119721602",
+      "606920400",
+      "223654496",
+      "2150524",
+      "264160",
+      "2540",
+      "104",
+      "1"
+    ],
+    "equation_discriminant": "-516304837282841536806312261202830575959488",
+    "field_discriminant": "-1654803061237150235374988302272",
+    "index": "558573",
+    "local_index_factors": [
+      [
+        "3",
+        1,
+        "proven-prime"
+      ],
+      [
+        "186191",
+        1,
+        "probable-prime"
+      ]
+    ],
+    "basis_denominator": "558573",
+    "basis_numerator": [
+      ["558573", "0", "0", "0", "0", "0", "0"],
+      ["0", "558573", "0", "0", "0", "0", "0"],
+      ["0", "0", "558573", "0", "0", "0", "0"],
+      ["0", "0", "0", "558573", "0", "0", "0"],
+      ["0", "0", "0", "0", "558573", "0", "0"],
+      ["0", "0", "0", "0", "0", "558573", "0"],
+      ["408518", "210790", "461851", "276048", "189163", "372490", "1"]
+    ]
+  },
+  "oracles": {
+    "pariGp": {
+      "version": "2.17.3",
+      "calls": ["nfbasis(T,&dK)", "nfinit(T)"],
+      "fieldDiscriminant": "-1654803061237150235374988302272",
+      "equationOrderIndex": "558573",
+      "basisDigest": "8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b"
+    },
+    "sage": {
+      "version": "10.9.post1",
+      "fieldDiscriminant": "-1654803061237150235374988302272",
+      "equationOrderIndex": "558573",
+      "transitionDeterminantsToAndFromCanonicalHnf": ["1", "1"]
+    },
+    "hecke": {
+      "version": "0.39.21",
+      "commit": "eab7e5566e56d8864fe9cd7b895811ab9df2fe32",
+      "fieldDiscriminant": "-1654803061237150235374988302272",
+      "equationOrderIndex": "558573",
+      "basisDigest": "8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b"
+    }
+  }
+}

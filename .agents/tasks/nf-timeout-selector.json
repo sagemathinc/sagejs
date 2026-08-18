@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-timeout-selector",
+  "title": "Arbitrary-prime maximal-order selector fast path",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Skip unused finite-field factorization when selecting arbitrary-prime maximal-order work while preserving exact polygon construction and certification",
+  "base_commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+  "claims": [
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-maximal-order-selector.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "frozen maximal-order corpus exact lattice",
+      "selector no-factorization trap"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-selector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.491,
+      "started_at": "2026-08-17T22:57:33.485Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "309fc094caec4ec69e49926b5e2c64b01cee263dd3b5d1b5edf6e037b0845598",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.388,
+      "started_at": "2026-08-17T22:57:51.179Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "309fc094caec4ec69e49926b5e2c64b01cee263dd3b5d1b5edf6e037b0845598",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 590.636,
+      "started_at": "2026-08-17T22:58:15.046Z",
+      "commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+      "workspace_fingerprint": "309fc094caec4ec69e49926b5e2c64b01cee263dd3b5d1b5edf6e037b0845598",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The selector now recognizes certified primes above the native word boundary before finite-field factorization, records the capability decision explicitly, and selects the exact arbitrary-integer polygon implementation. A regression traps any selector factorization, retains a word-prime control, checks the exact local lattice, and rejects a corrupted lattice. Existing five-case arbitrary-prime corpus coverage and strict Python validation pass.",
+    "risks": [
+      "The broad native suite failed in unrelated pre-existing native cache and expectation checks (FFLAS route naming/build ordering and stale production-kernel artifacts); the changed code is ordinary strict Python and its focused native-backed maximal-order tests pass.",
+      "This removes only redundant planning work above one word. Fresh corpus probes improved vector 139 from 29.064s to 23.244s and vector 168 from 18.237s to 16.084s, while vector 314 still exceeded 30s."
+    ],
+    "next_steps": [
+      "Integrate this commit on main-1.",
+      "Investigate the separate word-prime selector cliff (vector 139 spends 18.139s factoring modulo p=1783) without changing exact local certification or choosing an algorithm without total-cost evidence."
+    ]
+  }
+}

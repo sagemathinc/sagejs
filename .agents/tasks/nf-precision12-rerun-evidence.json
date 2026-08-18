@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-precision12-rerun-evidence",
+  "title": "Record precision-12 rerun evidence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve the exact fresh-worker Hecke precision-degree-12 public rerun on a33a0a28 with native hash, raw stage timing, and independent frozen-lattice verification",
+  "base_commit": "a33a0a28f19bec83c369fc9ec24686a586196a6e",
+  "claims": [
+    "bench/results/number-field-maximal-order-precision12-a33a0a28-delta.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Independent exact verifyOracleResult comparison with the frozen shared corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "jq empty bench/results/number-field-maximal-order-precision12-a33a0a28-delta.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.008,
+      "started_at": "2026-08-18T01:26:29.912Z",
+      "commit": "a33a0a28f19bec83c369fc9ec24686a586196a6e",
+      "workspace_fingerprint": "5e88c13b0c2b73b223d26609c76ee8abc312a98a942b9f9a6192895f328a6cb6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Preserved the a33a0a28 fresh-worker precision-degree12 public rerun: 15.454 seconds, exact/certified, with raw stage nanoseconds, the exact native addon SHA-256, and an independent frozen-corpus lattice/discriminant verification receipt.",
+    "risks": [
+      "This is a single fresh-worker timing sample; exactness and stage completion are stable, while wall time remains machine-load sensitive."
+    ],
+    "next_steps": []
+  }
+}

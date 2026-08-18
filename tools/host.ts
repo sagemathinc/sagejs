@@ -16,6 +16,7 @@ import { Worker } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
+import { hasPrecompiledTaskModule } from "./resources";
 
 interface HostFailure {
   code?: string;
@@ -627,6 +628,38 @@ export class NodeHostAdapter {
               (args[2] as unknown[] | undefined) ?? [],
             ),
           };
+        case "multiprocessingWorkerModuleAvailable":
+          return {
+            ok: true,
+            value:
+              typeof args[0] === "string" &&
+              hasPrecompiledTaskModule(args[0]),
+          };
+        case "multiprocessingMemoryBudgetBytes": {
+          const availableMemory = typeof process.availableMemory === "function"
+            ? process.availableMemory()
+            : nodeOs.freemem();
+          const constrainedMemory = typeof process.constrainedMemory === "function"
+            ? process.constrainedMemory()
+            : 0;
+          const candidates = [
+            availableMemory,
+            constrainedMemory,
+            nodeOs.totalmem(),
+          ].filter((value) => Number.isFinite(value) && value > 0);
+          if (candidates.length === 0) return { ok: true, value: null };
+          // Keep 25% of currently available or constrained memory outside the
+          // worker budget for the parent, native libraries, and concurrent
+          // activity.  IEEE-safe integer clamping keeps the Python wire exact.
+          const available = Math.min(...candidates);
+          return {
+            ok: true,
+            value: Math.min(
+              Number.MAX_SAFE_INTEGER,
+              Math.floor(available * 0.75),
+            ),
+          };
+        }
         case "multiprocessingMap":
           return {
             ok: true,

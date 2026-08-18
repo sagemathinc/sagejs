@@ -168,7 +168,7 @@ try {
       "import bisect, heapq, statistics",
       "from collections import Counter",
       "from functools import lru_cache",
-      "from multiprocessing import Pool",
+      "from multiprocessing import Pool, worker_module_available",
       "def square(n):",
       "    return n*n",
       "values = {n: n * n for n in range(6)}",
@@ -188,6 +188,7 @@ try {
       "print(statistics.mean([2, 4, 6]), bisect.bisect([1, 3, 5], 3))",
       "with Pool(2) as workers:",
       "    print(workers.map(square, [7, 8, 9]))",
+      "print(worker_module_available('sagejs.number_fields.local_parallel_worker'))",
       "",
     ].join("\n"),
   );
@@ -200,7 +201,8 @@ try {
       "[('i', 4), ('s', 4)]\n" +
       "[1, 3, 5]\n" +
       "4 2\n" +
-      "[49, 64, 81]",
+      "[49, 64, 81]\n" +
+      "True",
   );
 
   const missingBackendProgram = join(

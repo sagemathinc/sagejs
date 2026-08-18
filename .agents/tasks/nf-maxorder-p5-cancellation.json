@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-p5-cancellation",
+  "title": "Harden maximal-order parallel cancellation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide prompt fatal cancellation, collision-free canonical job/result binding, and capability-derived memory policy for P5 workers",
+  "base_commit": "cf396b1146da47cf369a7ba952baa6887fc84c10",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-local-parallel.cjs",
+    "test/number-field-maximal-order-parallel-worker.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and Sage.js exact sequential equivalence with deterministic hung-sibling cancellation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

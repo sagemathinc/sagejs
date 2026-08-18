@@ -57,6 +57,20 @@ test("eclib global root numbers include rational Q-isomorphic models", () => {
   );
 });
 
+test("smalljac tiny-prime traces remain signed on every native ABI", () => {
+  assert.equal(flint.ecApIntegral(1n, 2n, 3n, 4n, 999n, 2n), 1);
+  const coefficients = flint.ecAnlistIntegral(
+    1n, 2n, 3n, 4n, 999n, 430250329n, 16n,
+  );
+  assert.deepEqual(
+    coefficients.map(String),
+    [
+      "0", "1", "1", "0", "-1", "2", "0", "-1", "-3",
+      "-3", "2", "-4", "0", "-4", "-1", "0", "-1",
+    ],
+  );
+});
+
 test("completed central jet has canonical normalization and exact parity", () => {
   const a37 = flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 100n);
   const odd = flint.ecCompletedCentralDerivatives(37n, -1, a37, 0, 3, 80);

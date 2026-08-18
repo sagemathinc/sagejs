@@ -26,6 +26,9 @@ assert basis.to_dict()["numerator"] == [[1, 0], [0, 1]]
 assert basis.to_dict()["denominator"] == 1
 assert basis.determinant_numerator == 1
 assert OrderBasis.from_dict(basis.to_dict()).canonical_key() == basis.canonical_key()
+assert OrderBasis([[2, 3, 4], [0, 5, 6], [0, 0, 7]], 1).determinant_numerator == 70
+assert OrderBasis([[2, 0, 0], [3, 5, 0], [4, 6, 7]], 1).determinant_numerator == 70
+assert OrderBasis([[2, 3], [5, 7]], 1).determinant_numerator == -1
 
 component = DiscriminantComponent(49, "composite", base=7, exponent=2,
                                   evidence={"source": "perfect-power"})
@@ -47,6 +50,9 @@ assert certificate.to_dict()["schema"].endswith("certificate-v1")
 decision = SelectionDecision("round2", "tiny shallow local problem",
                              {"degree": 2, "valuation": 1})
 assert decision.to_dict()["algorithm"] == "round2"
+assert SelectionDecision("buchmann-lenstra", "composite component", {}).to_dict()[
+    "algorithm"
+] == "buchmann-lenstra"
 
 trace = MaximalOrderTrace(True)
 token = trace.begin("factor-discovery", {"bits": 200})

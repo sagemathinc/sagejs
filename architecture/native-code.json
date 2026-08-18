@@ -39,6 +39,20 @@
       "rationale": "Standalone handwritten-C oracle copied from p1.c for the source-transparent Heilbronn compiler pilot."
     },
     {
+      "path": "bench/number-field-order-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone six-case timing and exact-lattice witness for the direct number-field order resource. It is compiled only by the Unix cross-oracle benchmark and is not linked into Sage.js or exposed as a runtime boundary."
+    },
+    {
+      "path": "bench/number-field-analysis-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone exact-payload and sanitizer lifecycle witness for the fused field-analysis resource. It is compiled only by focused tests and benchmarks and is not linked into Sage.js or exposed as a runtime boundary."
+    },
+    {
       "path": "bench/cowasm/buffer-landscape/c.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -114,6 +128,34 @@
       "review_status": "audited",
       "lane": "integration",
       "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; arbitrary-size unsupported local work is returned intact to the strict fallback."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It computes the equation discriminant, bounded exact component hints, and partial canonical HNF evidence while retaining unresolved and arbitrary-size residuals for independent strict checking."
+    },
+    {
+      "path": "packages/flint/test/number_field_order_resource_ffi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone cross-platform lifecycle and exact-lattice witness for the direct number-field order resource boundary; it is compiled only by the focused test and is not linked into Sage.js."
+    },
+    {
+      "path": "packages/flint/test/number_field_order_ffi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone exact, corruption, forced-fallback, and sanitizer witness for independent coprime-prime Round-2 construction and lattice merging; it is compiled only by focused tests and is not linked into Sage.js."
     },
     {
       "path": "packages/flint/include/sagejs/exact_vector_ffi.h",
@@ -295,21 +337,21 @@
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "elliptic-curves",
-      "rationale": "Host-neutral Arb ABI for the canonical completed elliptic L-function jet, with explicit coefficient-tail diagnostics and an ordinary-Python differential fallback."
+      "rationale": "Host-neutral Arb/Acb ABI for the canonical completed elliptic L-function central jet and moderate-complex values, with explicit analytic-tail diagnostics and ordinary-Python differential fallbacks."
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "elliptic-curves",
-      "rationale": "Combines the compact Molin/Arb completed-L-function kernel with exact coefficient conversion and its batched Node-API adapter."
+      "rationale": "Combines the compact Molin Arb/Acb completed-L-function kernels with exact coefficient conversion and batched Node-API adapters for central jets and moderate-complex values."
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.h",
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "elliptic-curves",
-      "rationale": "Internal addon declaration for the batched completed elliptic L-function boundary."
+      "rationale": "Internal addon declarations for the batched central-jet and moderate-complex elliptic L-function boundaries."
     },
     {
       "path": "packages/flint/src/extension_field.c",

@@ -15,7 +15,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { homedir } = require("node:os");
-const { dirname, join, resolve } = require("node:path");
+const { dirname, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { lowerSource } = require("./ir.cjs");
 const {
@@ -507,6 +507,71 @@ function resolveDeclaredHeader(
   );
 }
 
+function repositoryHeaderDependencies(headers, includeDirectories, digestStore) {
+  const direct = new Set(headers.map((header) => header.resolvedPath));
+  const visited = new Set();
+  const pending = headers.map((header) => header.path);
+  const scheduled = new Set(direct);
+  const answer = [];
+  while (pending.length !== 0) {
+    const source = pending.pop();
+    const sourceIdentity = contentAddressedFile(
+      source,
+      "declared native header dependency",
+      digestStore,
+    );
+    if (visited.has(sourceIdentity.resolvedPath)) continue;
+    visited.add(sourceIdentity.resolvedPath);
+    const text = readFileSync(source, "utf8");
+    const includes = [...text.matchAll(
+      /^\s*#\s*include\s*([<"])([^>"]+)[>"]/gm,
+    )];
+    for (const match of includes) {
+      const name = match[2];
+      const candidates = match[1] === '"'
+        ? [join(dirname(source), name), ...includeDirectories.map((directory) =>
+          join(directory, name))]
+        : includeDirectories.map((directory) => join(directory, name));
+      let resolvedHeader = null;
+      for (const candidate of candidates) {
+        try {
+          if (statSync(candidate).isFile()) {
+            resolvedHeader = resolve(candidate);
+            break;
+          }
+        } catch (error) {
+          if (error?.code !== "ENOENT" && error?.code !== "ENOTDIR") throw error;
+        }
+      }
+      if (resolvedHeader === null) continue;
+      const repositoryRelative = relative(root, resolvedHeader);
+      if (
+        repositoryRelative === "" || repositoryRelative === ".." ||
+        repositoryRelative.startsWith(`..${sep}`)
+      ) {
+        continue;
+      }
+      const identity = contentAddressedFile(
+        resolvedHeader,
+        `transitive native header ${name}`,
+        digestStore,
+      );
+      if (!direct.has(identity.resolvedPath) && !scheduled.has(identity.resolvedPath)) {
+        answer.push(Object.freeze({
+          name: repositoryRelative.replaceAll("\\", "/"),
+          ...identity,
+        }));
+      }
+      if (!scheduled.has(identity.resolvedPath)) {
+        scheduled.add(identity.resolvedPath);
+        pending.push(resolvedHeader);
+      }
+    }
+  }
+  answer.sort((left, right) => left.path.localeCompare(right.path));
+  return Object.freeze(answer);
+}
+
 function resolveForeignCompilationInputs(ir, digestStore) {
   const includeDirectories = compilationIncludeDirectories(ir);
   return Object.freeze(
@@ -524,6 +589,11 @@ function resolveForeignCompilationInputs(ir, digestStore) {
               ),
             )),
         );
+        const transitiveHeaders = repositoryHeaderDependencies(
+          headers,
+          includeDirectories,
+          digestStore,
+        );
         const libraries = Object.freeze(
           foreignLinkedLibraries(library)
             .map(({ name, path }) => Object.freeze({
@@ -540,6 +610,7 @@ function resolveForeignCompilationInputs(ir, digestStore) {
           prefix: portablePath(foreignPrefix(library)),
           includeOrder: Object.freeze(includeDirectories.map(portablePath)),
           headers,
+          transitiveHeaders,
           libraries,
         };
         return Object.freeze({

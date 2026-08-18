@@ -1,0 +1,111 @@
+{
+  "schema": "sagejs.number-fields.local-polygons-fixtures/v1",
+  "provenance": {
+    "sage": "SageMath maximal_order and discriminant via /home/user/bin/sagelite",
+    "pari": "GP poldisc, nfdisc, and nfbasis",
+    "hecke": "Hecke eab7e5566e56d8864fe9cd7b895811ab9df2fe32 maximal_order and basis_matrix",
+    "independence": [
+      "PARI/Sage",
+      "Hecke/Oscar"
+    ],
+    "generated": "2026-08-17"
+  },
+  "cases": [
+    {
+      "name": "sage-essential-discriminant-cubic",
+      "coefficients": [8, -2, 1, 1],
+      "prime": 2,
+      "polynomial_discriminant": -2012,
+      "polynomial_discriminant_valuation": 2,
+      "field_discriminant": -503,
+      "status": "regular-enlargement",
+      "predicted_index_exponent": 1,
+      "basis_numerators": [[2, 0, 0], [0, 2, 0], [0, 1, 1]],
+      "basis_denominator": 2,
+      "modular_factor_degrees": [1, 1],
+      "modular_factor_multiplicities": [2, 1],
+      "polygon_vertices": [[[0, 3], [1, 1], [2, 0], [3, 0]]],
+      "regular": true
+    },
+    {
+      "name": "deep-cubic-index-four",
+      "coefficients": [3, -1, 5, 1],
+      "prime": 2,
+      "polynomial_discriminant": -1984,
+      "polynomial_discriminant_valuation": 6,
+      "field_discriminant": -31,
+      "status": "regular-enlargement",
+      "predicted_index_exponent": 3,
+      "basis_numerators": [[4, 0, 0], [2, 2, 0], [3, 0, 1]],
+      "basis_denominator": 4,
+      "modular_factor_degrees": [1],
+      "modular_factor_multiplicities": [3],
+      "polygon_vertices": [[[0, 3], [3, 0]]],
+      "regular": true
+    },
+    {
+      "name": "totally-ramified-seven-cubic",
+      "coefficients": [-1, 5, 8, 1],
+      "prime": 7,
+      "polynomial_discriminant": 2401,
+      "polynomial_discriminant_valuation": 4,
+      "field_discriminant": 49,
+      "status": "regular-enlargement",
+      "predicted_index_exponent": 1,
+      "basis_numerators": [[7, 0, 0], [0, 7, 0], [4, 3, 1]],
+      "basis_denominator": 7,
+      "modular_factor_degrees": [1],
+      "modular_factor_multiplicities": [3],
+      "polygon_vertices": [[[0, 2], [3, 0]]],
+      "regular": true
+    },
+    {
+      "name": "lmfdb-quintic-index-two",
+      "coefficients": [2, 1, -1, 2, -1, 1],
+      "prime": 2,
+      "polynomial_discriminant": 68644,
+      "polynomial_discriminant_valuation": 2,
+      "field_discriminant": 17161,
+      "status": "regular-enlargement",
+      "predicted_index_exponent": 1,
+      "basis_numerators": [[2, 0, 0, 0, 0], [0, 2, 0, 0, 0], [0, 0, 2, 0, 0], [0, 0, 0, 2, 0], [0, 1, 0, 0, 1]],
+      "basis_denominator": 2,
+      "modular_factor_degrees": [1, 1, 2],
+      "modular_factor_multiplicities": [1, 2, 1],
+      "polygon_vertices": [[[0, 2], [2, 0], [5, 0]]],
+      "regular": true
+    },
+    {
+      "name": "irregular-two-adic-fallback",
+      "coefficients": [28, 8, -7, 1],
+      "prime": 2,
+      "polynomial_discriminant": -9888,
+      "polynomial_discriminant_valuation": 5,
+      "field_discriminant": -2472,
+      "status": "fallback-required",
+      "predicted_index_exponent": 1,
+      "basis_numerators": [[2, 0, 0], [0, 2, 0], [0, 1, 1]],
+      "basis_denominator": 2,
+      "modular_factor_degrees": [1, 1],
+      "modular_factor_multiplicities": [2, 1],
+      "polygon_vertices": [[[0, 2], [2, 0], [3, 0]]],
+      "regular": false
+    },
+    {
+      "name": "irregular-three-adic-second-layer",
+      "coefficients": [5, -19, -14, 1],
+      "prime": 3,
+      "polynomial_discriminant": 176337,
+      "polynomial_discriminant_valuation": 4,
+      "field_discriminant": 2177,
+      "status": "fallback-required",
+      "predicted_index_exponent": 1,
+      "basis_numerators": [[3, 0, 0], [0, 3, 0], [2, 0, 1]],
+      "basis_denominator": 3,
+      "modular_factor_degrees": [1, 1],
+      "modular_factor_multiplicities": [2, 1],
+      "polygon_vertices": [[[0, 2], [2, 0], [3, 0]]],
+      "regular": false
+    }
+  ]
+}

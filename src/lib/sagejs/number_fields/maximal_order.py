@@ -14,7 +14,6 @@ _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_field
 NumberFieldOrder = _nf_module.NumberFieldOrder
 _nf_canonical_lattice = _nf_module._nf_canonical_lattice
 _nf_coordinates = _nf_module._nf_coordinates
-_nf_flint_ffi = _nf_module._nf_flint_ffi
 _nf_global = _nf_module._nf_global
 _nf_lcm = _nf_module._nf_lcm
 _nf_trace_matrix = _nf_module._nf_trace_matrix
@@ -23,10 +22,14 @@ _untyped = _nf_module._untyped
 
 def integral_equation_polynomial(field: Any) -> Any:
     """Return the monic integral polynomial for the equation-order generator."""
+    cached = field._integral_equation_polynomial_cache
+    if cached is not None:
+        return cached
     degree = field.degree()
     scale = runtime.bigint(1)
     for coefficient in field._defining_coefficients:
         scale = _nf_lcm(scale, coefficient._denominator)
+    field._integral_equation_scale_cache = scale
     coefficients = []
     for index, coefficient in enumerate(field._defining_coefficients):
         value = coefficient * scale ** runtime.bigint(degree - index)
@@ -37,7 +40,12 @@ def integral_equation_polynomial(field: Any) -> Any:
         sage.ZZ,
         field._polynomial._parent.variable_name(),
     )
-    return polynomial_ring(coefficients)
+    polynomial = polynomial_ring(coefficients)
+    # Number fields are immutable, so this exact transformed polynomial is a
+    # field invariant.  The engine and `equation_order()` intentionally share
+    # it instead of rebuilding and rediscriminating the same polynomial.
+    field._integral_equation_polynomial_cache = polynomial
+    return polynomial
 
 
 def prime_polynomial_radical(polynomial: Any, prime: Any) -> Any:
@@ -377,7 +385,7 @@ def maximal_overorder_native(
         for right in range(degree):
             flattened.append(table[left][right])
     table_matrix = _nf_global("matrix")(sage.ZZ, flattened)
-    ffi = _nf_flint_ffi()
+    ffi = __import__("sagejs.ffi.flint", fromlist=["flint"])
     prime_buffer = runtime.uint64_buffer(primes)
     resource = ffi.number_field_order_maximal_at_primes(
         table_matrix._integer_resource(),

@@ -2,6 +2,18 @@
   "imports": [
     "conway_polynomials",
     "mpmath",
-    "sage.databases.conway"
+    "sage.databases.conway",
+    "sagejs.elliptic_curves.lseries"
+  ],
+  "taskRuntimeImports": [
+    "sagejs.number_fields.local_parallel_worker",
+    "sagejs.number_fields.local_parallel",
+    "sagejs.number_fields.maximal_order_engine",
+    "sagejs.number_fields.maximal_order",
+    "sagejs.number_fields.round4",
+    "sagejs.number_fields.local_polygons",
+    "sagejs.number_fields.om_maxmin",
+    "sagejs.polynomial_algorithms.public_structural",
+    "sagejs.kernels.polynomial.structural_flint"
   ]
 }

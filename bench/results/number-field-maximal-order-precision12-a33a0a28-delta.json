@@ -1,0 +1,87 @@
+{
+  "schema": "sagejs.number-fields/maximal-order-precision12-delta-v1",
+  "generated_at": "2026-08-18T01:18:00Z",
+  "source_commit": "a33a0a28f19bec83c369fc9ec24686a586196a6e",
+  "case": {
+    "id": "hecke-precision-degree-12",
+    "fixture": "test/fixtures/number-field-maximal-order-corpus.json",
+    "polynomial_digest": "0ab25225733fdc8e6a2ab9444d1c6f324389541dbedd507aa039ca8547ad088f"
+  },
+  "policy": {
+    "boundary": "warm-public",
+    "fresh_worker": true,
+    "fresh_field_per_request": true,
+    "warmups": 0,
+    "samples": 1,
+    "timeout_ms": 60000,
+    "session_polling": "The initial exec yield returned a live session identifier; that session was polled to its terminal result and was not classified as a timeout."
+  },
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "kernel": "Linux 6.17.0-1022-gcp x86_64",
+    "cpu_model": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "threads_per_core": 1,
+    "node": "26.7.0",
+    "node_modules_abi": "147",
+    "napi": "10",
+    "pnpm": "11.9.0",
+    "native_addon": {
+      "path": "packages/flint/build/Release/sagejs_flint.node",
+      "bytes": 21680408,
+      "sha256": "8ecf5828e4ef4e0e02167a605f60e16a81555a6e4612e019c4138593bdc5d352"
+    },
+    "native_audit_sha256": "d7d7a06727c8f6f9e83eaadb87d87b676bf46857cd683756c5d96f169bcefc8f"
+  },
+  "result": {
+    "status": "ok",
+    "irreducible_verified": true,
+    "irreducibility_ms": 34.36613082885742,
+    "certified": true,
+    "field_discriminant": "28975330946137036032",
+    "timing_ms": 15454.448699951172,
+    "raw_stages": {
+      "field_construction_ms": 9.71674919128418,
+      "maximal_order_ms": 15454.448699951172,
+      "public_object_materialization_ms": 3.735065460205078,
+      "cached_public_certification_ms": 0.06270408630371094,
+      "factor_discovery": "1049212672 ns",
+      "basis_merge": true,
+      "local_primes": [],
+      "local_order_stages": {
+        "discriminant-decomposition": "1049212672 ns",
+        "composite-local-order": "9050188288 ns",
+        "native-local-orders": "418483200 ns",
+        "global-certification": "812972288 ns"
+      }
+    }
+  },
+  "independent_verifier": {
+    "implementation": "tools/number-field-maximal-order/verify.cjs:verifyOracleResult",
+    "verified": true,
+    "errors": [],
+    "equation_order_index": "32143078827850793084406581213044958430962631486577741873471880829946664182114716270392399421082018890424285137895682313407186176504452043633951002539611993266715796246669211388400967179297558718875670447587149205246949027574383561870881253010399772695665634409818839490314789501250409187367590182897702106994039845373815947217303482200505332619120930176423065074031555895754525855871672965737116369475244374710435343385748577548118949690892212556890189118415705433898487093367873246260812448181026263597067439944883890015828177116361204766475228946654960065715652825644056363422146459293903547748151435509773839445739641163681847993956216367291869507237497756268223746943431740501770270128242618017967576042463071595424540311957676713374765498058184254631456853288095289611199108216674118619037483091410395286058352368150744480033721823036680836305424038689882346502252289068340460886995051004684285250460427810992889375081809161438564176550547080320412423791121538178506131558610255225046519681574909984025696596567331651673489756095172153010611065716736",
+    "field_discriminant": "28975330946137036032",
+    "canonical_basis_digest": "3e1e7c30ff5f7989dfd6efd53f5c968222468ba46911e75db2e7b059802c4c45",
+    "frozen_canonical_basis_digest": "3e1e7c30ff5f7989dfd6efd53f5c968222468ba46911e75db2e7b059802c4c45",
+    "basis_size_bytes": 23673,
+    "checks": {
+      "nonsingular": true,
+      "contains_one": true,
+      "contains_equation_order": true,
+      "multiplication_closed": true,
+      "discriminant_index_identity": true,
+      "frozen_certificate": true
+    }
+  },
+  "comparison": {
+    "prior_source_artifact": "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json",
+    "prior_maximal_order_ms": 114075.812,
+    "prior_composite_local_order_ms": 111427.171,
+    "current_maximal_order_ms": 15454.448699951172,
+    "current_composite_local_order_ms": 9050.188288,
+    "overall_speedup": 7.381422282657059,
+    "composite_stage_speedup": 12.31213842785411
+  }
+}

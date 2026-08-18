@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-stress-direct-boundary",
+  "title": "Nf Opt Stress Direct Boundary",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide an exact cold direct polynomial-to-HNF evidence boundary for all stress cases, including composite support, with focused tests",
+  "base_commit": "89d08932f80ef917b839118c0b1dda0506cf4082",
+  "claims": [
+    "tools/number-field-maximal-order/workers/sagejs.cjs",
+    "tools/number-field-maximal-order/adapters.cjs",
+    "bench/number-field-maximal-order-final-evidence/corpus.cjs",
+    "bench/number-field-maximal-order-final-evidence/test.cjs",
+    "test/number-field-maximal-order-direct-evidence.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing exact parent verifier and frozen canonical corpus basis",
+      "PARI/Hecke adapters"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

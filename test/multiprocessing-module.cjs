@@ -1,7 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { createHash } = require("node:crypto");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -348,6 +349,15 @@ test("imported worker functions retain isolated live module cells", () => {
     const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), "main.py"], {
       cwd: directory,
       encoding: "utf8",
+      env: {
+        ...process.env,
+        // This regression exercises serialized project modules rather than
+        // the optional fail-closed precompiled task graph.
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: join(
+          directory,
+          "missing-task-modules",
+        ),
+      },
       timeout: 120_000,
     });
     assert.equal(result.status, 0, result.stderr);
@@ -376,7 +386,11 @@ test("multiprocessing imports without a worker host capability", async () => {
     evaluator.evaluate(
       [
         "from multiprocessing import Pool",
+        "from multiprocessing import worker_module_available",
+        "from multiprocessing import worker_memory_budget_bytes",
         "print(Pool.__name__)",
+        "print(worker_module_available('worker_fixture'))",
+        "print(worker_memory_budget_bytes())",
         "try:",
         "    Pool(1)",
         "except NotImplementedError as error:",
@@ -387,10 +401,179 @@ test("multiprocessing imports without a worker host capability", async () => {
       output.join("").trim(),
       [
         "Pool",
+        "False",
+        "None",
         "NotImplementedError multiprocessing requires a worker-thread host capability",
       ].join("\n"),
     );
   } finally {
     evaluator.close();
+  }
+});
+
+test("multiprocessing exposes a bounded platform memory capability", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import worker_memory_budget_bytes",
+      "budget = worker_memory_budget_bytes()",
+      "print(isinstance(budget, int), budget > 0)",
+    ].join("\n"),
+  );
+  assert.equal(result.stdout.trim(), "True True");
+});
+
+test("task evaluators load only validated precompiled module resources", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-task-modules-"));
+  const sha1 = (value) => createHash("sha1").update(value).digest("hex");
+  const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+  const sourceText = readFileSync(join(root, "src/lib/fnmatch.py"), "utf8");
+  const dependencySourceText = readFileSync(
+    join(root, "src/lib/colorsys.py"),
+    "utf8",
+  );
+  const unusedSourceText = readFileSync(join(root, "src/lib/calendar.py"), "utf8");
+  const compilerText = readFileSync(
+    join(root, "dist/compiler/compiler.js"),
+    "utf8",
+  );
+  const dependencyCache = {
+    version: "test-compiler-version",
+    signature: sha1(dependencySourceText),
+    mode: "python",
+    module: "colorsys",
+    javascriptTemplate: [
+      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      "var collision;",
+      "collision = function collision(left, right) { return left + right; };",
+      "var dependencyFixture = function dependencyFixture(value) { return collision(value, 1); };",
+      'Reflect.set(ρσ_modules["colorsys"], "dependencyFixture", dependencyFixture);',
+    ].join("\n"),
+  };
+  const cache = {
+    version: "test-compiler-version",
+    signature: sha1(sourceText),
+    mode: "python",
+    module: "fnmatch",
+    javascriptTemplate: [
+      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      'void Reflect.get(ρσ_modules, "__name__");',
+      "var collision;",
+      'var dependency = globalThis.__sagejs_load_module__("colorsys");',
+      'var dependencyFixture = Reflect.get(dependency, "dependencyFixture");',
+      "collision = function collision(value) { return value * 2; };",
+      "var fixture = function fixture(value) { return dependencyFixture(value); };",
+      'fixture.__module__ = "fnmatch";',
+      'fixture.__name__ = "fixture";',
+      'Reflect.set(\u03c1\u03c3_modules["fnmatch"], "fixture", fixture);',
+    ].join("\n"),
+  };
+  writeFileSync(join(directory, "fnmatch.json"), JSON.stringify(cache));
+  writeFileSync(join(directory, "colorsys.json"), JSON.stringify(dependencyCache));
+  const manifest = {
+    schema: "sagejs.task-runtime-modules/v2",
+    compilerSha256: sha256(compilerText),
+    roots: ["fnmatch"],
+    modules: {
+      fnmatch: {
+        resource: "fnmatch.json",
+        version: cache.version,
+        signature: cache.signature,
+        mode: cache.mode,
+        filename: "/__sagejs_task_modules__/fnmatch.py",
+        source: "fnmatch.py",
+      },
+      colorsys: {
+        resource: "colorsys.json",
+        version: dependencyCache.version,
+        signature: dependencyCache.signature,
+        mode: dependencyCache.mode,
+        filename: "/__sagejs_task_modules__/colorsys.py",
+        source: "colorsys.py",
+      },
+      // Freshness validates every allowlisted source, but loading the used
+      // fixture must not materialize this absent JavaScript resource.
+      calendar: {
+        resource: "calendar.json",
+        version: cache.version,
+        signature: sha1(unusedSourceText),
+        mode: cache.mode,
+        filename: "/__sagejs_task_modules__/calendar.py",
+        source: "calendar.py",
+      },
+    },
+  };
+  const manifestFilename = join(directory, "task-runtime-modules.json");
+  writeFileSync(manifestFilename, JSON.stringify(manifest));
+  try {
+    const script = [
+      'const { createTaskEvaluator } = require("./dist/tools/task-evaluator.js");',
+      'const { hasPrecompiledTaskModule } = require("./dist/tools/resources.js");',
+      `const cacheDirectory = ${JSON.stringify(directory)};`,
+      "const evaluator = createTaskEvaluator({ mode: 'python', onOutput() {} });",
+      "const source = 'function fixture(value) { return dependencyFixture(value); }';",
+      "console.log(hasPrecompiledTaskModule('fnmatch', cacheDirectory));",
+      "console.log(hasPrecompiledTaskModule('worker_missing', cacheDirectory));",
+      "console.log(evaluator.invoke({ module: 'fnmatch', name: 'fixture', source }, [41]));",
+      "try {",
+      "  evaluator.invoke({ module: 'worker_missing', name: 'fixture', source }, [1]);",
+      "} catch (error) {",
+      "  console.log(error.name, error.message);",
+      "}",
+      "evaluator.close();",
+    ].join("\n");
+    const result = spawnSync(process.execPath, ["-e", script], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: directory,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      [
+        "true",
+        "false",
+        "42",
+        "ImportError No module named 'worker_missing'",
+      ].join("\n"),
+    );
+
+    const probe = [
+      'const { hasPrecompiledTaskModule } = require("./dist/tools/resources.js");',
+      `console.log(hasPrecompiledTaskModule('fnmatch', ${JSON.stringify(directory)}));`,
+    ].join("\n");
+    const staleSignature = sha1(sourceText + "# stale source\n");
+    const staleSourceManifest = structuredClone(manifest);
+    staleSourceManifest.modules.fnmatch.signature = staleSignature;
+    writeFileSync(
+      join(directory, "fnmatch.json"),
+      JSON.stringify({ ...cache, signature: staleSignature }),
+    );
+    writeFileSync(manifestFilename, JSON.stringify(staleSourceManifest));
+    const staleSource = spawnSync(process.execPath, ["-e", probe], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(staleSource.status, 0, staleSource.stderr);
+    assert.equal(staleSource.stdout.trim(), "false");
+
+    writeFileSync(join(directory, "fnmatch.json"), JSON.stringify(cache));
+    const staleCompilerManifest = structuredClone(manifest);
+    staleCompilerManifest.compilerSha256 = sha256(
+      compilerText + "// stale compiler\n",
+    );
+    writeFileSync(manifestFilename, JSON.stringify(staleCompilerManifest));
+    const staleCompiler = spawnSync(process.execPath, ["-e", probe], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(staleCompiler.status, 0, staleCompiler.stderr);
+    assert.equal(staleCompiler.stdout.trim(), "false");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });

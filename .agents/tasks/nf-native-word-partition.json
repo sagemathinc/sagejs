@@ -1,0 +1,69 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-native-word-partition",
+  "title": "Mixed-support native maximal-order partition",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Partition mixed maximal-order support so all certified word primes use one complete native batch and only arbitrary primes use exact polygon fallback",
+  "base_commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+  "claims": [
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-maximal-order-selector.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "mixed-support exact lattice and global certificate",
+      "word-prime factorization trap"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-selector.cjs test/number-field-maximal-order-engine.cjs test/number-field-large-prime-maximal-order.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.011,
+      "started_at": "2026-08-17T23:25:22.053Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "0594e18ac2a4b52339b672590defa16f1a581d111b8ffd72ec2edf75ac7e9e0f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.936,
+      "started_at": "2026-08-17T23:25:41.477Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "0594e18ac2a4b52339b672590defa16f1a581d111b8ffd72ec2edf75ac7e9e0f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Mixed proven support is partitioned at the existing native capability boundary. All word primes are submitted as one complete native batch and only primes above UWORD_MAX enter the exact polygon fallback. Trace evidence records resolved/deferred counts and the explicit partition. A mixed-support regression traps word-prime finite-field selection, checks the exact global lattice and witnesses, and rejects a corrupted lattice. Fresh timeout-corpus probes improved vector 139 from 23.244s to 1.829s, vector 168 from 16.084s to 4.652s, and vector 314 from over 30s to 2.589s.",
+    "risks": [
+      "The broad pnpm test:native lane check is known to fail on the b315060d base because of unrelated FFLAS expectation and stale production-kernel cache drift recorded by nf-timeout-selector; focused native-backed maximal-order tests and strict Python checks pass.",
+      "The capability partition applies only to auto/native dispatch. Explicit polygon/Round4/Round2 requests retain their requested differential paths and costs."
+    ],
+    "next_steps": [
+      "Integrate this commit before adding any public maximal-order hook that overlaps the native dispatch block.",
+      "Regenerate the timeout delta after integration; the three sampled former timeouts now complete well below five seconds with exact corpus results."
+    ]
+  }
+}

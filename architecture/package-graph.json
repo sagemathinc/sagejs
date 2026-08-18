@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 850000,
+      "max_source_bytes": 875000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -74,7 +74,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 622000,
+      "max_source_bytes": 635000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -151,20 +151,23 @@
         "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
-        "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py"
+        "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
     },
     {
       "id": "number-field-algorithms",
-      "layer": 4,
+      "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 100000,
+      "max_source_bytes": 1000000,
       "depends_on": [
         "core-runtime",
         "native-integration",
         "arithmetic",
         "linear-algebra",
+        "matrix-native-kernels",
+        "polynomial-native-kernels",
         "python-stdlib"
       ],
       "modules": ["sagejs.number_fields"],
@@ -242,7 +245,7 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 65000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
@@ -267,10 +270,10 @@
       "prefixes": []
     },
     {
-      "id": "elliptic-curves-analytic-rank",
+      "id": "elliptic-curves-lfunctions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 30000,
+      "max_source_bytes": 130000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "elliptic-curves",
         "numeric-compat"

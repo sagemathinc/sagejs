@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-certificate-perf",
+  "title": "Nf Certificate Perf",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce exact independent global maximal-order certification time without weakening closure, containment, discriminant, or corruption checks",
+  "base_commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+  "claims": [
+    "src/lib/sagejs/number_fields/maximal_order_certification.py",
+    "test/number-field-maximal-order-certification-perf.cjs",
+    "bench/number-field-maximal-order-certification.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent certificate corruption tests and exact HNF agreement with Sage/FLINT"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-corpus",
+  "title": "Nf Maxorder Corpus",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build the durable certified maximal-order corpus from PARI Round-4, selected Hecke absolute-field regressions, Sage cases, hard families, and equivalent-generator fuzzing with provenance and canonical digests",
+  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "claims": [
+    "test/fixtures/number-field-maximal-order-corpus.json",
+    "test/number-field-maximal-order-corpus.cjs",
+    "docs/number-field-maximal-order-corpus.md",
+    "upstream-tests/sage/number-fields/maximal-order/build_pari_round4.py",
+    "upstream-tests/sage/number-fields/maximal-order/hecke_oracle.jl",
+    "upstream-tests/sage/number-fields/maximal-order/sage_oracle.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md",
+    "PARI src/test/in/round4",
+    "/home/user/upstream/Hecke.jl/test/NfOrd/NfOrd.jl"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "/usr/bin/gp",
+      "Hecke",
+      "/home/user/bin/sagelite",
+      "/home/user/bin/magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-maximal-order-corpus.cjs",
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.31,
+      "started_at": "2026-08-17T19:47:20.700Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "c11568fff3a8e3109d0c9245a63756278f08a895ffacd3cad5889635df3a0200",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 276.152,
+      "started_at": "2026-08-17T19:47:21.786Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "c11568fff3a8e3109d0c9245a63756278f08a895ffacd3cad5889635df3a0200",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.356,
+      "started_at": "2026-08-17T19:53:20.430Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "3d4f9e583de80de4ac92e053030f5870dc5ffdec716d6df3e94fe63d30b22e8f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the 494-case stable maximal-order authority: all 430 PARI Round-4 vector polynomials, named/derived PARI cases, six selected Hecke absolute-field regressions, existing Sage.js cases, and scalable equivalent-generator families. The manifest contains exact discriminants and indices, proof-state-aware local components, 493 canonical basis digests, provenance, certification state, bounded oracle outcomes, and a deterministic structural gate.",
+    "risks": [
+      "The degree-4 large-prime compositum intentionally has no basis digest because GP 2.17.3 overflows its nfbasis hint boundary; its exact polynomial, discriminants, index, factors, and unavailable state are retained.",
+      "Five stress bases are digest-only to keep the fixture bounded; the checked generator/oracles are needed to materialize them.",
+      "426 cases retain probable-prime or unresolved composite local components. They multiply to the exact index but are not falsely advertised as certified prime support.",
+      "pnpm docs:check reached the pre-existing stale generated-reference-docs gate, and pnpm test:tutorial reported the broad base runtime's existing 326 pass / 336 fail result with optional native adapters unavailable. Neither failure involved corpus files; integration should regenerate central docs and rerun broad validation on main-1."
+    ],
+    "next_steps": [
+      "Make benchmark and profiler lanes consume test/fixtures/number-field-maximal-order-corpus.json as their only polynomial/result authority.",
+      "Have the independent Sage.js certificate checker promote local component and certification states as implementations land, without weakening frozen exact invariants.",
+      "Resolve the one explicit basis debt with a non-machine-word native boundary and optionally materialize digest-only stress bases in an external artifact."
+    ]
+  }
+}

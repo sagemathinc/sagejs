@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-om-perf",
+  "title": "OM scalable crossover profiling",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile scalable higher-order OM workloads and source-transparently accelerate the exact polynomial and MaxMin loops enough to establish a measured crossover boundary without changing public selection",
+  "base_commit": "c5c253b1b0bb622aff7a8e20549c18f8525d0eba",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-maxmin.cjs",
+    "bench/number-field-om-maxmin.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/2405.13577"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath/PARI exact maximal-order discriminant and index",
+      "Hecke 0.39.21 maximal-order basis/discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-om-maxmin.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.656,
+      "started_at": "2026-08-18T00:51:50.510Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.472,
+      "started_at": "2026-08-18T00:52:06.932Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.342,
+      "started_at": "2026-08-18T00:52:29.164Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "A source-transparent packed MaxMin kernel preserves all 83,521 v429/p=7 valuation combinations in one crossing with zero callbacks. The dynamic CPython fallback and Sage.js native result agree on valid and deliberately corrupted selections. With both same-source MaxMin and closure artifacts installed, the complete exact local certificate takes 0.78s in CPython and 3.02s in Sage.js, down from 6.65s and a 45s timeout before the two performance follow-ups.",
+    "risks": [
+      "The complete Sage.js v429/p=7 certificate remains slower than CPython and is one local component, so it does not prove an end-to-end crossover against PARI.",
+      "Higher nonlinear residual extensions at v429 primes 2, 3, and 5 still fail closed; p=59 hits the bounded factor-candidate resource limit.",
+      "Full bad-generator index factorization exceeded the bounded oracle timeout and belongs to discriminant-component orchestration rather than this local OM lane."
+    ],
+    "next_steps": [
+      "Keep public auto-selection disabled: direct PARI nfbasis remains faster and the measured OM stress rows are local-only.",
+      "Add scalable higher residual-field factorization to cover the v429 p=2,3,5 boundary without weakening fail-closed evidence.",
+      "Compile both same-source packed kernels together in production native inventories so a module source-hash change cannot leave closure on the dynamic fallback."
+    ]
+  }
+}

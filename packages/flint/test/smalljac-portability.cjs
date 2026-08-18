@@ -27,9 +27,44 @@ test("Unix smalljac builds expose dependency headers to implicit Make rules", ()
     join(packageRoot, "scripts", "build-deps.cjs"),
     "utf8",
   );
+  const start = buildScript.indexOf("function buildSmalljac(source)");
+  const end = buildScript.indexOf("\n}\n", start) + 2;
+  assert.notEqual(start, -1);
+  assert.ok(end > start);
+  const implementation = buildScript.slice(start, end);
   assert.equal(
     buildScript.match(/`CPPFLAGS=-I\$\{join\(prefix, "include"\)\}`/g)?.length,
-    2,
+    1,
+  );
+  assert.match(
+    implementation,
+    /const includes = `-I\$\{join\(prefix, "include"\)\}`/,
+  );
+  assert.match(implementation, /`CPPFLAGS=\$\{includes\}`/);
+  assert.match(implementation, /`INCLUDES=\$\{includes\}`/);
+  assert.equal(buildScript.match(/smalljacPortability: digest\(/g)?.length, 2);
+  assert.match(
+    buildScript,
+    /prepareSources\(ffpolySource, smalljacSource\);/,
+  );
+});
+
+test("tiny-prime traces retain their sign when plain char is unsigned", () => {
+  const patch = readFileSync(
+    join(packageRoot, "patches", "smalljac-portability.patch"),
+    "utf8",
+  );
+  assert.match(patch, /\+signed char ws2a1tab\[32\]/);
+  assert.match(patch, /\+signed char ws3a1tab\[243\]/);
+  assert.match(patch, /\+#if defined\(_WIN32\)[\s\S]*\+\s*badpk = 0;/);
+  const preparation = readFileSync(
+    join(packageRoot, "scripts", "portable-smalljac", "prepare-sources.cjs"),
+    "utf8",
+  );
+  assert.match(preparation, /normalize\(join\(smalljacSource, "smalljac\.c"\)\)/);
+  assert.match(
+    preparation,
+    /normalize\(join\(smalljacSource, "smalljac_tiny\.c"\)\)/,
   );
 });
 

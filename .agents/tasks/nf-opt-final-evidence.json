@@ -1,0 +1,153 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-final-evidence",
+  "title": "Maximal-order final evidence harness",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide reusable corrected-corpus and stress public-execution runners with complete terminal accounting, oracle-family metadata, platform/source identity, boundary semantics, and machine-evaluated final gates",
+  "base_commit": "5d519c1e6eb03de2f1eb74b237b6df51ca565ae3",
+  "claims": [
+    "bench/number-field-maximal-order-final-evidence/",
+    "bench/number-field-maximal-order-final-evidence.cjs",
+    ".agents/lanes.json",
+    "tools/number-field-maximal-order/adapters.cjs",
+    "tools/number-field-maximal-order/process.cjs",
+    "tools/number-field-maximal-order/workers/sagejs.cjs",
+    ".agents/reports/number-field-maximal-order-final-evidence-audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md",
+    "test/fixtures/number-field-maximal-order-corpus.json"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "independent exact lattice verifier",
+      "PARI/Sage shared family",
+      "Hecke/Oscar shared family",
+      "Magma independent black-box when available"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test bench/number-field-maximal-order-final-evidence/test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.289,
+      "started_at": "2026-08-18T07:48:56.215Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9091664575eaf4c671b47b1ecf8bcc78aa5b8b82fbcd68ee5cd7b37e5500f09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.834,
+      "started_at": "2026-08-18T07:49:07.866Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9091664575eaf4c671b47b1ecf8bcc78aa5b8b82fbcd68ee5cd7b37e5500f09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 21.098,
+      "started_at": "2026-08-18T07:49:34.367Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9091664575eaf4c671b47b1ecf8bcc78aa5b8b82fbcd68ee5cd7b37e5500f09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.549,
+      "started_at": "2026-08-18T07:54:59.176Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9091664575eaf4c671b47b1ecf8bcc78aa5b8b82fbcd68ee5cd7b37e5500f09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/number-field-maximal-order-final-evidence/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.884,
+      "started_at": "2026-08-18T07:55:33.860Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9091664575eaf4c671b47b1ecf8bcc78aa5b8b82fbcd68ee5cd7b37e5500f09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.02,
+      "started_at": "2026-08-18T07:57:46.734Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "7f40374547577ee9b471f84e7f3f2a765b7d0aad34c5230550731232b4b408d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.187,
+      "started_at": "2026-08-18T07:57:57.505Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "7f40374547577ee9b471f84e7f3f2a765b7d0aad34c5230550731232b4b408d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.895,
+      "started_at": "2026-08-18T07:58:23.861Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "7f40374547577ee9b471f84e7f3f2a765b7d0aad34c5230550731232b4b408d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/number-field-maximal-order-final-evidence/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.85,
+      "started_at": "2026-08-18T07:58:55.767Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "7f40374547577ee9b471f84e7f3f2a765b7d0aad34c5230550731232b4b408d0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a canonical-corpus-derived final evidence CLI with uniform primary, per-case cold, authenticated non-substituting diagnostic, exact terminal-accounting, source/native/platform identity, oracle-family labeling, and machine gate evaluation. Added a 9-test focused suite and an audit with runnable stable-source commands and explicit evidence gaps. No final corpus or stress sweep was launched.",
+    "risks": [
+      "The lane is based on pre-optimization commit 93e6c22f and must be rebased or cherry-picked after the arithmetic source stabilizes.",
+      "The current profiler still lacks producers for true native-kernel, forced Round2/Round4/OM overlap, automatic OM selection, and sequential/parallel public records; the evaluator reports these as not measured.",
+      "Only Linux x64 harness validation ran here; supported-host lifecycle/corruption metadata still belongs in platform evidence."
+    ],
+    "next_steps": [
+      "Integrate the harness onto the stabilized optimization branch and run a fresh complete production-native build.",
+      "Use plan first, then run the 489 standard and 16 stress primary matrices without substituting longer diagnostics.",
+      "Attach direct-kernel, algorithm-overlap, scheduler, randomized-generator, and four-platform reports before evaluating final gates."
+    ]
+  }
+}

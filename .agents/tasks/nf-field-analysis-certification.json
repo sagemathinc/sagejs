@@ -1,0 +1,217 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-field-analysis-certification",
+  "title": "Certify fused field-analysis local fixed points",
+  "lane": "integration",
+  "status": "review",
+  "owner": "nf_p2_kernel_perf",
+  "objective": "Add compact independently verified local fixed-point witnesses to the fused field-analysis candidate so complete word-prime results can become genuinely certified without rerunning generic Round2, with corruption and performance evidence",
+  "base_commit": "d8a1e086302a2b8cdeab398eb952ce96c5bf8620",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource.cjs",
+    "test/number-field-analysis-resource-python.cjs",
+    "bench/number-field-analysis-resource.cjs",
+    "bench/number-field-analysis-resource-witness.c",
+    "architecture/native-audit.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "independent ordinary-Python fixed-point checker",
+      "existing direct order resource and certified corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main/packages/flint/.native/prefix node --test test/number-field-analysis-resource-python.cjs test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.09,
+      "started_at": "2026-08-18T01:08:39.015Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "a1fff3013178a4d056ba1c65edb3e793e22347eaff1b5b2ee249121e6ccc17a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main/packages/flint/.native/prefix SAGEJS_FFI_SANITIZE=1 node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.588,
+      "started_at": "2026-08-18T01:08:42.014Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "a1fff3013178a4d056ba1c65edb3e793e22347eaff1b5b2ee249121e6ccc17a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.967,
+      "started_at": "2026-08-18T01:08:46.325Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "a1fff3013178a4d056ba1c65edb3e793e22347eaff1b5b2ee249121e6ccc17a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.845,
+      "started_at": "2026-08-18T01:08:53.996Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "a1fff3013178a4d056ba1c65edb3e793e22347eaff1b5b2ee249121e6ccc17a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.95,
+      "started_at": "2026-08-18T01:09:41.933Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 23.804,
+      "started_at": "2026-08-18T01:10:18.584Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main/packages/flint/.native/prefix pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 21.91,
+      "started_at": "2026-08-18T01:10:47.927Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main/packages/flint/.native/prefix node --test test/number-field-analysis-resource-python.cjs test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.669,
+      "started_at": "2026-08-18T01:15:55.258Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-main/packages/flint/.native/prefix SAGEJS_FFI_SANITIZE=1 node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.405,
+      "started_at": "2026-08-18T01:15:58.662Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.801,
+      "started_at": "2026-08-18T01:16:02.790Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.349,
+      "started_at": "2026-08-18T01:16:36.147Z",
+      "commit": "7bdb1b5626cc7e64fe35a485708ab1d253ae0667",
+      "workspace_fingerprint": "6d6c5f6d654c6aee65b0aff0722bdb92e3445cf376a0c2ee3e8fd44d49987bc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.127,
+      "started_at": "2026-08-18T01:19:39.155Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node --test test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.311,
+      "started_at": "2026-08-18T01:19:44.033Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.068,
+      "started_at": "2026-08-18T01:19:48.103Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.285,
+      "started_at": "2026-08-18T01:19:55.900Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.405,
+      "started_at": "2026-08-18T01:20:16.890Z",
+      "commit": "1e6f78e8613b13d0f1eaf39a1c52e665e733ecce",
+      "workspace_fingerprint": "d647a2be6130b349e85b38d438748ccd68b9238a329cf670990596421d487ddc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Schema v2 now carries compact terminal p-radical/full-rank-minor witnesses for every resolved squared word prime after final HNF rebasing. The immutable ordinary-Python decoder independently reconstructs order arithmetic, nilradicals, radical lattices, and selected multiplier equations before certifying complete results. Partial and arbitrary-prime results retain locally certified primes but remain globally incomplete. The durable benchmark separates native construction, generated-host transfer, independent verification, and end-to-end time.",
+    "risks": [
+      "Independent verification remains far above the 2ms public gate: six-case warm end-to-end medians are 67.1ms, 10.5ms, 11.0ms, 36.8ms, 208.3ms, and 623.5ms.",
+      "The portable tier passed 275 of 276 with the shared FLINT prefix; its sole failure is the unrelated verified-native-bundle relocation test, which intentionally rejects an externally redirected prefix. Without the prefix, three unrelated GF(2) compilation tests cannot find FLINT headers.",
+      "Current-revision Linux arm64, Windows x64, and macOS arm64 lifecycle validation remains external to this worktree."
+    ],
+    "next_steps": [
+      "Do not wire the resource into the public maximal-order engine at current verifier costs.",
+      "Run the focused schema-v2 lifecycle witness on Linux arm64 and native Windows x64 before any public adoption; macOS arm64 remains an external CI requirement.",
+      "If future profiling finds a safe verifier acceleration, retain immutable source binding and independent nilradical/full-rank verification rather than trusting native rank claims."
+    ]
+  }
+}

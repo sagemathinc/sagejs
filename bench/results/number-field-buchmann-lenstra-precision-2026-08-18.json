@@ -1,0 +1,67 @@
+{
+  "schema": "sagejs.number-fields/buchmann-lenstra-precision-result-v1",
+  "generated_at": "2026-08-18T01:16:20Z",
+  "commit": "1443da13d5ec86a2a32cabcc47515ab4a6645549",
+  "base_commit": "4d92089d3bd59b4e3b81f3f1f35c1ba5bb39b810",
+  "host": {
+    "operating_system": "Linux 6.17.0-1022-gcp x86_64",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "node": "v26.7.0",
+    "cpython": "3.14.4"
+  },
+  "workload": {
+    "case_id": "hecke-precision-degree-12",
+    "polynomial_digest": "0ab25225733fdc8e6a2ab9444d1c6f324389541dbedd507aa039ca8547ad088f",
+    "degree": 12,
+    "coefficient_height_bits": 501,
+    "component_bits": 2772,
+    "component_state": "complete",
+    "event_stages": [
+      "component-reduction",
+      "q-radical",
+      "multiplier-ring",
+      "component-reduction"
+    ],
+    "warmups": 1,
+    "samples": 3,
+    "native_disabled": true,
+    "boundary": "general Buchmann--Lenstra construction followed by a separate check_buchmann_lenstra_general_result replay"
+  },
+  "baseline": {
+    "source": "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json",
+    "base_commit": "2da5793275d7f701121ed04176d082680da66b26",
+    "sagejs_dynamic_construction_ms": 44650.544,
+    "sagejs_dynamic_independent_checker_ms": 65300.88,
+    "warmups": 0,
+    "samples": 1
+  },
+  "measurements": {
+    "cpython": {
+      "construction_ms": [528.613916, 502.156749, 495.781119],
+      "independent_checker_ms": [502.366249, 505.831368, 494.949559],
+      "construction_median_ms": 502.156749,
+      "independent_checker_median_ms": 502.366249,
+      "process_wall_ms": 4446.460122
+    },
+    "sagejs_dynamic": {
+      "construction_ms": [4402.21568, 4382.149888, 4423.441152],
+      "independent_checker_ms": [4339.825408, 4439.504896, 4402.063104],
+      "construction_median_ms": 4402.21568,
+      "independent_checker_median_ms": 4402.063104,
+      "process_wall_ms": 37506.12657
+    }
+  },
+  "observed_change": {
+    "sagejs_construction_speedup_over_prior_single_sample": 10.142743,
+    "sagejs_checker_speedup_over_prior_single_sample": 14.834154,
+    "caveat": "The baseline has no warmup and one sample; the new result uses one warmup and three samples, so the ratios are directional rather than a statistical confidence interval."
+  },
+  "correctness": {
+    "equation_discriminant_identity_checked": true,
+    "full_independent_replay_retained": true,
+    "cpython_sagejs_exact_lattice_differential": true,
+    "corruptions_rejected": ["index", "discriminant", "event"],
+    "special_case_polynomial_branch": false
+  }
+}

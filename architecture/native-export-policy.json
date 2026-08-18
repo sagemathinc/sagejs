@@ -112,8 +112,8 @@
       ]
     },
     "elliptic": {
-      "rationale": "Elliptic-curve exports combine smalljac, a pinned eclib 2-descent source closure, and Sage.js-owned point and coefficient conversion.",
-      "fallback": "Strict Python elliptic-curve arithmetic remains the semantic fallback; database ranks remain available and unsupported native-only rank computation reports its capability boundary.",
+      "rationale": "Elliptic-curve exports combine smalljac, a pinned eclib 2-descent source closure, Arb/Acb L-function primitives, and Sage.js-owned point and coefficient conversion.",
+      "fallback": "Strict Python elliptic-curve arithmetic and split-Mellin L-series evaluation remain semantic fallbacks; database ranks remain available and unsupported native-only rank computation reports its capability boundary.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
@@ -448,6 +448,11 @@
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecCompletedCentralDerivatives",
+      "family": "elliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecLseriesValues",
       "family": "elliptic",
       "decision": "retain-host-adapter"
     },

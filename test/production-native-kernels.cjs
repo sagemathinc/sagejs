@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const {
   cpSync,
   existsSync,
@@ -121,19 +122,26 @@ test("all production native kernels are published and autoloadable", () => {
     assert.equal(wrapper.sourceHash, record.sourceHash);
     assert.equal(wrapper.nativeAbi, record.nativeAbi);
     assert.deepEqual(wrapper.foreignDeclarations, record.foreignDeclarations);
+    for (const name of kernel.functions) {
+      assert.equal(
+        typeof wrapper[name],
+        "function",
+        `${kernel.id} did not publish ${name}`,
+      );
+    }
   }
 
+  const imports = production.map((kernel, index) => {
+    const moduleName = kernel.source
+      .slice("src/lib/".length, -".py".length)
+      .replaceAll("/", ".");
+    return `from ${moduleName} import ${kernel.functions[0]} as kernel_${index}`;
+  });
   const program = [
-    "from sagejs.kernels.matrix.dense_prime_field import dense_prime_field_matrix_add",
-    "from sagejs.kernels.matrix.dense_integer_flint import flint_dense_integer_resource_random_fill",
-    "from sagejs.kernels.matrix.dense_rational_flint import flint_dense_rational_matrix_import",
-    "from sagejs.kernels.polynomial.packed_flint import flint_byte_region_copy",
-    "from sagejs.kernels.p1 import p1_gcd",
-    "print(dense_prime_field_matrix_add.nativeAvailable)",
-    "print(flint_dense_integer_resource_random_fill.nativeAvailable)",
-    "print(flint_dense_rational_matrix_import.nativeAvailable)",
-    "print(flint_byte_region_copy.nativeAvailable)",
-    "print(p1_gcd.nativeAvailable)",
+    ...imports,
+    ...production.map((_kernel, index) =>
+      `print(kernel_${index}.nativeAvailable)`,
+    ),
     "",
   ].join("\n");
   const result = spawnSync(
@@ -151,7 +159,51 @@ test("all production native kernels are published and autoloadable", () => {
     },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue\nTrue");
+  assert.equal(
+    result.stdout.trim(),
+    production.map(() => "True").join("\n"),
+  );
+});
+
+test("the field-analysis checker is current and required-autoloadable", () => {
+  const source = "src/lib/sagejs/number_fields/field_analysis_resource.py";
+  const functionNames = [
+    "packed_field_analysis_fixed_points_are_valid",
+    "packed_field_analysis_decode_integers",
+    "packed_field_analysis_authenticate_projection",
+  ];
+  const manifest = JSON.parse(readFileSync(
+    join(root, "architecture", "native-kernels.json"),
+    "utf8",
+  ));
+  const kernel = manifest.kernels.find((entry) =>
+    entry.id === "field-analysis-fixed-point-checker-production"
+  );
+  assert.equal(kernel?.source, source);
+  assert.deepEqual(kernel?.functions, functionNames);
+
+  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  const sourceKey = source.slice("src/lib/".length);
+  const record = index.logicalSources[sourceKey];
+  const expectedHash = createHash("sha256")
+    .update(readFileSync(join(root, source)))
+    .digest("hex");
+  assert.equal(record?.sourceHash, expectedHash);
+
+  const loaded = runWithCache(published, [
+    "from sagejs.native import is_compiled",
+    `from sagejs.number_fields.field_analysis_resource import ${functionNames.join(", ")}`,
+    ...functionNames.flatMap((functionName) => [
+      `print(is_compiled(${functionName}))`,
+      `print(${functionName}.nativeAvailable)`,
+    ]),
+    "",
+  ].join("\n"));
+  assert.equal(loaded.status, 0, loaded.stdout + loaded.stderr);
+  assert.equal(
+    loaded.stdout.trim(),
+    functionNames.flatMap(() => ["True", "True"]).join("\n"),
+  );
 });
 
 test("stale FFI declaration metadata fails before a native wrapper loads", () => {

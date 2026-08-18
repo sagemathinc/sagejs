@@ -1,0 +1,75 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-final-perf-receipt",
+  "title": "Final maximal-order performance receipt",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Produce a consolidated exact current-head public maximal-order performance receipt and truthfully assess every original acceptance gate without modifying algorithms",
+  "base_commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+  "claims": [
+    "bench/results/number-field-maximal-order-current-head-0abc59da-2026-08-18.json",
+    "bench/results/number-field-maximal-order-current-head-0abc59da-2026-08-18.md",
+    "test/number-field-maximal-order-performance-receipt.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "independent exact certificate checker and frozen corpus lattices"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-maximal-order-performance-receipt.cjs",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-performance-receipt.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.139,
+      "started_at": "2026-08-18T06:12:09.106Z",
+      "commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+      "workspace_fingerprint": "1082aca3c0e1a7952c2b0023726df7fe9cc12c087e795a8cbbac1566b4709082",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.042,
+      "started_at": "2026-08-18T06:12:09.948Z",
+      "commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+      "workspace_fingerprint": "1082aca3c0e1a7952c2b0023726df7fe9cc12c087e795a8cbbac1566b4709082",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Recorded a source- and native-hashed current-head maximal-order receipt with warmed exact-equivalent raw samples, stage traces, all 36 original acceptance gates, nine completion criteria, host-load context, a Markdown summary, and a self-integrity regression test. No algorithm source was modified.",
+    "risks": [
+      "Measurements are from one shared Linux x64 host; small cross-run deltas are directional and unsupported platforms were not revalidated.",
+      "Magma was disabled and Oscar public/cold, complete Sage wrapper, randomized differential, and full stress-family matrices were not rerun, so their gates remain explicitly partial or unestablished.",
+      "The measured commit predates fixture-only vector010 completion 3ecf3eb8 and later OM p=2 source; the receipt records why the arithmetic/public paths remain equivalent where claimed."
+    ],
+    "next_steps": [
+      "Reduce #2510/#1710 native-kernel ratios, precision12 composite-local time, and vector010 modular characteristic reconstruction before rerunning final parity gates.",
+      "Enable and validate the pointer-free worker capability, then rerun vector001 with genuine parallel execution and randomized completion order.",
+      "Rerun the complete cross-platform and external-oracle matrix, including bounded Magma and Oscar public/cold records, on the eventual integration head."
+    ]
+  }
+}

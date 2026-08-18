@@ -1,0 +1,127 @@
+{
+  "schema": "sagejs.number-fields/round2-ceiling/v1",
+  "date": "2026-08-18",
+  "source": {
+    "baselineCommit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
+    "headerSha256": "16e04c3f6e30faf8640b698b6ad733dbd33167ff32a1a007fcf649fdb175682b",
+    "witnessSha256": "88472c4834db28b04d340d2cc063de2850798b574f394523c3ecd9f5edebf7af"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "compiler": "cc (Ubuntu 15.2.0-16ubuntu1)",
+    "flint": "3.6.0",
+    "openblasThreads": 1
+  },
+  "policy": {
+    "boundary": "sealed fmpz polynomial plus prime hints to compact canonical HNF resource",
+    "warmups": 10,
+    "samples": 9,
+    "eligibleNativeCeilingUs": 250,
+    "exactness": "optimized results agree with the forced exact lattice-inverse implementation on both hard cases and 32 deterministic randomized fields; ASan and UBSan lifecycle validation passes"
+  },
+  "hardCases": [
+    {
+      "id": "pari-2510",
+      "roundsPerSample": 3000,
+      "integratedBaselineMedianUs": 373.283880763,
+      "samplesUs": [
+        257.787397364,
+        242.46017534,
+        237.699352321,
+        235.414116022,
+        241.922211989,
+        244.380651973,
+        241.233795648,
+        244.848775328,
+        246.36469533
+      ],
+      "medianUs": 242.46017534,
+      "speedupFromIntegratedBaseline": 1.539567808,
+      "eligibleNativeCeilingUs": 250,
+      "ratioToCeiling": 0.969840701,
+      "heckeMedianUs": 241.274,
+      "ratioToHecke": 1.0049163,
+      "exact": true,
+      "profileRounds": 5000,
+      "profileMeanUs": {
+        "round2": 239.992851624,
+        "modularTable": 18.989617354,
+        "radical": 53.798099514,
+        "multiplier": 84.961628611,
+        "basisPrepare": 8.454621118,
+        "basisTransform": 54.804823105,
+        "basisOutput": 7.385141379
+      },
+      "equationsPerRound": {
+        "allocatedRows": 896,
+        "distinctNonzeroRows": 164
+      },
+      "multiplierRequestedBytesPerRound": 21544
+    },
+    {
+      "id": "pari-1710",
+      "roundsPerSample": 700,
+      "integratedBaselineMedianUs": 1015.343721956,
+      "samplesUs": [
+        782.653171336,
+        824.132125625,
+        794.211341501,
+        798.93329846,
+        793.210484221,
+        809.977482838,
+        806.630197247,
+        814.99384001,
+        778.982257138
+      ],
+      "medianUs": 798.93329846,
+      "speedupFromIntegratedBaseline": 1.270874207,
+      "exact": true,
+      "profileRounds": 1500,
+      "profileMeanUs": {
+        "round2": 770.887408949,
+        "modularTable": 63.863400758,
+        "radical": 260.3589814,
+        "multiplier": 264.263464371,
+        "basisPrepare": 15.064811567,
+        "basisTransform": 133.25720327,
+        "basisOutput": 15.117706188
+      },
+      "equationsPerRound": {
+        "allocatedRows": 1900,
+        "distinctNonzeroRows": 444
+      },
+      "multiplierRequestedBytesPerRound": 58632
+    }
+  ],
+  "ordinaryControls": [
+    {
+      "id": "motivating-degree-7",
+      "integratedBaselineMedianUs": 1.75548601,
+      "medianUs": 1.724279893
+    },
+    {
+      "id": "sage-essential-discriminant",
+      "integratedBaselineMedianUs": 7.066390011,
+      "medianUs": 6.826795405
+    },
+    {
+      "id": "lmfdb-3.1.431.1",
+      "integratedBaselineMedianUs": 7.090044499,
+      "medianUs": 6.777935382
+    },
+    {
+      "id": "lmfdb-5.1.17161.1",
+      "integratedBaselineMedianUs": 18.225997919,
+      "medianUs": 15.738035669
+    }
+  ],
+  "gates": {
+    "pari2510AtEligibleNativeCeiling": true,
+    "pari2510WithinOnePercentOfHecke": true,
+    "pari1710Regression": false,
+    "ordinaryControlRegression": false,
+    "randomizedExactDifferential": true,
+    "sanitizers": true
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-p5-runtime",
+  "title": "Bind and validate maximal-order worker graph",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind the precompiled multiprocessing graph to authoritative source/compiler identity, expose a platform memory budget, and register non-skipping regenerated-graph P5 validation",
+  "base_commit": "836c9ff389c044f36d250031d2ee2d85cd7a048d",
+  "claims": [
+    "scripts/build-lazy-module-cache.cjs",
+    "tools/resources.ts",
+    "src/lib/multiprocessing.py",
+    "tools/host.ts",
+    "test/multiprocessing-module.cjs",
+    "test/sea-smoke.cjs",
+    "scripts/run-precompiled-worker-tests.cjs",
+    "package.json"
+  ],
+  "dependencies": [
+    "nf-maxorder-p5-cancellation"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "fresh graph accepted and stale source/compiler identities rejected",
+      "registered SEA validation regenerates graph and executes substantive P5 worker tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=without a worker host|bounded platform memory|validated precompiled test/multiprocessing-module.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.239,
+      "started_at": "2026-08-18T01:26:09.163Z",
+      "commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+      "workspace_fingerprint": "8cfcfa957d7ef78ca116cea548c1f6fb1a66a8d3115edf50999b80852137797c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-precompiled-worker-tests.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.6,
+      "started_at": "2026-08-18T01:26:12.118Z",
+      "commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+      "workspace_fingerprint": "8cfcfa957d7ef78ca116cea548c1f6fb1a66a8d3115edf50999b80852137797c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/sea-smoke.cjs --python-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.447,
+      "started_at": "2026-08-18T01:26:26.463Z",
+      "commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+      "workspace_fingerprint": "8cfcfa957d7ef78ca116cea548c1f6fb1a66a8d3115edf50999b80852137797c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.681,
+      "started_at": "2026-08-18T01:26:34.601Z",
+      "commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+      "workspace_fingerprint": "8cfcfa957d7ef78ca116cea548c1f6fb1a66a8d3115edf50999b80852137797c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.862,
+      "started_at": "2026-08-18T01:29:38.470Z",
+      "commit": "836c9ff389c044f36d250031d2ee2d85cd7a048d",
+      "workspace_fingerprint": "f31d6c35928ac60a541be749e9215e2587e2e333ef75e9bf375cdb83402e536f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.255,
+      "started_at": "2026-08-18T01:29:46.025Z",
+      "commit": "836c9ff389c044f36d250031d2ee2d85cd7a048d",
+      "workspace_fingerprint": "f31d6c35928ac60a541be749e9215e2587e2e333ef75e9bf375cdb83402e536f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bound the allowlisted task graph to exact compiler and canonical Python-source hashes, validate the full source graph before advertising capability and again at module load, expose a host-derived memory budget, and register regenerated-graph P5 plus embedded-SEA validation without burdening ordinary builds.",
+    "risks": [
+      "The substantive arithmetic suite requires the optional FLINT backend, so prepack remains generation-only and test:sea is the authoritative release gate.",
+      "The current broad portable tier is blocked by the inherited buchmann_lenstra.py readable-runtime namespace assertion; architecture, strict Python, focused runtime, generated-worker, and SEA checks pass."
+    ],
+    "next_steps": [
+      "Run the registered test:sea gate on release CI platforms; the focused python-only SEA smoke already validates the embedded graph identity and exact worker capability."
+    ]
+  }
+}

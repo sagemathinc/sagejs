@@ -1,0 +1,48 @@
+{
+  "schema": "sagejs.elliptic-lseries/corpus-spec-v1",
+  "description": "Exact curve and point specification for the pinned elliptic L-series differential corpus.",
+  "normalization": {
+    "raw": "L(E,s) = sum_(n>=1) a_n*n^(-s), continued analytically",
+    "completed": "Lambda(E,s) = (sqrt(N)/(2*pi))^s*Gamma(s)*L(E,s)",
+    "functional_equation": "Lambda(E,s) = root_number*Lambda(E,2-s)"
+  },
+  "precisions_bits": [53, 100, 200],
+  "coefficient_probe_cutoff": 256,
+  "pari_initialization_domain": {
+    "center": "1",
+    "width": "4",
+    "height": "11",
+    "derivative_order": 0,
+    "guard_bits_above_maximum_output_precision": 64
+  },
+  "points": [
+    {"id": "s2", "real": "2", "imag": "0", "purposes": ["real-axis", "direct-series-check"]},
+    {"id": "center-plus-i", "real": "1", "imag": "1", "purposes": ["critical-line", "public-example", "conjugation"]},
+    {"id": "center-minus-i", "real": "1", "imag": "-1", "purposes": ["critical-line", "conjugation"]},
+    {"id": "center-plus-10i", "real": "1", "imag": "10", "purposes": ["moderate-height", "gamma-guard-bits"]},
+    {"id": "center-minus-10i", "real": "1", "imag": "-10", "purposes": ["moderate-height", "conjugation"]},
+    {"id": "half-plus-i", "real": "1/2", "imag": "1", "purposes": ["critical-strip", "functional-equation"]},
+    {"id": "three-halves-minus-i", "real": "3/2", "imag": "-1", "purposes": ["critical-strip", "functional-equation"]},
+    {"id": "zero", "real": "0", "imag": "0", "purposes": ["trivial-zero"]},
+    {"id": "minus-one", "real": "-1", "imag": "0", "purposes": ["trivial-zero", "left-half-plane"]},
+    {"id": "near-minus-one", "real": "-1048575/1048576", "imag": "0", "purposes": ["near-trivial-zero", "no-zero-snapping", "large-functional-factor"]},
+    {"id": "minus-two", "real": "-2", "imag": "0", "purposes": ["trivial-zero", "left-half-plane"]}
+  ],
+  "profiles": {
+    "standard": ["s2", "center-plus-i", "center-minus-i", "half-plus-i", "three-halves-minus-i", "zero", "minus-one", "minus-two"],
+    "moderate-height": ["s2", "center-plus-i", "center-minus-i", "center-plus-10i", "center-minus-10i", "half-plus-i", "three-halves-minus-i", "zero", "minus-one", "minus-two"],
+    "public-stress": ["s2", "center-plus-i", "center-minus-i", "center-plus-10i", "center-minus-10i", "half-plus-i", "three-halves-minus-i", "zero", "minus-one", "near-minus-one", "minus-two"]
+  },
+  "curves": [
+    {"id": "11a1", "a_invariants": ["0", "-1", "1", "-10", "-20"], "conductor": "11", "root_number": 1, "probable_analytic_rank": 0, "profile": "moderate-height", "magma_compare": true, "purposes": ["rank-0", "root-sign-plus", "tiny-conductor"]},
+    {"id": "37a1", "a_invariants": ["0", "0", "1", "-1", "0"], "conductor": "37", "root_number": -1, "probable_analytic_rank": 1, "profile": "moderate-height", "magma_compare": true, "purposes": ["rank-1", "root-sign-minus"]},
+    {"id": "389a1", "a_invariants": ["0", "1", "1", "-2", "0"], "conductor": "389", "root_number": 1, "probable_analytic_rank": 2, "profile": "standard", "magma_compare": true, "purposes": ["rank-2", "root-sign-plus"]},
+    {"id": "5077a1", "a_invariants": ["0", "0", "1", "-7", "6"], "conductor": "5077", "root_number": -1, "probable_analytic_rank": 3, "profile": "standard", "purposes": ["rank-3", "root-sign-minus"]},
+    {"id": "234446a1", "a_invariants": ["1", "-1", "0", "-79", "289"], "conductor": "234446", "root_number": 1, "probable_analytic_rank": 4, "profile": "standard", "purposes": ["rank-4", "non-proof-documentation"]},
+    {"id": "rank5-sage", "a_invariants": ["0", "0", "1", "-79", "342"], "conductor": "19047851", "root_number": -1, "probable_analytic_rank": 5, "profile": "standard", "purposes": ["rank-5", "root-sign-minus", "non-proof-documentation"]},
+    {"id": "user-rank2", "a_invariants": ["2", "3", "1", "4", "50"], "conductor": "1008811", "root_number": 1, "probable_analytic_rank": 2, "profile": "standard", "magma_compare": true, "purposes": ["motivating-rank-example", "performance"]},
+    {"id": "user-evaluation", "a_invariants": ["1", "2", "3", "4", "999"], "conductor": "430250329", "root_number": 1, "probable_analytic_rank": 0, "profile": "public-stress", "purposes": ["public-value-example", "large-conductor", "moderate-height", "near-trivial-zero"]},
+    {"id": "11a1-nonminimal-integral", "a_invariants": ["0", "-4", "8", "-160", "-1280"], "conductor": "11", "root_number": 1, "probable_analytic_rank": 0, "profile": "standard", "isomorphic_to": "11a1", "purposes": ["nonminimal-integral-model", "isomorphism-invariance"]},
+    {"id": "11a1-nonintegral", "a_invariants": ["0", "-1/4", "1/8", "-5/8", "-5/16"], "conductor": "11", "root_number": 1, "probable_analytic_rank": 0, "profile": "standard", "isomorphic_to": "11a1", "purposes": ["nonintegral-model", "isomorphism-invariance"]}
+  ]
+}

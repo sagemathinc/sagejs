@@ -1,0 +1,59 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-public-timeout-delta",
+  "title": "Record maximal-order timeout recovery delta",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "nf_public_corpus_sweep",
+  "objective": "Measure which retained public maximal-order timeouts recover after certification acceleration and preserve exact verified raw evidence",
+  "base_commit": "c1b3120639048c19e0a527584032b6de5f69df80",
+  "claims": [
+    "bench/results/number-field-maximal-order-timeout-delta-2026-08-17.json",
+    "bench/results/number-field-maximal-order-timeout-delta-2026-08-17.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "independent exact lattice verifier against the certified corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node -e const fs=require(\"fs\");const j=JSON.parse(fs.readFileSync(\"bench/results/number-field-maximal-order-timeout-delta-2026-08-17.json\",\"utf8\"));if(j.records.length!==34||new Set(j.records.map(r=>r.case_id)).size!==34)throw Error(\"cardinality\");const s=j.checked_summary;if(s.recovered_exact!==3||s.still_timeout!==31||s.other_terminal_states!==0||s.invalid_lattices!==0)throw Error(\"partition\");if(j.records.some(r=>r.status===\"ok\"&&r.verification?.verified!==true))throw Error(\"unverified lattice\");if(j.diagnostic_vector_010?.status!==\"timeout\"||j.diagnostic_vector_010?.timeout_ms!==30000)throw Error(\"diagnostic\");console.log(\"timeout-delta integrity ok\")",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.053,
+      "started_at": "2026-08-17T22:36:05.325Z",
+      "commit": "c1b3120639048c19e0a527584032b6de5f69df80",
+      "workspace_fingerprint": "8f15196bac119c4d12e84625f949aba720326180b1d5f48ca039e1b4170803e7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reran the 34 bounded public maximal-order timeouts from the b60ed9aa corpus artifact at c1b31206. Three cases recovered within the unchanged five-second policy and passed independent exact-lattice verification; 31 remained explicit timeouts, with no wrong lattices or other terminal outcomes. Vector 010 also timed out in a fresh worker under the requested 30-second diagnostic bound. The JSON preserves every raw adapter record and the Markdown gives the checked partition and environment identity.",
+    "risks": [
+      "The 31 retained timeouts are bounded performance outcomes, not correctness failures.",
+      "This is a Linux x64 measurement artifact on one AMD EPYC 7B13 host; timing classification may vary on other hardware."
+    ],
+    "next_steps": [
+      "Use the exact retained-timeout ID list to prioritize remaining local-order and certification performance work.",
+      "Repeat the same fixed-policy delta after the next relevant acceleration without replacing the original raw artifact."
+    ]
+  }
+}

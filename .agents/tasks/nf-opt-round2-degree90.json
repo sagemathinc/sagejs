@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round2-degree90",
+  "title": "Degree-90 packed Round-2 tail",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend the exact proof-carrying packed Round-2 terminal state safely through degree 90, profile the degree-90 public tail, and reduce its native batch below five seconds when attainable while preserving exact generic equality and lifecycle safety",
+  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "packages/flint/test/number_field_order_ffi.c",
+    "test/number-field-round2-degree90.cjs",
+    "bench/number-field-round2-degree90.cjs",
+    "bench/results/number-field-round2-degree90-2026-08-18.json",
+    "bench/results/number-field-round2-degree90-2026-08-18.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "forced generic FLINT order payload equality",
+      "randomized degree >64 differential controls"
+    ],
+    "exceptions": [
+      "Extends the existing FLINT host adapter and packed fmpz representation primitive; no mathematical algorithm is selected by function name and exact generic FLINT remains the tested capability fallback."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

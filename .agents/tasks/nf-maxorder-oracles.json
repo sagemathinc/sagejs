@@ -1,0 +1,129 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-oracles",
+  "title": "Nf Maxorder Oracles",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the reproducible multi-oracle maximal-order manifest, persistent adapters, normalization, verification, profiling, and machine-readable benchmark reports from P0",
+  "base_commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+  "claims": [
+    "tools/number-field-maximal-order/",
+    "bench/number-field-maximal-order-manifest.json",
+    "bench/number-field-maximal-orders.sage",
+    "test/number-field-maximal-order-profiler.cjs",
+    "docs/number-field-maximal-order-benchmarks.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "/home/user/bin/sagelite",
+      "/usr/bin/gp",
+      "Hecke/Oscar",
+      "/home/user/bin/magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-maximal-order-profiler.cjs test/number-field-maximal-order-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.52,
+      "started_at": "2026-08-17T20:06:43.729Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 238.894,
+      "started_at": "2026-08-17T20:06:51.529Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 271.954,
+      "started_at": "2026-08-17T20:11:03.325Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 388.691,
+      "started_at": "2026-08-17T20:15:47.448Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 35.85,
+      "started_at": "2026-08-17T20:22:23.507Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.977,
+      "started_at": "2026-08-17T20:23:06.518Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 130,
+      "seconds": 600.0,
+      "started_at": "2026-08-17T20:24:23.000Z",
+      "commit": "2565b3f99a07445dbbb171c2e788a3e60eb17222",
+      "workspace_fingerprint": "70b4e6c0b309daacfeeea263b229f62fbbd00e4570578cf3f4c824ce079590f1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the bounded persistent multi-oracle maximal-order profiler. A policy-only manifest selects cases from the 494-case certified corpus; Sage.js selector/dynamic/native, sagelite, direct GP nfbasis/nfinit, Hecke, Oscar, and opt-in Magma adapters emit exact bases, raw samples, stage traces, RSS, version and source metadata, and explicit terminal states. An independent exact verifier canonicalizes rational lattices to the corpus lower-row HNF digest and checks containment, closure, discriminant, and index before accepting timing statistics. All nine quick boundaries returned the same verified corpus lattice.",
+    "risks": [
+      "macOS arm64 was not available. The pure-Node normalization/protocol suite passed on Linux arm64 with Node 22.22.2; RSS and OS address-space enforcement are explicitly unavailable off Linux.",
+      "The full integration tier was interrupted after ten minutes because this partial worktree lacks the bootstrapped FLINT/FFLAS/M4RI headers and artifacts and public-sparse-random retained a pending promise. The clean optional-native build passed, the compiler suite passed with the existing FLINT addon, and focused profiler/corpus tests pass.",
+      "Internal local-prime and basis-merge timings remain trace-not-exposed until the public maximal-order implementation emits structured stage hooks; external CAS public APIs cannot expose those internals reliably."
+    ],
+    "next_steps": [
+      "Cherry-pick the lane commit after the integrated corpus commit and optionally add a central package.json benchmark script for tools/number-field-maximal-order/cli.cjs.",
+      "Connect structured factor-discovery, local-prime, local-order, and basis-merge trace hooks from the maximal-order engine to the Sage.js worker without changing report or corpus schemas.",
+      "Run the baseline and mandatory bad-generator profiles on the fully bootstrapped integration branch; use the explicit timeout/invalid states to prioritize the remaining implementation gaps."
+    ]
+  }
+}

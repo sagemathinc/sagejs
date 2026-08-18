@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-p2-checker-fast",
+  "title": "Accelerate independent schema-v2 field-analysis checker",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the schema-v2 field-analysis certificate checker plausibly fast for a public boundary while preserving independent exact recomputation and corruption rejection",
+  "base_commit": "6a61d0776f7a354f8aee22dd5db5a9d3b736416c",
+  "claims": [
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource-python.cjs",
+    "test/number-field-analysis-resource.cjs",
+    "bench/number-field-analysis-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "current-public-path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.51,
+      "started_at": "2026-08-18T02:45:55.996Z",
+      "commit": "6a61d0776f7a354f8aee22dd5db5a9d3b736416c",
+      "workspace_fingerprint": "b2f96ce96063643275bcf1b0ade8637ae3ee95617ff321a7a548f0b539569631",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.528,
+      "started_at": "2026-08-18T02:46:23.826Z",
+      "commit": "6a61d0776f7a354f8aee22dd5db5a9d3b736416c",
+      "workspace_fingerprint": "b2f96ce96063643275bcf1b0ade8637ae3ee95617ff321a7a548f0b539569631",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analysis-resource-python.cjs test/number-field-analysis-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.225,
+      "started_at": "2026-08-18T02:46:51.970Z",
+      "commit": "6a61d0776f7a354f8aee22dd5db5a9d3b736416c",
+      "workspace_fingerprint": "b2f96ce96063643275bcf1b0ade8637ae3ee95617ff321a7a548f0b539569631",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.395,
+      "started_at": "2026-08-18T02:47:37.677Z",
+      "commit": "6a61d0776f7a354f8aee22dd5db5a9d3b736416c",
+      "workspace_fingerprint": "b2f96ce96063643275bcf1b0ade8637ae3ee95617ff321a7a548f0b539569631",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced allocation-heavy schema-v2 order/radical/multiplier replay with one ordinary-Python, source-transparent packed GMP proof kernel. The same body is the dynamic fallback; a structurally separate nested-matrix oracle, CPython fixtures, compiled/dynamic six-case differentials, and corruption tests preserve checker independence. The durable benchmark compiles the exact source, measures transfer/check/end-to-end, retains a same-body dynamic control, and compares warmed fresh public maximal_order. On linux-x64, compiled end-to-end medians are 4.17-42.83 ms and are 2.0-4.8x faster than the current public path on all six cases.",
+    "risks": [
+      "The readable proof body adds exactly 26,511 bytes to number-field-algorithms (651,283 total), so the delegated central package-budget increase must land before architecture:check and portable become green.",
+      "Focused compiled/dynamic and CPython validation ran on linux-x64; integration should retain the existing cross-platform production-kernel build matrix for arm64, Windows x64, and macOS arm64."
+    ],
+    "next_steps": [
+      "Integrate this checkpoint with the central number-field-algorithms budget increase, then rerun architecture:check and portable.",
+      "In a separate lane, gate a public fused-result hook strictly on immediately decoded certified=True and preserve unchanged fallback/cache semantics for partial, arbitrary-prime, and native-failure results."
+    ]
+  }
+}

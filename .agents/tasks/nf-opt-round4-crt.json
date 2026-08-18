@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round4-crt",
+  "title": "Nf Opt Round4 Crt",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Batch modified Round-4 modular Krylov and CRT reconstruction with exact bounds and annihilation certificates, preserving dynamic fallback and vector010 exactness",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
+    "src/lib/sagejs/kernels/polynomial/packed_rational.py",
+    "test/number-field-round4-crt-batch.cjs",
+    "test/packed-integral-number-field.cjs",
+    "bench/number-field-round4-crt-batch.cjs",
+    "bench/packed-integral-number-field.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "direct exact regular-representation characteristic polynomial",
+      "frozen vector010 PARI/Sage-compatible maximal-order HNF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.435,
+      "started_at": "2026-08-18T08:49:40.108Z",
+      "commit": "849961ad4144c6fe6768fc5441383ea64ed045fb",
+      "workspace_fingerprint": "ebc2ab78955d0d4b4747670a22ae7cca5b6f3f7d2412e46c5c34b07d1fc16d9d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented source-transparent varying-prime Krylov batches, two-level exact CRT, coefficient-bound and exact-annihilation certificates, deterministic certified-prime reuse, a compiled Horner certificate, scalar/direct crossover fallback, focused randomized/corruption/CPython/FLINT differentials, and a vector010 benchmark. Exact vector010 construction fell from the 56-76s baseline range to 27.7-28.3s in loaded runs; all characteristic calls account for about 5.8s and the batched CRT path about 4.9s. Exact HNF, index, discriminant, 67 characteristic calls, 24 modular calls, and Ford-Letard e=16/f=2 remain certified.",
+    "risks": [
+      "The compiler support commit 6cac3769 must be integrated before this kernel; it provides borrowed UInt64Buffer exact-kernel lowering and Integer modulo uint64.",
+      "The package architecture byte budget needs an integration-lane increase or source split; this lane intentionally did not edit the central package registry.",
+      "The independent verify_round4_local_result call still costs about 25s and is owned by the Round-2 verification lane, not this CRT path."
+    ],
+    "next_steps": [
+      "Integrate commits 690f99cf, 75534a9c, f003aee2, and 849961ad after d43fafaf.",
+      "Register the focused test and benchmark centrally, adjust the package byte budget, then run pnpm test:native and pnpm architecture:check on the integrated compiler/source tree.",
+      "Treat the remaining roughly 22s non-characteristic construction boundary as NumberFieldElement multiplication/reduction and exact field quotient work; do not widen CRT correctness bounds."
+    ]
+  }
+}

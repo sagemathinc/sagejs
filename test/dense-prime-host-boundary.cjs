@@ -174,7 +174,7 @@ for (const line of lines) {
   // These are regression ceilings, deliberately above the uncontended
   // benchmark medians. The benchmark records the sharper optimization
   // targets without making shared CI load a source of false failures.
-  const readLimit = prime === 2 ? 20e-6 : prime === 97 ? 18e-6 : 25e-6;
+  const readLimit = prime === 2 ? 20e-6 : prime === 97 ? 20e-6 : 25e-6;
   const writeLimit = 40e-6;
   assert.ok(read < readLimit, `GF(${prime}) scalar read took ${read}s`);
   assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);

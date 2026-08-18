@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5099,
-      "bytes": 165979,
+      "lines": 5101,
+      "bytes": 166090,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -62,17 +62,17 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 614,
-      "bytes": 22046,
+      "lines": 1687,
+      "bytes": 62766,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [
-        "canonical completed elliptic L-function moment evaluation",
-        "FLINT and Arb coefficient, ball, and tail-bound arithmetic",
-        "batched Node-API input validation and diagnostic conversion"
+        "canonical completed elliptic L-function central jets and complex values",
+        "FLINT Arb and Acb coefficient, ball, gamma-conversion, and tail-bound arithmetic",
+        "batched Node-API decimal input validation and diagnostic conversion"
       ],
-      "rationale": "The compact host-neutral numerical core is a justified arbitrary-precision primitive over Arb, while the surrounding adapter provides one batched exact-coefficient crossing. Rank selection, precision refinement, gamma conversion, and the readable mathematical fallback remain ordinary Python.",
-      "fallback": "The ordinary Python Mellin evaluator preserves the same completed-function normalization and probable-rank semantics whenever the native capability is unavailable.",
+      "rationale": "The compact host-neutral numerical core is a justified arbitrary-precision primitive over Arb and Acb, while the surrounding adapter provides one batched exact-coefficient crossing. Rank selection, value caching, precision refinement, and the readable mathematical fallbacks remain ordinary Python.",
+      "fallback": "The ordinary Python Mellin evaluators preserve the same completed-function normalization, probable-rank semantics, and moderate-complex values whenever the native capability is unavailable.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "Sage/PARI", "Magma"],
       "next": "Keep differential tests for every supported platform and add a proved Molin discretization enclosure before changing the diagnostic from non-rigorous."
     },
@@ -177,22 +177,23 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
-      "lines": 502,
-      "bytes": 18889,
+      "lines": 3121,
+      "bytes": 128504,
       "decision": "typed-remediation-pilot",
       "priority": "high",
       "responsibilities": [
         "Zassenhaus Round-2 local maximal-order iteration",
         "nilradical and multiplier-ring kernels over FLINT storage",
-        "exact rational order-basis transformations"
+        "exact packed-integer order-basis transformations and p-squared multiplier equations with exact fallbacks"
       ],
-      "rationale": "The strict ordinary-Python implementation is the primary readable algorithm, but measured 0.2-second dynamic-object overhead per iteration made PARI's historical #1710 regression roughly 500 times slower than SageMath. This host-neutral batched kernel keeps the same control flow and removes object-at-a-time crossings while the native compiler lacks packed three-dimensional fmpz multiplication tables.",
-      "fallback": "The complete ordinary-Python Round-2 implementation remains correct for every supported prime and is exercised as a differential oracle; the native word-prime path is an optional acceleration.",
+      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using sparse radical RREF rows to form p-squared multiplier equations, exact hash deduplication, a single p-squared reduction with a derived p image, packed integer basis transforms, reusable workspaces, checked sparse basis addmul transforms, power-of-two low-limb reduction, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. The radical trace pairing precomputes the traces of the algebra basis and uses linearity of the regular representation to form the exact pairing in cubic rather than quartic time; the original entrywise matrix-product construction remains a compile-time differential oracle. For the canonical Round-2 block change [I R; 0 pI], the exact tensor transform preserves nonpivot products, divides mixed products only by p, divides only the pivot block by p-squared, and fills the symmetric half by commutativity; the forced generic lattice-inverse transform remains the differential oracle. At terminal degree-at-most-64 word-prime precision for p at most 251 it keeps the exact multiplication tensor modulo a proof-carrying p-power, projects the mod-p and mod-p-squared tables from that state, and consumes exactly two p-adic digits per accepted [I R; 0 pI] enlargement after checking exact p and p-squared divisibility. Precision exhaustion replays the immutable prime-boundary state at the required precision. For high-degree batches with pairwise-coprime proved primes, bounded native lanes compute every local overorder from the immutable source order; their scaled basis generators are joined by one exact tall row HNF, with a forced compounded sequential path retained for canonical-lattice differentials and a correct single-lane fallback where pthreads are unavailable. Every accelerated step retains an exact fallback because the native compiler still lacks a general packed three-dimensional fmpz value type.",
+      "fallback": "The complete ordinary-Python Round-2 implementation and the forced original exact lattice-inverse path remain correct for every supported prime. Both are exercised against deterministic randomized optimized-versus-exact differentials; the native word-prime path is an optional acceleration.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
         "SageMath",
-        "PARI/GP"
+        "PARI/GP",
+        "deterministic randomized exact differentials"
       ],
       "next": "Replace this exception with source-transparent native lowering when packed exact multiplication tables, modular kernels, and rational basis changes are expressible in the typed compiler."
     },
@@ -259,6 +260,54 @@
         "four-host standalone rforest bridge"
       ],
       "next": "Keep modular and exact-completion timings separate, retain the shared non-reentrant native lock, and expose a full local factor only after unique certified completion."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "lines": 482,
+      "bytes": 17680,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "sealed integral-polynomial ingress and native multiplication-table construction",
+        "canonical HNF order-basis transfer and retained-size ownership",
+        "batched word-prime Round-2 dispatch and arbitrary-prime fallback signaling"
+      ],
+      "rationale": "This removes the measured n^3 host ingress and per-entry rational egress while preserving the ordinary-Python mathematical oracle. The compact resource and transfer protocol are durable representation primitives, but the Round-2 selection should migrate to source-transparent typed Python once the compiler supports these packed FLINT operations.",
+      "fallback": "Every nonzero resource status retains the exact fallback prime and is closed before the strict ordinary-Python local solver continues; no prime is narrowed or silently accepted.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SageMath",
+        "PARI/GP",
+        "native Windows x64 witness",
+        "Linux arm64 witness"
+      ],
+      "next": "Move HNF transfer primitives into a smaller generated representation resource and compile the readable polynomial-to-local-order driver when typed FLINT polynomial and matrix resources are available."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "lines": 781,
+      "bytes": 31310,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "bounded exact discriminant decomposition without eager full factorization",
+        "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
+        "canonical compact source, component, and HNF evidence ownership",
+        "terminal local fixed-point witness construction after final HNF rebasing"
+      ],
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. FLINT owns the mature arithmetic and the existing audited Round-2 helper owns local completion; the durable part is the resource representation and fail-closed status protocol.",
+      "fallback": "The packed result is never trusted directly. An ordinary-Python checker independently recomputes the discriminant, authenticates components, HNF/index/order closure, and word-prime local maximality; unresolved composite and arbitrary-size probable-prime states remain incomplete and available to strict fallback.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath",
+        "PARI/GP",
+        "native Windows x64 witness",
+        "Linux arm64 witness"
+      ],
+      "next": "Retain the immutable payload boundary, but migrate bounded decomposition and dispatch to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
     },
     {
       "path": "packages/graph/src/addon.c",

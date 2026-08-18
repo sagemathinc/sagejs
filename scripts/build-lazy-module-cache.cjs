@@ -12,8 +12,9 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join, relative, resolve, sep } = require("node:path");
+const { dirname, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -24,8 +25,15 @@ const manifest = JSON.parse(readFileSync(
   "utf8",
 ));
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-python-precompile-"));
-const dynamicTemporary = join(temporary, "dynamic");
+const packageTemporary = join(temporary, "packages");
+const taskTemporary = join(temporary, "tasks");
+const packageDynamicTemporary = join(temporary, "dynamic-packages");
+const taskDynamicTemporary = join(temporary, "dynamic-tasks");
 const filenameMarker = "__sagejs_precompiled_module_filename__";
+const taskManifestFilename = "task-runtime-modules.json";
+const compilerFilename = join(root, "dist", "compiler", "compiler.js");
+const moduleNamePattern =
+  /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 
 function filesBelow(directory) {
   const answer = [];
@@ -47,12 +55,34 @@ function moduleName(filename) {
   return name.replaceAll("/", ".");
 }
 
-rmSync(outputDirectory, { recursive: true, force: true });
-rmSync(dynamicOutputDirectory, { recursive: true, force: true });
-mkdirSync(outputDirectory, { recursive: true });
-mkdirSync(dynamicOutputDirectory, { recursive: true });
+function cacheResource(name) {
+  return `${name.replaceAll(".", "-")}.json`;
+}
 
-try {
+function digest(algorithm, value) {
+  return createHash(algorithm).update(value).digest("hex");
+}
+
+function sourceResource(sourceFilename) {
+  const resource = relative(libraryDirectory, sourceFilename)
+    .split(sep)
+    .join("/");
+  if (resource.startsWith("../") || resource === "..") {
+    throw new Error(`compiled source is outside src/lib: ${sourceFilename}`);
+  }
+  return resource;
+}
+
+function portableModuleFilename(name, sourceFilename) {
+  const normalizedSource = sourceFilename.replaceAll("\\", "/");
+  const suffix = normalizedSource.endsWith("/__init__.py")
+    ? "/__init__.py"
+    : ".py";
+  return `/__sagejs_task_modules__/${name.replaceAll(".", "/")}${suffix}`;
+}
+
+function compileImports(imports, moduleDirectory, dynamicDirectory) {
+  if (imports.length === 0) return;
   const result = spawnSync(
     process.execPath,
     [join(root, "bin", "sagejs"), "--python"],
@@ -62,20 +92,45 @@ try {
       env: {
         ...process.env,
         XDG_CACHE_HOME: temporary,
-        SAGEJS_DYNAMIC_CACHE_DIR: dynamicTemporary,
-        SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: join(temporary, "missing-dynamic"),
-        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: join(temporary, "missing-modules"),
+        SAGEJS_DYNAMIC_CACHE_DIR: dynamicDirectory,
+        SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: join(
+          temporary,
+          "missing-dynamic",
+        ),
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: join(
+          temporary,
+          "missing-modules",
+        ),
       },
-      input: `${manifest.imports.map((name) => `import ${name}`).join("\n")}\n`,
+      input: `${imports.map((name) => `import ${name}`).join("\n")}\n`,
       stdio: ["pipe", "ignore", "inherit"],
     },
   );
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 
-  const moduleCacheRoot = join(temporary, "sagejs", "modules");
-  let moduleCount = 0;
-  for (const cacheFilename of filesBelow(moduleCacheRoot)) {
+  const generated = join(
+    temporary,
+    "sagejs",
+    "modules",
+  );
+  if (!existsSync(generated)) {
+    throw new Error("precompilation did not create a module cache");
+  }
+  mkdirSync(moduleDirectory, { recursive: true });
+  for (const cacheFilename of filesBelow(generated)) {
+    if (!cacheFilename.endsWith(".json")) continue;
+    const relativeFilename = relative(generated, cacheFilename);
+    const destination = join(moduleDirectory, relativeFilename);
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(cacheFilename, destination);
+  }
+  rmSync(generated, { recursive: true, force: true });
+}
+
+function copyCompiledModules(moduleDirectory, taskModules) {
+  let count = 0;
+  for (const cacheFilename of filesBelow(moduleDirectory)) {
     if (!cacheFilename.endsWith(".json")) continue;
     const cached = JSON.parse(readFileSync(cacheFilename, "utf8"));
     const name = moduleName(cached.filename);
@@ -88,38 +143,119 @@ try {
       filenameLiteral,
       JSON.stringify(filenameMarker),
     );
-    writeFileSync(
-      join(outputDirectory, `${name.replaceAll(".", "-")}.json`),
-      JSON.stringify({
+    const resource = cacheResource(name);
+    const record = {
+      version: cached.version,
+      signature: cached.signature,
+      mode: cached.mode,
+      module: name,
+      javascriptTemplate,
+    };
+    const outputFilename = join(outputDirectory, resource);
+    if (existsSync(outputFilename)) {
+      const existing = JSON.parse(readFileSync(outputFilename, "utf8"));
+      if (JSON.stringify(existing) !== JSON.stringify(record)) {
+        throw new Error(`conflicting precompiled output for ${name}`);
+      }
+    } else {
+      writeFileSync(outputFilename, JSON.stringify(record));
+      count += 1;
+    }
+    if (taskModules) {
+      const source = sourceResource(cached.filename);
+      const sourceSignature = digest(
+        "sha1",
+        readFileSync(join(libraryDirectory, source), "utf8"),
+      );
+      if (sourceSignature !== cached.signature) {
+        throw new Error(`compiled source signature is stale for ${name}`);
+      }
+      taskModules[name] = {
+        resource,
         version: cached.version,
         signature: cached.signature,
         mode: cached.mode,
-        module: name,
-        javascriptTemplate,
-      }),
+        filename: portableModuleFilename(name, cached.filename),
+        source,
+      };
+    }
+  }
+  return count;
+}
+
+function copyDynamicPrograms(directory) {
+  let count = 0;
+  for (const cacheFilename of filesBelow(directory)) {
+    if (!cacheFilename.endsWith(".json")) continue;
+    copyFileSync(
+      cacheFilename,
+      join(dynamicOutputDirectory, cacheFilename.split(sep).at(-1)),
     );
-    moduleCount += 1;
+    count += 1;
+  }
+  return count;
+}
+
+rmSync(outputDirectory, { recursive: true, force: true });
+rmSync(dynamicOutputDirectory, { recursive: true, force: true });
+mkdirSync(outputDirectory, { recursive: true });
+mkdirSync(dynamicOutputDirectory, { recursive: true });
+
+try {
+  const packageImports = manifest.imports ?? [];
+  const taskImports = manifest.taskRuntimeImports ?? [];
+  for (const [kind, imports] of [
+    ["package", packageImports],
+    ["task-runtime", taskImports],
+  ]) {
+    if (!Array.isArray(imports) || imports.some(
+      (name) => typeof name !== "string" || !moduleNamePattern.test(name)
+    )) throw new TypeError(`invalid ${kind} precompile import list`);
   }
 
-  for (const name of manifest.imports) {
+  compileImports(
+    packageImports,
+    packageTemporary,
+    packageDynamicTemporary,
+  );
+  compileImports(taskImports, taskTemporary, taskDynamicTemporary);
+
+  let moduleCount = copyCompiledModules(packageTemporary);
+  const taskModules = Object.create(null);
+  moduleCount += copyCompiledModules(taskTemporary, taskModules);
+
+  for (const name of [...packageImports, ...taskImports]) {
     const expected = join(
       outputDirectory,
-      `${name.replaceAll(".", "-")}.json`,
+      cacheResource(name),
     );
     if (!existsSync(expected)) {
       throw new Error(`precompilation did not produce ${name}`);
     }
   }
 
-  let dynamicCount = 0;
-  for (const cacheFilename of filesBelow(dynamicTemporary)) {
-    if (!cacheFilename.endsWith(".json")) continue;
-    copyFileSync(cacheFilename, join(dynamicOutputDirectory, cacheFilename.split(sep).at(-1)));
-    dynamicCount += 1;
-  }
+  const sortedTaskModules = Object.fromEntries(
+    Object.entries(taskModules).sort(([left], [right]) =>
+      left.localeCompare(right)
+    ),
+  );
+  writeFileSync(
+    join(outputDirectory, taskManifestFilename),
+    JSON.stringify({
+      schema: "sagejs.task-runtime-modules/v2",
+      compilerSha256: digest("sha256", readFileSync(compilerFilename)),
+      roots: [...taskImports].sort(),
+      modules: sortedTaskModules,
+    }),
+  );
+
+  const dynamicCount =
+    copyDynamicPrograms(packageDynamicTemporary) +
+    copyDynamicPrograms(taskDynamicTemporary);
   console.log(
     `Precompiled ${moduleCount} lazy Python modules and ` +
-      `${dynamicCount} dynamic programs`,
+      `${dynamicCount} dynamic programs; authorized ` +
+      `${Object.keys(sortedTaskModules).length} multiprocessing modules`,
   );
 } finally {
   rmSync(temporary, { recursive: true, force: true });

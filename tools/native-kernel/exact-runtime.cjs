@@ -60,6 +60,49 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
     return 1;
 }
 
+static uint64_t sagejs_mpz_mod_uint64(
+    const mpz_t value, uint64_t modulus)
+{
+#if GMP_NUMB_BITS < 64
+#error "Sage.js uint64 exact kernels require 64-bit GMP limbs"
+#endif
+    const size_t count = mpz_size(value);
+    const uint64_t magnitude_remainder = count == 0 ? UINT64_C(0) :
+        (uint64_t) mpn_mod_1(
+            mpz_limbs_read(value), count, (mp_limb_t) modulus);
+    if (mpz_sgn(value) >= 0 || magnitude_remainder == 0)
+        return magnitude_remainder;
+    return modulus - magnitude_remainder;
+}
+
+static uint64_t sagejs_int64_mod_uint64(
+    int64_t value, uint64_t modulus)
+{
+    const int negative = value < 0;
+    const uint64_t magnitude = negative
+        ? (uint64_t) (-(value + 1)) + UINT64_C(1)
+        : (uint64_t) value;
+    const uint64_t remainder = magnitude % modulus;
+    return negative && remainder != 0 ? modulus - remainder : remainder;
+}
+
+static int sagejs_signed_buffer_index(
+    size_t length, int64_t index, size_t *position)
+{
+    if (index >= 0)
+    {
+        if ((uint64_t) index >= (uint64_t) length)
+            return 0;
+        *position = (size_t) index;
+        return 1;
+    }
+    const uint64_t magnitude = (uint64_t) (-(index + 1)) + UINT64_C(1);
+    if (magnitude > (uint64_t) length)
+        return 0;
+    *position = length - (size_t) magnitude;
+    return 1;
+}
+
 #define SAGEJS_WORD_PROMOTE 0
 #define SAGEJS_WORD_OK 1
 #define SAGEJS_WORD_ERROR -1
@@ -265,6 +308,14 @@ static int sagejs_tagged_to_int64(
         return 1;
     }
     return mpz_to_int64(value->big, result);
+}
+
+static uint64_t sagejs_tagged_mod_uint64(
+    sagejs_tagged_int *value, uint64_t modulus)
+{
+    return value->is_big
+        ? sagejs_mpz_mod_uint64(value->big, modulus)
+        : sagejs_int64_mod_uint64(value->small, modulus);
 }
 
 static int sagejs_tagged_sgn(sagejs_tagged_int *value)

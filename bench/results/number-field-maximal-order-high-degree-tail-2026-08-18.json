@@ -1,0 +1,204 @@
+{
+  "schema": "sagejs.number-fields/maximal-order-high-degree-tail-v1",
+  "generated_at": "2026-08-18T01:08:00Z",
+  "base_commit": "2da5793275d7f701121ed04176d082680da66b26",
+  "policy": {
+    "fresh_worker": true,
+    "warmups": 0,
+    "samples": 1,
+    "public_case_bound_ms": 120000,
+    "stage_isolation": "persistent Sage.js session with each completed stage emitted before the next stage begins",
+    "session_polling": "Every yielded exec session was polled to process completion or the explicit outer bound; a yield was never classified as a timeout."
+  },
+  "excluded_cases": [
+    "pari-round4-vector-010",
+    "pari-round4-vector-007",
+    "pari-round4-vector-104",
+    "pari-round4-vector-139",
+    "pari-round4-vector-419",
+    "pari-round4-vector-420",
+    "pari-round4-vector-421",
+    "pari-round4-vector-422",
+    "pari-round4-vector-423",
+    "pari-round4-vector-424",
+    "pari-round4-vector-425",
+    "pari-round4-vector-426"
+  ],
+  "cases": [
+    {
+      "case_id": "pari-round4-vector-429",
+      "degree": 64,
+      "polynomial": {
+        "fixture": "test/fixtures/number-field-maximal-order-corpus.json",
+        "fixture_case_id": "pari-round4-vector-429",
+        "coefficients_field": "polynomial.coefficients",
+        "digest": "7c90962c4feb629a3f08116b4f6faa436aceab47ea1630053b78c0374d36519a"
+      },
+      "public_result": {
+        "status": "timeout",
+        "bound_ms": 120000,
+        "last_completed_boundary": "composite-local-order"
+      },
+      "stage_isolation_ms": {
+        "discriminant_decomposition": 957.222,
+        "composite_construction": 2955.107,
+        "composite_independent_checker": 6645.781,
+        "post_composite_transition": 29.361,
+        "native_batch_lower_bound": 105000
+      },
+      "composite_component": {
+        "support_bits": 978,
+        "state": "complete",
+        "independent_checker_accepted": true
+      },
+      "native_batch": {
+        "primes": [
+          277,
+          311,
+          613,
+          719,
+          1319,
+          37,
+          59,
+          8951,
+          198659,
+          5749896239,
+          2894951,
+          6222169,
+          5,
+          2,
+          3,
+          7
+        ],
+        "equation_discriminant_exponents": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          12,
+          16,
+          8,
+          8,
+          8,
+          14,
+          14,
+          312,
+          880,
+          1136,
+          1008
+        ],
+        "diagnosis": "The native word-prime local kernel is the first incomplete stage. Decomposition, composite construction, and independent composite checking all complete exactly before the bound."
+      },
+      "handoff": [
+        "nf_round4",
+        "nf_om_maxmin"
+      ]
+    },
+    {
+      "case_id": "hecke-degree-90",
+      "degree": 90,
+      "polynomial": {
+        "fixture": "test/fixtures/number-field-maximal-order-corpus.json",
+        "fixture_case_id": "hecke-degree-90",
+        "coefficients_field": "polynomial.coefficients",
+        "digest": "c7d6d5d300a66d0a7e083b5ede9665b5833dad55538fe7eff634dd34383251ef"
+      },
+      "pre_fix_public_result": {
+        "status": "error",
+        "observed_completion_bound_ms": 30000,
+        "reason": "the discovered divisor does not split this component support"
+      },
+      "stage_isolation_ms": {
+        "discriminant_decomposition": 6911.479,
+        "composite_construction": 1164.417,
+        "composite_independent_checker": 0.464,
+        "failed_transition": 95.691
+      },
+      "exact_overlapping_split": {
+        "source": "28375108932411734495304601228067800245485592196890940187801716657219585656835089965133181588155080740947480506001981898084965705935131049805539942397526104316057755540125253448659497227913616528607006608275968017109416161011102945573223152501463260399044323436928847993151317153557005283972664233104841283074493334400552621639617588639868929384162815109857840642830414871514198525036790939585431490942393",
+        "left": "10574465728767666555228536610641579811842533373963078463092262523462026040042726254549120147514658199529426158463949464155201520009842525774780188874149286777313136600004715522309334162609360622222282655325156778051636049346734541335743924317847378865178529253771239871620448069997665347291200935358619761960650592447513629973610553570641046577095968492445794897827916136335811143203166081487146713",
+        "right": "2683361",
+        "gcd_left_right": "2683361",
+        "exact_product": true,
+        "independent_checker_accepted": true,
+        "proper_support_side": "right"
+      },
+      "resolution": {
+        "integrated_commit": "2da5793275d7f701121ed04176d082680da66b26",
+        "theorem": "An exact zero-divisor factorization may have overlapping factors. A factor side is accepted only when the independently checked exact component splitter produces two coprime-support children.",
+        "fail_closed_rejections": [
+          "wrong split source",
+          "invalid decomposition coverage",
+          "inseparable prime-power support"
+        ],
+        "focused_test_status": "pass"
+      }
+    },
+    {
+      "case_id": "hecke-precision-degree-12",
+      "degree": 12,
+      "polynomial": {
+        "fixture": "test/fixtures/number-field-maximal-order-corpus.json",
+        "fixture_case_id": "hecke-precision-degree-12",
+        "coefficients_field": "polynomial.coefficients",
+        "digest": "0ab25225733fdc8e6a2ab9444d1c6f324389541dbedd507aa039ca8547ad088f"
+      },
+      "public_result": {
+        "status": "ok",
+        "maximal_order_ms": 114075.812,
+        "certified": true,
+        "field_discriminant": "28975330946137036032",
+        "field_discriminant_matches_fixture": true
+      },
+      "public_trace_ms": {
+        "discriminant_decomposition": 1051.449,
+        "composite_local_order": 111427.171,
+        "native_local_orders": 395.241,
+        "global_certification": 821.43,
+        "public_object_materialization": 4.126,
+        "cached_is_maximal": 0.083
+      },
+      "composite_stage_isolation": [
+        {
+          "sequence": 0,
+          "support": "242254142024402620069",
+          "support_bits": 68,
+          "component_exponent": 4,
+          "result_state": "complete",
+          "evidence_stage": "composite-dedekind",
+          "construction_ms": 58.675,
+          "independent_checker_ms": 98.169,
+          "transition_ms": 10.58,
+          "independent_checker_accepted": true
+        },
+        {
+          "sequence": 1,
+          "support": "1457694747238892617812240498990155760708768255631349224056245122874528373600283302698970587933313507834550205822164110908591072664866718315160938399101474462531807032273040008543718156626263266243792404826188360027531212444426688245752340421086737030146364696919493629441189807400992645060373682397428260479122563567288268551483897803972396976104293805781832706906085074899535299096870454613775078516899143766993342601773307487465662898664936623984858299218453166959417382112721912219221898027387455627528582116778879821872149792121693353214134517050825413908351441088751732621675641257450461258419577101130861499030231242993611001136649521554006905911901355805161005266694600070204873076047887426066337130093050217946387578168619557022644318112215641928516596105166629409192237818067634032748468415332807280494576795661944377882926817",
+          "support_bits": 2772,
+          "component_exponent": 2,
+          "result_state": "complete",
+          "evidence_stage": "q-radical-multiplier-cycle",
+          "enlargement_count": 1,
+          "construction_ms": 44650.544,
+          "independent_checker_ms": 65300.88,
+          "transition_ms": 31.285,
+          "independent_checker_accepted": true
+        }
+      ],
+      "post_composite_stage_ms": {
+        "native_batch": 316.463,
+        "merge_and_discriminant_cache": 87.387,
+        "global_certification": 799.965,
+        "materialization": 1.429
+      },
+      "diagnosis": "The 2772-bit general q-radical/multiplier-cycle component accounts for the timeout. Its exact construction is about 44.7 seconds and the independent general-result replay is about 65.3 seconds. The smaller composite, native batch, merge, global certificate, and materialization are not bottlenecks.",
+      "optimization_decision": "Evidence-only. This is one specialized general-cycle component, not a shared engine-orchestration bottleneck. The independent checker remains fail closed and is not bypassed."
+    }
+  ],
+  "conclusion": {
+    "shared_bottleneck": false,
+    "engine_optimization_selected": false,
+    "reason": "The three cases have distinct terminal causes: vector429 stalls in the native local kernel, degree90 exposed a corrected overlapping-factor support transition, and precision-degree12 is dominated by one exact general Buchmann--Lenstra construction plus its independent replay."
+  }
+}

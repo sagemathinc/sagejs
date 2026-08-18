@@ -15,6 +15,8 @@ import { tmpdir } from "os";
 import { createRequire } from "module";
 import { basename, dirname, join, normalize } from "path";
 import { getAsset, getAssetKeys, isSea } from "node:sea";
+import { runInThisContext } from "node:vm";
+import { createHash } from "node:crypto";
 
 import { measureInitialization } from "./timing";
 
@@ -24,6 +26,10 @@ const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
+const TASK_RUNTIME_MODULE_MANIFEST = "task-runtime-modules.json";
+const TASK_RUNTIME_MODULE_SCHEMA = "sagejs.task-runtime-modules/v2";
+const PRECOMPILED_MODULE_FILENAME =
+  "__sagejs_precompiled_module_filename__";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const FLINT_FFI_ASSET = "native/sagejs_flint_ffi.node";
 const FLINT_FFI_MANIFEST_ASSET = "native/sagejs_flint_ffi_manifest.json";
@@ -269,6 +275,356 @@ export function readTaskRuntimeSource(fallbackFilename: string): string {
   return isSea()
     ? assetText(TASK_RUNTIME_ASSET)
     : readResourceText(fallbackFilename);
+}
+
+interface TaskRuntimeModuleRecord {
+  resource: string;
+  version: string;
+  signature: string;
+  mode: "python";
+  filename: string;
+  source: string;
+}
+
+interface TaskRuntimeModuleManifest {
+  schema: string;
+  compilerSha256: string;
+  roots: string[];
+  modules: Record<string, TaskRuntimeModuleRecord>;
+}
+
+interface PrecompiledTaskModule {
+  version: string;
+  signature: string;
+  mode: "python";
+  module: string;
+  javascriptTemplate: string;
+}
+
+const pythonModuleNamePattern =
+  /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+const sha1Pattern = /^[a-f0-9]{40}$/;
+const sha256Pattern = /^[a-f0-9]{64}$/;
+
+function digest(algorithm: "sha1" | "sha256", value: string): string {
+  return createHash(algorithm).update(value).digest("hex");
+}
+
+function own(object: unknown, name: PropertyKey): boolean {
+  return (
+    object !== null &&
+    (typeof object === "object" || typeof object === "function") &&
+    Object.prototype.hasOwnProperty.call(object, name)
+  );
+}
+
+function taskRuntimeModuleCacheDirectory(fallbackDirectory?: string): string {
+  return process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
+    precompiledLazyModuleCacheDirectory(
+      fallbackDirectory ?? join(__dirname, "..", "lazy-module-cache"),
+    );
+}
+
+function taskRuntimeSourceDirectory(fallbackDirectory?: string): string {
+  return standardLibraryDirectory(
+    fallbackDirectory ?? join(__dirname, "..", "..", "src", "lib"),
+  );
+}
+
+function taskRuntimeCompilerFilename(fallbackFilename?: string): string {
+  return compilerDirectory(
+    fallbackFilename ?? join(__dirname, "..", "compiler", "compiler.js"),
+  );
+}
+
+function expectedTaskModuleSources(name: string): string[] {
+  const stem = name.replaceAll(".", "/");
+  return [`${stem}.py`, `${stem}/__init__.py`];
+}
+
+function validTaskModuleRecord(
+  name: string,
+  record: unknown,
+): record is TaskRuntimeModuleRecord {
+  const expectedResource = `${name.replaceAll(".", "-")}.json`;
+  return (
+    pythonModuleNamePattern.test(name) &&
+    record !== null &&
+    typeof record === "object" &&
+    Reflect.get(record, "resource") === expectedResource &&
+    typeof Reflect.get(record, "version") === "string" &&
+    typeof Reflect.get(record, "signature") === "string" &&
+    Reflect.get(record, "mode") === "python" &&
+    typeof Reflect.get(record, "filename") === "string" &&
+    Reflect.get(record, "filename").startsWith(
+      "/__sagejs_task_modules__/",
+    ) &&
+    typeof Reflect.get(record, "source") === "string" &&
+    expectedTaskModuleSources(name).includes(Reflect.get(record, "source")) &&
+    sha1Pattern.test(Reflect.get(record, "signature") as string)
+  );
+}
+
+function validatedTaskManifestIdentity(
+  manifest: TaskRuntimeModuleManifest,
+  compilerFilename?: string,
+): void {
+  if (
+    !sha256Pattern.test(manifest.compilerSha256) ||
+    digest("sha256", readCompilerSource(
+      taskRuntimeCompilerFilename(compilerFilename),
+    )) !== manifest.compilerSha256
+  ) {
+    throw new Error("stale precompiled multiprocessing compiler identity");
+  }
+}
+
+function validatedTaskModuleSource(
+  sourceDirectory: string,
+  name: string,
+  record: TaskRuntimeModuleRecord,
+): void {
+  if (!expectedTaskModuleSources(name).includes(record.source)) {
+    throw new Error(`invalid precompiled multiprocessing source ${name}`);
+  }
+  const source = readResourceText(join(sourceDirectory, record.source));
+  if (digest("sha1", source) !== record.signature) {
+    throw new Error(`stale precompiled multiprocessing source ${name}`);
+  }
+}
+
+function validatedTaskModuleResource(
+  cacheDirectory: string,
+  name: string,
+  record: TaskRuntimeModuleRecord,
+): PrecompiledTaskModule {
+  const cached = JSON.parse(readResourceText(
+    join(cacheDirectory, record.resource),
+  )) as PrecompiledTaskModule;
+  if (
+    cached?.version !== record.version ||
+    cached.signature !== record.signature ||
+    cached.mode !== record.mode ||
+    cached.module !== name ||
+    typeof cached.javascriptTemplate !== "string" ||
+    !cached.javascriptTemplate.includes(
+      JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+    )
+  ) {
+    throw new Error(
+      `invalid precompiled multiprocessing module resource ${name}`,
+    );
+  }
+  return cached;
+}
+
+/** Return whether an exact module has a validated worker-runtime resource. */
+export function hasPrecompiledTaskModule(
+  name: string,
+  fallbackDirectory?: string,
+): boolean {
+  if (!pythonModuleNamePattern.test(name)) return false;
+  try {
+    const cacheDirectory = taskRuntimeModuleCacheDirectory(fallbackDirectory);
+    const manifest = JSON.parse(readResourceText(
+      join(cacheDirectory, TASK_RUNTIME_MODULE_MANIFEST),
+    )) as TaskRuntimeModuleManifest;
+    if (
+      manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
+      manifest.modules === null ||
+      typeof manifest.modules !== "object" ||
+      Array.isArray(manifest.modules) ||
+      !Object.hasOwn(manifest.modules, name)
+    ) return false;
+    validatedTaskManifestIdentity(manifest);
+    const sourceDirectory = taskRuntimeSourceDirectory();
+    for (const [moduleName, moduleRecord] of Object.entries(manifest.modules)) {
+      if (!validTaskModuleRecord(moduleName, moduleRecord)) return false;
+      validatedTaskModuleSource(
+        sourceDirectory,
+        moduleName,
+        moduleRecord,
+      );
+    }
+    const record = manifest.modules[name];
+    if (!validTaskModuleRecord(name, record)) return false;
+    validatedTaskModuleResource(cacheDirectory, name, record);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+/** Install the compiler-free allowlisted module loader in a task evaluator. */
+export function installPrecompiledTaskModuleLoader(
+  fallbackDirectory?: string,
+): boolean {
+  const cacheDirectory = taskRuntimeModuleCacheDirectory(fallbackDirectory);
+  let manifestText: string;
+  try {
+    manifestText = readResourceText(
+      join(cacheDirectory, TASK_RUNTIME_MODULE_MANIFEST),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+    throw error;
+  }
+  const manifest = JSON.parse(manifestText) as TaskRuntimeModuleManifest;
+  if (
+    manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
+    !Array.isArray(manifest.roots) ||
+    manifest.modules === null ||
+    typeof manifest.modules !== "object" ||
+    Array.isArray(manifest.modules)
+  ) {
+    throw new Error("invalid precompiled multiprocessing module manifest");
+  }
+  validatedTaskManifestIdentity(manifest);
+  for (const root of manifest.roots) {
+    if (
+      typeof root !== "string" ||
+      !pythonModuleNamePattern.test(root) ||
+      !Object.hasOwn(manifest.modules, root)
+    ) {
+      throw new Error("invalid precompiled multiprocessing module root");
+    }
+  }
+  for (const [name, record] of Object.entries(manifest.modules)) {
+    if (!validTaskModuleRecord(name, record)) {
+      throw new Error(
+        `invalid precompiled multiprocessing module record ${name}`,
+      );
+    }
+  }
+
+  const registry = Reflect.get(globalThis, "ρσ_modules") as
+    Record<string, unknown> | undefined;
+  const baselib = Reflect.get(globalThis, "__sagejs_baselib_modules__");
+  const sourceDirectory = taskRuntimeSourceDirectory();
+  for (const [name, record] of Object.entries(manifest.modules)) {
+    validatedTaskModuleSource(sourceDirectory, name, record);
+  }
+  if (registry === null || typeof registry !== "object") {
+    throw new Error("multiprocessing module registry is unavailable");
+  }
+
+  const imported = (name: string): unknown => {
+    if (own(registry, name)) return Reflect.get(registry, name);
+    if (own(baselib, name)) return Reflect.get(baselib, name);
+    return undefined;
+  };
+  const importError = (name: string): Error => {
+    const message = "No module named '" + name + "'";
+    const ImportErrorClass = Reflect.get(globalThis, "ImportError");
+    if (typeof ImportErrorClass === "function") {
+      return Reflect.construct(ImportErrorClass, [message]) as Error;
+    }
+    const error = new Error(message);
+    error.name = "ImportError";
+    return error;
+  };
+  const load = (name: string): unknown => {
+    if (!pythonModuleNamePattern.test(name)) {
+      throw new TypeError(
+        `invalid multiprocessing module name ${JSON.stringify(name)}`,
+      );
+    }
+    const existing = imported(name);
+    if (existing !== undefined) return existing;
+    const record = manifest.modules[name];
+    if (record === undefined) throw importError(name);
+    validatedTaskModuleSource(sourceDirectory, name, record);
+
+    const separator = name.lastIndexOf(".");
+    const parentName = separator < 0 ? "" : name.slice(0, separator);
+    const childName = separator < 0 ? "" : name.slice(separator + 1);
+    const parent = parentName ? load(parentName) : undefined;
+    if (
+      parent !== undefined && childName &&
+      (parent === null ||
+        (typeof parent !== "object" && typeof parent !== "function"))
+    ) throw new TypeError(`module ${parentName} is not a namespace`);
+    const namespace = Object.create(null);
+    Reflect.set(registry, name, namespace);
+    if (parent !== undefined && childName) {
+      Reflect.set(parent as object, childName, namespace);
+    }
+    const previous = Reflect.get(
+      globalThis,
+      "__sagejs_current_module_namespace__",
+    );
+    Reflect.set(
+      globalThis,
+      "__sagejs_current_module_namespace__",
+      namespace,
+    );
+    try {
+      const cached = validatedTaskModuleResource(
+        cacheDirectory,
+        name,
+        record,
+      );
+      const source = cached.javascriptTemplate.replaceAll(
+        JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+        JSON.stringify(record.filename),
+      );
+      // Each compiler-emitted module expects its ``var`` declarations to be
+      // module-local. Running raw templates at global scope lets similarly
+      // named lowered bindings in later modules overwrite earlier closures.
+      // The full runtime uses the same IIFE boundary for lazy modules.
+      runInThisContext(
+        `(function(){\n${source}\n}).call(globalThis);`,
+        { filename: record.filename },
+      );
+    } catch (error) {
+      Reflect.deleteProperty(registry, name);
+      if (parent !== undefined && childName) {
+        Reflect.deleteProperty(parent as object, childName);
+      }
+      throw error;
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(
+          globalThis,
+          "__sagejs_current_module_namespace__",
+        );
+      } else {
+        Reflect.set(
+          globalThis,
+          "__sagejs_current_module_namespace__",
+          previous,
+        );
+      }
+    }
+    if (!own(registry, name)) {
+      throw new Error(
+        `multiprocessing module ${name} did not register itself`,
+      );
+    }
+    return Reflect.get(registry, name);
+  };
+  const proxy = new Proxy(registry, {
+    get(target: Record<string, unknown>, property: string | symbol, receiver) {
+      if (Reflect.has(target, property)) {
+        return Reflect.get(target, property, receiver);
+      }
+      if (
+        typeof property === "string" &&
+        Object.hasOwn(manifest.modules, property)
+      ) {
+        return load(property);
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  Reflect.set(globalThis, "\u03c1\u03c3_modules", proxy);
+  Reflect.set(globalThis, "__sagejs_load_module__", load);
+  Reflect.set(
+    globalThis,
+    "__sagejs_precompiled_task_modules__",
+    Object.freeze(Object.keys(manifest.modules)),
+  );
+  return true;
 }
 
 export function readPlotlySource(fallbackFilename: string): string {

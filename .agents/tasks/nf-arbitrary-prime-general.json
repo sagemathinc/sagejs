@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-arbitrary-prime-general",
+  "title": "Nf Arbitrary Prime General",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certify irregular proven-prime maximal-order branches above UWORD_MAX with exact arbitrary-integer radical/multiplier fallback and independently replayable evidence",
+  "base_commit": "fbe7f487337189ebd48fd2a143859cd27ec91f0d",
+  "claims": [
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-maximal-order-selector.cjs",
+    "test/number-field-buchmann-lenstra-fallback.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Zassenhaus Round 2 p-radical/ring-of-multipliers theorem",
+    "Sage 10.9/PARI nfmaxord differential oracle"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and Sage.js exact Buchmann-Lenstra replay",
+      "Sage/PARI local basis, discriminant, and index"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.888,
+      "started_at": "2026-08-18T02:16:25.079Z",
+      "commit": "fbe7f487337189ebd48fd2a143859cd27ec91f0d",
+      "workspace_fingerprint": "43a5d581f060c07cbb18637c7fb380aa42446cbc41efca3f3f0fd3862094a208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=irregular arbitrary primes test/number-field-maximal-order-selector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.917,
+      "started_at": "2026-08-18T02:16:37.793Z",
+      "commit": "fbe7f487337189ebd48fd2a143859cd27ec91f0d",
+      "workspace_fingerprint": "43a5d581f060c07cbb18637c7fb380aa42446cbc41efca3f3f0fd3862094a208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.016,
+      "started_at": "2026-08-18T02:16:56.419Z",
+      "commit": "fbe7f487337189ebd48fd2a143859cd27ec91f0d",
+      "workspace_fingerprint": "43a5d581f060c07cbb18637c7fb380aa42446cbc41efca3f3f0fd3862094a208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.754,
+      "started_at": "2026-08-18T02:17:18.179Z",
+      "commit": "fbe7f487337189ebd48fd2a143859cd27ec91f0d",
+      "workspace_fingerprint": "43a5d581f060c07cbb18637c7fb380aa42446cbc41efca3f3f0fd3862094a208",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Irregular proven primes above UWORD_MAX now continue from the identity equation lattice through the bounded exact Buchmann--Lenstra p-radical/multiplier cycle. Construction and global certification independently replay the complete result, compare p-local discriminant valuation, preserve the regular polygon fast path, and never enter a word-prime matrix backend. The cubic (x+p)^3+p^4 at p=2^64+13 is frozen against Sage 10.9/PARI and differentially checked in CPython and Sage.js with basis, closure, index, discriminant, event, and fail-closed corruption coverage.",
+    "risks": [
+      "The existing dynamic Buchmann--Lenstra degree and iteration limits remain deliberate fail-closed resource bounds; unsupported larger irregular cases still raise instead of returning an uncertified order.",
+      "pnpm test:changed selected 172 integration-branch files against origin/main rather than this task base and was stopped during its redundant build; focused, strict, and architecture commands have current passing receipts."
+    ],
+    "next_steps": [
+      "Run the integration branch native and platform matrices after cherry-picking; this lane changes only ordinary Python and host-neutral tests but its arithmetic-algebra contract retains the repository-wide native requirement."
+    ]
+  }
+}

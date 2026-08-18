@@ -1,0 +1,139 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-om-deep",
+  "title": "Nf Maxorder Om Deep",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend certified OM/MaxMin beyond first-order linear residue keys to a bounded higher-representative and residual-extension domain with differential basis/index evidence",
+  "base_commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-maxmin.cjs",
+    "test/fixtures/number-field-om-maxmin.json",
+    "bench/number-field-om-maxmin.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/2405.13577"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage",
+      "PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.912,
+      "started_at": "2026-08-17T21:44:36.012Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "5838fa245a547cda2f7516a5a04c58447472b543fc413a8c2105fea472353189",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.676,
+      "started_at": "2026-08-17T21:49:06.718Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "5838fa245a547cda2f7516a5a04c58447472b543fc413a8c2105fea472353189",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.657,
+      "started_at": "2026-08-17T21:49:17.848Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "5838fa245a547cda2f7516a5a04c58447472b543fc413a8c2105fea472353189",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.443,
+      "started_at": "2026-08-17T21:49:38.211Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "5838fa245a547cda2f7516a5a04c58447472b543fc413a8c2105fea472353189",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.271,
+      "started_at": "2026-08-17T21:50:03.413Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "5838fa245a547cda2f7516a5a04c58447472b543fc413a8c2105fea472353189",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.621,
+      "started_at": "2026-08-17T21:52:19.638Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "b3b4657306d1c6891ead56027ca04bfe77121a8c46621af251354363e778e100",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.048,
+      "started_at": "2026-08-17T21:52:25.971Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "b3b4657306d1c6891ead56027ca04bfe77121a8c46621af251354363e778e100",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.958,
+      "started_at": "2026-08-17T21:52:45.708Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "b3b4657306d1c6891ead56027ca04bfe77121a8c46621af251354363e778e100",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extends the strict-Python OM/MaxMin lane with bounded finite residual fields F_(p^m), deterministic residual factorization, inspectable same-degree representative refinement, active-versus-optimized local-index evidence, quotient tables for nonlinear keys, and real multi-branch MaxMin. CPython and Sage.js certify identical bases through degree 16 and local index valuation 120; an offline Sage 10.9/PARI-family run proves exact maximal-order lattice equality for every completed fixture.",
+    "risks": [
+      "Degree-raising higher representatives remain explicitly incomplete; the fixture x^4 + 4*x + 4 retains requires-degree-raising-representative rather than claiming completeness.",
+      "Residual factorization is deliberately exhaustive and bounded at 200000 candidates; larger residue fields need the planned FLINT fq/fq_nmod path.",
+      "Dynamic Sage.js remains 50-630 ms on the measured corpus, so automatic selector evidence stays disabled pending source-transparent/native polynomial loops.",
+      "The base c31f545b native suite has an unrelated nine-symbol FLINT FFI ratchet mismatch for the newly integrated number-field-order resource and stale production-kernel metadata; pnpm test:native therefore cannot be a clean lane receipt."
+    ],
+    "next_steps": [
+      "Implement degree-raising MacLane valuations and higher residual operators, retaining the current fail-closed state until independently certified.",
+      "Replace bounded residual enumeration with declared FLINT fq/fq_nmod operations after measuring the crossover.",
+      "Source-transparently compile polynomial/residual loops before considering OM auto-selection.",
+      "Rerun native and Windows/arm64 matrices after the integration lane repairs the c31f545b FFI ratchets."
+    ]
+  }
+}

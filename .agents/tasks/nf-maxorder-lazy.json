@@ -1,0 +1,108 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-lazy",
+  "title": "Nf Maxorder Lazy",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement P1 lazy discriminant decomposition, composite splitting, component states, and independent maximal-order certification in strict ordinary Python",
+  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "claims": [
+    "src/lib/sagejs/number_fields/discriminant_components.py",
+    "src/lib/sagejs/number_fields/maximal_order_certification.py",
+    "test/number-field-discriminant-components.cjs",
+    "test/fixtures/number-field-maximal-order-components.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md",
+    "/home/user/upstream/Hecke.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage 10.9",
+      "GP/PARI",
+      "Hecke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "node --test test/number-field-discriminant-components.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.841,
+      "started_at": "2026-08-17T19:38:47.851Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "d47869d778d5ec5f92928003bb371dd426140fffa4edb2f2f517580b1517ec82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-discriminant-components.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.455,
+      "started_at": "2026-08-17T19:39:12.335Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "d47869d778d5ec5f92928003bb371dd426140fffa4edb2f2f517580b1517ec82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 961.177,
+      "started_at": "2026-08-17T19:39:52.711Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "aa4ab3c0731742b037144fa002671aaa27b361bcaa2f73c8f814e148b4f3831d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.762,
+      "started_at": "2026-08-17T19:56:46.167Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "aa4ab3c0731742b037144fa002671aaa27b361bcaa2f73c8f814e148b4f3831d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-discriminant-components.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.441,
+      "started_at": "2026-08-17T19:57:06.613Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "aa4ab3c0731742b037144fa002671aaa27b361bcaa2f73c8f814e148b4f3831d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented strict ordinary-Python lazy discriminant components with exact prime-power extraction, deterministic coprime refinement, bounded Pollard-rho discovery, deterministic MR64 and recursive Pocklington proofs, composite-modulus polynomial gcd splitting, Hecke-informed prefactorization, an executable adapter-driven Buchmann--Lenstra control cycle, exact decomposition certificates, and an independent order lattice/local maximality checker. CPython and Sage.js run the same source against prime powers, semiprimes, pseudoprimes, arbitrary-size primes, failed inversions, BL completion/split/resource paths, and controlled certificate corruption.",
+    "risks": [
+      "Pocklington proof construction is deliberately bounded; a large probable prime whose n-1 cannot be sufficiently factored remains probable-prime-awaiting-proof and global certification fails closed.",
+      "The executable Buchmann--Lenstra controller requires concrete order/ideal arithmetic primitives from the integration or dedicated BL lane; this lane does not alter the public NumberField path.",
+      "The required native tier restored and passed FLINT, FFLAS, graph, M4RI, and production-kernel builds, then failed pre-existing stale FFI/native ratchets caused by two number-field exports already present at the lane base; its manifest gate also needs the integration lane to register this new test because central registries were outside the claim."
+    ],
+    "next_steps": [
+      "Convert component dictionaries through maximal_order_contracts.DiscriminantComponent.from_dict and register both modules in pyrightconfig/package ownership during integration.",
+      "Wire decompose_discriminant before any sage.factor call, feed discovered splits back only to the affected local branch, and connect the concrete Buchmann--Lenstra order/ideal adapter.",
+      "Register test/number-field-discriminant-components.cjs in test/node-test-manifest.cjs and rerun the full changed gate with restored native artifacts."
+    ]
+  }
+}

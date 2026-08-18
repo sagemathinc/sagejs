@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-parallel-public-evidence",
+  "title": "Nf Opt Parallel Public Evidence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Close the production many-prime public parallel crossover gate with fresh exact sequential/parallel evidence and generic scheduler improvements only if needed",
+  "base_commit": "55465aca65b74a3fa0376d16ffda111b2b5300a9",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-local-parallel.cjs",
+    "test/number-field-maximal-order-parallel-public.cjs",
+    "bench/number-field-maximal-order-parallel-public.cjs",
+    "bench/results/number-field-maximal-order-parallel-public-final.json",
+    "bench/results/number-field-maximal-order-parallel-public-final.md",
+    "test/number-field-maximal-order-parallel-public-receipt.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-maximal-order-parallel-public-receipt.cjs",
+    "node --test test/number-field-local-parallel.cjs",
+    "pnpm test:number-field:parallel-worker:run",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Removed canonical-key wave barriers by queueing independent local branches in deterministic longest-predicted-job-first order. The final true-public fresh-process receipt has three alternating samples per mode: sequential median 67.033 seconds, parallel median 63.531 seconds, exact speedup 1.055119x; all parallel samples beat all sequential samples. All six runs have the same exact basis hash, discriminant, and index. The four-worker median RSS is 1.266 GB under the explicit 4 GiB gate. Packaged capability, randomized completion equality, fatal cancellation, strict Python, architecture, focused runtime, and immutable receipt checks pass.",
+    "risks": [
+      "The production speedup is real but modest because public selection and certification remain sequential; the conservative post-native-fallback policy is therefore still required.",
+      "The broad pnpm test:native command remains assigned to the integration lane so the final source identity runs that suite once rather than duplicating it in every optimization lane."
+    ],
+    "next_steps": [
+      "Cherry-pick both lane commits onto maximal-order and register the immutable receipt test in the central Node manifest.",
+      "Run the single consolidated pnpm test:native validation from the final integration source identity."
+    ]
+  }
+}

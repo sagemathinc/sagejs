@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-parallel",
+  "title": "Nf Maxorder Parallel",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement deterministic bounded P5 local-work scheduling, canonical serialization, cancellation, CRT/HNF merge planning, and sequential-equivalence tests",
+  "base_commit": "ef0595fb8da441f20493f2036ccff338c83a2b03",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "test/number-field-local-parallel.cjs",
+    "bench/number-field-local-parallel.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sequential maximal-order implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-local-parallel.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-local-parallel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.181,
+      "started_at": "2026-08-17T20:25:10.875Z",
+      "commit": "cc3b4c4db585d33f4ab73e01933201bb5826f26e",
+      "workspace_fingerprint": "156b9689914e2ec9c184999c94726abbf63566e4ae7b11c29886cd16b463be47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.334,
+      "started_at": "2026-08-17T20:25:41.216Z",
+      "commit": "cc3b4c4db585d33f4ab73e01933201bb5826f26e",
+      "workspace_fingerprint": "156b9689914e2ec9c184999c94726abbf63566e4ae7b11c29886cd16b463be47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.149,
+      "started_at": "2026-08-17T20:26:06.658Z",
+      "commit": "cc3b4c4db585d33f4ab73e01933201bb5826f26e",
+      "workspace_fingerprint": "8eb7a5b0a2e8713ebd0c4e65dafa8ed01ee9708861eb7da02925eb318ad13a3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.702,
+      "started_at": "2026-08-17T20:26:43.968Z",
+      "commit": "cc3b4c4db585d33f4ab73e01933201bb5826f26e",
+      "workspace_fingerprint": "8eb7a5b0a2e8713ebd0c4e65dafa8ed01ee9708861eb7da02925eb318ad13a3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-local-parallel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.224,
+      "started_at": "2026-08-17T20:28:30.792Z",
+      "commit": "cc3b4c4db585d33f4ab73e01933201bb5826f26e",
+      "workspace_fingerprint": "8eb7a5b0a2e8713ebd0c4e65dafa8ed01ee9708861eb7da02925eb318ad13a3e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the P5 strict-Python isolation boundary: canonical immutable polynomial/component job tuples embed the shared DiscriminantComponent schema, and canonical result tuples embed parent-validated LocalOrderResult and OrderBasis schemas without native resources or host identity. A measured selector keeps tiny runs sequential, caps workers and conservative peak memory, executes larger work in bounded asynchronous waves, and cancels all later waves on fatal certification. Result assembly is independent of completion order and emits same-prime intersection/HNF followed by balanced coprime CRT/HNF steps. The dedicated bench-1 linux-x64 witness measured 42.964 s sequential versus 35.926 s with four workers (1.196x) for eight deterministic four-million-iteration branches, with identical canonical results and merge plans. Native Windows CPython 3.13 exercised the explicit no-worker capability path and selected one sequential worker.",
+    "risks": [
+      "The current Sage.js worker host exposes completion only at map-job granularity, so a fatal result terminates every later bounded wave but cannot interrupt siblings already executing in the same wave.",
+      "Fresh evaluator compilation is expensive and host-load sensitive; the conservative 35-second total/3-second branch threshold is benchmark-derived, and production selectors must supply realistic predicted_micros rather than treating it as mathematical data."
+    ],
+    "next_steps": [
+      "Add local_parallel.py to pyrightconfig.json and the focused test to the central node manifest in the integration lane.",
+      "Have the global maximal-order engine pass its module-level local solver to run_local_jobs and consume run[2] canonical results, run[3] merge steps, and run[4] resource evidence.",
+      "Retain the sequential fallback as the mathematical oracle and tune only the predicted-work model when real Round-4/OM many-prime corpus timings replace the synthetic crossover witness."
+    ]
+  }
+}

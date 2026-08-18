@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 82,
-    "declared-ffi": 400,
-    "declared-ffi-resource": 27,
-    "napi-export": 300,
+    "classified-native-file": 88,
+    "declared-ffi": 408,
+    "declared-ffi-resource": 29,
+    "napi-export": 301,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -328,6 +328,44 @@
       "close_export": "ffiNmodMatrixClose",
       "clear_symbol": "sagejs_nmod_matrix_clear",
       "size_symbol": "sagejs_nmod_matrix_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:number_field_analysis_resource",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "NumberFieldAnalysisResource",
+      "abi_type": "sagejs_number_field_analysis_resource_t",
+      "close_export": "ffiNumberFieldAnalysisResourceClose",
+      "clear_symbol": "sagejs_number_field_analysis_resource_clear",
+      "size_symbol": "sagejs_number_field_analysis_resource_allocated_bytes",
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiNumberFieldAnalysisResourceCopyBytes",
+        "data_symbol": "sagejs_number_field_analysis_resource_data",
+        "length_symbol": "sagejs_number_field_analysis_resource_length",
+        "wasm": false
+      },
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:number_field_order_resource",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "NumberFieldOrderResource",
+      "abi_type": "sagejs_number_field_order_resource_t",
+      "close_export": "ffiNumberFieldOrderResourceClose",
+      "clear_symbol": "sagejs_number_field_order_resource_clear",
+      "size_symbol": "sagejs_number_field_order_resource_allocated_bytes",
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiNumberFieldOrderResourceCopyBytes",
+        "data_symbol": "sagejs_number_field_order_resource_data",
+        "length_symbol": "sagejs_number_field_order_resource_length",
+        "wasm": false
+      },
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -4405,6 +4443,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:number_field_analyze_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_analyze_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldAnalyzeResource",
+      "symbol": "sagejs_number_field_analyze_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_from_polynomial_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_from_polynomial_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderFromPolynomialResource",
+      "symbol": "sagejs_number_field_order_from_polynomial_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:number_field_order_maximal_at_primes",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -4424,6 +4484,72 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNumberFieldOrderPmaximal",
       "symbol": "sagejs_number_field_order_pmaximal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_degree",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_degree",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceDegree",
+      "symbol": "sagejs_number_field_order_resource_degree",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_native_primes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_native_primes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceNativePrimes",
+      "symbol": "sagejs_number_field_order_resource_native_primes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_resolved_primes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_resolved_primes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceResolvedPrimes",
+      "symbol": "sagejs_number_field_order_resource_resolved_primes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_status",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_status",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceStatus",
+      "symbol": "sagejs_number_field_order_resource_status",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_supplied_primes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_supplied_primes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceSuppliedPrimes",
+      "symbol": "sagejs_number_field_order_resource_supplied_primes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_resource_unramified_primes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_resource_unramified_primes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderResourceUnramifiedPrimes",
+      "symbol": "sagejs_number_field_order_resource_unramified_primes",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -5226,6 +5352,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecCompletedCentralDerivatives",
       "symbol": "sagejs_ec_completed_central_derivatives",
+      "disposition": "retain-host-adapter",
+      "family": "elliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecLseriesValues",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecLseriesValues",
+      "symbol": "sagejs_ec_lseries_values",
       "disposition": "retain-host-adapter",
       "family": "elliptic"
     },
@@ -7829,6 +7965,22 @@
       "lane": "native-compiler"
     },
     {
+      "id": "native-file:bench/number-field-analysis-resource-witness.c",
+      "kind": "classified-native-file",
+      "path": "bench/number-field-analysis-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/number-field-order-resource-witness.c",
+      "kind": "classified-native-file",
+      "path": "bench/number-field-order-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
       "id": "native-file:bench/rforest/portable_trace_harness.c",
       "kind": "classified-native-file",
       "path": "bench/rforest/portable_trace_harness.c",
@@ -7965,10 +8117,26 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:packages/flint/include/sagejs/number_field_order_ffi.h",
       "kind": "classified-native-file",
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
       "disposition": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "disposition": "mixed-native",
       "review_status": "audited",
       "lane": "integration"
     },
@@ -8315,6 +8483,22 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/test/number_field_order_ffi.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/number_field_order_ffi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/test/number_field_order_resource_ffi.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/number_field_order_resource_ffi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/graph/include/sagejs/igraph_ffi.h",

@@ -967,20 +967,22 @@ async function lowerSource(source, filename, options = {}) {
     foreignLibraries: Array.from(new Map(
       importedForeignLibraries
         .filter((foreign) => selectedForeignLibraryIds.has(foreign.library.id))
-        .map((foreign) => [
-          foreign.library.id,
-          {
-            id: foreign.library.id,
-            declarationHash: foreign.declarationHash ??
-              foreign.declaration_identity.split("@")[1],
-            declarationIdentity: foreign.declarationIdentity ??
-              foreign.declaration_identity,
-            pythonModule: foreign.library.python_module,
-            dynamic: foreign.library.dynamic,
-            native: foreign.library.native,
-            resources: foreign.resources ?? [foreign],
-          },
-        ]),
+        .map((foreign) => {
+          const declarationHash = foreign.declarationHash ??
+            foreign.declaration_identity.split("@")[1];
+          return [
+            foreign.library.id,
+            {
+              id: foreign.library.id,
+              declarationHash,
+              declarationIdentity: `${foreign.library.id}@${declarationHash}`,
+              pythonModule: foreign.library.python_module,
+              dynamic: foreign.library.dynamic,
+              native: foreign.library.native,
+              resources: foreign.resources ?? [foreign],
+            },
+          ];
+        }),
     ).values()).sort((left, right) => left.id.localeCompare(right.id)),
     callGraph: Object.fromEntries(
       selected.map((fn) => [fn.name, fn.dependencies || []]),

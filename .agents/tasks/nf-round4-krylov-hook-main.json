@@ -1,0 +1,75 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round4-krylov-hook-main",
+  "title": "Round4 packed Krylov hook",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the packed word-prime Krylov minimal-polynomial kernel into modified Round4 with exact CRT reconstruction, fail-closed certification, and focused vector010 regressions",
+  "base_commit": "13780d32d4fc22a866e12e8b8daa36f3e5968b1f",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "test/number-field-round4.cjs",
+    "bench/number-field-round4-primary.cjs"
+  ],
+  "dependencies": [
+    "nf-round4-krylov"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "direct-rational",
+      "direct-word-prime"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=deep primary Round-4 stages construct frozen PARI local orders|bounded modular characteristic reconstruction equals direct exact arithmetic test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.584,
+      "started_at": "2026-08-18T02:37:25.701Z",
+      "commit": "13780d32d4fc22a866e12e8b8daa36f3e5968b1f",
+      "workspace_fingerprint": "875335ee3da2ffdb781c597e5d1bbe377452f3011491df9cf60f282720180da9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.149,
+      "started_at": "2026-08-18T02:37:45.969Z",
+      "commit": "13780d32d4fc22a866e12e8b8daa36f3e5968b1f",
+      "workspace_fingerprint": "875335ee3da2ffdb781c597e5d1bbe377452f3011491df9cf60f282720180da9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Round4 now reconstructs noncyclic regular-representation characteristic polynomials through the packed word-prime Krylov kernel, deterministic CRT coefficient bounds, exact annihilation, and the certified field-degree power identity. Frozen #2510/#008 and a direct proper-subfield characteristic differential pass.",
+    "risks": [
+      "Integration must raise number-field-algorithms to package-graph layer 5 and declare matrix-native-kernels as a dependency; this coordinated central edit is intentionally delegated to the integration lane.",
+      "The repository-wide native tier is delegated to integration; the reusable kernel's native/dynamic/CPython differential suite passed in its prerequisite checkpoint.",
+      "Current vector010 call48 is cyclic and completes in about 1.5 seconds; the remaining timeout occurs after call48 in residue refinement, so this hook does not claim vector010 completion."
+    ],
+    "next_steps": [
+      "Apply the delegated package-graph layer/dependency edit and rerun pnpm architecture:check on the integrated tree.",
+      "Profile and bound the post-call48 residue matching/refinement stage without widening characteristic call limits."
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-om-auto",
+  "title": "Nf Opt Om Auto",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enable measured complete OM/MaxMin auto-selection for input-derived vector429-class local regions with exact fallback and decision evidence",
+  "base_commit": "3ad58f0073d05e9d24c934aeabeda9037b94fee7",
+  "claims": [
+    "test/number-field-om-auto-selector.cjs",
+    "bench/number-field-om-auto-selector.cjs",
+    "bench/results/number-field-om-auto-selector.json",
+    "bench/results/number-field-om-auto-selector.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sagejs-dynamic",
+      "sagejs-production-native",
+      "pari-frozen-lattice",
+      "round2",
+      "round4"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-om-auto-selector.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.644,
+      "started_at": "2026-08-18T09:54:51.033Z",
+      "commit": "3ad58f0073d05e9d24c934aeabeda9037b94fee7",
+      "workspace_fingerprint": "de5a3d73e2f1722942c3a425d12d6f8c76b63286fdd59975b0f76a8d4c0422c9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Calibrated the production OM selector on vector429 with fresh-process hard bounds. Only p=7 has a complete measured crossover; p=2, p=3, and p=5 remain explicitly fail-closed before OM work. Added an opt-in competitor matrix, durable raw evidence, and engine-level suppression tests.",
+    "risks": [
+      "The p=2 native boundary remains the largest uncached vector429 tail.",
+      "Concurrent project profiling made the latest censored samples lower bounds; no selection claim relies on them."
+    ],
+    "next_steps": [
+      "Optimize the compiled p=2 OM type/proof pipeline in its separate lane and extend eligibility only after a complete end-to-end crossover and exact lattice proof.",
+      "The integration lane owns the final build, focused selector rerun, and native-suite run after the still-active Round-2/Round-4 changes land; this lane's repair build was stopped to avoid distorting shared performance probes."
+    ]
+  }
+}

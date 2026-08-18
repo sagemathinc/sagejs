@@ -19,6 +19,7 @@ Start with:
 - [Measuring execution](timing.md)
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
+- [Certified number-field maximal orders](number-field-maximal-orders.md)
 - [Plotting](../PLOTTING.md)
 - [Hyperelliptic curves and local Frobenius data](hyperelliptic-curves.md)
 

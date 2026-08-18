@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-proof-path",
+  "title": "Proof-carrying maximal-order public path",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate one immutable source-bound packed field-analysis proof with no duplicate generic closure or per-prime replay, preserving generic and dynamic oracles and recording public A/B evidence",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource-python.cjs",
+    "test/number-field-analysis-public-hook.cjs",
+    "bench/number-field-analysis-public-hook.cjs",
+    "bench/results/number-field-proof-path-m1.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "generic field-analysis decoder and checker",
+      "controlled corruption rejection",
+      "existing maximal-order public result"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

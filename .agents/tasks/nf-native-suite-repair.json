@@ -1,0 +1,145 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-native-suite-repair",
+  "title": "Nf Native Suite Repair",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Repair authoritative native combined-suite expectations and production-kernel publication/autoload correctness",
+  "base_commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+  "claims": [
+    ".agents/lanes.json",
+    "test/ffi.cjs",
+    "test/fflas-dense-prime.cjs",
+    "test/production-native-kernels.cjs",
+    "architecture/native-kernels.json",
+    "tools/native-kernel/ir.cjs",
+    "scripts/build-production-native-kernels.cjs",
+    "scripts/native-worktree-cache.cjs",
+    "scripts/bootstrap.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "combined native Node suite"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/ffi.cjs test/production-native-kernels.cjs test/fflas-dense-prime.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.126,
+      "started_at": "2026-08-17T23:31:23.501Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "c54ea62686c693b177e18a749f3c7fbf134f955f6a41a1499d28d9ed6f06e03e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.973,
+      "started_at": "2026-08-17T23:31:30.353Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "c54ea62686c693b177e18a749f3c7fbf134f955f6a41a1499d28d9ed6f06e03e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.268,
+      "started_at": "2026-08-17T23:31:52.046Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "c54ea62686c693b177e18a749f3c7fbf134f955f6a41a1499d28d9ed6f06e03e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs test/production-native-kernels.cjs test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.266,
+      "started_at": "2026-08-17T23:32:29.568Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "c54ea62686c693b177e18a749f3c7fbf134f955f6a41a1499d28d9ed6f06e03e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.326,
+      "started_at": "2026-08-17T23:34:29.451Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "92daeb88f165691265ee952299521fbfdedcd9e2f94d52cc42c7e0ea58050c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.433,
+      "started_at": "2026-08-17T23:34:36.494Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "92daeb88f165691265ee952299521fbfdedcd9e2f94d52cc42c7e0ea58050c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.612,
+      "started_at": "2026-08-17T23:34:57.652Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "92daeb88f165691265ee952299521fbfdedcd9e2f94d52cc42c7e0ea58050c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs test/production-native-kernels.cjs test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.573,
+      "started_at": "2026-08-17T23:35:44.034Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "92daeb88f165691265ee952299521fbfdedcd9e2f94d52cc42c7e0ea58050c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.809,
+      "started_at": "2026-08-17T23:37:32.049Z",
+      "commit": "b315060d2dbb7c13b7eae95f0043feb0468e359d",
+      "workspace_fingerprint": "92daeb88f165691265ee952299521fbfdedcd9e2f94d52cc42c7e0ea58050c1f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Publish library-level FFI compatibility identities, restore all current public source-transparent production entry points to the native manifest, and ratchet every production module through strict autoload coverage. Refresh the bootstrap command expectation and the now-authoritative wrong-resource diagnostic exposed by a functioning compiled wrapper.",
+    "risks": [
+      "Production artifacts are generated and ignored; integration must rebuild them after cherry-picking this source change."
+    ],
+    "next_steps": [
+      "Run the full pnpm test:native sequence from the integration branch so the shared cache republishes artifacts under the corrected compiler fingerprint."
+    ]
+  }
+}

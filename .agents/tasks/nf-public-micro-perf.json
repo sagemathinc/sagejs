@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-public-micro-perf",
+  "title": "Nf Public Micro Perf",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile and safely reduce warm public maximal_order latency below the 2 ms microcase gate while preserving exact independent certification and cache identity",
+  "base_commit": "56e2e239a70c8e556c437134b4eb5ad6dff74d14",
+  "claims": [
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/maximal_order.py",
+    "test/number-field-maximal-order-public-micro-perf.cjs",
+    "bench/number-field-maximal-order-public-micro-perf.cjs",
+    "bench/results/number-field-maximal-order-public-micro-perf.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage /home/user/bin/sagelite exact maximal-order basis and discriminant",
+      "Independent maximal_order_certificate corruption checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
