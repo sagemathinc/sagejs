@@ -18,7 +18,7 @@ body.
 
 from __future__ import annotations
 
-from sagejs.ffi.flint import fmpz_mat_charpoly, fmpz_mat_det
+from sagejs.ffi.flint import fmpq_mat_solve, fmpz_mat_charpoly, fmpz_mat_det
 from sagejs.native import IntegerBuffer, native, uint64
 
 # Stable control statuses.  Unsupported inputs and storage exhaustion are
@@ -30,6 +30,7 @@ ROUND4_STATE_INVALID_PRIME = -2
 ROUND4_STATE_INVALID_DENOMINATOR = -3
 ROUND4_STATE_NONINTEGRAL = -4
 ROUND4_STATE_WRONG_COVOLUME = -5
+ROUND4_STATE_ZERO_DIVISOR = -6
 
 
 @native
@@ -409,6 +410,134 @@ def packed_round4_exact_characteristic(
     control[0] = 1
     control[1] = denominator_exponent
     control[2] = 0
+    return True
+
+
+@native
+def packed_round4_exact_quotient(
+    control: IntegerBuffer,
+    output: IntegerBuffer,
+    solution_numerators: IntegerBuffer,
+    solution_denominators: IntegerBuffer,
+    matrix_workspace: IntegerBuffer,
+    matrix_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    defining: IntegerBuffer,
+    dividend: IntegerBuffer,
+    divisor: IntegerBuffer,
+    degree: uint64,
+) -> bool:
+    """Solve one exact packed field quotient and certify multiply-back.
+
+    Field elements use the canonical common-denominator representation
+    `[denominator, numerator_0, ..., numerator_(n-1)]`.  The kernel builds
+    the divisor's exact regular representation, asks FLINT to solve its one
+    rational right-hand side, canonicalizes the solution into `output`, and
+    accepts it only after exact cross-multiplied matrix recovery.
+
+    `control[0]` is the stable status and `control[3]` is the caller's
+    monotone quotient-transition index.  The explicit matrix/right/solution
+    buffers make every allocation caller-owned and keep the ordinary source
+    body usable as the dynamic differential oracle.
+    """
+    zero = degree - degree
+    if degree == zero:
+        if len(control) > 0:
+            control[0] = -1
+        return False
+    one = degree // degree
+    width = degree + one
+    square = degree * degree
+    valid = len(control) >= 4
+    if len(output) != width or len(defining) != width:
+        valid = False
+    if len(dividend) != width or len(divisor) != width:
+        valid = False
+    if len(solution_numerators) != degree or len(solution_denominators) != degree:
+        valid = False
+    if len(matrix_workspace) != square or len(matrix_denominators) != square:
+        valid = False
+    if len(right_numerators) != degree or len(right_denominators) != degree:
+        valid = False
+    if not valid:
+        if len(control) > 0:
+            control[0] = -1
+        return False
+    if defining[degree] != one:
+        control[0] = 0
+        return False
+    if dividend[zero] <= zero or divisor[zero] <= zero:
+        control[0] = -3
+        return False
+    divisor_nonzero = False
+    for index in range(degree):
+        if divisor[index + one] != zero:
+            divisor_nonzero = True
+    if not divisor_nonzero:
+        control[0] = -6
+        return False
+    matrix_completed = _packed_round4_fill_exact_multiplication_matrix(
+        matrix_workspace,
+        defining,
+        divisor,
+        degree,
+    )
+    for index in range(square):
+        matrix_denominators[index] = divisor[zero]
+    for index in range(degree):
+        right_numerators[index] = dividend[index + one]
+        right_denominators[index] = dividend[zero]
+    solve_completed = fmpq_mat_solve(
+        solution_numerators,
+        solution_denominators,
+        matrix_workspace,
+        matrix_denominators,
+        right_numerators,
+        right_denominators,
+        degree,
+        one,
+    )
+    if not matrix_completed or not solve_completed:
+        control[0] = 0
+        return False
+    integer_one = divisor[zero] // divisor[zero]
+    integer_zero = integer_one - integer_one
+    common_denominator = integer_one
+    for index in range(degree):
+        denominator = solution_denominators[index]
+        if denominator <= zero:
+            control[0] = 0
+            return False
+        common_denominator = (
+            common_denominator
+            // _packed_integer_gcd(common_denominator, denominator)
+            * denominator
+        )
+    content = common_denominator
+    for index in range(degree):
+        numerator = solution_numerators[index] * (
+            common_denominator // solution_denominators[index]
+        )
+        output[index + one] = numerator
+        content = _packed_integer_gcd(content, numerator)
+    output[zero] = common_denominator // content
+    for index in range(degree):
+        output[index + one] //= content
+    # Verify `(M / divisor_denominator) * output == dividend` without
+    # constructing any host rationals.
+    for row in range(degree):
+        recovered = integer_zero
+        for column in range(degree):
+            recovered += matrix_workspace[row * degree + column] * output[column + one]
+        recovered *= dividend[zero]
+        expected = divisor[zero] * dividend[row + one] * output[zero]
+        if recovered != expected:
+            control[0] = 0
+            return False
+    control[0] = 1
+    control[1] = zero
+    control[2] = zero
     return True
 
 

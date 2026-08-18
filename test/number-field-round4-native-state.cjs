@@ -72,9 +72,10 @@ async function main() {
   const program = String.raw`
 from sagejs.native import is_compiled
 from sagejs.number_fields.round4 import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
-from sagejs.number_fields.round4_state_kernel import packed_round4_exact_characteristic, packed_round4_padic_characteristic, packed_round4_power_basis_covolume
+from sagejs.number_fields.round4_state_kernel import packed_round4_exact_characteristic, packed_round4_exact_quotient, packed_round4_padic_characteristic, packed_round4_power_basis_covolume
 
 assert is_compiled(packed_round4_exact_characteristic)
+assert is_compiled(packed_round4_exact_quotient)
 assert is_compiled(packed_round4_padic_characteristic)
 assert is_compiled(packed_round4_power_basis_covolume)
 
@@ -103,6 +104,33 @@ def exact_event(defining, packed, prime, transition):
         kernel_integer_buffer(packed_round4_exact_characteristic, defining),
         kernel_integer_buffer(packed_round4_exact_characteristic, packed),
         kernel_integer_buffer(packed_round4_exact_characteristic, [prime]),
+        degree,
+    )
+    return ok, integer_buffer_values(control), integer_buffer_values(output)
+
+def quotient_event(defining, dividend, divisor, transition):
+    degree = len(defining) - 1
+    kernel = packed_round4_exact_quotient
+    control = kernel_integer_buffer(kernel, [0, 0, 0, transition])
+    output = kernel_integer_zeros(kernel, degree + 1, 96)
+    solution_numerators = kernel_integer_zeros(kernel, degree, 96)
+    solution_denominators = kernel_integer_zeros(kernel, degree, 96)
+    matrix_workspace = kernel_integer_zeros(kernel, degree * degree, 96)
+    matrix_denominators = kernel_integer_zeros(kernel, degree * degree, 96)
+    right_numerators = kernel_integer_zeros(kernel, degree, 96)
+    right_denominators = kernel_integer_zeros(kernel, degree, 96)
+    ok = kernel(
+        control,
+        output,
+        solution_numerators,
+        solution_denominators,
+        matrix_workspace,
+        matrix_denominators,
+        right_numerators,
+        right_denominators,
+        kernel_integer_buffer(kernel, defining),
+        kernel_integer_buffer(kernel, dividend),
+        kernel_integer_buffer(kernel, divisor),
         degree,
     )
     return ok, integer_buffer_values(control), integer_buffer_values(output)
@@ -144,6 +172,27 @@ for transition, (defining, packed, prime) in enumerate(small):
     centered = [value - modulus if value > modulus // 2 else value for value in centered]
     assert integer_buffer_values(poutput) == centered
     assert integer_buffer_values(pcontrol)[3] == transition
+
+# Exact quotients use the same packed coordinates and independently replay
+# against a rational linear solve.  Mixed input denominators exercise the
+# canonical common-denominator output path.
+quotients = [
+    ([1, 1, 1], [3, 5, -2], [1, 1, 2]),
+    ([-2, 0, 0, 1], [2, -3, 7, 5], [3, 2, -1, 4]),
+    ([3, -1, 2, 0, 1], [5, 8, -3, 2, 11], [2, -1, 4, 3, 5]),
+]
+for transition, (defining, dividend, divisor) in enumerate(quotients):
+    ok, control, actual = quotient_event(
+        defining,
+        dividend,
+        divisor,
+        20 + transition,
+    )
+    assert ok and control == [1, 0, 0, 20 + transition]
+    multiplication = matrix(QQ, reference_matrix(defining, divisor)) / divisor[0]
+    right = vector(QQ, [QQ(value) / dividend[0] for value in dividend[1:]])
+    expected = list(multiplication.solve_right(right))
+    assert [QQ(value) / actual[0] for value in actual[1:]] == expected
 
 # A genuine high-denominator vector010 transition remains exact.  This catches
 # the denominator normalization and large-output storage path that motivated
@@ -231,6 +280,13 @@ assert not packed_round4_exact_characteristic(
     2,
 )
 assert integer_buffer_values(bad_control)[0] == -1
+zero_ok, zero_control, _ = quotient_event(
+    [1, 0, 1],
+    [1, 1, 0],
+    [1, 0, 0],
+    82,
+)
+assert not zero_ok and zero_control == [-6, 0, 0, 82]
 print('round4 native-state kernels: ok')
 `;
   const run = spawnSync(process.execPath, [sagejs, "--python"], {
