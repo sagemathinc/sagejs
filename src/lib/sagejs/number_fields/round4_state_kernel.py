@@ -21,7 +21,6 @@ from __future__ import annotations
 from sagejs.ffi.flint import fmpz_mat_charpoly
 from sagejs.native import IntegerBuffer, native, uint64
 
-
 # Stable control statuses.  Unsupported inputs and storage exhaustion are
 # capability results; negative statuses are mathematical invariant failures.
 ROUND4_STATE_OK = 1

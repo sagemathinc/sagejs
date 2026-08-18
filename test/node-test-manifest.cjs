@@ -81,6 +81,7 @@ const integration = [
   "test/number-field-om-length8.cjs",
   "test/number-field-round4.cjs",
   "test/number-field-round4-crt-batch.cjs",
+  "test/number-field-round4-native-state.cjs",
   "test/word-prime-krylov.cjs",
   "test/coverage-python-stdlib.cjs",
   "test/coverage-graphics3d.cjs",

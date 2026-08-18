@@ -441,6 +441,20 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-round4-state-production",
+      "source": "src/lib/sagejs/number_fields/round4_state_kernel.py",
+      "functions": [
+        "packed_round4_exact_characteristic",
+        "packed_round4_padic_characteristic"
+      ],
+      "semantic_domain": "packed exact and p-adic characteristic-polynomial state events for certified modified Round-4 residue refinement",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "randomized-exact-controls"],
+      "benchmark": "bench:number-field-round4-native-state",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [

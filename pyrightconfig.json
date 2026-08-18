@@ -54,6 +54,7 @@
     "src/lib/sagejs/number_fields/om_types.py",
     "src/lib/sagejs/number_fields/order_resource.py",
     "src/lib/sagejs/number_fields/round4.py",
+    "src/lib/sagejs/number_fields/round4_state_kernel.py",
     "src/lib/sagejs/number_fields/maximal_order.py",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
     "src/lib/sage/__init__.py",
