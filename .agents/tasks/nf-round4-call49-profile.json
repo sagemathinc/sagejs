@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round4-call49-profile",
+  "title": "Round4 call49 residue-gamma profile",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Diagnose the frozen vector010 call49 residue-gamma path, durably isolate its first over-180-second exact substage, and apply at most one generic theorem-backed exact optimization",
+  "base_commit": "fd8afa31c5b9eb6e99ed2c009a083e2d8dc52101",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "test/number-field-round4.cjs",
+    "bench/number-field-round4-primary.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "frozen-vector010-call49",
+      "exact-recovery",
+      "corruption-rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Bounded replay isolates the apparent post-call49 timeout as a missing production binding, not a Round4 arithmetic substage. A manually compiled same-source word-prime Krylov kernel reaches frozen call49 in 22.43 seconds; call49 matrix assembly takes 0.10 seconds, its direct exact characteristic polynomial takes 0.083 seconds, residue matching immediately reaches call50, and call50's modular characteristic polynomial takes 1.83 seconds over 124 primes. The complete vector010 power-basis search then finishes in 56.02 seconds at e=16, f=2, 67 characteristic calls, 24 modular calls, and 2901 primes. No source, test, or benchmark changes are justified.",
+    "risks": [
+      "The normal pnpm build leaves word_prime_krylov_minimal_polynomial dynamically bound because the existing source-transparent kernel is absent from architecture/native-kernels.json; is_compiled returns False.",
+      "Under that unbound dynamic fallback, even the unchanged call-limit-48 checkpoint exceeded 180 seconds before reaching call49, so that timeout cannot be attributed to residue-gamma, residue matching, beta correction, or later refinement.",
+      "The successful 56-second replay used the existing same-source native kernel from a temporary diagnostic cache; it did not alter mathematical bounds or force CRT routing."
+    ],
+    "next_steps": [
+      "Register src/lib/sagejs/kernels/matrix/word_prime_krylov.py as a production source-transparent kernel in the integration lane and rebuild.",
+      "Require is_compiled(word_prime_krylov_minimal_polynomial) in the production registration regression before interpreting vector010 wall-clock results.",
+      "After production registration, run the existing vector010 call-limit regression and the complete verify=False power-basis replay without a diagnostic native-cache override."
+    ]
+  }
+}
