@@ -1,0 +1,4200 @@
+{
+  "curves": {
+    "even_monic": {
+      "discriminant": "489689344",
+      "f": [
+        1,
+        0,
+        3,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1
+      ]
+    },
+    "odd_monic_sparse": {
+      "discriminant": "-870199",
+      "f": [
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "paper_dense": {
+      "discriminant": "-531561521823871",
+      "f": [
+        19,
+        17,
+        13,
+        11,
+        7,
+        5,
+        3,
+        2
+      ]
+    }
+  },
+  "normalization": {
+    "congruence": "L_p(T)=det(I-T*W_p) mod p",
+    "equation": "y^2=f(x)",
+    "hasse_witt": "w[i][j]=[x^(p*(i+1)-(j+1))] f^((p-1)/2) mod p",
+    "polynomial_coefficients": "ascending powers of T"
+  },
+  "records": [
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 9,
+      "hasse_witt": [
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          2,
+          2
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        9,
+        17,
+        45,
+        75,
+        125
+      ],
+      "lpolynomial_first_half": [
+        3,
+        9,
+        17
+      ],
+      "p": 5,
+      "residues_mod_p": [
+        3,
+        4,
+        2
+      ],
+      "sage_weil_candidate_count": 28
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 8,
+      "hasse_witt": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        0,
+        21,
+        0,
+        147,
+        0,
+        343
+      ],
+      "lpolynomial_first_half": [
+        0,
+        21,
+        0
+      ],
+      "p": 7,
+      "residues_mod_p": [
+        0,
+        0,
+        0
+      ],
+      "sage_weil_candidate_count": 27
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 21,
+      "hasse_witt": [
+        [
+          6,
+          4,
+          8
+        ],
+        [
+          0,
+          7,
+          8
+        ],
+        [
+          0,
+          0,
+          6
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        7,
+        42,
+        164,
+        546,
+        1183,
+        2197
+      ],
+      "lpolynomial_first_half": [
+        7,
+        42,
+        164
+      ],
+      "p": 13,
+      "residues_mod_p": [
+        7,
+        3,
+        8
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 21,
+      "hasse_witt": [
+        [
+          12,
+          15,
+          2
+        ],
+        [
+          0,
+          2,
+          8
+        ],
+        [
+          8,
+          8,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        29,
+        44,
+        493,
+        867,
+        4913
+      ],
+      "lpolynomial_first_half": [
+        3,
+        29,
+        44
+      ],
+      "p": 17,
+      "residues_mod_p": [
+        3,
+        12,
+        10
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 23,
+      "hasse_witt": [
+        [
+          6,
+          6,
+          15
+        ],
+        [
+          15,
+          10,
+          12
+        ],
+        [
+          9,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        25,
+        37,
+        475,
+        1083,
+        6859
+      ],
+      "lpolynomial_first_half": [
+        3,
+        25,
+        37
+      ],
+      "p": 19,
+      "residues_mod_p": [
+        3,
+        6,
+        18
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 29,
+      "hasse_witt": [
+        [
+          21,
+          6,
+          20
+        ],
+        [
+          20,
+          20,
+          10
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        5,
+        24,
+        138,
+        552,
+        2645,
+        12167
+      ],
+      "lpolynomial_first_half": [
+        5,
+        24,
+        138
+      ],
+      "p": 23,
+      "residues_mod_p": [
+        5,
+        1,
+        0
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 41,
+      "hasse_witt": [
+        [
+          17,
+          26,
+          1
+        ],
+        [
+          9,
+          26,
+          12
+        ],
+        [
+          4,
+          8,
+          4
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        11,
+        77,
+        454,
+        2233,
+        9251,
+        24389
+      ],
+      "lpolynomial_first_half": [
+        11,
+        77,
+        454
+      ],
+      "p": 29,
+      "residues_mod_p": [
+        11,
+        19,
+        19
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 28,
+      "hasse_witt": [
+        [
+          25,
+          21,
+          17
+        ],
+        [
+          6,
+          10,
+          10
+        ],
+        [
+          24,
+          12,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -4,
+        -1,
+        72,
+        -31,
+        -3844,
+        29791
+      ],
+      "lpolynomial_first_half": [
+        -4,
+        -1,
+        72
+      ],
+      "p": 31,
+      "residues_mod_p": [
+        27,
+        30,
+        10
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 41,
+      "hasse_witt": [
+        [
+          24,
+          2,
+          33
+        ],
+        [
+          12,
+          8,
+          25
+        ],
+        [
+          0,
+          0,
+          2
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        47,
+        219,
+        1739,
+        4107,
+        50653
+      ],
+      "lpolynomial_first_half": [
+        3,
+        47,
+        219
+      ],
+      "p": 37,
+      "residues_mod_p": [
+        3,
+        10,
+        34
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 41,
+      "hasse_witt": [
+        [
+          8,
+          21,
+          25
+        ],
+        [
+          31,
+          17,
+          21
+        ],
+        [
+          33,
+          17,
+          17
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        -1,
+        -370,
+        -41,
+        -1681,
+        68921
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        -1,
+        -370
+      ],
+      "p": 41,
+      "residues_mod_p": [
+        40,
+        40,
+        40
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 37,
+      "hasse_witt": [
+        [
+          40,
+          5,
+          3
+        ],
+        [
+          27,
+          13,
+          22
+        ],
+        [
+          34,
+          34,
+          40
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -7,
+        64,
+        -538,
+        2752,
+        -12943,
+        79507
+      ],
+      "lpolynomial_first_half": [
+        -7,
+        64,
+        -538
+      ],
+      "p": 43,
+      "residues_mod_p": [
+        36,
+        21,
+        21
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 61,
+      "hasse_witt": [
+        [
+          29,
+          40,
+          13
+        ],
+        [
+          13,
+          5,
+          21
+        ],
+        [
+          32,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        13,
+        102,
+        674,
+        4794,
+        28717,
+        103823
+      ],
+      "lpolynomial_first_half": [
+        13,
+        102,
+        674
+      ],
+      "p": 47,
+      "residues_mod_p": [
+        13,
+        8,
+        16
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 59,
+      "hasse_witt": [
+        [
+          19,
+          18,
+          28
+        ],
+        [
+          18,
+          5,
+          16
+        ],
+        [
+          4,
+          16,
+          24
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        5,
+        32,
+        114,
+        1696,
+        14045,
+        148877
+      ],
+      "lpolynomial_first_half": [
+        5,
+        32,
+        114
+      ],
+      "p": 53,
+      "residues_mod_p": [
+        5,
+        32,
+        8
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 59,
+      "hasse_witt": [
+        [
+          32,
+          58,
+          33
+        ],
+        [
+          48,
+          28,
+          51
+        ],
+        [
+          14,
+          33,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        38,
+        -342,
+        2242,
+        -3481,
+        205379
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        38,
+        -342
+      ],
+      "p": 59,
+      "residues_mod_p": [
+        58,
+        38,
+        12
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 66,
+      "hasse_witt": [
+        [
+          44,
+          16,
+          37
+        ],
+        [
+          51,
+          3,
+          9
+        ],
+        [
+          16,
+          0,
+          10
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        4,
+        -13,
+        -276,
+        -793,
+        14884,
+        226981
+      ],
+      "lpolynomial_first_half": [
+        4,
+        -13,
+        -276
+      ],
+      "p": 61,
+      "residues_mod_p": [
+        4,
+        48,
+        29
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 75,
+      "hasse_witt": [
+        [
+          9,
+          63,
+          6
+        ],
+        [
+          36,
+          32,
+          40
+        ],
+        [
+          43,
+          19,
+          19
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        7,
+        59,
+        619,
+        3953,
+        31423,
+        300763
+      ],
+      "lpolynomial_first_half": [
+        7,
+        59,
+        619
+      ],
+      "p": 67,
+      "residues_mod_p": [
+        7,
+        59,
+        16
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 53,
+      "hasse_witt": [
+        [
+          23,
+          46,
+          37
+        ],
+        [
+          27,
+          47,
+          69
+        ],
+        [
+          58,
+          29,
+          20
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -19,
+        145,
+        -833,
+        10295,
+        -95779,
+        357911
+      ],
+      "lpolynomial_first_half": [
+        -19,
+        145,
+        -833
+      ],
+      "p": 71,
+      "residues_mod_p": [
+        52,
+        3,
+        19
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 81,
+      "hasse_witt": [
+        [
+          33,
+          9,
+          56
+        ],
+        [
+          4,
+          27,
+          28
+        ],
+        [
+          27,
+          20,
+          6
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        7,
+        19,
+        -180,
+        1387,
+        37303,
+        389017
+      ],
+      "lpolynomial_first_half": [
+        7,
+        19,
+        -180
+      ],
+      "p": 73,
+      "residues_mod_p": [
+        7,
+        19,
+        39
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 86,
+      "hasse_witt": [
+        [
+          8,
+          2,
+          60
+        ],
+        [
+          36,
+          25,
+          43
+        ],
+        [
+          12,
+          30,
+          40
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        70,
+        28,
+        5530,
+        37446,
+        493039
+      ],
+      "lpolynomial_first_half": [
+        6,
+        70,
+        28
+      ],
+      "p": 79,
+      "residues_mod_p": [
+        6,
+        70,
+        28
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 90,
+      "hasse_witt": [
+        [
+          6,
+          42,
+          0
+        ],
+        [
+          71,
+          63,
+          6
+        ],
+        [
+          82,
+          20,
+          8
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        69,
+        -108,
+        5727,
+        41334,
+        571787
+      ],
+      "lpolynomial_first_half": [
+        6,
+        69,
+        -108
+      ],
+      "p": 83,
+      "residues_mod_p": [
+        6,
+        69,
+        58
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 85,
+      "hasse_witt": [
+        [
+          8,
+          87,
+          45
+        ],
+        [
+          66,
+          17,
+          54
+        ],
+        [
+          33,
+          23,
+          69
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -5,
+        67,
+        -976,
+        5963,
+        -39605,
+        704969
+      ],
+      "lpolynomial_first_half": [
+        -5,
+        67,
+        -976
+      ],
+      "p": 89,
+      "residues_mod_p": [
+        84,
+        67,
+        3
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 92,
+      "hasse_witt": [
+        [
+          39,
+          74,
+          92
+        ],
+        [
+          89,
+          64,
+          63
+        ],
+        [
+          90,
+          54,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -6,
+        39,
+        -672,
+        3783,
+        -56454,
+        912673
+      ],
+      "lpolynomial_first_half": [
+        -6,
+        39,
+        -672
+      ],
+      "p": 97,
+      "residues_mod_p": [
+        91,
+        39,
+        7
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 121,
+      "hasse_witt": [
+        [
+          17,
+          64,
+          75
+        ],
+        [
+          25,
+          10,
+          37
+        ],
+        [
+          39,
+          4,
+          55
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        19,
+        315,
+        3595,
+        31815,
+        193819,
+        1030301
+      ],
+      "lpolynomial_first_half": [
+        19,
+        315,
+        3595
+      ],
+      "p": 101,
+      "residues_mod_p": [
+        19,
+        12,
+        60
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 110,
+      "hasse_witt": [
+        [
+          54,
+          89,
+          43
+        ],
+        [
+          65,
+          53,
+          61
+        ],
+        [
+          38,
+          98,
+          93
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        34,
+        -324,
+        3502,
+        63654,
+        1092727
+      ],
+      "lpolynomial_first_half": [
+        6,
+        34,
+        -324
+      ],
+      "p": 103,
+      "residues_mod_p": [
+        6,
+        34,
+        88
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 114,
+      "hasse_witt": [
+        [
+          58,
+          93,
+          104
+        ],
+        [
+          31,
+          93,
+          28
+        ],
+        [
+          57,
+          98,
+          57
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        92,
+        122,
+        9844,
+        68694,
+        1225043
+      ],
+      "lpolynomial_first_half": [
+        6,
+        92,
+        122
+      ],
+      "p": 107,
+      "residues_mod_p": [
+        6,
+        92,
+        15
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 109,
+      "hasse_witt": [
+        [
+          53,
+          27,
+          48
+        ],
+        [
+          5,
+          75,
+          6
+        ],
+        [
+          49,
+          61,
+          91
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        235,
+        -294,
+        25615,
+        -11881,
+        1295029
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        235,
+        -294
+      ],
+      "p": 109,
+      "residues_mod_p": [
+        108,
+        17,
+        33
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 113,
+      "hasse_witt": [
+        [
+          50,
+          57,
+          35
+        ],
+        [
+          43,
+          50,
+          73
+        ],
+        [
+          100,
+          55,
+          14
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        36,
+        828,
+        4068,
+        -12769,
+        1442897
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        36,
+        828
+      ],
+      "p": 113,
+      "residues_mod_p": [
+        112,
+        36,
+        37
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 137,
+      "hasse_witt": [
+        [
+          46,
+          32,
+          20
+        ],
+        [
+          59,
+          6,
+          102
+        ],
+        [
+          7,
+          45,
+          66
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        9,
+        138,
+        2140,
+        17526,
+        145161,
+        2048383
+      ],
+      "lpolynomial_first_half": [
+        9,
+        138,
+        2140
+      ],
+      "p": 127,
+      "residues_mod_p": [
+        9,
+        11,
+        108
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 136,
+      "hasse_witt": [
+        [
+          79,
+          111,
+          73
+        ],
+        [
+          6,
+          77,
+          90
+        ],
+        [
+          14,
+          85,
+          102
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        4,
+        81,
+        56,
+        10611,
+        68644,
+        2248091
+      ],
+      "lpolynomial_first_half": [
+        4,
+        81,
+        56
+      ],
+      "p": 131,
+      "residues_mod_p": [
+        4,
+        81,
+        56
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 130,
+      "hasse_witt": [
+        [
+          95,
+          42,
+          12
+        ],
+        [
+          5,
+          85,
+          55
+        ],
+        [
+          29,
+          100,
+          102
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -8,
+        -36,
+        -94,
+        -4932,
+        -150152,
+        2571353
+      ],
+      "lpolynomial_first_half": [
+        -8,
+        -36,
+        -94
+      ],
+      "p": 137,
+      "residues_mod_p": [
+        129,
+        101,
+        43
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 125,
+      "hasse_witt": [
+        [
+          37,
+          33,
+          15
+        ],
+        [
+          48,
+          103,
+          137
+        ],
+        [
+          114,
+          135,
+          14
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -15,
+        245,
+        -1974,
+        34055,
+        -289815,
+        2685619
+      ],
+      "lpolynomial_first_half": [
+        -15,
+        245,
+        -1974
+      ],
+      "p": 139,
+      "residues_mod_p": [
+        124,
+        106,
+        111
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 147,
+      "hasse_witt": [
+        [
+          39,
+          119,
+          107
+        ],
+        [
+          121,
+          82,
+          117
+        ],
+        [
+          8,
+          78,
+          31
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        150,
+        -1488,
+        22350,
+        -66603,
+        3307949
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        150,
+        -1488
+      ],
+      "p": 149,
+      "residues_mod_p": [
+        146,
+        1,
+        2
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 998,
+      "hasse_witt": [
+        [
+          417,
+          447,
+          660
+        ],
+        [
+          585,
+          161,
+          701
+        ],
+        [
+          312,
+          998,
+          443
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -12,
+        711,
+        -31096,
+        717399,
+        -12216972,
+        1027243729
+      ],
+      "lpolynomial_first_half": [
+        -12,
+        711,
+        -31096
+      ],
+      "p": 1009,
+      "residues_mod_p": [
+        997,
+        711,
+        183
+      ]
+    },
+    {
+      "curve": "odd_monic_sparse",
+      "curve_cardinality": 1586,
+      "hasse_witt": [
+        [
+          439,
+          778,
+          231
+        ],
+        [
+          567,
+          1244,
+          30
+        ],
+        [
+          845,
+          983,
+          1535
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -16,
+        -229,
+        11600,
+        -366629,
+        -41011216,
+        4103684801
+      ],
+      "lpolynomial_first_half": [
+        -16,
+        -229,
+        11600
+      ],
+      "p": 1601,
+      "residues_mod_p": [
+        1585,
+        1372,
+        393
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 5,
+      "hasse_witt": [
+        [
+          4,
+          0,
+          1
+        ],
+        [
+          0,
+          2,
+          2
+        ],
+        [
+          0,
+          4,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        5,
+        -13,
+        25,
+        -25,
+        125
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        5,
+        -13
+      ],
+      "p": 5,
+      "residues_mod_p": [
+        4,
+        0,
+        2
+      ],
+      "sage_weil_candidate_count": 25
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 9,
+      "hasse_witt": [
+        [
+          6,
+          6,
+          6
+        ],
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        1,
+        5,
+        -14,
+        35,
+        49,
+        343
+      ],
+      "lpolynomial_first_half": [
+        1,
+        5,
+        -14
+      ],
+      "p": 7,
+      "residues_mod_p": [
+        1,
+        5,
+        0
+      ],
+      "sage_weil_candidate_count": 26
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 18,
+      "hasse_witt": [
+        [
+          2,
+          1,
+          3
+        ],
+        [
+          5,
+          3,
+          7
+        ],
+        [
+          5,
+          2,
+          0
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        27,
+        85,
+        297,
+        726,
+        1331
+      ],
+      "lpolynomial_first_half": [
+        6,
+        27,
+        85
+      ],
+      "p": 11,
+      "residues_mod_p": [
+        6,
+        5,
+        8
+      ],
+      "sage_weil_candidate_count": 21
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 16,
+      "hasse_witt": [
+        [
+          0,
+          3,
+          9
+        ],
+        [
+          7,
+          8,
+          0
+        ],
+        [
+          0,
+          8,
+          3
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        2,
+        3,
+        27,
+        39,
+        338,
+        2197
+      ],
+      "lpolynomial_first_half": [
+        2,
+        3,
+        27
+      ],
+      "p": 13,
+      "residues_mod_p": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 19,
+      "hasse_witt": [
+        [
+          6,
+          13,
+          5
+        ],
+        [
+          14,
+          16,
+          12
+        ],
+        [
+          7,
+          10,
+          11
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        1,
+        1,
+        -25,
+        17,
+        289,
+        4913
+      ],
+      "lpolynomial_first_half": [
+        1,
+        1,
+        -25
+      ],
+      "p": 17,
+      "residues_mod_p": [
+        1,
+        1,
+        9
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 22,
+      "hasse_witt": [
+        [
+          0,
+          14,
+          12
+        ],
+        [
+          7,
+          11,
+          14
+        ],
+        [
+          17,
+          7,
+          6
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        2,
+        -11,
+        -81,
+        -209,
+        722,
+        6859
+      ],
+      "lpolynomial_first_half": [
+        2,
+        -11,
+        -81
+      ],
+      "p": 19,
+      "residues_mod_p": [
+        2,
+        8,
+        14
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 20,
+      "hasse_witt": [
+        [
+          17,
+          13,
+          1
+        ],
+        [
+          3,
+          12,
+          20
+        ],
+        [
+          17,
+          8,
+          21
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -4,
+        45,
+        -155,
+        1035,
+        -2116,
+        12167
+      ],
+      "lpolynomial_first_half": [
+        -4,
+        45,
+        -155
+      ],
+      "p": 23,
+      "residues_mod_p": [
+        19,
+        22,
+        6
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 38,
+      "hasse_witt": [
+        [
+          3,
+          22,
+          18
+        ],
+        [
+          23,
+          25,
+          9
+        ],
+        [
+          2,
+          17,
+          22
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        8,
+        54,
+        362,
+        1566,
+        6728,
+        24389
+      ],
+      "lpolynomial_first_half": [
+        8,
+        54,
+        362
+      ],
+      "p": 29,
+      "residues_mod_p": [
+        8,
+        25,
+        14
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 29,
+      "hasse_witt": [
+        [
+          21,
+          21,
+          13
+        ],
+        [
+          3,
+          9,
+          27
+        ],
+        [
+          21,
+          11,
+          4
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        48,
+        -178,
+        1488,
+        -2883,
+        29791
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        48,
+        -178
+      ],
+      "p": 31,
+      "residues_mod_p": [
+        28,
+        17,
+        8
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 48,
+      "hasse_witt": [
+        [
+          18,
+          16,
+          6
+        ],
+        [
+          22,
+          1,
+          28
+        ],
+        [
+          30,
+          5,
+          8
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        10,
+        90,
+        596,
+        3330,
+        13690,
+        50653
+      ],
+      "lpolynomial_first_half": [
+        10,
+        90,
+        596
+      ],
+      "p": 37,
+      "residues_mod_p": [
+        10,
+        16,
+        4
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 35,
+      "hasse_witt": [
+        [
+          16,
+          4,
+          35
+        ],
+        [
+          1,
+          29,
+          9
+        ],
+        [
+          31,
+          34,
+          3
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -7,
+        65,
+        -248,
+        2665,
+        -11767,
+        68921
+      ],
+      "lpolynomial_first_half": [
+        -7,
+        65,
+        -248
+      ],
+      "p": 41,
+      "residues_mod_p": [
+        34,
+        24,
+        39
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 42,
+      "hasse_witt": [
+        [
+          27,
+          32,
+          1
+        ],
+        [
+          22,
+          0,
+          16
+        ],
+        [
+          37,
+          37,
+          18
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        13,
+        298,
+        559,
+        -3698,
+        79507
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        13,
+        298
+      ],
+      "p": 43,
+      "residues_mod_p": [
+        41,
+        13,
+        40
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 57,
+      "hasse_witt": [
+        [
+          16,
+          4,
+          23
+        ],
+        [
+          25,
+          32,
+          27
+        ],
+        [
+          19,
+          19,
+          37
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        9,
+        63,
+        222,
+        2961,
+        19881,
+        103823
+      ],
+      "lpolynomial_first_half": [
+        9,
+        63,
+        222
+      ],
+      "p": 47,
+      "residues_mod_p": [
+        9,
+        16,
+        34
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 60,
+      "hasse_witt": [
+        [
+          42,
+          6,
+          33
+        ],
+        [
+          13,
+          41,
+          31
+        ],
+        [
+          42,
+          42,
+          17
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        6,
+        49,
+        174,
+        2597,
+        16854,
+        148877
+      ],
+      "lpolynomial_first_half": [
+        6,
+        49,
+        174
+      ],
+      "p": 53,
+      "residues_mod_p": [
+        6,
+        49,
+        15
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 61,
+      "hasse_witt": [
+        [
+          43,
+          25,
+          35
+        ],
+        [
+          36,
+          16,
+          11
+        ],
+        [
+          50,
+          28,
+          58
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        1,
+        31,
+        262,
+        1829,
+        3481,
+        205379
+      ],
+      "lpolynomial_first_half": [
+        1,
+        31,
+        262
+      ],
+      "p": 59,
+      "residues_mod_p": [
+        1,
+        31,
+        26
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 63,
+      "hasse_witt": [
+        [
+          59,
+          0,
+          13
+        ],
+        [
+          59,
+          4,
+          39
+        ],
+        [
+          22,
+          40,
+          58
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        1,
+        -30,
+        -106,
+        -1830,
+        3721,
+        226981
+      ],
+      "lpolynomial_first_half": [
+        1,
+        -30,
+        -106
+      ],
+      "p": 61,
+      "residues_mod_p": [
+        1,
+        31,
+        16
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 64,
+      "hasse_witt": [
+        [
+          58,
+          40,
+          42
+        ],
+        [
+          38,
+          2,
+          24
+        ],
+        [
+          23,
+          47,
+          11
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -4,
+        43,
+        -892,
+        2881,
+        -17956,
+        300763
+      ],
+      "lpolynomial_first_half": [
+        -4,
+        43,
+        -892
+      ],
+      "p": 67,
+      "residues_mod_p": [
+        63,
+        43,
+        46
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 65,
+      "hasse_witt": [
+        [
+          17,
+          62,
+          25
+        ],
+        [
+          39,
+          16,
+          29
+        ],
+        [
+          37,
+          50,
+          45
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -7,
+        88,
+        -130,
+        6248,
+        -35287,
+        357911
+      ],
+      "lpolynomial_first_half": [
+        -7,
+        88,
+        -130
+      ],
+      "p": 71,
+      "residues_mod_p": [
+        64,
+        17,
+        12
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 72,
+      "hasse_witt": [
+        [
+          6,
+          59,
+          6
+        ],
+        [
+          16,
+          70,
+          48
+        ],
+        [
+          9,
+          44,
+          72
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        -65,
+        378,
+        -4745,
+        -10658,
+        389017
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        -65,
+        378
+      ],
+      "p": 73,
+      "residues_mod_p": [
+        71,
+        8,
+        13
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 70,
+      "hasse_witt": [
+        [
+          71,
+          77,
+          74
+        ],
+        [
+          24,
+          52,
+          4
+        ],
+        [
+          41,
+          58,
+          45
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -10,
+        163,
+        -1624,
+        12877,
+        -62410,
+        493039
+      ],
+      "lpolynomial_first_half": [
+        -10,
+        163,
+        -1624
+      ],
+      "p": 79,
+      "residues_mod_p": [
+        69,
+        5,
+        35
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 103,
+      "hasse_witt": [
+        [
+          29,
+          70,
+          34
+        ],
+        [
+          80,
+          70,
+          28
+        ],
+        [
+          17,
+          72,
+          48
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        19,
+        165,
+        1201,
+        13695,
+        130891,
+        571787
+      ],
+      "lpolynomial_first_half": [
+        19,
+        165,
+        1201
+      ],
+      "p": 83,
+      "residues_mod_p": [
+        19,
+        82,
+        39
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 84,
+      "hasse_witt": [
+        [
+          57,
+          42,
+          83
+        ],
+        [
+          67,
+          12,
+          34
+        ],
+        [
+          42,
+          87,
+          26
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -6,
+        -16,
+        872,
+        -1424,
+        -47526,
+        704969
+      ],
+      "lpolynomial_first_half": [
+        -6,
+        -16,
+        872
+      ],
+      "p": 89,
+      "residues_mod_p": [
+        83,
+        73,
+        71
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 90,
+      "hasse_witt": [
+        [
+          34,
+          17,
+          50
+        ],
+        [
+          93,
+          12,
+          0
+        ],
+        [
+          78,
+          70,
+          59
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -8,
+        -31,
+        1676,
+        -3007,
+        -75272,
+        912673
+      ],
+      "lpolynomial_first_half": [
+        -8,
+        -31,
+        1676
+      ],
+      "p": 97,
+      "residues_mod_p": [
+        89,
+        66,
+        27
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 101,
+      "hasse_witt": [
+        [
+          59,
+          92,
+          22
+        ],
+        [
+          85,
+          100,
+          41
+        ],
+        [
+          9,
+          1,
+          44
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        -11,
+        1494,
+        -1111,
+        -10201,
+        1030301
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        -11,
+        1494
+      ],
+      "p": 101,
+      "residues_mod_p": [
+        100,
+        90,
+        80
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 94,
+      "hasse_witt": [
+        [
+          39,
+          77,
+          49
+        ],
+        [
+          51,
+          57,
+          63
+        ],
+        [
+          34,
+          54,
+          17
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -10,
+        10,
+        812,
+        1030,
+        -106090,
+        1092727
+      ],
+      "lpolynomial_first_half": [
+        -10,
+        10,
+        812
+      ],
+      "p": 103,
+      "residues_mod_p": [
+        93,
+        10,
+        91
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 95,
+      "hasse_witt": [
+        [
+          9,
+          35,
+          25
+        ],
+        [
+          2,
+          104,
+          79
+        ],
+        [
+          42,
+          21,
+          7
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -13,
+        125,
+        -1786,
+        13375,
+        -148837,
+        1225043
+      ],
+      "lpolynomial_first_half": [
+        -13,
+        125,
+        -1786
+      ],
+      "p": 107,
+      "residues_mod_p": [
+        94,
+        18,
+        33
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 106,
+      "hasse_witt": [
+        [
+          48,
+          102,
+          78
+        ],
+        [
+          22,
+          37,
+          51
+        ],
+        [
+          9,
+          97,
+          28
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -4,
+        78,
+        44,
+        8502,
+        -47524,
+        1295029
+      ],
+      "lpolynomial_first_half": [
+        -4,
+        78,
+        44
+      ],
+      "p": 109,
+      "residues_mod_p": [
+        105,
+        78,
+        44
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 108,
+      "hasse_witt": [
+        [
+          94,
+          21,
+          101
+        ],
+        [
+          33,
+          64,
+          14
+        ],
+        [
+          33,
+          92,
+          74
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -6,
+        -36,
+        434,
+        -4068,
+        -76614,
+        1442897
+      ],
+      "lpolynomial_first_half": [
+        -6,
+        -36,
+        434
+      ],
+      "p": 113,
+      "residues_mod_p": [
+        107,
+        77,
+        95
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 144,
+      "hasse_witt": [
+        [
+          10,
+          33,
+          62
+        ],
+        [
+          87,
+          25,
+          94
+        ],
+        [
+          77,
+          122,
+          76
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        16,
+        180,
+        2140,
+        22860,
+        258064,
+        2048383
+      ],
+      "lpolynomial_first_half": [
+        16,
+        180,
+        2140
+      ],
+      "p": 127,
+      "residues_mod_p": [
+        16,
+        53,
+        108
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 122,
+      "hasse_witt": [
+        [
+          118,
+          66,
+          2
+        ],
+        [
+          20,
+          100,
+          45
+        ],
+        [
+          106,
+          9,
+          54
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -10,
+        151,
+        -958,
+        19781,
+        -171610,
+        2248091
+      ],
+      "lpolynomial_first_half": [
+        -10,
+        151,
+        -958
+      ],
+      "p": 131,
+      "residues_mod_p": [
+        121,
+        20,
+        90
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 160,
+      "hasse_witt": [
+        [
+          45,
+          120,
+          68
+        ],
+        [
+          78,
+          108,
+          89
+        ],
+        [
+          27,
+          117,
+          99
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        22,
+        316,
+        4384,
+        43292,
+        412918,
+        2571353
+      ],
+      "lpolynomial_first_half": [
+        22,
+        316,
+        4384
+      ],
+      "p": 137,
+      "residues_mod_p": [
+        22,
+        42,
+        0
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 154,
+      "hasse_witt": [
+        [
+          82,
+          130,
+          125
+        ],
+        [
+          45,
+          29,
+          4
+        ],
+        [
+          25,
+          120,
+          14
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        14,
+        315,
+        3920,
+        43785,
+        270494,
+        2685619
+      ],
+      "lpolynomial_first_half": [
+        14,
+        315,
+        3920
+      ],
+      "p": 139,
+      "residues_mod_p": [
+        14,
+        37,
+        28
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 140,
+      "hasse_witt": [
+        [
+          79,
+          49,
+          88
+        ],
+        [
+          39,
+          29,
+          52
+        ],
+        [
+          52,
+          38,
+          51
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -10,
+        81,
+        -1232,
+        12069,
+        -222010,
+        3307949
+      ],
+      "lpolynomial_first_half": [
+        -10,
+        81,
+        -1232
+      ],
+      "p": 149,
+      "residues_mod_p": [
+        139,
+        81,
+        109
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 1007,
+      "hasse_witt": [
+        [
+          424,
+          375,
+          71
+        ],
+        [
+          362,
+          545,
+          807
+        ],
+        [
+          688,
+          915,
+          43
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        549,
+        -1262,
+        553941,
+        -3054243,
+        1027243729
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        549,
+        -1262
+      ],
+      "p": 1009,
+      "residues_mod_p": [
+        1006,
+        549,
+        756
+      ]
+    },
+    {
+      "curve": "even_monic",
+      "curve_cardinality": 1580,
+      "hasse_witt": [
+        [
+          325,
+          1075,
+          432
+        ],
+        [
+          1289,
+          602,
+          958
+        ],
+        [
+          418,
+          886,
+          696
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -22,
+        1187,
+        -65714,
+        1900387,
+        -56390422,
+        4103684801
+      ],
+      "lpolynomial_first_half": [
+        -22,
+        1187,
+        -65714
+      ],
+      "p": 1601,
+      "residues_mod_p": [
+        1579,
+        1187,
+        1528
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 3,
+      "hasse_witt": [
+        [
+          4,
+          0,
+          3
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          4,
+          2,
+          4
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        15,
+        -27,
+        75,
+        -75,
+        125
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        15,
+        -27
+      ],
+      "p": 5,
+      "residues_mod_p": [
+        2,
+        0,
+        3
+      ],
+      "sage_weil_candidate_count": 20
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 12,
+      "hasse_witt": [
+        [
+          2,
+          8,
+          5
+        ],
+        [
+          12,
+          7,
+          12
+        ],
+        [
+          10,
+          10,
+          6
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        10,
+        -62,
+        130,
+        -338,
+        2197
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        10,
+        -62
+      ],
+      "p": 13,
+      "residues_mod_p": [
+        11,
+        10,
+        3
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 21,
+      "hasse_witt": [
+        [
+          7,
+          3,
+          9
+        ],
+        [
+          7,
+          2,
+          3
+        ],
+        [
+          9,
+          16,
+          5
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        11,
+        -29,
+        187,
+        867,
+        4913
+      ],
+      "lpolynomial_first_half": [
+        3,
+        11,
+        -29
+      ],
+      "p": 17,
+      "residues_mod_p": [
+        3,
+        11,
+        5
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 18,
+      "hasse_witt": [
+        [
+          14,
+          14,
+          0
+        ],
+        [
+          6,
+          18,
+          10
+        ],
+        [
+          6,
+          5,
+          8
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        32,
+        -78,
+        608,
+        -722,
+        6859
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        32,
+        -78
+      ],
+      "p": 19,
+      "residues_mod_p": [
+        17,
+        13,
+        17
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 16,
+      "hasse_witt": [
+        [
+          17,
+          1,
+          6
+        ],
+        [
+          4,
+          3,
+          13
+        ],
+        [
+          0,
+          7,
+          11
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -8,
+        38,
+        -196,
+        874,
+        -4232,
+        12167
+      ],
+      "lpolynomial_first_half": [
+        -8,
+        38,
+        -196
+      ],
+      "p": 23,
+      "residues_mod_p": [
+        15,
+        15,
+        11
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 24,
+      "hasse_witt": [
+        [
+          3,
+          22,
+          20
+        ],
+        [
+          16,
+          23,
+          6
+        ],
+        [
+          22,
+          24,
+          13
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -8,
+        60,
+        -228,
+        1860,
+        -7688,
+        29791
+      ],
+      "lpolynomial_first_half": [
+        -8,
+        60,
+        -228
+      ],
+      "p": 31,
+      "residues_mod_p": [
+        23,
+        29,
+        20
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 45,
+      "hasse_witt": [
+        [
+          33,
+          14,
+          35
+        ],
+        [
+          2,
+          0,
+          17
+        ],
+        [
+          8,
+          30,
+          34
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        7,
+        8,
+        -208,
+        296,
+        9583,
+        50653
+      ],
+      "lpolynomial_first_half": [
+        7,
+        8,
+        -208
+      ],
+      "p": 37,
+      "residues_mod_p": [
+        7,
+        8,
+        14
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 32,
+      "hasse_witt": [
+        [
+          17,
+          8,
+          39
+        ],
+        [
+          19,
+          35,
+          5
+        ],
+        [
+          18,
+          2,
+          40
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -10,
+        89,
+        -512,
+        3649,
+        -16810,
+        68921
+      ],
+      "lpolynomial_first_half": [
+        -10,
+        89,
+        -512
+      ],
+      "p": 41,
+      "residues_mod_p": [
+        31,
+        7,
+        21
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 40,
+      "hasse_witt": [
+        [
+          28,
+          19,
+          1
+        ],
+        [
+          27,
+          2,
+          18
+        ],
+        [
+          35,
+          41,
+          17
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -4,
+        54,
+        -312,
+        2322,
+        -7396,
+        79507
+      ],
+      "lpolynomial_first_half": [
+        -4,
+        54,
+        -312
+      ],
+      "p": 43,
+      "residues_mod_p": [
+        39,
+        11,
+        32
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 47,
+      "hasse_witt": [
+        [
+          8,
+          29,
+          25
+        ],
+        [
+          25,
+          41,
+          12
+        ],
+        [
+          42,
+          46,
+          46
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        20,
+        -198,
+        940,
+        -2209,
+        103823
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        20,
+        -198
+      ],
+      "p": 47,
+      "residues_mod_p": [
+        46,
+        20,
+        37
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 35,
+      "hasse_witt": [
+        [
+          48,
+          15,
+          13
+        ],
+        [
+          25,
+          29,
+          24
+        ],
+        [
+          30,
+          39,
+          48
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -19,
+        207,
+        -1690,
+        10971,
+        -53371,
+        148877
+      ],
+      "lpolynomial_first_half": [
+        -19,
+        207,
+        -1690
+      ],
+      "p": 53,
+      "residues_mod_p": [
+        34,
+        48,
+        6
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 63,
+      "hasse_witt": [
+        [
+          44,
+          47,
+          45
+        ],
+        [
+          37,
+          51,
+          28
+        ],
+        [
+          57,
+          15,
+          20
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        3,
+        69,
+        -145,
+        4071,
+        10443,
+        205379
+      ],
+      "lpolynomial_first_half": [
+        3,
+        69,
+        -145
+      ],
+      "p": 59,
+      "residues_mod_p": [
+        3,
+        10,
+        32
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 78,
+      "hasse_witt": [
+        [
+          16,
+          47,
+          44
+        ],
+        [
+          12,
+          31,
+          39
+        ],
+        [
+          11,
+          59,
+          59
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        16,
+        225,
+        1772,
+        13725,
+        59536,
+        226981
+      ],
+      "lpolynomial_first_half": [
+        16,
+        225,
+        1772
+      ],
+      "p": 61,
+      "residues_mod_p": [
+        16,
+        42,
+        3
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 60,
+      "hasse_witt": [
+        [
+          53,
+          18,
+          59
+        ],
+        [
+          12,
+          17,
+          66
+        ],
+        [
+          13,
+          22,
+          5
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -8,
+        89,
+        -864,
+        5963,
+        -35912,
+        300763
+      ],
+      "lpolynomial_first_half": [
+        -8,
+        89,
+        -864
+      ],
+      "p": 67,
+      "residues_mod_p": [
+        59,
+        22,
+        7
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 72,
+      "hasse_witt": [
+        [
+          58,
+          54,
+          33
+        ],
+        [
+          1,
+          21,
+          28
+        ],
+        [
+          45,
+          66,
+          63
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        0,
+        -32,
+        -424,
+        -2272,
+        0,
+        357911
+      ],
+      "lpolynomial_first_half": [
+        0,
+        -32,
+        -424
+      ],
+      "p": 71,
+      "residues_mod_p": [
+        0,
+        39,
+        2
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 71,
+      "hasse_witt": [
+        [
+          26,
+          58,
+          63
+        ],
+        [
+          47,
+          17,
+          3
+        ],
+        [
+          42,
+          5,
+          33
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        51,
+        373,
+        3723,
+        -15987,
+        389017
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        51,
+        373
+      ],
+      "p": 73,
+      "residues_mod_p": [
+        70,
+        51,
+        8
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 64,
+      "hasse_witt": [
+        [
+          74,
+          26,
+          8
+        ],
+        [
+          2,
+          5,
+          27
+        ],
+        [
+          14,
+          76,
+          16
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -16,
+        208,
+        -1658,
+        16432,
+        -99856,
+        493039
+      ],
+      "lpolynomial_first_half": [
+        -16,
+        208,
+        -1658
+      ],
+      "p": 79,
+      "residues_mod_p": [
+        63,
+        50,
+        1
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 91,
+      "hasse_witt": [
+        [
+          27,
+          80,
+          16
+        ],
+        [
+          27,
+          35,
+          82
+        ],
+        [
+          27,
+          76,
+          14
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        7,
+        44,
+        70,
+        3652,
+        48223,
+        571787
+      ],
+      "lpolynomial_first_half": [
+        7,
+        44,
+        70
+      ],
+      "p": 83,
+      "residues_mod_p": [
+        7,
+        44,
+        70
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 88,
+      "hasse_witt": [
+        [
+          54,
+          74,
+          7
+        ],
+        [
+          7,
+          79,
+          33
+        ],
+        [
+          5,
+          61,
+          47
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        30,
+        -500,
+        2670,
+        -15842,
+        704969
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        30,
+        -500
+      ],
+      "p": 89,
+      "residues_mod_p": [
+        87,
+        30,
+        34
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 102,
+      "hasse_witt": [
+        [
+          29,
+          29,
+          11
+        ],
+        [
+          81,
+          27,
+          49
+        ],
+        [
+          54,
+          68,
+          37
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        4,
+        -25,
+        -664,
+        -2425,
+        37636,
+        912673
+      ],
+      "lpolynomial_first_half": [
+        4,
+        -25,
+        -664
+      ],
+      "p": 97,
+      "residues_mod_p": [
+        4,
+        72,
+        15
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 100,
+      "hasse_witt": [
+        [
+          20,
+          61,
+          22
+        ],
+        [
+          30,
+          74,
+          86
+        ],
+        [
+          12,
+          5,
+          9
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -2,
+        105,
+        384,
+        10605,
+        -20402,
+        1030301
+      ],
+      "lpolynomial_first_half": [
+        -2,
+        105,
+        384
+      ],
+      "p": 101,
+      "residues_mod_p": [
+        99,
+        4,
+        81
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 101,
+      "hasse_witt": [
+        [
+          11,
+          102,
+          55
+        ],
+        [
+          14,
+          54,
+          70
+        ],
+        [
+          92,
+          71,
+          41
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        41,
+        -482,
+        4223,
+        -31827,
+        1092727
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        41,
+        -482
+      ],
+      "p": 103,
+      "residues_mod_p": [
+        100,
+        41,
+        33
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 107,
+      "hasse_witt": [
+        [
+          102,
+          91,
+          104
+        ],
+        [
+          69,
+          26,
+          58
+        ],
+        [
+          2,
+          96,
+          87
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        21,
+        -1447,
+        2247,
+        -11449,
+        1225043
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        21,
+        -1447
+      ],
+      "p": 107,
+      "residues_mod_p": [
+        106,
+        21,
+        51
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 114,
+      "hasse_witt": [
+        [
+          57,
+          102,
+          13
+        ],
+        [
+          18,
+          59,
+          6
+        ],
+        [
+          55,
+          104,
+          98
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        4,
+        111,
+        1456,
+        12099,
+        47524,
+        1295029
+      ],
+      "lpolynomial_first_half": [
+        4,
+        111,
+        1456
+      ],
+      "p": 109,
+      "residues_mod_p": [
+        4,
+        2,
+        39
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 101,
+      "hasse_witt": [
+        [
+          93,
+          71,
+          70
+        ],
+        [
+          29,
+          44,
+          84
+        ],
+        [
+          13,
+          15,
+          102
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -13,
+        51,
+        185,
+        5763,
+        -165997,
+        1442897
+      ],
+      "lpolynomial_first_half": [
+        -13,
+        51,
+        185
+      ],
+      "p": 113,
+      "residues_mod_p": [
+        100,
+        51,
+        72
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 133,
+      "hasse_witt": [
+        [
+          106,
+          77,
+          35
+        ],
+        [
+          1,
+          42,
+          81
+        ],
+        [
+          107,
+          102,
+          101
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        5,
+        77,
+        649,
+        9779,
+        80645,
+        2048383
+      ],
+      "lpolynomial_first_half": [
+        5,
+        77,
+        649
+      ],
+      "p": 127,
+      "residues_mod_p": [
+        5,
+        77,
+        14
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 126,
+      "hasse_witt": [
+        [
+          55,
+          80,
+          130
+        ],
+        [
+          124,
+          55,
+          80
+        ],
+        [
+          67,
+          22,
+          27
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -6,
+        15,
+        452,
+        1965,
+        -102966,
+        2248091
+      ],
+      "lpolynomial_first_half": [
+        -6,
+        15,
+        452
+      ],
+      "p": 131,
+      "residues_mod_p": [
+        125,
+        15,
+        59
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 143,
+      "hasse_witt": [
+        [
+          8,
+          24,
+          77
+        ],
+        [
+          130,
+          84,
+          113
+        ],
+        [
+          118,
+          92,
+          40
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        5,
+        -29,
+        -430,
+        -3973,
+        93845,
+        2571353
+      ],
+      "lpolynomial_first_half": [
+        5,
+        -29,
+        -430
+      ],
+      "p": 137,
+      "residues_mod_p": [
+        5,
+        108,
+        118
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 139,
+      "hasse_witt": [
+        [
+          45,
+          82,
+          101
+        ],
+        [
+          15,
+          93,
+          112
+        ],
+        [
+          46,
+          29,
+          2
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -1,
+        202,
+        -406,
+        28078,
+        -19321,
+        2685619
+      ],
+      "lpolynomial_first_half": [
+        -1,
+        202,
+        -406
+      ],
+      "p": 139,
+      "residues_mod_p": [
+        138,
+        63,
+        11
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 145,
+      "hasse_witt": [
+        [
+          95,
+          10,
+          7
+        ],
+        [
+          80,
+          80,
+          37
+        ],
+        [
+          112,
+          60,
+          128
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -5,
+        121,
+        -426,
+        18029,
+        -111005,
+        3307949
+      ],
+      "lpolynomial_first_half": [
+        -5,
+        121,
+        -426
+      ],
+      "p": 149,
+      "residues_mod_p": [
+        144,
+        121,
+        21
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 1012,
+      "hasse_witt": [
+        [
+          1008,
+          557,
+          453
+        ],
+        [
+          781,
+          523,
+          810
+        ],
+        [
+          543,
+          862,
+          485
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        2,
+        -525,
+        -26412,
+        -529725,
+        2036162,
+        1027243729
+      ],
+      "lpolynomial_first_half": [
+        2,
+        -525,
+        -26412
+      ],
+      "p": 1009,
+      "residues_mod_p": [
+        2,
+        484,
+        831
+      ]
+    },
+    {
+      "curve": "paper_dense",
+      "curve_cardinality": 1599,
+      "hasse_witt": [
+        [
+          731,
+          1249,
+          124
+        ],
+        [
+          568,
+          892,
+          409
+        ],
+        [
+          292,
+          1357,
+          1582
+        ]
+      ],
+      "lpolynomial": [
+        1,
+        -3,
+        987,
+        -37638,
+        1580187,
+        -7689603,
+        4103684801
+      ],
+      "lpolynomial_first_half": [
+        -3,
+        987,
+        -37638
+      ],
+      "p": 1601,
+      "residues_mod_p": [
+        1598,
+        987,
+        786
+      ]
+    }
+  ],
+  "schema": 1
+}

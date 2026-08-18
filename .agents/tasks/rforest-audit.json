@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rforest-audit",
+  "title": "rforest genus-3 audit and completion design",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Audit the newly MIT-licensed rforest implementation and papers, prove the exact genus-3 coefficient candidate/completion requirements, test standalone portability on available hosts, and deliver an implementation-ready decision with fixtures and benchmarks",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "test/data/hyperelliptic-rforest/",
+    "bench/rforest/"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/edgarcosta/rforest",
+    "https://arxiv.org/abs/1410.5222",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "Harvey-Sutherland formulas"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.118,
+      "started_at": "2026-08-18T07:55:38.492Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "d9824bbb60b0792e89d0be0d4e230759484499fda45a2ada3b4140d553e7290d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.881,
+      "started_at": "2026-08-18T07:56:34.661Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "d9824bbb60b0792e89d0be0d4e230759484499fda45a2ada3b4140d553e7290d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.628,
+      "started_at": "2026-08-18T07:56:45.472Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "d9824bbb60b0792e89d0be0d4e230759484499fda45a2ada3b4140d553e7290d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pins canonical MIT rforest commit 3103d396c67cb1685131b1f11e84975cca335bdf and delivers an implementation-ready source/license/ABI/platform audit, a portable native trace harness, a 101-record Sage/Magma genus-3 oracle, and an exact BigInt real-Weil residue-lifting specification. The audit proves c1 uniqueness for p>144, exact-order uniqueness for p>=1601, the need for twist disambiguation below that threshold, and a Las Vegas Jacobian certification strategy with explicit sampling and operation bounds. Upstream source builds produced the identical trace fixture on Linux x86-64, Linux arm64, macOS arm64, and native Windows x64 after the documented LLP64 clzll correction.",
+    "risks": [
+      "rforest is only the generic remainder-forest matrix-product engine; the Harvey--Sutherland curve transition matrices, admissible-prime handling, row transformations, and reconstruction remain a separate implementation lane.",
+      "The full 21-translation-unit bundled zz link closure uses GMP internals, requires 64-bit limbs, and has process-global FFT/memory state, so the private adapter must validate inputs, hide the ABI, and serialize calls.",
+      "Old smalljac genus-3 completion is useful as an algorithm design but cannot be linked as shipped because genus-3 compose/square definitions and the p-adic producer are absent; Sage.js must certify candidates using its verified Jacobian law.",
+      "The exact-order p>=1601 result is a completion theorem, not a cheap way to obtain the order; practical performance still depends on the congruence-strided O(p^(1/4)) Jacobian search and a twist/fallback path."
+    ],
+    "next_steps": [
+      "Distribution lane: vendor the pinned 21-source rforest closure with LICENSE/COPYING, apply the fixed-width clang-cl patch, and expose only a private packed Hasse--Witt residue boundary.",
+      "Transition lane: implement and differentially test the Harvey--Sutherland curve-to-matrix and output-normalization layer against the ordinary Hasse--Witt fallback and the committed oracle.",
+      "Jacobian lane: implement exact candidate enumeration first, then the O(p^(1/4)) primary/twist certificate search; stop only on uniqueness and otherwise fall back.",
+      "Integration lane: retain the portable trace fixture in Linux x86-64/arm64, macOS arm64, and Windows x64 CI and serialize all rforest calls until upstream state is made contextual."
+    ]
+  }
+}
