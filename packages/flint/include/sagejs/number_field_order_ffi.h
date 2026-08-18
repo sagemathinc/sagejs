@@ -158,6 +158,7 @@ typedef struct
     nmod_mat_t product;
     nmod_mat_t kernel_columns;
     ulong *one;
+    ulong *trace;
     ulong *source;
     ulong *power;
     ulong *base;
@@ -172,6 +173,7 @@ static inline void sagejs_nf_p_radical_workspace_init(
     nmod_mat_init(workspace->product, degree, degree, prime);
     nmod_mat_init(workspace->kernel_columns, degree, degree, prime);
     workspace->one = (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
+    workspace->trace = (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
     workspace->source =
         (ulong *) flint_calloc((size_t) degree, sizeof(ulong));
     workspace->power = (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
@@ -188,6 +190,7 @@ static inline void sagejs_nf_p_radical_workspace_clear(
     flint_free(workspace->power);
     flint_free(workspace->source);
     flint_free(workspace->one);
+    flint_free(workspace->trace);
     nmod_mat_clear(workspace->product);
     nmod_mat_clear(workspace->kernel_columns);
     nmod_mat_clear(workspace->defining);
@@ -201,7 +204,8 @@ static inline void sagejs_nf_p_radical_with_workspace(
     nmod_mat_struct *defining = workspace->defining;
     if (prime > (ulong) degree)
     {
-        /* Trace(M_i M_j), reduced modulo p. */
+#if defined(SAGEJS_NF_ORDER_FORCE_ENTRYWISE_TRACE_PAIRING)
+        /* Differential oracle: materialize Tr(M_i M_j) entrywise. */
         for (slong i = 0; i < degree; i++)
             for (slong j = 0; j < degree; j++)
             {
@@ -209,14 +213,58 @@ static inline void sagejs_nf_p_radical_with_workspace(
                 for (slong row = 0; row < degree; row++)
                     for (slong column = 0; column < degree; column++)
                     {
-                        ulong left = table[(i * degree + column) * degree + row];
-                        ulong right = table[(j * degree + row) * degree + column];
-                        ulong term = sagejs_nf_mulmod(
+                        const ulong left =
+                            table[(i * degree + column) * degree + row];
+                        const ulong right =
+                            table[(j * degree + row) * degree + column];
+                        const ulong term = sagejs_nf_mulmod(
                             left, right, prime, inverse);
                         trace = n_addmod(trace, term, prime);
                     }
                 nmod_mat_entry(defining, i, j) = trace;
             }
+#else
+        /* Multiplication is linear in the algebra basis:
+         *
+         *   M_i M_j = M_(e_i e_j) = sum_k c_ij^k M_k.
+         *
+         * Precompute Tr(M_k), then form the trace pairing with one length-n
+         * dot product per (i,j).  This is the same exact pairing as the old
+         * entrywise matrix product, but reduces its n^4 loop to n^3. */
+        ulong *trace_vector = workspace->trace;
+        for (slong basis = 0; basis < degree; basis++)
+        {
+            ulong trace = 0;
+            for (slong row = 0; row < degree; row++)
+                trace = n_addmod(trace,
+                    table[(basis * degree + row) * degree + row], prime);
+            trace_vector[basis] = trace;
+        }
+        const int accumulation_fits =
+            prime <= UWORD_MAX / prime &&
+            (ulong) degree <= UWORD_MAX / (prime * prime);
+        for (slong i = 0; i < degree; i++)
+            for (slong j = 0; j < degree; j++)
+            {
+                ulong trace = 0;
+                const ulong *product =
+                    table + (i * degree + j) * degree;
+                if (accumulation_fits)
+                {
+                    for (slong k = 0; k < degree; k++)
+                        trace += product[k] * trace_vector[k];
+                    trace %= prime;
+                }
+                else
+                    for (slong k = 0; k < degree; k++)
+                    {
+                        const ulong term = sagejs_nf_mulmod(
+                            product[k], trace_vector[k], prime, inverse);
+                        trace = n_addmod(trace, term, prime);
+                    }
+                nmod_mat_entry(defining, i, j) = trace;
+            }
+#endif
     }
     else
     {
