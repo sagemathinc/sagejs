@@ -110,6 +110,9 @@ assert perfect_power_data(2**60) == (2, 60)
 assert perfect_power_data(3**12) == (3, 12)
 assert perfect_power_data(12) == (12, 1)
 assert perfect_power_data(-343) == (-7, 3)
+large_root = 2**521 + 12345
+assert perfect_power_data(large_root**2) == (large_root, 2)
+assert perfect_power_data(large_root**2 - 1) == (large_root**2 - 1, 1)
 def slow_perfect_power(value):
     if value in (-1, 0, 1):
         return (value, 1)
@@ -369,9 +372,17 @@ t_polynomial = [
     0, 0, 0, 1,
 ]
 t_discriminant = -21710164295456076474617584992928400544833610601629804355184679244996915561412300835826721961473986210846221241668229561383669720498272349088880631305049540139658418696001872225883615848168684737389095929421187727305784044410712841760108032615159582727797205555480654514063496576529568532155684010892034531696954852925758102686293986687124850026407026794770565008181062411476722017842952446807496024829206568854130556510788231681478340637127527630719970512743917683144381077389312
+bounded_factor_calls = []
+original_bounded_factor = bounded_factor
+def counted_bounded_factor(*args, **kwds):
+    bounded_factor_calls.append(args[0])
+    return original_bounded_factor(*args, **kwds)
+bounded_factor = counted_bounded_factor
 t_components = decompose_discriminant(
     t_polynomial, t_discriminant, small_prime_bound=1000
 )
+bounded_factor = original_bounded_factor
+assert bounded_factor_calls == []
 assert check_decomposition_certificate(t_components, require_proven=False)
 assert [(entry["base"], entry["exponent"]) for entry in t_components["components"][:4]] == [
     (7, 2), (73, 2), (233, 2), (2, 31)

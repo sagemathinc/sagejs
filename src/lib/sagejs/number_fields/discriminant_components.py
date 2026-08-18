@@ -65,18 +65,20 @@ def _integer_nth_root(value: int, exponent: int) -> int:
         raise ValueError("an integer root needs a nonnegative value and exponent")
     if value < 2 or exponent == 1:
         return value
-    low = 1
-    high = 1 << ((value.bit_length() + exponent - 1) // exponent)
-    while low <= high:
-        middle = (low + high) // 2
-        power = middle**exponent
-        if power == value:
-            return middle
-        if power < value:
-            low = middle + 1
-        else:
-            high = middle - 1
-    return high
+    # Monotone integer Newton iteration, followed by exact floor corrections.
+    current = 1 << ((value.bit_length() + exponent - 1) // exponent)
+    while True:
+        following = (
+            (exponent - 1) * current + value // current ** (exponent - 1)
+        ) // exponent
+        if following >= current:
+            break
+        current = following
+    while (current + 1) ** exponent <= value:
+        current += 1
+    while current**exponent > value:
+        current -= 1
+    return current
 
 
 def perfect_power_data(value: int) -> tuple[int, int]:
@@ -96,6 +98,9 @@ def perfect_power_data(value: int) -> tuple[int, int]:
     # valuation, so `total_exponent` is maximal without trying every integer
     # up to the bit length.  Negative integers can only have odd exponents.
     for exponent in _small_primes(base.bit_length()):
+        # Earlier roots shrink `base`; all remaining exponents can become moot.
+        if exponent >= base.bit_length():
+            break
         if number < 0 and exponent == 2:
             continue
         while base > 1:
@@ -1373,6 +1378,10 @@ def decompose_discriminant(
         next_components = []
         for component in components:
             if component.state != COMPOSITE:
+                next_components.append(component)
+                continue
+            # Classification removed powers and small factors; rho is capped.
+            if component.base.bit_length() > 192:
                 next_components.append(component)
                 continue
             factor = bounded_factor(component.base, small_prime_bound, rho_steps)
