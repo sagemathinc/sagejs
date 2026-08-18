@@ -124,6 +124,31 @@ assert not check_buchmann_lenstra_general_result(
     equation_discriminant=equation_discriminant,
 )
 result.evidence["events"][0]["q"] = saved_q
+
+multiplier_event = next(
+    event for event in result.evidence["events"]
+    if event["stage"] == "multiplier-ring"
+)
+saved_kernel_entry = multiplier_event["kernel_rows"][0][0]
+multiplier_event["kernel_rows"][0][0] = saved_kernel_entry + 1
+assert not check_buchmann_lenstra_general_result(
+    coefficients,
+    starting_basis,
+    result,
+    equation_discriminant=equation_discriminant,
+)
+multiplier_event["kernel_rows"][0][0] = saved_kernel_entry
+
+compact = result.evidence["compact_event_certificate"]
+saved_event_count = compact["event_count"]
+compact["event_count"] = saved_event_count + 1
+assert not check_buchmann_lenstra_general_result(
+    coefficients,
+    starting_basis,
+    result,
+    equation_discriminant=equation_discriminant,
+)
+compact["event_count"] = saved_event_count
 assert check_buchmann_lenstra_general_result(
     coefficients,
     starting_basis,
@@ -144,7 +169,13 @@ print(json.dumps({
     "event_stages": [event["stage"] for event in result.evidence["events"]],
     "construction_ns": construction_ns,
     "checker_ns": checker_ns,
-    "corruptions_rejected": ["index", "discriminant", "event"],
+    "corruptions_rejected": [
+        "index",
+        "discriminant",
+        "event-q",
+        "event-kernel",
+        "compact-schema",
+    ],
 }, sort_keys=True))
 `;
 

@@ -75,9 +75,20 @@ def measure(case):
     )
     component = DiscriminantComponent(modulus, "composite")
     started = time.perf_counter_ns()
+    reference_data = bl._composite_dedekind_data_reference(coefficients, modulus)
+    reference_data_ns = time.perf_counter_ns() - started
+    started = time.perf_counter_ns()
     data = bl._composite_dedekind_data(coefficients, modulus)
-    data_ns = time.perf_counter_ns() - started
+    fused_data_hnf_ns = time.perf_counter_ns() - started
     assert data["status"] == "enlarge"
+    for key in (
+        "repeated_gcd",
+        "squarefree_quotient",
+        "correction",
+        "obstruction",
+        "generator",
+    ):
+        assert data[key] == reference_data[key]
     degree = len(coefficients) - 1
     generators = [
         [modulus if row == column else 0 for column in range(degree)]
@@ -91,6 +102,7 @@ def measure(case):
     packed_hnf = bl._packed_row_hnf(generators)
     packed_hnf_ns = time.perf_counter_ns() - started
     assert packed_hnf == reference_hnf
+    assert data["packed_hnf"] == reference_hnf
     started = time.perf_counter_ns()
     result = bl.buchmann_lenstra_overorder(
         coefficients,
@@ -102,7 +114,14 @@ def measure(case):
     accepted = bl.check_buchmann_lenstra_result(coefficients, result)
     checker_ns = time.perf_counter_ns() - started
     assert accepted and result.state == "complete"
-    return [data_ns, reference_hnf_ns, packed_hnf_ns, construction_ns, checker_ns]
+    return [
+        reference_data_ns,
+        fused_data_hnf_ns,
+        reference_hnf_ns,
+        packed_hnf_ns,
+        construction_ns,
+        checker_ns,
+    ]
 
 for case in cases:
     for _index in range(${warmups}):
@@ -122,6 +141,9 @@ for case in cases:
 
 print(json.dumps({
     "execution_mode": execution_mode(bl.packed_row_hnf_in_place),
+    "fused_execution_mode": execution_mode(
+        bl.packed_composite_dedekind_basis_in_place
+    ),
     "results": results,
 }, sort_keys=True))
 `;
@@ -140,7 +162,8 @@ function runRuntime(name, command, args, environment = {}) {
   }
   const report = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
   const labels = [
-    "composite_dedekind_data",
+    "reference_composite_dedekind_data",
+    "fused_composite_data_and_hnf",
     "reference_hnf",
     "packed_hnf",
     "construction",
@@ -174,7 +197,11 @@ const compiled = spawnSync(
     "compile",
     kernelPath,
     "--functions",
-    "packed_row_hnf_in_place",
+    [
+      "packed_row_hnf_in_place",
+      "packed_composite_dedekind_basis_in_place",
+      "packed_order_table_in_place",
+    ].join(","),
   ],
   { cwd: root, encoding: "utf8", timeout: 120_000 },
 );
@@ -185,7 +212,7 @@ if (compiled.status !== 0) {
 console.log(
   JSON.stringify(
     {
-      schema: "sagejs.number-fields/buchmann-lenstra-fast-benchmark-v1",
+      schema: "sagejs.number-fields/buchmann-lenstra-fast-benchmark-v2",
       warmups,
       samples,
       controls: controlIds,
