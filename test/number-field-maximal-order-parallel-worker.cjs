@@ -78,3 +78,54 @@ test("worker arithmetic failures cancel with one stable error", async () => {
     await session.close();
   }
 });
+
+test(
+  "the public engine uses workers only after a measured native fallback",
+  { timeout: 120_000 },
+  async (t) => {
+    const session = await createSage();
+    try {
+      const capability = await session.evaluate(
+        "from multiprocessing import worker_module_available\nworker_module_available('sagejs.number_fields.local_parallel_worker')",
+      );
+      if (capability.repr !== "True") {
+        t.skip("optional precompiled worker module graph is unavailable");
+        return;
+      }
+      const result = await session.evaluate(
+        [
+          "import sagejs.number_fields.maximal_order_engine as engine",
+          "R.<x> = QQ[]",
+          "K.<a> = NumberField(x^2 - 88200)",
+          "expected = K.maximal_order()",
+          "native = engine.native_order_from_polynomial",
+          "micros_per_unit = engine._ROUND2_MICROS_PER_UNIT",
+          "def unavailable(coefficients, primes):",
+          "    raise RuntimeError('forced native unavailability')",
+          "engine.native_order_from_polynomial = unavailable",
+          "engine._ROUND2_MICROS_PER_UNIT = 2000000",
+          "try:",
+          "    L.<b> = NumberField(x^2 - 88200)",
+          "    actual = L.maximal_order(trace=True)",
+          "    M.<c> = NumberField(x^2 - 88200)",
+          "    cached_order = M.maximal_order()",
+          "    cached = cached_order is M.maximal_order()",
+          "finally:",
+          "    engine.native_order_from_polynomial = native",
+          "    engine._ROUND2_MICROS_PER_UNIT = micros_per_unit",
+          "events = actual.maximal_order_trace()['events']",
+          "native_event = [event for event in events if event['stage'] == 'native-local-orders'][-1]",
+          "schedule_event = [event for event in events if event['stage'] == 'local-schedule'][-1]",
+          "decision = schedule_event['details']['parallel_decision']",
+          "(engine._basis_from_order(actual, 1).canonical_key() == engine._basis_from_order(expected, 1).canonical_key(), actual.discriminant() == expected.discriminant(), actual.maximality_certificate()['index'] == expected.maximality_certificate()['index'], cached, native_event['state'], schedule_event['details']['schedule'][1:3], decision['selected'], decision['reason'], decision['after_native_fallback'])",
+        ].join("\n"),
+      );
+      assert.equal(
+        result.repr,
+        "(True, True, True, True, 'unavailable', ['parallel', 4], True, 'measured-native-fallback-crossover', True)",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);

@@ -7,9 +7,10 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement and measure a real pointer-free maximal-order local worker with deterministic merge, cancellation, full sequential equivalence, and an evidence-based public crossover gate",
-  "base_commit": "997c562f8ca1c2361ed2d2236fad71655f518f95",
+  "base_commit": "52f2344bd4ce08e2f2fea35523754ca902009e99",
   "claims": [
     "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
     "test/number-field-maximal-order-parallel-worker.cjs",
     "bench/number-field-maximal-order-parallel-worker.cjs"
   ],
