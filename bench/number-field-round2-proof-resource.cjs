@@ -144,7 +144,7 @@ const result = spawnSync(
     input: program,
     timeout: 60_000 * samples,
     maxBuffer: 32 * 1024 * 1024,
-    env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "1" },
+    env: process.env,
   },
 );
 if (result.error) throw result.error;
