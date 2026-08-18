@@ -67,6 +67,9 @@ const {
   ECLIB_SOURCE_NAME,
   ECLIB_SOURCE_PATH,
 } = require("./eclib-source.cjs");
+const {
+  prepareSources,
+} = require("./portable-smalljac/prepare-sources.cjs");
 
 const dependencies = [
   {
@@ -245,6 +248,96 @@ function buildWindowsDependencies() {
   );
   patchWindowsFlintHeaders();
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
+}
+
+function capture(command, args) {
+  const result = spawnSync(command, args, { encoding: "utf8" });
+  if (result.error || result.status !== 0) return undefined;
+  return result.stdout.trim();
+}
+
+function findVisualStudioEnvironment() {
+  const candidates = [];
+  if (process.env.VSINSTALLDIR) {
+    candidates.push(
+      join(process.env.VSINSTALLDIR, "VC", "Auxiliary", "Build", "vcvars64.bat"),
+    );
+  }
+  candidates.push("C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat");
+  const programFilesX86 = process.env["ProgramFiles(x86)"];
+  if (programFilesX86) {
+    const vswhere = join(
+      programFilesX86,
+      "Microsoft Visual Studio",
+      "Installer",
+      "vswhere.exe",
+    );
+    if (existsSync(vswhere)) {
+      const installation = capture(vswhere, [
+        "-latest",
+        "-products",
+        "*",
+        "-requires",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-property",
+        "installationPath",
+      ]);
+      if (installation) {
+        candidates.push(
+          join(installation, "VC", "Auxiliary", "Build", "vcvars64.bat"),
+        );
+      }
+    }
+  }
+  const vcvars = candidates.find((candidate) => existsSync(candidate));
+  if (!vcvars) {
+    throw new Error(
+      "smalljac requires Visual Studio C++ tools with clang-cl on native Windows",
+    );
+  }
+  return vcvars;
+}
+
+async function buildWindowsSmalljac() {
+  const ffpoly = dependencies.find(({ name }) => name === "ffpoly");
+  const smalljac = dependencies.find(({ name }) => name === "smalljac");
+  const stampPath = join(prefix, ".sagejs-smalljac-dependencies.json");
+  const expectedBuild = {
+    ffpoly: ffpoly.version,
+    smalljac: smalljac.version,
+    arithmetic: "portable-fixed-width-v2",
+    abi: "int64-v1",
+  };
+  if (
+    existsSync(join(prefix, "lib", "ff_poly.lib")) &&
+    existsSync(join(prefix, "lib", "smalljac.lib")) &&
+    existsSync(join(prefix, "include", "smalljac.h")) &&
+    existsSync(stampPath) &&
+    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8")).build) ===
+      JSON.stringify(expectedBuild)
+  ) {
+    process.stdout.write(`Using portable smalljac dependencies in ${prefix}\n`);
+    return;
+  }
+
+  const ffpolySource = extract(await obtainArchive(ffpoly), ffpoly);
+  const smalljacSource = extract(await obtainArchive(smalljac), smalljac);
+  prepareSources(ffpolySource, smalljacSource, { windows: true });
+  const vcvars = findVisualStudioEnvironment();
+  const powershell = [
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File",
+    `"${join(__dirname, "portable-smalljac", "build-windows.ps1")}"`,
+    `-FfpolySource "${ffpolySource}"`,
+    `-SmalljacSource "${smalljacSource}"`,
+    `-Prefix "${prefix}"`,
+  ].join(" ");
+  const command = `call "${vcvars}" >nul && ${powershell}`;
+  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command]);
+  writeFileSync(
+    stampPath,
+    `${JSON.stringify({ build: expectedBuild }, null, 2)}\n`,
+  );
+  process.stdout.write(`Portable smalljac installed in ${prefix}\n`);
 }
 
 function digest(path) {
@@ -573,6 +666,7 @@ async function main() {
   await prepareEclibSource();
   if (process.platform === "win32") {
     buildWindowsDependencies();
+    await buildWindowsSmalljac();
     return;
   }
   const supportedUnix =

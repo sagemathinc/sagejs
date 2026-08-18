@@ -37,12 +37,13 @@ function fixedWidthWindowsSource(contents) {
     .replace(/\bLONG_MIN\b/g, "INT64_MIN")
     .replace(/\b([0-9]+|0[xX][0-9a-fA-F]+)UL\b/g, "$1ULL")
     .replace(/\b([0-9]+|0[xX][0-9a-fA-F]+)L\b/g, "$1LL")
-    .replace(/%lu/g, "%llu")
-    .replace(/%ld/g, "%lld")
-    .replace(/%lx/g, "%llx")
-    .replace(/%lX/g, "%llX")
+    .replace(
+      /%([#0 +'*-]*[0-9]*(?:\.[0-9]+)?)l([diuoxX])/g,
+      "%$1ll$2",
+    )
     .replace(/\batol\s*\(/g, "sagejs_ffpoly_atol64(")
     .replace(/\brandom\s*\(/g, "sagejs_ffpoly_random64(")
+    .replace(/\babs\s*\(/g, "llabs(")
     .replace(/#include <unistd\.h>/g, [
       "#if !defined(_WIN32)",
       "#include <unistd.h>",
@@ -58,7 +59,9 @@ function transformDirectory(directory) {
     const transformed = fixedWidthWindowsSource(readFileSync(path, "utf8"));
     writeFileSync(
       path,
-      name.endsWith(".c") ? `#include <stdint.h>\n${transformed}` : transformed,
+      name.endsWith(".c")
+        ? `#include <stdint.h>\n#include "sagejs_gmp_word.h"\n${transformed}`
+        : transformed,
     );
   }
 }
@@ -81,6 +84,12 @@ function prepareSources(ffpolySource, smalljacSource, options = {}) {
     smalljacSource,
   );
   if (options.windows) {
+    for (const source of [ffpolySource, smalljacSource]) {
+      copyFileSync(
+        join(__dirname, "sagejs_gmp_word.h"),
+        join(source, "sagejs_gmp_word.h"),
+      );
+    }
     transformDirectory(ffpolySource);
     transformDirectory(smalljacSource);
   }

@@ -91,9 +91,9 @@ repeated scalar calls. Native polynomial inflation implements substitution
 `q -> q^d`, which the Sage.js modular-forms layer uses for degeneracy maps and
 prime-level Eisenstein bases.
 
-On Linux x64, integral elliptic curves use Andrew Sutherland's
-[smalljac 4.1.3](https://math.mit.edu/~drew/smalljac.html) to compute traces
-of Frobenius over a whole prime interval. Sage.js translates smalljac's
+On every supported native platform, integral elliptic curves use Andrew
+Sutherland's [smalljac 4.1.3](https://math.mit.edu/~drew/smalljac.html) to
+compute traces of Frobenius over a whole prime interval. Sage.js translates smalljac's
 `1 - a_p*T + p*T^2` convention at the native boundary, then uses the usual
 Euler recurrences to construct `anlist`. Bad-reduction primes, and models or
 intervals rejected by smalljac, automatically use the earlier direct
@@ -204,8 +204,11 @@ macOS, and x86-64 Windows. Linux and macOS download SHA-256-verified GMP 6.3.0,
 MPFR 4.2.2, MPC 1.4.1, OpenBLAS 0.3.33, and FLINT 3.6.0 and build
 position-independent static libraries. The same build also downloads the
 SHA-256-verified pinned eclib source archive and applies the FLINT-only rank
-patch on every platform. Linux x64 additionally builds
-`ffpoly` 1.2.7 and smalljac 4.1.3.
+patch on every platform. The dependency build also builds `ffpoly` 1.2.7 and
+smalljac 4.1.3. GNU x86-64 retains ffpoly's optimized assembly word
+operations; Linux arm64 and macOS use exact `__uint128_t` operations, and
+native Windows uses clang-cl carry/multiply intrinsics plus an exact
+two-limb division implementation.
 Windows uses a pinned vcpkg baseline to build static GMP 6.3.0, MPFR 4.2.2,
 MPC 1.3.1, OpenBLAS 0.3.33, FLINT 3.6.0, and pthreads4w with the dynamic MSVC
 runtime. The Node addon uses clang-cl because its machine-word kernels rely on
@@ -219,10 +222,19 @@ SHA-512-verified autoconf archive from the immutable `native-sources-1` release.
 This keeps a fresh Windows build reproducible even after the rolling MSYS2
 mirrors discard that revision.
 
-The current `ffpoly` release's assembly implementation is Linux x64-specific.
-On Linux arm64, macOS, and Windows, `smalljacVersion()` returns `null` and the
-elliptic-curve API uses its tested portable point-count fallback. Porting ffpoly/smalljac to
-arm64 remains an independently replaceable accelerator project:
+The upstream sources assume the LP64 ABI. During a native Windows build,
+Sage.js prepares a fixed-width `uint64_t`/`int64_t` source tree and routes
+GMP's C-`long` `_ui` and `_si` interfaces through exact 64-bit adapters. This
+avoids silently truncating primes at the 32-bit LLP64 boundary. The Windows
+library is the complete `smalljac_Lpolys` genus-one link closure. It omits
+`STgroups.c` and `smalljac_moments.c`, which implement a separate public
+Sato--Tate statistics API and are unreachable from that entry point.
+
+The portable word layer is differentially checked against an independent
+exact oracle. Portable and optimized smalljac trace streams are also compared
+over prime intervals that cross the point-count/finite-field algorithm
+boundary. Set `SAGEJS_FORCE_PORTABLE_SMALLJAC=1` on a GNU x86-64 build to test
+the portable implementation in place of upstream assembly:
 
 ```sh
 pnpm --dir packages/flint build

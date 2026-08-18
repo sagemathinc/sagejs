@@ -53,7 +53,7 @@ diff --git a/cstd.h b/cstd.h
  		_cstd_seed *= time(0);
  	}
  	return _cstd_seed;
-@@ -76,8 +85,8 @@ static inline unsigned long cstd_seed(void)
+@@ -76,11 +85,11 @@ static inline unsigned long cstd_seed(void)
  #define _min(a,b)		((a)<(b)?(a):(b))		// generic min, not safe with side-effects
  
  // Some handy utility functions
@@ -63,4 +63,8 @@ diff --git a/cstd.h b/cstd.h
 +static inline unsigned long _asm_lowbit (uint64_t x) { return sagejs_ffpoly_lowbit64(x); }
  static inline unsigned long ui_ceil_ratio (unsigned long a, unsigned long b)
  	{ register unsigned long x = a/b;  return ( x*b<a ? x+1 : x ); }
- static inline int ui_len (unsigned long x) { return LONG_BITS-__builtin_clzl(x); }
+-static inline int ui_len (unsigned long x) { return LONG_BITS-__builtin_clzl(x); }
++static inline int ui_len (unsigned long x) { return 1+sagejs_ffpoly_highbit64(x); }
+ static inline unsigned long ui_min (unsigned long a, unsigned long b)
+ 	{ return ( a < b ? a : b ); }
+ static inline unsigned long ui_max (unsigned long a, unsigned long b)

@@ -4,7 +4,30 @@
 
 #include "sagejs_ffpoly_word.h"
 
+static uint64_t state = UINT64_C(0x9e3779b97f4a7c15);
+
+static uint64_t next_word(void) {
+  state ^= state >> 12;
+  state ^= state << 25;
+  state ^= state >> 27;
+  return state * UINT64_C(0x2545f4914f6cdd1d);
+}
+
 #if defined(_MSC_VER) || !defined(__SIZEOF_INT128__) || __SIZEOF_INT128__ != 16
+static sagejs_ffpoly_u128 reference_divide(uint64_t high, uint64_t low,
+                                           uint64_t divisor) {
+  sagejs_ffpoly_u128 result = {high, 0};
+  for (int bit = 63; bit >= 0; bit -= 1) {
+    uint64_t carry = result.hi >> 63;
+    result.hi = (result.hi << 1) | ((low >> bit) & UINT64_C(1));
+    if (carry || result.hi >= divisor) {
+      result.hi -= divisor;
+      result.lo |= UINT64_C(1) << bit;
+    }
+  }
+  return result;
+}
+
 int main(void) {
   uint64_t high = 0, low = 0, quotient = 0;
   _asm_mult_1_1(high, low, UINT64_C(0xffffffffffffffff), UINT64_C(2));
@@ -26,19 +49,21 @@ int main(void) {
   if (sagejs_ffpoly_highbit64(UINT64_C(0x8000000000001000)) != 63 ||
       sagejs_ffpoly_lowbit64(UINT64_C(0x8000000000001000)) != 12)
     return 5;
+  for (unsigned iteration = 0; iteration < 100000; iteration += 1) {
+    uint64_t divisor = next_word() | 1;
+    uint64_t dividendHigh = next_word() % divisor;
+    uint64_t dividendLow = next_word();
+    sagejs_ffpoly_u128 expected =
+        reference_divide(dividendHigh, dividendLow, divisor);
+    high = dividendHigh;
+    low = dividendLow;
+    _asm_div_q_q(quotient, high, low, divisor);
+    if (quotient != expected.lo || high != expected.hi) return 6;
+  }
   return 0;
 }
 #else
 typedef __uint128_t native_u128;
-
-static uint64_t state = UINT64_C(0x9e3779b97f4a7c15);
-
-static uint64_t next_word(void) {
-  state ^= state >> 12;
-  state ^= state << 25;
-  state ^= state >> 27;
-  return state * UINT64_C(0x2545f4914f6cdd1d);
-}
 
 static int fail(const char *operation, unsigned iteration) {
   fprintf(stderr, "%s failed at iteration %u\n", operation, iteration);

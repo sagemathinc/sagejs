@@ -51,19 +51,47 @@ static __forceinline sagejs_ffpoly_u128 sagejs_ffpoly_mul64(uint64_t x,
 
 static __forceinline sagejs_ffpoly_u128 sagejs_ffpoly_div128by64(
     uint64_t hi, uint64_t lo, uint64_t divisor) {
-  sagejs_ffpoly_u128 result = {hi, 0};
-  int bit;
-  /* clang-cl does not expose MSVC's _udiv128.  The upstream macro is not on
-     smalljac's genus-1 hot path, so use exact restoring division here.  As
-     with x86 divq, callers must provide hi < divisor. */
-  for (bit = 63; bit >= 0; bit -= 1) {
-    uint64_t carry = result.hi >> 63;
-    result.hi = (result.hi << 1) | ((lo >> bit) & UINT64_C(1));
-    if (carry || result.hi >= divisor) {
-      result.hi -= divisor;
-      result.lo |= UINT64_C(1) << bit;
-    }
+  const uint64_t base = UINT64_C(1) << 32;
+  const uint64_t mask = base - 1;
+  uint64_t normalizedHi, normalizedLo, divisorHi, divisorLo;
+  uint64_t quotientHi, quotientLo, remainderHat, partial;
+  unsigned shift;
+  unsigned long divisorHighBit;
+  sagejs_ffpoly_u128 result;
+
+  /* clang-cl does not expose MSVC's _udiv128.  Divide in base 2^32 using
+     Knuth's normalized two-digit algorithm instead of a 64-step restoring
+     loop.  As with x86 divq, callers must provide hi < divisor. */
+  _BitScanReverse64(&divisorHighBit, divisor);
+  shift = 63U - (unsigned)divisorHighBit;
+  divisor <<= shift;
+  normalizedHi = shift ? (hi << shift) | (lo >> (64 - shift)) : hi;
+  normalizedLo = lo << shift;
+  divisorHi = divisor >> 32;
+  divisorLo = divisor & mask;
+
+  quotientHi = normalizedHi / divisorHi;
+  remainderHat = normalizedHi - quotientHi * divisorHi;
+  while (quotientHi >= base ||
+         quotientHi * divisorLo > base * remainderHat + (normalizedLo >> 32)) {
+    quotientHi -= 1;
+    remainderHat += divisorHi;
+    if (remainderHat >= base) break;
   }
+
+  partial = normalizedHi * base + (normalizedLo >> 32) - quotientHi * divisor;
+  quotientLo = partial / divisorHi;
+  remainderHat = partial - quotientLo * divisorHi;
+  while (quotientLo >= base ||
+         quotientLo * divisorLo > base * remainderHat + (normalizedLo & mask)) {
+    quotientLo -= 1;
+    remainderHat += divisorHi;
+    if (remainderHat >= base) break;
+  }
+
+  result.lo = quotientHi * base + quotientLo;
+  result.hi = (partial * base + (normalizedLo & mask) - quotientLo * divisor) >>
+              shift;
   return result;
 }
 
