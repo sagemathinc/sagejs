@@ -4,10 +4,10 @@
   "id": "nf-opt-stress-direct-boundary",
   "title": "Nf Opt Stress Direct Boundary",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Provide an exact cold direct polynomial-to-HNF evidence boundary for all stress cases, including composite support, with focused tests",
-  "base_commit": "758e37a1954778b3cea012551ef4b76b060fd95a",
+  "base_commit": "0729de723a5a90df3e7ca5b98ecac618835401b5",
   "claims": [
     "tools/number-field-maximal-order/workers/sagejs.cjs",
     "tools/number-field-maximal-order/adapters.cjs",
@@ -38,10 +38,67 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test bench/number-field-maximal-order-final-evidence/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.791,
+      "started_at": "2026-08-18T10:56:27.921Z",
+      "commit": "423ebc514bd57530214e5c4b6d18aca498b243bb",
+      "workspace_fingerprint": "be2f418e5b5dbd0d30d011335418a563e1617902910f2aec48e297ea15871cdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-direct-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.898,
+      "started_at": "2026-08-18T10:56:50.938Z",
+      "commit": "423ebc514bd57530214e5c4b6d18aca498b243bb",
+      "workspace_fingerprint": "be2f418e5b5dbd0d30d011335418a563e1617902910f2aec48e297ea15871cdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.643,
+      "started_at": "2026-08-18T10:57:06.611Z",
+      "commit": "423ebc514bd57530214e5c4b6d18aca498b243bb",
+      "workspace_fingerprint": "be2f418e5b5dbd0d30d011335418a563e1617902910f2aec48e297ea15871cdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.997,
+      "started_at": "2026-08-18T10:57:13.989Z",
+      "commit": "423ebc514bd57530214e5c4b6d18aca498b243bb",
+      "workspace_fingerprint": "be2f418e5b5dbd0d30d011335418a563e1617902910f2aec48e297ea15871cdf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.829,
+      "started_at": "2026-08-18T11:02:14.559Z",
+      "commit": "423ebc514bd57530214e5c4b6d18aca498b243bb",
+      "workspace_fingerprint": "be2f418e5b5dbd0d30d011335418a563e1617902910f2aec48e297ea15871cdf",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "All 16 stress cases now receive an honest direct polynomial-to-HNF strategy: 11 unresolved-component cases use the authenticated composite square-support constructor and 5 complete word-prime cases use the native order resource. Successful rows carry exact proof metadata and pass the independent canonical-lattice verifier; unavailable proofs remain unsupported.",
+    "risks": [
+      "The requested bounded validation deliberately did not execute the complete 16-case stress sweep; a final evidence run must establish runtime completion and performance for every structural composite case.",
+      "The authenticated composite strategy is intentionally capability bounded. Any non-square-support composite shape returns unsupported rather than falling through to a warm public or cached computation."
+    ],
+    "next_steps": [
+      "Integrate the branch and run the final stress evidence matrix against PARI and Hecke on the clean final source revision.",
+      "Preserve the direct certificate and independent verifier fields when generating the final immutable receipt."
+    ]
   }
 }
