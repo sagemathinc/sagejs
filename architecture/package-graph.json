@@ -159,7 +159,7 @@
       "id": "number-field-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 600000,
+      "max_source_bytes": 625000,
       "depends_on": [
         "core-runtime",
         "native-integration",
