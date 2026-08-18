@@ -11,8 +11,11 @@
   "claims": [
     "src/lib/sagejs/number_fields/round4.py",
     "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
+    "src/lib/sagejs/kernels/polynomial/packed_rational.py",
     "test/number-field-round4-crt-batch.cjs",
-    "bench/number-field-round4-crt-batch.cjs"
+    "test/packed-integral-number-field.cjs",
+    "bench/number-field-round4-crt-batch.cjs",
+    "bench/packed-integral-number-field.cjs"
   ],
   "dependencies": [],
   "references": [

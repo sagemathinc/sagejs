@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
@@ -209,3 +209,72 @@ def packed_rational_polynomial_equal(
             if left_denominators[index] != right_denominators[index]:
                 equal = False
     return equal
+
+
+@native
+def packed_integral_number_field_multiply_reduce(
+    output: IntegerBuffer,
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    defining: IntegerBuffer,
+    workspace: IntegerBuffer,
+    degree: uint64,
+) -> bool:
+    """Multiply canonical elements of `QQ[x]/(f)` for integral monic `f`.
+
+    `left`, `right`, and `output` store one positive common denominator followed
+    by exactly `degree` power-basis numerators.  `defining` stores the `degree`
+    lower integer coefficients of the monic polynomial.  The caller owns a
+    `2 * degree - 1` exact workspace sized from the input coefficient bound.
+    The output denominator and all numerators are divided by their common gcd,
+    so the representation is canonical.  Returning false reports only a shape
+    or denominator invariant failure; the ordinary body is the dynamic oracle.
+    """
+    zero = degree - degree
+    if degree == zero:
+        return False
+    one = degree // degree
+    expected_element = degree + one
+    expected_workspace = degree + degree - one
+    valid = len(output) == expected_element
+    if len(left) != expected_element or len(right) != expected_element:
+        valid = False
+    if len(defining) != degree or len(workspace) != expected_workspace:
+        valid = False
+    if valid and (left[0] <= 0 or right[0] <= 0):
+        valid = False
+    if not valid:
+        return False
+    for workspace_index in range(expected_workspace):
+        workspace[workspace_index] = zero
+    for left_index in range(degree):
+        for right_index in range(degree):
+            target = left_index + right_index
+            workspace[target] = (
+                workspace[target] + left[left_index + one] * right[right_index + one]
+            )
+    exponent = expected_workspace - one
+    while exponent >= degree:
+        leading = workspace[exponent]
+        if leading != 0:
+            shift = exponent - degree
+            for defining_index in range(degree):
+                workspace[shift + defining_index] = (
+                    workspace[shift + defining_index]
+                    - leading * defining[defining_index]
+                )
+        if exponent == degree:
+            exponent = degree - one
+        else:
+            exponent = exponent - one
+    denominator = left[0] * right[0]
+    content = denominator
+    for content_index in range(degree):
+        content = packed_rational_polynomial_gcd(
+            content,
+            workspace[content_index],
+        )
+    output[0] = denominator // content
+    for output_index in range(degree):
+        output[output_index + one] = workspace[output_index] // content
+    return True
