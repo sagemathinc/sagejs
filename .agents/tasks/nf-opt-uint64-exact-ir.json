@@ -46,10 +46,36 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/test-manifest.test.cjs test/native-exact-uint64-buffer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.668,
+      "started_at": "2026-08-18T08:24:56.046Z",
+      "commit": "c92430f9657c9eab3d35e9d322d13605f495e2a6",
+      "workspace_fingerprint": "0eb731c43ec5588ecba0db2ccf9d849a99cf6dd2a9f1379ae4ed9f38ecf620b3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.229,
+      "started_at": "2026-08-18T08:25:03.704Z",
+      "commit": "c92430f9657c9eab3d35e9d322d13605f495e2a6",
+      "workspace_fingerprint": "0eb731c43ec5588ecba0db2ccf9d849a99cf6dd2a9f1379ae4ed9f38ecf620b3",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "General exact-kernel IR now borrows UInt64Buffer values for checked len/get/set while preserving uint64 data and mutation effects. Exact Integer modulo uint64 lowers to a host-isolated limb-native operation. The actual Round-4 batch and its evolved two-level CRT ABI both compile with zero callbacks; randomized JavaScript, tagged, GMP, native, and CPython differentials pass.",
+    "risks": [
+      "The coordinator intentionally stopped the redundant lane-local full native sweep after it passed build, FLINT, FFLAS, graph, M4RI, FFI/lifecycle, canonical native-kernel, and dense migration stages; the authoritative final native sweep runs on the integrated root."
+    ],
+    "next_steps": [
+      "Use the integrated root native/platform sweep as the release receipt.",
+      "Retain the registered exact word-buffer witness in the integration tier."
+    ]
   }
 }
