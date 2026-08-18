@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-production-parallel",
+  "title": "Nf Opt Production Parallel",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure and production-harden the maximal-order local worker crossover without replacing a faster native global path",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_parallel.py",
+    "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    "test/number-field-local-parallel.cjs",
+    "test/number-field-maximal-order-parallel-worker.cjs",
+    "bench/number-field-local-parallel.cjs",
+    "bench/number-field-maximal-order-parallel-worker.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "sequential exact local result and canonical merge plan",
+      "public native-first maximal-order result"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-local-parallel.cjs",
+    "pnpm test:number-field:parallel-worker:run",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-local-parallel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.966,
+      "started_at": "2026-08-18T08:00:06.811Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9c43f74273bc2ac617cdcb495406e5ad92b45f6621fdbc26cd392a0f4ceeafc2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:number-field:parallel-worker:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.65,
+      "started_at": "2026-08-18T08:00:35.921Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9c43f74273bc2ac617cdcb495406e5ad92b45f6621fdbc26cd392a0f4ceeafc2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:number-field:parallel-worker:run",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.71,
+      "started_at": "2026-08-18T08:02:03.189Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9c43f74273bc2ac617cdcb495406e5ad92b45f6621fdbc26cd392a0f4ceeafc2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.621,
+      "started_at": "2026-08-18T08:02:21.863Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9c43f74273bc2ac617cdcb495406e5ad92b45f6621fdbc26cd392a0f4ceeafc2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.928,
+      "started_at": "2026-08-18T08:02:47.745Z",
+      "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+      "workspace_fingerprint": "9c43f74273bc2ac617cdcb495406e5ad92b45f6621fdbc26cd392a0f4ceeafc2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Hardened the production post-native-fallback worker crossover so its memory gate charges both measured evaluator RSS and canonical wire/per-branch peak estimates. Added inspectable useful-job and memory evidence, a decision-only benchmark mode, actual fallback/native win and RSS summaries, exact memory-boundary assertions, randomized completion equivalence, packaged graph freshness, prompt fatal cancellation, and native-first regression coverage. Fresh vector001 measured 53.668 s sequential versus 47.630 s parallel at 602 MB versus 1.286 GB; vector002 measured 254.337 s versus 281.184 s at 623 MB versus 1.280 GB on a heavily contended host. The stored three-sample vector001 median remains the stable positive fallback evidence (55.214 s versus 36.546 s), while native won both new rows by one to two orders of magnitude and therefore remains mandatory first choice.",
+    "risks": [
+      "Parallel fallback speed is sensitive to host contention; vector002 did not win in the fresh loaded-host observation, so the gate remains conservative, post-native-fallback only, and makes no universal speedup claim.",
+      "The integration lane must rerun the broad native suite; the coordinator explicitly delegated that broad validation after this lane passed focused packaged-worker, strict, and architecture checks.",
+      "Supported-platform release runs should confirm the runtime-derived memory budget on Linux arm64, macOS arm64, and native Windows x64. Missing capability continues to select the sequential exact fallback."
+    ],
+    "next_steps": [
+      "Cherry-pick this checkpoint into the maximal-order integration branch and run the consolidated native suite there.",
+      "Retain the v2 decision payload in the final evidence artifact so fixed evaluator RSS and branch/payload memory remain separately auditable."
+    ]
+  }
+}

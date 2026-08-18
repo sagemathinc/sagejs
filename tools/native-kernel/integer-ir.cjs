@@ -29,6 +29,7 @@ const TYPE_ALIASES = new Map([
 ]);
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
+const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
 const INTEGER_BINARY = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -294,6 +295,7 @@ function isIntegerSignature(signature) {
 
 function copyKind(type) {
   if (type === "IntegerBuffer") return "integer.buffer.copy";
+  if (type === "UInt64Buffer") return "uint64.buffer.copy";
   return INT64_BUFFER_TYPES.has(type)
     ? "int64.buffer.copy"
     : `${type.toLowerCase()}.copy`;
@@ -687,14 +689,16 @@ function lowerCall(node, context, operations) {
     expect(
       context,
       args[0],
-      EXACT_BUFFER_TYPES.has(buffer.type),
-      "exact len() requires an IntegerBuffer, Int64Buffer, or Int64Record",
+      BORROWED_BUFFER_TYPES.has(buffer.type),
+      "exact len() requires an IntegerBuffer, Int64Buffer, Int64Record, or UInt64Buffer",
     );
     const target = temporary(context, node, "uint64");
     operations.push({
       kind: buffer.type === "IntegerBuffer"
         ? "integer.buffer.length"
-        : "int64.buffer.length",
+        : buffer.type === "UInt64Buffer"
+          ? "uint64.buffer.length"
+          : "int64.buffer.length",
       target,
       buffer: buffer.name,
       bufferType: buffer.type,
@@ -930,25 +934,38 @@ function lowerExpression(node, context, operations) {
     const bufferType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
-    if (EXACT_BUFFER_TYPES.has(bufferType)) {
+    if (BORROWED_BUFFER_TYPES.has(bufferType)) {
       const buffer = lowerExpression(node.expression, context, operations);
-      const index = coerceInteger(
-        lowerExpression(node.property, context, operations),
+      const loweredIndex = buffer.type === "UInt64Buffer"
+        ? lowerUint64Operand(node.property, context, operations)
+        : lowerExpression(node.property, context, operations);
+      const index = buffer.type === "UInt64Buffer"
+        ? loweredIndex
+        : coerceInteger(
+            loweredIndex, context, node.property, operations,
+          );
+      expect(
         context,
         node.property,
-        operations,
+        buffer.type !== "UInt64Buffer" ||
+          index.type === "uint64" || index.type === "Integer",
+        "UInt64Buffer indexing requires an exact integer index",
       );
-      const target = temporary(context, node, "Integer");
+      const targetType = buffer.type === "UInt64Buffer" ? "uint64" : "Integer";
+      const target = temporary(context, node, targetType);
       operations.push({
         kind: buffer.type === "IntegerBuffer"
           ? "integer.buffer.get"
-          : "int64.buffer.get",
+          : buffer.type === "UInt64Buffer"
+            ? "uint64.buffer.get"
+            : "int64.buffer.get",
         target,
         buffer: buffer.name,
         bufferType: buffer.type,
         index: index.name,
+        indexType: index.type,
       });
-      return { name: target, type: "Integer" };
+      return { name: target, type: targetType };
     }
     expect(
       context,
@@ -1028,6 +1045,17 @@ function lowerExpression(node, context, operations) {
   if (arithmetic !== undefined) {
     let left = lowerExpression(node.left, context, operations);
     let right = lowerExpression(node.right, context, operations);
+    if (arithmetic === "mod" && left.type === "Integer" &&
+        right.type === "uint64") {
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "integer.mod_uint64",
+        target,
+        left: left.name,
+        right: right.name,
+      });
+      return { name: target, type: "uint64" };
+    }
     if (left.type === "uint64" && right.type === "uint64") {
       const target = temporary(context, node, "uint64");
       operations.push({
@@ -1211,20 +1239,35 @@ function lowerBufferAssignment(item, right, operator, context) {
   expect(
     context,
     item.expression,
-    EXACT_BUFFER_TYPES.has(buffer.type),
-    "indexed exact assignment requires an exact integer buffer",
+    BORROWED_BUFFER_TYPES.has(buffer.type),
+    "indexed exact assignment requires an exact integer or UInt64Buffer",
   );
-  const index = coerceInteger(
-    lowerExpression(item.property, context, operations),
+  const loweredIndex = buffer.type === "UInt64Buffer"
+    ? lowerUint64Operand(item.property, context, operations)
+    : lowerExpression(item.property, context, operations);
+  const index = buffer.type === "UInt64Buffer"
+    ? loweredIndex
+    : coerceInteger(
+        loweredIndex, context, item.property, operations,
+      );
+  expect(
     context,
     item.property,
-    operations,
+    buffer.type !== "UInt64Buffer" ||
+      index.type === "uint64" || index.type === "Integer",
+    "UInt64Buffer assignment requires an exact integer index",
   );
-  let value = coerceInteger(
-    lowerExpression(right, context, operations),
+  let value = buffer.type === "UInt64Buffer"
+    ? lowerUint64Operand(right, context, operations)
+    : lowerExpression(right, context, operations);
+  if (buffer.type !== "UInt64Buffer") {
+    value = coerceInteger(value, context, right, operations);
+  }
+  expect(
     context,
     right,
-    operations,
+    buffer.type !== "UInt64Buffer" || value.type === "uint64",
+    "UInt64Buffer assignment requires a uint64 value",
   );
   if (operator !== "=") {
     const arithmetic = INTEGER_BINARY.get(
@@ -1236,19 +1279,25 @@ function lowerBufferAssignment(item, right, operator, context) {
       arithmetic !== undefined,
       `unsupported indexed augmented operator ${operator}`,
     );
-    const current = temporary(context, item, "Integer");
+    const valueType = buffer.type === "UInt64Buffer" ? "uint64" : "Integer";
+    const current = temporary(context, item, valueType);
     operations.push({
       kind: buffer.type === "IntegerBuffer"
         ? "integer.buffer.get"
-        : "int64.buffer.get",
+        : buffer.type === "UInt64Buffer"
+          ? "uint64.buffer.get"
+          : "int64.buffer.get",
       target: current,
       buffer: buffer.name,
       bufferType: buffer.type,
       index: index.name,
+      indexType: index.type,
     });
-    const target = temporary(context, item, "Integer");
+    const target = temporary(context, item, valueType);
     operations.push({
-      kind: "integer.binary",
+      kind: buffer.type === "UInt64Buffer"
+        ? "uint64.binary"
+        : "integer.binary",
       operation: arithmetic,
       target,
       left: current,
@@ -1259,10 +1308,13 @@ function lowerBufferAssignment(item, right, operator, context) {
   operations.push({
     kind: buffer.type === "IntegerBuffer"
       ? "integer.buffer.set"
-      : "int64.buffer.set",
+      : buffer.type === "UInt64Buffer"
+        ? "uint64.buffer.set"
+        : "int64.buffer.set",
     buffer: buffer.name,
     bufferType: buffer.type,
     index: index.name,
+    indexType: index.type,
     value: value.name,
   });
   return operations;

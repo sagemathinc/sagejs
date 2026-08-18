@@ -22,7 +22,12 @@ import sys
 
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 import sagejs.number_fields.buchmann_lenstra as bl
-from sagejs.native import execution_mode, is_native
+from sagejs.native import (
+    execution_mode,
+    is_native,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
 from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent, OrderBasis
 
 fixtures = json.loads(${JSON.stringify(JSON.stringify(fixtures))})
@@ -47,7 +52,16 @@ coefficients = [int(value) for value in case["coefficients_low_to_high"]]
 modulus = int(case["reduced_resultant_component"])
 component = DiscriminantComponent(modulus, "unresolved-coprime-component")
 data = bl._composite_dedekind_data(coefficients, modulus)
+reference_data = bl._composite_dedekind_data_reference(coefficients, modulus)
 assert data["status"] == "enlarge"
+for key in (
+    "repeated_gcd",
+    "squarefree_quotient",
+    "correction",
+    "obstruction",
+    "generator",
+):
+    assert data[key] == reference_data[key]
 multiplication = bl._multiplication_rows(data["generator"], coefficients)
 generators = [
     [modulus if row == column else 0 for column in range(8)]
@@ -56,6 +70,25 @@ generators = [
 reference_t8_hnf = bl._row_hnf(generators)
 packed_t8_hnf = bl._packed_row_hnf(generators)
 assert packed_t8_hnf == reference_t8_hnf
+assert data["packed_hnf"] == reference_t8_hnf
+
+malformed_metadata = kernel_integer_zeros(
+    bl.packed_composite_dedekind_basis_in_place, 6, 4
+)
+assert not bl.packed_composite_dedekind_basis_in_place(
+    malformed_metadata,
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_zeros(bl.packed_composite_dedekind_basis_in_place, 1),
+    kernel_integer_buffer(
+        bl.packed_composite_dedekind_basis_in_place, coefficients
+    ),
+    modulus,
+    8,
+)
 
 result = bl.buchmann_lenstra_overorder(coefficients, component)
 assert result.state == "complete"
@@ -110,6 +143,12 @@ print(json.dumps({
     "split": split["split"].to_dict(),
     "native_marked": is_native(bl.packed_row_hnf_in_place),
     "execution_mode": execution_mode(bl.packed_row_hnf_in_place),
+    "fused_native_marked": is_native(
+        bl.packed_composite_dedekind_basis_in_place
+    ),
+    "fused_execution_mode": execution_mode(
+        bl.packed_composite_dedekind_basis_in_place
+    ),
 }, sort_keys=True))
 `;
 
@@ -140,8 +179,16 @@ test("packed BL HNF agrees exactly and rejects corrupted T8 evidence", () => {
   ]);
   assert.equal(python.native_marked, true);
   assert.equal(sagejs.native_marked, true);
+  assert.equal(python.fused_native_marked, true);
+  assert.equal(sagejs.fused_native_marked, true);
   assert.match(sagejs.execution_mode, /^(dynamic|native-capable|compiled)$/);
+  assert.match(
+    sagejs.fused_execution_mode,
+    /^(dynamic|native-capable|compiled)$/,
+  );
   delete python.execution_mode;
   delete sagejs.execution_mode;
+  delete python.fused_execution_mode;
+  delete sagejs.fused_execution_mode;
   assert.deepEqual(sagejs, python);
 });

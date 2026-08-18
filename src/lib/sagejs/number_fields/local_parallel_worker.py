@@ -17,14 +17,16 @@ from __future__ import annotations
 from typing import Any
 
 from sagejs.number_fields.local_parallel import (
+    DEFAULT_POLICY,
     JobPayload,
     ResultPayload,
+    conservative_peak_bytes,
     make_schedule,
     run_local_jobs,
 )
 
-PUBLIC_DECISION_SCHEMA = "sagejs.number-fields.public-local-worker-decision.v1"
-PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cjs:v1"
+PUBLIC_DECISION_SCHEMA = "sagejs.number-fields.public-local-worker-decision.v2"
+PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cjs:v2"
 PUBLIC_PARALLEL_SETUP_MARGIN_MICROS = 20_000_000
 PUBLIC_PARALLEL_PARENT_RSS_BYTES = 640 * 1024 * 1024
 PUBLIC_PARALLEL_WORKER_RSS_BYTES = 224 * 1024 * 1024
@@ -130,9 +132,15 @@ def public_worker_decision(
     predicted_total = sum(int(job[4]) for job in canonical_jobs)
     predicted_critical = _predicted_critical_path(canonical_jobs, workers)
     predicted_savings = max(0, predicted_total - predicted_critical)
-    predicted_peak = (
+    fixed_runtime_peak = (
         PUBLIC_PARALLEL_PARENT_RSS_BYTES + workers * PUBLIC_PARALLEL_WORKER_RSS_BYTES
     )
+    # The measured fixed evaluator allowance dominates current jobs, but the
+    # immutable payloads and their per-branch selector estimates are still
+    # real live memory.  Account for them instead of silently assuming that a
+    # future large basis remains negligible merely because vector001 did.
+    wire_and_branch_peak = conservative_peak_bytes(canonical_jobs, (), workers)
+    predicted_peak = fixed_runtime_peak + wire_and_branch_peak
     if memory_budget_bytes is None:
         memory_budget, memory_budget_source = _platform_memory_budget()
     else:
@@ -169,6 +177,12 @@ def public_worker_decision(
         "predicted_critical_path_micros": predicted_critical,
         "predicted_savings_micros": predicted_savings,
         "required_setup_margin_micros": PUBLIC_PARALLEL_SETUP_MARGIN_MICROS,
+        "minimum_useful_job_micros": int(DEFAULT_POLICY[3]),
+        "useful_job_count": sum(
+            1 for job in canonical_jobs if int(job[4]) >= int(DEFAULT_POLICY[3])
+        ),
+        "fixed_runtime_peak_rss_bytes": fixed_runtime_peak,
+        "wire_and_branch_peak_bytes": wire_and_branch_peak,
         "predicted_peak_rss_bytes": predicted_peak,
         "memory_budget_bytes": memory_budget,
         "memory_budget_source": memory_budget_source,

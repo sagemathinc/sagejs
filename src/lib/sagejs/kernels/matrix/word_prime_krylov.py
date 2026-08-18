@@ -10,6 +10,7 @@ source lowered by `@native`; callers own all packed storage.
 from __future__ import annotations
 
 from sagejs.native import (
+    IntegerBuffer,
     PrimeFieldModulus,
     UInt64Buffer,
     native,
@@ -26,6 +27,13 @@ def word_prime_krylov_workspace_length(dimension: int) -> int:
     if dimension < 0:
         raise ValueError("Krylov matrix dimension must be nonnegative")
     return 2 * dimension * dimension + 4 * dimension + 1
+
+
+def word_prime_krylov_batch_workspace_length(dimension: int) -> int:
+    """Return scratch length for a varying-prime integer-matrix batch."""
+    if dimension < 0:
+        raise ValueError("Krylov matrix dimension must be nonnegative")
+    return dimension * dimension + word_prime_krylov_workspace_length(dimension)
 
 
 @native
@@ -150,7 +158,313 @@ def word_prime_krylov_minimal_polynomial(
     raise ValueError("a square matrix has no Krylov relation")
 
 
+@native
+def integer_matrix_word_prime_minimal_polynomial_batch(
+    degrees: UInt64Buffer,
+    coefficients: UInt64Buffer,
+    crt_degree: UInt64Buffer,
+    crt_state: IntegerBuffer,
+    batch_state: IntegerBuffer,
+    matrix: IntegerBuffer,
+    primes: UInt64Buffer,
+    workspace: UInt64Buffer,
+    dimension: uint64,
+    prime_count: uint64,
+) -> uint64:
+    """Compute first-coordinate minimal polynomials for a prime batch.
+
+    `matrix` is one row-major exact integer matrix.  For prime number `j`,
+    the ascending polynomial occupies row `j` of the row-major `coefficients`
+    buffer, whose width is `dimension + 1`; `degrees[j]` records its degree.
+    The caller supplies one reusable modular matrix and Krylov workspace.
+    Across calls, `crt_degree[0]` and `crt_state` retain the largest modular
+    degree, modulus, and residues (`crt_state[0]` is the modulus and the
+    following entries are ascending coefficients).  `batch_state` is reusable
+    exact scratch.  The kernel first reconstructs the batch from its small
+    word primes, then merges that result into the growing global CRT exactly
+    once.  A larger modular degree resets either state; an equal degree extends
+    it by exact CRT.
+
+    Every accepted modulus is at most `2^30 - 1`.  Consequently each modular
+    product is below `2^60`, so the explicit `uint64` arithmetic cannot wrap.
+    Prime certification remains the caller's responsibility.  A zero return
+    reports a malformed shape, dimension, modulus range, or missing relation;
+    no such result is accepted by the caller.
+    """
+    zero = dimension - dimension
+    if dimension > 4294967295:
+        return zero
+    if dimension == zero:
+        return zero
+    one = dimension // dimension
+    matrix_count = dimension * dimension
+    relation_width = dimension + one
+    if len(matrix) != matrix_count:
+        return zero
+    if len(primes) != prime_count or len(degrees) != prime_count:
+        return zero
+    if len(coefficients) != prime_count * relation_width:
+        return zero
+    if len(crt_degree) != one or len(crt_state) != dimension + 2 * one:
+        return zero
+    if len(batch_state) != dimension + 2 * one:
+        return zero
+    if len(workspace) != 3 * matrix_count + 4 * dimension + one:
+        return zero
+    modular_matrix_offset = 0
+    krylov_offset = matrix_count
+    basis_vectors_offset = krylov_offset
+    basis_relations_offset = basis_vectors_offset + matrix_count
+    vector_offset = basis_relations_offset + dimension * relation_width
+    reduced_offset = vector_offset + dimension
+    relation_offset = reduced_offset + dimension
+    batch_degree = zero
+    for prime_index in range(prime_count):
+        modulus = primes[prime_index]
+        if modulus < 2 or modulus > 1073741823:
+            return zero
+        for index in range(matrix_count):
+            workspace[modular_matrix_offset + index] = matrix[index] % modulus
+
+        output_offset = prime_index * relation_width
+        for index in range(relation_width):
+            coefficients[output_offset + index] = zero
+        for index in range(dimension):
+            workspace[vector_offset + index] = zero
+        workspace[vector_offset] = one
+
+        basis_count = zero
+        found_relation = zero
+        for exponent in range(dimension + one):
+            if found_relation == zero:
+                for index in range(dimension):
+                    workspace[reduced_offset + index] = workspace[vector_offset + index]
+                for index in range(relation_width):
+                    workspace[relation_offset + index] = zero
+                workspace[relation_offset + exponent] = one
+
+                for basis_index in range(basis_count):
+                    basis_vector = basis_vectors_offset + basis_index * dimension
+                    pivot = dimension
+                    for index in range(dimension):
+                        if (
+                            pivot == dimension
+                            and workspace[basis_vector + index] != zero
+                        ):
+                            pivot = index
+                    multiplier = workspace[reduced_offset + pivot]
+                    if multiplier != zero:
+                        for index in range(dimension):
+                            if index >= pivot:
+                                product = (
+                                    multiplier * workspace[basis_vector + index]
+                                ) % modulus
+                                workspace[reduced_offset + index] = (
+                                    workspace[reduced_offset + index]
+                                    + modulus
+                                    - product
+                                ) % modulus
+                        basis_relation = (
+                            basis_relations_offset + basis_index * relation_width
+                        )
+                        for relation_index in range(exponent + one):
+                            product = (
+                                multiplier * workspace[basis_relation + relation_index]
+                            ) % modulus
+                            workspace[relation_offset + relation_index] = (
+                                workspace[relation_offset + relation_index]
+                                + modulus
+                                - product
+                            ) % modulus
+
+                pivot = dimension
+                for index in range(dimension):
+                    if pivot == dimension and workspace[reduced_offset + index] != zero:
+                        pivot = index
+                if pivot == dimension:
+                    for relation_index in range(exponent + one):
+                        coefficients[output_offset + relation_index] = workspace[
+                            relation_offset + relation_index
+                        ]
+                    degrees[prime_index] = basis_count
+                    found_relation = one
+                else:
+                    old_remainder = modulus
+                    remainder = workspace[reduced_offset + pivot]
+                    old_coefficient = modulus - modulus
+                    coefficient = modulus // modulus
+                    while remainder:
+                        quotient = old_remainder // remainder
+                        next_remainder = old_remainder % remainder
+                        product = ((quotient % modulus) * coefficient) % modulus
+                        next_coefficient = (
+                            old_coefficient + modulus - product
+                        ) % modulus
+                        old_remainder = remainder
+                        remainder = next_remainder
+                        old_coefficient = coefficient
+                        coefficient = next_coefficient
+                    inverse = old_coefficient
+                    basis_vector = basis_vectors_offset + basis_count * dimension
+                    for index in range(dimension):
+                        workspace[basis_vector + index] = (
+                            workspace[reduced_offset + index] * inverse
+                        ) % modulus
+                    basis_relation = (
+                        basis_relations_offset + basis_count * relation_width
+                    )
+                    for index in range(relation_width):
+                        workspace[basis_relation + index] = (
+                            workspace[relation_offset + index] * inverse
+                        ) % modulus
+                    basis_count = basis_count + one
+
+                    for row in range(dimension):
+                        total = modulus - modulus
+                        row_offset = modular_matrix_offset + row * dimension
+                        for column in range(dimension):
+                            product = (
+                                workspace[row_offset + column]
+                                * workspace[vector_offset + column]
+                            ) % modulus
+                            total = (total + product) % modulus
+                        workspace[reduced_offset + row] = total
+                    for index in range(dimension):
+                        workspace[vector_offset + index] = workspace[
+                            reduced_offset + index
+                        ]
+        if found_relation == zero:
+            return zero
+        modular_degree = degrees[prime_index]
+        if modular_degree > batch_degree:
+            batch_degree = modular_degree
+            batch_state[zero] = modulus
+            for crt_index in range(modular_degree + one):
+                batch_state[one + crt_index] = coefficients[output_offset + crt_index]
+        elif modular_degree == batch_degree:
+            current_modulus = batch_state[zero]
+            modulus_residue = current_modulus % modulus
+            old_remainder = modulus
+            remainder = modulus_residue
+            old_coefficient = modulus - modulus
+            coefficient = modulus // modulus
+            while remainder:
+                quotient = old_remainder // remainder
+                next_remainder = old_remainder % remainder
+                product = ((quotient % modulus) * coefficient) % modulus
+                next_coefficient = (old_coefficient + modulus - product) % modulus
+                old_remainder = remainder
+                remainder = next_remainder
+                old_coefficient = coefficient
+                coefficient = next_coefficient
+            inverse = old_coefficient
+            for crt_index in range(modular_degree + one):
+                residue_mod_prime = batch_state[one + crt_index] % modulus
+                target = coefficients[output_offset + crt_index]
+                correction = (
+                    (target + modulus - residue_mod_prime) * inverse
+                ) % modulus
+                batch_state[one + crt_index] = (
+                    batch_state[one + crt_index] + current_modulus * correction
+                )
+            batch_state[zero] = current_modulus * modulus
+    current_degree = crt_degree[zero]
+    if batch_degree > current_degree:
+        crt_degree[zero] = batch_degree
+        for crt_index in range(batch_degree + 2 * one):
+            crt_state[crt_index] = batch_state[crt_index]
+    elif batch_degree == current_degree:
+        global_modulus = crt_state[zero]
+        batch_modulus = batch_state[zero]
+        global_modulus_residue = global_modulus % batch_modulus
+        global_old_remainder = batch_modulus
+        global_remainder = global_modulus_residue
+        global_old_coefficient = batch_modulus - batch_modulus
+        global_coefficient = batch_modulus // batch_modulus
+        while global_remainder:
+            global_quotient = global_old_remainder // global_remainder
+            global_next_remainder = global_old_remainder % global_remainder
+            global_product = (
+                (global_quotient % batch_modulus) * global_coefficient
+            ) % batch_modulus
+            global_next_coefficient = (
+                global_old_coefficient + batch_modulus - global_product
+            ) % batch_modulus
+            global_old_remainder = global_remainder
+            global_remainder = global_next_remainder
+            global_old_coefficient = global_coefficient
+            global_coefficient = global_next_coefficient
+        global_inverse = global_old_coefficient
+        for crt_index in range(batch_degree + one):
+            residue_mod_batch = crt_state[one + crt_index] % batch_modulus
+            batch_target = batch_state[one + crt_index]
+            global_correction = (
+                (batch_target + batch_modulus - residue_mod_batch) * global_inverse
+            ) % batch_modulus
+            crt_state[one + crt_index] = (
+                crt_state[one + crt_index] + global_modulus * global_correction
+            )
+        crt_state[zero] = global_modulus * batch_modulus
+    return prime_count
+
+
+@native
+def integer_matrix_polynomial_annihilates_first_coordinate(
+    matrix: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    workspace: IntegerBuffer,
+    dimension: uint64,
+    coefficient_count: uint64,
+) -> uint64:
+    """Certify `f(matrix)e_0 = 0` by exact integer Horner evaluation.
+
+    Coefficients are ascending.  The caller owns a two-vector exact workspace
+    whose per-entry capacity is derived from the matrix infinity norm and the
+    actual coefficients.  The ordinary body is also the CPython/JavaScript
+    dynamic fallback.
+    """
+    zero = dimension - dimension
+    if dimension == zero:
+        return zero
+    one = dimension // dimension
+    if len(matrix) != dimension * dimension:
+        return zero
+    if coefficient_count == zero or coefficient_count > dimension + one:
+        return zero
+    if len(coefficients) != coefficient_count:
+        return zero
+    if len(workspace) != 2 * dimension:
+        return zero
+    current_offset = zero
+    next_offset = dimension
+    integer_zero = coefficients[zero] - coefficients[zero]
+    for index in range(dimension):
+        workspace[current_offset + index] = integer_zero
+    exponent = coefficient_count
+    while exponent:
+        exponent = exponent - one
+        for row in range(dimension):
+            total = integer_zero
+            row_offset = row * dimension
+            for column in range(dimension):
+                total = total + (
+                    matrix[row_offset + column] * workspace[current_offset + column]
+                )
+            workspace[next_offset + row] = total
+        workspace[next_offset] = workspace[next_offset] + coefficients[exponent]
+        for index in range(dimension):
+            workspace[current_offset + index] = workspace[next_offset + index]
+    answer = one
+    for index in range(dimension):
+        if workspace[current_offset + index] != integer_zero:
+            answer = zero
+    return answer
+
+
 __all__ = [
+    "integer_matrix_polynomial_annihilates_first_coordinate",
+    "integer_matrix_word_prime_minimal_polynomial_batch",
+    "word_prime_krylov_batch_workspace_length",
     "word_prime_krylov_minimal_polynomial",
     "word_prime_krylov_workspace_length",
 ]

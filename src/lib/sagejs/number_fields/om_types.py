@@ -1,11 +1,10 @@
 """Bounded Ore--MacLane arithmetic and inspectable type certificates.
 
 This module implements a bounded, certified Ore--MacLane slice over `ZZ[x]`.
-It includes first-order residual arithmetic over arbitrary small finite residue
-fields, same-degree representative optimization, and a second-order binary
-linear-residual lane.  Higher residual operators outside that exact lane stop
-with an explicit certificate state.  No incomplete type is ever reported as a
-maximality proof.
+It includes scalable residual arithmetic over proved finite residue fields,
+same-degree representative optimization, and recursive mixed-radix higher
+types. Unsupported nested nonlinear residue towers stop with an explicit
+certificate state. No incomplete type is ever reported as a maximality proof.
 
 Polynomials are immutable tuples of integer coefficients in ascending order.
 The implementation is ordinary CPython source and has no native/runtime
@@ -19,7 +18,6 @@ Theorem 3.3.  The precision and selector evidence follows Poteaux--Weimann,
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -438,6 +436,154 @@ def _residual_divmod(
     )
 
 
+def _residual_make_monic(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    polynomial = _residual_normalize(polynomial, prime, modulus)
+    if polynomial == ((0,),):
+        return polynomial
+    inverse = _residue_inverse(polynomial[-1], prime, modulus)
+    return _residual_normalize(
+        tuple(
+            _residue_multiply(coefficient, inverse, prime, modulus)
+            for coefficient in polynomial
+        ),
+        prime,
+        modulus,
+    )
+
+
+def _residual_subtract(
+    left: ResidualPolynomial,
+    right: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    size = max(len(left), len(right))
+    answer: list[ResidueElement] = []
+    for index in range(size):
+        left_value = left[index] if index < len(left) else (0,)
+        right_value = right[index] if index < len(right) else (0,)
+        answer.append(_residue_subtract(left_value, right_value, prime, modulus))
+    return _residual_normalize(tuple(answer), prime, modulus)
+
+
+def _residual_multiply_reduce(
+    left: ResidualPolynomial,
+    right: ResidualPolynomial,
+    reduction: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    if left == ((0,),) or right == ((0,),):
+        return ((0,),)
+    product: list[ResidueElement] = [(0,)] * (len(left) + len(right) - 1)
+    for left_index, left_value in enumerate(left):
+        for right_index, right_value in enumerate(right):
+            value = _residue_multiply(left_value, right_value, prime, modulus)
+            product[left_index + right_index] = _residue_subtract(
+                product[left_index + right_index],
+                _residue_subtract((0,), value, prime, modulus),
+                prime,
+                modulus,
+            )
+    _quotient, remainder = _residual_divmod(tuple(product), reduction, prime, modulus)
+    return remainder
+
+
+def _residual_power_reduce(
+    value: ResidualPolynomial,
+    exponent: int,
+    reduction: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    if exponent < 0:
+        raise ValueError("a residual polynomial exponent must be nonnegative")
+    result: ResidualPolynomial = ((1,),)
+    _quotient, power = _residual_divmod(value, reduction, prime, modulus)
+    remaining = exponent
+    while remaining:
+        if remaining % 2:
+            result = _residual_multiply_reduce(result, power, reduction, prime, modulus)
+        remaining //= 2
+        if remaining:
+            power = _residual_multiply_reduce(power, power, reduction, prime, modulus)
+    return result
+
+
+def _residual_gcd(
+    left: ResidualPolynomial,
+    right: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    left = _residual_normalize(left, prime, modulus)
+    right = _residual_normalize(right, prime, modulus)
+    while right != ((0,),):
+        _quotient, remainder = _residual_divmod(left, right, prime, modulus)
+        left, right = right, remainder
+    return _residual_make_monic(left, prime, modulus)
+
+
+def _residual_exact_quotient(
+    dividend: ResidualPolynomial,
+    divisor: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    quotient, remainder = _residual_divmod(dividend, divisor, prime, modulus)
+    if remainder != ((0,),):
+        raise ArithmeticError("a residual squarefree quotient was not exact")
+    return _residual_make_monic(quotient, prime, modulus)
+
+
+def _residual_derivative(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    if len(polynomial) <= 1:
+        return ((0,),)
+    return _residual_normalize(
+        tuple(
+            tuple(index * value for value in polynomial[index])
+            for index in range(1, len(polynomial))
+        ),
+        prime,
+        modulus,
+    )
+
+
+def _residual_pth_root(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    """Extract a characteristic-`p` root, including coefficient Frobenius."""
+    field_degree = polynomial_degree(modulus)
+    inverse_frobenius_exponent = prime ** max(0, field_degree - 1)
+    coefficients: list[ResidueElement] = []
+    for index, value in enumerate(polynomial):
+        if index % prime:
+            if value != (0,):
+                raise ArithmeticError(
+                    "a derivative-zero residual polynomial is not a pth power"
+                )
+        else:
+            coefficients.append(
+                _residue_power(
+                    value,
+                    inverse_frobenius_exponent,
+                    prime,
+                    modulus,
+                )
+            )
+    return _residual_normalize(tuple(coefficients), prime, modulus)
+
+
 def _mod_inverse(value: int, prime: int) -> int:
     value %= prime
     if value == 0:
@@ -750,32 +896,208 @@ def factor_mod_prime(
     )
 
 
-def _residue_elements(prime: int, modulus: Polynomial) -> Iterator[ResidueElement]:
-    degree = polynomial_degree(modulus)
-    for encoded in range(prime**degree):
-        coefficients = []
-        value = encoded
-        for _index in range(degree):
-            coefficients.append(value % prime)
-            value //= prime
-        yield normalize_polynomial(coefficients)
-
-
-def _monic_residual_polynomials(
-    degree: int,
+def _residue_from_encoded(
+    encoded: int,
     prime: int,
     modulus: Polynomial,
-) -> Iterator[ResidualPolynomial]:
-    elements = tuple(_residue_elements(prime, modulus))
-    count = len(elements) ** degree
-    for encoded in range(count):
-        coefficients: list[ResidueElement] = []
-        value = encoded
-        for _index in range(degree):
-            coefficients.append(elements[value % len(elements)])
-            value //= len(elements)
-        coefficients.append((1,))
-        yield tuple(coefficients)
+) -> ResidueElement:
+    coefficients: list[int] = []
+    value = encoded
+    for _index in range(polynomial_degree(modulus)):
+        coefficients.append(value % prime)
+        value //= prime
+    return normalize_polynomial(coefficients)
+
+
+def _residual_candidate(
+    encoded: int,
+    prime: int,
+    modulus: Polynomial,
+) -> ResidualPolynomial:
+    """Return a deterministic nonconstant polynomial over the residue field."""
+    field_size = prime ** polynomial_degree(modulus)
+    value = encoded + field_size
+    coefficients: list[ResidueElement] = []
+    while value:
+        coefficients.append(_residue_from_encoded(value % field_size, prime, modulus))
+        value //= field_size
+    return _residual_normalize(tuple(coefficients), prime, modulus)
+
+
+def _residual_sort_key(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> tuple[int, tuple[int, ...]]:
+    encoded_coefficients: list[int] = []
+    for coefficient in polynomial:
+        encoded = 0
+        place = 1
+        for value in coefficient:
+            encoded += value * place
+            place *= prime
+        encoded_coefficients.append(encoded)
+    return (len(polynomial) - 1, tuple(encoded_coefficients))
+
+
+def _squarefree_residual_parts(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> tuple[tuple[ResidualPolynomial, int], ...]:
+    """Return monic residual squarefree parts with exact multiplicities."""
+    answer: list[tuple[ResidualPolynomial, int]] = []
+
+    def visit(current: ResidualPolynomial, multiplicity_scale: int) -> None:
+        current = _residual_make_monic(current, prime, modulus)
+        if len(current) <= 1:
+            return
+        derivative = _residual_derivative(current, prime, modulus)
+        if derivative == ((0,),):
+            visit(
+                _residual_pth_root(current, prime, modulus),
+                multiplicity_scale * prime,
+            )
+            return
+        common = _residual_gcd(current, derivative, prime, modulus)
+        remaining = _residual_exact_quotient(current, common, prime, modulus)
+        multiplicity = 1
+        while remaining != ((1,),):
+            repeated = _residual_gcd(remaining, common, prime, modulus)
+            layer = _residual_exact_quotient(remaining, repeated, prime, modulus)
+            if layer != ((1,),):
+                answer.append((layer, multiplicity_scale * multiplicity))
+            remaining = repeated
+            common = _residual_exact_quotient(common, repeated, prime, modulus)
+            multiplicity += 1
+        if common != ((1,),):
+            visit(
+                _residual_pth_root(common, prime, modulus),
+                multiplicity_scale * prime,
+            )
+
+    visit(polynomial, 1)
+    return tuple(answer)
+
+
+def _distinct_degree_residual_parts(
+    polynomial: ResidualPolynomial,
+    prime: int,
+    modulus: Polynomial,
+) -> tuple[tuple[ResidualPolynomial, int], ...]:
+    """Group a squarefree residual polynomial by irreducible degree."""
+    answer: list[tuple[ResidualPolynomial, int]] = []
+    remaining = polynomial
+    variable: ResidualPolynomial = ((0,), (1,))
+    frobenius = variable
+    field_size = prime ** polynomial_degree(modulus)
+    factor_degree = 1
+    while 2 * factor_degree <= len(remaining) - 1:
+        frobenius = _residual_power_reduce(
+            frobenius,
+            field_size,
+            remaining,
+            prime,
+            modulus,
+        )
+        group = _residual_gcd(
+            _residual_subtract(frobenius, variable, prime, modulus),
+            remaining,
+            prime,
+            modulus,
+        )
+        if group != ((1,),):
+            answer.append((group, factor_degree))
+            remaining = _residual_exact_quotient(remaining, group, prime, modulus)
+            if remaining == ((1,),):
+                break
+            _quotient, frobenius = _residual_divmod(
+                frobenius, remaining, prime, modulus
+            )
+        factor_degree += 1
+    if remaining != ((1,),):
+        answer.append((remaining, len(remaining) - 1))
+    return tuple(answer)
+
+
+def _equal_degree_residual_factors(
+    polynomial: ResidualPolynomial,
+    factor_degree: int,
+    prime: int,
+    modulus: Polynomial,
+    work: list[int],
+    maximum_work: int,
+) -> tuple[ResidualPolynomial, ...]:
+    """Split a residual DDF group by deterministic Cantor--Zassenhaus."""
+    target_count = (len(polynomial) - 1) // factor_degree
+    if target_count <= 1:
+        return (polynomial,)
+    field_size = prime ** polynomial_degree(modulus)
+    factors: list[ResidualPolynomial] = [polynomial]
+    attempt = 0
+    while len(factors) < target_count:
+        if work[0] >= maximum_work:
+            raise OMResourceError(
+                "bounded residual equal-degree candidate limit exceeded"
+            )
+        candidate = _residual_candidate(attempt, prime, modulus)
+        attempt += 1
+        work[0] += 1
+        changed = False
+        next_factors: list[ResidualPolynomial] = []
+        for factor in factors:
+            if len(factor) - 1 == factor_degree:
+                next_factors.append(factor)
+                continue
+            common = _residual_gcd(candidate, factor, prime, modulus)
+            if common == ((1,),) or common == factor:
+                if field_size % 2 == 0:
+                    trace: ResidualPolynomial = ((0,),)
+                    term = candidate
+                    for _index in range(factor_degree):
+                        trace = _residual_subtract(
+                            trace,
+                            _residual_subtract(((0,),), term, prime, modulus),
+                            prime,
+                            modulus,
+                        )
+                        term = _residual_power_reduce(
+                            term, field_size, factor, prime, modulus
+                        )
+                    common = _residual_gcd(trace, factor, prime, modulus)
+                else:
+                    character = _residual_power_reduce(
+                        candidate,
+                        (field_size**factor_degree - 1) // 2,
+                        factor,
+                        prime,
+                        modulus,
+                    )
+                    common = _residual_gcd(
+                        _residual_subtract(character, ((1,),), prime, modulus),
+                        factor,
+                        prime,
+                        modulus,
+                    )
+            if common == ((1,),) or common == factor:
+                next_factors.append(factor)
+                continue
+            next_factors.append(common)
+            next_factors.append(
+                _residual_exact_quotient(factor, common, prime, modulus)
+            )
+            changed = True
+        factors = next_factors
+        if not changed and attempt >= maximum_work:
+            raise OMResourceError(
+                "deterministic residual equal-degree splitting stalled"
+            )
+    return tuple(
+        sorted(
+            factors,
+            key=lambda item: _residual_sort_key(item, prime, modulus),
+        )
+    )
 
 
 def factor_residual_polynomial(
@@ -785,12 +1107,12 @@ def factor_residual_polynomial(
     *,
     max_enumerated_candidates: int = 200_000,
 ) -> tuple[ResidualFactor, ...]:
-    """Factor a bounded nonzero polynomial over `F_p[x]/(modulus)`.
+    """Factor a nonzero polynomial over `F_p[x]/(modulus)` exactly.
 
-    This exhaustive implementation is deliberately bounded.  It makes the
-    mathematical residual-extension path executable in ordinary Python while
-    larger fields remain an explicit future FLINT `fq` acceleration domain.
-    A nonmonic input is replaced by its monic associate in the residue field.
+    Squarefree decomposition, distinct-degree factorization, and deterministic
+    Cantor--Zassenhaus splitting scale with polynomial operations instead of
+    enumerating every monic polynomial in the residual field. The work bound
+    counts deterministic split candidates and remains independent of `q^d`.
     """
     modulus = _mod_polynomial(modulus, prime)
     if polynomial_degree(modulus) <= 0 or modulus[-1] != 1:
@@ -798,12 +1120,7 @@ def factor_residual_polynomial(
     remaining = _residual_normalize(polynomial, prime, modulus)
     if remaining == ((0,),):
         raise OMDomainError("the zero residual polynomial cannot be factored")
-    if remaining[-1] != (1,):
-        leading_inverse = _residue_inverse(remaining[-1], prime, modulus)
-        remaining = tuple(
-            _residue_multiply(value, leading_inverse, prime, modulus)
-            for value in remaining
-        )
+    remaining = _residual_make_monic(remaining, prime, modulus)
     if polynomial_degree(modulus) == 1:
         # A degree-one residue extension is canonically F_p.  Reuse the
         # scalable certified F_p[x] factorizer instead of exponentially
@@ -830,38 +1147,29 @@ def factor_residual_polynomial(
             return (len(factor.polynomial) - 1, encoded)
 
         return tuple(sorted(converted, key=enumeration_key))
-    field_size = prime ** polynomial_degree(modulus)
     factors: list[ResidualFactor] = []
-    used = 0
-    degree = 1
-    while 2 * degree <= len(remaining) - 1:
-        count = field_size**degree
-        used += count
-        if used > max_enumerated_candidates:
-            raise OMResourceError(
-                "bounded residual factorization candidate limit exceeded"
-            )
-        for candidate in _monic_residual_polynomials(degree, prime, modulus):
-            multiplicity = 0
-            while len(remaining) - 1 >= degree:
-                quotient, remainder = _residual_divmod(
-                    remaining, candidate, prime, modulus
-                )
-                if remainder != ((0,),):
-                    break
-                remaining = quotient
-                multiplicity += 1
-            if multiplicity:
-                factors.append(ResidualFactor(candidate, multiplicity))
-        degree += 1
-    if len(remaining) - 1 > 0:
-        leading_inverse = _residue_inverse(remaining[-1], prime, modulus)
-        remaining = tuple(
-            _residue_multiply(value, leading_inverse, prime, modulus)
-            for value in remaining
+    work = [0]
+    for squarefree, multiplicity in _squarefree_residual_parts(
+        remaining, prime, modulus
+    ):
+        for distinct, factor_degree in _distinct_degree_residual_parts(
+            squarefree, prime, modulus
+        ):
+            for factor in _equal_degree_residual_factors(
+                distinct,
+                factor_degree,
+                prime,
+                modulus,
+                work,
+                max_enumerated_candidates,
+            ):
+                factors.append(ResidualFactor(factor, multiplicity))
+    return tuple(
+        sorted(
+            factors,
+            key=lambda item: _residual_sort_key(item.polynomial, prime, modulus),
         )
-        factors.append(ResidualFactor(remaining, 1))
-    return tuple(factors)
+    )
 
 
 @dataclass
@@ -1314,7 +1622,7 @@ def _analyze_order_three_higher_key(
     max_representative_refinements: int,
     max_type_depth: int,
 ) -> tuple[tuple[OMType, ...], int]:
-    """Certify a quadratic second residue through bounded order three."""
+    """Certify a prime-field second residue through bounded order three."""
     from .om_higher_residue import (
         order_three_refinement,
         order_three_residual_evidence,
@@ -1326,7 +1634,7 @@ def _analyze_order_three_higher_key(
     state = "order-three-residual-unsupported"
     if len(active) != 2 or [level.order for level in active] != [1, 2]:
         state = "order-three-type-unsupported"
-    elif len(active[1].residual_factor) != 3 or any(
+    elif len(active[1].residual_factor) < 2 or any(
         len(coefficient) != 1 for coefficient in active[1].residual_factor
     ):
         state = "order-three-residue-field-unsupported"
@@ -1340,9 +1648,6 @@ def _analyze_order_three_higher_key(
             sides = higher_newton_polygon(polynomial, prime, key, active)
             if not sides:
                 state = "order-three-no-negative-side"
-                break
-            if any(side.lattice_length() > 2 for side in sides):
-                state = "order-three-residual-degree-unsupported"
                 break
             previous_value = maclane_integer_valuation(key, prime, active)
             if previous_value is None:
@@ -1555,11 +1860,6 @@ def _analyze_recursive_linear_higher_key(
             sides = higher_newton_polygon(polynomial, prime, key, active)
             if not sides:
                 state = "recursive-linear-no-negative-side"
-                break
-            if any(
-                side.lattice_length() * polynomial_degree(modulus) > 8 for side in sides
-            ):
-                state = "recursive-linear-effective-length-bound"
                 break
             previous_value = maclane_integer_valuation(key, prime, active)
             if previous_value is None:
@@ -1802,13 +2102,6 @@ def _analyze_order_two_higher_key(
                         side,
                     )
                 except OMDomainError:
-                    state = "higher-residual-degree-unsupported"
-                    residual_data = []
-                    break
-                effective_length = side.lattice_length() * polynomial_degree(
-                    active[0].residual_field_modulus
-                )
-                if effective_length > 8:
                     state = "higher-residual-degree-unsupported"
                     residual_data = []
                     break

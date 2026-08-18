@@ -297,6 +297,68 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
   }
+  if (operation.kind === "integer.mod_uint64") {
+    const divisor = exactValue(operation.right, context);
+    return [
+      `${indent}if (${divisor} == 0)`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "integer division or modulo by zero",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = sagejs_mpz_mod_uint64(` +
+        `${exactValue(operation.left, context)}, ${divisor});`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.buffer.copy") {
+    return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "uint64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "uint64.buffer.get" ||
+      operation.kind === "uint64.buffer.set") {
+    const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const position = operation.indexType === "Integer"
+      ? "sagejs_buffer_position" : `(size_t) ${index}`;
+    const access = operation.kind === "uint64.buffer.get"
+      ? `${target} = ${buffer}.data[${position}];`
+      : `${buffer}.data[${position}] = ` +
+        `${exactValue(operation.value, context)};`;
+    if (operation.indexType === "Integer") {
+      return [
+        `${indent}{`,
+        `${indent}    int64_t sagejs_buffer_index;`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!mpz_to_int64(${index}, &sagejs_buffer_index) ||`,
+        `${indent}        !sagejs_signed_buffer_index(${buffer}.length, ` +
+          `sagejs_buffer_index, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        statusFailure(
+          "range", "UInt64Buffer index out of range", `${indent}        `,
+        ),
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    return [
+      `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "UInt64Buffer index out of range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${access}`,
+    ].join("\n");
+  }
   if (operation.kind === "int64.buffer.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
   }

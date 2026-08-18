@@ -355,9 +355,40 @@ def _factor_squarefree(poly: list[int], prime: int) -> list[list[int]]:
     return answer
 
 
+def _pure_linear_primary_factor(
+    coefficients: list[int], prime: int
+) -> dict[str, Any] | None:
+    """Recognize `unit * x^degree` without general factoring.
+
+    Repeated linear reductions are an important local-order region (including
+    highly ramified Eisenstein-like inputs).  Running squarefree decomposition
+    and Cantor--Zassenhaus merely to rediscover their only factor is avoidable.
+    Every reduced nonleading coefficient is checked, so this is a proved
+    recognition path rather than a selector heuristic.
+    """
+    reduced = _mod_coefficients(coefficients, prime)
+    degree = _degree(reduced)
+    if degree <= 0:
+        return None
+    leading = reduced[-1] % prime
+    if leading == 0:
+        return None
+
+    # The zero-root region is recognized in one linear scan.  Trying to infer
+    # and expand a shifted root before ordinary factorization made mixed-factor
+    # inputs pay an O(n^2) rejected-candidate tax, defeating the selector's
+    # purpose.  Shifted primaries continue through the complete general path.
+    if any(value % prime != 0 for value in reduced[:-1]):
+        return None
+    return {"factor": [0, 1], "degree": 1, "multiplicity": degree}
+
+
 def factor_mod_prime(coefficients: list[int], prime: int) -> list[dict[str, Any]]:
     """Factor a polynomial over `GF(prime)` with stable factor ordering."""
     _validate_prime(prime)
+    pure_linear = _pure_linear_primary_factor(coefficients, prime)
+    if pure_linear is not None:
+        return [pure_linear]
     factors: list[dict[str, Any]] = []
     for component, multiplicity in _squarefree_components(coefficients, prime):
         for factor in _factor_squarefree(component, prime):
@@ -402,6 +433,24 @@ def phi_adic_development(
     development: list[list[int]] = []
     quotients: list[list[int]] = []
     remaining = _trim(coefficients)
+    if _degree(phi) == 1:
+        constant = phi[0]
+        while _degree(remaining) >= 1:
+            degree = _degree(remaining)
+            quotient = [0 for _index in range(degree)]
+            quotient[degree - 1] = remaining[degree]
+            index = degree - 1
+            while index > 0:
+                quotient[index - 1] = remaining[index] - constant * quotient[index]
+                index -= 1
+            remainder = [remaining[0] - constant * quotient[0]]
+            remaining = _trim(quotient)
+            development.append(_trim(remainder))
+            quotients.append(remaining)
+        development.append(remaining)
+        if include_quotients:
+            return {"development": development, "quotients": quotients}
+        return development
     while _degree(remaining) >= _degree(phi):
         remaining, remainder = _integer_divmod(remaining, phi)
         development.append(remainder)

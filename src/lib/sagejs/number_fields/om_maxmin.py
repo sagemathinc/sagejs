@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from sagejs.native import IntegerBuffer, native, uint64
+from sagejs.native import IntegerBuffer, is_compiled, native, uint64
 
 from .local_polygons import _row_hermite
 from .maximal_order_contracts import (
@@ -45,6 +45,39 @@ from .om_types import (
 )
 
 FiniteValuation: TypeAlias = RationalValue | None
+
+
+def _canonical_row_hnf(
+    rows: list[list[int]],
+    degree: int,
+    *,
+    incremental_fallback: bool = False,
+) -> list[list[int]]:
+    """Use the packed production HNF with the readable row-HNF as oracle."""
+    from .buchmann_lenstra import _packed_row_hnf, packed_row_hnf_in_place
+
+    maximum_bits = max(
+        (abs(value).bit_length() for row in rows for value in row),
+        default=0,
+    )
+    packed_word_capacity = max(
+        16,
+        (maximum_bits + 63) // 64 + 16 * degree * degree,
+    )
+    packed_allocation_bytes = (
+        (len(rows) * degree + 2 * degree) * packed_word_capacity * 8
+    )
+    if (
+        is_compiled(packed_row_hnf_in_place)
+        and packed_allocation_bytes <= 64 * 1024 * 1024
+    ):
+        return _packed_row_hnf(rows)
+    if incremental_fallback:
+        hermite = [list(row) for row in rows[:degree]]
+        for row in rows[degree:]:
+            hermite = _row_hermite(hermite + [row], degree)
+        return hermite
+    return _row_hermite(rows, degree)
 
 
 @dataclass
@@ -435,6 +468,11 @@ class OMSelectorMetrics(ImmutableOMRecord):
     recommendation: str
     auto_selectable: bool
     reason: str
+    expected_combinations: int
+    estimated_memory_bytes: int
+    native_capable: bool
+    measured_crossover_region: str
+    suppressed_alternatives: tuple[str, ...]
 
 
 @dataclass
@@ -465,6 +503,11 @@ def _selector_evidence(metrics: OMSelectorMetrics) -> dict[str, object]:
         "recommendation": metrics.recommendation,
         "auto_selectable": metrics.auto_selectable,
         "reason": metrics.reason,
+        "expected_combinations": metrics.expected_combinations,
+        "estimated_memory_bytes": metrics.estimated_memory_bytes,
+        "native_capable": metrics.native_capable,
+        "measured_crossover_region": metrics.measured_crossover_region,
+        "suppressed_alternatives": list(metrics.suppressed_alternatives),
     }
 
 
@@ -542,11 +585,7 @@ def selector_metrics(
     local_discriminant_valuation: int,
     differential_evidence: bool = False,
 ) -> OMSelectorMetrics:
-    """Compute deterministic, input-derived selector evidence.
-
-    Auto-selection is intentionally disabled unless the caller attests that a
-    differential corpus has passed for the exact integrated backend.
-    """
+    """Compute deterministic, input-derived selector and crossover evidence."""
     if local_discriminant_valuation < 0:
         raise ValueError("a discriminant valuation must be nonnegative")
     degree = polynomial_degree(tree.polynomial)
@@ -568,6 +607,15 @@ def selector_metrics(
         * (tree.expected_index_valuation + degree + 1)
         * (len(tree.types) + maximum_depth + 1)
     )
+    expected_combinations = 1
+    for branch in tree.types:
+        expected_combinations *= branch.branch_degree + 1
+    entry_bits = max(
+        8,
+        coefficient_bits
+        + local_discriminant_valuation * max(1, tree.prime.bit_length()),
+    )
+    estimated_memory_bytes = output_entries * ((entry_bits + 7) // 8 + 16)
     if not tree.complete:
         recommendation = "fallback"
         reason = "OM type tree is incomplete: " + ", ".join(tree.incomplete_states())
@@ -593,14 +641,43 @@ def selector_metrics(
                 break
         if has_branched_higher_quotients:
             break
+    native_capable = is_compiled(packed_maxmin_valuations_are_maximal) and is_compiled(
+        packed_triangular_basis_is_closed
+    )
+    measured_crossover_region = ""
+    if (
+        degree >= 48
+        and local_discriminant_valuation >= 8 * degree
+        and tree.expected_index_valuation >= 4 * degree
+        and maximum_depth == 1
+        and len(tree.types) <= 8
+        and expected_combinations <= 200_000
+        and coefficient_bits <= 256
+        and estimated_memory_bytes <= 64 * 1024 * 1024
+    ):
+        measured_crossover_region = "deep-index-shallow-types-v1"
+    suppressed_alternatives: list[str] = []
+    if measured_crossover_region:
+        suppressed_alternatives.extend(
+            (
+                "round2: measured multiplier cycles exceed the OM local boundary",
+                "round4: measured refinement exceeds the OM local boundary",
+            )
+        )
     auto_selectable = (
         differential_evidence
         and tree.complete
         and recommendation == "om-maxmin-candidate"
         and not has_branched_higher_quotients
+        and bool(measured_crossover_region)
+        and native_capable
     )
     if has_branched_higher_quotients:
         reason += "; branched higher quotients await crossover evidence"
+    elif recommendation == "om-maxmin-candidate" and not measured_crossover_region:
+        reason += "; no measured end-to-end OM crossover covers these inputs"
+    elif recommendation == "om-maxmin-candidate" and not native_capable:
+        reason += "; measured crossover requires packed native proof kernels"
     elif recommendation == "om-maxmin-candidate" and not differential_evidence:
         reason += "; auto-selection awaits integrated differential evidence"
     return OMSelectorMetrics(
@@ -619,6 +696,11 @@ def selector_metrics(
         recommendation,
         auto_selectable,
         reason,
+        expected_combinations,
+        estimated_memory_bytes,
+        native_capable,
+        measured_crossover_region,
+        tuple(suppressed_alternatives),
     )
 
 
@@ -1122,7 +1204,7 @@ def _order_two_quotient_hnf_selection(
             for row in range(degree)
         ]
     )
-    hermite = _row_hermite(rows, degree)
+    hermite = _canonical_row_hnf(rows, degree)
     candidates: list[MaxMinCandidate] = []
     local_index = 0
     for candidate_degree, row in enumerate(hermite):
@@ -1310,12 +1392,15 @@ def _mixed_quotient_hnf_selection(tree: OMTypeTree) -> MaxMinCertificate | None:
         ]
         for numerator, exponent in elements
     ]
-    hermite = [
+    identity = [
         [common_denominator if row == column else 0 for column in range(degree)]
         for row in range(degree)
     ]
-    for row in rows:
-        hermite = _row_hermite(hermite + [row], degree)
+    hermite = _canonical_row_hnf(
+        identity + rows,
+        degree,
+        incremental_fallback=True,
+    )
     candidates: list[MaxMinCandidate] = []
     local_index = 0
     for candidate_degree, row in enumerate(hermite):

@@ -14,18 +14,22 @@ from typing import Any
 
 from sagejs.native import (
     IntegerBuffer,
+    integer_buffer_values,
     kernel_integer_buffer,
     kernel_integer_zeros,
     native,
     uint64,
 )
-from sagejs.number_fields.buchmann_lenstra import polynomial_discriminant
 from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
 ANALYSIS_FALLBACK_ARBITRARY_PRIME = 2
 ANALYSIS_FALLBACK_NATIVE_FAILURE = 3
+
+AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA = (
+    "sagejs.number-fields/authenticated-field-analysis-proof-v1"
+)
 
 COMPONENT_PROVEN_WORD_PRIME = 0
 COMPONENT_UNRESOLVED = 1
@@ -47,23 +51,6 @@ def _unsigned(payload: Any, offset: int, width: int) -> int:
     for index in range(width):
         answer += _byte(payload, offset + index) << (8 * index)
     return answer
-
-
-def _integer(payload: Any, offset: int) -> tuple[int, int]:
-    if offset > len(payload) - 4:
-        raise ValueError("truncated field-analysis integer header")
-    header = _unsigned(payload, offset, 4)
-    length = header & 0x7FFFFFFF
-    negative = header >= 0x80000000
-    offset += 4
-    if length > len(payload) - offset:
-        raise ValueError("truncated field-analysis integer")
-    if negative and length == 0:
-        raise ValueError("noncanonical negative zero in field-analysis payload")
-    if length and _byte(payload, offset + length - 1) == 0:
-        raise ValueError("noncanonical field-analysis integer encoding")
-    value = _unsigned(payload, offset, length)
-    return (-value if negative else value), offset + length
 
 
 def _gcd(left: int, right: int) -> int:
@@ -170,6 +157,61 @@ def _integer_power_product(
 
 
 @native
+def packed_field_analysis_decode_integers(
+    payload: IntegerBuffer,
+    output: IntegerBuffer,
+    entry_count: uint64,
+) -> bool:
+    """Decode the canonical signed integer stream in one packed traversal."""
+    if len(payload) < 80 or len(output) != entry_count:
+        return False
+    encoded_count = 0
+    count_factor = 1
+    for byte_index in range(8):
+        byte = payload[56 + byte_index]
+        if byte > 255:
+            return False
+        encoded_count += byte * count_factor
+        count_factor *= 256
+    if encoded_count != entry_count:
+        return False
+    offset = 80
+    for output_index in range(entry_count):
+        if offset + 4 > len(payload):
+            return False
+        header = 0
+        header_factor = 1
+        for byte_index in range(4):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            header += byte * header_factor
+            header_factor *= 256
+        negative = header >= 2147483648
+        length = header
+        if negative:
+            length -= 2147483648
+        offset += 4
+        if length > len(payload) - offset or (negative and length == 0):
+            return False
+        value = 0
+        multiplier = 1
+        for byte_index in range(length):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            value += byte * multiplier
+            multiplier *= 256
+        if length != 0 and payload[offset + length - 1] == 0:
+            return False
+        if negative:
+            value = -value
+        output[output_index] = value
+        offset += length
+    return offset == len(payload)
+
+
+@native
 def packed_field_analysis_fixed_points_are_valid(
     workspace: IntegerBuffer,
     polynomial: IntegerBuffer,
@@ -179,10 +221,11 @@ def packed_field_analysis_fixed_points_are_valid(
     radical_dimensions: IntegerBuffer,
     radicals: IntegerBuffer,
     selectors: IntegerBuffer,
+    equation_discriminant: int,
     degree: uint64,
     witness_count: uint64,
 ) -> bool:
-    """Recompute order arithmetic and every terminal fixed point exactly.
+    """Recompute the discriminant, order arithmetic, and fixed points exactly.
 
     The packed body is the production checker and its own CPython/dynamic
     fallback.  It constructs the full order multiplication table, independently
@@ -203,7 +246,9 @@ def packed_field_analysis_fixed_points_are_valid(
     base_offset = answer_offset + degree
     temporary_offset = base_offset + degree
     product_offset = temporary_offset + degree
-    expected_workspace = product_offset + degree
+    sylvester_offset = product_offset + degree
+    sylvester_size = 2 * degree - 1
+    expected_workspace = sylvester_offset + sylvester_size * sylvester_size
     valid = (
         degree > 0
         and len(workspace) == expected_workspace
@@ -216,6 +261,81 @@ def packed_field_analysis_fixed_points_are_valid(
         and len(radicals) == witness_count * square
         and len(selectors) == witness_count * degree
     )
+
+    for disc_entry in range(sylvester_size * sylvester_size):
+        workspace[sylvester_offset + disc_entry] = 0
+    for f_shift in range(degree - 1):
+        for f_coeff in range(degree + 1):
+            workspace[
+                sylvester_offset + f_shift * sylvester_size + f_shift + f_coeff
+            ] = polynomial[degree - f_coeff]
+    for d_shift in range(degree):
+        for d_coeff in range(degree):
+            derivative_exponent = degree - d_coeff
+            workspace[
+                sylvester_offset
+                + (degree - 1 + d_shift) * sylvester_size
+                + d_shift
+                + d_coeff
+            ] = derivative_exponent * polynomial[derivative_exponent]
+    sign = 1
+    previous = 1
+    for det_column in range(sylvester_size - 1):
+        pivot_row = det_column
+        while (
+            pivot_row < sylvester_size
+            and workspace[sylvester_offset + pivot_row * sylvester_size + det_column]
+            == 0
+        ):
+            pivot_row += 1
+        if pivot_row == sylvester_size:
+            valid = False
+        elif pivot_row != det_column:
+            for det_entry in range(sylvester_size):
+                left_location = (
+                    sylvester_offset + det_column * sylvester_size + det_entry
+                )
+                right_location = (
+                    sylvester_offset + pivot_row * sylvester_size + det_entry
+                )
+                swapped = workspace[left_location]
+                workspace[left_location] = workspace[right_location]
+                workspace[right_location] = swapped
+            sign = -sign
+        if valid:
+            pivot = workspace[
+                sylvester_offset + det_column * sylvester_size + det_column
+            ]
+            for det_row in range(det_column + 1, sylvester_size):
+                factor = workspace[
+                    sylvester_offset + det_row * sylvester_size + det_column
+                ]
+                for det_entry in range(det_column + 1, sylvester_size):
+                    location = sylvester_offset + det_row * sylvester_size + det_entry
+                    exact = (
+                        workspace[location] * pivot
+                        - factor
+                        * workspace[
+                            sylvester_offset + det_column * sylvester_size + det_entry
+                        ]
+                    )
+                    if previous != 1:
+                        if exact % previous != 0:
+                            valid = False
+                        else:
+                            exact //= previous
+                    if valid:
+                        workspace[location] = exact
+                workspace[sylvester_offset + det_row * sylvester_size + det_column] = 0
+            previous = pivot
+    if valid:
+        discriminant = (
+            sign * workspace[sylvester_offset + sylvester_size * sylvester_size - 1]
+        )
+        if degree * (degree - 1) // 2 % 2:
+            discriminant = -discriminant
+        if discriminant == 0 or discriminant != equation_discriminant:
+            valid = False
 
     reverse_row = 0
     while valid and reverse_row < degree:
@@ -1104,7 +1224,14 @@ class NativeFieldAnalysisResult(_ImmutableCertificatePart):
         return (
             self.candidate_complete
             and len(self.fixed_point_witnesses) == self.native_primes
+            and self.__dict__.get("_authentication_snapshot")
+            == _analysis_authentication_snapshot(self)
         )
+
+    @property
+    def proof_schema(self) -> str:
+        """Schema of the immutable independently authenticated proof envelope."""
+        return AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA
 
     @property
     def locally_certified_primes(self) -> list[int]:
@@ -1132,6 +1259,85 @@ class NativeFieldAnalysisResult(_ImmutableCertificatePart):
         }
 
 
+def _analysis_authentication_snapshot(
+    result: NativeFieldAnalysisResult,
+) -> tuple[Any, ...]:
+    """Capture values, not mutable certificate-part identities."""
+    return (
+        AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA,
+        result.status,
+        result.trial_bound,
+        result.resolved_components,
+        result.native_primes,
+        result.scale,
+        result.polynomial,
+        tuple(
+            (component.value, component.exponent, component.state)
+            for component in result.components
+        ),
+        tuple(
+            (witness.prime, witness.radical_rows, witness.selectors)
+            for witness in result.fixed_point_witnesses
+        ),
+        result.basis_numerator,
+        result.basis_denominator,
+        result.index,
+        result.equation_discriminant,
+        result.order_discriminant,
+    )
+
+
+def _seal_authenticated_analysis(result: NativeFieldAnalysisResult) -> None:
+    result.__dict__["_authentication_snapshot"] = _analysis_authentication_snapshot(
+        result
+    )
+
+
+def authenticated_field_analysis_matches(
+    result: Any,
+    *,
+    polynomial: list[int],
+    scale: int,
+    trial_bound: int,
+    equation_discriminant: int | None = None,
+    basis_numerator: list[list[int]] | None = None,
+    basis_denominator: int | None = None,
+    index: int | None = None,
+    order_discriminant: int | None = None,
+) -> bool:
+    """Bind a live authenticated envelope to supplied certificate data."""
+    if type(result) is not NativeFieldAnalysisResult or result.certified is not True:
+        return False
+    if tuple(int(value) for value in polynomial) != result.polynomial:
+        return False
+    if int(scale) != result.scale or int(trial_bound) != result.trial_bound:
+        return False
+    if (
+        equation_discriminant is not None
+        and int(equation_discriminant) != result.equation_discriminant
+    ):
+        return False
+    if (
+        basis_numerator is not None
+        and tuple(tuple(int(value) for value in row) for row in basis_numerator)
+        != result.basis_numerator
+    ):
+        return False
+    if (
+        basis_denominator is not None
+        and int(basis_denominator) != result.basis_denominator
+    ):
+        return False
+    if index is not None and int(index) != result.index:
+        return False
+    if (
+        order_discriminant is not None
+        and int(order_discriminant) != result.order_discriminant
+    ):
+        return False
+    return True
+
+
 def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
     if result.status not in (
         ANALYSIS_COMPLETE_CANDIDATE,
@@ -1144,9 +1350,9 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
     degree = len(coefficients) - 1
     if degree < 1 or coefficients[-1] != 1 or result.scale < 1:
         raise ValueError("field-analysis source polynomial/scale is invalid")
-    discriminant = polynomial_discriminant(coefficients)
-    if discriminant == 0 or discriminant != result.equation_discriminant:
-        raise ValueError("field-analysis polynomial discriminant is inconsistent")
+    discriminant = int(result.equation_discriminant)
+    if discriminant == 0:
+        raise ValueError("field-analysis polynomial discriminant is zero")
 
     product = 1
     proven = 0
@@ -1262,7 +1468,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
 
     packed_numerator = [value for row in rows for value in row]
     square = degree * degree
-    workspace_length = degree * square + 4 * square + 7 * degree
+    workspace_length = degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
     workspace = kernel_integer_zeros(
         packed_field_analysis_fixed_points_are_valid,
         workspace_length,
@@ -1289,6 +1495,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         kernel_integer_buffer(
             packed_field_analysis_fixed_points_are_valid, packed_selectors
         ),
+        result.equation_discriminant,
         degree,
         len(result.fixed_point_witnesses),
     )
@@ -1339,13 +1546,16 @@ def decode_field_analysis_resource(
         raise ValueError("field-analysis entry count is inconsistent")
     if entry_count > (len(payload) - 80) // 4:
         raise ValueError("truncated field-analysis integer stream")
-    values: list[int] = []
-    offset = 80
-    for _index in range(entry_count):
-        value, offset = _integer(payload, offset)
-        values.append(value)
-    if offset != len(payload):
-        raise ValueError("field-analysis resource has trailing bytes")
+    decoded_values = kernel_integer_zeros(
+        packed_field_analysis_decode_integers, entry_count, 64
+    )
+    if not packed_field_analysis_decode_integers(
+        kernel_integer_buffer(packed_field_analysis_decode_integers, payload),
+        decoded_values,
+        entry_count,
+    ):
+        raise ValueError("field-analysis resource has an invalid integer stream")
+    values: list[int] = list(integer_buffer_values(decoded_values))
 
     scale, denominator, index, equation_disc, order_disc = values[:5]
     polynomial_start = 5
@@ -1413,6 +1623,7 @@ def decode_field_analysis_resource(
         raise ValueError("field-analysis certificate describes another generator scale")
     if expected_trial_bound is not None and int(expected_trial_bound) != trial_bound:
         raise ValueError("field-analysis certificate used another trial bound")
+    _seal_authenticated_analysis(result)
     return result
 
 

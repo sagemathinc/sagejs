@@ -119,10 +119,13 @@
         },
         "modular_characteristic": {
           "calls": 24,
-          "primes": 2901,
+          "primes": 3936,
           "max_bound_bits": 6097,
-          "max_modulus_bits": 3810,
-          "certifications": {"cyclic-krylov": 24}
+          "max_modulus_bits": 4920,
+          "batch_calls": 168,
+          "batch_primes": 3936,
+          "reconstruction_attempts": 24,
+          "certifications": {"field-minimal-polynomial-crt": 24}
         }
       },
       "required_power_stages": [

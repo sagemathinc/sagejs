@@ -37,10 +37,20 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.kernels.matrix.word_prime_krylov import (
+    integer_matrix_polynomial_annihilates_first_coordinate,
+    integer_matrix_word_prime_minimal_polynomial_batch,
+    word_prime_krylov_batch_workspace_length,
     word_prime_krylov_minimal_polynomial,
     word_prime_krylov_workspace_length,
 )
-from sagejs.native import is_compiled
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+    kernel_uint64_buffer,
+    kernel_uint64_zeros,
+)
 
 
 class Round4Unsupported(ArithmeticError):
@@ -899,6 +909,87 @@ def _word_prime_first_coordinate_minimal_polynomial(
     return [runtime.number(output[index]) for index in range(minimal_degree + 1)]
 
 
+def _word_prime_first_coordinate_minimal_polynomial_batch(
+    rows: list[list[Any]],
+    primes: list[int],
+    packed_matrix: Any | None = None,
+    workspace: Any | None = None,
+    crt_degree: Any | None = None,
+    crt_state: Any | None = None,
+    batch_state: Any | None = None,
+    crt_word_capacity: int = 8,
+    batch_word_capacity: int = 8,
+) -> tuple[list[list[int]], Any, Any, Any, Any, Any]:
+    """Return one modular Krylov relation per certified word prime.
+
+    Packing the exact matrix and allocating the reusable workspace occur once
+    per characteristic-polynomial problem.  The compiled call then performs
+    all exact reductions and word-prime Krylov computations in one isolated
+    crossing.  The ordinary Python body of the kernel is the dynamic oracle.
+    """
+    degree = len(rows)
+    prime_count = len(primes)
+    kernel = integer_matrix_word_prime_minimal_polynomial_batch
+    if packed_matrix is None:
+        packed_matrix = kernel_integer_buffer(
+            kernel,
+            [value for row in rows for value in row],
+        )
+    if workspace is None:
+        workspace = kernel_uint64_zeros(
+            kernel,
+            word_prime_krylov_batch_workspace_length(degree),
+        )
+    if crt_degree is None:
+        crt_degree = kernel_uint64_zeros(kernel, 1)
+    if crt_state is None:
+        crt_state = kernel_integer_zeros(
+            kernel,
+            degree + 2,
+            crt_word_capacity,
+        )
+    if batch_state is None:
+        batch_state = kernel_integer_zeros(
+            kernel,
+            degree + 2,
+            batch_word_capacity,
+        )
+    packed_primes = kernel_uint64_buffer(kernel, primes)
+    degrees = kernel_uint64_zeros(kernel, prime_count)
+    coefficients = kernel_uint64_zeros(kernel, prime_count * (degree + 1))
+    completed = kernel(
+        degrees,
+        coefficients,
+        crt_degree,
+        crt_state,
+        batch_state,
+        packed_matrix,
+        packed_primes,
+        workspace,
+        degree,
+        prime_count,
+    )
+    if runtime.number(completed) != prime_count:
+        raise Round4InvariantError(
+            "the packed word-prime Krylov batch rejected its input"
+        )
+    answer = []
+    for prime_index in range(prime_count):
+        minimal_degree = runtime.number(degrees[prime_index])
+        if minimal_degree <= 0 or minimal_degree > degree:
+            raise Round4InvariantError(
+                "the packed word-prime Krylov batch returned an invalid degree"
+            )
+        offset = prime_index * (degree + 1)
+        answer.append(
+            [
+                runtime.number(coefficients[offset + index])
+                for index in range(minimal_degree + 1)
+            ]
+        )
+    return answer, packed_matrix, workspace, crt_degree, crt_state, batch_state
+
+
 def _minimal_polynomial_coefficient_bounds(
     rows: list[list[Any]],
     minimal_degree: int,
@@ -913,6 +1004,37 @@ def _minimal_polynomial_coefficient_bounds(
             binomial = binomial * (minimal_degree - index + 1) // index
         bounds.append(binomial * root_bound**power)
     return bounds
+
+
+def _native_annihilates_first_coordinate(
+    rows: list[list[Any]],
+    coefficients: list[Any],
+    packed_matrix: Any,
+) -> bool:
+    """Run the exact Horner certificate in one source-transparent call."""
+    kernel = integer_matrix_polynomial_annihilates_first_coordinate
+    degree = len(rows)
+    root_bound = max(sum(abs(value) for value in row) for row in rows)
+    intermediate_bound = sage.ZZ(0)
+    for coefficient in reversed(coefficients):
+        intermediate_bound = root_bound * intermediate_bound + abs(coefficient)
+    word_capacity = max(
+        8,
+        (_positive_integer_bits(intermediate_bound) + 63) // 64 + 2,
+    )
+    packed_coefficients = kernel_integer_buffer(kernel, coefficients)
+    exact_workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+    return bool(
+        runtime.number(
+            kernel(
+                packed_matrix,
+                packed_coefficients,
+                exact_workspace,
+                degree,
+                len(coefficients),
+            )
+        )
+    )
 
 
 def _integer_polynomial_power(
@@ -930,6 +1052,172 @@ def _integer_polynomial_power(
                 product[left + right] += left_coefficient * right_coefficient
         answer = product
     return answer
+
+
+def _batched_integer_field_element_characteristic_polynomial(
+    rows: list[list[Any]],
+) -> tuple[list[Any], int, int, int, int, int]:
+    """Recover a field-element characteristic polynomial in prime batches.
+
+    For every observed modular minimal degree `d`, the exact infinity norm of
+    the integer multiplication matrix bounds the absolute value of coefficient
+    `x^k` by `binomial(d, k) * ||B||_infinity^(d-k)`.  CRT reconstruction is
+    therefore unique once its modulus exceeds twice the largest such bound.
+
+    A modular degree can be accidentally low at finitely many primes.  Such a
+    candidate is never trusted merely because its CRT modulus is large.  Once
+    the coefficient bound is crossed, or two centered lifts stabilize before
+    it, exact Horner evaluation must prove `m(B)e_0 = 0`.  A later larger
+    modular degree resets CRT state.  Once annihilation succeeds, the modular
+    Krylov determinant is a rational degree lower bound while annihilation is
+    the matching upper bound.  Divisibility by the field degree then proves
+    `charpoly(B) = m(x)^(n/d)` for multiplication by a field element.
+    """
+    degree = len(rows)
+    root_bound = max(sum(abs(value) for value in row) for row in rows)
+    bounds_by_degree: dict[int, list[Any]] = {}
+
+    def degree_bounds(minimal_degree: int) -> list[Any]:
+        cached = bounds_by_degree.get(minimal_degree)
+        if cached is None:
+            binomial = sage.ZZ(1)
+            cached = []
+            for power in range(minimal_degree, -1, -1):
+                index = minimal_degree - power
+                if index:
+                    binomial = binomial * (minimal_degree - index + 1) // index
+                cached.append(binomial * root_bound**power)
+            bounds_by_degree[minimal_degree] = cached
+        return cached
+
+    candidate_prime = 1073741823
+    prime_count = 0
+    batch_calls = 0
+    computed_prime_count = 0
+    reconstruction_attempts = 0
+    minimal_degree = 0
+    modulus = sage.ZZ(1)
+    previous_centered = None
+    previous_degree = 0
+    packed_matrix = None
+    workspace = None
+    crt_degree = None
+    crt_state = None
+    batch_state = None
+    maximum_state_bits = _positive_integer_bits(2 * max(degree_bounds(degree)))
+    # The final batch deliberately crosses the reconstruction threshold in one
+    # native call.  Its conservative prime estimate can overshoot by fewer
+    # than 512 bits, so reserve eight limbs beyond the exact coefficient bound
+    # (plus one sign/carry limb) without changing that mathematical bound.
+    crt_word_capacity = max(8, (maximum_state_bits + 63) // 64 + 9)
+    # A batch contains at most 32 primes below `2^30`; unlike the global CRT
+    # its exact scratch never needs the much larger final coefficient bound.
+    # Keeping this capacity tight avoids copying thousands of unused limbs on
+    # every in-batch IntegerBuffer assignment.
+    batch_word_capacity = (32 * 30 + 63) // 64 + 2
+    while prime_count < 4096:
+        if batch_calls < 2:
+            # Two tiny batches expose early stable exact candidates without
+            # returning to one crossing per prime.
+            batch_size = 2
+        elif minimal_degree == 0:
+            batch_size = 8
+        else:
+            target_bits = _positive_integer_bits(2 * max(degree_bounds(minimal_degree)))
+            missing_bits = max(0, target_bits - _positive_integer_bits(modulus))
+            # Reconstruction primes are just below 2^30.  Four extra primes
+            # absorb the conservative integer division and a possible low
+            # modular-degree prime without turning the loop back into a
+            # crossing-per-prime protocol.
+            # Cap speculative work: stable exact coefficients can be far
+            # smaller than the conservative norm bound.  A 32-prime window
+            # still removes at least 8x of the scalar crossings while limiting
+            # stabilization overshoot to fewer than 960 modulus bits.
+            batch_size = min(32, max(8, (missing_bits + 28) // 29 + 4))
+        batch_primes = []
+        for _index in range(min(batch_size, 4096 - prime_count)):
+            prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
+            batch_primes.append(prime)
+        (
+            _modular_polynomials,
+            packed_matrix,
+            workspace,
+            crt_degree,
+            crt_state,
+            batch_state,
+        ) = _word_prime_first_coordinate_minimal_polynomial_batch(
+            rows,
+            batch_primes,
+            packed_matrix,
+            workspace,
+            crt_degree,
+            crt_state,
+            batch_state,
+            crt_word_capacity,
+            batch_word_capacity,
+        )
+        batch_calls += 1
+        computed_prime_count += len(batch_primes)
+        prime_count += len(batch_primes)
+        minimal_degree = runtime.number(crt_degree[0])
+        if minimal_degree <= 0 or minimal_degree > degree:
+            raise Round4InvariantError(
+                "the batched CRT state has an invalid minimal degree"
+            )
+        state_values = integer_buffer_values(crt_state)
+        modulus = sage.ZZ(state_values[0])
+        residues = [
+            sage.ZZ(state_values[index + 1]) for index in range(minimal_degree + 1)
+        ]
+        if minimal_degree > previous_degree:
+            previous_centered = None
+            previous_degree = minimal_degree
+        bounds = degree_bounds(minimal_degree)
+        half_modulus = modulus // 2
+        centered = [
+            residue - modulus if residue > half_modulus else residue
+            for residue in residues
+        ]
+        bound_reached = modulus > 2 * max(bounds)
+        stable_candidate = previous_centered == centered
+        previous_centered = centered
+        if not bound_reached and not stable_candidate:
+            continue
+        reconstruction_attempts += 1
+        if is_compiled(integer_matrix_polynomial_annihilates_first_coordinate):
+            annihilates = _native_annihilates_first_coordinate(
+                rows,
+                centered,
+                packed_matrix,
+            )
+        else:
+            annihilates = _annihilates_first_coordinate(rows, centered)
+        if not annihilates:
+            continue
+        if degree % minimal_degree != 0:
+            raise Round4InvariantError(
+                "a field element has an invalid minimal-polynomial degree"
+            )
+        for index, coefficient in enumerate(centered):
+            if abs(coefficient) > bounds[index]:
+                raise Round4InvariantError(
+                    "a reconstructed minimal coefficient exceeds its bound"
+                )
+        characteristic = _integer_polynomial_power(
+            centered,
+            degree // minimal_degree,
+        )
+        return (
+            characteristic,
+            prime_count,
+            _positive_integer_bits(modulus),
+            batch_calls,
+            reconstruction_attempts,
+            computed_prime_count,
+        )
+    raise Round4Unsupported(
+        "exact batched minimal-polynomial reconstruction exceeded 4096 primes"
+    )
 
 
 def _integer_field_element_characteristic_polynomial(
@@ -1025,6 +1313,21 @@ def _modular_characteristic_polynomial(
     cyclic = False
     certification = "coefficient-bound"
     minimal_modulus_bits = 0
+    batch_calls = 0
+    reconstruction_attempts = 0
+    batch_prime_count = 0
+    if largest_bound_bits >= _ROUND4_CRT_BOUND_BITS and is_compiled(
+        integer_matrix_word_prime_minimal_polynomial_batch
+    ):
+        (
+            integer_coefficients,
+            prime_count,
+            minimal_modulus_bits,
+            batch_calls,
+            reconstruction_attempts,
+            batch_prime_count,
+        ) = _batched_integer_field_element_characteristic_polynomial(rows)
+        certification = "field-minimal-polynomial-crt"
     while integer_coefficients is None:
         prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
         modular_minimal = None
@@ -1045,15 +1348,28 @@ def _modular_characteristic_polynomial(
                 )
                 certification = "field-minimal-polynomial-crt"
                 break
-        residue_field = _nf_global("GF")(prime)
-        modular_rows = [[residue_field(value % prime) for value in row] for row in rows]
-        modular_coefficients = list(
-            _nf_global("matrix")(residue_field, modular_rows).charpoly().list()
-        )
+        if modular_minimal is not None:
+            # A monic degree-n polynomial annihilating one vector in an
+            # n-dimensional cyclic Krylov module is the matrix
+            # characteristic polynomial.  Rebuilding a finite-field matrix
+            # and asking FLINT for the same polynomial used to duplicate the
+            # dominant modular operation on every large-bound CRT prime.
+            modular_coefficients = modular_minimal
+        else:
+            residue_field = _nf_global("GF")(prime)
+            modular_rows = [
+                [residue_field(value % prime) for value in row] for row in rows
+            ]
+            modular_coefficients = [
+                runtime.number(coefficient.lift())
+                for coefficient in _nf_global("matrix")(residue_field, modular_rows)
+                .charpoly()
+                .list()
+            ]
         modulus_mod_prime = runtime.number(modulus % prime)
         inverse = _modular_inverse(modulus_mod_prime, prime)
         for index, coefficient in enumerate(modular_coefficients):
-            target = runtime.number(coefficient.lift())
+            target = runtime.number(coefficient)
             correction = (
                 (target - runtime.number(residues[index] % prime)) * inverse
             ) % prime
@@ -1107,6 +1423,16 @@ def _modular_characteristic_polynomial(
             metrics.get("modular_characteristic_max_modulus_bits", 0),
             _positive_integer_bits(modulus),
             minimal_modulus_bits,
+        )
+        metrics["modular_characteristic_batch_calls"] = (
+            metrics.get("modular_characteristic_batch_calls", 0) + batch_calls
+        )
+        metrics["modular_characteristic_reconstruction_attempts"] = (
+            metrics.get("modular_characteristic_reconstruction_attempts", 0)
+            + reconstruction_attempts
+        )
+        metrics["modular_characteristic_batch_primes"] = (
+            metrics.get("modular_characteristic_batch_primes", 0) + batch_prime_count
         )
         certification_counts = metrics.get("modular_characteristic_certifications")
         if certification_counts is None:
