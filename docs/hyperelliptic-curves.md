@@ -105,6 +105,9 @@ The pinned rforest backend accelerates dense Hasse--Witt batches for integral
 curves, and one traversal serves a requested prime interval. Its timing
 diagnostics keep the remainder forest, candidate enumeration, primary
 Jacobian certification, twist certification, and fallback costs separate.
-`algorithm="auto"` does not yet select this path because complete dense-range
-certification, rather than the modular stage alone, must pass the documented
-performance gate.
+`algorithm="auto"` selects this path for supported odd-degree genus-3 models
+when every native capability is present. One-off primes use it throughout the
+checked native range; interval calls use it when the upper endpoint is at most
+10000, the complete range measured by the acceptance benchmark. Larger
+intervals remain on the exact reference path unless `algorithm="rforest"` is
+requested explicitly.

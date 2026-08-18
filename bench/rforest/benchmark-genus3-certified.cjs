@@ -165,14 +165,15 @@ function certificationProgram(limit) {
     "        stage_starts[stage]=time.perf_counter()",
     "    elif event.endswith('_end') and stage in stage_starts:",
     "        stage_ms[stage]+=1000*(time.perf_counter()-stage_starts.pop(stage))",
-    `certified=rforest_genus3_local_factors(C,2,${limit},stage_observer=observe)`,
+    "certified_rows=0",
     "cert_digest=0",
     "cert_counts={'unique':0,'fallback':0,'omitted':0}",
     "cert_primary_samples=0",
     "cert_primary_ops=0",
     "cert_twist_samples=0",
     "cert_twist_ops=0",
-    "for prime,completion in certified:",
+    `for prime,completion in rforest_genus3_local_factors(C,2,${limit},stage_observer=observe):`,
+    "    certified_rows+=1",
     "    status=completion['status']",
     "    if status in cert_counts:",
     "        cert_counts[status]+=1",
@@ -188,22 +189,24 @@ function certificationProgram(limit) {
     "        cert_digest=digest_step(cert_digest,prime)",
     "        for coefficient in factor:",
     "            cert_digest=digest_step(cert_digest,coefficient)",
-    "{'rows':len(certified),'status_counts':cert_counts,'primary_samples':cert_primary_samples,'primary_ops':cert_primary_ops,'twist_samples':cert_twist_samples,'twist_ops':cert_twist_ops,'stage_ms':stage_ms,'exact_stream_digest':cert_digest}",
+    "{'rows':certified_rows,'status_counts':cert_counts,'primary_samples':cert_primary_samples,'primary_ops':cert_primary_ops,'twist_samples':cert_twist_samples,'twist_ops':cert_twist_ops,'stage_ms':stage_ms,'exact_stream_digest':cert_digest}",
   ].join("\n");
 }
 
 function publicProgram(limit) {
+  const algorithm = limit <= 10_000 ? "auto" : "rforest";
   return [
     "C_public=HyperellipticCurve(x^7+x+1)",
+    `public_algorithm='${algorithm}'`,
     "public_rows=0",
     "public_digest=0",
-    `for chunk in C_public.local_lpolynomial_chunks(2,${limit},algorithm='rforest'):` ,
+    `for chunk in C_public.local_lpolynomial_chunks(2,${limit},algorithm=public_algorithm):`,
     "    for prime,factor in chunk:",
     "        public_rows+=1",
     "        public_digest=digest_step(public_digest,prime)",
     "        for coefficient in factor.list():",
     "            public_digest=digest_step(public_digest,coefficient)",
-    "{'rows':public_rows,'exact_stream_digest':public_digest}",
+    "{'algorithm':public_algorithm,'rows':public_rows,'exact_stream_digest':public_digest}",
   ].join("\n");
 }
 

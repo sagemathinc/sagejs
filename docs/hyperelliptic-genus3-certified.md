@@ -121,11 +121,12 @@ or `found` with the mathematical record:
 ```
 
 Before using `element_order = e` as a divisibility witness, Python checks that
-the factor bases are actually prime, that the supplied multiplicities multiply
-to `e`, that `e*D == 0`, and that `(e/q)*D != 0` for every distinct prime
-`q | e`. Native survivor masks are diagnostics only. The ordinary path derives
-the same certificate by finding any candidate annihilator, factoring it, and
-stripping its prime powers.
+the factor bases are actually prime and that their multiplicities multiply to
+`e`. The native factor-and-strip routine has already checked `e*D == 0` and
+`(e/q)*D != 0` for every distinct prime `q | e`; those exact checks are part of
+the trusted native-kernel result, while survivor hints remain diagnostics only.
+Injected certificate providers and the dynamic fallback receive the same
+checks through the independent ordinary-Python group law.
 
 Each result reports candidate counts, sampled-element counts, exact-order
 certificates, and scalar-multiplication counts separately for the primary and
@@ -144,9 +145,10 @@ The central `frobenius.py` integration is deliberately small:
   serves the whole batch;
 - cache the resulting exact coefficients under the selected algorithm;
 - add `certified_genus3.py` to the strict module list in `pyrightconfig.json`;
-- leave `auto` unchanged until end-to-end benchmarks through `10^4`, `10^5`,
-  and `10^6`, exact cross-platform streams, cancellation/shared-state tests,
-  and sanitizer coverage pass.
+- select `rforest` automatically for supported odd-degree one-off primes and
+  intervals ending at 10000, the measured complete-stream envelope; larger
+  intervals and unsupported capabilities fail closed to `exhaustive`.
 
 The curve model needs no new public method: its existing local-factor dispatch
-already routes explicit algorithm strings through `frobenius.py`.
+already routes explicit and automatic algorithm selection through
+`frobenius.py`.

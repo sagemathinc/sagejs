@@ -997,12 +997,24 @@ def _rational_smalljac_supported(curve: Any, start: int, stop: int) -> bool:
     )
 
 
+def _rational_rforest_supported(curve: Any, start: int, stop: int) -> bool:
+    if curve.genus() != 3:
+        return False
+    certified = __import__(
+        "sagejs.hyperelliptic_curves.certified_genus3",
+        fromlist=["rforest_genus3_auto_supported"],
+    )
+    return bool(certified.rforest_genus3_auto_supported(curve, start, stop))
+
+
 def _select_rational_algorithm(
     curve: Any, algorithm: str, start: int, stop: int
 ) -> str:
     if algorithm == "auto":
         if _rational_smalljac_supported(curve, start, stop):
             return "smalljac"
+        if _rational_rforest_supported(curve, start, stop):
+            return "rforest"
         return "exhaustive"
     if algorithm == "smalljac":
         if _smalljac_capabilities() is None:
@@ -1054,8 +1066,9 @@ def _store_local_coefficients(
 def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
     """Compute one good local factor over `QQ`.
 
-    `auto` uses the native genus-2 smalljac stream at supported odd primes and
-    otherwise retains the exact exhaustive reduction/counting implementation.
+    `auto` uses the native genus-2 smalljac stream and the measured certified
+    odd-degree genus-3 rforest pipeline where their complete capability checks
+    pass. Other inputs retain exact exhaustive reduction and counting.
     """
     prime = _checked_prime(prime)
     selected = _select_rational_algorithm(curve, algorithm, prime, prime)

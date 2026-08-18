@@ -29,7 +29,9 @@ test("deterministic primary and twist witnesses uniquely complete a genus-3 fact
             "[(answer['status'], answer['coefficients'],",
             "  answer['certificate']['initial_candidate_count']),",
             " (primary['surviving_candidates'],",
-            "  tuple(c['element_order'] for c in primary['certificates'])),",
+            "  tuple(c['element_order'] for c in primary['certificates']),",
+            "  primary['certificates'][0]['verification'],",
+            "  primary['recheck_scalar_multiplications']),",
             " (twist['surviving_candidates'],",
             "  tuple(c['element_order'] for c in twist['certificates'])),",
             " events]",
@@ -38,7 +40,7 @@ test("deterministic primary and twist witnesses uniquely complete a genus-3 fact
         )
       ).repr,
       "[('unique', (1, 3, 9, 17, 45, 75, 125), 28), " +
-        "(2, (55,)), (1, (17,)), " +
+        "(2, (55,), 'native_exact_factor_and_strip', 0), (1, (17,)), " +
         "['residue_start', 'residue_end', 'candidate_start', " +
         "'candidate_end', 'primary_start', " +
         "'primary_end', 'twist_start', 'twist_end']]",
@@ -181,6 +183,47 @@ test("an interval uses one residue traversal and falls back per row", async () =
       "([(5, 'fallback', (1, 3, 9, 17, 45, 75, 125)), " +
         "(7, 'fallback', (1, 0, 21, 0, 147, 0, 343)), " +
         "(11, 'omitted', None)], 1, 1, 2)",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("auto selects only the measured complete odd-degree genus-3 pipeline", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R = PolynomialRing(QQ, 'x')",
+            "x = R.gen()",
+            "C = HyperellipticCurve(x^7+x+1)",
+            "E = HyperellipticCurve(x^8+x+1)",
+            "from sagejs.hyperelliptic_curves.frobenius import _select_rational_algorithm",
+            "import sagejs.hyperelliptic_curves.certified_genus3 as certified",
+            "selected = (_select_rational_algorithm(C,'auto',5,5),",
+            "            _select_rational_algorithm(C,'auto',2,101),",
+            "            _select_rational_algorithm(C,'auto',2,10002),",
+            "            _select_rational_algorithm(C,'auto',2,2),",
+            "            _select_rational_algorithm(E,'auto',5,5))",
+            "auto = C.local_lpolynomial(5)",
+            "explicit = C.local_lpolynomial(5, algorithm='rforest')",
+            "sorted_factors = C.local_lpolynomial(2833, algorithm='rforest')",
+            "verification = C._local_lpolynomial_cache[('rforest',5)]",
+            "candidate_capability = certified.genus3_candidate_kernel_available",
+            "certified.genus3_candidate_kernel_available = lambda: False",
+            "disabled = certified.rforest_genus3_auto_supported(C,5,5)",
+            "certified.genus3_candidate_kernel_available = candidate_capability",
+            "(selected, disabled, auto == explicit, tuple(verification), sorted_factors)",
+          ].join("\n"),
+          { timeout: 120_000 },
+        )
+      ).repr,
+      "(('rforest', 'rforest', 'exhaustive', 'exhaustive', 'exhaustive'), " +
+        "False, True, (1, 3, 9, 17, 45, 75, 125), " +
+        "22737343537*T^6 - 441423895*T^5 + 14230159*T^4 - " +
+        "205077*T^3 + 5023*T^2 - 55*T + 1)",
     );
   } finally {
     await session.close();

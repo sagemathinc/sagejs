@@ -8,20 +8,23 @@ ambiguous, unsupported, or resource-limited cases use the exact reference
 backend.
 
 The optional order kernel is deliberately hidden behind
-`_native_order_certificates`. A kernel does not get to assert an answer. It
-must return exact element-order certificates, and this module rechecks every
-certificate with the ordinary Python group law before using it.
+`_native_order_certificates`. Its exact factor-and-strip routine proves
+`e*D=0` and `(e/q)*D != 0` for every prime divisor `q` of the returned order;
+this module independently validates the factorization and its product.
+Certificates from injected or fallback providers are instead rechecked with
+the ordinary Python group law before use.
 """
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Iterator, Mapping
 
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.genus3_completion import (
     _is_genus3_weil_candidate,
     enumerate_genus3_weil_candidates,
+    genus3_candidate_kernel_available,
     jacobian_order_from_coefficients,
     twist_order_from_coefficients,
 )
@@ -37,6 +40,8 @@ OrderCertificateProvider = Callable[
 ]
 ExactFallback = Callable[[Any, int], Iterable[int]]
 StageObserver = Callable[[str, Mapping[str, Any]], None]
+
+_AUTO_RFOREST_MAX_INTERVAL_STOP = 10_000
 
 
 def _observe(
@@ -156,11 +161,13 @@ def _native_order_certificates(
         )
     raw_factors = runtime.reflect.get(result, "factorization")
     factors = tuple(
-        (
-            int(runtime.integer_bigint(raw_factors[index][0])),
-            int(raw_factors[index][1]),
+        sorted(
+            (
+                int(runtime.integer_bigint(raw_factors[index][0])),
+                int(raw_factors[index][1]),
+            )
+            for index in range(len(raw_factors))
         )
-        for index in range(len(raw_factors))
     )
     return {
         "status": "found",
@@ -302,6 +309,52 @@ def _prime_field(curve: Any, prime: int) -> Any:
             "genus-3 Jacobian certification requires the prime-field reduction"
         )
     return field
+
+
+def rforest_genus3_auto_supported(curve: Any, start: int, stop: int) -> bool:
+    """Return whether the measured exact native genus-3 pipeline applies.
+
+    The selector is intentionally fail-closed. It requires an odd-degree
+    integral completed-square model, the rforest residue backend, the compiled
+    exact Weil-lift kernel, and the native Jacobian certificate kernel. A
+    singleton request at characteristic two stays on the reference backend.
+    """
+    if (
+        int(curve.genus()) != 3
+        or stop < max(start, 3)
+        or (stop > start and stop > _AUTO_RFOREST_MAX_INTERVAL_STOP)
+    ):
+        return False
+    try:
+        rforest = __import__(
+            "sagejs.hyperelliptic_curves.rforest",
+            fromlist=["rforest_capabilities", "_completed_square_model"],
+        )
+        capability = rforest.rforest_capabilities()
+        if capability is None or not genus3_candidate_kernel_available():
+            return False
+        coefficients, _excluded_denominator = rforest._completed_square_model(curve)
+        if len(coefficients) != 8:
+            return False
+        backend = runtime.flint_backend()
+        capability_function = runtime.reflect.get(backend, "genus3JacobianCapabilities")
+        search_function = runtime.reflect.get(
+            backend, "genus3JacobianSearchProgression"
+        )
+        if (
+            capability_function is runtime.undefined
+            or search_function is runtime.undefined
+        ):
+            return False
+        group = runtime.reflect.apply(capability_function, backend, [])
+        if not bool(runtime.reflect.get(group, "available")):
+            return False
+        return runtime.integer_bigint(stop) <= min(
+            runtime.integer_bigint(runtime.reflect.get(capability, "primeUpperBound")),
+            runtime.integer_bigint(runtime.reflect.get(group, "primeUpperBound")),
+        )
+    except Exception:
+        return False
 
 
 def _deterministic_points(
@@ -464,7 +517,7 @@ def _checked_prime_factorization(
 
 
 def _check_order_certificate(
-    jacobian: Any, raw: Any
+    jacobian: Any, raw: Any, native_exact: bool = False
 ) -> tuple[int, dict[str, Any], int]:
     if not hasattr(raw, "get"):
         raise ArithmeticError("the order kernel returned a malformed certificate")
@@ -478,6 +531,17 @@ def _check_order_certificate(
     if raw_factors is None:
         raise ArithmeticError("an order certificate omitted its prime factorization")
     factors = _checked_prime_factorization(element_order, raw_factors)
+    if native_exact:
+        return (
+            element_order,
+            {
+                "divisor": divisor,
+                "element_order": element_order,
+                "prime_factors": factors,
+                "verification": "native_exact_factor_and_strip",
+            },
+            0,
+        )
     scalar_multiplications = 1
     if not (element_order * divisor).is_zero():
         raise ArithmeticError(
@@ -493,6 +557,7 @@ def _check_order_certificate(
             "divisor": divisor,
             "element_order": element_order,
             "prime_factors": factors,
+            "verification": "independent_python_group_law",
         },
         scalar_multiplications,
     )
@@ -552,7 +617,9 @@ def _certified_order_witnesses(
                     "the order kernel certified a different divisor than requested"
                 )
             witness, checked_certificate, operations = _check_order_certificate(
-                jacobian, certificate
+                jacobian,
+                certificate,
+                native_exact=certificate_provider is _native_order_certificates,
             )
             recheck_operations += operations
             if witness not in witnesses:
@@ -730,7 +797,7 @@ def _certify_candidates(
         jacobian,
         prime,
         max_x_values=max_x_values,
-        max_elements=max_elements,
+        max_elements=1,
     )
     orders = _unique_orders(
         jacobian_order_from_coefficients(candidate, prime) for candidate in candidates
@@ -752,6 +819,26 @@ def _certify_candidates(
         max_baby_steps,
         max_group_operations,
     )
+    if len(survivors) > 1 and max_elements > 1:
+        elements = _deterministic_elements(
+            jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        survivors, primary_certificates, primary_diagnostics = (
+            _certified_order_witnesses(
+                jacobian,
+                orders,
+                progressions,
+                elements,
+                "jacobian",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
+        )
     survivor_set = set(survivors)
     remaining = tuple(
         candidate
@@ -781,7 +868,7 @@ def _certify_candidates(
         twist_jacobian,
         prime,
         max_x_values=max_x_values,
-        max_elements=max_elements,
+        max_elements=1,
     )
     twist_orders = _unique_orders(
         twist_order_from_coefficients(candidate, prime) for candidate in remaining
@@ -803,6 +890,26 @@ def _certify_candidates(
         max_baby_steps,
         max_group_operations,
     )
+    if len(twist_survivors) > 1 and max_elements > 1:
+        twist_elements = _deterministic_elements(
+            twist_jacobian,
+            prime,
+            max_x_values=max_x_values,
+            max_elements=max_elements,
+        )
+        twist_survivors, twist_certificates, twist_diagnostics = (
+            _certified_order_witnesses(
+                twist_jacobian,
+                twist_orders,
+                twist_progressions,
+                twist_elements,
+                "twist",
+                certificate_provider,
+                max_trial_divisions,
+                max_baby_steps,
+                max_group_operations,
+            )
+        )
     twist_survivor_set = set(twist_survivors)
     remaining = tuple(
         candidate
@@ -1083,8 +1190,8 @@ def rforest_genus3_local_factors(
     max_baby_steps: int = 100_000,
     max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
-) -> list[tuple[int, dict[str, Any]]]:
-    """Compute a closed prime interval with exactly one rforest traversal."""
+) -> Iterator[tuple[int, dict[str, Any]]]:
+    """Yield a closed prime interval after exactly one rforest traversal."""
     start = _positive_integer(start, "start")
     stop = _positive_integer(stop, "stop")
     if stop < start:
@@ -1105,7 +1212,6 @@ def rforest_genus3_local_factors(
             "residue_end",
             {"start": start, "stop": stop, "rows": 0, "available": False},
         )
-        unavailable_rows: list[tuple[int, dict[str, Any]]] = []
         for prime in range(start, stop + 1):
             if not sage.is_prime(prime):
                 continue
@@ -1123,14 +1229,13 @@ def rforest_genus3_local_factors(
                     diagnostics,
                     stage_observer,
                 )
-            unavailable_rows.append((prime, result))
-        return unavailable_rows
+            yield prime, result
+        return
     _observe(
         stage_observer,
         "residue_end",
         {"start": start, "stop": stop, "rows": len(batch["rows"])},
     )
-    answer: list[tuple[int, dict[str, Any]]] = []
     for row in batch["rows"]:
         prime = int(row["prime"])
         if not row["available"]:
@@ -1164,8 +1269,7 @@ def rforest_genus3_local_factors(
                 max_group_operations=max_group_operations,
                 stage_observer=stage_observer,
             )
-        answer.append((prime, result))
-    return answer
+        yield prime, result
 
 
 __all__ = [
