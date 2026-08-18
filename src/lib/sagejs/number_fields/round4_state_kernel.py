@@ -18,7 +18,7 @@ body.
 
 from __future__ import annotations
 
-from sagejs.ffi.flint import fmpz_mat_charpoly
+from sagejs.ffi.flint import fmpz_mat_charpoly, fmpz_mat_det
 from sagejs.native import IntegerBuffer, native, uint64
 
 # Stable control statuses.  Unsupported inputs and storage exhaustion are
@@ -29,6 +29,7 @@ ROUND4_STATE_INVALID_SHAPE = -1
 ROUND4_STATE_INVALID_PRIME = -2
 ROUND4_STATE_INVALID_DENOMINATOR = -3
 ROUND4_STATE_NONINTEGRAL = -4
+ROUND4_STATE_WRONG_COVOLUME = -5
 
 
 @native
@@ -58,6 +59,26 @@ def _packed_integer_power(base: int, exponent: int) -> int:
         if remaining:
             power *= power
     return answer
+
+
+@native
+def _packed_integer_gcd(left: int, right: int) -> int:
+    left = abs(left)
+    right = abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
+@native
+def _packed_finite_valuation(value: int, prime: int) -> int:
+    """Return the finite `prime`-valuation of a nonzero integer."""
+    valuation = 0
+    remaining = abs(value)
+    while remaining % prime == 0:
+        remaining //= prime
+        valuation += 1
+    return valuation
 
 
 @native
@@ -391,6 +412,92 @@ def packed_round4_exact_characteristic(
     return True
 
 
+@native
+def packed_round4_power_basis_covolume(
+    control: IntegerBuffer,
+    determinant_parts: IntegerBuffer,
+    determinant_workspace: IntegerBuffer,
+    power_numerators: IntegerBuffer,
+    row_denominators: IntegerBuffer,
+    prime_buffer: IntegerBuffer,
+    expected_index_valuation: uint64,
+    degree: uint64,
+) -> bool:
+    """Prove local equation-order containment from an exact covolume.
+
+    Rows of `power_numerators`, divided by the corresponding positive entries
+    of `row_denominators`, are a full power-basis lattice `L`.  The caller has
+    independently constructed the exact join `O = O_eq + L` and supplies the
+    `p`-valuation of `[O:O_eq]`.  Since `L` is contained in `O`, equality with
+    the negative `p`-valuation of `det(L)` proves `[O:L]` is a `p`-adic unit,
+    hence `O_(p) = L_(p)`.  This is precisely the local containment fact that
+    a full rational inverse used to replay entry by entry.
+
+    `determinant_parts` receives the positive coprime numerator and
+    denominator of `abs(det(L))`.  `control[1]` receives its inferred local
+    index valuation, `control[2]` records the expected valuation, and
+    `control[3]` remains the caller's monotone transcript index.
+    """
+    zero = degree - degree
+    if degree == zero:
+        if len(control) > 0:
+            control[0] = -1
+        return False
+    one = degree // degree
+    valid = len(control) >= 4
+    if len(determinant_parts) != 2 or len(determinant_workspace) != one:
+        valid = False
+    if len(power_numerators) != degree * degree:
+        valid = False
+    if len(row_denominators) != degree or len(prime_buffer) != one:
+        valid = False
+    if not valid:
+        if len(control) > 0:
+            control[0] = -1
+        return False
+    prime = prime_buffer[zero]
+    if prime <= one:
+        control[0] = -2
+        return False
+    denominator = prime // prime
+    for row in range(degree):
+        if row_denominators[row] <= 0:
+            control[0] = -3
+            return False
+        denominator *= row_denominators[row]
+    determinant_completed = fmpz_mat_det(
+        determinant_workspace,
+        power_numerators,
+        degree,
+        one,
+    )
+    if not determinant_completed:
+        control[0] = 0
+        return False
+    numerator = abs(determinant_workspace[zero])
+    if numerator == 0:
+        control[0] = -5
+        return False
+    content = _packed_integer_gcd(numerator, denominator)
+    numerator //= content
+    denominator //= content
+    numerator_valuation = _packed_finite_valuation(numerator, prime)
+    denominator_valuation = _packed_finite_valuation(denominator, prime)
+    if denominator_valuation < numerator_valuation:
+        control[0] = -5
+        return False
+    local_index_valuation = denominator_valuation - numerator_valuation
+    determinant_parts[zero] = numerator
+    determinant_parts[one] = denominator
+    control[1] = local_index_valuation
+    control[2] = expected_index_valuation
+    if local_index_valuation != expected_index_valuation:
+        control[0] = -5
+        return False
+    control[0] = 1
+    return True
+
+
 __all__ = [
     "ROUND4_STATE_INVALID_DENOMINATOR",
     "ROUND4_STATE_INVALID_PRIME",
@@ -398,6 +505,8 @@ __all__ = [
     "ROUND4_STATE_NONINTEGRAL",
     "ROUND4_STATE_OK",
     "ROUND4_STATE_UNSUPPORTED",
+    "ROUND4_STATE_WRONG_COVOLUME",
     "packed_round4_exact_characteristic",
     "packed_round4_padic_characteristic",
+    "packed_round4_power_basis_covolume",
 ]

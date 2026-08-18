@@ -3,6 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { readFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
 const { compile } = require("@sagemath/sagejs/native");
 
@@ -45,6 +46,18 @@ const vector010Element = [
   -18537074588670589717219n, -10609318725528131460374n,
   27295268574728619925010n, 39991162386792915112613n,
 ];
+const vector010Fixture = JSON.parse(
+  readFileSync(
+    join(root, "test", "fixtures", "number-field-round4-primary.json"),
+    "utf8",
+  ),
+).cases.find((record) => record.id === "pari-round4-vector-010-p2");
+const vector010BasisNumerators = vector010Fixture.basis_numerator
+  .flat()
+  .map(BigInt);
+const vector010RowDenominators = Array(32).fill(
+  BigInt(vector010Fixture.basis_denominator),
+);
 
 function pythonIntegers(values) {
   return `[${values.map((value) => value.toString()).join(",")}]`;
@@ -59,10 +72,11 @@ async function main() {
   const program = String.raw`
 from sagejs.native import is_compiled
 from sagejs.number_fields.round4 import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros
-from sagejs.number_fields.round4_state_kernel import packed_round4_exact_characteristic, packed_round4_padic_characteristic
+from sagejs.number_fields.round4_state_kernel import packed_round4_exact_characteristic, packed_round4_padic_characteristic, packed_round4_power_basis_covolume
 
 assert is_compiled(packed_round4_exact_characteristic)
 assert is_compiled(packed_round4_padic_characteristic)
+assert is_compiled(packed_round4_power_basis_covolume)
 
 def reference_matrix(defining, packed):
     degree = len(defining) - 1
@@ -148,6 +162,54 @@ for index, coefficient in enumerate(numerator_characteristic):
     assert remainder == 0
     expected.append(quotient)
 assert actual == expected
+
+# The final vector010 HNF supplies a real degree-32 covolume witness.  As an
+# exact join basis its determinant valuation equals the certified equation-
+# order index, proving local containment without a rational matrix inverse.
+basis_numerators = ${pythonIntegers(vector010BasisNumerators)}
+row_denominators = ${pythonIntegers(vector010RowDenominators)}
+cov_control = kernel_integer_buffer(
+    packed_round4_power_basis_covolume,
+    [0, 0, 0, 80],
+)
+determinant_parts = kernel_integer_zeros(
+    packed_round4_power_basis_covolume,
+    2,
+    32,
+)
+determinant_workspace = kernel_integer_zeros(
+    packed_round4_power_basis_covolume,
+    1,
+    32,
+)
+assert packed_round4_power_basis_covolume(
+    cov_control,
+    determinant_parts,
+    determinant_workspace,
+    kernel_integer_buffer(packed_round4_power_basis_covolume, basis_numerators),
+    kernel_integer_buffer(packed_round4_power_basis_covolume, row_denominators),
+    kernel_integer_buffer(packed_round4_power_basis_covolume, [2]),
+    222,
+    32,
+)
+assert integer_buffer_values(cov_control) == [1, 222, 222, 80]
+assert integer_buffer_values(determinant_parts) == [1, 2**222]
+
+wrong_control = kernel_integer_buffer(
+    packed_round4_power_basis_covolume,
+    [0, 0, 0, 81],
+)
+assert not packed_round4_power_basis_covolume(
+    wrong_control,
+    determinant_parts,
+    determinant_workspace,
+    kernel_integer_buffer(packed_round4_power_basis_covolume, basis_numerators),
+    kernel_integer_buffer(packed_round4_power_basis_covolume, row_denominators),
+    kernel_integer_buffer(packed_round4_power_basis_covolume, [2]),
+    221,
+    32,
+)
+assert integer_buffer_values(wrong_control) == [-5, 222, 221, 81]
 
 # Fail closed under malformed shape, denominator support away from p, and a
 # canonical element corrupted into a nonintegral one.  The transcript index is
