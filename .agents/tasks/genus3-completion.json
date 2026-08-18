@@ -1,0 +1,120 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "genus3-completion",
+  "title": "Genus-3 Frobenius completion",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement ordinary exact Hasse-Witt computation, genus-3 Weil-constrained coefficient candidate lifting, and certified completion filters using Jacobian/order oracles, with exhaustive tests and a clear indeterminate status",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/hasse_witt.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+    "test/hyperelliptic-genus3-completion.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/1410.5222",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "exhaustive extension point counts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-genus3-completion.cjs",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+    "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-genus3-completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.407,
+      "started_at": "2026-08-18T07:50:38.526Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "00e3266e243e86969affcd1039b73868d4627006edff9034662d67f41a84df84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.547,
+      "started_at": "2026-08-18T07:50:39.570Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "00e3266e243e86969affcd1039b73868d4627006edff9034662d67f41a84df84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.071,
+      "started_at": "2026-08-18T07:50:41.810Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "00e3266e243e86969affcd1039b73868d4627006edff9034662d67f41a84df84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus3-completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.518,
+      "started_at": "2026-08-18T07:52:29.063Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "903698691b8d8c5cbf642ff5f98e34c0fa3d5e556035ff42faf5285a48dcd995",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.512,
+      "started_at": "2026-08-18T07:52:30.309Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "903698691b8d8c5cbf642ff5f98e34c0fa3d5e556035ff42faf5285a48dcd995",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/hasse_witt.py src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.069,
+      "started_at": "2026-08-18T07:52:32.484Z",
+      "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+      "workspace_fingerprint": "903698691b8d8c5cbf642ff5f98e34c0fa3d5e556035ff42faf5285a48dcd995",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the ordinary Harvey--Sutherland Hasse--Witt matrix convention for smooth odd-characteristic y^2=f models, exact det(I-TW) residues, exhaustive genus-3 p-Weil lifting with a rational Sturm certificate, and streamed exact Jacobian/twist-order, element-order, and live group-annihilation filters. Callback exceptions and non-boolean results propagate, while diagnostics count exact group actions. All result paths distinguish unique, indeterminate, inconsistent, and resource-limit states; direct polynomial expansion is guarded before allocation. Tests cover the published p=97 matrix, five Sage Frobenius fixtures, exact Weil interval/repeated-root boundaries, a 50-candidate ambiguous residue class, certified order and witness completion, invalid models, callbacks, and both resource caps.",
+    "risks": [
+      "The direct Hasse--Witt fallback intentionally caps dense polynomial expansion; large primes require the rforest accelerator.",
+      "Unfiltered genus-3 integral lifting is O(sqrt(p)) and deliberately returns resource_limit beyond its configured combination cap.",
+      "architecture:check reaches package ownership and fails on this pre-integration branch because the shared hyperelliptic package registration is owned by integration commit 9223559f."
+    ],
+    "next_steps": [
+      "Integrate the lazy hyperelliptic package registration and public curve adapters.",
+      "Feed batched rforest coefficient residues into complete_genus3_lpolynomial.",
+      "Provide certified Jacobian element-order witnesses from the group-law lane for production completion."
+    ]
+  }
+}
