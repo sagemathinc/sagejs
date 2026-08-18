@@ -71,6 +71,9 @@ const {
 const {
   prepareSources,
 } = require("./portable-smalljac/prepare-sources.cjs");
+const {
+  prepareRforestSource,
+} = require("./portable-rforest/prepare-sources.cjs");
 
 const dependencies = [
   {
@@ -131,6 +134,13 @@ const dependencies = [
     mirrors: ["https://math.mit.edu/~drew/smalljac_v4.1.3.tar"],
     sha256: "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
     archive: process.env.SAGEJS_SMALLJAC_TARBALL,
+  },
+  {
+    name: "rforest",
+    version: "3103d396c67cb1685131b1f11e84975cca335bdf",
+    url: "https://github.com/edgarcosta/rforest/archive/3103d396c67cb1685131b1f11e84975cca335bdf.tar.gz",
+    sha256: "3e94db94c2cc518fa86633d136607ea2af1f4d327f0f5cbcc9920d474ce55754",
+    archive: process.env.SAGEJS_RFOREST_TARBALL,
   },
 ];
 
@@ -342,6 +352,48 @@ async function buildWindowsSmalljac() {
     `${JSON.stringify({ build: expectedBuild }, null, 2)}\n`,
   );
   process.stdout.write(`Portable smalljac installed in ${prefix}\n`);
+}
+
+async function buildWindowsRforest() {
+  const dependency = dependencies.find(({ name }) => name === "rforest");
+  const stampPath = join(prefix, ".sagejs-rforest-dependencies.json");
+  const expectedBuild = {
+    rforest: dependency.version,
+    sourceClosure: "upstream-21-tu-v1",
+    arithmetic: "gmp-64-bit-limbs-v1",
+    abi: "private-fixed-width-v1",
+  };
+  if (
+    existsSync(join(prefix, "lib", "rforest.lib")) &&
+    existsSync(join(prefix, "include", "rforest.h")) &&
+    existsSync(join(prefix, "share", "licenses", "rforest", "LICENSE")) &&
+    existsSync(join(prefix, "share", "licenses", "rforest", "COPYING")) &&
+    existsSync(stampPath) &&
+    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8")).build) ===
+      JSON.stringify(expectedBuild)
+  ) {
+    process.stdout.write(`Using portable rforest dependency in ${prefix}\n`);
+    return;
+  }
+
+  const source = extract(await obtainArchive(dependency), dependency);
+  prepareRforestSource(source);
+  const vcvars = findVisualStudioEnvironment();
+  const powershell = [
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File",
+    `"${join(__dirname, "portable-rforest", "build-windows.ps1")}"`,
+    `-RforestSource "${source}"`,
+    `-Prefix "${prefix}"`,
+  ].join(" ");
+  const command = `call "${vcvars}" >nul && ${powershell}`;
+  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command], {
+    windowsVerbatimArguments: true,
+  });
+  writeFileSync(
+    stampPath,
+    `${JSON.stringify({ build: expectedBuild }, null, 2)}\n`,
+  );
+  process.stdout.write(`Portable rforest installed in ${prefix}\n`);
 }
 
 function digest(path) {
@@ -673,11 +725,35 @@ function buildSmalljac(source) {
   installFiles(source, ["smalljac.h"], join(prefix, "include"));
 }
 
+function buildRforest(source) {
+  const cflags = "-O3 -fPIC -fomit-frame-pointer -funroll-loops -std=gnu11";
+  prepareRforestSource(source);
+  run(
+    "make",
+    [
+      `-j${jobs}`,
+      "librforest.a",
+      `CC=${process.env.CC || "cc"}`,
+      `CFLAGS=${cflags}`,
+      `INCLUDES=-I${join(prefix, "include")}`,
+    ],
+    { cwd: source },
+  );
+  installFiles(source, ["librforest.a"], join(prefix, "lib"));
+  installFiles(source, ["rforest.h"], join(prefix, "include"));
+  installFiles(
+    source,
+    ["LICENSE", "COPYING"],
+    join(prefix, "share", "licenses", "rforest"),
+  );
+}
+
 async function main() {
   await prepareEclibSource();
   if (process.platform === "win32") {
     buildWindowsDependencies();
     await buildWindowsSmalljac();
+    await buildWindowsRforest();
     return;
   }
   const supportedUnix =
@@ -698,6 +774,7 @@ async function main() {
     "libmpfr.a",
     "libopenblas.a",
     ...(smalljacAccelerator ? ["libff_poly.a", "libsmalljac.a"] : []),
+    "librforest.a",
   ].map((name) => join(prefix, "lib", name));
   if (prebuiltPackageIsCurrent(
     repositoryRoot,
@@ -720,6 +797,9 @@ async function main() {
     openblas:
       dependencies.find(({ name }) => name === "openblas").version,
     openblasBuild: "threaded-cblas-dynamic-v1",
+    rforest:
+      dependencies.find(({ name }) => name === "rforest").version,
+    rforestSourceClosure: "upstream-21-tu-v1",
     smalljacArithmetic:
       forcePortableSmalljac || process.arch !== "x64"
         ? "portable-v1"
@@ -740,6 +820,7 @@ async function main() {
     existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
     existsSync(join(prefix, "lib", "libopenblas.a")) &&
+    existsSync(join(prefix, "lib", "librforest.a")) &&
     (!smalljacAccelerator ||
       (existsSync(join(prefix, "lib", "libff_poly.a")) &&
         existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
@@ -771,6 +852,7 @@ async function main() {
   buildMpc(source("mpc"));
   buildOpenBlas(source("openblas"));
   buildFlint(source("flint"));
+  buildRforest(source("rforest"));
   if (smalljacAccelerator) {
     const ffpolySource = source("ffpoly");
     const smalljacSource = source("smalljac");

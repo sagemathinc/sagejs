@@ -1,0 +1,25 @@
+diff --git a/hwmpz.h b/hwmpz.h
+index 9a27d1d..8da2bb0 100644
+--- a/hwmpz.h
++++ b/hwmpz.h
+@@ -8,14 +8,18 @@
+ #include "hwmem.h"
+ #include "hwmpz_tune.h"
+ 
++#if GMP_NUMB_BITS != 64
++#error "rforest requires 64-bit GMP limbs"
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ extern int hw_disable_fft;
+ 
+-static inline int _ui_len (uint64_t x) { return x?64-__builtin_clzl(x):0; }
+-static inline int _si_len (int64_t x) { return 64-__builtin_clzl(x<0?-x:x); }
++static inline int _ui_len (uint64_t x) { return x?64-__builtin_clzll(x):0; }
++static inline int _si_len (int64_t x) { return 64-__builtin_clzll(x<0?-x:x); }
+ 
+ void hw_mpz_setup ();
+ void hw_mpz_clear ();
