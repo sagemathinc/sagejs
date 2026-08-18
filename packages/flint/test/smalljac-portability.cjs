@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync } = require("node:fs");
+const { existsSync, mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
@@ -22,21 +22,45 @@ const gmpSource = join(
 );
 const include = join(packageRoot, "scripts", "portable-smalljac");
 
-function run(command, args) {
-  const result = spawnSync(command, args, { encoding: "utf8" });
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, { encoding: "utf8", ...options });
   assert.equal(
     result.status,
     0,
-    `${command} ${args.join(" ")} failed\n${result.stdout}${result.stderr}`,
+    `${command} ${args.join(" ")} failed\n${result.error || ""}${result.stdout || ""}${result.stderr || ""}`,
   );
+}
+
+function windowsCompilerRun(args) {
+  const candidates = [];
+  if (process.env.VSINSTALLDIR) {
+    candidates.push(
+      join(process.env.VSINSTALLDIR, "VC", "Auxiliary", "Build", "vcvars64.bat"),
+    );
+  }
+  candidates.push("C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat");
+  const vcvars = candidates.find((candidate) => existsSync(candidate));
+  assert.ok(vcvars, "Visual Studio vcvars64.bat is required on Windows");
+  const compiler = process.env.CC || "clang-cl.exe";
+  const quote = (value) => `"${value.replaceAll('"', '""')}"`;
+  const command =
+    `call "${vcvars}" >nul && ${quote(compiler)} ` + args.map(quote).join(" ");
+  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command], {
+    windowsVerbatimArguments: true,
+  });
 }
 
 test("portable ffpoly word arithmetic matches an independent exact oracle", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-ffpoly-word-"));
   if (process.platform === "win32") {
-    const compiler = process.env.CC || "clang-cl.exe";
     const executable = join(directory, "word-arithmetic.exe");
-    run(compiler, ["/nologo", "/O2", `/I${include}`, source, `/Fe:${executable}`]);
+    windowsCompilerRun([
+      "/nologo",
+      "/O2",
+      `/I${include}`,
+      source,
+      `/Fe:${executable}`,
+    ]);
     run(executable, []);
     return;
   }
@@ -61,7 +85,7 @@ test(
         ),
     );
     const executable = join(directory, "gmp-word.exe");
-    run(process.env.CC || "clang-cl.exe", [
+    windowsCompilerRun([
       "/nologo",
       "/O2",
       "/MD",
