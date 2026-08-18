@@ -14,9 +14,11 @@ from typing import Any
 
 from sagejs.native import (
     IntegerBuffer,
+    UInt64Buffer,
     integer_buffer_values,
     kernel_integer_buffer,
     kernel_integer_zeros,
+    kernel_uint64_buffer,
     native,
     uint64,
 )
@@ -286,6 +288,25 @@ def _packed_unsigned(
     return answer
 
 
+def _packed_unsigned_words(
+    payload: UInt64Buffer,
+    offset: int,
+    width: int,
+) -> int:
+    """Read one little-endian header field from machine-word byte storage."""
+    answer = 0
+    factor = 1
+    index = 0
+    while index < width:
+        byte = payload[offset + index]
+        if byte > 255:
+            return -1
+        answer += byte * factor
+        factor *= 256
+        index += 1
+    return answer
+
+
 @native
 def packed_field_analysis_decode_integers(
     payload: IntegerBuffer,
@@ -293,6 +314,61 @@ def packed_field_analysis_decode_integers(
     entry_count: uint64,
 ) -> bool:
     """Decode the canonical signed integer stream in one packed traversal."""
+    if len(payload) < 80 or len(output) != entry_count:
+        return False
+    encoded_count = 0
+    count_factor = 1
+    for byte_index in range(8):
+        byte = payload[56 + byte_index]
+        if byte > 255:
+            return False
+        encoded_count += byte * count_factor
+        count_factor *= 256
+    if encoded_count != entry_count:
+        return False
+    offset = 80
+    for output_index in range(entry_count):
+        if offset + 4 > len(payload):
+            return False
+        header = 0
+        header_factor = 1
+        for byte_index in range(4):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            header += byte * header_factor
+            header_factor *= 256
+        negative = header >= 2147483648
+        length = header
+        if negative:
+            length -= 2147483648
+        offset += 4
+        if length > len(payload) - offset or (negative and length == 0):
+            return False
+        value = 0
+        multiplier = 1
+        for byte_index in range(length):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            value += byte * multiplier
+            multiplier *= 256
+        if length != 0 and payload[offset + length - 1] == 0:
+            return False
+        if negative:
+            value = -value
+        output[output_index] = value
+        offset += length
+    return offset == len(payload)
+
+
+@native
+def packed_field_analysis_decode_word_bytes(
+    payload: UInt64Buffer,
+    output: IntegerBuffer,
+    entry_count: uint64,
+) -> bool:
+    """Decode exact integers while borrowing byte values as machine words."""
     if len(payload) < 80 or len(output) != entry_count:
         return False
     encoded_count = 0
@@ -982,7 +1058,7 @@ def packed_field_analysis_fixed_points_are_valid(
 
 @native
 def packed_field_analysis_authenticate_projection(
-    payload: IntegerBuffer,
+    payload: UInt64Buffer,
     decoded: IntegerBuffer,
     projection: IntegerBuffer,
     polynomial: IntegerBuffer,
@@ -1034,15 +1110,15 @@ def packed_field_analysis_authenticate_projection(
         or payload[7] != 0
     ):
         return False
-    header_degree = _packed_unsigned(payload, 8, 8)
-    status = _packed_unsigned(payload, 16, 8)
-    trial_bound = _packed_unsigned(payload, 24, 8)
-    header_components = _packed_unsigned(payload, 32, 8)
-    resolved_components = _packed_unsigned(payload, 40, 8)
-    native_primes = _packed_unsigned(payload, 48, 8)
-    header_entries = _packed_unsigned(payload, 56, 8)
-    version = _packed_unsigned(payload, 64, 8)
-    header_witnesses = _packed_unsigned(payload, 72, 8)
+    header_degree = _packed_unsigned_words(payload, 8, 8)
+    status = _packed_unsigned_words(payload, 16, 8)
+    trial_bound = _packed_unsigned_words(payload, 24, 8)
+    header_components = _packed_unsigned_words(payload, 32, 8)
+    resolved_components = _packed_unsigned_words(payload, 40, 8)
+    native_primes = _packed_unsigned_words(payload, 48, 8)
+    header_entries = _packed_unsigned_words(payload, 56, 8)
+    version = _packed_unsigned_words(payload, 64, 8)
+    header_witnesses = _packed_unsigned_words(payload, 72, 8)
     if (
         header_degree != degree
         or status != 0
@@ -1053,7 +1129,7 @@ def packed_field_analysis_authenticate_projection(
         or version != 2
     ):
         return False
-    if not packed_field_analysis_decode_integers(payload, decoded, entry_count):
+    if not packed_field_analysis_decode_word_bytes(payload, decoded, entry_count):
         return False
     minimum_entries = (
         5
@@ -2246,7 +2322,7 @@ def decode_field_analysis_projection(
     workspace_length = degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
     workspace = kernel_integer_zeros(kernel, workspace_length, 64)
     if not kernel(
-        kernel_integer_buffer(kernel, payload),
+        kernel_uint64_buffer(kernel, payload),
         decoded,
         projection,
         polynomial,
