@@ -430,10 +430,11 @@
       "id": "number-field-om-proof-production",
       "source": "src/lib/sagejs/number_fields/om_maxmin.py",
       "functions": [
+        "packed_incremental_row_hnf_in_place",
         "packed_maxmin_valuations_are_maximal",
         "packed_triangular_basis_is_closed"
       ],
-      "semantic_domain": "packed exact MaxMin quotient-valuation comparisons and independent triangular local-basis multiplication closure for complete certified OM types",
+      "semantic_domain": "bounded-batch exact row-HNF normalization, packed exact MaxMin quotient-valuation comparisons, and independent triangular local-basis multiplication closure for complete certified OM types",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "pari", "randomized-exact-controls"],
