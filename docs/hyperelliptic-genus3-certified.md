@@ -35,8 +35,8 @@ rforest traversal.
 
 ## Native certificate boundary
 
-The single internal adapter `_native_order_certificates` may later marshal a
-packed Mumford divisor to the native group kernel. Candidate orders are first
+The single internal adapter `_native_order_certificates` marshals a packed
+Mumford divisor to the native group kernel. Candidate orders are first
 partitioned, separately for each fixed `(c1,c2)`, into maximal arithmetic
 progressions. Each call searches one `(base, stride=p, count)` progression for
 one divisor under explicit budgets. It reports `not_found`, `resource_limit`,
@@ -59,9 +59,9 @@ twist stages. An optional stage observer receives `residue`, `candidate`,
 `primary`, `twist`, and `fallback` start/end events so benchmark code can time
 the stages without embedding clocks in mathematical results.
 
-## Integration patch
+## Public integration
 
-The central `frobenius.py` integration should be deliberately small:
+The central `frobenius.py` integration is deliberately small:
 
 - accept `algorithm="rforest"` only for rational genus-3 local factors;
 - call `rforest_genus3_local_factor` for a one-off prime and extract its

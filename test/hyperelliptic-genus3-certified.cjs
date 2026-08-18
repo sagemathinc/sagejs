@@ -78,6 +78,7 @@ test("generalized odd models normalize while even models fall back exactly", asy
             "limited = complete_genus3_residues_with_jacobian(",
             "    C, 5, (3,4,2),",
             "    exact_fallback=lambda _curve,_p:(1,3,9,17,45,75,125),",
+            "    order_certificate_provider=lambda _J,_D,_b,_s,_c,_k,_r:None,",
             "    max_x_values=5, max_elements=1, max_trial_divisions=1)",
             "[(generalized['status'], generalized['coefficients']),",
             " (even['status'], even['diagnostics']['fallback_reason'],",

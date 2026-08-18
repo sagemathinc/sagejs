@@ -509,9 +509,12 @@ def _certified_order_witnesses(
     max_baby_steps: int,
     max_group_operations: int,
 ) -> tuple[tuple[int, ...], tuple[dict[str, Any], ...], dict[str, Any]]:
-    raw_certificates: tuple[Any, ...] = ()
     kernel_diagnostics: list[Any] = []
     capability_unavailable = not elements
+    witnesses: list[int] = []
+    certificates: list[dict[str, Any]] = []
+    recheck_operations = 0
+    survivors = orders
     for element in elements:
         found = False
         for progression in progressions:
@@ -548,7 +551,14 @@ def _certified_order_witnesses(
                 raise ArithmeticError(
                     "the order kernel certified a different divisor than requested"
                 )
-            raw_certificates += (certificate,)
+            witness, checked_certificate, operations = _check_order_certificate(
+                jacobian, certificate
+            )
+            recheck_operations += operations
+            if witness not in witnesses:
+                witnesses.append(witness)
+                certificates.append(checked_certificate)
+                survivors = tuple(order for order in survivors if order % witness == 0)
             kernel_diagnostics.append(raw.get("diagnostics"))
             found = True
             break
@@ -558,6 +568,11 @@ def _certified_order_witnesses(
             raise ArithmeticError(
                 "no candidate-order progression annihilates a sampled divisor"
             )
+        # Further witnesses cannot distinguish candidates with the same group
+        # order.  Stop as soon as one candidate order remains; the caller will
+        # use the twist if several Weil polynomials share it.
+        if len(survivors) <= 1:
+            break
 
     if capability_unavailable:
         raw_certificates, derivation_operations = _dynamic_order_certificates(
@@ -565,25 +580,26 @@ def _certified_order_witnesses(
         )
         backend = "python"
         checked_kernel_diagnostics: Any = None
+        witnesses = []
+        certificates = []
+        recheck_operations = 0
+        for raw_certificate in raw_certificates:
+            witness, certificate, operations = _check_order_certificate(
+                jacobian, raw_certificate
+            )
+            recheck_operations += operations
+            if witness not in witnesses:
+                witnesses.append(witness)
+                certificates.append(certificate)
+        survivors = tuple(
+            order
+            for order in orders
+            if all(order % witness == 0 for witness in witnesses)
+        )
     else:
         derivation_operations = 0
         backend = "kernel"
         checked_kernel_diagnostics = tuple(kernel_diagnostics)
-
-    witnesses: list[int] = []
-    certificates: list[dict[str, Any]] = []
-    recheck_operations = 0
-    for raw_certificate in raw_certificates:
-        witness, certificate, operations = _check_order_certificate(
-            jacobian, raw_certificate
-        )
-        recheck_operations += operations
-        if witness not in witnesses:
-            witnesses.append(witness)
-            certificates.append(certificate)
-    survivors = tuple(
-        order for order in orders if all(order % witness == 0 for witness in witnesses)
-    )
     return (
         survivors,
         tuple(certificates),
@@ -1091,7 +1107,7 @@ def rforest_genus3_local_factors(
         )
         unavailable_rows: list[tuple[int, dict[str, Any]]] = []
         for prime in range(start, stop + 1):
-            if not _is_prime(prime):
+            if not sage.is_prime(prime):
                 continue
             diagnostics = {"detail": str(error)}
             result = _unavailable_reduction_result(

@@ -42,8 +42,8 @@ Run the complete acceptance workload with:
 node bench/rforest/benchmark-genus3-certified.cjs
 ```
 
-The defaults are one sample each through `10^4`, `10^5`, and `10^6`. Useful
-development subsets are:
+The defaults are one sample each through `10^4`, `10^5`, and `10^6`. The
+`--quick` smoke test stops at 101; useful development subsets are:
 
 ```sh
 node bench/rforest/benchmark-genus3-certified.cjs --quick
@@ -60,7 +60,7 @@ The JSON result keeps the following stages separate:
 2. `candidates` includes the checked Python boundary and exact Weil-candidate
    enumeration. It records row count, total/max candidates, and a deterministic
    digest of the candidate-count stream.
-3. `certification` calls `certified_genus3_local_rows`, records primary and
+3. `certification` calls `rforest_genus3_local_factors`, records primary and
    twist sample/operation counts, sums any stage timing instrumentation, and
    digests every uniquely completed polynomial.
 4. `public` constructs a fresh curve and consumes
@@ -96,6 +96,24 @@ new completion work must accelerate it before a full acceptance receipt can
 exist. The raw times also show why the limit must remain an explicit benchmark
 dimension instead of extrapolating from a 100-prime smoke test.
 
+After integrating the native candidate and Jacobian kernels, the exact
+end-to-end smoke interval through 101 contained 26 prime rows (24 emitted
+factors, two omitted model reductions). Raw rforest took 23.8 ms, candidate
+lifting 139.9 ms, certified completion 6.18 s, and the separate public API
+pass 5.88 s. Both exact polynomial streams had digest
+`61481827920546963494915423371943607893`; 23 rows were uniquely certified and
+one used the exact fallback. An earlier version that rechecked all 24 sampled
+elements per row took 95.7 s; stopping once a single possible group order
+remains reduced that stage by over 15 times without changing the proof.
+
+This is a successful exact backend but not an `auto`-selection receipt.
+Extrapolating the still-dominant ordinary-Python certificate rechecks makes
+the required complete runs through `10^4`, `10^5`, and `10^6` impractical on
+the development host. Consequently `auto` remains unchanged. The full default
+benchmark command remains the acceptance gate for a future batched or
+source-transparent independent recheck implementation; results must be
+measured rather than inferred from this small interval.
+
 ## One-off oracle measurements
 
 On the Linux x86-64 development host, a cold `frobenius_polynomial()` call for
@@ -111,6 +129,15 @@ Each repetition constructed a fresh finite-field curve so Sage's polynomial
 cache could not turn later samples into lookup timings. A separate run at
 `p=100003` and `p=1000003` exhausted PARI's configured 1 GiB stack. These are
 host/toolchain observations, not complexity claims.
+
+On the same host, after warming module initialization with one unrelated
+factor, Sage.js's explicit certified `rforest` backend took 179 ms at `p=11`,
+986 ms at `p=1009`, 782 ms at `p=10007`, 1.50 s at `p=100003`, and 6.03 s at
+`p=1000003`. Thus PARI remains decisively better for very small one-off
+primes, while the certified Sage.js path overtakes this installed PARI by
+`p=10007` and continues through the two examples where PARI exhausted its
+configured stack. These measurements do not alter the separate dense-stream
+`auto` gate.
 
 Magma 2.18-5 produced all `p <= 101` oracle rows, but its first
 `LPolynomial` computation for the odd sparse curve at `p=1009` was manually

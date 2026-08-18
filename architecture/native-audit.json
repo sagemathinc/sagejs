@@ -264,7 +264,7 @@
     {
       "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
       "lines": 326,
-      "bytes": 10981,
+      "bytes": 10980,
       "decision": "retain-bridge",
       "priority": "low",
       "responsibilities": [
