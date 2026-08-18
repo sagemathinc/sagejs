@@ -103,7 +103,7 @@ function pythonSource() {
     "    traced_order = field.maximal_order(trace=True)",
     "    total_ns = time.perf_counter_ns() - started",
     "    certificate = traced_order.maximality_certificate()",
-    "    trace_control = {'total_ns': total_ns, 'certified': certificate['certified'], 'field_discriminant': str(traced_order.discriminant()), 'equation_order_index': str(certificate['index']), 'stages': [{'stage': event['stage'], 'status': event['status'], 'duration_ns': event.get('duration_ns', 0)} for event in traced_order.maximal_order_trace()['events']], 'basis': materialize(traced_order)}",
+    "    trace_control = {'total_ns': total_ns, 'certified': certificate['certified'], 'field_discriminant': str(traced_order.discriminant()), 'equation_order_index': str(certificate['index']), 'stages': [{'stage': event['stage'], 'state': event['state'], 'duration_ns': event.get('duration_ns', 0)} for event in traced_order.maximal_order_trace()['events']], 'basis': materialize(traced_order)}",
     "",
     "compiled = {",
     "    'packed_row_hnf_in_place': is_compiled(packed_row_hnf_in_place),",
