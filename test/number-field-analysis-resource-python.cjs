@@ -280,7 +280,7 @@ test("packed field-analysis proof is source-transparent and differential", () =>
     "bl_composite_kernel.py",
   );
   const program = String.raw`
-from sagejs.native import is_compiled
+from sagejs.native import integer_buffer_values, is_compiled, kernel_integer_buffer, kernel_integer_zeros
 from sagejs.number_fields.field_analysis_resource import (
     _modular_rref,
     _order_arithmetic,
@@ -288,6 +288,7 @@ from sagejs.number_fields.field_analysis_resource import (
     _radical_lattice,
     _selected_multiplier_rows,
     native_field_analysis,
+    packed_field_analysis_decode_integers,
     packed_field_analysis_fixed_points_are_valid,
 )
 
@@ -317,7 +318,24 @@ for coefficients in cases:
             fixed_point.prime,
         )
         assert len(_modular_rref(equations, fixed_point.prime)[0]) == degree
+encoded = [0] * 80 + [1, 0, 0, 0, 5, 1, 0, 0, 128, 7]
+encoded[56] = 2
+decoded = kernel_integer_zeros(packed_field_analysis_decode_integers, 2, 8)
+assert packed_field_analysis_decode_integers(
+    kernel_integer_buffer(packed_field_analysis_decode_integers, encoded),
+    decoded,
+    2,
+)
+assert list(integer_buffer_values(decoded)) == [5, -7]
+noncanonical = list(encoded)
+noncanonical[84] = 0
+assert not packed_field_analysis_decode_integers(
+    kernel_integer_buffer(packed_field_analysis_decode_integers, noncanonical),
+    kernel_integer_zeros(packed_field_analysis_decode_integers, 2, 8),
+    2,
+)
 print("compiled=" + str(is_compiled(packed_field_analysis_fixed_points_are_valid)))
+print("decoder_compiled=" + str(is_compiled(packed_field_analysis_decode_integers)))
 print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
 `;
   function run(args, env = {}) {
@@ -362,7 +380,9 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
       SAGEJS_NATIVE_DISABLE: "1",
     });
     assert.match(nativeResult, /compiled=True/);
+    assert.match(nativeResult, /decoder_compiled=True/);
     assert.match(dynamicResult, /compiled=False/);
+    assert.match(dynamicResult, /decoder_compiled=False/);
     assert.match(nativeResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
     assert.match(dynamicResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
   } finally {
