@@ -34,6 +34,12 @@
 #define SAGEJS_NF_ORDER_PROFILE_EQUATIONS(total_rows, retained_rows) \
     ((void) 0)
 #endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN(phase) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_BATCH_END
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_END(phase) ((void) 0)
+#endif
 
 /*
  * Zassenhaus Round 2 over an integral multiplication table.
@@ -2780,7 +2786,12 @@ static inline int sagejs_nf_order_normalize_fmpq_basis(
     return 1;
 }
 
-/* The sum of independently computed local overorders is the row lattice of
+/* Preconditions: every A_i/d_i is a full-rank overorder of the same equation
+ * order Z^n (in the shared immutable power basis), and the positive d_i are
+ * pairwise coprime.  No row correspondence or prior HNF normalization is
+ * required.
+ *
+ * The sum of independently computed local overorders is the row lattice of
  * all their basis rows.  For pairwise-coprime local denominators d_i, scale
  * every numerator A_i to the common denominator D = product(d_i), stack the
  * rows (D/d_i) A_i, and take one exact row HNF.  This generator construction
@@ -2841,7 +2852,17 @@ static inline int sagejs_nf_order_merge_coprime_bases(
         }
     if (success)
     {
+#if defined(SAGEJS_NF_ORDER_FORCE_GENERIC_HNF)
         fmpz_mat_hnf(hermite, generators);
+#else
+        fmpz_mat_set(hermite, generators);
+        /* Every local overorder contains the equation order, so after scaling
+         * to denominator D the generator lattice contains D*Z^n.  Therefore
+         * the largest elementary divisor of this full-rank row lattice
+         * divides D, exactly the certified precondition of FLINT's modular
+         * elementary-divisor HNF algorithm. */
+        fmpz_mat_hnf_modular_eldiv(hermite, denominator);
+#endif
         slong output_row = 0;
         for (slong row = 0; row < generator_rows; row++)
         {
@@ -3038,8 +3059,10 @@ static inline int sagejs_number_field_order_maximal_at_primes(
         };
         const slong worker_count =
             sagejs_nf_order_independent_worker_bound(degree, prime_count);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-local");
         sagejs_nf_order_run_independent_primes(
             &work, (slong) prime_count, worker_count);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-local");
         uint64_t completed = prime_count;
         int success = 1;
         for (uint64_t index = 0; index < prime_count; index++)
@@ -3058,6 +3081,7 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 (size_t) completed * sizeof(fmpz_mat_struct));
         fmpz *local_denominators = _fmpz_vec_init((slong) completed);
         uint64_t initialized_numerators = 0;
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-unpack");
         for (uint64_t index = 0; index < completed && success; index++)
         {
             fmpz_mat_init(local_numerators + index, degree, degree);
@@ -3066,13 +3090,19 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 local_numerators + index,
                 local_denominators + index, locals + index);
         }
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-unpack");
         if (success)
+        {
+            SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-merge");
             success = sagejs_nf_order_merge_coprime_bases(
                 accumulated, accumulated_denominator,
                 local_numerators, local_denominators,
                 completed, degree);
+            SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-merge");
+        }
         if (success)
         {
+            SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-publish");
             success = sagejs_fmpq_matrix_init(
                 result, (uint64_t) degree, (uint64_t) degree);
             if (success)
@@ -3090,7 +3120,9 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                     }
                 sagejs_fmpq_matrix_recompute_allocated_bytes(result);
             }
+            SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-publish");
         }
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-cleanup");
         for (uint64_t index = 0; index < initialized_numerators; index++)
             fmpz_mat_clear(local_numerators + index);
         _fmpz_vec_clear(local_denominators, (slong) completed);
@@ -3102,6 +3134,7 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 sagejs_fmpq_matrix_clear(locals + index);
         flint_free(local_success);
         flint_free(locals);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-cleanup");
         return success;
     }
 #endif

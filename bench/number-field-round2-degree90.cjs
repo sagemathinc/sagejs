@@ -33,18 +33,24 @@ typedef struct { const char *name; double seconds; uint64_t calls; } phase_t;
 static _Thread_local phase_t phases[] = {
   {"setup",0,0},{"modular-table",0,0},{"radical",0,0},{"multiplier",0,0},
   {"basis-prepare",0,0},{"basis-transform",0,0},{"basis-output",0,0},
-  {"publish",0,0},{"cleanup",0,0}
+  {"publish",0,0},{"cleanup",0,0},{"independent-local",0,0},
+  {"independent-unpack",0,0},{"independent-merge",0,0},
+  {"independent-publish",0,0},{"independent-cleanup",0,0}
 };
-static _Thread_local struct timespec phase_started;
+static _Thread_local struct timespec phase_started[32];
+static _Thread_local size_t phase_depth;
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC,&t); return (double)t.tv_sec + (double)t.tv_nsec/1e9; }
-static void begin(const char *name) { (void)name; clock_gettime(CLOCK_MONOTONIC,&phase_started); }
+static void begin(const char *name) { (void)name; assert(phase_depth<32); clock_gettime(CLOCK_MONOTONIC,&phase_started[phase_depth++]); }
 static void end(const char *name) {
-  const double started=(double)phase_started.tv_sec+(double)phase_started.tv_nsec/1e9;
+  assert(phase_depth>0); const struct timespec started_at=phase_started[--phase_depth];
+  const double started=(double)started_at.tv_sec+(double)started_at.tv_nsec/1e9;
   for (size_t i=0;i<sizeof(phases)/sizeof(*phases);i++) if (strcmp(phases[i].name,name)==0) { phases[i].seconds += now()-started; phases[i].calls++; return; }
 }
 static _Thread_local uint64_t iterations=0,enlargements=0,radical_sum=0,nullity_sum=0;
 #define SAGEJS_NF_ORDER_PROFILE_BEGIN(name) begin(name)
 #define SAGEJS_NF_ORDER_PROFILE_END(name) end(name)
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN(name) begin(name)
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_END(name) end(name)
 #define SAGEJS_NF_ORDER_PROFILE_ITERATION(radical_dimension,nullity) do { iterations++; radical_sum+=(uint64_t)(radical_dimension); if ((nullity)>0) { enlargements++; nullity_sum+=(uint64_t)(nullity); } } while (0)
 #include "sagejs/number_field_order_resource_ffi.h"
 
@@ -126,16 +132,38 @@ try {
   const packed = process.argv.includes("--packed");
   const individual = process.argv.includes("--individual");
   const differential = process.argv.includes("--differential");
+  const hnfDifferential = process.argv.includes("--hnf-differential");
+  const genericHnf = process.argv.includes("--generic-hnf");
   const executable = compile(
     "profile",
-    packed ? [] : ["SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1"],
+    [
+      ...(packed ? [] : ["SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1"]),
+      ...(genericHnf ? ["SAGEJS_NF_ORDER_FORCE_GENERIC_HNF=1"] : []),
+    ],
   );
   const primes = process.argv.slice(2)
     .filter((value) => value !== "--packed" && value !== "--individual")
     .filter((value) => value !== "--differential")
+    .filter((value) => value !== "--generic-hnf")
+    .filter((value) => value !== "--hnf-differential")
     .map(Number);
   assert(primes.length > 0, "pass one or more primes");
-  const report = differential
+  const report = hnfDifferential
+    ? (() => {
+        const generic = compile("generic-hnf", [
+          "SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1",
+          "SAGEJS_NF_ORDER_FORCE_GENERIC_HNF=1",
+        ]);
+        const modularBasis = basis(executable, primes);
+        const genericBasis = basis(generic, primes);
+        assert.equal(modularBasis, genericBasis);
+        return {
+          primes,
+          basis_sha256: createHash("sha256").update(modularBasis).digest("hex"),
+          exact_hnf: true,
+        };
+      })()
+    : differential
     ? (() => {
         const sequential = compile("sequential", [
           "SAGEJS_NF_ORDER_DISABLE_PADIC_STATE=1",
