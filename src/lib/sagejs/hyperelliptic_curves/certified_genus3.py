@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable, Mapping
 
 import sagejs as sage
+import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.genus3_completion import (
     _is_genus3_weil_candidate,
     enumerate_genus3_weil_candidates,
@@ -28,7 +29,6 @@ from sagejs.hyperelliptic_curves.group_structure import (
     JacobianResourceLimitError,
     factor_integer_bounded,
 )
-from sagejs.hyperelliptic_curves.hasse_witt import _is_prime
 from sagejs.hyperelliptic_curves.jacobian import Jacobian, MumfordDivisor
 
 Candidate = tuple[int, int, int]
@@ -65,8 +65,115 @@ def _native_order_certificates(
     an element of `jacobian`. Native survivor masks may also be returned as
     diagnostics, but never decide mathematical correctness.
     """
-    del jacobian, divisor, base, stride, count, kind, budgets
-    return None
+    del kind
+    backend = runtime.flint_backend()
+    capability_function = runtime.reflect.get(backend, "genus3JacobianCapabilities")
+    search_function = runtime.reflect.get(backend, "genus3JacobianSearchProgression")
+    if capability_function is runtime.undefined or search_function is runtime.undefined:
+        return None
+    capability = runtime.reflect.apply(capability_function, backend, [])
+    if not bool(runtime.reflect.get(capability, "available")):
+        return None
+    prime = int(jacobian.base_ring().characteristic())
+    if runtime.integer_bigint(prime) > runtime.integer_bigint(
+        runtime.reflect.get(capability, "primeUpperBound")
+    ):
+        return None
+
+    def residue(value: Any) -> int:
+        lifted = value.lift() if hasattr(value, "lift") else value
+        return int(lifted) % prime
+
+    def packed_polynomial(polynomial: Any, length: int) -> Any:
+        values = [residue(value) for value in polynomial.list()]
+        if len(values) > length:
+            raise ArithmeticError("the native genus-3 model has excessive degree")
+        values.extend([0 for _index in range(length - len(values))])
+        return runtime.uint64_buffer([runtime.bigint(value) for value in values])
+
+    u_value, v_value = divisor.uv()
+    u_values = [residue(value) for value in u_value.list()]
+    v_values = [residue(value) for value in v_value.list()]
+    if len(u_values) > 4 or len(v_values) > 3:
+        raise ArithmeticError("the native kernel cannot pack this Mumford divisor")
+    u_values.extend([0 for _index in range(4 - len(u_values))])
+    v_values.extend([0 for _index in range(3 - len(v_values))])
+    packed_divisor = runtime.uint64_buffer(
+        [runtime.bigint(int(u_value.degree()))]
+        + [runtime.bigint(value) for value in u_values]
+        + [runtime.bigint(value) for value in v_values]
+    )
+    result = runtime.reflect.apply(
+        search_function,
+        backend,
+        [
+            runtime.bigint(prime),
+            packed_polynomial(jacobian.f(), 8),
+            packed_polynomial(jacobian.h(), 4),
+            packed_divisor,
+            runtime.bigint(base),
+            runtime.bigint(stride),
+            runtime.bigint(count),
+            runtime.bigint(budgets["max_baby_steps"]),
+            runtime.bigint(budgets["max_group_operations"]),
+            runtime.undefined,
+        ],
+    )
+    status_name = str(runtime.reflect.get(result, "statusName"))
+    diagnostics_value = runtime.reflect.get(result, "diagnostics")
+    diagnostics = {
+        name: int(runtime.integer_bigint(runtime.reflect.get(diagnostics_value, name)))
+        for name in [
+            "groupOperations",
+            "scalarBits",
+            "babySteps",
+            "giantSteps",
+            "hashCollisions",
+        ]
+    }
+    if status_name == "not_found":
+        return {"status": "not_found", "diagnostics": diagnostics}
+    if status_name in ["resource_limit", "cancelled"]:
+        return {
+            "status": "resource_limit",
+            "native_status": status_name,
+            "diagnostics": diagnostics,
+        }
+    if status_name != "ok":
+        raise ArithmeticError(
+            "the native genus-3 order search failed with status " + repr(status_name)
+        )
+    annihilating_multiple = int(
+        runtime.integer_bigint(runtime.reflect.get(result, "annihilatingMultiple"))
+    )
+    if (
+        annihilating_multiple < base
+        or (annihilating_multiple - base) % stride != 0
+        or (annihilating_multiple - base) // stride >= count
+    ):
+        raise ArithmeticError(
+            "the native genus-3 certificate is outside its progression"
+        )
+    raw_factors = runtime.reflect.get(result, "factorization")
+    factors = tuple(
+        (
+            int(runtime.integer_bigint(raw_factors[index][0])),
+            int(raw_factors[index][1]),
+        )
+        for index in range(len(raw_factors))
+    )
+    return {
+        "status": "found",
+        "certificate": {
+            "divisor": divisor,
+            "element_order": int(
+                runtime.integer_bigint(runtime.reflect.get(result, "elementOrder"))
+            ),
+            "prime_factors": factors,
+        },
+        "annihilating_multiple": annihilating_multiple,
+        "diagnostics": diagnostics,
+    }
 
 
 def _exact_integer(value: Any, name: str) -> int:
@@ -379,6 +486,8 @@ def _certified_order_witnesses(
     kind: str,
     certificate_provider: OrderCertificateProvider,
     max_trial_divisions: int,
+    max_baby_steps: int,
+    max_group_operations: int,
 ) -> tuple[tuple[int, ...], tuple[dict[str, Any], ...], dict[str, Any]]:
     raw_certificates: tuple[Any, ...] = ()
     kernel_diagnostics: list[Any] = []
@@ -393,7 +502,11 @@ def _certified_order_witnesses(
                 progression["stride"],
                 progression["count"],
                 kind,
-                {"max_trial_divisions": max_trial_divisions},
+                {
+                    "max_trial_divisions": max_trial_divisions,
+                    "max_baby_steps": max_baby_steps,
+                    "max_group_operations": max_group_operations,
+                },
             )
             if raw is None:
                 capability_unavailable = True
@@ -570,6 +683,8 @@ def _certify_candidates(
     max_x_values: int,
     max_elements: int,
     max_trial_divisions: int,
+    max_baby_steps: int,
+    max_group_operations: int,
     certificate_provider: OrderCertificateProvider,
     stage_observer: StageObserver | None,
 ) -> tuple[tuple[Candidate, ...], dict[str, Any]]:
@@ -598,6 +713,8 @@ def _certify_candidates(
         "jacobian",
         certificate_provider,
         max_trial_divisions,
+        max_baby_steps,
+        max_group_operations,
     )
     survivor_set = set(survivors)
     remaining = tuple(
@@ -647,6 +764,8 @@ def _certify_candidates(
         "twist",
         certificate_provider,
         max_trial_divisions,
+        max_baby_steps,
+        max_group_operations,
     )
     twist_survivor_set = set(twist_survivors)
     remaining = tuple(
@@ -683,6 +802,8 @@ def complete_genus3_residues_with_jacobian(
     max_x_values: int = 256,
     max_elements: int = 24,
     max_trial_divisions: int = 1_000_000,
+    max_baby_steps: int = 100_000,
+    max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
 ) -> dict[str, Any]:
     """Certify one genus-3 factor or use an exact fallback.
@@ -712,6 +833,10 @@ def complete_genus3_residues_with_jacobian(
     max_x_values = _positive_integer(max_x_values, "max_x_values")
     max_elements = _positive_integer(max_elements, "max_elements")
     max_trial_divisions = _positive_integer(max_trial_divisions, "max_trial_divisions")
+    max_baby_steps = _positive_integer(max_baby_steps, "max_baby_steps")
+    max_group_operations = _positive_integer(
+        max_group_operations, "max_group_operations"
+    )
 
     _observe(stage_observer, "candidate_start", {"prime": prime})
     enumeration = enumerate_genus3_weil_candidates(
@@ -757,6 +882,8 @@ def complete_genus3_residues_with_jacobian(
             max_x_values=max_x_values,
             max_elements=max_elements,
             max_trial_divisions=max_trial_divisions,
+            max_baby_steps=max_baby_steps,
+            max_group_operations=max_group_operations,
             certificate_provider=kernel,
             stage_observer=stage_observer,
         )
@@ -828,6 +955,8 @@ def rforest_genus3_local_factor(
     max_x_values: int = 256,
     max_elements: int = 24,
     max_trial_divisions: int = 1_000_000,
+    max_baby_steps: int = 100_000,
+    max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
 ) -> dict[str, Any]:
     """Compute one exact rational genus-3 local factor through rforest.
@@ -897,6 +1026,8 @@ def rforest_genus3_local_factor(
         max_x_values=max_x_values,
         max_elements=max_elements,
         max_trial_divisions=max_trial_divisions,
+        max_baby_steps=max_baby_steps,
+        max_group_operations=max_group_operations,
         stage_observer=stage_observer,
     )
 
@@ -913,6 +1044,8 @@ def rforest_genus3_local_factors(
     max_x_values: int = 256,
     max_elements: int = 24,
     max_trial_divisions: int = 1_000_000,
+    max_baby_steps: int = 100_000,
+    max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
 ) -> list[tuple[int, dict[str, Any]]]:
     """Compute a closed prime interval with exactly one rforest traversal."""
@@ -982,6 +1115,8 @@ def rforest_genus3_local_factors(
                 max_x_values=max_x_values,
                 max_elements=max_elements,
                 max_trial_divisions=max_trial_divisions,
+                max_baby_steps=max_baby_steps,
+                max_group_operations=max_group_operations,
                 stage_observer=stage_observer,
             )
         answer.append((prime, result))
