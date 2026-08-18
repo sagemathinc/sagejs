@@ -2047,14 +2047,18 @@ def fmpz_perfect_power_data(number: Integer) -> FmpzVector: ...
 
 @flint.function(
     dynamic="ffiFmpzIsProbabprime",
-    symbol="fmpz_is_probabprime",
+    symbol="sagejs_fmpz_probabprime_result",
     returns=int,
-    abi=[in_("number", fmpz_t)],
-    effects=Effects(pure=True),
-    result=Direct(),
+    abi=[out("result", fmpz_t), in_("number", fmpz_t)],
+    effects=Effects(pure=True, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="FLINT probable-prime screening failed",
+    ),
     wasm=True,
 )
-def fmpz_is_probabprime(number: Integer) -> bool: ...
+def fmpz_is_probabprime(number: Integer) -> Integer: ...
 
 
 @flint.function(

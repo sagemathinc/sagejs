@@ -290,4 +290,11 @@ cleanup:
     return valid;
 }
 
+static inline int sagejs_fmpz_probabprime_result(
+    fmpz_t result, const fmpz_t number)
+{
+    fmpz_set_si(result, fmpz_is_probabprime(number));
+    return 1;
+}
+
 #endif

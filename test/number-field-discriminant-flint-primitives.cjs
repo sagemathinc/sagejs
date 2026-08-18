@@ -139,7 +139,8 @@ class FakePrimeFlint:
 
 assert _generated_probable_prime_screen(97, FakePrimeFlint(True)) is True
 assert _generated_probable_prime_screen(91, FakePrimeFlint(False)) is False
-assert _generated_probable_prime_screen(91, FakePrimeFlint(0)) is None
+assert _generated_probable_prime_screen(91, FakePrimeFlint(0)) is False
+assert _generated_probable_prime_screen(91, FakePrimeFlint(2)) is None
 assert _generated_probable_prime_screen(91, object()) is None
 
 large = (1 << 127) - 1

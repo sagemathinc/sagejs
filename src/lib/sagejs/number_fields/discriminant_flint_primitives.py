@@ -73,9 +73,9 @@ def _generated_probable_prime_screen(number: int, module: Any = None) -> bool | 
         ValueError,
     ):
         return None
-    if not isinstance(result, bool):
+    if type(result) not in (bool, int) or int(result) not in (0, 1):
         return None
-    return result
+    return bool(result)
 
 
 def iterated_perfect_power_oracle(

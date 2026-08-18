@@ -6924,17 +6924,23 @@
             "aliasing": "allowed"
           }
         ],
-        "return_type": "bool",
-        "return_ownership": "value",
+        "return_type": "Integer",
+        "return_ownership": "owned",
         "borrow_from": null
       },
       "dynamic": {
         "export": "ffiFmpzIsProbabprime"
       },
       "native": {
-        "symbol": "fmpz_is_probabprime",
+        "symbol": "sagejs_fmpz_probabprime_result",
         "return_type": "int",
         "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
           {
             "source": "number",
             "abi_type": "fmpz_t",
@@ -6947,18 +6953,22 @@
         "pure": true,
         "deterministic": true,
         "thread_safe": true,
-        "may_allocate": false,
-        "may_raise": [],
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
         "writes": []
       },
       "result": {
-        "domain": "direct",
-        "success": [],
+        "domain": "status",
+        "success": [
+          1
+        ],
         "absence": null
       },
       "errors": {
-        "exception": null,
-        "message": null
+        "exception": "RuntimeError",
+        "message": "FLINT probable-prime screening failed"
       },
       "exceptions": {
         "policy": "none",

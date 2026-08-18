@@ -1246,7 +1246,7 @@ def ffiFmpzPerfectPowerData(
 @native
 def ffiFmpzIsProbabprime(
     number: Integer,
-) -> bool:
+) -> Integer:
     return _ffi_fmpz_is_probabprime(
         number,
     )

@@ -1865,7 +1865,7 @@
       "export": "fmpz_is_probabprime",
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzIsProbabprime",
-      "symbol": "fmpz_is_probabprime",
+      "symbol": "sagejs_fmpz_probabprime_result",
       "disposition": "declared-safe-ffi"
     },
     {
