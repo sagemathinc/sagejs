@@ -23,6 +23,12 @@ from __future__ import annotations
 
 from typing import Any
 
+try:
+    import sagejs.runtime as _runtime
+except ImportError:
+    _runtime = None
+    from math import gcd as _cpython_gcd
+
 from sagejs.number_fields.maximal_order_contracts import (
     ComponentSplit,
     DiscriminantComponent,
@@ -32,11 +38,9 @@ from sagejs.number_fields.maximal_order_contracts import (
 
 
 def _gcd(left: int, right: int) -> int:
-    a = abs(left)
-    b = abs(right)
-    while b:
-        a, b = b, a % b
-    return a
+    if _runtime is not None:
+        return _runtime.bigint_gcd(_runtime.bigint(left), _runtime.bigint(right))
+    return _cpython_gcd(left, right)
 
 
 def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
@@ -812,23 +816,49 @@ def check_buchmann_lenstra_result(
 
 
 def _fraction_add(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
-    numerator = left[0] * right[1] + right[0] * left[1]
-    denominator = left[1] * right[1]
-    common = _gcd(numerator, denominator)
-    return numerator // common, denominator // common
+    if left[0] == 0:
+        return right
+    if right[0] == 0:
+        return left
+    if left[1] == right[1]:
+        return _fraction_normalize(left[0] + right[0], left[1])
+    denominator_common = _gcd(left[1], right[1])
+    left_scale = right[1] // denominator_common
+    right_scale = left[1] // denominator_common
+    numerator = left[0] * left_scale + right[0] * right_scale
+    numerator_common = _gcd(numerator, denominator_common)
+    return (
+        numerator // numerator_common,
+        right_scale * (right[1] // numerator_common),
+    )
 
 
 def _fraction_multiply(
     left: tuple[int, int], right: tuple[int, int]
 ) -> tuple[int, int]:
-    numerator = left[0] * right[0]
-    denominator = left[1] * right[1]
-    common = _gcd(numerator, denominator)
-    return numerator // common, denominator // common
+    if left[0] == 0 or right[0] == 0:
+        return 0, 1
+    if left[1] == 1 and right[1] == 1:
+        return left[0] * right[0], 1
+    left_common = _gcd(left[0], right[1])
+    right_common = _gcd(right[0], left[1])
+    return (
+        (left[0] // left_common) * (right[0] // right_common),
+        (left[1] // right_common) * (right[1] // left_common),
+    )
 
 
 def _fraction_negative(value: tuple[int, int]) -> tuple[int, int]:
     return -value[0], value[1]
+
+
+def _fraction_normalize(numerator: int, denominator: int) -> tuple[int, int]:
+    common = _gcd(numerator, denominator)
+    normalized_numerator = numerator // common
+    normalized_denominator = denominator // common
+    if normalized_denominator < 0:
+        return -normalized_numerator, -normalized_denominator
+    return normalized_numerator, normalized_denominator
 
 
 def _inverse_fraction_matrix(
@@ -838,7 +868,7 @@ def _inverse_fraction_matrix(
     rows: list[list[tuple[int, int]]] = []
     for row_index, row in enumerate(numerator):
         rows.append(
-            [(value, denominator) for value in row]
+            [_fraction_normalize(value, denominator) for value in row]
             + [(1, 1) if row_index == column else (0, 1) for column in range(degree)]
         )
     for column in range(degree):
@@ -914,7 +944,10 @@ def _coordinates_are_integral(
 def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
     degree = len(coefficients) - 1
     inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
-    rows = [[(value, basis.denominator) for value in row] for row in basis.numerator]
+    rows = [
+        [_fraction_normalize(value, basis.denominator) for value in row]
+        for row in basis.numerator
+    ]
     one = [(1, 1)] + [(0, 1) for _index in range(degree - 1)]
     if not _coordinates_are_integral(one, inverse):
         return False
@@ -951,7 +984,10 @@ def _order_multiplication_table(
 ) -> list[list[list[int]]]:
     """Return the exact integral multiplication table in `basis`."""
     inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
-    rows = [[(entry, basis.denominator) for entry in row] for row in basis.numerator]
+    rows = [
+        [_fraction_normalize(entry, basis.denominator) for entry in row]
+        for row in basis.numerator
+    ]
     table: list[list[list[int]]] = []
     for left in rows:
         products: list[list[int]] = []
@@ -1114,7 +1150,8 @@ def _q_radical_by_trace(table: list[list[list[int]]], modulus: int) -> dict[str,
             "state": "resource-error",
             "message": "trace radical requires a component tame at the order degree",
         }
-    kernel = _modular_kernel_with_split(_trace_matrix_from_table(table), modulus)
+    trace_matrix = _trace_matrix_from_table(table)
+    kernel = _modular_kernel_with_split(trace_matrix, modulus)
     if kernel["state"] != "kernel":
         return kernel
     generators: list[list[int]] = []
@@ -1130,12 +1167,17 @@ def _q_radical_by_trace(table: list[list[list[int]]], modulus: int) -> dict[str,
         "ideal": ideal,
         "trivial": trivial,
         "kernel_rank": len(kernel["rows"]),
-        "trace_matrix": _trace_matrix_from_table(table),
+        "trace_matrix": trace_matrix,
     }
 
 
-def _integer_coordinates_in_rows(vector: list[int], rows: list[list[int]]) -> list[int]:
-    inverse = _inverse_fraction_matrix(rows, 1)
+def _integer_coordinates_in_rows(
+    vector: list[int],
+    rows: list[list[int]],
+    inverse: list[list[tuple[int, int]]] | None = None,
+) -> list[int]:
+    if inverse is None:
+        inverse = _inverse_fraction_matrix(rows, 1)
     coordinates = _fraction_vector_times_matrix(
         [(entry, 1) for entry in vector], inverse
     )
@@ -1265,6 +1307,7 @@ def _multiplier_ring_step(
 ) -> dict[str, Any]:
     degree = basis.degree
     equations: list[list[int]] = []
+    ideal_inverse = _inverse_fraction_matrix(ideal.rows, 1)
     for ideal_row in ideal.rows:
         relative_products: list[list[int]] = []
         for order_index in range(degree):
@@ -1272,7 +1315,9 @@ def _multiplier_ring_step(
             basis_vector[order_index] = 1
             relative_products.append(
                 _integer_coordinates_in_rows(
-                    _coordinate_product(basis_vector, ideal_row, table), ideal.rows
+                    _coordinate_product(basis_vector, ideal_row, table),
+                    ideal.rows,
+                    ideal_inverse,
                 )
             )
         for coordinate in range(degree):
@@ -1405,8 +1450,10 @@ def _relation_freeness(
     modulus: int,
     max_minors: int,
 ) -> dict[str, Any]:
+    containing_inverse = _inverse_fraction_matrix(containing.rows, 1)
     coordinates = [
-        _integer_coordinates_in_rows(row, containing.rows) for row in contained.rows
+        _integer_coordinates_in_rows(row, containing.rows, containing_inverse)
+        for row in contained.rows
     ]
     smith = _smith_diagonal_by_minors(coordinates, max_minors)
     if smith["state"] != "ok":
@@ -1903,22 +1950,30 @@ def check_buchmann_lenstra_general_result(
     max_minors: int = 100000,
 ) -> bool:
     """Replay the bounded general cycle and compare all certificate evidence."""
+    coefficients = [int(value) for value in polynomial_coefficients]
+    equation_disc = (
+        polynomial_discriminant(coefficients)
+        if equation_discriminant is None
+        else int(equation_discriminant)
+    )
+    if result.basis is not None:
+        try:
+            if _order_index(result.basis) != result.index:
+                return False
+            if _order_discriminant(equation_disc, result.basis) != result.discriminant:
+                return False
+        except ArithmeticError:
+            return False
     replay = buchmann_lenstra_general_overorder(
-        polynomial_coefficients,
+        coefficients,
         result.component,
         starting_basis,
-        equation_discriminant=equation_discriminant,
+        equation_discriminant=equation_disc,
         max_steps=max_steps,
         max_degree=max_degree,
         max_minors=max_minors,
     )
-    if replay.to_dict() != result.to_dict():
-        return False
-    if result.basis is not None and not _basis_defines_order(
-        [int(value) for value in polynomial_coefficients], result.basis
-    ):
-        return False
-    return True
+    return replay.to_dict() == result.to_dict()
 
 
 __all__ = [

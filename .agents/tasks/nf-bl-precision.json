@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-bl-precision",
+  "title": "Buchmann-Lenstra precision-tail optimization",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce exact construction and independent replay time for the 2772-bit Hecke precision degree-12 component without weakening certification",
+  "base_commit": "4d92089d3bd59b4e3b81f3f1f35c1ba5bb39b810",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "test/number-field-buchmann-lenstra-precision.cjs",
+    "bench/number-field-buchmann-lenstra-precision.cjs",
+    "bench/results/number-field-buchmann-lenstra-precision-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython exact replay",
+      "Sage.js dynamic differential",
+      "Sage/PARI fixture invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
