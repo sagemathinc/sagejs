@@ -1,0 +1,110 @@
+{
+  "case": "hecke-degree-90",
+  "compiled_full_decomposition": {
+    "median_us": 3224091.904,
+    "samples_us": [
+      3226802.432,
+      3224091.904,
+      3221974.784
+    ]
+  },
+  "compiled_kernel": {
+    "median_us": 29064.96,
+    "samples_us": [
+      29173.248,
+      29064.96,
+      29129.728,
+      28828.16,
+      28895.488
+    ]
+  },
+  "components_exact": true,
+  "controls": [
+    {
+      "exact": true,
+      "id": "small-split",
+      "timing": {
+        "median_us": 104.5632,
+        "samples_us": [
+          113.90464,
+          106.61376,
+          104.5632,
+          112.32768,
+          103.01184,
+          95.58784,
+          92.41088
+        ]
+      }
+    },
+    {
+      "exact": true,
+      "id": "small-no-split",
+      "timing": {
+        "median_us": 82.7648,
+        "samples_us": [
+          85.07904,
+          82.5216,
+          83.60448,
+          82.33984,
+          82.8032,
+          82.76224,
+          82.7648
+        ]
+      }
+    },
+    {
+      "exact": true,
+      "id": "small-unresolved",
+      "timing": {
+        "median_us": 69.5552,
+        "samples_us": [
+          81.64608,
+          76.65408,
+          67.94752,
+          68.1728,
+          69.5552,
+          88.53248,
+          63.872
+        ]
+      }
+    }
+  ],
+  "degree": 90,
+  "dynamic_kernel": {
+    "median_us": 118470.656,
+    "samples_us": [
+      118470.656
+    ]
+  },
+  "kernel_execution_mode": "native-capable",
+  "readable_full_decomposition": {
+    "median_us": 6582182.912,
+    "samples_us": [
+      6582182.912
+    ]
+  },
+  "readable_gcd_oracle": {
+    "median_us": 114528.512,
+    "samples_us": [
+      114528.512
+    ]
+  },
+  "residual_component_bits": 7593,
+  "schema": "sagejs.number-fields/discriminant-prefactorization-benchmark-v1",
+  "speedup_full_decomposition": 2.0415618127491193,
+  "speedup_kernel_vs_oracle": 3.9404324657594576,
+  "generated_at": "2026-08-18T14:17:29.415Z",
+  "source_commit": "dd2fdd850310e2b7a5394e69ecc811a9554fbcb5",
+  "host": {
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      3.59,
+      3.91,
+      3.95
+    ]
+  }
+}
