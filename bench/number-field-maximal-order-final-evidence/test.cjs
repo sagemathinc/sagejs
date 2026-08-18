@@ -19,6 +19,7 @@ const {
 const {
   buildEvidenceManifest,
   buildRandomizedEvidenceManifest,
+  directEvidencePlan,
   loadCorpus,
   SAGEJS_EVIDENCE_BOUNDARIES,
   translatePolynomial,
@@ -159,6 +160,29 @@ test("final selections are derived from the corrected 505-case corpus", () => {
     addprimes.basis.digest,
     "8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b",
   );
+});
+
+test("all stress cases have an honest direct polynomial-to-HNF strategy", () => {
+  const manifest = buildEvidenceManifest({ selection: "stress" });
+  assert.equal(manifest.cases.length, 16);
+  assert(manifest.cases.every((entry) => entry.native_kernel_eligible));
+  assert.equal(
+    manifest.cases.filter(
+      (entry) => entry.direct_evidence.strategy === "authenticated-composite-analysis",
+    ).length,
+    11,
+  );
+  assert.equal(
+    manifest.cases.filter(
+      (entry) => entry.direct_evidence.strategy === "certified-prime-resource",
+    ).length,
+    5,
+  );
+  const unsupported = directEvidencePlan({
+    localIndexFactors: [{ value: String(1n << 80n), valuation: 1, state: "proven-prime" }],
+  });
+  assert.equal(unsupported.supported, false);
+  assert.equal(unsupported.strategy, "unsupported");
 });
 
 test("seeded equivalent-generator schedules are exact and reproducible", () => {
