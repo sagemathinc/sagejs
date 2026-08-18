@@ -210,6 +210,7 @@
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
     "bench:number-field-maximal-orders": "node tools/number-field-maximal-order/cli.cjs run",
     "bench:number-field-maximal-order-final-evidence": "node bench/number-field-maximal-order-final-evidence.cjs",
+    "bench:number-field-maximal-order-precision-public": "node bench/number-field-maximal-order-precision-public.cjs",
     "bench:number-field-hard-local-portfolio": "node bench/number-field-hard-local-portfolio.cjs",
     "bench:number-field-analysis-public-hook": "node bench/number-field-analysis-public-hook.cjs",
     "bench:number-field-round4": "node bench/number-field-round4.cjs",
