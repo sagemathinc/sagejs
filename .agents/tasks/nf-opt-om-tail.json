@@ -46,12 +46,52 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/number-field-om-higher-residual.cjs test/number-field-om-maxmin.cjs",
+    "node bin/sagejs native compile src/lib/sagejs/number_fields/om_maxmin.py --functions packed_maxmin_valuations_are_maximal,packed_triangular_basis_is_closed --json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.892,
+      "started_at": "2026-08-18T08:02:59.422Z",
+      "commit": "5e52580133f9762eaa05536b6176f4ae10d2a146",
+      "workspace_fingerprint": "277f64ba8afacb3bf5a3754364693bc9ff6136456626e31ea65630d38a5aded9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-om-higher-residual.cjs test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.765,
+      "started_at": "2026-08-18T08:03:29.756Z",
+      "commit": "5e52580133f9762eaa05536b6176f4ae10d2a146",
+      "workspace_fingerprint": "277f64ba8afacb3bf5a3754364693bc9ff6136456626e31ea65630d38a5aded9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs native compile src/lib/sagejs/number_fields/om_maxmin.py --functions packed_maxmin_valuations_are_maximal,packed_triangular_basis_is_closed --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.018,
+      "started_at": "2026-08-18T08:03:56.585Z",
+      "commit": "5e52580133f9762eaa05536b6176f4ae10d2a146",
+      "workspace_fingerprint": "277f64ba8afacb3bf5a3754364693bc9ff6136456626e31ea65630d38a5aded9",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generic nonlinear residual fields now use exact squarefree, DDF, and deterministic EDF factorization; arbitrary positive-degree prime-field higher factors are supported, vector429 completes exactly at p=2,3,5,7, and a measured complete/native p=7 selector region is exposed without changing the central engine.",
+    "risks": [
+      "Nested nonlinear-on-nonlinear residue towers and repeated nonlinear higher factors remain explicitly incomplete and fail closed.",
+      "The number-field-algorithms package owns 731480 source bytes after this lane, 6480 above its current shared lazy-package ratchet."
+    ],
+    "next_steps": [
+      "Register packed_maxmin_valuations_are_maximal and packed_triangular_basis_is_closed in the production native-kernel registry.",
+      "In the central engine, dispatch only when the completed certified result has selector.auto_selectable true; retain the existing local path otherwise.",
+      "Resolve the shared number-field-algorithms byte ratchet in the integration lane."
+    ]
   }
 }
