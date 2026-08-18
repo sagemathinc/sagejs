@@ -1517,6 +1517,239 @@ def _analyze_order_three_higher_key(
     )
 
 
+def _analyze_recursive_linear_higher_key(
+    polynomial: Polynomial,
+    prime: int,
+    initial_factor: ModularFactor,
+    parent_branch_id: str,
+    representative: Polynomial,
+    prior_levels: tuple[OMLevel, ...],
+    expected_branch_degree: int,
+    maximum_valuation: int,
+    *,
+    max_enumerated_candidates: int,
+    max_representative_refinements: int,
+    max_type_depth: int,
+) -> tuple[tuple[OMType, ...], int]:
+    """Continue a bounded tower of linear residual extensions exactly."""
+    from .om_higher_residue import (
+        next_residue_field,
+        recursive_linear_refinement,
+        recursive_residual_evidence,
+    )
+
+    prefix = parent_branch_id + "o" + str(len(prior_levels) + 1)
+    factor_degree = polynomial_degree(initial_factor.polynomial)
+    active = _active_levels(prior_levels)
+    state = "recursive-linear-residual-unsupported"
+    if len(active) < 2 or any(len(level.residual_factor) != 2 for level in active[1:]):
+        state = "recursive-linear-type-unsupported"
+    elif len(active) >= max_type_depth:
+        state = "type-depth-bound"
+    else:
+        modulus, _root = next_residue_field(prime, active[-1])
+        key = representative
+        trace_levels = prior_levels
+        refinements = 0
+        while True:
+            sides = higher_newton_polygon(polynomial, prime, key, active)
+            if not sides:
+                state = "recursive-linear-no-negative-side"
+                break
+            if any(
+                side.lattice_length() * polynomial_degree(modulus) > 8 for side in sides
+            ):
+                state = "recursive-linear-effective-length-bound"
+                break
+            previous_value = maclane_integer_valuation(key, prime, active)
+            if previous_value is None:
+                raise ArithmeticError("a recursive higher key has infinite value")
+            residual_data = []
+            total_branch_degree = 0
+            for side in sides:
+                evidence = recursive_residual_evidence(
+                    polynomial, prime, key, active, side
+                )
+                factors = factor_residual_polynomial(
+                    evidence.polynomial,
+                    prime,
+                    modulus,
+                    max_enumerated_candidates=max_enumerated_candidates,
+                )
+                residual_data.append((side, evidence, factors))
+                total_branch_degree += sum(
+                    factor_degree
+                    * _ramification_product(active)
+                    * _residual_degree_product(active)
+                    * side.ramification_index
+                    * (len(factor.polynomial) - 1)
+                    * factor.multiplicity
+                    for factor in factors
+                )
+            if total_branch_degree != expected_branch_degree:
+                state = "recursive-linear-local-degree-mismatch"
+                break
+            if len(residual_data) == 1:
+                side, evidence, factors = residual_data[0]
+                if (
+                    len(factors) == 1
+                    and len(factors[0].polynomial) == 2
+                    and factors[0].multiplicity > 1
+                ):
+                    if refinements >= max_representative_refinements:
+                        state = "representative-refinement-bound"
+                        break
+                    repeated = factors[0]
+                    optimized = OMLevel(
+                        len(active) + 1,
+                        key,
+                        RationalValue(
+                            side.ramification_index * previous_value + side.height,
+                            side.ramification_index * _ramification_product(active),
+                        ),
+                        side.slope,
+                        modulus,
+                        evidence.polynomial,
+                        repeated.polynomial,
+                        side.ramification_index,
+                        1,
+                        repeated.multiplicity,
+                        0,
+                        maximum_valuation + len(trace_levels) + 1,
+                        len(trace_levels),
+                        True,
+                        "recursive-linear-representative-optimized-away;active="
+                        + str(evidence.active_exponents)
+                        + ";components="
+                        + str(evidence.component_abscissas)
+                        + ";twists="
+                        + str(evidence.twist_exponents),
+                    )
+                    key = recursive_linear_refinement(
+                        prime, active, key, side, repeated.polynomial
+                    )
+                    trace_levels += (optimized,)
+                    refinements += 1
+                    continue
+            side_indices = relative_polygon_side_indices(sides)
+            index_weight = factor_degree * _residual_degree_product(active)
+            branches: list[OMType] = []
+            emitted = 0
+            deeper_index = 0
+            for side_index, (
+                (side, evidence, factors),
+                side_index_value,
+            ) in enumerate(zip(residual_data, side_indices, strict=True)):
+                for residual_index, factor in enumerate(factors):
+                    branch_levels = trace_levels
+                    if emitted:
+                        branch_levels = tuple(
+                            _level_with_index(level, 0, "shared-recursive-branch")
+                            if level.index_contribution
+                            else level
+                            for level in branch_levels
+                        )
+                    residual_degree = len(factor.polynomial) - 1
+                    weighted_index = (
+                        index_weight * side_index_value if residual_index == 0 else 0
+                    )
+                    higher_level = OMLevel(
+                        len(active) + 1,
+                        key,
+                        RationalValue(
+                            side.ramification_index * previous_value + side.height,
+                            side.ramification_index * _ramification_product(active),
+                        ),
+                        side.slope,
+                        modulus,
+                        evidence.polynomial,
+                        factor.polynomial,
+                        side.ramification_index,
+                        residual_degree,
+                        factor.multiplicity,
+                        weighted_index,
+                        maximum_valuation + len(trace_levels) + 1,
+                        len(trace_levels),
+                        False,
+                        "gmn-recursive-linear-terminal-side;active="
+                        + str(evidence.active_exponents)
+                        + ";components="
+                        + str(evidence.component_abscissas)
+                        + ";twists="
+                        + str(evidence.twist_exponents)
+                        + ";montes-higher-polygon-index="
+                        + str(weighted_index),
+                    )
+                    branch_degree = (
+                        factor_degree
+                        * _ramification_product(active)
+                        * _residual_degree_product(active)
+                        * side.ramification_index
+                        * residual_degree
+                        * factor.multiplicity
+                    )
+                    branch_id = (
+                        prefix + "s" + str(side_index) + "r" + str(residual_index)
+                    )
+                    if factor.multiplicity > 1 and residual_degree == 1:
+                        next_representative = recursive_linear_refinement(
+                            prime, active, key, side, factor.polynomial
+                        )
+                        deeper, contribution = _analyze_recursive_linear_higher_key(
+                            polynomial,
+                            prime,
+                            initial_factor,
+                            branch_id,
+                            next_representative,
+                            branch_levels + (higher_level,),
+                            branch_degree,
+                            maximum_valuation,
+                            max_enumerated_candidates=max_enumerated_candidates,
+                            max_representative_refinements=max_representative_refinements,
+                            max_type_depth=max_type_depth,
+                        )
+                        branches.extend(deeper)
+                        deeper_index += contribution
+                    else:
+                        complete = factor.multiplicity == 1
+                        branches.append(
+                            OMType(
+                                branch_id,
+                                prefix,
+                                prime,
+                                initial_factor.polynomial,
+                                initial_factor.multiplicity,
+                                branch_levels + (higher_level,),
+                                branch_degree,
+                                complete,
+                                "complete"
+                                if complete
+                                else "recursive-linear-residual-unsupported",
+                            )
+                        )
+                    emitted += 1
+            return (
+                tuple(branches),
+                sum(index_weight * value for value in side_indices) + deeper_index,
+            )
+    return (
+        (
+            OMType(
+                prefix + "s0r0",
+                prefix,
+                prime,
+                initial_factor.polynomial,
+                initial_factor.multiplicity,
+                prior_levels,
+                expected_branch_degree,
+                False,
+                state,
+            ),
+        ),
+        0,
+    )
+
+
 def _analyze_order_two_higher_key(
     polynomial: Polynomial,
     prime: int,
@@ -1572,11 +1805,10 @@ def _analyze_order_two_higher_key(
                     state = "higher-residual-degree-unsupported"
                     residual_data = []
                     break
-                sparse_prime_field_length = len(evidence.active_exponents) - 1
-                if side.lattice_length() > 2 and not (
-                    polynomial_degree(active[0].residual_field_modulus) == 1
-                    and sparse_prime_field_length <= 4
-                ):
+                effective_length = side.lattice_length() * polynomial_degree(
+                    active[0].residual_field_modulus
+                )
+                if effective_length > 8:
                     state = "higher-residual-degree-unsupported"
                     residual_data = []
                     break
@@ -1666,6 +1898,34 @@ def _analyze_order_two_higher_key(
                             prefix + "s" + str(side_index) + "r" + str(residual_index)
                         )
                         if (
+                            not complete
+                            and residual_degree == 1
+                            and factor.multiplicity > 1
+                            and polynomial_degree(active[0].residual_field_modulus) > 1
+                        ):
+                            next_representative = order_two_representative(
+                                prime,
+                                active[0],
+                                higher_level,
+                            )
+                            deeper_branches, contribution = (
+                                _analyze_recursive_linear_higher_key(
+                                    polynomial,
+                                    prime,
+                                    initial_factor,
+                                    branch_id,
+                                    next_representative,
+                                    branch_levels + (higher_level,),
+                                    branch_degree,
+                                    maximum_valuation,
+                                    max_enumerated_candidates=max_enumerated_candidates,
+                                    max_representative_refinements=max_representative_refinements,
+                                    max_type_depth=max_type_depth,
+                                )
+                            )
+                            branches.extend(deeper_branches)
+                            deeper_index += contribution
+                        elif (
                             not complete
                             and residual_degree == 2
                             and factor.multiplicity == 2
@@ -1977,8 +2237,8 @@ def build_om_type_tree(
     prime: int,
     *,
     max_enumerated_candidates: int = 200_000,
-    max_representative_refinements: int = 8,
-    max_type_depth: int = 3,
+    max_representative_refinements: int = 16,
+    max_type_depth: int = 4,
 ) -> OMTypeTree:
     """Build the bounded residual-extension/optimized-representative tree."""
     if max_enumerated_candidates < 1:

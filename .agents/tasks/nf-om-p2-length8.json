@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-om-p2-length8",
+  "title": "Length-eight F4 higher OM residual extension",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certify the generic bounded v429 p=2 F4 higher-residual effective-length-8 OM extension with exact finite-field residual, mixed-radix quotient, closure, index, corruption, PARI-local HNF, and benchmark evidence while keeping automatic selection disabled",
+  "base_commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_higher_residue.py",
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-length8.cjs",
+    "bench/number-field-om-length8.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/0807.2620"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Sage/PARI exact local index and frozen maximal-order lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-om-length8.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native",
+    "node bench/number-field-om-length8.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
