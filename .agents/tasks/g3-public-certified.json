@@ -37,15 +37,95 @@
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
     "pnpm test:native",
-    "pnpm docs:check",
     "node --test test/hyperelliptic-genus3-certified.cjs",
     "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
     "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/certified_genus3.py"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-genus3-certified.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.387,
+      "started_at": "2026-08-18T18:13:49.393Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.629,
+      "started_at": "2026-08-18T18:14:04.300Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.072,
+      "started_at": "2026-08-18T18:14:10.051Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.995,
+      "started_at": "2026-08-18T18:14:15.233Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.233,
+      "started_at": "2026-08-18T18:14:32.667Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 300.183,
+      "started_at": "2026-08-18T18:15:10.882Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.2,
+      "started_at": "2026-08-18T18:20:24.595Z",
+      "commit": "fbe998adba5a2c4ca8fe17b27265dd8e030935c5",
+      "workspace_fingerprint": "7adc1dd8d8fc50d8dcf75afaacd1fa8ffc4ff45a8dad7ab0f3158ce6e89f8d6c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented the ordinary-Python exact genus-3 rforest completion orchestrator. It exhaustively lifts modular rows, normalizes odd generalized models to Y^2=h^2+4f, partitions primary/twist candidate orders into fixed-(c1,c2) maximal stride-p progressions, consumes only independently rechecked exact element-order certificates, and uses exact per-row fallbacks for every unsupported, unresolved, or resource-limited case. Focused end-to-end tests exercise real rforest ingress, dynamic primary/twist witnesses, generalized and even-degree models, malformed native evidence, resource caps, and a one-traversal interval.",
+    "risks": [
+      "The public frobenius dispatcher and strict-module registry are centrally owned and intentionally remain integration changes.",
+      "The ordinary group path uses bounded trial-division factorization and is a correctness fallback, not the production performance path.",
+      "docs:check reported the expected stale generated reference after adding a new module; integration must regenerate centrally owned reference artifacts.",
+      "The lane-native gate was interrupted during its rebuild at coordinator request; the integrated native kernel branch owns the current full native receipt."
+    ],
+    "next_steps": [
+      "Cherry-pick fbe998ad and add certified_genus3.py to pyrightconfig.json.",
+      "Wire explicit rational algorithm='rforest' to rforest_genus3_local_factor and interval dispatch to rforest_genus3_local_factors; leave auto unchanged until the performance gate passes.",
+      "Bind _native_order_certificates to the integrated progression-search kernel and convert its packed Mumford result to the documented Python certificate record.",
+      "Regenerate reference documentation and run the final integrated native/platform suites."
+    ]
   }
 }
