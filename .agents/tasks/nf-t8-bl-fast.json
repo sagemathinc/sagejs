@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-t8-bl-fast",
+  "title": "Accelerate composite Dedekind BL replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_t8_bl_fast",
+  "objective": "Profile and generically accelerate composite Dedekind Buchmann-Lenstra construction and exact replay for T8 and corpus controls using source-transparent ordinary-Python kernels",
+  "base_commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "test/number-field-buchmann-lenstra-fast.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/number-field-buchmann-lenstra-fast.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.705,
+      "started_at": "2026-08-18T03:06:35.733Z",
+      "commit": "bd695b4ccdc5c2d9a3bfab173b57f4de27aeedbc",
+      "workspace_fingerprint": "752c5816f41a5fb239531386ce4484e847a4286e04c189445b665bc1855c3374",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.837,
+      "started_at": "2026-08-18T04:37:56.794Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "605a9999e495324fc475652e5d5da3ab92ef50312f425c2573b2b602ec7d6505",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a packed source-transparent exact-integer row-HNF kernel and routes composite Dedekind construction plus certificate replay through it. CPython and disabled/unavailable native execution retain the same-source ordinary-Python fallback. The focused T8/corpus differential and corruption test passes, strict CPython/Ruff/Pyright validation passes, and a three-sample benchmark measures the compiled packed HNF 4.3--5.3x faster than list-based Sage.js HNF across T8 and five controls.",
+    "risks": [
+      "The broad pnpm test:native run was stopped during its build stage at coordinator request; integration must run the coherent native suite.",
+      "A clean production build will use the correct dynamic fallback until the new source is registered in architecture/native-kernels.json."
+    ],
+    "next_steps": [
+      "Register id buchmann-lenstra-row-hnf-production, source src/lib/sagejs/number_fields/bl_composite_kernel.py, and function packed_row_hnf_in_place in architecture/native-kernels.json with benchmark bench/number-field-buchmann-lenstra-fast.cjs.",
+      "Run pnpm test:native after integration and verify test/production-native-kernels.cjs publishes and autoloads the registered kernel."
+    ]
+  }
+}
