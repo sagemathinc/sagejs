@@ -72,7 +72,11 @@ def certified_composite_overorder_from_equation(
         basis=starting_basis,
         equation_discriminant=int(equation_discriminant),
     )
-    if not check_buchmann_lenstra_result(coefficients, result):
+    if not check_buchmann_lenstra_result(
+        coefficients,
+        result,
+        equation_discriminant=int(equation_discriminant),
+    ):
         raise ArithmeticError("composite Dedekind replay rejected its result")
     if result.state != "enlarged":
         return result
