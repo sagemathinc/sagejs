@@ -11227,7 +11227,8 @@
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs",
-        "test/native-kernel.cjs"
+        "test/native-kernel.cjs",
+        "tools/resources.ts"
       ],
       "declared_ffi": null
     },
