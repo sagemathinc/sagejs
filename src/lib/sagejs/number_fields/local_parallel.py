@@ -11,6 +11,13 @@ therefore use `run_local_jobs` with a module-level worker function, then
 consume the returned CRT/HNF plan without depending on worker completion
 order.  The same code is ordinary CPython and provides a sequential fallback
 when workers are unavailable or the measured setup threshold predicts a loss.
+
+The parent runtime and its exact precompiled-module allowlist are trusted.  A
+worker result is not trusted merely because it crossed that boundary: it must
+contain the complete canonical job that produced it, and the parent validates
+that binding plus every mathematical payload field before merging.  This is
+an integrity boundary, not a cryptographic authentication protocol for a
+hostile parent process.
 """
 
 from __future__ import annotations
@@ -34,7 +41,7 @@ ResultPayload: TypeAlias = tuple[Any, ...]
 
 JOB_SCHEMA = "sagejs.number-fields.local-job.v1"
 COMPONENT_SCHEMA = "sagejs.number-fields.local-component.v1"
-RESULT_SCHEMA = "sagejs.number-fields.local-result.v1"
+RESULT_SCHEMA = "sagejs.number-fields.local-result.v2"
 POLICY_SCHEMA = "sagejs.number-fields.local-policy.v1"
 SCHEDULE_SCHEMA = "sagejs.number-fields.local-schedule.v1"
 MERGE_SCHEMA = "sagejs.number-fields.local-merge-plan.v1"
@@ -432,7 +439,7 @@ def local_job_key(job: Any) -> tuple[Any, ...]:
     assert isinstance(polynomial, tuple)
     assert isinstance(component, tuple)
     return (
-        _digest_parts(polynomial),
+        polynomial,
         component[1],
         component[2],
         component[3],
@@ -556,6 +563,7 @@ def make_local_result(
         _integer(elapsed_micros, "elapsed microseconds", 0),
         "",
         _freeze_json(shared_result, "local-order result"),
+        canonical_job,
     )
 
 
@@ -579,7 +587,7 @@ def make_fatal_result(job: Any, message: str) -> ResultPayload:
     }
     return (
         RESULT_SCHEMA,
-        local_job_key(job),
+        local_job_key(canonical_job),
         "fatal",
         (),
         1,
@@ -590,16 +598,20 @@ def make_fatal_result(job: Any, message: str) -> ResultPayload:
         0,
         message,
         _freeze_json(shared_result, "local-order result"),
+        canonical_job,
     )
 
 
 def validate_local_result(result: Any) -> ResultPayload:
     """Validate a successful or fatal local worker result."""
     value = _wire_value(result, "local result")
-    if not isinstance(value, tuple) or len(value) != 12 or value[0] != RESULT_SCHEMA:
+    if not isinstance(value, tuple) or len(value) != 13 or value[0] != RESULT_SCHEMA:
         raise LocalPayloadError("invalid local result schema")
     if not isinstance(value[1], tuple) or len(value[1]) != 5:
         raise LocalPayloadError("invalid local result job key")
+    canonical_job = validate_local_job(value[12])
+    if value[1] != local_job_key(canonical_job):
+        raise LocalPayloadError("local result job key disagrees with its complete job")
     status = value[2]
     if status not in ("ok", "fatal"):
         raise LocalPayloadError("invalid local result status")
@@ -630,6 +642,16 @@ def validate_local_result(result: Any) -> ResultPayload:
     if shared_result.state != expected_state:
         raise LocalPayloadError(
             "local result status disagrees with its shared contract"
+        )
+    component = canonical_job[2]
+    assert isinstance(component, tuple)
+    if shared_result.component.to_dict() != _validate_component_wire(component[5]):
+        raise LocalPayloadError(
+            "local result component disagrees with its complete job"
+        )
+    if shared_result.algorithm != canonical_job[6]:
+        raise LocalPayloadError(
+            "local result algorithm disagrees with its complete job"
         )
     if shared_result.index != value[5]:
         raise LocalPayloadError("local result index disagrees with its shared contract")
@@ -898,13 +920,13 @@ def collect_local_results(
 ) -> tuple[ResultPayload, ...]:
     """Canonicalize results and prove exact one-to-one job correspondence."""
     ordered_jobs = _canonical_jobs(jobs)
-    expected = tuple(local_job_key(job) for job in ordered_jobs)
+    expected = ordered_jobs
     canonical = tuple(
         sorted(
             (validate_local_result(item) for item in results), key=lambda item: item[1]
         )
     )
-    actual = tuple(result[1] for result in canonical)
+    actual = tuple(result[12] for result in canonical)
     if actual != expected:
         raise LocalPayloadError(
             "local results do not correspond exactly to submitted jobs"
@@ -984,22 +1006,28 @@ def run_local_jobs(
     pool = factory(worker_count)
     results: list[ResultPayload] = []
     try:
-        # Submit one bounded wave at a time.  Sage.js serializes the callable
-        # once per map job; per-component apply_async calls would repeatedly
-        # compile the same local solver and erase the parallel speedup.  A
-        # fatal result terminates the pool before any later wave is submitted.
+        # Submit one bounded wave at a time.  Individual result handles let a
+        # fatal sibling cancel the whole pool without waiting for a slow or
+        # hung job.  Sage.js caches reconstructed callables by source, so this
+        # preserves the measured steady-state arithmetic crossover.
         for offset in range(0, len(ordered_jobs), worker_count):
             wave = ordered_jobs[offset : offset + worker_count]
-            handle = pool.map_async(worker, wave, chunksize=1)
-            for raw_result in handle.get():
-                result = validate_local_result(raw_result)
-                if result[2] == "fatal":
-                    pool.terminate()
-                    pool.join()
-                    raise LocalCertificationError(
-                        "local maximal-order certification failed"
-                    )
-                results.append(result)
+            pending = [pool.apply_async(worker, (job,)) for job in wave]
+            while pending:
+                ready = [handle for handle in pending if handle.ready()]
+                if not ready:
+                    pending[0].wait(0.01)
+                    continue
+                for handle in ready:
+                    pending.remove(handle)
+                    result = validate_local_result(handle.get())
+                    if result[2] == "fatal":
+                        pool.terminate()
+                        pool.join()
+                        raise LocalCertificationError(
+                            "local maximal-order certification failed"
+                        )
+                    results.append(result)
         pool.close()
         pool.join()
     except LocalCertificationError:

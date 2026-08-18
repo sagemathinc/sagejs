@@ -5,6 +5,11 @@ The worker accepts and returns only the immutable tuple contracts from
 resource is reconstructed inside the isolated worker and discarded there.
 This makes the same module-level callable usable by CPython's process pool and
 Sage.js's lightweight worker-thread pool without transferring parent objects.
+
+Only the trusted parent chooses the callable and the exact allowlisted module
+identity.  Workers are nevertheless treated as untrusted result producers:
+the result carries its complete canonical input job, and the parent revalidates
+that binding before accepting any certificate or merge evidence.
 """
 
 from __future__ import annotations
@@ -23,7 +28,6 @@ PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cj
 PUBLIC_PARALLEL_SETUP_MARGIN_MICROS = 20_000_000
 PUBLIC_PARALLEL_PARENT_RSS_BYTES = 640 * 1024 * 1024
 PUBLIC_PARALLEL_WORKER_RSS_BYTES = 224 * 1024 * 1024
-PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES = 1536 * 1024 * 1024
 
 
 def public_worker_capability() -> bool:
@@ -51,12 +55,57 @@ def _predicted_critical_path(jobs: tuple[JobPayload, ...], workers: int) -> int:
     return max(loads, default=0)
 
 
+def _platform_memory_budget() -> tuple[int | None, str]:
+    """Return a conservative runtime-derived budget and its source.
+
+    Sage.js supplies a host capability which accounts for platform/container
+    limits.  Ordinary CPython uses currently available physical pages when
+    that information exists.  Unknown availability never silently becomes a
+    fixed machine-independent allowance.
+    """
+    multiprocessing = __import__("multiprocessing")
+    capability = getattr(multiprocessing, "worker_memory_budget_bytes", None)
+    if capability is not None:
+        value = capability()
+        if value is None:
+            return None, "runtime-platform-capability-unavailable"
+        return max(0, int(value)), "runtime-platform-capability"
+    os = __import__("os")
+    sysconf = getattr(os, "sysconf", None)
+    if sysconf is None:
+        return None, "platform-memory-unavailable"
+    try:
+        page_size = int(sysconf("SC_PAGE_SIZE"))
+        available_pages = int(sysconf("SC_AVPHYS_PAGES"))
+    except (OSError, TypeError, ValueError):
+        return None, "platform-memory-unavailable"
+    available = page_size * available_pages
+    if available <= 0:
+        return None, "platform-memory-unavailable"
+    # Linux cgroup limits can be much smaller than physical availability.
+    # These are fixed kernel capability paths, never caller-controlled input.
+    try:
+        with open("/sys/fs/cgroup/memory.max") as limit_file:
+            limit_text = limit_file.read().strip()
+        with open("/sys/fs/cgroup/memory.current") as current_file:
+            current_text = current_file.read().strip()
+        if limit_text != "max":
+            remaining = max(0, int(limit_text) - int(current_text))
+            available = min(available, remaining)
+            source = "cpython-available-pages-and-cgroup-v2"
+        else:
+            source = "cpython-available-pages"
+    except (OSError, TypeError, ValueError):
+        source = "cpython-available-pages"
+    return available * 3 // 4, source
+
+
 def public_worker_decision(
     jobs: list[JobPayload] | tuple[JobPayload, ...],
     *,
     after_native_fallback: bool,
     cpu_count: int | None = None,
-    memory_budget_bytes: int = PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES,
+    memory_budget_bytes: int | None = None,
     worker_capability: bool | None = None,
 ) -> dict[str, Any]:
     """Return the measured fallback-only public parallel gate.
@@ -84,6 +133,11 @@ def public_worker_decision(
     predicted_peak = (
         PUBLIC_PARALLEL_PARENT_RSS_BYTES + workers * PUBLIC_PARALLEL_WORKER_RSS_BYTES
     )
+    if memory_budget_bytes is None:
+        memory_budget, memory_budget_source = _platform_memory_budget()
+    else:
+        memory_budget = max(0, int(memory_budget_bytes))
+        memory_budget_source = "caller-explicit"
     selected = True
     reason = "measured-native-fallback-crossover"
     if not after_native_fallback:
@@ -98,7 +152,10 @@ def public_worker_decision(
     elif predicted_savings < PUBLIC_PARALLEL_SETUP_MARGIN_MICROS:
         selected = False
         reason = "predicted-savings-below-setup-margin"
-    elif predicted_peak > int(memory_budget_bytes):
+    elif memory_budget is None:
+        selected = False
+        reason = "memory-budget-unavailable"
+    elif predicted_peak > memory_budget:
         selected = False
         reason = "measured-peak-exceeds-memory-budget"
     return {
@@ -113,7 +170,8 @@ def public_worker_decision(
         "predicted_savings_micros": predicted_savings,
         "required_setup_margin_micros": PUBLIC_PARALLEL_SETUP_MARGIN_MICROS,
         "predicted_peak_rss_bytes": predicted_peak,
-        "memory_budget_bytes": int(memory_budget_bytes),
+        "memory_budget_bytes": memory_budget,
+        "memory_budget_source": memory_budget_source,
         "measured_vector001_median": {
             "sequential_total_micros": 55_214_067,
             "parallel_total_micros": 36_545_808,
@@ -259,7 +317,6 @@ def run_public_local_jobs(
 __all__ = [
     "PUBLIC_DECISION_SCHEMA",
     "PUBLIC_PARALLEL_BENCHMARK",
-    "PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES",
     "PUBLIC_PARALLEL_PARENT_RSS_BYTES",
     "PUBLIC_PARALLEL_SETUP_MARGIN_MICROS",
     "PUBLIC_PARALLEL_WORKER_RSS_BYTES",
