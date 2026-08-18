@@ -29,13 +29,21 @@ from sagejs.native import (
     kernel_integer_buffer,
     kernel_integer_zeros,
 )
-from sagejs.number_fields.bl_composite_kernel import packed_row_hnf_in_place
+from sagejs.number_fields.bl_composite_kernel import (
+    packed_composite_dedekind_basis_in_place,
+    packed_order_table_in_place,
+    packed_row_hnf_in_place,
+)
 
 try:
     import sagejs.runtime as _rt
 except ImportError:
     _rt = None
 
+from sagejs.number_fields.maximal_order_certification import (
+    _scaled_integral_inverse,
+    check_order_lattice,
+)
 from sagejs.number_fields.maximal_order_contracts import (
     ComponentSplit,
     DiscriminantComponent,
@@ -337,7 +345,10 @@ def _packed_row_hnf(rows: list[list[int]]) -> list[list[int]]:
     # Extended-gcd combinations may temporarily exceed an input entry.  Four
     # limbs per column is a conservative exact bound for these small dense
     # lattices and keeps overflow fail-closed in the packed ABI.
-    word_capacity = max(8, (maximum_bits + 63) // 64 + 4 * columns)
+    word_capacity = max(
+        16,
+        (maximum_bits + 63) // 64 + 16 * columns * columns,
+    )
     source = kernel_integer_buffer(packed_row_hnf_in_place, flat)
     output = kernel_integer_zeros(packed_row_hnf_in_place, len(flat), word_capacity)
     workspace = kernel_integer_zeros(
@@ -388,7 +399,9 @@ def _multiplication_rows(
     ]
 
 
-def _composite_dedekind_data(coefficients: list[int], modulus: int) -> dict[str, Any]:
+def _composite_dedekind_data_reference(
+    coefficients: list[int], modulus: int
+) -> dict[str, Any]:
     reduced = _trim_mod(coefficients, modulus)
     first = polynomial_gcd_with_split(reduced, _derivative(reduced), modulus)
     if first["status"] != "gcd":
@@ -472,18 +485,111 @@ def _composite_dedekind_data(coefficients: list[int], modulus: int) -> dict[str,
     }
 
 
+def _composite_dedekind_data(coefficients: list[int], modulus: int) -> dict[str, Any]:
+    """Use one packed enlargement operation with a split-aware fallback."""
+    degree = len(coefficients) - 1
+    if degree < 1 or coefficients[-1] != 1 or modulus <= 1:
+        return _composite_dedekind_data_reference(coefficients, modulus)
+    capacity = degree + 1
+    maximum_bits = max(
+        [abs(value).bit_length() for value in coefficients] + [modulus.bit_length()]
+    )
+    word_capacity = max(16, (2 * maximum_bits + 63) // 64 + 4 * degree + 8)
+    metadata = kernel_integer_zeros(packed_composite_dedekind_basis_in_place, 6, 4)
+    output = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        5 * capacity,
+        word_capacity,
+    )
+    workspace = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        8 * capacity,
+        word_capacity,
+    )
+    hnf_output = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        2 * degree * degree,
+        word_capacity,
+    )
+    hnf_source = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        2 * degree * degree,
+        word_capacity,
+    )
+    hnf_workspace = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        2 * degree,
+        word_capacity,
+    )
+    power_workspace = kernel_integer_zeros(
+        packed_composite_dedekind_basis_in_place,
+        2 * degree - 1,
+        word_capacity,
+    )
+    try:
+        enlarged = packed_composite_dedekind_basis_in_place(
+            metadata,
+            output,
+            hnf_output,
+            workspace,
+            hnf_source,
+            hnf_workspace,
+            power_workspace,
+            kernel_integer_buffer(
+                packed_composite_dedekind_basis_in_place, coefficients
+            ),
+            modulus,
+            degree,
+        )
+    except OverflowError:
+        enlarged = False
+    if not enlarged:
+        return _composite_dedekind_data_reference(coefficients, modulus)
+    lengths = [int(value) for value in integer_buffer_values(metadata)]
+    values = integer_buffer_values(output)
+    hnf_values = integer_buffer_values(hnf_output)
+    if any(length < 0 or length > capacity for length in lengths[:5]):
+        return _composite_dedekind_data_reference(coefficients, modulus)
+
+    def polynomial(record: int) -> list[int]:
+        length = lengths[record]
+        if length == 0:
+            return [0]
+        return [int(values[record * capacity + index]) for index in range(length)]
+
+    return {
+        "status": "enlarge",
+        "repeated_gcd": polynomial(0),
+        "squarefree_quotient": polynomial(1),
+        "correction": polynomial(2),
+        "obstruction": polynomial(3),
+        "generator": polynomial(4),
+        "packed": True,
+        "packed_hnf": [
+            [int(hnf_values[row * degree + column]) for column in range(degree)]
+            for row in range(degree)
+        ],
+    }
+
+
 def _dedekind_overorder_basis(
-    coefficients: list[int], modulus: int, generator: list[int]
+    coefficients: list[int],
+    modulus: int,
+    generator: list[int],
+    packed_hnf: list[list[int]] | None = None,
 ) -> tuple[OrderBasis, int]:
     degree = len(coefficients) - 1
-    multiplication = _multiplication_rows(generator, coefficients)
-    generators = []
-    for index in range(degree):
-        row = [0 for _column in range(degree)]
-        row[index] = modulus
-        generators.append(row)
-    generators.extend(multiplication)
-    numerator = _packed_row_hnf(generators)
+    if packed_hnf is None:
+        multiplication = _multiplication_rows(generator, coefficients)
+        generators = []
+        for index in range(degree):
+            row = [0 for _column in range(degree)]
+            row[index] = modulus
+            generators.append(row)
+        generators.extend(multiplication)
+        numerator = _packed_row_hnf(generators)
+    else:
+        numerator = packed_hnf
     basis = OrderBasis(numerator, modulus, canonical=True)
     determinant = abs(basis.determinant_numerator)
     denominator_power = basis.denominator**degree
@@ -681,7 +787,10 @@ def buchmann_lenstra_overorder(
             },
         )
     overorder_basis, index = _dedekind_overorder_basis(
-        coefficients, modulus, data["generator"]
+        coefficients,
+        modulus,
+        data["generator"],
+        data.get("packed_hnf"),
     )
     if equation_disc % (index * index) != 0:
         return BuchmannLenstraResult(
@@ -748,19 +857,35 @@ def _check_composite_dedekind_overorder_certificate(
         return False
 
     modulus = result.component.value
-    replay = _composite_dedekind_data(coefficients, modulus)
-    if replay.get("status") != "enlarge":
-        return False
-    for key in (
+    polynomials: list[list[int]] = []
+    for name in (
         "repeated_gcd",
         "squarefree_quotient",
         "correction",
         "obstruction",
-        "generator",
+        "overorder_generator",
     ):
-        evidence_key = "overorder_generator" if key == "generator" else key
-        if evidence.get(evidence_key) != replay.get(key):
+        value = evidence.get(name)
+        if (
+            not isinstance(value, list)
+            or not value
+            or not all(isinstance(entry, int) for entry in value)
+        ):
             return False
+        polynomials.append([int(entry) for entry in value])
+    repeated, squarefree, correction, obstruction, generator = polynomials
+    lifted = _multiply(squarefree, repeated)
+    correction_length = max(len(coefficients), len(lifted), len(correction))
+    for index in range(correction_length):
+        defining_value = coefficients[index] if index < len(coefficients) else 0
+        lifted_value = lifted[index] if index < len(lifted) else 0
+        correction_value = correction[index] if index < len(correction) else 0
+        if defining_value != lifted_value + modulus * correction_value:
+            return False
+    if _trim_mod(_multiply(obstruction, generator), modulus) != _trim_mod(
+        coefficients, modulus
+    ):
+        return False
 
     degree = len(coefficients) - 1
     generators: list[list[int]] = []
@@ -768,9 +893,13 @@ def _check_composite_dedekind_overorder_certificate(
         row = [0 for _column in range(degree)]
         row[index] = modulus
         generators.append(row)
-    generators.extend(_multiplication_rows(replay["generator"], coefficients))
-    expected_basis = OrderBasis(_packed_row_hnf(generators), modulus, canonical=True)
+    generators.extend(_multiplication_rows(generator, coefficients))
+    expected_basis = OrderBasis(_row_hnf(generators), modulus, canonical=True)
     if result.basis.canonical_key() != expected_basis.canonical_key():
+        return False
+    try:
+        _order_multiplication_table(coefficients, result.basis)
+    except ArithmeticError:
         return False
 
     determinant = abs(expected_basis.determinant_numerator)
@@ -969,40 +1098,84 @@ def _rational_product(
     return product[:degree]
 
 
-def _coordinates_are_integral(
-    value: list[tuple[int, int]], inverse: list[list[tuple[int, int]]]
-) -> bool:
-    degree = len(value)
-    for column in range(degree):
-        coordinate = (0, 1)
-        for row in range(degree):
-            coordinate = _fraction_add(
-                coordinate, _fraction_multiply(value[row], inverse[row][column])
+def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
+    """Check containment and closure with normalized integer matrices.
+
+    Canonical BL bases use upper row HNF, so transposed exact substitution
+    computes the scaled inverse without a general rational matrix.  The
+    previous local copy normalized thousands of temporary rational pairs.
+    Noncanonical direct inputs retain the independently maintained general
+    checker as their fallback.
+    """
+    degree = basis.degree
+    upper = all(
+        basis.numerator[row][column] == 0
+        for row in range(degree)
+        for column in range(row)
+    )
+    if not upper:
+        return bool(
+            check_order_lattice(
+                coefficients,
+                basis.numerator,
+                basis.denominator,
+            )["valid"]
+        )
+    transposed = [
+        [basis.numerator[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    transposed_inverse = _scaled_integral_inverse(transposed, basis.denominator)
+    if transposed_inverse is None:
+        return False
+    if basis.denominator == 1:
+        return True
+    scaled_inverse = [
+        [transposed_inverse[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    denominator_squared = basis.denominator * basis.denominator
+    for left in range(degree):
+        for right in range(left, degree):
+            product = _reduce_power_polynomial(
+                _multiply(basis.numerator[left], basis.numerator[right]),
+                coefficients,
             )
-        if coordinate[1] != 1:
-            return False
+            for column in range(degree):
+                coordinate_numerator = sum(
+                    product[index] * scaled_inverse[index][column]
+                    for index in range(degree)
+                )
+                if coordinate_numerator % denominator_squared != 0:
+                    return False
     return True
 
 
-def _basis_defines_order(coefficients: list[int], basis: OrderBasis) -> bool:
-    degree = len(coefficients) - 1
-    inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
-    rows = [
-        [_fraction_normalize(value, basis.denominator) for value in row]
-        for row in basis.numerator
-    ]
-    one = [(1, 1)] + [(0, 1) for _index in range(degree - 1)]
-    if not _coordinates_are_integral(one, inverse):
+def _basis_contains_basis(containing: OrderBasis, contained: OrderBasis) -> bool:
+    """Check exact lattice containment with one scaled integer inverse."""
+    if containing.degree != contained.degree:
         return False
-    for exponent in range(degree):
-        power = [(1, 1) if exponent == index else (0, 1) for index in range(degree)]
-        if not _coordinates_are_integral(power, inverse):
-            return False
-    for left in rows:
-        for right in rows:
-            if not _coordinates_are_integral(
-                _rational_product(left, right, coefficients), inverse
-            ):
+    degree = containing.degree
+    # BL canonical row HNF is upper triangular.  Transposition lets the
+    # independently maintained lower-triangular fraction-free solver use its
+    # short exact-substitution path.
+    transposed = [
+        [containing.numerator[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    transposed_inverse = _scaled_integral_inverse(transposed, containing.denominator)
+    if transposed_inverse is None:
+        return False
+    scaled_inverse = [
+        [transposed_inverse[column][row] for column in range(degree)]
+        for row in range(degree)
+    ]
+    for row in contained.numerator:
+        for column in range(degree):
+            coordinate_numerator = sum(
+                row[index] * scaled_inverse[index][column] for index in range(degree)
+            )
+            if coordinate_numerator % contained.denominator != 0:
                 return False
     return True
 
@@ -1022,10 +1195,10 @@ def _fraction_vector_times_matrix(
     return answer
 
 
-def _order_multiplication_table(
+def _order_multiplication_table_reference(
     coefficients: list[int], basis: OrderBasis
 ) -> list[list[list[int]]]:
-    """Return the exact integral multiplication table in `basis`."""
+    """Return the table through the readable rational-pair oracle."""
     inverse = _inverse_fraction_matrix(basis.numerator, basis.denominator)
     rows = [
         [_fraction_normalize(entry, basis.denominator) for entry in row]
@@ -1043,6 +1216,74 @@ def _order_multiplication_table(
             products.append([value[0] for value in coordinates])
         table.append(products)
     return table
+
+
+def _order_multiplication_table(
+    coefficients: list[int], basis: OrderBasis
+) -> list[list[list[int]]]:
+    """Check and construct one complete table through a packed boundary."""
+    degree = basis.degree
+    if any(
+        basis.numerator[row][column] != 0
+        for row in range(degree)
+        for column in range(row)
+    ):
+        # Direct callers may supply a noncanonical orientation.  Canonical BL
+        # cycle bases are upper row HNF; preserve the fully general readable
+        # oracle as the tested capability fallback for every other shape.
+        return _order_multiplication_table_reference(coefficients, basis)
+    flat_numerator = [value for row in basis.numerator for value in row]
+    maximum_bits = max(
+        (
+            abs(value).bit_length()
+            for value in flat_numerator + coefficients + [basis.denominator]
+        ),
+        default=1,
+    )
+    # Products, power-basis reduction, and the scaled triangular inverse all
+    # remain exact inside fixed-capacity packed output.  Overflow is a
+    # capability failure, never a mathematical result, and selects the same
+    # readable rational implementation below.
+    word_capacity = max(
+        16,
+        (4 * degree * (maximum_bits + 1) + 63) // 64 + 8,
+    )
+    table_buffer = kernel_integer_zeros(
+        packed_order_table_in_place,
+        degree * degree * degree,
+        word_capacity,
+    )
+    workspace = kernel_integer_zeros(
+        packed_order_table_in_place,
+        degree * degree + 2 * degree - 1,
+        word_capacity,
+    )
+    try:
+        valid = packed_order_table_in_place(
+            table_buffer,
+            workspace,
+            kernel_integer_buffer(packed_order_table_in_place, flat_numerator),
+            kernel_integer_buffer(packed_order_table_in_place, coefficients),
+            basis.denominator,
+            degree,
+        )
+    except OverflowError:
+        return _order_multiplication_table_reference(coefficients, basis)
+    if not valid:
+        raise ArithmeticError(
+            "the supplied basis does not contain the equation order or is not closed"
+        )
+    values = integer_buffer_values(table_buffer)
+    return [
+        [
+            [
+                int(values[(left * degree + right) * degree + coordinate])
+                for coordinate in range(degree)
+            ]
+            for right in range(degree)
+        ]
+        for left in range(degree)
+    ]
 
 
 def _order_index(basis: OrderBasis) -> int:
@@ -1637,7 +1878,9 @@ def buchmann_lenstra_general_overorder(
         if equation_discriminant is None
         else int(equation_discriminant)
     )
-    if not _basis_defines_order(coefficients, basis):
+    try:
+        current_table = _order_multiplication_table(coefficients, basis)
+    except ArithmeticError:
         return BuchmannLenstraResult(
             "certification-error",
             component,
@@ -1661,6 +1904,9 @@ def buchmann_lenstra_general_overorder(
             }
         )
         if active == 1:
+            enlargement_count = sum(
+                1 for event in events if event["stage"] == "multiplier-ring"
+            )
             return _general_result(
                 "complete",
                 component,
@@ -1669,9 +1915,18 @@ def buchmann_lenstra_general_overorder(
                 events,
                 evidence={
                     "remaining_component_gcd": 1,
-                    "enlargement_count": sum(
-                        1 for event in events if event["stage"] == "multiplier-ring"
-                    ),
+                    "enlargement_count": enlargement_count,
+                    "compact_event_certificate": {
+                        "schema": (
+                            "sagejs.number-fields/buchmann-lenstra-component-coprime-v1"
+                        ),
+                        "theorem": (
+                            "closed-containing-overorder-with-component-"
+                            "coprime-discriminant"
+                        ),
+                        "event_count": len(events),
+                        "enlargement_count": enlargement_count,
+                    },
                 },
             )
         if active != modulus:
@@ -1693,7 +1948,7 @@ def buchmann_lenstra_general_overorder(
                 split=split,
                 evidence={"split_stage": "component-reduction"},
             )
-        table = _order_multiplication_table(coefficients, current)
+        table = current_table
         radical = (
             _p_radical(current, table, active)
             if component.is_proven_prime
@@ -1765,7 +2020,9 @@ def buchmann_lenstra_general_overorder(
             )
         if multiplier["state"] == "enlarged":
             enlarged = multiplier["basis"]
-            if not _basis_defines_order(coefficients, enlarged):
+            try:
+                enlarged_table = _order_multiplication_table(coefficients, enlarged)
+            except ArithmeticError:
                 return _general_result(
                     "certification-error",
                     component,
@@ -1786,6 +2043,7 @@ def buchmann_lenstra_general_overorder(
                 }
             )
             current = enlarged
+            current_table = enlarged_table
             continue
         if multiplier["state"] != "same":
             return _general_result(
@@ -1982,6 +2240,131 @@ def buchmann_lenstra_multiplier_cycle(
     )
 
 
+def _check_component_coprime_cycle_certificate(
+    coefficients: list[int],
+    starting_basis: OrderBasis,
+    result: BuchmannLenstraResult,
+    equation_discriminant: int,
+) -> bool:
+    """Check the compact accepted-result theorem certificate.
+
+    This deliberately does not reconstruct the trace radical or multiplier
+    equations.  Instead it independently proves the facts needed by the
+    accepted result: both endpoint lattices are orders, the final one contains
+    the input, every reported enlargement reproduces its canonical HNF, the
+    index/discriminant identities hold, and the final discriminant is coprime
+    to the whole unresolved component.  These facts imply local maximality
+    for the component regardless of how the candidate was discovered.
+    """
+    if result.state != "complete" or result.basis is None:
+        return False
+    if result.component.state not in (
+        "proven-prime",
+        "composite",
+        "unresolved-coprime-component",
+    ):
+        return False
+    compact = result.evidence.get("compact_event_certificate")
+    expected_compact = {
+        "schema": ("sagejs.number-fields/buchmann-lenstra-component-coprime-v1"),
+        "theorem": ("closed-containing-overorder-with-component-coprime-discriminant"),
+        "event_count": len(result.evidence.get("events", [])),
+        "enlargement_count": result.evidence.get("enlargement_count"),
+    }
+    if compact != expected_compact:
+        return False
+    if (
+        result.evidence.get("certificate")
+        != ("component-coprime-to-order-discriminant")
+        or result.evidence.get("remaining_component_gcd") != 1
+    ):
+        return False
+    if not _basis_defines_order(coefficients, starting_basis):
+        return False
+    if not _basis_defines_order(coefficients, result.basis):
+        return False
+    if not _basis_contains_basis(result.basis, starting_basis):
+        return False
+    try:
+        if _order_index(result.basis) != result.index:
+            return False
+        if _order_discriminant(equation_discriminant, result.basis) != (
+            result.discriminant
+        ):
+            return False
+    except ArithmeticError:
+        return False
+    if (
+        result.discriminant is None
+        or _gcd(abs(result.discriminant), result.component.base) != 1
+    ):
+        return False
+
+    events = result.evidence.get("events")
+    if not isinstance(events, list) or not events:
+        return False
+    current = starting_basis
+    active = 0
+    previous_stage = ""
+    enlargement_count = 0
+    for sequence, event in enumerate(events):
+        if not isinstance(event, dict) or event.get("sequence") != sequence:
+            return False
+        stage = event.get("stage")
+        if stage == "component-reduction":
+            if previous_stage not in ("", "multiplier-ring"):
+                return False
+            try:
+                event_basis = OrderBasis.from_dict(event["basis"])
+                event_index = _order_index(current)
+                event_discriminant = _order_discriminant(equation_discriminant, current)
+            except (ArithmeticError, KeyError, TypeError, ValueError):
+                return False
+            active = _gcd(abs(event_discriminant), result.component.base)
+            if (
+                event_basis.canonical_key() != current.canonical_key()
+                or event.get("index") != event_index
+                or event.get("discriminant") != event_discriminant
+                or event.get("q") != active
+            ):
+                return False
+            if sequence + 1 < len(events) and active != result.component.base:
+                return False
+        elif stage == "q-radical":
+            if previous_stage != "component-reduction" or active == 1:
+                return False
+            if event.get("q") != active:
+                return False
+        elif stage == "multiplier-ring":
+            if previous_stage != "q-radical" or event.get("q") != active:
+                return False
+            kernel_rows = event.get("kernel_rows")
+            if not isinstance(kernel_rows, list) or not kernel_rows:
+                return False
+            try:
+                enlarged = _enlarge_order_basis(current, kernel_rows, active)
+                event_basis = OrderBasis.from_dict(event["basis"])
+            except (ArithmeticError, KeyError, TypeError, ValueError):
+                return False
+            if (
+                event.get("from_index") != _order_index(current)
+                or event.get("to_index") != _order_index(enlarged)
+                or event_basis.canonical_key() != enlarged.canonical_key()
+            ):
+                return False
+            current = enlarged
+            enlargement_count += 1
+        else:
+            return False
+        previous_stage = str(stage)
+    if previous_stage != "component-reduction" or active != 1:
+        return False
+    return (
+        current.canonical_key() == result.basis.canonical_key()
+        and enlargement_count == result.evidence.get("enlargement_count")
+    )
+
+
 def check_buchmann_lenstra_general_result(
     polynomial_coefficients: list[int],
     starting_basis: OrderBasis,
@@ -2007,6 +2390,13 @@ def check_buchmann_lenstra_general_result(
                 return False
         except ArithmeticError:
             return False
+    if result.evidence.get("compact_event_certificate") is not None:
+        return _check_component_coprime_cycle_certificate(
+            coefficients,
+            starting_basis,
+            result,
+            equation_disc,
+        )
     replay = buchmann_lenstra_general_overorder(
         coefficients,
         result.component,

@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-bl-fusion",
+  "title": "Maximal-order Buchmann-Lenstra fusion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fuse T8 Buchmann-Lenstra composite primitives and accelerate the precision12 multiplier cycle with independently checkable compact evidence",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "test/number-field-buchmann-lenstra-fast.cjs",
+    "test/number-field-buchmann-lenstra-precision.cjs",
+    "bench/number-field-buchmann-lenstra-fast.cjs",
+    "bench/number-field-buchmann-lenstra-precision.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing generic Buchmann-Lenstra replay",
+      "PARI/Sage exact maximal-order lattice fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
