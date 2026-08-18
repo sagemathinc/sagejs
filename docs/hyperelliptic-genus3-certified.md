@@ -7,6 +7,80 @@ API that exposes `det(I-TW) mod p`. `exhaustive` names the deterministic exact
 fallback. `auto` must not select `rforest` until the complete workflow passes
 the documented performance and platform gates.
 
+## Examples
+
+For a single prime, request the certified backend explicitly. The equation is
+`y^2 + x^2*y = x^7 - x + 1`:
+
+```sage
+sage: R.<x> = QQ[]
+sage: C = HyperellipticCurve(x^7 - x + 1, x^2)
+sage: C.local_lpolynomial(7, algorithm="rforest")
+343*T^6 - 49*T^5 - 35*T^4 + 11*T^3 - 5*T^2 - T + 1
+sage: C.local_lpolynomial(11, algorithm="rforest")
+1331*T^6 + 121*T^5 + 88*T^4 - 22*T^3 + 8*T^2 + T + 1
+```
+
+The displayed polynomial is `det(1-T*Frob)`. Equivalently, its ascending
+coefficient tuple at 11 is `(1, 1, 8, -22, 88, 121, 1331)`.
+
+Use `local_lpolynomials` for a modest closed interval. It performs one
+rforest traversal instead of starting the remainder forest separately at
+each prime:
+
+```sage
+sage: C.local_lpolynomials(5, 13, algorithm="rforest", chunk_size=3)
+[(7, 343*T^6 - 49*T^5 - 35*T^4 + 11*T^3 - 5*T^2 - T + 1),
+ (11, 1331*T^6 + 121*T^5 + 88*T^4 - 22*T^3 + 8*T^2 + T + 1),
+ (13, 2197*T^6 + 169*T^5 + 208*T^4 + 16*T^3 + 16*T^2 + T + 1)]
+```
+
+Here 5 is absent because the supplied integral model reduces singularly at 5.
+For a large interval, consume bounded chunks rather than materializing the
+entire result; this small example demonstrates the pattern:
+
+```sage
+sage: total = 0
+sage: for chunk in C.local_lpolynomial_chunks(
+....:         5, 100, algorithm="rforest", chunk_size=8
+....:     ):
+....:     total += len(chunk)
+sage: total
+21
+```
+
+The lower-level completion result exposes proof diagnostics. This API is
+useful for testing and profiling; ordinary applications should use the curve
+methods above:
+
+```sage
+sage: from sagejs.hyperelliptic_curves.certified_genus3 import rforest_genus3_local_factor
+sage: result = rforest_genus3_local_factor(C, 11)
+sage: result["status"]
+'unique'
+sage: result["coefficients"]
+(1, 1, 8, -22, 88, 121, 1331)
+sage: result["certificate"]["initial_candidate_count"]
+24
+sage: result["certificate"]["jacobian"]["certificate_count"]
+1
+```
+
+Even-degree genus-3 models currently use the exact fallback because the fast
+Jacobian law assumes one point at infinity. The status makes that explicit;
+the returned polynomial is still exact:
+
+```sage
+sage: D = HyperellipticCurve(x^8 + x + 1)
+sage: result = rforest_genus3_local_factor(D, 11)
+sage: result["status"]
+'fallback'
+sage: result["diagnostics"]["fallback_reason"]
+'unsupported_jacobian_model'
+sage: D.local_lpolynomial(11, algorithm="rforest")
+1331*T^6 + 363*T^5 + 88*T^4 + 12*T^3 + 8*T^2 + 3*T + 1
+```
+
 For every available genus-3 residue row the pipeline:
 
 1. enumerates every integral genus-3 Weil polynomial in the residue class;
