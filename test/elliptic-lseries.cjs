@@ -37,14 +37,18 @@ test("elliptic L-series batch, completed values, and functional equation agree",
         "lam0 = L.completed_value(s, prec=64)",
         "lam1 = L.completed_value(2-s, prec=64)",
         "single = L.value(s, prec=64)",
+        "pair = L.values([CC(1,2), CC(1,-2)], prec=64)",
+        "pair_diagnostics = L.last_diagnostics()",
         "[abs(float((v[0]-single).real())) < 1e-15,",
         " abs(float((v[0]-single).imag())) < 1e-15,",
         " abs(float((lam0-E.root_number()*lam1).real())) < 1e-12,",
-        " abs(float((lam0-E.root_number()*lam1).imag())) < 1e-12]",
+        " abs(float((lam0-E.root_number()*lam1).imag())) < 1e-12,",
+        " pair[1].real() == pair[0].real() and pair[1].imag() == -pair[0].imag(),",
+        " pair_diagnostics['conjugation_reconstructed'] == 1]",
       ].join("\n"),
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[True, True, True, True]");
+    assert.equal(result.repr, "[True, True, True, True, True, True]");
   } finally {
     await session.close();
   }
@@ -169,7 +173,7 @@ test("complex_plot uses adaptive regional L-series batches", async () => {
   }
 });
 
-test("complex_plot tiles L-series grids larger than one native batch", async () => {
+test("complex_plot prepares one packed grid above the ordinary native cap", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate(
@@ -182,11 +186,15 @@ test("complex_plot tiles L-series grids larger than one native batch", async () 
         "run = d['runs'][0]",
         "[d['pixel_count'], d['unstable_pixels'], run['tile_count'],",
         " max(tile['point_count'] for tile in run['tiles']),",
-        " run['evaluated_point_count'], run['conjugation_reconstructed']]",
+        " run['evaluated_point_count'], run['conjugation_reconstructed'],",
+        " run['packed_output'], run['prepared_grid_reused']]",
       ].join("\n"),
       { timeout: 120_000 },
     );
-    assert.equal(result.repr, "[20164, 0, 2, 10000, 10082, 10082]");
+    assert.equal(
+      result.repr,
+      "[20164, 0, 1, 10082, 10082, 10082, True, True]",
+    );
   } finally {
     await session.close();
   }

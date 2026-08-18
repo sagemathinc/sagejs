@@ -878,3 +878,30 @@ plot forced to 53 bits is about 5.6 s: materially faster, though the measured
 1.8x ratio is below the aspirational 2x target. Every accepted adaptive pixel
 in the regression grid is within one 8-bit channel level of the 53-bit
 baseline, and unresolved phase is never rendered as a plausible hue.
+
+### Follow-up optimization receipt
+
+A subsequent low-hanging-fruit pass removed the remaining fixed public batch
+ceiling and reduced dense-plot marshalling overhead:
+
+- `L.values(...)` now divides arbitrary request sizes into bounded native
+  chunks, merges diagnostics and results in input order, and reconstructs
+  exact conjugate pairs from one canonical evaluation.
+- The existing native `ecLseriesValues` boundary gained an explicit plan-only
+  mode. Plotting can determine its coefficient cutoff and point-grid budget
+  before copying a large coefficient prefix or allocating value results.
+- Plot batches now return one packed binary64 coarse/fine/error buffer instead
+  of thousands of nested decimal objects. Ordinary `L(s)` and `L.values(...)`
+  retain their arbitrary-precision decimal/Acb result contract.
+- Adaptive plots coalesce the former 10,000-point tiles into prepared regions
+  of up to 100,000 canonical points, subject to the existing dynamic
+  point-grid work budget. Oversized regions are subdivided transparently and
+  retain the shared coefficient prefix.
+- The benchmark now records a 300-by-300 adaptive plot and whether the packed
+  prepared-grid path was used.
+
+On the development x86-64 host, the focused 10,001-point native packed test
+takes about 0.09 seconds. A 142-by-142 public complex plot evaluates 10,082
+canonical points after conjugation in one prepared region and takes about 3.8
+seconds in the focused integration test. These timings exclude a cold Sage.js
+module compilation.

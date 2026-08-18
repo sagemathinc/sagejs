@@ -149,6 +149,45 @@ test("nested refinement reuses one fine grid and returns its coarse witness", ()
   );
 });
 
+test("plan-only and packed plot modes support one prepared grid above 10000 points", () => {
+  const points = Array.from({ length: 10001 }, () => ["1", "0"]);
+  assert.throws(
+    () => flint.ecLseriesValues(11n, 1, [0, 1], points, 32),
+    /at most 10000 entries/,
+  );
+  const plan = flint.ecLseriesValues(11n, 1, null, points, 32, 8, 1);
+  assert.equal(plan.status, "plan");
+  assert.equal(plan.pointCount, points.length);
+  assert.ok(plan.requiredCutoff > 1);
+  const coefficients = flint.ecAnlistIntegral(
+    0n,
+    -1n,
+    1n,
+    -10n,
+    -20n,
+    11n,
+    BigInt(plan.requiredCutoff),
+  );
+  const packed = flint.ecLseriesValues(
+    11n,
+    1,
+    coefficients,
+    points,
+    32,
+    8,
+    2,
+  );
+  assert.equal(packed.status, "ok");
+  assert.equal(packed.pointCount, points.length);
+  assert.equal(packed.packedStride, 5);
+  assert.ok(packed.packedValues instanceof Float64Array);
+  assert.equal(packed.packedValues.length, 5 * points.length);
+  close(packed.packedValues[0], 0.2538418608559107, 2e-8);
+  close(packed.packedValues[1], 0, 2e-8);
+  assert.ok(packed.packedValues[4] >= 0);
+  assert.equal(packed.packedValues[0], packed.packedValues[5]);
+});
+
 test("nested and independent fine grids agree across a moderate point corpus", () => {
   const points = [
     ["0.25", "-20"],

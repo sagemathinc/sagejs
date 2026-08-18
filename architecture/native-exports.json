@@ -1936,7 +1936,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1524,
+        "line": 1661,
         "lines": 184,
         "sha256": "98ad7c9d6d195026cca472915d1218816d3c3255c221fb6701b4f34038b276eb",
         "calls": [
@@ -2006,7 +2006,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2104,
+        "line": 2296,
         "lines": 166,
         "sha256": "eb581a6624de19d5ef5ccc4775122cb4a03ab51548fde9cda821bbe5c9155d6d",
         "calls": [
@@ -2064,9 +2064,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1709,
-        "lines": 394,
-        "sha256": "3c907d60e44d5b4741846693b7ba9625b1d26c0407d590b0d7973f4f32825b88",
+        "line": 1846,
+        "lines": 449,
+        "sha256": "cb6e115f15eb1b2cd4e71654c24e3a72207507bf2109fc5b05b1d30eb5fd5df8",
         "calls": [
           "_acb_vec_clear",
           "_acb_vec_init",
@@ -2090,6 +2090,8 @@
           "complex_ball_to_object",
           "decimal_from_arf",
           "ec_lseries_domain",
+          "ec_lseries_packed_plot_to_object",
+          "ec_lseries_plan_to_object",
           "fmax",
           "fmpz_clear",
           "fmpz_get_d",
@@ -2102,6 +2104,7 @@
           "mag_init",
           "mag_set",
           "mag_zero",
+          "make_ec_lseries_plan",
           "napi_create_array_with_length",
           "napi_create_object",
           "napi_create_string_utf8",

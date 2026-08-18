@@ -56,7 +56,9 @@ the numerical error.
 
 For a line, grid, orbit, or plotting workload, use `values()` rather than a
 Python loop. A batch shares its coefficient prefix and numerical grids, removes
-duplicate points, and preserves input order.
+duplicate points, evaluates conjugate pairs only once, and preserves input
+order. There is no 10,000-point limit on this public interface: very large
+requests are transparently divided into bounded native chunks.
 
 ```sage test
 points = [CC(1, k/2) for k in range(9)]
@@ -133,12 +135,17 @@ For a finished image, increase `plot_points` to 100 or more and enlarge the
 rectangle. The default `plot_precision="auto"` is usually the right choice:
 most pixels need only enough numerical accuracy to choose a stable color.
 Set `plot_precision=53` to force full double precision throughout when making
-a comparison image. Large grids are transparently divided into native tiles
-of at most 10,000 distinct points while every tile reuses the `L`-series'
-coefficient cache. Thus, for example,
-`complex_plot(L, (0, 2), (-4, 4), plot_points=300)` makes a 300-by-300 image;
-it does not attempt one 90,000-point native allocation. With automatic
-precision, conjugate pixels are also evaluated only once before tiling.
+a comparison image. Plotting uses a compact packed binary64 result rather than
+constructing a nested decimal object for every pixel. It first asks the native
+kernel for a cheap plan, then prepares the coefficient-dependent Mellin grid
+once for all points in the accepted region. A single prepared region may hold
+up to 100,000 distinct points; a dynamic point-grid work budget transparently
+subdivides larger or more expensive regions. Thus, for example,
+`complex_plot(L, (0, 2), (-4, 4), plot_points=300)` makes a 300-by-300 image in
+one prepared region after conjugation symmetry reduces it to about 45,000
+evaluations. Larger `plot_points` values keep working through smaller tiles.
+Every tile shares the `L`-series' coefficient cache, and conjugate pixels are
+evaluated only once with automatic precision.
 
 ## Estimate analytic rank
 

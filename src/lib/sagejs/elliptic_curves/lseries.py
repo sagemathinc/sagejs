@@ -223,6 +223,7 @@ class ReferenceLseriesBatchResult(TypedDict):
     refinement_difference: str
     refinement_tolerance: str
     refinement_runs: list[Any]
+    conjugation_reconstructed: int
     refinement_stable: bool
     rigorous: bool
     analytic_error_status: str
@@ -317,6 +318,15 @@ def _decimal_digits(bits: int) -> int:
 
 def _number_string(value: Any, bits: int) -> str:
     return str(mp.nstr(value, n=_decimal_digits(bits), strip_zeros=False))
+
+
+def _negated_decimal_string(value: str) -> str:
+    """Negate one finite decimal string without reparsing its precision."""
+    if value.startswith("-"):
+        return value[1:]
+    if mp.mpf(value) == 0:
+        return value
+    return "-" + value
 
 
 def _direct_tail_log(real_part: Any, cutoff: int) -> Any:
@@ -1031,6 +1041,7 @@ def reference_lseries_values(
             "refinement_difference": _number_string(difference, precision_bits),
             "refinement_tolerance": _number_string(tolerance, precision_bits),
             "refinement_runs": refinement_runs,
+            "conjugation_reconstructed": 0,
             "refinement_stable": stable,
             "rigorous": False,
             "analytic_error_status": "coefficient_grid_and_upper_omission_only",
@@ -1334,6 +1345,7 @@ def _direct_lseries_values(
                 "cutoffs": [plan["cutoff"] for plan in final_plans],
             },
         ],
+        "conjugation_reconstructed": 0,
         "refinement_stable": True,
         "rigorous": False,
         "analytic_error_status": "proved_direct_coefficient_tail_only",
@@ -1839,6 +1851,7 @@ def _native_batch_result(
         "refinement_difference": _number_string(difference, precision_bits),
         "refinement_tolerance": _number_string(tolerance, precision_bits),
         "refinement_runs": runs,
+        "conjugation_reconstructed": 0,
         "refinement_stable": True,
         "rigorous": False,
         "analytic_error_status": str(
@@ -2061,6 +2074,7 @@ def _merge_lseries_batches(
             {"algorithm": batch["algorithm"], "runs": batch["refinement_runs"]}
             for batch in batches
         ],
+        "conjugation_reconstructed": 0,
         "refinement_stable": all(batch["refinement_stable"] for batch in batches),
         "rigorous": False,
         "analytic_error_status": "+".join(
@@ -2100,14 +2114,6 @@ def lseries_values(
     if precision_bits < 32:
         raise ValueError("precision must be at least 32 bits")
     prepared = _coerce_points(points)
-    if len(prepared) > effective_limits.maximum_batch_points:
-        raise ReferenceLseriesResourceError(
-            "L-series batch exceeds the point-grid resource limit",
-            {
-                "point_count": len(prepared),
-                "limit": effective_limits.maximum_batch_points,
-            },
-        )
     prefix = (
         CoefficientPrefix(curve) if coefficient_prefix is None else coefficient_prefix
     )
@@ -2118,20 +2124,27 @@ def lseries_values(
     old_precision = mp.prec
     mp.prec = max(96, precision_bits + 48)
     try:
-        normalized = _normalized_point_pairs(prepared, precision_bits + 40)
+        original_normalized = _normalized_point_pairs(prepared, precision_bits + 40)
+        canonical_points = [
+            mp.mpc(point.real, -point.imag) if point.imag < 0 else point
+            for point in prepared
+        ]
+        normalized = _normalized_point_pairs(canonical_points, precision_bits + 40)
         unique_points: list[Any] = []
-        unique_keys: list[str] = []
         key_to_unique: dict[str, int] = {}
         expansion: list[int] = []
-        for point, pair in zip(prepared, normalized, strict=True):
+        conjugated: list[bool] = []
+        for original, point, pair in zip(
+            prepared, canonical_points, normalized, strict=True
+        ):
             key = pair[0] + "|" + pair[1]
             unique_index = key_to_unique.get(key)
             if unique_index is None:
                 unique_index = len(unique_points)
                 key_to_unique[key] = unique_index
                 unique_points.append(point)
-                unique_keys.append(key)
             expansion.append(unique_index)
+            conjugated.append(original.imag < 0)
 
         direct_indices: list[int] = []
         mellin_buckets: dict[tuple[int, int], list[int]] = {}
@@ -2150,22 +2163,26 @@ def lseries_values(
 
         batches: list[ReferenceLseriesBatchResult] = []
         placements: list[list[int]] = []
+        # The ordinary native object protocol intentionally remains bounded;
+        # larger public requests are transparent sequences of these chunks.
+        native_chunk_size = min(10_000, max(1, effective_limits.maximum_batch_points))
+        chunk_size = 64 if algorithm == "reference" else native_chunk_size
         if direct_indices:
-            direct_points = [unique_points[index] for index in direct_indices]
-            batches.append(
-                _direct_lseries_values(
-                    curve,
-                    direct_points,
-                    int(curve.conductor()),
-                    precision_bits,
-                    prefix,
-                    effective_limits,
-                    algorithm,
+            for start in range(0, len(direct_indices), chunk_size):
+                chunk = direct_indices[start : start + chunk_size]
+                batches.append(
+                    _direct_lseries_values(
+                        curve,
+                        [unique_points[index] for index in chunk],
+                        int(curve.conductor()),
+                        precision_bits,
+                        prefix,
+                        effective_limits,
+                        algorithm,
+                    )
                 )
-            )
-            placements.append(direct_indices)
+                placements.append(chunk)
 
-        chunk_size = 64 if algorithm == "reference" else 10_000
         for indices in mellin_buckets.values():
             for start in range(0, len(indices), chunk_size):
                 chunk = indices[start : start + chunk_size]
@@ -2188,14 +2205,30 @@ def lseries_values(
             precision_bits,
             prefix,
         )
-        if expansion == list(range(len(unique_points))):
+        if expansion == list(range(len(unique_points))) and not any(conjugated):
             return unique_result
-        expanded_values = [unique_result["values"][index] for index in expansion]
-        expanded_diagnostics = [
-            unique_result["point_diagnostics"][index] for index in expansion
-        ]
+        expanded_values = []
+        expanded_diagnostics = []
+        for original_pair, index, use_conjugate in zip(
+            original_normalized, expansion, conjugated, strict=True
+        ):
+            value = dict(unique_result["values"][index])
+            value["s_real"] = original_pair[0]
+            value["s_imag"] = original_pair[1]
+            if use_conjugate:
+                value["raw_imag"] = _negated_decimal_string(str(value["raw_imag"]))
+                value["completed_imag"] = _negated_decimal_string(
+                    str(value["completed_imag"])
+                )
+            expanded_values.append(value)
+            diagnostic = dict(unique_result["point_diagnostics"][index])
+            diagnostic["conjugation_reconstructed"] = use_conjugate
+            expanded_diagnostics.append(diagnostic)
         unique_result["values"] = expanded_values
         unique_result["point_diagnostics"] = expanded_diagnostics
+        unique_result["conjugation_reconstructed"] = sum(
+            1 for value in conjugated if value
+        )
         return unique_result
     finally:
         mp.prec = old_precision

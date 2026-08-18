@@ -59,6 +59,7 @@ for curve_id, a_invariants in CURVES:
     rectangle_seconds = None
     plot_100_seconds = None
     plot_53_seconds = None
+    plot_300_seconds = None
     diagnostics = None
     if curve_id == "user-evaluation":
         point_L = EllipticCurve(a_invariants).lseries()
@@ -90,6 +91,15 @@ for curve_id, a_invariants in CURVES:
                     plot_precision=53,
                 )
             )[0]
+            plot_300_seconds, large_plot = elapsed(
+                lambda: complex_plot(
+                    point_L,
+                    (0, 2),
+                    (-4, 4),
+                    plot_points=300,
+                    interpolation="nearest",
+                )
+            )
             plot_diagnostic = adaptive_plot._plot_spec_diagnostics[0]
             first_run = plot_diagnostic["runs"][0]
             diagnostics = {
@@ -104,6 +114,16 @@ for curve_id, a_invariants in CURVES:
                 ),
                 "cutoff": int(first_run["cutoff"]),
                 "grid_points": int(first_run["grid_points"]),
+                "tile_count": int(first_run["tile_count"]),
+                "native_call_count": int(first_run["native_call_count"]),
+                "packed_output": bool(first_run["packed_output"]),
+                "prepared_grid_reused": bool(first_run["prepared_grid_reused"]),
+                "large_pixel_count": int(
+                    large_plot._plot_spec_diagnostics[0]["pixel_count"]
+                ),
+                "large_tile_count": int(
+                    large_plot._plot_spec_diagnostics[0]["runs"][0]["tile_count"]
+                ),
             }
     records.append(
         {
@@ -121,6 +141,7 @@ for curve_id, a_invariants in CURVES:
             "rectangle_16x16_seconds": rectangle_seconds,
             "complex_plot_100_auto_seconds": plot_100_seconds,
             "complex_plot_100_53_seconds": plot_53_seconds,
+            "complex_plot_300_auto_seconds": plot_300_seconds,
             "complex_plot_diagnostics": diagnostics,
             "samples": int(SAMPLES),
         }

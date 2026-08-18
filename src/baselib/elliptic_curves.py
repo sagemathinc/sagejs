@@ -796,7 +796,7 @@ class Lseries_ell:
         algorithm: str,
     ) -> Any:
         """Use the native direct series without loading mpmath policy code."""
-        if algorithm == "reference":
+        if algorithm == "reference" or len(point_pairs) > 10000:
             return None
         plans = []
         for point in point_pairs:
@@ -877,7 +877,7 @@ class Lseries_ell:
         algorithm: str,
     ) -> Any:
         """Run the nested native policy without mpmath point round-trips."""
-        if algorithm == "reference" or precision > 53:
+        if algorithm == "reference" or precision > 53 or len(point_pairs) > 10000:
             return None
         for point in point_pairs:
             real_part = float(point[0])
@@ -999,18 +999,28 @@ class Lseries_ell:
             else:
                 resolved.set(key, value)
         if missing_points:
-            result = self._fast_direct_values(missing_points, precision, algorithm)
-            if result is None:
-                result = self._fast_mellin_values(missing_points, precision, algorithm)
+            missing_pair_keys = {point[0] + "|" + point[1] for point in missing_points}
+            has_conjugate_reuse = any(
+                point[1].startswith("-")
+                and point[0] + "|" + point[1][1:] in missing_pair_keys
+                for point in missing_points
+            )
+            result = None
+            if not has_conjugate_reuse:
+                result = self._fast_direct_values(missing_points, precision, algorithm)
                 if result is None:
-                    result = _elliptic_lseries().lseries_values(
-                        self._curve,
-                        missing_points,
-                        self._curve.root_number(),
-                        precision,
-                        algorithm=algorithm,
-                        coefficient_prefix=self._coefficient_prefix,
+                    result = self._fast_mellin_values(
+                        missing_points, precision, algorithm
                     )
+            if result is None:
+                result = _elliptic_lseries().lseries_values(
+                    self._curve,
+                    missing_points,
+                    self._curve.root_number(),
+                    precision,
+                    algorithm=algorithm,
+                    coefficient_prefix=self._coefficient_prefix,
+                )
             if str(_lseries_record_get(result, "status")) != "ok":
                 raise ArithmeticError(
                     "elliptic L-series evaluation failed with status "
@@ -1149,7 +1159,7 @@ class Lseries_ell:
             }
         adaptive = region is not None and bool(_lseries_record_get(region, "adaptive"))
         refinement_bits = 8 if adaptive else 32
-        native_tile_limit = 10000
+        native_tile_limit = 100000
         point_pairs = []
         expansion = []
         conjugate_signs = []
@@ -1174,29 +1184,52 @@ class Lseries_ell:
                 point_pairs.append(pair)
             expansion.append(int(index))
             conjugate_signs.append(-1.0 if imaginary_part < 0 and adaptive else 1.0)
-        fine_values = []
-        coarse_values = []
+        canonical_fine = []
+        canonical_coarse = []
+        canonical_errors = []
         tile_diagnostics = []
-        for start in range(0, len(point_pairs), native_tile_limit):
-            tile_pairs = point_pairs[start : start + native_tile_limit]
-            planned = self._curve._lseries_values_native(
-                [0, 1], tile_pairs, target, refinement_bits
-            )
+        pending_tiles = [
+            point_pairs[start : start + native_tile_limit]
+            for start in range(0, len(point_pairs), native_tile_limit)
+        ]
+        tile_index = 0
+        while tile_index < len(pending_tiles):
+            tile_pairs = pending_tiles[tile_index]
+            try:
+                planned = self._curve._lseries_plan_native(
+                    tile_pairs, target, refinement_bits
+                )
+            except Exception:
+                if len(tile_pairs) == 1:
+                    raise
+                middle = len(tile_pairs) // 2
+                pending_tiles[tile_index : tile_index + 1] = [
+                    tile_pairs[:middle],
+                    tile_pairs[middle:],
+                ]
+                continue
             required = int(runtime.reflect.get(planned, "required_cutoff"))
             coefficients = self._coefficient_prefix.through(required)
-            result = self._curve._lseries_values_native(
+            result = self._curve._lseries_plot_values_native(
                 coefficients, tile_pairs, target, refinement_bits
             )
             if str(runtime.reflect.get(result, "status")) != "ok" or not bool(
                 runtime.reflect.get(result, "known_error_target_met")
             ):
                 raise ArithmeticError("elliptic L-series plot tile did not stabilize")
-            tile_fine = list(runtime.reflect.get(result, "values"))
-            tile_coarse = list(runtime.reflect.get(result, "coarse_values"))
-            if len(tile_fine) != len(tile_pairs) or len(tile_coarse) != len(tile_pairs):
+            packed = list(runtime.reflect.get(result, "packed_values"))
+            stride = int(runtime.reflect.get(result, "packed_stride"))
+            if stride != 5 or len(packed) != stride * len(tile_pairs):
                 raise ArithmeticError("elliptic L-series plot tile has invalid size")
-            fine_values.extend(tile_fine)
-            coarse_values.extend(tile_coarse)
+            for local_index in range(len(tile_pairs)):
+                offset = local_index * stride
+                canonical_fine.append(
+                    [float(packed[offset]), float(packed[offset + 1])]
+                )
+                canonical_coarse.append(
+                    [float(packed[offset + 2]), float(packed[offset + 3])]
+                )
+                canonical_errors.append(float(packed[offset + 4]))
             tile_diagnostics.append(
                 {
                     "point_count": len(tile_pairs),
@@ -1210,7 +1243,8 @@ class Lseries_ell:
                     ),
                 }
             )
-        if len(fine_values) != len(point_pairs) or len(coarse_values) != len(
+            tile_index += 1
+        if len(canonical_fine) != len(point_pairs) or len(canonical_coarse) != len(
             point_pairs
         ):
             raise ArithmeticError("elliptic L-series plot batch has invalid size")
@@ -1219,25 +1253,21 @@ class Lseries_ell:
         coarse = []
         errors = []
         for index, sign in zip(expansion, conjugate_signs, strict=True):
-            coarse_value = coarse_values[index]
-            fine_value = fine_values[index]
+            coarse_value = canonical_coarse[index]
+            fine_value = canonical_fine[index]
             coarse.append(
                 complex_double(
-                    float(runtime.reflect.get(coarse_value, "raw_real")),
-                    sign * float(runtime.reflect.get(coarse_value, "raw_imag")),
+                    float(coarse_value[0]),
+                    sign * float(coarse_value[1]),
                 )
             )
             fine.append(
                 complex_double(
-                    float(runtime.reflect.get(fine_value, "raw_real")),
-                    sign * float(runtime.reflect.get(fine_value, "raw_imag")),
+                    float(fine_value[0]),
+                    sign * float(fine_value[1]),
                 )
             )
-            errors.append(
-                float(runtime.reflect.get(fine_value, "analytic_error_bound"))
-                + float(runtime.reflect.get(fine_value, "raw_real_radius"))
-                + float(runtime.reflect.get(fine_value, "raw_imag_radius"))
-            )
+            errors.append(canonical_errors[index])
         diagnostics = {
             "route": "mellin-native-nested",
             "precision_bits": target,
@@ -1250,6 +1280,8 @@ class Lseries_ell:
             "tile_count": len(tile_diagnostics),
             "tile_point_limit": native_tile_limit,
             "native_call_count": 2 * len(tile_diagnostics),
+            "packed_output": True,
+            "prepared_grid_reused": True,
             "cutoff": max(tile["cutoff"] for tile in tile_diagnostics),
             "grid_points": max(tile["grid_points"] for tile in tile_diagnostics),
             "coefficient_terms": sum(
@@ -1815,6 +1847,87 @@ class EllipticCurveParent(sage.Parent):
             "raw_conversion_magnitude": str(
                 runtime.reflect.get(native, "rawConversionMagnitude")
             ),
+        }
+
+    def _lseries_plan_native(
+        self,
+        points: list[list[str]],
+        precision_bits: int,
+        refinement_bits: int,
+    ) -> dict[str, Any]:
+        """Plan a native Mellin grid without allocating value results."""
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecLseriesValues")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native Acb elliptic L-series evaluator is unavailable"
+            )
+        native = runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                runtime.integer_bigint(self.conductor()),
+                self.root_number(),
+                [0, 1],
+                points,
+                precision_bits,
+                refinement_bits,
+                1,
+            ],
+        )
+        return {
+            "status": str(runtime.reflect.get(native, "status")),
+            "required_cutoff": int(runtime.reflect.get(native, "requiredCutoff")),
+            "grid_points": int(runtime.reflect.get(native, "gridPoints")),
+            "coefficient_terms": int(runtime.reflect.get(native, "coefficientTerms")),
+            "point_count": int(runtime.reflect.get(native, "pointCount")),
+            "fine_precision_bits": int(
+                runtime.reflect.get(native, "finePrecisionBits")
+            ),
+        }
+
+    def _lseries_plot_values_native(
+        self,
+        coefficients: list[Any],
+        points: list[list[str]],
+        precision_bits: int,
+        refinement_bits: int,
+    ) -> dict[str, Any]:
+        """Return nested-refinement plot values in packed binary64 storage."""
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecLseriesValues")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native Acb elliptic L-series evaluator is unavailable"
+            )
+        native = runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                runtime.integer_bigint(self.conductor()),
+                self.root_number(),
+                coefficients,
+                points,
+                precision_bits,
+                refinement_bits,
+                2,
+            ],
+        )
+        return {
+            "status": str(runtime.reflect.get(native, "status")),
+            "known_error_target_met": bool(
+                runtime.reflect.get(native, "knownErrorTargetMet")
+            ),
+            "packed_values": runtime.reflect.get(native, "packedValues"),
+            "packed_stride": int(runtime.reflect.get(native, "packedStride")),
+            "fine_precision_bits": int(
+                runtime.reflect.get(native, "finePrecisionBits")
+            ),
+            "cutoff": int(runtime.reflect.get(native, "cutoff")),
+            "required_cutoff": int(runtime.reflect.get(native, "requiredCutoff")),
+            "grid_points": int(runtime.reflect.get(native, "gridPoints")),
+            "coefficient_terms": int(runtime.reflect.get(native, "coefficientTerms")),
+            "point_count": int(runtime.reflect.get(native, "pointCount")),
         }
 
     def _lseries_direct_values_native(

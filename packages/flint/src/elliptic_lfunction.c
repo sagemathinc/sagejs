@@ -17,7 +17,8 @@
 
 #define SAGEJS_PI 3.141592653589793238462643383279502884
 #define SAGEJS_LN2 0.693147180559945309417232121458176568
-#define SAGEJS_EC_LSERIES_MAX_POINTS 10000
+#define SAGEJS_EC_LSERIES_MAX_POINTS 100000
+#define SAGEJS_EC_LSERIES_MAX_OBJECT_POINTS 10000
 #define SAGEJS_EC_LSERIES_MAX_CUTOFF 5000000
 #define SAGEJS_EC_LSERIES_MAX_GRID_POINTS 20000
 #define SAGEJS_EC_LSERIES_MAX_COEFFICIENT_TERMS 100000000
@@ -399,6 +400,7 @@ typedef struct
     slong grid_points;
     slong coefficient_terms;
     slong work_precision;
+    slong point_count;
     double grid_step;
     double max_abs_imaginary;
     double max_abs_real_offset;
@@ -600,6 +602,7 @@ static int make_ec_lseries_plan(
     plan->grid_points = grid_points;
     plan->coefficient_terms = coefficient_terms;
     plan->work_precision = requested_work_precision;
+    plan->point_count = point_count;
     plan->grid_step = h_double;
     plan->max_abs_imaginary = tmax;
     plan->max_abs_real_offset = real_width;
@@ -1521,6 +1524,140 @@ static napi_value complex_ball_to_object(
     return result;
 }
 
+static napi_value ec_lseries_plan_to_object(
+    napi_env env,
+    const ec_lseries_plan *plan,
+    slong target_bits,
+    slong refinement_bits)
+{
+    napi_value result, status;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_string_utf8(
+            env, "plan", NAPI_AUTO_LENGTH, &status)) ||
+        !set_named(env, result, "status", status) ||
+        !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(env, result, "finePrecisionBits",
+            target_bits + refinement_bits) ||
+        !set_named_slong(env, result, "refinementBits", refinement_bits) ||
+        !set_named_slong(
+            env, result, "workPrecisionBits", plan->work_precision) ||
+        !set_named_slong(
+            env, result, "requiredCutoff", plan->required_cutoff) ||
+        !set_named_slong(env, result, "gridPoints", plan->grid_points) ||
+        !set_named_slong(
+            env, result, "coefficientTerms", plan->coefficient_terms) ||
+        !set_named_slong(env, result, "pointCount", plan->point_count) ||
+        !set_named_double(env, result, "gridStep", plan->grid_step) ||
+        !set_named_double(
+            env, result, "maxAbsImag", plan->max_abs_imaginary) ||
+        !set_named_double(env, result, "maxAbsRealOffset",
+            plan->max_abs_real_offset))
+        return NULL;
+    return result;
+}
+
+static napi_value ec_lseries_packed_plot_to_object(
+    napi_env env,
+    acb_srcptr coarse_raw,
+    acb_srcptr fine_raw,
+    mag_srcptr coefficient_tail_bounds,
+    mag_srcptr grid_omission_bounds,
+    mag_srcptr outer_tail_bounds,
+    const sagejs_ec_lfunction_diagnostics *diagnostics,
+    slong point_count,
+    slong target_bits,
+    slong refinement_bits)
+{
+    const size_t stride = 5;
+    if ((size_t) point_count > SIZE_MAX / stride / sizeof(double))
+    {
+        napi_throw_range_error(env, NULL, "packed plot result is too large");
+        return NULL;
+    }
+    napi_value result, status, array_buffer, packed_values;
+    napi_value known_error_target_met, rigorous;
+    napi_value analytic_status, discretization_status;
+    double *data = NULL;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_string_utf8(
+            env,
+            diagnostics->status == SAGEJS_EC_LFUNCTION_OK
+                ? "ok" : "insufficient_coefficients",
+            NAPI_AUTO_LENGTH, &status)) ||
+        !check_napi(env, napi_create_arraybuffer(env,
+            (size_t) point_count * stride * sizeof(double),
+            (void **) &data, &array_buffer)) ||
+        !check_napi(env, napi_create_typedarray(env, napi_float64_array,
+            (size_t) point_count * stride, array_buffer, 0, &packed_values)) ||
+        !check_napi(env, napi_get_boolean(
+            env, diagnostics->known_error_target_met,
+            &known_error_target_met)) ||
+        !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "coefficient_local_grid_and_outer_tail_only",
+            NAPI_AUTO_LENGTH, &analytic_status)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "unbounded_nonrigorous", NAPI_AUTO_LENGTH,
+            &discretization_status)) ||
+        !set_named(env, result, "status", status) ||
+        !set_named(env, result, "packedValues", packed_values) ||
+        !set_named(env, result, "knownErrorTargetMet",
+            known_error_target_met) ||
+        !set_named(env, result, "rigorous", rigorous) ||
+        !set_named(env, result, "analyticErrorStatus", analytic_status) ||
+        !set_named(env, result, "trapezoidDiscretizationStatus",
+            discretization_status) ||
+        !set_named_slong(env, result, "packedStride", (slong) stride) ||
+        !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(env, result, "finePrecisionBits",
+            target_bits + refinement_bits) ||
+        !set_named_slong(env, result, "refinementBits", refinement_bits) ||
+        !set_named_slong(env, result, "workPrecisionBits",
+            diagnostics->work_precision) ||
+        !set_named_slong(
+            env, result, "cutoff", diagnostics->actual_cutoff) ||
+        !set_named_slong(env, result, "requiredCutoff",
+            diagnostics->required_cutoff) ||
+        !set_named_slong(
+            env, result, "gridPoints", diagnostics->grid_points) ||
+        !set_named_slong(env, result, "coefficientTerms",
+            diagnostics->coefficient_terms) ||
+        !set_named_slong(env, result, "pointCount", point_count) ||
+        !set_named_double(
+            env, result, "gridStep", diagnostics->grid_step) ||
+        !set_named_double(env, result, "maxAbsImag",
+            diagnostics->max_abs_imaginary) ||
+        !set_named_double(env, result, "maxAbsRealOffset",
+            diagnostics->max_abs_real_offset))
+        return NULL;
+    if (diagnostics->status != SAGEJS_EC_LFUNCTION_OK)
+        return result;
+
+    mag_t analytic_error;
+    mag_init(analytic_error);
+    for (slong index = 0; index < point_count; ++index)
+    {
+        const size_t offset = (size_t) index * stride;
+        data[offset] = arf_get_d(
+            arb_midref(acb_realref(fine_raw + index)), ARF_RND_NEAR);
+        data[offset + 1] = arf_get_d(
+            arb_midref(acb_imagref(fine_raw + index)), ARF_RND_NEAR);
+        data[offset + 2] = arf_get_d(
+            arb_midref(acb_realref(coarse_raw + index)), ARF_RND_NEAR);
+        data[offset + 3] = arf_get_d(
+            arb_midref(acb_imagref(coarse_raw + index)), ARF_RND_NEAR);
+        mag_add(analytic_error,
+            coefficient_tail_bounds + index, grid_omission_bounds + index);
+        mag_add(
+            analytic_error, analytic_error, outer_tail_bounds + index);
+        data[offset + 4] = mag_get_d(analytic_error)
+            + mag_get_d(arb_radref(acb_realref(fine_raw + index)))
+            + mag_get_d(arb_radref(acb_imagref(fine_raw + index)));
+    }
+    mag_clear(analytic_error);
+    return result;
+}
+
 napi_value sagejs_ec_completed_central_derivatives(
     napi_env env, napi_callback_info info)
 {
@@ -1708,16 +1845,17 @@ failure:
 
 napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
 {
-    napi_value args[6];
-    size_t argc = 6;
+    napi_value args[7];
+    size_t argc = 7;
     if (!check_napi(env,
             napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
-    if (argc != 5 && argc != 6)
+    if (argc < 5 || argc > 7)
     {
         napi_throw_type_error(env, NULL,
             "ecLseriesValues expects conductor, root number, coefficient "
-            "array, complex-point array, precision, and optional refinement bits");
+            "array, complex-point array, precision, optional refinement bits, "
+            "and optional output mode");
         return NULL;
     }
 
@@ -1726,11 +1864,14 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
     slong root_number = 0;
     slong target_bits = 0;
     slong refinement_bits = 0;
+    slong output_mode = 0;
     if (!value_to_fmpz(env, args[0], conductor) ||
         !value_to_slong(env, args[1], -1, 1, &root_number) ||
         !value_to_slong(env, args[4], 16, 4096, &target_bits) ||
-        (argc == 6 && !value_to_slong(
-            env, args[5], 0, 256, &refinement_bits)))
+        (argc >= 6 && !value_to_slong(
+            env, args[5], 0, 256, &refinement_bits)) ||
+        (argc == 7 && !value_to_slong(
+            env, args[6], 0, 2, &output_mode)))
     {
         fmpz_clear(conductor);
         return NULL;
@@ -1741,6 +1882,13 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         fmpz_clear(conductor);
         return NULL;
     }
+    if (output_mode == 2 && refinement_bits == 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "packed plot output requires positive refinement bits");
+        fmpz_clear(conductor);
+        return NULL;
+    }
 
     bool is_array = false;
     uint32_t point_count_u32 = 0;
@@ -1748,10 +1896,14 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         !check_napi(env,
             napi_get_array_length(env, args[3], &point_count_u32)) ||
         point_count_u32 < 1 ||
-        point_count_u32 > SAGEJS_EC_LSERIES_MAX_POINTS)
+        point_count_u32 > (output_mode == 0
+            ? SAGEJS_EC_LSERIES_MAX_OBJECT_POINTS
+            : SAGEJS_EC_LSERIES_MAX_POINTS))
     {
         napi_throw_range_error(env, NULL,
-            "points must be a nonempty array with at most 10000 entries");
+            output_mode == 0
+                ? "points must be a nonempty array with at most 10000 entries"
+                : "planned or packed points must have at most 100000 entries");
         fmpz_clear(conductor);
         return NULL;
     }
@@ -1836,6 +1988,28 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         fmpz_clear(conductor);
         return NULL;
     }
+    if (output_mode == 1)
+    {
+        ec_lseries_plan plan;
+        const int plan_status = make_ec_lseries_plan(
+            &plan, a, a_double, points, point_count, fine_target_bits,
+            work_precision);
+        napi_value plan_result = NULL;
+        if (plan_status == SAGEJS_EC_LFUNCTION_OK)
+            plan_result = ec_lseries_plan_to_object(
+                env, &plan, target_bits, refinement_bits);
+        else
+            napi_throw_range_error(env, NULL,
+                plan_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT
+                    ? "elliptic L-function plan exceeds native resource limits"
+                    : "invalid elliptic L-function plan input");
+        arb_clear(a);
+        arb_clear(conductor_arb);
+        arb_clear(pi);
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return plan_result;
+    }
     arb_clear(a);
     arb_clear(conductor_arb);
     arb_clear(pi);
@@ -1894,6 +2068,24 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
                 ? "elliptic L-function request exceeds native resource limits"
                 : "invalid elliptic L-function input");
         return NULL;
+    }
+
+    if (output_mode == 2)
+    {
+        napi_value packed_result = ec_lseries_packed_plot_to_object(
+            env, coarse_raw, raw, coefficient_tail_bounds,
+            grid_omission_bounds, outer_tail_bounds, &diagnostics,
+            point_count, target_bits, refinement_bits);
+        _mag_vec_clear(raw_conversion_magnitudes, point_count);
+        _mag_vec_clear(outer_tail_bounds, point_count);
+        _mag_vec_clear(grid_omission_bounds, point_count);
+        _mag_vec_clear(coefficient_tail_bounds, point_count);
+        _acb_vec_clear(raw, point_count);
+        _acb_vec_clear(completed, point_count);
+        _acb_vec_clear(coarse_raw, point_count);
+        _acb_vec_clear(coarse_completed, point_count);
+        _acb_vec_clear(points, point_count);
+        return packed_result;
     }
 
     napi_value result, values, coarse_values = NULL;

@@ -13823,16 +13823,16 @@
         "name": "EllipticCurve",
         "qualified": "EllipticCurve",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 2325,
+        "line": 2438,
         "excerpt": {
-          "start_line": 2313,
+          "start_line": 2426,
           "text": "    model: Any = None,\n    check: bool = True,\n    algorithm: Any = None,\n) -> Any:\n    \"\"\"Construct a normalized explicit-kernel Vélu isogeny lazily.\"\"\"\n    advanced = _elliptic_advanced()\n    return runtime.reflect.construct(\n        runtime.reflect.get(advanced, \"EllipticCurveIsogeny\"),\n        [domain, kernel, codomain, degree, model, check, algorithm],\n    )\n\n\ndef EllipticCurve(\n    data: Any,\n    coefficients: Any = None,\n) -> EllipticCurveParent:\n    \"\"\"\n    Construct an elliptic curve in general Weierstrass form.\n\n    ```sage\n    sage: E = EllipticCurve([0,0,1,-1,0])\n    sage: E\n    Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n    sage: 10 * E([0,0])\n    (161/16 : -2065/64 : 1)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/elliptic_curves.py#d74ccc1fa7a76510-e3b0c44298fc1c14~2",
-          "line": 2333,
+          "line": 2446,
           "source": "E = EllipticCurve([0,0,1,-1,0])",
           "want": "",
           "tags": [],
@@ -13848,7 +13848,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#a9f51566bd6705f7-2a7afe0198baf94e",
-          "line": 2334,
+          "line": 2447,
           "source": "E",
           "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
           "tags": [],
@@ -13864,7 +13864,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
-          "line": 2336,
+          "line": 2449,
           "source": "10 * E([0,0])",
           "want": "(161/16 : -2065/64 : 1)\n",
           "tags": [],
@@ -28895,9 +28895,9 @@
         "name": "points",
         "qualified": "EllipticCurveParent.points",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 1380,
+        "line": 1412,
         "excerpt": {
-          "start_line": 1368,
+          "start_line": 1400,
           "text": "        return self._ainvs[3]\n\n    def a6(self) -> Any:\n        return self._ainvs[4]\n\n    def lift_x(\n        self,\n        x_value: Any,\n        all: bool = False,\n    ) -> Any:\n        return _elliptic_advanced()._ec_lift_x(self, x_value, all)\n\n    def points(self) -> list[EllipticCurvePoint]:\n        if getattr(self._base, \"_kind\", None) not in [\"GF\", \"ZMOD\"]:\n            raise NotImplementedError(\"point enumeration requires a prime finite field\")\n        base = _untyped(self._base)\n        if not base.is_field():\n            raise ValueError(\"the base ring must be a field\")\n        order = runtime.integer_bigint(base.order())\n        if order > runtime.bigint(10000):\n            raise ValueError(\"the field is too large to enumerate points\")\n        answer = [self(0)]\n        for x_value in base:\n            for y_value in base:\n                if self._contains_coordinates(x_value, y_value):"
         }
       },
