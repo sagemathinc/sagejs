@@ -3046,6 +3046,13 @@ runtime.register_doc(
                     "trace radicals and integral overorder enumeration"
                 ),
             },
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Buchmann--Lenstra composite-component cycles, Newton "
+                    "polygons, modified Round Four, and OM/MaxMin local bases"
+                ),
+            },
         ],
         "limitations": [
             (
@@ -3054,10 +3061,10 @@ runtime.register_doc(
                 "algorithms."
             ),
             (
-                "Maximal-order overorder enumeration is correctness-first "
-                "and can be exponential in the dimension of a large trace "
-                "radical; machine-sized discriminant primes are currently "
-                "required."
+                "Modified Round Four and OM/MaxMin currently have bounded "
+                "domains. Unsupported local shapes use a certified exact "
+                "fallback; arbitrary-size primes are never narrowed to a "
+                "machine word."
             ),
         ],
     },
