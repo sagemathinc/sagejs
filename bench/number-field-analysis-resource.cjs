@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { cpus, loadavg, release, tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -98,6 +98,88 @@ function measure(executable, caseIndex, fused) {
   };
 }
 
+function measureGeneratedHost(temporary) {
+  const script = join(temporary, "generated-host.py");
+  const coefficients = [
+    [3, -2, 0, 0, 0, 0, 0, 1],
+    [8, -2, 1, 1],
+    [-8, -1, 0, 1],
+    [2, 1, -1, 2, -1, 1],
+    [3136, 0, -3136, 0, 840, 0, -56, 0, 1],
+    [-25772600, 0, 0, 0, 0, -29080, 0, 0, 0, 0, 1],
+  ];
+  const hostRounds = [3, 5, 5, 3, 1, 1];
+  writeFileSync(script, `
+import json
+import time
+import sagejs.ffi.flint as flint
+from sagejs.number_fields.field_analysis_resource import decode_field_analysis_resource, native_field_analysis
+
+identifiers = ${JSON.stringify(ids)}
+coefficient_cases = ${JSON.stringify(coefficients)}
+round_cases = ${JSON.stringify(hostRounds)}
+warmups = ${warmups}
+samples = ${samples}
+
+def median(values):
+    return sorted(values)[len(values) // 2]
+
+def measure(operation, rounds):
+    for _warmup in range(warmups):
+        operation()
+    values = []
+    for _sample in range(samples):
+        started = time.perf_counter()
+        for _round in range(rounds):
+            operation()
+        values.append(1000000 * (time.perf_counter() - started) / rounds)
+    return {"medianUs": median(values), "samplesUs": values}
+
+results = []
+for identifier, coefficients, rounds in zip(identifiers, coefficient_cases, round_cases):
+    polynomial = flint.fmpz_polynomial(len(coefficients))
+    for index, value in enumerate(coefficients):
+        flint.fmpz_polynomial_set_coefficient(polynomial, index, value)
+    flint.fmpz_polynomial_seal(polynomial)
+
+    def transfer():
+        resource = flint.number_field_analyze_resource(polynomial, 1, 1000)
+        try:
+            return list(resource.copy_bytes())
+        finally:
+            resource.close()
+
+    payload = transfer()
+    checked = decode_field_analysis_resource(
+        payload, expected_polynomial=coefficients, expected_scale=1
+    )
+    transfer_timing = measure(transfer, rounds)
+    checker_timing = measure(
+        lambda: decode_field_analysis_resource(
+            payload, expected_polynomial=coefficients, expected_scale=1
+        ),
+        rounds,
+    )
+    end_to_end_timing = measure(
+        lambda: native_field_analysis(coefficients, 1, 1000), rounds
+    )
+    polynomial.close()
+    results.append({
+        "id": identifier,
+        "roundsPerSample": rounds,
+        "generatedHostTransfer": transfer_timing,
+        "independentChecker": checker_timing,
+        "endToEnd": end_to_end_timing,
+        "certified": checked.certified,
+        "locallyCertifiedPrimes": checked.locally_certified_primes,
+    })
+
+print(json.dumps(results))
+`);
+  return JSON.parse(run(process.execPath, [join(root, "bin", "sagejs"), script])
+    .trim().split(/\r?\n/).at(-1));
+}
+
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-nf-analysis-bench-"));
 try {
   const fusedExecutable = join(temporary, "fused");
@@ -117,6 +199,7 @@ try {
       fusedToDirectRatio: fused.medianUs / direct.medianUs,
     };
   });
+  const generatedHost = measureGeneratedHost(temporary);
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.number-field-analysis-resource-benchmark/v2",
     commit: run("git", ["rev-parse", "HEAD"]),
@@ -138,6 +221,7 @@ try {
       caveat: "The fused path discovers bounded components; the direct oracle receives exact local index-prime hints. Generated host transfer and independent Python authentication are outside both kernel timings.",
     },
     cases,
+    generatedHost,
   }, null, 2)}\n`);
 } finally {
   rmSync(temporary, { recursive: true, force: true });

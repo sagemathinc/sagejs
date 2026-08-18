@@ -66,6 +66,22 @@ typedef struct
     slong *selectors;
 } sagejs_nf_analysis_fixed_point_witness;
 
+static inline int sagejs_nf_analysis_degree_sizes(
+    slong degree, size_t *square, size_t *cube)
+{
+    if (degree < 1 || degree > WORD_MAX / degree)
+        return 0;
+    const size_t degree_size = (size_t) degree;
+    if (degree_size > SIZE_MAX / degree_size)
+        return 0;
+    const size_t square_size = degree_size * degree_size;
+    if (square_size > SIZE_MAX / degree_size)
+        return 0;
+    if (square != NULL) *square = square_size;
+    if (cube != NULL) *cube = square_size * degree_size;
+    return 1;
+}
+
 static inline void sagejs_number_field_analysis_resource_reset(
     sagejs_number_field_analysis_resource_t resource)
 {
@@ -116,7 +132,8 @@ static inline int sagejs_nf_analysis_hnf_multiplication(
     const fmpz_t denominator)
 {
     const slong degree = fmpz_mat_nrows(numerator);
-    if (degree < 1 || degree != fmpz_mat_ncols(numerator) ||
+    if (!sagejs_nf_analysis_degree_sizes(degree, NULL, NULL) ||
+        degree != fmpz_mat_ncols(numerator) ||
         fmpz_mat_nrows(source->value) != degree * degree ||
         fmpz_mat_ncols(source->value) != degree || fmpz_sgn(denominator) <= 0)
         return 0;
@@ -338,8 +355,13 @@ static inline int sagejs_nf_analysis_build_witnesses(
             sizeof(sagejs_nf_analysis_fixed_point_witness));
     uint64_t initialized = 0;
     int success = 1;
-    const size_t table_size =
-        (size_t) degree * (size_t) degree * (size_t) degree;
+    size_t table_size = 0;
+    if (!sagejs_nf_analysis_degree_sizes(degree, NULL, &table_size))
+    {
+        _fmpz_vec_clear(identity, degree);
+        sagejs_nf_analysis_clear_multiplication(multiplication, degree);
+        return 0;
+    }
     ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
     for (uint64_t witness_index = 0;
          witness_index < prime_count && success; witness_index++)
@@ -581,7 +603,8 @@ static inline int sagejs_number_field_analyze_resource(
     const slong length = polynomial->sealed ?
         fmpz_poly_length(polynomial->value) : 0;
     const slong degree = length - 1;
-    if (!polynomial->sealed || degree < 1 ||
+    if (!polynomial->sealed ||
+        !sagejs_nf_analysis_degree_sizes(degree, NULL, NULL) ||
         !fmpz_is_one(polynomial->value->coeffs + degree) ||
         fmpz_sgn(scale) <= 0 ||
         trial_bound > SAGEJS_NF_ANALYSIS_MAX_TRIAL_BOUND)
