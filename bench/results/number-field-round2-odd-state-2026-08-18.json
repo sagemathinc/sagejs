@@ -1,0 +1,527 @@
+{
+  "schema": "sagejs.number-fields/round2-native-state-benchmark/v1",
+  "source": {
+    "commit": "4308a933"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "compiler": "cc",
+    "flintPrefix": "/home/user/sagejs-worktrees/nf-opt-round2-odd-state/packages/flint/.native/prefix"
+  },
+  "policy": {
+    "vector010Rounds": 7,
+    "vector429Rounds": 1,
+    "pariVector010ReferenceUs": 37000,
+    "exactness": "byte-identical forced exact vector010 and vector429 p=3/p=5 payloads, frozen forced-exact vector429 p=2 SHA-256, and 32 deterministic randomized differentials"
+  },
+  "vector010": {
+    "profile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-010-p2",
+      "rounds": 7,
+      "stageMeanUs": {
+        "discriminant": 408.206999834,
+        "hints": 0.477302819,
+        "multiplicationTable": 377.717161817,
+        "round2": 68067.842146515,
+        "normalizeHnf": 490.659831225,
+        "evidence": 144.635726299,
+        "pack": 13.285565988,
+        "cleanup": 66.561441469
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 747.524151978,
+            "allocationsPerRound": 88.142857143,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 1708795.428571429
+          },
+          "modular-table": {
+            "meanUs": 4.746003209,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 537.333594236,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "multiplier": {
+            "meanUs": 12111.994737227,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-prepare": {
+            "meanUs": 438.314862549,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 50413.440048162,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-output": {
+            "meanUs": 1625.726897536,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "publish": {
+            "meanUs": 99.452711376,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 16384
+          },
+          "cleanup": {
+            "meanUs": 147.51998242,
+            "allocationsPerRound": 0.142857143,
+            "freesPerRound": 88,
+            "requestedBytesPerRound": 9362.285714286
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 112,
+        "enlargementsPerRound": 111,
+        "meanRadicalDimension": 30.964285714,
+        "meanPositiveNullity": 2,
+        "equationRowsPerRound": 0,
+        "retainedEquationRowsPerRound": 0
+      }
+    },
+    "payloadSha256": "468557a15427f8ec9404e3e47c9884f8c7d2f5ed5b25b694d65be6739706fa4f",
+    "forcedExactPayloadSha256": "468557a15427f8ec9404e3e47c9884f8c7d2f5ed5b25b694d65be6739706fa4f",
+    "ratioToPari": 1.8396714093652704
+  },
+  "vector429": {
+    "profile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-429-p2",
+      "rounds": 1,
+      "stageMeanUs": {
+        "discriminant": 31384.697998874,
+        "hints": 2.120039426,
+        "multiplicationTable": 63067.754963413,
+        "round2": 604227.794916369,
+        "normalizeHnf": 67004.594951868,
+        "evidence": 2534.840023145,
+        "pack": 45.679975301,
+        "cleanup": 977.399991825
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 20653.057959862,
+            "allocationsPerRound": 167,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 14125120
+          },
+          "modular-table": {
+            "meanUs": 4.251487553,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 1790.744368918,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "multiplier": {
+            "meanUs": 88537.583127618,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-prepare": {
+            "meanUs": 1350.521109998,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 470236.378954723,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-output": {
+            "meanUs": 6289.698299952,
+            "allocationsPerRound": 2,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 135168
+          },
+          "publish": {
+            "meanUs": 419.780029915,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 65536
+          },
+          "cleanup": {
+            "meanUs": 1375.669962727,
+            "allocationsPerRound": 4,
+            "freesPerRound": 152,
+            "requestedBytesPerRound": 1966080
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 84,
+        "enlargementsPerRound": 83,
+        "meanRadicalDimension": 61.857142857,
+        "meanPositiveNullity": 4,
+        "equationRowsPerRound": 0,
+        "retainedEquationRowsPerRound": 0
+      }
+    },
+    "payloadSha256": "b28344d042188afbe0098851928665faaae0268ad8b5cf0e03d790468cb6a644"
+  },
+  "vector429P3": {
+    "profile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-429-p3",
+      "rounds": 1,
+      "stageMeanUs": {
+        "discriminant": 32020.246959291,
+        "hints": 1.689069904,
+        "multiplicationTable": 66058.054915629,
+        "round2": 1477682.488970459,
+        "normalizeHnf": 105949.762044474,
+        "evidence": 3141.570021398,
+        "pack": 30.73993139,
+        "cleanup": 906.870001927
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 17456.077970564,
+            "allocationsPerRound": 167,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 14125120
+          },
+          "modular-table": {
+            "meanUs": 11.638156138,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 25812.948471867,
+            "allocationsPerRound": 1439,
+            "freesPerRound": 1439,
+            "requestedBytesPerRound": 7877664
+          },
+          "multiplier": {
+            "meanUs": 220094.93294172,
+            "allocationsPerRound": 1327,
+            "freesPerRound": 1327,
+            "requestedBytesPerRound": 46150064
+          },
+          "basis-prepare": {
+            "meanUs": 1499.822945334,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 1183266.077539884,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-output": {
+            "meanUs": 4004.496382549,
+            "allocationsPerRound": 2,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 135168
+          },
+          "publish": {
+            "meanUs": 335.230026394,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 65536
+          },
+          "cleanup": {
+            "meanUs": 1250.649918802,
+            "allocationsPerRound": 4,
+            "freesPerRound": 152,
+            "requestedBytesPerRound": 1966080
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 71,
+        "enlargementsPerRound": 70,
+        "meanRadicalDimension": 62.169014085,
+        "meanPositiveNullity": 7.771428571,
+        "equationRowsPerRound": 290816,
+        "retainedEquationRowsPerRound": 41820
+      }
+    },
+    "genericProfile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-429-p3",
+      "rounds": 1,
+      "stageMeanUs": {
+        "discriminant": 31834.017951041,
+        "hints": 1.810025424,
+        "multiplicationTable": 53029.245929793,
+        "round2": 2181009.575957432,
+        "normalizeHnf": 113379.061920568,
+        "evidence": 3158.219973557,
+        "pack": 28.191017918,
+        "cleanup": 2195.499953814
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 10712.019051425,
+            "allocationsPerRound": 167,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 14125120
+          },
+          "modular-table": {
+            "meanUs": 591595.712117851,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 27887.357515283,
+            "allocationsPerRound": 1439,
+            "freesPerRound": 1439,
+            "requestedBytesPerRound": 7877664
+          },
+          "multiplier": {
+            "meanUs": 226624.315022491,
+            "allocationsPerRound": 1327,
+            "freesPerRound": 1327,
+            "requestedBytesPerRound": 46150064
+          },
+          "basis-prepare": {
+            "meanUs": 1485.418179072,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 1306803.960236721,
+            "allocationsPerRound": 46,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 3452928
+          },
+          "basis-output": {
+            "meanUs": 6761.188269593,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "publish": {
+            "meanUs": 751.439947635,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 65536
+          },
+          "cleanup": {
+            "meanUs": 7678.408990614,
+            "allocationsPerRound": 3,
+            "freesPerRound": 152,
+            "requestedBytesPerRound": 3670016
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 71,
+        "enlargementsPerRound": 70,
+        "meanRadicalDimension": 62.169014085,
+        "meanPositiveNullity": 7.771428571,
+        "equationRowsPerRound": 290816,
+        "retainedEquationRowsPerRound": 41820
+      }
+    },
+    "speedup": 1.475966313627361,
+    "payloadSha256": "26d95590262eab8fe5dfc26fcf61ea9bf0cba4040c2b2b545154fb2f4580450b",
+    "forcedExactPayloadSha256": "26d95590262eab8fe5dfc26fcf61ea9bf0cba4040c2b2b545154fb2f4580450b"
+  },
+  "vector429P5": {
+    "profile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-429-p5",
+      "rounds": 1,
+      "stageMeanUs": {
+        "discriminant": 28499.727952294,
+        "hints": 1.37090683,
+        "multiplicationTable": 52628.336008638,
+        "round2": 699259.277898818,
+        "normalizeHnf": 50729.596056044,
+        "evidence": 1967.21998509,
+        "pack": 32.719923183,
+        "cleanup": 926.339998841
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 19171.238061972,
+            "allocationsPerRound": 167,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 14125120
+          },
+          "modular-table": {
+            "meanUs": 0.980915502,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 77809.182927012,
+            "allocationsPerRound": 224,
+            "freesPerRound": 224,
+            "requestedBytesPerRound": 1153312
+          },
+          "multiplier": {
+            "meanUs": 101790.411164984,
+            "allocationsPerRound": 186,
+            "freesPerRound": 186,
+            "requestedBytesPerRound": 14680608
+          },
+          "basis-prepare": {
+            "meanUs": 295.629259199,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 474475.863971747,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-output": {
+            "meanUs": 1082.130009308,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "publish": {
+            "meanUs": 72.469934821,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 65536
+          },
+          "cleanup": {
+            "meanUs": 1296.64002452,
+            "allocationsPerRound": 4,
+            "freesPerRound": 152,
+            "requestedBytesPerRound": 983040
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 14,
+        "enlargementsPerRound": 13,
+        "meanRadicalDimension": 57.428571429,
+        "meanPositiveNullity": 10.153846154,
+        "equationRowsPerRound": 57344,
+        "retainedEquationRowsPerRound": 26944
+      }
+    },
+    "genericProfile": {
+      "schema": "sagejs.number-field-order-resource-profile/v1",
+      "id": "pari-round4-vector-429-p5",
+      "rounds": 1,
+      "stageMeanUs": {
+        "discriminant": 20500.638056546,
+        "hints": 1.579988748,
+        "multiplicationTable": 43284.106999636,
+        "round2": 851952.116005123,
+        "normalizeHnf": 48412.85594739,
+        "evidence": 1968.889962882,
+        "pack": 33.149961382,
+        "cleanup": 1092.619961128
+      },
+      "round2Detail": {
+        "phases": {
+          "setup": {
+            "meanUs": 10230.479063466,
+            "allocationsPerRound": 167,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 14125120
+          },
+          "modular-table": {
+            "meanUs": 86981.051950715,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "radical": {
+            "meanUs": 77034.944901243,
+            "allocationsPerRound": 224,
+            "freesPerRound": 224,
+            "requestedBytesPerRound": 1153312
+          },
+          "multiplier": {
+            "meanUs": 110269.509954378,
+            "allocationsPerRound": 186,
+            "freesPerRound": 186,
+            "requestedBytesPerRound": 14680608
+          },
+          "basis-prepare": {
+            "meanUs": 386.470812373,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "basis-transform": {
+            "meanUs": 557877.368992195,
+            "allocationsPerRound": 51,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 3547136
+          },
+          "basis-output": {
+            "meanUs": 1149.041112512,
+            "allocationsPerRound": 0,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 0
+          },
+          "publish": {
+            "meanUs": 69.160014391,
+            "allocationsPerRound": 1,
+            "freesPerRound": 0,
+            "requestedBytesPerRound": 65536
+          },
+          "cleanup": {
+            "meanUs": 7195.470039733,
+            "allocationsPerRound": 6,
+            "freesPerRound": 152,
+            "requestedBytesPerRound": 8257536
+          }
+        }
+      },
+      "iterationSummary": {
+        "iterationsPerRound": 14,
+        "enlargementsPerRound": 13,
+        "meanRadicalDimension": 57.428571429,
+        "meanPositiveNullity": 10.153846154,
+        "equationRowsPerRound": 57344,
+        "retainedEquationRowsPerRound": 26944
+      }
+    },
+    "speedup": 1.218363692742307,
+    "payloadSha256": "3679a028f7ad9368b4331af1784a65db554d7ea8fb52105f3f155aea3226843d",
+    "forcedExactPayloadSha256": "3679a028f7ad9368b4331af1784a65db554d7ea8fb52105f3f155aea3226843d"
+  },
+  "randomized": {
+    "seed": 23063,
+    "count": 32,
+    "payloadSha256": "01c0c3820b59ad60b930f621ed38c47fbf415658c712f73644cee7ddd3e788d7",
+    "forcedExactPayloadSha256": "01c0c3820b59ad60b930f621ed38c47fbf415658c712f73644cee7ddd3e788d7"
+  }
+}
