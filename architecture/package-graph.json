@@ -167,6 +167,7 @@
         "arithmetic",
         "linear-algebra",
         "matrix-native-kernels",
+        "polynomial-native-kernels",
         "python-stdlib"
       ],
       "modules": ["sagejs.number_fields"],

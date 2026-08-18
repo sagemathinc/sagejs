@@ -213,6 +213,7 @@
     "bench:number-field-maximal-order-precision-public": "node bench/number-field-maximal-order-precision-public.cjs",
     "bench:number-field-hard-local-portfolio": "node bench/number-field-hard-local-portfolio.cjs",
     "bench:number-field-analysis-public-hook": "node bench/number-field-analysis-public-hook.cjs",
+    "bench:number-field-t8-fused-analysis": "node bench/number-field-t8-fused-analysis.cjs",
     "bench:number-field-round4": "node bench/number-field-round4.cjs",
     "bench:number-field-round4-primary": "node bench/number-field-round4-primary.cjs",
     "bench:number-field-round4-crt-batch": "node bench/number-field-round4-crt-batch.cjs",

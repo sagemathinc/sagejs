@@ -317,9 +317,10 @@
         "packed_rational_polynomial_negate",
         "packed_rational_polynomial_multiply",
         "packed_rational_polynomial_equal",
-        "packed_integral_number_field_multiply_reduce"
+        "packed_integral_number_field_multiply_reduce",
+        "packed_integral_number_field_power_basis"
       ],
-      "semantic_domain": "production normalized QQ[x] arithmetic and canonical integral-monic number-field multiply-reduce over compiler-owned IntegerBuffer storage",
+      "semantic_domain": "production normalized QQ[x] arithmetic, canonical integral-monic number-field multiply-reduce, and exact power-basis orbit construction over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
@@ -452,6 +453,21 @@
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
       "benchmark": "bench:number-field-buchmann-lenstra-fast",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-composite-analysis-production",
+      "source": "src/lib/sagejs/number_fields/composite_field_analysis.py",
+      "functions": [
+        "packed_polynomial_discriminant",
+        "packed_integer_square_root",
+        "packed_order_lattice_is_valid"
+      ],
+      "semantic_domain": "packed exact discriminant, integer square-root, and independent canonical order-lattice proof for authenticated composite square-support maximal-order analysis",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "generic-maximal-order", "pari"],
+      "benchmark": "bench:number-field-t8-fused-analysis",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
