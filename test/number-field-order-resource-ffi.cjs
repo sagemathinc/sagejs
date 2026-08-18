@@ -119,6 +119,7 @@ function compileHardWitness(name, defines = []) {
     "-Wall",
     "-Wextra",
     "-Werror",
+    ...(sanitize ? ["-fno-omit-frame-pointer", "-fsanitize=address,undefined"] : []),
     ...defines.map((define) => `-D${define}`),
     `-I${join(root, "packages", "flint", "include")}`,
     `-I${join(prefix, "include")}`,
@@ -137,6 +138,7 @@ function hardPayload(executablePath, caseIndex) {
   const executed = spawnSync(executablePath, ["--payload", String(caseIndex)], {
     cwd: root,
     encoding: "utf8",
+    env: sanitize ? sanitizerEnvironment({ strictStringChecks: true }) : process.env,
     timeout: 120_000,
   });
   assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
@@ -295,7 +297,7 @@ try {
       "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
       "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
     ]);
-    for (const caseIndex of [4, 5, 7]) {
+    for (const caseIndex of [4, 5, 7, 8, 9]) {
       assert.equal(
         hardPayload(optimized, caseIndex),
         hardPayload(exact, caseIndex),
@@ -307,6 +309,20 @@ try {
       randomizedPayloads(exact, 0x5a17, 32),
       "randomized p^2 multiplier results differ from the exact lattice-inverse oracle",
     );
+  }
+  if (sanitize && process.platform !== "win32") {
+    const optimized = compileHardWitness("hard-optimized-sanitize");
+    const exact = compileHardWitness("hard-exact-sanitize", [
+      "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
+      "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
+    ]);
+    for (const caseIndex of [8, 9]) {
+      assert.equal(
+        hardPayload(optimized, caseIndex),
+        hardPayload(exact, caseIndex),
+        `sanitized hard case ${caseIndex} differs from the exact lattice-inverse oracle`,
+      );
+    }
   }
 
   const header = readFileSync(
