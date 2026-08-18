@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Profile and source-transparently accelerate the complete vector429 p2 OM local certificate to a measured Sage.js crossover while preserving exact arbitrary residual-field mathematics and dynamic fallbacks",
-  "base_commit": "636da9d7941cf852daca66fd0571582e5bb544e6",
+  "base_commit": "bcc2289bb4d51d094400cc3ecd05331e75b4015e",
   "claims": [
     "src/lib/sagejs/number_fields/om_types.py",
     "src/lib/sagejs/number_fields/om_higher_residue.py",
