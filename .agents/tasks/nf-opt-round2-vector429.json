@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Profile vector429 p=2 through the shared native Round2 resource and materially reduce its dominant general kernel or route it through a bounded exact selector without fixture-specific logic",
-  "base_commit": "28e7e0cf721a2c73b1c3a5f2eab06257129371d5",
+  "base_commit": "89d08932f80ef917b839118c0b1dda0506cf4082",
   "claims": [
     "packages/flint/include/sagejs/number_field_order_ffi.h",
     "test/number-field-order-resource-ffi.cjs",
@@ -81,17 +81,37 @@
       "commit": "bd99c0d3742165b162024c87cee324ef05e6b818",
       "workspace_fingerprint": "e115e61c911310a5cd8444e1bd71bd54bd1a91b640b05ce0566704df1fe15c7e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.298,
+      "started_at": "2026-08-18T10:33:33.336Z",
+      "commit": "706a994f4aeb22a17c6e32e48cc3391b5aafc624",
+      "workspace_fingerprint": "ac8198e66275d064772763544910df8875bcb27426bcf2adb3c8e0de46993a77",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/number-field-order-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.243,
+      "started_at": "2026-08-18T10:33:45.763Z",
+      "commit": "706a994f4aeb22a17c6e32e48cc3391b5aafc624",
+      "workspace_fingerprint": "ac8198e66275d064772763544910df8875bcb27426bcf2adb3c8e0de46993a77",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "General sparse radical storage, exact hash deduplication, p-squared modular reuse, signed power-of-two limb reduction, and sparse fmpz basis fast paths reduce vector429 p=2 Round-2 from 19.398s to 11.802s and vector010 p=2 from 0.906s to 0.585s. Both high-degree payloads match the forced exact implementation byte-for-byte; focused randomized and sanitizer checks pass.",
+    "summary": "The second pass applies the exact Round-2 block form [I R; 0 pI] directly to the multiplication tensor, retaining unchanged generators and restricting p-squared division to the pivot block. Combined results reduce vector429 p=2 from 19.398s to 6.129s and vector010 p=2 from 0.906s to 0.233s. Both high-degree payloads match the forced generic implementation byte-for-byte; focused randomized and sanitizer checks pass.",
     "risks": [
-      "The remaining vector429 floor is the 169-bit exact fmpz tensor basis transform (81.4% of Round-2 time); closing the PARI gap requires a separately proved representation change rather than another bounded host cleanup.",
+      "The block transform still accounts for 70.2% of vector429 and 48.9% of vector010 Round-2 time; reaching vector010's 74ms target now also requires reducing its 69ms multiplier, 33ms modular-table, and 14ms radical phases.",
       "The audited header metrics are intentionally not edited in this distribution lane, so central integration must refresh architecture/native-audit.json before architecture:check."
     ],
     "next_steps": [
-      "Update the number_field_order_ffi.h audit metrics from 1309 lines/53642 bytes to 1410 lines/58164 bytes and extend its existing storage rationale, then run pnpm architecture:check.",
-      "Retain the current generic native-first word-prime selector: vector010 p=2 native is 45.3x faster than forced Round-4 while forced polygon and OM each exceed 30 seconds.",
+      "Update the number_field_order_ffi.h audit metrics from 1410 lines/58164 bytes to 1639 lines/68585 bytes and extend its existing exact block-transform rationale, then run pnpm architecture:check.",
+      "Retain the current generic native-first word-prime selector: vector010 p=2 native is 113.7x faster than forced Round-4 while forced polygon and OM each exceed 30 seconds.",
       "Run the full native/platform validation suite from the integration lane; Windows continues to use the exact tested fallback where the optimized host capability is unavailable."
     ]
   }
