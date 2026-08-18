@@ -235,7 +235,7 @@ def _smalljac_lpoly_batch(curve_text: str, start: Any, stop: Any, max_rows: int)
         _property(batch, "rowStatus"),
     ]
     expected_lengths = [row_count, row_count, row_count, 2 * row_count, row_count]
-    for array, expected in zip(arrays, expected_lengths):
+    for array, expected in zip(arrays, expected_lengths, strict=True):
         if len(array) != expected:
             raise RuntimeError("smalljac returned a malformed packed batch")
     return batch

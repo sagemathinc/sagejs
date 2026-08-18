@@ -17,7 +17,7 @@ def _hyperelliptic_module() -> Any:
     global _hyperelliptic_module_cache
     if _hyperelliptic_module_cache is runtime.undefined:
         _hyperelliptic_module_cache = __import__(
-            "sagejs.hyperelliptic_curves",
+            "sagejs.hyperelliptic_curves.model",
             fromlist=["HyperellipticCurve"],
         )
     return _hyperelliptic_module_cache
