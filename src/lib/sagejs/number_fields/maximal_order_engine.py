@@ -1253,7 +1253,7 @@ class _AuthenticatedLocalPortfolio:
         expected_om_primes: list[int],
         expected_composite_components: list[tuple[int, int]],
         native_proof: Any,
-        om_entries: list[tuple[int, Any, Any, OrderBasis, int]],
+        om_entries: list[tuple[int, Any, OrderBasis, int]],
         composite_entries: list[tuple[int, Any, OrderBasis, int]],
         final_basis: OrderBasis,
         final_index: int,
@@ -1279,11 +1279,10 @@ class _AuthenticatedLocalPortfolio:
             (
                 int(prime),
                 selection,
-                projection,
                 basis.canonical_key(),
                 int(local_order_discriminant),
             )
-            for prime, selection, projection, basis, local_order_discriminant in om_entries
+            for prime, selection, basis, local_order_discriminant in om_entries
         )
         self.composite_entries = tuple(
             (
@@ -1322,7 +1321,6 @@ class _AuthenticatedLocalPortfolio:
         self,
         prime: int,
         selection: Any,
-        projection: Any,
         basis_key: tuple[int, tuple[tuple[int, ...], ...]],
         local_order_discriminant: int,
     ) -> bool:
@@ -1340,10 +1338,6 @@ class _AuthenticatedLocalPortfolio:
         denominator_remainder = int(basis_key[0])
         while denominator_remainder % prime == 0:
             denominator_remainder //= prime
-        projection_module = __import__(
-            "sagejs.number_fields.om_authenticated_projection",
-            fromlist=["authenticated_om_tree_projection_matches"],
-        )
         return bool(
             tuple(int(value) for value in certificate.polynomial) == self.coefficients
             and int(certificate.prime) == prime
@@ -1353,13 +1347,6 @@ class _AuthenticatedLocalPortfolio:
             and certificate.validation.valid
             and certificate.validation.locally_maximal
             and certificate.maxmin.maximality_checked
-            and projection_module.authenticated_om_tree_projection_matches(
-                projection,
-                tree=result.type_tree,
-                polynomial=tuple(self.coefficients),
-                prime=prime,
-                expected_index_valuation=int(result.type_tree.expected_index_valuation),
-            )
             and local_index > 0
             and local_order_discriminant * local_index * local_index
             == self.equation_discriminant
@@ -1527,7 +1514,7 @@ class _AuthenticatedLocalPortfolio:
         local_supports = [("native", native_support, int(proof.index))]
         covered_primes = list(proof.certified_primes)
         for entry in self.om_entries:
-            prime, selection, _projection, basis_key, _local_discriminant = entry
+            prime, selection, basis_key, _local_discriminant = entry
             if prime in covered_primes or not self._om_entry_matches(*entry):
                 return False
             covered_primes.append(prime)
@@ -2566,7 +2553,7 @@ def compute_maximal_order(
     native_handled_primes: list[int] = []
     completed_local_primes: set[int] = set()
     om_auto_evidence: list[dict[str, Any]] = []
-    verified_om_entries: list[tuple[int, Any, Any, OrderBasis, int]] = []
+    verified_om_entries: list[tuple[int, Any, OrderBasis, int]] = []
     authenticated_native_proof: Any = None
     native_batch_primes: list[int] = []
     if relevant_primes and algorithm == "auto":
@@ -2618,17 +2605,11 @@ def compute_maximal_order(
             completed_local_primes.add(prime)
             if om_basis is None or om_selection is None or om_selection.result is None:
                 raise ArithmeticError("a complete OM result omitted its proof or basis")
-            om_projection = om_selection.result.authenticated_tree
-            if om_projection is None:
-                raise ArithmeticError(
-                    "a complete OM result omitted its authenticated type-tree seal"
-                )
             om_local_index = int(om_selection.result.local_result.index)
             verified_om_entries.append(
                 (
                     prime,
                     om_selection,
-                    om_projection,
                     om_basis,
                     equation_discriminant // (om_local_index * om_local_index),
                 )

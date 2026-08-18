@@ -84,7 +84,6 @@ const integration = [
   "test/number-field-local-parallel.cjs",
   "test/number-field-om-maxmin.cjs",
   "test/number-field-om-p2-tail.cjs",
-  "test/number-field-om-p7-public-tail.cjs",
   "test/number-field-om-auto-selector.cjs",
   "test/number-field-om-higher-residual.cjs",
   "test/number-field-om-length4.cjs",

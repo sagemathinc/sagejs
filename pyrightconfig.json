@@ -51,7 +51,6 @@
     "src/lib/sagejs/number_fields/local_parallel_worker.py",
     "src/lib/sagejs/number_fields/local_algorithm_selector.py",
     "src/lib/sagejs/number_fields/om_maxmin.py",
-    "src/lib/sagejs/number_fields/om_authenticated_projection.py",
     "src/lib/sagejs/number_fields/om_auto_selector.py",
     "src/lib/sagejs/number_fields/om_higher_residue.py",
     "src/lib/sagejs/number_fields/om_types.py",

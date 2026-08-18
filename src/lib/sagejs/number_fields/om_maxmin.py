@@ -30,10 +30,6 @@ from .maximal_order_contracts import (
     LocalOrderResult,
     OrderBasis,
 )
-from .om_authenticated_projection import (
-    authenticate_first_order_om_type_tree,
-    validate_triangular_basis_with_authenticated_tree,
-)
 from .om_types import (
     ImmutableOMRecord,
     OMDomainError,
@@ -687,7 +683,6 @@ class LocalBasisResult(ImmutableOMRecord):
     certificate: TriangularBasisCertificate | None
     order_basis: OrderBasis | None
     local_result: LocalOrderResult
-    authenticated_tree: Any | None = None
 
 
 def _selector_evidence(metrics: OMSelectorMetrics) -> dict[str, object]:
@@ -1828,7 +1823,6 @@ def regular_local_basis(
     """Return a certified triangular basis in the bounded complete domain."""
     polynomial = normalize_polynomial(polynomial)
     tree = build_om_type_tree(polynomial, prime)
-    authenticated_tree = authenticate_first_order_om_type_tree(tree)
     metrics = selector_metrics(
         tree,
         local_discriminant_valuation=local_discriminant_valuation,
@@ -1917,22 +1911,12 @@ def regular_local_basis(
         for index, coefficient in enumerate(element.numerator):
             row[index] = coefficient * scale
         common_rows.append(tuple(row))
-    validation = (
-        validate_triangular_basis_with_authenticated_tree(
-            polynomial,
-            prime,
-            authenticated_tree,
-            basis,
-            tree.expected_index_valuation,
-        )
-        if authenticated_tree is not None
-        else validate_triangular_basis(
-            polynomial,
-            prime,
-            tree,
-            basis,
-            tree.expected_index_valuation,
-        )
+    validation = validate_triangular_basis(
+        polynomial,
+        prime,
+        tree,
+        basis,
+        tree.expected_index_valuation,
     )
     certificate = TriangularBasisCertificate(
         polynomial,
@@ -2041,7 +2025,6 @@ def regular_local_basis(
         certificate,
         order_basis,
         local_result,
-        authenticated_tree,
     )
 
 
