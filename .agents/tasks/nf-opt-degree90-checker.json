@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Reduce the exact degree-90 composite BL replay below 3.5 seconds with a theorem-backed packed batch membership proof while retaining dynamic fallback and corruption rejection",
-  "base_commit": "ab52ed3c09d4131b37443134992f4e301672cd44",
+  "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
   "claims": [
     "src/lib/sagejs/number_fields/buchmann_lenstra.py",
     "src/lib/sagejs/number_fields/bl_composite_kernel.py",
