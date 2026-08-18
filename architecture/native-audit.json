@@ -205,18 +205,19 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 781,
-      "bytes": 31310,
+      "lines": 1259,
+      "bytes": 49924,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "bounded exact discriminant decomposition without eager full factorization",
         "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
         "canonical compact source, component, and HNF evidence ownership",
-        "terminal local fixed-point witness construction after final HNF rebasing"
+        "terminal local fixed-point witness construction after final HNF rebasing",
+        "bounded deterministic parallel verification of a completed order at the full caller prime list"
       ],
-      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. FLINT owns the mature arithmetic and the existing audited Round-2 helper owns local completion; the durable part is the resource representation and fail-closed status protocol.",
-      "fallback": "The packed result is never trusted directly. An ordinary-Python checker independently recomputes the discriminant, authenticates components, HNF/index/order closure, and word-prime local maximality; unresolved composite and arbitrary-size probable-prime states remain incomplete and available to strict fallback.",
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. It also verifies terminal fixed points from a completed canonical order without rerunning enlargement, sharing one exact multiplication table across deterministic per-prime jobs. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for the three-prime FLINT resource producer. The ordinary source remains the independent mathematical oracle.",
+      "fallback": "Externally supplied, copied, or malformed packed proofs are never directly trusted: the ordinary-Python source-transparent checker recomputes the discriminant, HNF/index/order closure, exact multiplication table, and every fixed point. Fast authentication exists only synchronously around an actual current generated native call and immediately matches its canonical metadata, polynomial, caller-order prime list, witness shape, and basis before sealing. Worker allocation is bounded to five lanes under 512 MiB, pthread-creation failure runs the missing lane synchronously, and native Windows uses the exact sequential path.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
@@ -226,7 +227,7 @@
         "native Windows x64 witness",
         "Linux arm64 witness"
       ],
-      "next": "Retain the immutable payload boundary, but migrate bounded decomposition and dispatch to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
+      "next": "Retain the immutable payload boundary, but migrate bounded decomposition, dispatch, and fixed-point replay to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings. If post-construction verification misses the public budget, add an optional proof-carrying order mode so local Round-2 workers retain terminal radical/minor witnesses before cleanup and authentication consumes construction-time evidence."
     },
     {
       "path": "packages/graph/src/addon.c",

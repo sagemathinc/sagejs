@@ -398,6 +398,7 @@ from sagejs.ffi.flint import (
     number_field_order_resource_resolved_primes as _ffi_number_field_order_resource_resolved_primes,
     number_field_order_resource_native_primes as _ffi_number_field_order_resource_native_primes,
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
+    number_field_round2_proof_resource as _ffi_number_field_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
@@ -4736,6 +4737,19 @@ def ffiNumberFieldOrderResourceUnramifiedPrimes(
 ) -> uint64:
     return _ffi_number_field_order_resource_unramified_primes(
         resource,
+    )
+
+
+@native
+def ffiNumberFieldRound2ProofResource(
+    polynomial: FmpzPolynomial,
+    order: NumberFieldOrderResource,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldAnalysisResource:
+    return _ffi_number_field_round2_proof_resource(
+        polynomial,
+        order,
+        prime_hints,
     )
 
 

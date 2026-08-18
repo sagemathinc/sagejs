@@ -24,7 +24,16 @@ from sagejs.native import (
 )
 from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
 
-_flint_module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+_flint_module: Any = None
+
+
+def _field_analysis_flint_module() -> Any:
+    """Load the generated host adapter only at the explicit native boundary."""
+    global _flint_module
+    if _flint_module is None:
+        _flint_module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    return _flint_module
+
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
@@ -55,7 +64,9 @@ def _new_projection_workspace_cache() -> dict[
 _projection_workspace_cache = _new_projection_workspace_cache()
 
 
-def _new_round2_proof_workspace_cache() -> dict[tuple[int, int, int], tuple[Any, ...]]:
+def _new_round2_proof_workspace_cache() -> dict[
+    tuple[int, int, int, int], tuple[Any, ...]
+]:
     return {}
 
 
@@ -1925,6 +1936,7 @@ class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
         index: int,
         equation_discriminant: int,
         order_discriminant: int,
+        verification_tier: str = "packed-mathematical-replay",
     ) -> None:
         self.polynomial = tuple(int(value) for value in polynomial)
         self.certified_primes = tuple(int(value) for value in certified_primes)
@@ -1935,6 +1947,7 @@ class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
         self.index = int(index)
         self.equation_discriminant = int(equation_discriminant)
         self.order_discriminant = int(order_discriminant)
+        self.verification_tier = str(verification_tier)
         self._freeze_certificate()
 
     @property
@@ -1952,6 +1965,7 @@ class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
             self.index,
             self.equation_discriminant,
             self.order_discriminant,
+            self.verification_tier,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -1965,6 +1979,7 @@ class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
             "index": self.index,
             "equation_discriminant": self.equation_discriminant,
             "order_discriminant": self.order_discriminant,
+            "verification_tier": self.verification_tier,
         }
 
 
@@ -1980,6 +1995,7 @@ def _seal_authenticated_round2_order_proof(
         result.index,
         result.equation_discriminant,
         result.order_discriminant,
+        result.verification_tier,
     )
 
 
@@ -2568,7 +2584,29 @@ def decode_round2_order_proof_resource(
         raise ValueError("inconsistent Round-2 proof resource shape")
 
     kernel = packed_round2_order_proof_is_valid
-    shape = (degree, witness_count, entry_count)
+    denominator = int(expected_basis_denominator)
+    index = int(expected_index)
+    equation_discriminant = int(expected_equation_discriminant)
+    order_discriminant = int(expected_order_discriminant)
+    maximum_numerator = max(
+        1,
+        max(abs(value) for row in rows for value in row),
+    )
+    defining_growth = 1 + sum(abs(value) for value in coefficients[:-1])
+    factorial = 1
+    for factor in range(2, degree + 1):
+        factorial *= factor
+    inverse_bound = denominator * factorial * maximum_numerator ** max(0, degree - 1)
+    product_bound = (
+        degree
+        * degree
+        * maximum_numerator
+        * maximum_numerator
+        * defining_growth**degree
+    )
+    table_bound = max(1, degree * inverse_bound * product_bound)
+    word_capacity = max(8, (table_bound.bit_length() + 63) // 64 + 2)
+    shape = (degree, witness_count, entry_count, word_capacity)
     buffers = _round2_proof_workspace_cache.get(shape)
     if buffers is None:
         square = degree * degree
@@ -2576,14 +2614,14 @@ def decode_round2_order_proof_resource(
             degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
         )
         buffers = (
-            kernel_integer_zeros(kernel, entry_count, 64),
-            kernel_integer_zeros(kernel, degree + 1, 64),
-            kernel_integer_zeros(kernel, square, 64),
+            kernel_integer_zeros(kernel, entry_count, word_capacity),
+            kernel_integer_zeros(kernel, degree + 1, word_capacity),
+            kernel_integer_zeros(kernel, square, word_capacity),
             kernel_integer_zeros(kernel, witness_count, 64),
             kernel_integer_zeros(kernel, witness_count, 64),
             kernel_integer_zeros(kernel, witness_count * square, 64),
             kernel_integer_zeros(kernel, witness_count * degree, 64),
-            kernel_integer_zeros(kernel, workspace_length, 64),
+            kernel_integer_zeros(kernel, workspace_length, word_capacity),
         )
         _round2_proof_workspace_cache[shape] = buffers
     (
@@ -2597,10 +2635,6 @@ def decode_round2_order_proof_resource(
         workspace,
     ) = buffers
     flat_numerator = [value for row in rows for value in row]
-    denominator = int(expected_basis_denominator)
-    index = int(expected_index)
-    equation_discriminant = int(expected_equation_discriminant)
-    order_discriminant = int(expected_order_discriminant)
     if not kernel(
         kernel_uint64_buffer(kernel, payload),
         decoded,
@@ -2634,6 +2668,114 @@ def decode_round2_order_proof_resource(
     )
     _seal_authenticated_round2_order_proof(result)
     return result
+
+
+def _current_round2_proof_integer(payload: Any, offset: int) -> tuple[int, int]:
+    """Read one canonical signed integer from a current generated result."""
+    if offset + 4 > len(payload):
+        raise ValueError("truncated current Round-2 proof integer")
+    header = _unsigned(payload, offset, 4)
+    length = header & 0x7FFFFFFF
+    negative = header >= 0x80000000
+    offset += 4
+    if (
+        length > len(payload) - offset
+        or (negative and length == 0)
+        or (length != 0 and _byte(payload, offset + length - 1) == 0)
+    ):
+        raise ValueError("noncanonical current Round-2 proof integer")
+    value = _unsigned(payload, offset, length)
+    return (-value if negative else value), offset + length
+
+
+def _current_round2_proof_projection_matches(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+    expected_basis_numerator: list[list[int]],
+    expected_basis_denominator: int,
+    expected_index: int,
+    expected_equation_discriminant: int,
+    expected_order_discriminant: int,
+) -> bool:
+    """Bind one unexposed current native result without replaying its theorem.
+
+    This is deliberately private and only called synchronously around the
+    result of the current generated native verifier.  It authenticates that
+    verifier's canonical transfer against every value retained by the compact
+    host certificate.  Copied or externally supplied payloads instead use the
+    independent ordinary mathematical decoder above.
+    """
+    coefficients = [int(value) for value in expected_polynomial]
+    primes = [int(value) for value in expected_primes]
+    rows = [[int(value) for value in row] for row in expected_basis_numerator]
+    degree = len(coefficients) - 1
+    square = degree * degree
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or len(rows) != degree
+        or any(len(row) != degree for row in rows)
+        or len(payload) < 48
+        or [_byte(payload, index) for index in range(8)]
+        != [83, 74, 78, 70, 80, 1, 0, 0]
+        or _unsigned(payload, 8, 8) != degree
+        or _unsigned(payload, 16, 8) != len(primes)
+        or _unsigned(payload, 32, 8) != 1
+        or _unsigned(payload, 40, 8) != 0
+    ):
+        return False
+    entry_count = _unsigned(payload, 24, 8)
+    minimum_entries = 4 + degree + 1 + len(primes) * (2 + degree) + square
+    if entry_count < minimum_entries or entry_count > (len(payload) - 48) // 4:
+        return False
+
+    try:
+        offset = 48
+        consumed = 0
+
+        def read() -> int:
+            nonlocal offset, consumed
+            value, offset = _current_round2_proof_integer(payload, offset)
+            consumed += 1
+            return value
+
+        metadata = [
+            int(expected_basis_denominator),
+            int(expected_index),
+            int(expected_equation_discriminant),
+            int(expected_order_discriminant),
+        ]
+        if [read() for _unused in range(4)] != metadata:
+            return False
+        if [read() for _unused in range(degree + 1)] != coefficients:
+            return False
+        seen_primes: set[int] = set()
+        for prime in primes:
+            packed_prime = read()
+            dimension = read()
+            if packed_prime != prime or prime in seen_primes:
+                return False
+            if dimension < 0 or dimension > degree:
+                return False
+            seen_primes.add(prime)
+            for _unused in range(dimension * degree):
+                radical_value = read()
+                if radical_value < 0 or radical_value >= prime:
+                    return False
+            selectors: set[int] = set()
+            for _unused in range(degree):
+                selector = read()
+                if selector < 0 or selector >= square or selector in selectors:
+                    return False
+                selectors.add(selector)
+        for row in rows:
+            if [read() for _unused in range(degree)] != row:
+                return False
+        return consumed == entry_count and offset == len(payload)
+    except (IndexError, ValueError):
+        return False
 
 
 def decode_field_analysis_resource(
@@ -2932,7 +3074,7 @@ def _native_field_analysis_projection_from_polynomial_bound(
     trial_bound: int,
 ) -> AuthenticatedFieldAnalysisProjection:
     """Authenticate a caller-validated immutable polynomial binding."""
-    resource = _flint_module.number_field_analyze_resource(
+    resource = _field_analysis_flint_module().number_field_analyze_resource(
         polynomial, scale, trial_bound
     )
     try:
@@ -2960,17 +3102,21 @@ def native_round2_order_proof_from_resources(
     equation_discriminant: int,
     order_discriminant: int,
 ) -> AuthenticatedRound2OrderProof:
-    """Prove a completed native order while its three inputs remain borrowed.
+    """Prove a completed order in one current generated native call.
 
     The caller owns the sealed polynomial, completed order resource, and prime
-    matrix and must keep them live for this synchronous call.  This helper owns
-    and deterministically closes only the compact proof result.
+    matrix and must keep them live for this synchronous call.  No caller-owned
+    or copied proof payload enters this fast path: only successful return from
+    the current content-addressed generated boundary can issue authentication.
+    External payloads always use `decode_round2_order_proof_resource` and its
+    ordinary packed mathematical replay.  This helper owns and deterministically
+    closes the unexposed compact proof result.
     """
-    resource = _flint_module.number_field_round2_proof_resource(
+    resource = _field_analysis_flint_module().number_field_round2_proof_resource(
         polynomial, order_resource, prime_hints
     )
     try:
-        return decode_round2_order_proof_resource(
+        if not _current_round2_proof_projection_matches(
             resource.copy_bytes(),
             expected_polynomial=coefficients_low_to_high,
             expected_primes=certified_primes,
@@ -2979,7 +3125,20 @@ def native_round2_order_proof_from_resources(
             expected_index=index,
             expected_equation_discriminant=equation_discriminant,
             expected_order_discriminant=order_discriminant,
+        ):
+            raise ValueError("current native Round-2 proof lost its source binding")
+        result = AuthenticatedRound2OrderProof(
+            coefficients_low_to_high,
+            certified_primes,
+            basis_numerator,
+            basis_denominator,
+            index,
+            equation_discriminant,
+            order_discriminant,
+            "current-generated-native-fixed-point",
         )
+        _seal_authenticated_round2_order_proof(result)
+        return result
     finally:
         resource.close()
 

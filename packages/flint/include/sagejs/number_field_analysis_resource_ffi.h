@@ -337,6 +337,135 @@ static inline void sagejs_nf_analysis_clear_witnesses(
     flint_free(witnesses);
 }
 
+typedef struct
+{
+    const fmpz_mat_t *multiplication;
+    const fmpz *identity;
+    slong degree;
+    const uint64_t *primes;
+    sagejs_nf_analysis_fixed_point_witness *witnesses;
+    int *success;
+} sagejs_nf_analysis_proof_work;
+
+static inline void sagejs_nf_analysis_proof_worker(
+    slong index, void *argument)
+{
+    sagejs_nf_analysis_proof_work *work =
+        (sagejs_nf_analysis_proof_work *) argument;
+#ifndef SAGEJS_NF_ANALYSIS_PROOF_TEST_FAIL
+#define SAGEJS_NF_ANALYSIS_PROOF_TEST_FAIL(index) 0
+#endif
+    if (SAGEJS_NF_ANALYSIS_PROOF_TEST_FAIL(index))
+    {
+        work->success[index] = 0;
+        return;
+    }
+    const slong degree = work->degree;
+    const ulong prime = (ulong) work->primes[index];
+    const ulong inverse = n_preinvert_limb(prime);
+    size_t table_size = 0;
+    if (!sagejs_nf_analysis_degree_sizes(degree, NULL, &table_size) ||
+        table_size > SIZE_MAX / sizeof(ulong))
+    {
+        work->success[index] = 0;
+        return;
+    }
+    ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
+    for (slong i = 0; i < degree; i++)
+        for (slong j = 0; j < degree; j++)
+            for (slong k = 0; k < degree; k++)
+                table[(i * degree + j) * degree + k] = fmpz_fdiv_ui(
+                    fmpz_mat_entry(work->multiplication[i], k, j), prime);
+    sagejs_nf_analysis_fixed_point_witness *witness =
+        work->witnesses + index;
+    sagejs_nf_p_radical(witness->radical,
+        &witness->radical_dimension, table, work->identity,
+        degree, prime, inverse);
+    nmod_mat_t equations;
+    nmod_mat_init(equations, degree * degree, degree, prime);
+    const int success = sagejs_nf_analysis_multiplier_equations(equations,
+            work->multiplication, witness->radical,
+            witness->radical_dimension, degree, prime) &&
+        sagejs_nf_analysis_select_rows(
+            witness->selectors, equations, degree, prime);
+    nmod_mat_clear(equations);
+    flint_free(table);
+    work->success[index] = success;
+}
+
+typedef struct
+{
+    sagejs_nf_analysis_proof_work *work;
+    slong lane;
+    slong lane_count;
+    slong item_count;
+} sagejs_nf_analysis_proof_lane;
+
+static inline void sagejs_nf_analysis_run_proof_lane(
+    sagejs_nf_analysis_proof_lane *lane)
+{
+    for (slong index = lane->lane;
+         index < lane->item_count; index += lane->lane_count)
+        sagejs_nf_analysis_proof_worker(index, lane->work);
+}
+
+#if FLINT_USES_PTHREAD
+static inline void *sagejs_nf_analysis_proof_thread(void *argument)
+{
+    sagejs_nf_analysis_run_proof_lane(
+        (sagejs_nf_analysis_proof_lane *) argument);
+    return NULL;
+}
+#endif
+
+static inline slong sagejs_nf_analysis_proof_worker_bound(
+    slong degree, uint64_t prime_count)
+{
+    slong workers =
+        sagejs_nf_order_independent_worker_bound(degree, prime_count);
+#if defined(_WIN32) || \
+    defined(SAGEJS_NF_ANALYSIS_PROOF_FORCE_ONE_WORKER)
+    workers = 1;
+#endif
+    return workers;
+}
+
+static inline void sagejs_nf_analysis_run_proof_jobs(
+    sagejs_nf_analysis_proof_work *work,
+    slong item_count, slong worker_count)
+{
+    sagejs_nf_analysis_proof_lane lanes[5];
+    for (slong lane = 0; lane < worker_count; lane++)
+    {
+        lanes[lane].work = work;
+        lanes[lane].lane = lane;
+        lanes[lane].lane_count = worker_count;
+        lanes[lane].item_count = item_count;
+    }
+#if FLINT_USES_PTHREAD
+    pthread_t workers[4];
+    int started[4] = {0, 0, 0, 0};
+#ifndef SAGEJS_NF_ANALYSIS_PROOF_PTHREAD_CREATE
+#define SAGEJS_NF_ANALYSIS_PROOF_PTHREAD_CREATE(thread, entry, argument) \
+    pthread_create((thread), NULL, (entry), (argument))
+#endif
+    for (slong lane = 1; lane < worker_count; lane++)
+        if (SAGEJS_NF_ANALYSIS_PROOF_PTHREAD_CREATE(
+                workers + lane - 1, sagejs_nf_analysis_proof_thread,
+                lanes + lane) == 0)
+            started[lane - 1] = 1;
+        else
+            sagejs_nf_analysis_run_proof_lane(lanes + lane);
+    sagejs_nf_analysis_run_proof_lane(lanes);
+    for (slong lane = 1; lane < worker_count; lane++)
+        if (started[lane - 1])
+            (void) pthread_join(workers[lane - 1], NULL);
+#else
+    (void) worker_count;
+    sagejs_nf_analysis_run_proof_lane(lanes);
+#endif
+}
+
 static inline int sagejs_nf_analysis_build_witnesses(
     sagejs_nf_analysis_fixed_point_witness **result,
     const sagejs_fmpz_matrix_t power_table, const fmpz_mat_t numerator,
@@ -354,50 +483,37 @@ static inline int sagejs_nf_analysis_build_witnesses(
         (sagejs_nf_analysis_fixed_point_witness *) flint_calloc(
             (size_t) prime_count,
             sizeof(sagejs_nf_analysis_fixed_point_witness));
-    uint64_t initialized = 0;
-    int success = 1;
-    size_t table_size = 0;
-    if (!sagejs_nf_analysis_degree_sizes(degree, NULL, &table_size))
-    {
-        _fmpz_vec_clear(identity, degree);
-        sagejs_nf_analysis_clear_multiplication(multiplication, degree);
-        return 0;
-    }
-    ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
-    for (uint64_t witness_index = 0;
-         witness_index < prime_count && success; witness_index++)
+    int *success =
+        (int *) flint_calloc((size_t) prime_count, sizeof(int));
+    for (uint64_t witness_index = 0; witness_index < prime_count;
+         witness_index++)
     {
         const ulong prime = (ulong) primes[witness_index];
-        const ulong inverse = n_preinvert_limb(prime);
-        for (slong i = 0; i < degree; i++)
-            for (slong j = 0; j < degree; j++)
-                for (slong k = 0; k < degree; k++)
-                    table[(i * degree + j) * degree + k] = fmpz_fdiv_ui(
-                        fmpz_mat_entry(multiplication[i], k, j), prime);
         witnesses[witness_index].prime = prime;
         nmod_mat_init(witnesses[witness_index].radical,
             degree, degree, prime);
         witnesses[witness_index].selectors = (slong *) flint_malloc(
             (size_t) degree * sizeof(slong));
-        initialized++;
-        sagejs_nf_p_radical(witnesses[witness_index].radical,
-            &witnesses[witness_index].radical_dimension,
-            table, identity, degree, prime, inverse);
-        nmod_mat_t equations;
-        nmod_mat_init(equations, degree * degree, degree, prime);
-        success = sagejs_nf_analysis_multiplier_equations(equations,
-            multiplication, witnesses[witness_index].radical,
-            witnesses[witness_index].radical_dimension, degree, prime) &&
-            sagejs_nf_analysis_select_rows(
-                witnesses[witness_index].selectors, equations, degree, prime);
-        nmod_mat_clear(equations);
     }
-    flint_free(table);
+    sagejs_nf_analysis_proof_work work = {
+        multiplication, identity, degree, primes, witnesses, success
+    };
+    const slong worker_count =
+        sagejs_nf_analysis_proof_worker_bound(degree, prime_count);
+    sagejs_nf_analysis_run_proof_jobs(
+        &work, (slong) prime_count, worker_count);
+    int all_success = 1;
+    for (uint64_t witness_index = 0; witness_index < prime_count;
+         witness_index++)
+    {
+        if (!success[witness_index]) all_success = 0;
+    }
+    flint_free(success);
     _fmpz_vec_clear(identity, degree);
     sagejs_nf_analysis_clear_multiplication(multiplication, degree);
-    if (!success)
+    if (!all_success)
     {
-        sagejs_nf_analysis_clear_witnesses(witnesses, initialized);
+        sagejs_nf_analysis_clear_witnesses(witnesses, prime_count);
         return 0;
     }
     *result = witnesses;

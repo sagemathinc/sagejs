@@ -127,7 +127,14 @@
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It computes the equation discriminant, bounded exact component hints, and partial canonical HNF evidence while retaining unresolved and arbitrary-size residuals for independent strict checking."
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. In addition to discriminant decomposition and canonical order evidence, it provides a bounded parallel verifier for terminal Round-2 fixed points from a sealed polynomial, completed order, and exact caller prime list. This is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s while the three-prime FLINT resource producer took 2.356s. The ordinary source remains the dynamic mathematical oracle; generated-call authentication immediately binds the canonical projection, external payloads still use full mathematical replay, and Windows uses the exact sequential worker path."
+    },
+    {
+      "path": "bench/number-field-round2-proof-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Focused test-only witness for deterministic parallel/sequential Round-2 proof equivalence, pthread-creation fallback, injected worker failure, and sanitizer lifecycle coverage; it is never linked into Sage.js."
     },
     {
       "path": "packages/flint/test/number_field_order_resource_ffi.c",

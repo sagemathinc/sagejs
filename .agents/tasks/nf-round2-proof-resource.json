@@ -10,12 +10,23 @@
   "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
   "claims": [
     "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
     "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "architecture/native-code.json",
+    "architecture/native-audit.json",
+    "architecture/native-boundaries.json",
     "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
     "test/number-field-analysis-resource-python.cjs",
-    "bench/number-field-round2-proof-resource.cjs"
+    "test/number-field-order-resource-python.cjs",
+    "test/number-field-round2-proof-resource-native.cjs",
+    "bench/number-field-round2-proof-resource.cjs",
+    "bench/number-field-round2-proof-resource-witness.c"
   ],
-  "dependencies": [],
+  "dependencies": ["nf-opt-vector429-public"],
   "references": [],
   "architecture": {
     "strategy": "mixed",
@@ -25,7 +36,7 @@
       "Native generated kernel differential with exact corruption rejection"
     ],
     "exceptions": [
-      "Extend the already-audited FLINT-backed field-analysis resource adapter with compact representation construction; mathematical validation remains ordinary CPython-parseable source-transparent Python"
+      "Use the already-audited FLINT-backed field-analysis resource adapter for an independent terminal fixed-point verifier because the generated source-transparent O(n^4) checker measured 18.185s versus 2.356s for three FLINT witnesses at degree 64; retain that ordinary checker as the dynamic mathematical oracle"
     ]
   },
   "platforms": {

@@ -13,8 +13,8 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 69,
-    "declared-ffi": 408,
+    "classified-native-file": 70,
+    "declared-ffi": 409,
     "declared-ffi-resource": 29,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -4553,6 +4553,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:number_field_round2_proof_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_round2_proof_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldRound2ProofResource",
+      "symbol": "sagejs_number_field_round2_proof_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:igraph:canonical_permutation",
       "kind": "declared-ffi",
       "path": "ffi/igraph.ffi.json",
@@ -7881,6 +7892,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/number-field-round2-proof-resource-witness.c",
+      "kind": "classified-native-file",
+      "path": "bench/number-field-round2-proof-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:packages/fflas/include/sagejs/fflas_matrix_ffi.h",
