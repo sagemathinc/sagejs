@@ -81,7 +81,7 @@ const report = {
     label: "native-round2-same-local-input",
     milliseconds: 6_129,
     provenance:
-      "integrated sparse Round-2 calibration at integration commit 285c223d",
+      "integrated sparse Round-2 calibration carried through integration commit 636da9d7",
   },
   implementations: [
     measure("cpython", "python3", ["-"], 30_000),
