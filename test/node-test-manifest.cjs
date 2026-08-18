@@ -95,6 +95,7 @@ const integration = [
   "test/finite-extension-scalar-resource.cjs",
   "test/native-resource-basic-finalizer.cjs",
   "test/native-uint64-bitwise.cjs",
+  "test/native-exact-uint64-buffer.cjs",
   "test/ffi-wasm-fmpz-resource-core.cjs",
   "test/ffi-wasm-fmpq-resource-core.cjs",
   "test/ffi-wasm-m4ri-resource.cjs",

@@ -19,6 +19,7 @@
     "tools/native-kernel/js-backend.cjs",
     "test/native-kernel.cjs",
     "test/native-exact-uint64-buffer.cjs",
+    "test/node-test-manifest.cjs",
     "bench/native_exact_uint64_buffer.py",
     "bench/NATIVE-COMPILER.md"
   ],
