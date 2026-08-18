@@ -20,6 +20,7 @@ const precisionCase = corpus.cases.find(
 assert.ok(precisionCase);
 
 const source = String.raw`
+import decimal
 import json
 import sys
 import time
@@ -162,10 +163,7 @@ function run(command, args, environment = {}) {
 }
 
 test("2772-bit BL construction and independent replay agree exactly", () => {
-  const python = run(pythonExecutable(), [
-    "-c",
-    `import decimal\n${source}`,
-  ]);
+  const python = run(pythonExecutable(), ["-"]);
   const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });

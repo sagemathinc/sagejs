@@ -20,6 +20,7 @@ if (!precisionCase) throw new Error("missing precision-sensitive corpus case");
 const samples = Number(process.env.SAGEJS_BL_PRECISION_SAMPLES ?? "3");
 const warmups = Number(process.env.SAGEJS_BL_PRECISION_WARMUPS ?? "1");
 const source = String.raw`
+import decimal
 import json
 import sys
 import time
@@ -85,12 +86,12 @@ print(json.dumps({
 }, sort_keys=True))
 `;
 
-function runRuntime(name, command, args, prefix = "") {
+function runRuntime(name, command, args) {
   const started = process.hrtime.bigint();
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
-    input: `${prefix}${source}`,
+    input: source,
     timeout: 180_000,
     maxBuffer: 50 * 1024 * 1024,
     env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
@@ -115,11 +116,7 @@ const report = {
   samples,
   native_disabled: true,
   runtimes: [
-    runRuntime(
-      "CPython",
-      pythonExecutable(),
-      ["-c", `import decimal\n${source}`],
-    ),
+    runRuntime("CPython", pythonExecutable(), ["-"]),
     runRuntime("Sage.js dynamic", join(root, "bin", "sagejs"), [
       "--python",
       "-",
