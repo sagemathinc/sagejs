@@ -11,6 +11,7 @@ const {
   runColdEvidence,
   runDiagnosticEvidence,
   runPrimaryEvidence,
+  runRandomizedGeneratorEvidence,
   writeEvidence,
 } = require("./number-field-maximal-order-final-evidence/runner.cjs");
 
@@ -19,6 +20,7 @@ function usage() {
   node bench/number-field-maximal-order-final-evidence.cjs validate
   node bench/number-field-maximal-order-final-evidence.cjs plan [options]
   node bench/number-field-maximal-order-final-evidence.cjs run [options]
+  node bench/number-field-maximal-order-final-evidence.cjs randomized [options]
   node bench/number-field-maximal-order-final-evidence.cjs cold [options]
   node bench/number-field-maximal-order-final-evidence.cjs diagnose --primary REPORT [options]
   node bench/number-field-maximal-order-final-evidence.cjs gates --reports A.json,B.json [options]
@@ -26,6 +28,7 @@ function usage() {
 Runner options:
   --selection NAME        standard, stress, round4, hecke, equivalent, quick, all
   --systems LIST          comma-separated systems (default: sagejs)
+  --sagejs-boundaries L   comma-separated Sage.js evidence boundaries
   --cases LIST            exact comma-separated corpus case ids
   --samples N             retained samples (default: 1)
   --warmups N             discarded warmups (default: 0)
@@ -41,6 +44,11 @@ Runner options:
   --magma PATH            Magma executable
   --hecke-project PATH    pinned Hecke project
   --oscar-project PATH    pinned Oscar project
+  --platform-validation P attach an authenticated same-commit platform receipt
+
+Randomized options:
+  --randomized-seed N     deterministic generator schedule seed
+  --randomized-count N    translated generator cases (default: 8)
 
 Diagnostic options:
   --primary PATH          immutable uniform-primary evidence report
@@ -109,6 +117,7 @@ function runnerOptions(options) {
   return {
     selection: options.selection,
     systems: list(options.systems),
+    sagejsBoundaries: list(options["sagejs-boundaries"]),
     caseIds: list(options.cases),
     samples,
     warmups,
@@ -122,6 +131,9 @@ function runnerOptions(options) {
     magma: options.magma,
     heckeProject: options["hecke-project"],
     oscarProject: options["oscar-project"],
+    platformValidationPath: options["platform-validation"],
+    randomizedSeed: numberOption(options["randomized-seed"], "--randomized-seed", { zero: true }),
+    randomizedCount: numberOption(options["randomized-count"], "--randomized-count"),
   };
 }
 
@@ -163,6 +175,8 @@ async function main(argv) {
   let report;
   if (command === "run") {
     report = await runPrimaryEvidence(runnerOptions(options));
+  } else if (command === "randomized") {
+    report = await runRandomizedGeneratorEvidence(runnerOptions(options));
   } else if (command === "cold") {
     report = await runColdEvidence(runnerOptions(options));
   } else if (command === "diagnose") {

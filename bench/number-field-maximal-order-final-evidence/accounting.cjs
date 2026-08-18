@@ -28,6 +28,14 @@ const BOUNDARY_CONTRACTS = Object.freeze({
     timed_region: "public maximal_order call with algorithm='native'",
     caveat: "this includes public orchestration and is not a direct local/native kernel timing",
   },
+  "traced-public-diagnostic": {
+    class: "public-trace-diagnostic",
+    runtime: "persistent and warmed",
+    field: "freshly constructed for every retained sample",
+    timed_region: "established traced public control path",
+    caveat:
+      "trace=True deliberately bypasses the optimized fused default and is never accepted as warm-public performance evidence",
+  },
   "native-kernel": {
     class: "direct-local-kernel",
     timed_region: "polynomial/local component to canonical HNF without public Order construction",
@@ -60,15 +68,26 @@ const BOUNDARY_CONTRACTS = Object.freeze({
   },
   "sequential-public": {
     class: "public-scheduler-comparison",
-    timed_region: "fresh-field public maximal_order with sequential local execution forced",
+    timed_region:
+      "fresh-field native-fallback public maximal_order with the local scheduler forced sequential",
   },
   "parallel-public": {
     class: "public-scheduler-comparison",
-    timed_region: "fresh-field public maximal_order with the production worker graph forced",
+    timed_region:
+      "fresh-field native-fallback public maximal_order accepted only when the production policy selects its packaged worker graph",
   },
-  "round2-local": { class: "forced-local-algorithm" },
-  "round4-local": { class: "forced-local-algorithm" },
-  "om-local": { class: "forced-local-algorithm" },
+  "round2-local": {
+    class: "forced-local-algorithm",
+    timed_region: "fresh-field globally certified public execution with every eligible local component forced through Round 2",
+  },
+  "round4-local": {
+    class: "forced-local-algorithm",
+    timed_region: "fresh-field globally certified public execution with every eligible local component forced through Round 4",
+  },
+  "om-local": {
+    class: "forced-local-algorithm",
+    timed_region: "fresh-field globally certified public execution with every eligible local component forced through OM/MaxMin",
+  },
 });
 
 function recordKey(record) {
@@ -181,6 +200,7 @@ function finalizeEvidenceReport(rawReport, {
   runKind = "uniform-primary",
   selection,
   diagnosticParent = null,
+  platformValidation = null,
   notes = [],
 } = {}) {
   const records = rawReport.records || [];
@@ -212,6 +232,18 @@ function finalizeEvidenceReport(rawReport, {
       ]),
     ),
     oracle_matrix: oracleMatrix(records, families),
+    platform_validation: platformValidation,
+    cache_identity_api: {
+      records: records
+        .filter((record) => record.cache_identity?.applicable === true)
+        .map((record) => ({
+          case_id: record.case_id,
+          system: record.system,
+          boundary: record.boundary,
+          same_object: record.cache_identity.same_object === true,
+          timed: record.cache_identity.timed === true,
+        })),
+    },
     raw_terminal_accounting: terminalAccounting(records, expectedRecords || []),
     raw_runner_summary: rawReport.summary || null,
   };

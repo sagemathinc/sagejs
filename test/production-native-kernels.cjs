@@ -170,6 +170,7 @@ test("the field-analysis checker is current and required-autoloadable", () => {
   const functionNames = [
     "packed_field_analysis_fixed_points_are_valid",
     "packed_field_analysis_decode_integers",
+    "packed_field_analysis_authenticate_projection",
   ];
   const manifest = JSON.parse(readFileSync(
     join(root, "architecture", "native-kernels.json"),

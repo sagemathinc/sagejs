@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.number-fields/field-analysis-public-benchmark-v1",
+  "revision_base": "7684832509b94215715e03d9f52c3b4ae9a1b8a5",
+  "date": "2026-08-18",
+  "runtime": "Node.js 26.7.0, linux-x64, compiled production kernel",
+  "samples_per_case": 101,
+  "before_ns": {
+    "cubic_median": 3112960,
+    "essential_median": 3125760,
+    "degree7_median": 4039424
+  },
+  "after_ns": {
+    "cubic_median": 1572352,
+    "cubic_p90": 2831872,
+    "essential_median": 1443328,
+    "essential_p90": 1693696,
+    "degree7_median": 1714432,
+    "degree7_p90": 2044416
+  },
+  "pre_final_wrapper_degree7_phase_ns": {
+    "integral_coefficients_median": 194816,
+    "composite_eligibility_median": 90112,
+    "authenticated_wrapper_median": 2130432,
+    "lazy_order_constructor_median": 223488,
+    "discriminant_cache_median": 19968,
+    "native_resource_median": 207360,
+    "payload_copy_median": 26624,
+    "packed_decode_and_projection_median": 1147904
+  },
+  "invariants": {
+    "compiled": true,
+    "lazy_first_return": true,
+    "all_warm_public_medians_below_2ms": true
+  }
+}

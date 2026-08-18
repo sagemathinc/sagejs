@@ -39,6 +39,14 @@ function accepted(record) {
     Number.isFinite(record.statistics?.median_ms);
 }
 
+function performanceAccepted(record, minimumSamples = 3) {
+  return accepted(record) &&
+    record.statistics.sample_count >= minimumSamples &&
+    Array.isArray(record.samples) &&
+    record.samples.length >= minimumSamples &&
+    record.samples.every((sample) => Number.isFinite(Number(sample.timing_ms)));
+}
+
 function gate(id, status, requirement, evidence, detail = null) {
   return { id, status, requirement, evidence, detail };
 }
@@ -86,15 +94,19 @@ function uniqueRecords(reports, predicate) {
 function comparisonRows(reports, sagejsBoundary, caseFilter = () => true) {
   const sagejs = uniqueRecords(reports, (record) =>
     record.system === "sagejs" && record.boundary === sagejsBoundary && caseFilter(record.case_id),
-  ).records.filter(accepted);
+  ).records.filter(performanceAccepted);
   const references = uniqueRecords(reports, (record) =>
     caseFilter(record.case_id) &&
     ((record.system === "pari" && ["nfbasis", "nfinit"].includes(record.boundary)) ||
       (record.system === "hecke" && record.boundary === "core")),
-  ).records.filter(accepted);
+  ).records.filter(performanceAccepted);
   const byCase = new Map();
   for (const record of sagejs) {
-    byCase.set(record.case_id, { case_id: record.case_id, sagejs_ms: record.statistics.median_ms });
+    byCase.set(record.case_id, {
+      case_id: record.case_id,
+      sagejs_ms: record.statistics.median_ms,
+      sagejs_samples: record.statistics.sample_count,
+    });
   }
   for (const record of references) {
     const row = byCase.get(record.case_id);
@@ -103,6 +115,7 @@ function comparisonRows(reports, sagejsBoundary, caseFilter = () => true) {
       row.reference_ms = record.statistics.median_ms;
       row.reference_system = record.system;
       row.reference_boundary = record.boundary;
+      row.reference_samples = record.statistics.sample_count;
     }
   }
   return [...byCase.values()]
@@ -194,21 +207,124 @@ function evaluateGates(reports, options = {}) {
     { identities: sourceIdentities },
   ));
 
+  const dirtyPrimary = primaryReports.flatMap((report, reportIndex) =>
+    report.identity?.source?.clean === true ? [] : [{
+      report_index: reportIndex,
+      status: report.identity?.source?.tracked_and_untracked_status || null,
+    }],
+  );
+  gates.push(gate(
+    "evidence.clean-source",
+    primaryReports.length === 0 ? "not-measured" : dirtyPrimary.length ? "fail" : "pass",
+    "Every primary measurement is taken from the exact clean committed source tree.",
+    { dirty_reports: dirtyPrimary },
+  ));
+
+  const sampledBoundaries = new Set([
+    "warm-public",
+    "dynamic-public",
+    "native-public",
+    "native-kernel",
+    "round2-local",
+    "round4-local",
+    "om-local",
+    "sequential-public",
+    "parallel-public",
+    "nfbasis",
+    "nfinit",
+    "core",
+  ]);
+  const sampledRecords = primaryReports.flatMap((report, reportIndex) =>
+    report.evidence_contract?.selection === "randomized" ? [] :
+      (report.records || []).filter((record) =>
+        accepted(record) && sampledBoundaries.has(record.boundary),
+      ).map((record) => ({ report, reportIndex, record })),
+  );
+  const undersampledRecords = sampledRecords
+    .filter(({ record }) => !performanceAccepted(record))
+    .map(({ reportIndex, record }) => ({
+      report_index: reportIndex,
+      key: recordKey(record),
+      sample_count: record.statistics?.sample_count ?? 0,
+    }));
+  gates.push(gate(
+    "evidence.performance-samples",
+    sampledRecords.length === 0 ? "not-measured" : undersampledRecords.length ? "fail" : "pass",
+    "Every accepted non-randomized performance row retains at least three finite raw samples.",
+    { observed: sampledRecords.length, failures: undersampledRecords },
+  ));
+
+  const memoryFailures = sampledRecords.flatMap(({ report, reportIndex, record }) => {
+    const limit = Number(record.memory_limit_mb);
+    const peak = Number(record.peak_rss_kb);
+    const expectedScope = report.identity?.platform?.platform === "linux" ? "process-tree" : null;
+    const errors = [];
+    if (!Number.isFinite(peak) || peak <= 0) errors.push("missing-peak-rss");
+    if (!Number.isFinite(limit) || limit <= 0) errors.push("missing-memory-policy");
+    if (Number.isFinite(peak) && Number.isFinite(limit) && peak > limit * 1024) {
+      errors.push("peak-exceeds-policy");
+    }
+    if (!record.peak_rss_scope) errors.push("missing-rss-scope");
+    if (expectedScope && record.peak_rss_scope !== expectedScope) {
+      errors.push(`expected-${expectedScope}`);
+    }
+    return errors.length ? [{ report_index: reportIndex, key: recordKey(record), errors }] : [];
+  });
+  gates.push(gate(
+    "evidence.peak-memory",
+    sampledRecords.length === 0 ? "not-measured" : memoryFailures.length ? "fail" : "pass",
+    "Every accepted performance row records scoped peak RSS within its explicit memory policy.",
+    { observed: sampledRecords.length, failures: memoryFailures },
+  ));
+
+  const sagejsSelectionRecords = sampledRecords.filter(({ record }) =>
+    record.system.startsWith("sagejs"),
+  );
+  const selectionFailures = sagejsSelectionRecords
+    .filter(({ record }) => !record.algorithm_selection)
+    .map(({ reportIndex, record }) => ({ report_index: reportIndex, key: recordKey(record) }));
+  gates.push(gate(
+    "evidence.algorithm-selection",
+    sagejsSelectionRecords.length === 0 ? "not-measured" :
+      selectionFailures.length ? "fail" : "pass",
+    "Every accepted Sage.js performance row emits its deterministic algorithm-selection evidence.",
+    { observed: sagejsSelectionRecords.length, failures: selectionFailures },
+  ));
+
   const sagejsReports = primaryReports.filter((report) =>
     (report.records || []).some((record) => record.system.startsWith("sagejs")),
   );
+  const requiredNativeArtifacts = [
+    "packages/flint/build/Release/sagejs_flint.node",
+    "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+    "dist/tools/kernel.js",
+    "dist/native-kernels/index.json",
+  ];
   const missingNativeArtifacts = sagejsReports.flatMap((report, reportIndex) => {
-    const artifacts = Object.values(report.identity?.native_artifacts || {});
-    return artifacts.some((artifact) => artifact.status === "ok" && artifact.sha256)
-      ? []
-      : [reportIndex];
+    const missing = requiredNativeArtifacts.filter(
+      (path) => report.identity?.native_artifacts?.[path]?.status !== "ok" ||
+        !/^[0-9a-f]{64}$/.test(report.identity?.native_artifacts?.[path]?.sha256 || ""),
+    );
+    const production = report.identity?.production_native;
+    if (production?.complete === true && production?.index?.status === "ok" && !missing.length) {
+      return [];
+    }
+    return [{
+      report_index: reportIndex,
+      missing_artifacts: missing,
+      production_native: production || null,
+    }];
   });
   gates.push(gate(
     "evidence.native-artifact-identity",
     sagejsReports.length === 0 ? "not-measured" :
       missingNativeArtifacts.length ? "fail" : "pass",
-    "Every Sage.js primary report records at least one available hashed native artifact.",
-    { sagejs_report_count: sagejsReports.length, missing_report_indexes: missingNativeArtifacts },
+    "Every Sage.js primary report hashes both FLINT addons, the runtime bundle, the actual production index, and every current wrapper/addon module.",
+    {
+      sagejs_report_count: sagejsReports.length,
+      required_artifacts: requiredNativeArtifacts,
+      failures: missingNativeArtifacts,
+    },
   ));
 
   const standardIds = corpus.cases.filter((entry) => entry.tier === "standard").map((entry) => entry.id);
@@ -255,22 +371,58 @@ function evaluateGates(reports, options = {}) {
   const randomizedSchedules = primaryReports.flatMap(
     (report) => report.randomized_generator_schedules || [],
   );
-  if (fixedEquivalent.status === "pass" && randomizedSchedules.length === 0) {
-    fixedEquivalent.status = "partial";
-    fixedEquivalent.detail =
-      "Frozen transformed generators pass, but no randomized seed schedule is attached.";
+  const publicById = new Map(publicRows.map((record) => [record.case_id, record]));
+  const randomizedFailures = randomizedSchedules.flatMap((schedule) =>
+    (schedule.transformations || []).flatMap((transformation) => {
+      const record = publicById.get(transformation.case_id);
+      if (!record) return [{ case_id: transformation.case_id, reason: "missing-record" }];
+      if (!accepted(record)) return [{ case_id: transformation.case_id, reason: record.status }];
+      if (record.polynomial_digest !== transformation.polynomial_digest) {
+        return [{ case_id: transformation.case_id, reason: "polynomial-digest" }];
+      }
+      return [];
+    }),
+  );
+  if (fixedEquivalent.status === "pass") {
+    if (randomizedSchedules.length === 0) {
+      fixedEquivalent.status = "partial";
+      fixedEquivalent.detail =
+        "Frozen transformed generators pass, but no randomized seed schedule is attached.";
+    } else if (randomizedFailures.length) {
+      fixedEquivalent.status = "fail";
+      fixedEquivalent.detail = "One or more scheduled randomized transformations lacks accepted exact evidence.";
+    }
   }
   fixedEquivalent.evidence.randomized_schedule_count = randomizedSchedules.length;
+  fixedEquivalent.evidence.randomized_failures = randomizedFailures;
   gates.push(fixedEquivalent);
+
+  const cacheRows = primaryReports.flatMap((report) => report.cache_identity_api?.records || []);
+  const cacheByKey = new Map(cacheRows.map((record) => [record.case_id, record]));
+  const cacheFailures = publicRows.filter(accepted).flatMap((publicRecord) => {
+    const cacheRecord = cacheByKey.get(publicRecord.case_id);
+    if (!cacheRecord) return [{ case_id: publicRecord.case_id, reason: "missing-evidence" }];
+    if (!cacheRecord.same_object) return [{ ...cacheRecord, reason: "different-object" }];
+    if (cacheRecord.timed) return [{ ...cacheRecord, reason: "timed-second-call" }];
+    return [];
+  });
+  gates.push(gate(
+    "api.cache-identity",
+    publicRows.filter(accepted).length === 0 ? "not-measured" :
+      cacheFailures.length ? "fail" : "pass",
+    "The cached second call returns the identical order object and is excluded from every performance timing.",
+    { expected: publicRows.filter(accepted).length, observed: cacheRows.length, failures: cacheFailures },
+  ));
 
   const microRows = MICRO_CASES.map((id) => publicRows.find((record) => record.case_id === id));
   const presentMicro = microRows.filter(Boolean);
   const slowMicro = presentMicro
-    .filter((record) => !accepted(record) || record.statistics.median_ms > 2)
+    .filter((record) => !performanceAccepted(record) || record.statistics.median_ms > 2)
     .map((record) => ({
       id: record.case_id,
       status: record.status,
       median_ms: record.statistics?.median_ms ?? null,
+      sample_count: record.statistics?.sample_count ?? 0,
     }));
   gates.push(gate(
     "performance.warm-public-micro",
@@ -285,8 +437,12 @@ function evaluateGates(reports, options = {}) {
     MICRO_CASES.includes(record.case_id),
   ).records;
   const slowNativeMicro = nativeMicro
-    .filter((record) => !accepted(record) || record.statistics.median_ms > 0.25)
-    .map((record) => ({ id: record.case_id, median_ms: record.statistics?.median_ms ?? null }));
+    .filter((record) => !performanceAccepted(record) || record.statistics.median_ms > 0.25)
+    .map((record) => ({
+      id: record.case_id,
+      median_ms: record.statistics?.median_ms ?? null,
+      sample_count: record.statistics?.sample_count ?? 0,
+    }));
   gates.push(gate(
     "performance.native-micro",
     nativeMicro.length === 0 ? "not-measured" :
@@ -301,9 +457,13 @@ function evaluateGates(reports, options = {}) {
   const t8 = publicRows.find((record) => record.case_id === "pure-bad-generator-n8-c2pow32");
   gates.push(gate(
     "performance.t8-public",
-    !t8 ? "not-measured" : !accepted(t8) || t8.statistics.median_ms > 25 ? "fail" : "pass",
+    !t8 ? "not-measured" : !performanceAccepted(t8) || t8.statistics.median_ms > 25 ? "fail" : "pass",
     "Checked public T(8, 2^32) completes within 25 ms.",
-    { status: t8?.status || null, median_ms: t8?.statistics?.median_ms ?? null },
+    {
+      status: t8?.status || null,
+      median_ms: t8?.statistics?.median_ms ?? null,
+      sample_count: t8?.statistics?.sample_count ?? 0,
+    },
   ));
 
   const directRatios = comparisonRows(primaryReports, "native-kernel");
@@ -336,7 +496,7 @@ function evaluateGates(reports, options = {}) {
 
   const tailPublic = LONG_TAIL_CASES.map((id) => publicRows.find((record) => record.case_id === id));
   const tailFailures = tailPublic.filter(Boolean).filter((record) =>
-    !accepted(record) || record.statistics.median_ms >= 5_000,
+    !performanceAccepted(record) || record.statistics.median_ms >= 5_000,
   );
   gates.push(gate(
     "performance.long-tails-under-policy",
@@ -351,6 +511,7 @@ function evaluateGates(reports, options = {}) {
         id: record.case_id,
         status: record.status,
         median_ms: record.statistics?.median_ms ?? null,
+        sample_count: record.statistics?.sample_count ?? 0,
       })),
     },
   ));
@@ -372,10 +533,10 @@ function evaluateGates(reports, options = {}) {
 
   const sageRows = uniqueRecords(primaryReports, (record) =>
     record.system === "sage" && record.boundary === "warm-public",
-  ).records.filter(accepted);
+  ).records.filter(performanceAccepted);
   const sageByCase = new Map(sageRows.map((record) => [record.case_id, record]));
   const publicComparisons = publicRows
-    .filter(accepted)
+    .filter(performanceAccepted)
     .filter((record) => sageByCase.has(record.case_id))
     .map((record) => ({
       case_id: record.case_id,
@@ -416,35 +577,88 @@ function evaluateGates(reports, options = {}) {
     { overlap_case_count: overlapRows.length, disagreements: overlapDisagreements.map(([id]) => id) },
   ));
 
-  const omSelections = publicRows.filter((record) =>
-    record.algorithm_selection?.selected === "om" || record.selected_algorithm === "om",
-  );
+  const tracedDiagnostics = uniqueRecords(primaryReports, (record) =>
+    record.system === "sagejs" && record.boundary === "traced-public-diagnostic",
+  ).records.filter(accepted);
+  const tracedByCase = new Map(tracedDiagnostics.map((record) => [record.case_id, record]));
+  const omSelections = publicRows.filter((record) => {
+    const selected = record.selected_algorithm === "om" ||
+      record.algorithm_selection?.local_decisions?.some(
+        (decision) => decision.algorithm === "om-maxmin",
+      );
+    const diagnostic = tracedByCase.get(record.case_id);
+    return accepted(record) && selected &&
+      diagnostic?.executed_algorithms?.includes("om-maxmin");
+  });
   gates.push(gate(
     "selection.om-automatic",
     omSelections.length ? "pass" : "not-measured",
     "OM is automatically selected on at least one independently verified region where it wins end to end.",
-    { selected_case_ids: omSelections.map((record) => record.case_id) },
+    {
+      selected_case_ids: omSelections.map((record) => record.case_id),
+      requirement_note:
+        "A warm optimized selection is paired with a separately labeled traced diagnostic proving actual OM execution.",
+    },
   ));
 
   const sequential = uniqueRecords(primaryReports, (record) => record.boundary === "sequential-public").records;
   const parallel = uniqueRecords(primaryReports, (record) => record.boundary === "parallel-public").records;
-  const sequentialByCase = new Map(sequential.filter(accepted).map((record) => [record.case_id, record]));
-  const parallelRows = parallel.filter(accepted).filter((record) => sequentialByCase.has(record.case_id));
+  const sequentialByCase = new Map(
+    sequential.filter(performanceAccepted).map((record) => [record.case_id, record]),
+  );
+  const parallelRows = parallel
+    .filter(performanceAccepted)
+    .filter((record) => sequentialByCase.has(record.case_id));
   const parallelComparisons = parallelRows.map((record) => ({
     case_id: record.case_id,
     parallel_ms: record.statistics.median_ms,
     sequential_ms: sequentialByCase.get(record.case_id).statistics.median_ms,
     speedup: sequentialByCase.get(record.case_id).statistics.median_ms / record.statistics.median_ms,
+    samples: record.statistics.sample_count,
+    exact_lattice_equal:
+      record.verification.canonical_basis?.digest ===
+      sequentialByCase.get(record.case_id).verification.canonical_basis?.digest,
+    production_parallel_selected:
+      record.scheduler?.parallel_decision?.selected === true,
+    sequential_control_selected:
+      sequentialByCase.get(record.case_id).scheduler?.parallel_decision?.selected === false,
+    peak_rss_kb: record.peak_rss_kb ?? null,
+    peak_rss_scope: record.peak_rss_scope ?? null,
+    peak_rss_observed_processes: record.peak_rss_observed_processes ?? null,
+    memory_limit_mb: record.memory_limit_mb ?? null,
+    memory_within_policy:
+      Number.isFinite(record.peak_rss_kb) && Number.isFinite(record.memory_limit_mb) &&
+      record.peak_rss_kb <= record.memory_limit_mb * 1024,
   }));
+  const tinySchedulerFailures = MICRO_CASES.flatMap((caseId) => {
+    const record = publicRows.find((row) => row.case_id === caseId);
+    if (!record) return [{ case_id: caseId, reason: "missing-warm-public" }];
+    if (!accepted(record)) return [{ case_id: caseId, reason: record.status }];
+    if (record.algorithm_selection?.parallel_gate?.selected !== false) {
+      return [{ case_id: caseId, reason: "parallel-not-declined" }];
+    }
+    return [];
+  });
+  const invalidParallel = parallelComparisons.filter((row) =>
+    !row.exact_lattice_equal ||
+    !row.production_parallel_selected ||
+    !row.sequential_control_selected ||
+    !row.memory_within_policy ||
+    row.peak_rss_scope !== "process-tree" ||
+    row.peak_rss_observed_processes < 2,
+  );
+  const stableSpeedup = parallelComparisons.some((row) => row.speedup > 1.05);
   gates.push(gate(
     "performance.parallel-public",
     parallelComparisons.length === 0 ? "not-measured" :
-      parallelComparisons.some((row) => row.speedup > 1.05) ? "pass" : "fail",
+      stableSpeedup && invalidParallel.length === 0 && tinySchedulerFailures.length === 0
+        ? "pass" : "fail",
     "The production worker path has a stable public speedup on many-prime work without tiny-case regression.",
-    { comparisons: parallelComparisons },
-    parallelComparisons.length
-      ? "Tiny-case non-regression and peak-memory policy still require explicit scheduler metadata."
-      : null,
+    {
+      comparisons: parallelComparisons,
+      invalid_parallel_rows: invalidParallel,
+      tiny_scheduler_failures: tinySchedulerFailures,
+    },
   ));
 
   const requiredTargets = ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"];
@@ -454,7 +668,9 @@ function evaluateGates(reports, options = {}) {
   }] : []);
   const completePlatformTargets = platformMetadata
     .filter((entry) =>
-      entry.exactness && entry.production_autoload && entry.resource_lifecycle && entry.corruption,
+      ["exactness", "production_autoload", "resource_lifecycle", "corruption"].every(
+        (name) => entry.checks?.[name]?.status === "pass",
+      ),
     )
     .map((entry) => entry.target);
   gates.push(gate(

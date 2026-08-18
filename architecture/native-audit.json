@@ -176,22 +176,23 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
-      "lines": 502,
-      "bytes": 18889,
+      "lines": 1309,
+      "bytes": 53642,
       "decision": "typed-remediation-pilot",
       "priority": "high",
       "responsibilities": [
         "Zassenhaus Round-2 local maximal-order iteration",
         "nilradical and multiplier-ring kernels over FLINT storage",
-        "exact rational order-basis transformations"
+        "exact packed-integer order-basis transformations and p-squared multiplier equations with exact fallbacks"
       ],
-      "rationale": "The strict ordinary-Python implementation is the primary readable algorithm, but measured 0.2-second dynamic-object overhead per iteration made PARI's historical #1710 regression roughly 500 times slower than SageMath. This host-neutral batched kernel keeps the same control flow and removes object-at-a-time crossings while the native compiler lacks packed three-dimensional fmpz multiplication tables.",
-      "fallback": "The complete ordinary-Python Round-2 implementation remains correct for every supported prime and is exercised as a differential oracle; the native word-prime path is an optional acceleration.",
+      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using radical RREF data to form p-squared multiplier equations, packed integer basis transforms, reusable workspaces, checked sparse word transforms, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. Every accelerated step retains an exact fallback because the native compiler still lacks packed three-dimensional fmpz multiplication tables.",
+      "fallback": "The complete ordinary-Python Round-2 implementation and the forced original exact lattice-inverse path remain correct for every supported prime. Both are exercised against deterministic randomized optimized-versus-exact differentials; the native word-prime path is an optional acceleration.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
         "SageMath",
-        "PARI/GP"
+        "PARI/GP",
+        "deterministic randomized exact differentials"
       ],
       "next": "Replace this exception with source-transparent native lowering when packed exact multiplication tables, modular kernels, and rational basis changes are expressible in the typed compiler."
     },

@@ -21,6 +21,15 @@ const sourcePath = join(
   "matrix",
   "word_prime_krylov.py",
 );
+const packedRationalSourcePath = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "kernels",
+  "polynomial",
+  "packed_rational.py",
+);
 
 function multiplicationMatrix(defining, beta) {
   const degree = defining.length - 1;
@@ -131,12 +140,14 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
         const crtDegree = batch.createUInt64Buffer(1);
         const crtState = batch.createIntegerBuffer(degree + 2, 8);
         const batchState = batch.createIntegerBuffer(degree + 2, 8);
+        const batchMatrix = batch.createIntegerBuffer(degree * degree, 8);
         const completed = batch(
           degrees,
           coefficients,
           crtDegree,
           crtState,
           batchState,
+          batchMatrix,
           batch.packIntegerBuffer(entries),
           batch.createUInt64Buffer(primes),
           workspace,
@@ -210,6 +221,7 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
       batch.createUInt64Buffer(1),
       batch.createIntegerBuffer(4, 8),
       batch.createIntegerBuffer(4, 8),
+      batch.createIntegerBuffer(4, 8),
       batch.packIntegerBuffer([1n, 0n, 0n, 1n]),
       batch.createUInt64Buffer([1n << 30n]),
       batch.createUInt64Buffer(21),
@@ -226,6 +238,7 @@ test("batched CRT reconstruction has native, JavaScript, and CPython oracles", a
   const cache = mkdtempSync(join(tmpdir(), "sagejs-round4-crt-paths-"));
   try {
     await compile({ sourcePath, cacheRoot: cache });
+    await compile({ sourcePath: packedRationalSourcePath, cacheRoot: cache });
     const sageProgram = String.raw`
 from sagejs.native import is_compiled
 import sagejs.number_fields.round4 as round4
@@ -238,9 +251,34 @@ for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1]:
     for beta in [K(2), K.gen() + 2, K.gen()**(K.degree()-1) - K.gen() + 3]:
         rows, denominator, row_bounds = round4._integer_multiplication_matrix_data(K, beta)
         assert denominator == 1
-        characteristic, prime_count, modulus_bits, batch_calls, attempts, computed_primes = round4._batched_integer_field_element_characteristic_polynomial(rows)
+        certificate = {}
+        characteristic, prime_count, modulus_bits, batch_calls, attempts, computed_primes = round4._batched_integer_field_element_characteristic_polynomial(rows, certificate)
         direct = [coefficient._numerator for coefficient in round4._element_characteristic_polynomial(K, beta)]
         assert characteristic == direct
+        certificate['element'] = round4._packed_field_element_coordinates(K, beta)
+        certificate['matrix_denominator'] = denominator
+        round4._verify_round4_characteristic_certificate(K, certificate)
+        certificate['minimal_polynomial'][0] += 1
+        rejected = False
+        try:
+            round4._verify_round4_characteristic_certificate(K, certificate)
+        except round4.Round4InvariantError:
+            rejected = True
+        certificate['minimal_polynomial'][0] -= 1
+        assert rejected
+        columns = []
+        product = beta
+        for column_index in range(K.degree()):
+            column = list(product.list())
+            column += [QQ(0) for _index in range(K.degree() - len(column))]
+            columns.append(column)
+            product *= K.gen()
+        generic_rows = [
+            [columns[column][row] for column in range(K.degree())]
+            for row in range(K.degree())
+        ]
+        generic = list(matrix(QQ, generic_rows).charpoly().list())
+        assert round4._element_characteristic_polynomial(K, beta) == generic
         assert round4._annihilates_first_coordinate(rows, characteristic)
         corrupted = list(characteristic)
         corrupted[0] += 1
@@ -289,6 +327,7 @@ coefficients = [0] * (len(primes) * 3)
 workspace = [0] * word_prime_krylov_batch_workspace_length(2)
 assert integer_matrix_word_prime_minimal_polynomial_batch(
     degrees, coefficients, [0], [0, 0, 0, 0],
+    [0, 0, 0, 0],
     [0, 0, 0, 0],
     [value for row in rows for value in row],
     primes, workspace, 2, len(primes),

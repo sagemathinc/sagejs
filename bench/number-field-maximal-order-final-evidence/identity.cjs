@@ -10,11 +10,17 @@ const ROOT = resolve(__dirname, "../..");
 
 const RELEVANT_SOURCES = Object.freeze([
   "src/lib/sagejs/number_fields/maximal_order_engine.py",
+  "src/lib/sagejs/number_fields/maximal_order_certification.py",
+  "src/lib/sagejs/number_fields/discriminant_components.py",
   "src/lib/sagejs/number_fields/field_analysis_resource.py",
   "src/lib/sagejs/number_fields/buchmann_lenstra.py",
   "src/lib/sagejs/number_fields/bl_composite_kernel.py",
   "src/lib/sagejs/number_fields/round4.py",
+  "src/lib/sagejs/number_fields/local_algorithm_selector.py",
+  "src/lib/sagejs/number_fields/local_polygons.py",
+  "src/lib/sagejs/number_fields/local_parallel.py",
   "src/lib/sagejs/number_fields/om_types.py",
+  "src/lib/sagejs/number_fields/om_higher_residue.py",
   "src/lib/sagejs/number_fields/om_maxmin.py",
   "src/lib/sagejs/number_fields/local_parallel_worker.py",
   "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
@@ -24,9 +30,9 @@ const RELEVANT_SOURCES = Object.freeze([
 
 const RELEVANT_ARTIFACTS = Object.freeze([
   "packages/flint/build/Release/sagejs_flint.node",
+  "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
   "dist/tools/kernel.js",
-  "dist/native-kernels/manifest.json",
-  "dist/production-native-kernels.json",
+  "dist/native-kernels/index.json",
 ]);
 
 function sha256(bytes) {
@@ -67,6 +73,65 @@ function loadSnapshot() {
   };
 }
 
+function productionNativeIdentity() {
+  const indexPath = "dist/native-kernels/index.json";
+  const indexIdentity = fileIdentity(indexPath);
+  if (indexIdentity.status !== "ok") {
+    return { status: "unavailable", complete: false, index: indexIdentity, modules: {} };
+  }
+  let index;
+  try {
+    index = JSON.parse(readFileSync(resolve(ROOT, indexPath), "utf8"));
+  } catch (error) {
+    return {
+      status: "invalid",
+      complete: false,
+      reason: error.message,
+      index: indexIdentity,
+      modules: {},
+    };
+  }
+  if (index.schema !== "sagejs.native-cache/v3" || !index.logicalSources) {
+    return {
+      status: "invalid",
+      complete: false,
+      reason: "production native index has an unsupported schema",
+      index: indexIdentity,
+      modules: {},
+    };
+  }
+  const modules = {};
+  for (const [logicalSource, record] of Object.entries(index.logicalSources)) {
+    const cacheKey = record?.cacheKey;
+    const base = typeof cacheKey === "string" ? `dist/native-kernels/${cacheKey}` : null;
+    const source = fileIdentity(`src/lib/${logicalSource}`);
+    modules[logicalSource] = {
+      cache_key: cacheKey || null,
+      source_hash: record?.sourceHash || null,
+      native_abi: record?.nativeAbi ?? null,
+      source,
+      source_current: source.status === "ok" && source.sha256 === record?.sourceHash,
+      wrapper: base ? fileIdentity(`${base}/index.cjs`) : { status: "invalid" },
+      addon: base
+        ? fileIdentity(`${base}/build/Release/sagejs_native_kernel.node`)
+        : { status: "invalid" },
+    };
+  }
+  const complete = Object.keys(modules).length > 0 && Object.values(modules).every((module) =>
+    /^[0-9a-f]{64}$/.test(module.cache_key || "") &&
+    /^[0-9a-f]{64}$/.test(module.source_hash || "") &&
+    module.wrapper.status === "ok" && module.addon.status === "ok" &&
+    module.source_current === true
+  );
+  return {
+    status: complete ? "ok" : "incomplete",
+    complete,
+    index: indexIdentity,
+    module_count: Object.keys(modules).length,
+    modules,
+  };
+}
+
 function collectIdentity() {
   const cpus = os.cpus();
   const status = git(["status", "--porcelain=v1"]);
@@ -86,6 +151,7 @@ function collectIdentity() {
       relevant_files: sourceFiles,
     },
     native_artifacts: artifactFiles,
+    production_native: productionNativeIdentity(),
     platform: {
       hostname: os.hostname(),
       platform: process.platform,
@@ -110,5 +176,6 @@ module.exports = {
   collectIdentity,
   fileIdentity,
   loadSnapshot,
+  productionNativeIdentity,
   sha256,
 };

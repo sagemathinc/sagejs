@@ -1,0 +1,129 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-t8-public",
+  "title": "Fused checked T8 public dataflow",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure and implement a generic packed decomposition/BL/proof dataflow that brings checked public T(8,2^32) toward the 25 ms gate while preserving independent verification and exact equivalence",
+  "base_commit": "87d880d1140b3231514369250faf38ab5118fae6",
+  "claims": [
+    "src/lib/sagejs/number_fields/composite_field_analysis.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "test/number-field-t8-fused-analysis.cjs",
+    "bench/number-field-t8-fused-analysis.cjs",
+    "bench/results/number-field-t8-fused-analysis.json"
+  ],
+  "dependencies": [
+    "nf-opt-proof-path",
+    "nf-opt-bl-fusion"
+  ],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "generic maximal-order path and certificate checker",
+      "PARI/Sage canonical HNF fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-t8-fused-analysis.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.937,
+      "started_at": "2026-08-18T09:10:24.726Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "60db5b16c6fa438757541021927c1a93d25f008a0b6de244caef23cd68c3e9dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.293,
+      "started_at": "2026-08-18T09:10:29.413Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "60db5b16c6fa438757541021927c1a93d25f008a0b6de244caef23cd68c3e9dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-t8-fused-analysis.cjs --output bench/results/number-field-t8-fused-analysis.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.91,
+      "started_at": "2026-08-18T09:10:36.445Z",
+      "commit": "99e779811123352caeefd24d5d7d6e36c0bc7df3",
+      "workspace_fingerprint": "c6c4c008fe567cc34b9e950ee9c43186baef04c00ceb896af5499b04699214d5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-t8-fused-analysis.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.906,
+      "started_at": "2026-08-18T09:12:27.244Z",
+      "commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
+      "workspace_fingerprint": "c6083d1f4af8a1358a65b6f4e8285407272d50e33a686430061ed7cd83435fd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.23,
+      "started_at": "2026-08-18T09:12:31.913Z",
+      "commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
+      "workspace_fingerprint": "c6083d1f4af8a1358a65b6f4e8285407272d50e33a686430061ed7cd83435fd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 23.693,
+      "started_at": "2026-08-18T09:14:04.562Z",
+      "commit": "3946a9d64186c91e9a7ee741ffc5d3213dc66030",
+      "workspace_fingerprint": "204cbe8302ae880e35f1a7ddd756dee7aaed7aecb43654af70153f49e00e3f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.169,
+      "started_at": "2026-08-18T09:15:24.055Z",
+      "commit": "3946a9d64186c91e9a7ee741ffc5d3213dc66030",
+      "workspace_fingerprint": "2954b4d1ea6491dd5e12ab6cc0a2fc0ee7698710e5d2b279e318a60bb603fdd8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a generic structural square-support path with packed discriminant/square-root/closure kernels, packed BL/Dedekind construction, exact CRT lattice merge, immutable authenticated proof envelope, lazy public basis and certificate projection, fail-closed fallback, focused corruption/equivalence tests, and a 17-sample checked public T8 receipt. On AMD EPYC 7B13 the final rebased fresh-field public median is 21.654 ms against the 25 ms gate; the generic path has exactly the same canonical numerator, denominator, index, and discriminant.",
+    "risks": [
+      "The structural selector is intentionally narrow: monic integral inputs with at least 128 coefficient bits, one small proved residual prime, exact coprime square support, and the monomial Dedekind residual shape. All other cases retain the established generic path.",
+      "The final full production native/platform suite remains an integration-lane responsibility."
+    ],
+    "next_steps": [
+      "Register packed_polynomial_discriminant, packed_integer_square_root, and packed_order_lattice_is_valid in the root-owned production native registry.",
+      "Add the focused T8 test to the root-owned node test manifest, rebase onto current integration, and run strict/full native validation."
+    ]
+  }
+}

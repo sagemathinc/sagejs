@@ -1,0 +1,155 @@
+{
+  "schema": "sagejs.number-fields/round2-resource-optimization/v1",
+  "date": "2026-08-18",
+  "source": {
+    "baselineCommit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+    "headerSha256": "5aa52d0d175664cfe12dc7f3f7ca58f388a728dab4344ff94871bccb600a0205",
+    "witnessSha256": "870fe3581937f8df96fd6c7b9849a41dbc46c87ae452a1800dd6df9785c07e0e",
+    "corpusManifestDigest": "8d2542159374a799aaf2d726498020a437bee407fab01325ec458f7ee47f46ea"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "compiler": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flint": "3.6.0",
+    "pari": "2.17.3",
+    "hecke": "0.39.21 @ eab7e5566e56d8864fe9cd7b895811ab9df2fe32",
+    "openblasThreads": 1
+  },
+  "policy": {
+    "boundary": "sealed fmpz polynomial plus prime hints to compact canonical HNF resource",
+    "warmups": 4,
+    "samples": 9,
+    "retainedAcrossSamples": false,
+    "exactness": "canonical payloads checked against the frozen cross-family corpus; optimized p^2 multiplier checked against the exact lattice-inverse implementation on both hard cases and 32 deterministic randomized fields"
+  },
+  "hardCases": [
+    {
+      "id": "pari-2510",
+      "roundsPerSample": 100,
+      "baselineMedianUs": 1989.90055942,
+      "optimizedSamplesUs": [
+        417.490770342,
+        357.145370217,
+        375.666370383,
+        373.283880763,
+        369.501670357,
+        378.335169517,
+        368.405479239,
+        376.328169368,
+        363.198469859
+      ],
+      "optimizedMedianUs": 373.283880763,
+      "speedup": 5.330796913471329,
+      "pariMedianUs": 1654,
+      "heckeMedianUs": 241.274,
+      "bestReferenceUs": 241.274,
+      "ratioToBestReference": 1.547136785409949,
+      "payloadBytes": 374,
+      "exact": true,
+      "iterationsPerRound": 14,
+      "enlargementsPerRound": 12,
+      "profileMeanUs": {
+        "round2": 404.870868195,
+        "modularTable": 36.804826465,
+        "radical": 68.760406692,
+        "multiplier": 142.26634847,
+        "basisPrepare": 8.935698308,
+        "basisTransform": 129.826871445,
+        "basisOutput": 7.855948992
+      },
+      "profileAllocationsPerRound": {
+        "setup": 36,
+        "radical": 196,
+        "multiplier": 137,
+        "basisPhases": 0,
+        "publish": 1
+      },
+      "profileRequestedBytesPerRound": {
+        "setup": 27848,
+        "radical": 20480,
+        "multiplier": 190576,
+        "publish": 1024
+      }
+    },
+    {
+      "id": "pari-1710",
+      "roundsPerSample": 50,
+      "baselineMedianUs": 5523.624001071,
+      "optimizedSamplesUs": [
+        982.652939856,
+        994.175318629,
+        1064.432100393,
+        1025.967120659,
+        982.913139742,
+        1015.343721956,
+        1023.609919939,
+        1091.50551958,
+        991.556718946
+      ],
+      "optimizedMedianUs": 1015.343721956,
+      "speedup": 5.440151824083832,
+      "pariMedianUs": 1988,
+      "heckeMedianUs": 1293.0609,
+      "bestReferenceUs": 1293.0609,
+      "ratioToBestReference": 0.7852249820221151,
+      "payloadBytes": 571,
+      "exact": true,
+      "iterationsPerRound": 19,
+      "enlargementsPerRound": 15,
+      "profileMeanUs": {
+        "round2": 1318.865914829,
+        "modularTable": 110.364818946,
+        "radical": 359.751956537,
+        "multiplier": 448.535856791,
+        "basisPrepare": 15.236732084,
+        "basisTransform": 318.072753958,
+        "basisOutput": 43.774264865
+      },
+      "profileAllocationsPerRound": {
+        "setup": 40,
+        "radical": 246,
+        "multiplier": 185,
+        "basisPhases": 0,
+        "publish": 1
+      },
+      "profileRequestedBytesPerRound": {
+        "setup": 51290,
+        "radical": 38528,
+        "multiplier": 366320,
+        "publish": 1600
+      }
+    }
+  ],
+  "hardCaseGeometricMeanRatio": 1.1022025469528185,
+  "ordinaryControls": [
+    {
+      "id": "motivating-degree-7",
+      "baselineMedianUs": 1.821503788,
+      "optimizedMedianUs": 1.75548601
+    },
+    {
+      "id": "sage-essential-discriminant",
+      "baselineMedianUs": 12.543873978,
+      "optimizedMedianUs": 7.066390011
+    },
+    {
+      "id": "lmfdb-3.1.431.1",
+      "baselineMedianUs": 13.020249025,
+      "optimizedMedianUs": 7.090044499
+    },
+    {
+      "id": "lmfdb-5.1.17161.1",
+      "baselineMedianUs": 49.986785976,
+      "optimizedMedianUs": 18.225997919
+    }
+  ],
+  "gates": {
+    "pari2510Within2x": true,
+    "pari1710Within2x": true,
+    "hardCaseGeometricMeanAtMost1_25": true,
+    "ordinaryControlRegression": false,
+    "exactDifferential": true,
+    "sanitizers": true
+  }
+}

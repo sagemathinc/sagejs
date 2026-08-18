@@ -646,7 +646,8 @@ def selector_metrics(
     )
     measured_crossover_region = ""
     if (
-        degree >= 48
+        tree.prime >= 7
+        and degree >= 48
         and local_discriminant_valuation >= 8 * degree
         and tree.expected_index_valuation >= 4 * degree
         and maximum_depth == 1

@@ -6,7 +6,9 @@ const {
   runManifest,
 } = require("../../tools/number-field-maximal-order/runner.cjs");
 const {
+  SAGEJS_EVIDENCE_BOUNDARIES,
   SYSTEM_BOUNDARIES,
+  buildRandomizedEvidenceManifest,
   buildEvidenceManifest,
 } = require("./corpus.cjs");
 const {
@@ -43,6 +45,51 @@ function runConfig(options, extra = {}) {
   };
 }
 
+function evidenceSystemBoundaries(options = {}) {
+  const boundaries = Object.fromEntries(
+    Object.entries(SYSTEM_BOUNDARIES).map(([system, values]) => [system, [...values]]),
+  );
+  if (options.sagejsBoundaries?.length) {
+    const unknown = options.sagejsBoundaries.filter(
+      (boundary) => !SAGEJS_EVIDENCE_BOUNDARIES.includes(boundary),
+    );
+    if (unknown.length) throw new Error(`unknown Sage.js evidence boundaries: ${unknown.join(", ")}`);
+    boundaries.sagejs = [...new Set(options.sagejsBoundaries)];
+  }
+  return boundaries;
+}
+
+function requireCleanSource(identity) {
+  if (!identity.source.clean) {
+    throw new Error(
+      "final evidence requires a clean source tree; commit or remove every tracked/untracked change first",
+    );
+  }
+}
+
+function loadPlatformValidation(path, identity) {
+  if (!path) return null;
+  const bytes = readFileSync(path);
+  const receipt = JSON.parse(bytes);
+  if (receipt.schema !== "sagejs.number-fields/platform-validation-v1") {
+    throw new Error("platform validation receipt has an unsupported schema");
+  }
+  const target = `${identity.platform.platform}-${identity.platform.architecture}`;
+  if (receipt.target !== target) {
+    throw new Error(`platform validation target ${receipt.target} does not match ${target}`);
+  }
+  if (receipt.source_commit !== identity.source.commit) {
+    throw new Error("platform validation source commit does not match the measured source");
+  }
+  for (const name of ["exactness", "production_autoload", "resource_lifecycle", "corruption"]) {
+    const check = receipt.checks?.[name];
+    if (check?.status !== "pass" || typeof check.command !== "string") {
+      throw new Error(`platform validation is missing a passing ${name} check`);
+    }
+  }
+  return { ...receipt, receipt_sha256: sha256(bytes), receipt_path: path };
+}
+
 async function runPrimaryEvidence(options = {}) {
   const manifest = buildEvidenceManifest({
     selection: options.selection || "standard",
@@ -51,9 +98,12 @@ async function runPrimaryEvidence(options = {}) {
     timeoutMs: options.timeoutMs,
     warmups: options.warmups ?? 0,
     samples: options.samples ?? 1,
+    systemBoundaries: evidenceSystemBoundaries(options),
   });
   const systems = normalizeSystems(manifest, options.systems);
   const identity = collectIdentity();
+  requireCleanSource(identity);
+  const platformValidation = loadPlatformValidation(options.platformValidationPath, identity);
   const loadStart = loadSnapshot();
   const raw = await runManifest(
     manifest,
@@ -67,9 +117,43 @@ async function runPrimaryEvidence(options = {}) {
     loadEnd,
     runKind: "uniform-primary",
     selection: options.selection || "standard",
+    platformValidation,
     notes: [
       "Every raw row is retained under one uniform policy; longer diagnostics belong in a separate report.",
       "The default runner executes Sage.js warm-public only. External systems and alternate Sage.js modes are opt-in and family-labeled.",
+    ],
+  });
+}
+
+async function runRandomizedGeneratorEvidence(options = {}) {
+  const manifest = buildRandomizedEvidenceManifest({
+    seed: options.randomizedSeed ?? 20260818,
+    count: options.randomizedCount ?? 8,
+    corpusPath: options.corpusPath,
+    timeoutMs: options.timeoutMs,
+    warmups: options.warmups ?? 0,
+    samples: options.samples ?? 1,
+    systemBoundaries: evidenceSystemBoundaries(options),
+  });
+  const systems = normalizeSystems(manifest, options.systems);
+  const identity = collectIdentity();
+  requireCleanSource(identity);
+  const platformValidation = loadPlatformValidation(options.platformValidationPath, identity);
+  const loadStart = loadSnapshot();
+  const raw = await runManifest(manifest, runConfig(options, { systems }));
+  raw.randomized_generator_schedules = [manifest.randomized_generator_schedule];
+  const loadEnd = loadSnapshot();
+  return finalizeEvidenceReport(raw, {
+    expectedRecords: expectedMatrix(manifest, systems),
+    identity,
+    loadStart,
+    loadEnd,
+    runKind: "uniform-primary",
+    selection: "randomized",
+    platformValidation,
+    notes: [
+      "The authenticated schedule retains its seed, parents, translations, and generated polynomial digests.",
+      "Every generated result is independently checked; no transformed basis is trusted in advance.",
     ],
   });
 }
@@ -126,6 +210,8 @@ async function runColdEvidence(options = {}) {
   });
   const systems = normalizeSystems(outer, options.systems);
   const identity = collectIdentity();
+  requireCleanSource(identity);
+  const platformValidation = loadPlatformValidation(options.platformValidationPath, identity);
   const loadStart = loadSnapshot();
   const records = [];
   let template = null;
@@ -184,6 +270,7 @@ async function runColdEvidence(options = {}) {
     loadEnd,
     runKind: "cold-boundary",
     selection,
+    platformValidation,
     notes: [
       "Cold evidence is case-complete: unlike the legacy include-cold switch, every case/system gets a fresh process.",
       "Cold timings are accepted only when the returned lattice passes the same parent exact verifier.",
@@ -227,6 +314,8 @@ async function runDiagnosticEvidence(primaryPath, options = {}) {
   const groups = groupDiagnosticRows(primary, options.diagnosticStates || ["timeout"]);
   if (!groups.length) throw new Error("primary report has no selected diagnostic terminal states");
   const identity = collectIdentity();
+  requireCleanSource(identity);
+  const platformValidation = loadPlatformValidation(options.platformValidationPath, identity);
   const loadStart = loadSnapshot();
   const records = [];
   const cases = new Map();
@@ -299,6 +388,7 @@ async function runDiagnosticEvidence(primaryPath, options = {}) {
       payload_sha256: primary.integrity.payload_sha256,
       selected_states: options.diagnosticStates || ["timeout"],
     },
+    platformValidation,
     notes: [
       "These rows never replace the raw primary terminal states or contribute to uniform-policy corpus gates.",
     ],
@@ -313,6 +403,7 @@ function planEvidenceRun(options = {}) {
     timeoutMs: options.timeoutMs,
     warmups: options.warmups ?? 0,
     samples: options.samples ?? 1,
+    systemBoundaries: evidenceSystemBoundaries(options),
   });
   const systems = normalizeSystems(manifest, options.systems);
   const expected = expectedMatrix(manifest, systems);
@@ -361,11 +452,14 @@ function writeEvidence(report, jsonPath, markdownPath) {
 
 module.exports = {
   evidenceMarkdown,
+  evidenceSystemBoundaries,
   groupDiagnosticRows,
+  loadPlatformValidation,
   makeColdRecord,
   planEvidenceRun,
   runColdEvidence,
   runDiagnosticEvidence,
   runPrimaryEvidence,
+  runRandomizedGeneratorEvidence,
   writeEvidence,
 };
