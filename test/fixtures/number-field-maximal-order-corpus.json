@@ -52,16 +52,16 @@
     {
       "oracle": "hecke",
       "status": "bounded",
-      "successfulCases": 11,
+      "successfulCases": 12,
       "version": "0.39.21",
-      "note": "all six selected direct Hecke cases plus five PARI vector representatives agreed; a subsequent vector stress case was interrupted"
+      "note": "all six selected direct Hecke cases, five PARI vector representatives, and the corrected addprimes regression agreed; a subsequent vector stress case was interrupted"
     },
     {
       "oracle": "sage",
       "status": "bounded",
-      "successfulCases": 15,
+      "successfulCases": 16,
       "version": "10.9.post1",
-      "note": "all completed bases were mutually contained with determinant-one transition; degree-90 exceeded the 90-second bound"
+      "note": "all completed bases, including the corrected addprimes regression, were mutually contained with determinant-one transition; degree-90 exceeded the 90-second bound"
     },
     {
       "oracle": "magma",
@@ -115020,23 +115020,28 @@
         "digest": "292e0c89d6d156d761340cd94583842bcfc58fcd1720ab56f7075f9884e1a985"
       },
       "equationDiscriminant": "-516304837282841536806312261202830575959488",
-      "fieldDiscriminant": "-57367204142537948534034695689203397328832",
-      "equationOrderIndex": "3",
+      "fieldDiscriminant": "-1654803061237150235374988302272",
+      "equationOrderIndex": "558573",
       "localIndexFactors": [
         {
           "value": "3",
           "valuation": 1,
           "state": "proven-prime"
+        },
+        {
+          "value": "186191",
+          "valuation": 1,
+          "state": "probable-prime"
         }
       ],
-      "primeSupportCertified": true,
+      "primeSupportCertified": false,
       "basis": {
         "state": "available",
-        "denominator": "3",
-        "digest": "a5bfe06e8803c404bc582ea2562f17b715d78aac83749d880f561dffbca767d3",
+        "denominator": "558573",
+        "digest": "8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b",
         "numerator": [
           [
-            "3",
+            "558573",
             "0",
             "0",
             "0",
@@ -115046,7 +115051,7 @@
           ],
           [
             "0",
-            "3",
+            "558573",
             "0",
             "0",
             "0",
@@ -115056,7 +115061,7 @@
           [
             "0",
             "0",
-            "3",
+            "558573",
             "0",
             "0",
             "0",
@@ -115066,7 +115071,7 @@
             "0",
             "0",
             "0",
-            "3",
+            "558573",
             "0",
             "0",
             "0"
@@ -115076,7 +115081,7 @@
             "0",
             "0",
             "0",
-            "3",
+            "558573",
             "0",
             "0"
           ],
@@ -115086,16 +115091,16 @@
             "0",
             "0",
             "0",
-            "3",
+            "558573",
             "0"
           ],
           [
-            "2",
-            "1",
-            "1",
-            "0",
-            "1",
-            "1",
+            "408518",
+            "210790",
+            "461851",
+            "276048",
+            "189163",
+            "372490",
             "1"
           ]
         ]
@@ -115107,11 +115112,15 @@
       },
       "certification": {
         "expected": "certified-global-maximal-order",
-        "fixtureEvidence": "frozen-pari-certified-basis",
+        "fixtureEvidence": "cross-family-lattice-agreement",
         "discriminantFamilies": [
+          "hecke-oscar",
           "pari-sage"
         ],
-        "latticeCrossChecks": []
+        "latticeCrossChecks": [
+          "sage-10.9",
+          "hecke-0.39.21"
+        ]
       }
     },
     {
@@ -143362,9 +143371,9 @@
     "stressCount": 16,
     "basisAvailableCount": 504,
     "basisInlineCount": 488,
-    "crossFamilyLatticeCount": 17,
+    "crossFamilyLatticeCount": 18,
     "degreeMinimum": 2,
     "degreeMaximum": 160
   },
-  "manifestDigest": "e6bf006b01c7cd47d6b0f7fc70db142d85b725ad8d45aeee38aa7775a55b3c07"
+  "manifestDigest": "8d2542159374a799aaf2d726498020a437bee407fab01325ec458f7ee47f46ea"
 }
