@@ -7,19 +7,26 @@
   "status": "active",
   "owner": "user",
   "objective": "Prove a fresh exact vector429 public maximal-order run selects OM at p=7, packed Round-2 at p=2/3/5, and completes below 5 seconds while beating the paired p=7 Round-2 fallback",
-  "base_commit": "1dbd4b34fca97955524d70bda416ec9daf9f5b2d",
+  "base_commit": "16050955dfe9c95468676baeb7f3dd62ce7a31b0",
   "claims": [
     "src/baselib/polynomial.py",
+    "src/baselib/number_fields.py",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
     "bench/exact-polynomial-lazy-resource-ingress.cjs",
     "bench/number-field-vector429-public.cjs",
     "test/exact-polynomial-bulk-construction.cjs",
+    "test/number-field-analysis-public-hook.cjs",
+    "test/number-field-maximal-order-engine.cjs",
+    "test/number-field-order-resource-python.cjs",
     "test/number-field-vector429-public.cjs",
     "bench/results/exact-polynomial-lazy-resource-ingress.json",
     "bench/results/number-field-vector429-public.json",
     "bench/results/number-field-vector429-public.md"
   ],
-  "dependencies": [],
+  "dependencies": [
+    "nf-opt-round2-proof-resource: construction-retained terminal native witnesses"
+  ],
   "references": [],
   "architecture": {
     "strategy": "dynamic-python",
@@ -42,8 +49,13 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Source-only fail-closed portfolio checkpoint: high-degree fused-analysis applicability gate, packed coprime merge/containment, immutable OM and BL evidence binding, exact terminal support/index theorem, and unverified pending-certificate semantics. This checkpoint makes no vector429 public performance claim.",
+    "risks": [
+      "The current post-construction native fixed-point verifier exceeds the five-second public budget and is deliberately absent from the public hot path."
+    ],
+    "next_steps": [
+      "Integrate the forthcoming construction-retained terminal native witness API, keeping exact polynomial, native-prime set, basis, index, and discriminant binding.",
+      "Only after that dependency lands, rebuild once and run bounded fresh untraced/traced public samples plus the suppressed-p7 comparator."
+    ]
   }
 }
