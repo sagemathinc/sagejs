@@ -1,0 +1,39 @@
+{
+  "schema": "sagejs.benchmark/number-field-round2-independent-primes-v1",
+  "date": "2026-08-18",
+  "platform": "linux-x64",
+  "implementation": {
+    "degreeRange": [64, 96],
+    "merge": "scaled shared-basis generators followed by FLINT modular elementary-divisor row HNF",
+    "mergeProof": "each local overorder contains the equation order, so at common denominator D the generator lattice contains D*Z^n and its largest elementary divisor divides D",
+    "workerBudgetBytes": 536870912,
+    "maximumWorkers": 5,
+    "nonPthreadFallback": "exact sequential independent-prime solves"
+  },
+  "vector429": {
+    "degree": 64,
+    "primes": [2, 3, 5],
+    "quietProductionNativeMicros": 1846863,
+    "canonicalSha256": "a708a4a6ff595fa0a1e4ed4f8a8b266b47829f4685270aae72ba4ae385a0dfdd",
+    "forcedCompoundedSequentialEqual": true,
+    "closure": {
+      "valid": true,
+      "reason": "checked"
+    },
+    "denominator": "2479491129600000",
+    "index": "57538919248459494451321550834212915698200263356262647436516740156348317792090901476387135832397125016662781818006487950064239305306967311168567851972032807407657713372850940646164903439012681538355344281470613815517277535898654507283161760265954607674660169193874819219934947436716011910535833380385995142233335063904256000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "timingNote": "one quiet fresh high-level native_order_from_polynomial call after the generated adapter rebuild; overlapping diagnostic samples were discarded"
+  },
+  "degree90": {
+    "degree": 90,
+    "primeCount": 18,
+    "directRound2Micros": 4548697,
+    "localCriticalPathMicros": 4528713,
+    "modularMergeMicros": 14476,
+    "unpackMicros": 3627,
+    "publishMicros": 1393,
+    "cleanupMicros": 427,
+    "genericMergeMicros": 3214790,
+    "status": "native direct batch below five seconds; full-18 generic-HNF and public frozen-lattice receipts pending"
+  }
+}

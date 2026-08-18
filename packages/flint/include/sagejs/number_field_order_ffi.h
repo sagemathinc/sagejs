@@ -40,6 +40,12 @@
 #ifndef SAGEJS_NF_ORDER_PROFILE_BATCH_END
 #define SAGEJS_NF_ORDER_PROFILE_BATCH_END(phase) ((void) 0)
 #endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN
+#define SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN(index) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_LOCAL_END
+#define SAGEJS_NF_ORDER_PROFILE_LOCAL_END(index) ((void) 0)
+#endif
 
 /*
  * Zassenhaus Round 2 over an integral multiplication table.
@@ -2932,10 +2938,12 @@ static inline void sagejs_nf_order_independent_prime_worker(
     /* Publish success only after the local result is fully initialized.  The
      * caller zeroes every slot and clears precisely the successfully
      * published resources, including after a sibling worker fails. */
+    SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN(index);
     work->success[index] =
         sagejs_number_field_order_maximal_at_primes_sequential(
             work->locals + index, work->source,
             work->primes + index, 1);
+    SAGEJS_NF_ORDER_PROFILE_LOCAL_END(index);
 }
 
 typedef struct
@@ -2988,6 +2996,9 @@ static inline slong sagejs_nf_order_independent_worker_bound(
     if (workers > 5) workers = 5;
     if (workers > prime_count) workers = (size_t) prime_count;
 #if !FLINT_USES_PTHREAD
+    workers = 1;
+#endif
+#if defined(SAGEJS_NF_ORDER_FORCE_ONE_INDEPENDENT_WORKER)
     workers = 1;
 #endif
     return (slong) workers;
@@ -3044,7 +3055,7 @@ static inline int sagejs_number_field_order_maximal_at_primes(
             prime_inputs[index] <= (uint64_t) UWORD_MAX &&
             n_is_prime((ulong) prime_inputs[index]);
     if (independent_inputs_valid && prime_count <= 64 &&
-        degree > 64 && degree <= 96 &&
+        degree >= 64 && degree <= 96 &&
         rows == degree * degree)
     {
         sagejs_fmpq_matrix_struct *locals =
