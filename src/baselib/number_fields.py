@@ -1472,6 +1472,7 @@ class NumberFieldOrder(sage.Parent):
         self._is_maximal = is_maximal
         self._maximal_order_certificate = runtime.undefined
         self._maximal_order_certificate_factory: Any = None
+        self._pending_maximal_order_certificate_factory: Any = None
         self._maximal_order_local_evidence = runtime.undefined
         self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
@@ -1552,6 +1553,11 @@ class NumberFieldOrder(sage.Parent):
         return self._discriminant_cache
 
     def is_maximal(self) -> bool:
+        if self._pending_maximal_order_certificate_factory is not None:
+            try:
+                self._materialize_pending_maximal_order_certificate()
+            except Exception:
+                return False
         return self._maximal_order_certificate_factory is not None or (
             self._maximal_order_certificate is not runtime.undefined
             and self._maximal_order_certificate.get("certified") is True
@@ -1570,12 +1576,58 @@ class NumberFieldOrder(sage.Parent):
         if (
             self._maximal_order_certificate is not runtime.undefined
             or self._maximal_order_certificate_factory is not None
+            or self._pending_maximal_order_certificate_factory is not None
         ):
             raise ValueError("a maximal-order certificate is already installed")
         self._maximal_order_certificate_factory = factory
 
+    def _install_pending_maximal_order_certificate(self, factory: Any) -> None:
+        """Install an unverified certificate factory without claiming maximality.
+
+        Unlike an authenticated factory, this factory has not yet been checked.
+        Public certification operations must run and validate it before treating
+        this order as maximal.  The engine may use this state to return a
+        completed construction without eagerly replaying its independent
+        certificate.
+        """
+        if not callable(factory):
+            raise TypeError("a pending certificate factory must be callable")
+        if (
+            self._maximal_order_certificate is not runtime.undefined
+            or self._maximal_order_certificate_factory is not None
+            or self._pending_maximal_order_certificate_factory is not None
+        ):
+            raise ValueError("a maximal-order certificate is already installed")
+        self._pending_maximal_order_certificate_factory = factory
+
+    def _materialize_pending_maximal_order_certificate(self) -> None:
+        factory = self._pending_maximal_order_certificate_factory
+        if factory is None:
+            return
+        # Consume the pending factory before calling user-visible Python.  A
+        # failure cannot leave a false maximality claim or a poisoned cached
+        # order behind, and a later public request will recompute normally.
+        self._pending_maximal_order_certificate_factory = None
+        try:
+            certificate = factory()
+            if (
+                not isinstance(certificate, dict)
+                or certificate.get("certified") is not True
+            ):
+                raise ArithmeticError(
+                    "a pending certificate factory returned invalid evidence"
+                )
+        except Exception:
+            self._maximal_order_certificate = runtime.undefined
+            if self._field._maximal_order_cache is self:
+                self._field._maximal_order_cache = runtime.undefined
+            raise
+        self._maximal_order_certificate = certificate
+
     def maximality_certificate(self) -> Any:
         """Return the independently checked global certificate, if any."""
+        if self._pending_maximal_order_certificate_factory is not None:
+            self._materialize_pending_maximal_order_certificate()
         if self._maximal_order_certificate_factory is not None:
             factory = self._maximal_order_certificate_factory
             certificate = factory()

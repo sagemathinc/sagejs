@@ -21,9 +21,13 @@ import sagejs as sage
 import sagejs.number_fields.composite_field_analysis as composite_field_analysis
 import sagejs.number_fields.field_analysis_resource as field_analysis_resource
 import sagejs.runtime as runtime
-from sagejs.native import is_compiled
+from sagejs.native import is_compiled, kernel_integer_buffer, kernel_integer_zeros
+from sagejs.number_fields.bl_composite_kernel import (
+    packed_order_contains_vectors_in_place,
+)
 from sagejs.number_fields.buchmann_lenstra import (
     BuchmannLenstraResult,
+    _packed_row_hnf,
     buchmann_lenstra_multiplier_cycle,
     check_buchmann_lenstra_general_result,
     check_buchmann_lenstra_result,
@@ -59,6 +63,7 @@ from sagejs.number_fields.local_parallel_worker import (
     run_public_local_jobs,
 )
 from sagejs.number_fields.maximal_order_certification import (
+    _scaled_integral_inverse,
     certify_global_order,
     check_discriminant_coprime_component_witness,
     make_composite_local_maximality_witness,
@@ -70,7 +75,10 @@ from sagejs.number_fields.maximal_order_contracts import (
     OrderBasis,
     SelectionDecision,
 )
-from sagejs.number_fields.order_resource import native_order_from_polynomial
+from sagejs.number_fields.order_resource import (
+    _native_order_from_polynomial_resource_bound,
+    native_order_from_polynomial,
+)
 
 _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 NumberFieldOrder = _nf_module.NumberFieldOrder
@@ -79,6 +87,8 @@ _untyped = _nf_module._untyped
 
 _MAX_WORD_PRIME = 0xFFFFFFFFFFFFFFFF
 _FIELD_ANALYSIS_TRIAL_BOUND = 1000
+_FIELD_ANALYSIS_AUTO_MEMORY_BUDGET = 32 * 1024 * 1024
+_FIELD_ANALYSIS_AUTO_WORK_BUDGET = 4_000_000
 
 
 def _maximal_order_module() -> Any:
@@ -167,6 +177,18 @@ def _authenticated_order_from_basis(
 
 def _basis_from_order(order: Any, scale: int) -> OrderBasis:
     """Describe a public order in the integral equation generator basis."""
+    projection = order._authenticated_basis_projection
+    if projection is not None and int(projection[2]) == int(scale):
+        flat = projection[0]
+        degree = order.degree()
+        return OrderBasis(
+            [
+                [int(flat[row * degree + column]) for column in range(degree)]
+                for row in range(degree)
+            ],
+            int(projection[1]),
+            canonical=True,
+        )
     if order._basis_rows == order.number_field().equation_order()._basis_rows:
         return _identity_basis(order.degree())
     rational_rows = []
@@ -268,6 +290,41 @@ def _merge_orders(field: Any, left: Any, right: Any) -> Any:
     )
 
 
+def _merge_coprime_order_bases(
+    field: Any,
+    left: OrderBasis,
+    right: OrderBasis,
+    scale: int,
+    equation_discriminant: int,
+) -> tuple[Any, OrderBasis]:
+    """Merge exact coprime local bases through one packed integer HNF."""
+    if _gcd(left.denominator, right.denominator) != 1:
+        raise ValueError("a coprime local merge requires coprime denominators")
+    denominator = int(_nf_lcm(left.denominator, right.denominator))
+    generators = [
+        [value * (denominator // left.denominator) for value in row]
+        for row in left.numerator
+    ] + [
+        [value * (denominator // right.denominator) for value in row]
+        for row in right.numerator
+    ]
+    merged = OrderBasis(_packed_row_hnf(generators), denominator, canonical=True)
+    determinant = abs(merged.determinant_numerator)
+    denominator_power = merged.denominator**merged.degree
+    if determinant == 0 or denominator_power % determinant != 0:
+        raise ArithmeticError("a packed local merge has nonintegral index")
+    index = denominator_power // determinant
+    if equation_discriminant % (index * index) != 0:
+        raise ArithmeticError("a packed local merge has incompatible discriminant")
+    order = _authenticated_order_from_basis(
+        field,
+        merged,
+        scale,
+        equation_discriminant // (index * index),
+    )
+    return order, merged
+
+
 def _cache_discriminant_from_basis(
     order: Any,
     basis: OrderBasis,
@@ -343,6 +400,47 @@ _PUBLIC_CORPUS_EVIDENCE = {
 
 def _coefficient_bits(coefficients: list[int]) -> int:
     return max((abs(int(value)).bit_length() for value in coefficients), default=0)
+
+
+def _default_field_analysis_applicability(
+    coefficients: list[int],
+) -> dict[str, Any]:
+    """Bound automatic fused analysis from immutable input dimensions.
+
+    The fused resource owns several cubic exact and word tensors before it can
+    expose useful local information.  This conservative estimate mirrors the
+    native Round-2 worker accounting and keeps high-degree inputs in the local
+    portfolio whose independently measured memory/cost bounds are tighter.
+    """
+    degree = max(0, len(coefficients) - 1)
+    coefficient_bits = _coefficient_bits(coefficients)
+    coefficient_limbs = max(1, (coefficient_bits + 63) // 64)
+    square = degree * degree
+    cube = square * degree
+    estimated_bytes = (
+        128 * cube + 512 * square + (degree + 1) * coefficient_limbs * 8 + 1024 * 1024
+    )
+    estimated_work = cube * coefficient_limbs
+    selected = bool(
+        degree > 0
+        and estimated_bytes <= _FIELD_ANALYSIS_AUTO_MEMORY_BUDGET
+        and estimated_work <= _FIELD_ANALYSIS_AUTO_WORK_BUDGET
+    )
+    return {
+        "selected": selected,
+        "degree": degree,
+        "coefficient_bits": coefficient_bits,
+        "coefficient_limbs": coefficient_limbs,
+        "estimated_bytes": estimated_bytes,
+        "estimated_work": estimated_work,
+        "memory_budget_bytes": _FIELD_ANALYSIS_AUTO_MEMORY_BUDGET,
+        "work_budget": _FIELD_ANALYSIS_AUTO_WORK_BUDGET,
+        "reason": (
+            "bounded-fused-analysis"
+            if selected
+            else "local-portfolio-has-lower-bounded-cost"
+        ),
+    }
 
 
 def _expected_basis_bytes(
@@ -809,14 +907,12 @@ def _forced_local_order(
     raise ValueError("unknown forced local algorithm")
 
 
-def _auto_om_local_order(
-    field: Any,
+def _auto_om_shape_gate(
     coefficients: list[int],
-    scale: int,
     equation_discriminant: int,
     prime: int,
-) -> tuple[Any | None, dict[str, Any]]:
-    """Attempt OM only after its cheap measured shape prefilter passes."""
+) -> dict[str, Any]:
+    """Return the input-derived gate shared by parent and proof workers."""
     degree = len(coefficients) - 1
     local_valuation = _valuation(equation_discriminant, prime)
     coefficient_bits = _coefficient_bits(coefficients)
@@ -838,7 +934,7 @@ def _auto_om_local_order(
     elif output_bytes > 64 * 1024 * 1024:
         cheap_reason = "the predicted exact basis exceeds the local memory budget"
     if cheap_reason is not None:
-        return None, {
+        return {
             "schema": "sagejs.number-fields/om-auto-selection-v1",
             "stage": "shape-prefilter",
             "eligible": False,
@@ -851,6 +947,51 @@ def _auto_om_local_order(
             "memory_budget_bytes": 64 * 1024 * 1024,
             "benchmark": "bench/number-field-om-auto-selector.cjs:v1",
         }
+    return {
+        "schema": "sagejs.number-fields/om-auto-selection-v1",
+        "stage": "shape-prefilter",
+        "eligible": True,
+        "reason": "input lies inside the measured OM crossover envelope",
+        "degree": degree,
+        "prime": prime,
+        "local_discriminant_valuation": local_valuation,
+        "coefficient_bits": coefficient_bits,
+        "estimated_output_bytes": output_bytes,
+        "memory_budget_bytes": 64 * 1024 * 1024,
+        "benchmark": "bench/number-field-om-auto-selector.cjs:v1",
+    }
+
+
+def _auto_om_local_order(
+    field: Any,
+    coefficients: list[int],
+    scale: int,
+    equation_discriminant: int,
+    prime: int,
+) -> tuple[Any | None, dict[str, Any]]:
+    """Attempt OM only after its cheap measured shape prefilter passes."""
+    order, evidence, _selection = _auto_om_local_order_with_proof(
+        field,
+        coefficients,
+        scale,
+        equation_discriminant,
+        prime,
+    )
+    return order, evidence
+
+
+def _auto_om_local_order_with_proof(
+    field: Any,
+    coefficients: list[int],
+    scale: int,
+    equation_discriminant: int,
+    prime: int,
+) -> tuple[Any | None, dict[str, Any], Any | None]:
+    """Attempt OM and retain its immutable authenticated selection envelope."""
+    gate = _auto_om_shape_gate(coefficients, equation_discriminant, prime)
+    if not gate["eligible"]:
+        return None, gate, None
+    local_valuation = int(gate["local_discriminant_valuation"])
     module = __import__(
         "sagejs.number_fields.om_auto_selector",
         fromlist=["om_auto_selector"],
@@ -861,7 +1002,7 @@ def _auto_om_local_order(
         local_discriminant_valuation=local_valuation,
     )
     if not shape.eligible:
-        return None, shape.as_dict()
+        return None, shape.as_dict(), None
     polygon_module = __import__(
         "sagejs.number_fields.local_polygons",
         fromlist=["local_polygons"],
@@ -880,17 +1021,23 @@ def _auto_om_local_order(
         or selection.result is None
         or selection.result.order_basis is None
     ):
-        return None, evidence
+        return None, evidence, selection
     local_index = selection.result.local_result.index
     discriminant = equation_discriminant // (local_index * local_index)
+    canonical_basis = OrderBasis(
+        _packed_row_hnf(selection.result.order_basis.numerator),
+        selection.result.order_basis.denominator,
+        canonical=True,
+    )
     return (
-        _order_from_basis(
+        _authenticated_order_from_basis(
             field,
-            selection.result.order_basis,
+            canonical_basis,
             scale,
             discriminant,
         ),
         evidence,
+        selection,
     )
 
 
@@ -986,6 +1133,449 @@ def _arbitrary_prime_local_order(
     )
 
 
+def _portfolio_basis_key(
+    numerator: Any, denominator: int
+) -> tuple[int, tuple[tuple[int, ...], ...]]:
+    return (
+        int(denominator),
+        tuple(tuple(int(value) for value in row) for row in numerator),
+    )
+
+
+def _portfolio_basis_contains(
+    container: tuple[int, tuple[tuple[int, ...], ...]],
+    source: tuple[int, tuple[tuple[int, ...], ...]],
+    scaled_inverse: Any = None,
+) -> bool:
+    """Check exact row-lattice containment with one fraction-free inverse."""
+    denominator, rows = container
+    source_denominator, source_rows = source
+    inverse = scaled_inverse
+    if inverse is None:
+        inverse = _scaled_integral_inverse([list(row) for row in rows], denominator)
+    if inverse is None or len(source_rows) != len(rows):
+        return False
+    degree = len(rows)
+    for row in source_rows:
+        if len(row) != degree:
+            return False
+        for column in range(degree):
+            coordinate = sum(
+                row[index] * inverse[index][column] for index in range(degree)
+            )
+            if coordinate % source_denominator != 0:
+                return False
+    return True
+
+
+def _portfolio_bases_contained(
+    container: tuple[int, tuple[tuple[int, ...], ...]],
+    sources: list[tuple[int, tuple[tuple[int, ...], ...]]],
+) -> bool:
+    """Check every local basis against one final HNF with one packed inverse."""
+    denominator, rows = container
+    degree = len(rows)
+    if degree < 1 or len(sources) < 1 or any(len(row) != degree for row in rows):
+        return False
+    vectors: list[int] = []
+    vector_denominators: list[int] = []
+    magnitude_bits = max(
+        [abs(int(denominator)).bit_length()]
+        + [abs(int(value)).bit_length() for row in rows for value in row]
+    )
+    for source_denominator, source_rows in sources:
+        if (
+            source_denominator < 1
+            or len(source_rows) != degree
+            or any(len(row) != degree for row in source_rows)
+        ):
+            return False
+        for row in source_rows:
+            vectors.extend(int(value) for value in row)
+            vector_denominators.append(int(source_denominator))
+            for value in row:
+                magnitude_bits = max(magnitude_bits, abs(int(value)).bit_length())
+        magnitude_bits = max(magnitude_bits, abs(int(source_denominator)).bit_length())
+    word_capacity = max(16, (2 * magnitude_bits + 63) // 64 + 4 * degree + 8)
+    try:
+        return bool(
+            packed_order_contains_vectors_in_place(
+                kernel_integer_zeros(
+                    packed_order_contains_vectors_in_place,
+                    degree * degree,
+                    word_capacity,
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vectors_in_place,
+                    [int(value) for row in rows for value in row],
+                ),
+                kernel_integer_buffer(packed_order_contains_vectors_in_place, vectors),
+                kernel_integer_buffer(
+                    packed_order_contains_vectors_in_place, vector_denominators
+                ),
+                denominator,
+                degree,
+                len(vector_denominators),
+            )
+        )
+    except OverflowError:
+        inverse = _scaled_integral_inverse([list(row) for row in rows], denominator)
+        return inverse is not None and all(
+            _portfolio_basis_contains(container, source, inverse) for source in sources
+        )
+
+
+def _portfolio_remove_support(value: int, support: int) -> int:
+    """Remove every prime factor shared with one unfactored exact support."""
+    remainder = abs(int(value))
+    modulus = abs(int(support))
+    if remainder < 1 or modulus < 2:
+        return remainder
+    common = _gcd(remainder, modulus)
+    while common != 1:
+        remainder //= common
+        common = _gcd(remainder, modulus)
+    return remainder
+
+
+def _portfolio_index_support_identity(
+    components: list[tuple[str, int, int]], final_index: int
+) -> bool:
+    """Check an exact pairwise-coprime local-index product without factoring."""
+    product = 1
+    for position, (_kind, support, local_index) in enumerate(components):
+        support = abs(int(support))
+        local_index = abs(int(local_index))
+        if (
+            support < 2
+            or local_index < 1
+            or _portfolio_remove_support(local_index, support) != 1
+        ):
+            return False
+        for _previous_kind, previous_support, previous_index in components[:position]:
+            if (
+                _gcd(support, previous_support) != 1
+                or _gcd(local_index, previous_index) != 1
+            ):
+                return False
+        product *= local_index
+    return product == abs(int(final_index))
+
+
+class _AuthenticatedLocalPortfolio:
+    """Immutable binding of independently proved coprime local orders."""
+
+    def __init__(
+        self,
+        coefficients: list[int],
+        scale: int,
+        equation_discriminant: int,
+        expected_native_primes: list[int],
+        expected_om_primes: list[int],
+        expected_composite_components: list[tuple[int, int]],
+        native_proof: Any,
+        om_entries: list[tuple[int, Any, OrderBasis, int]],
+        composite_entries: list[tuple[int, Any, OrderBasis, int]],
+        final_basis: OrderBasis,
+        final_index: int,
+        final_order_discriminant: int,
+    ) -> None:
+        self.coefficients = tuple(int(value) for value in coefficients)
+        self.scale = int(scale)
+        self.equation_discriminant = int(equation_discriminant)
+        self.expected_native_primes = tuple(
+            sorted(int(prime) for prime in expected_native_primes)
+        )
+        self.expected_om_primes = tuple(
+            sorted(int(prime) for prime in expected_om_primes)
+        )
+        self.expected_composite_components = tuple(
+            sorted(
+                (int(component_value), int(support))
+                for component_value, support in expected_composite_components
+            )
+        )
+        self.native_proof = native_proof
+        self.om_entries = tuple(
+            (
+                int(prime),
+                selection,
+                basis.canonical_key(),
+                int(local_order_discriminant),
+            )
+            for prime, selection, basis, local_order_discriminant in om_entries
+        )
+        self.composite_entries = tuple(
+            (
+                int(component_value),
+                projection,
+                basis.canonical_key(),
+                int(local_order_discriminant),
+            )
+            for component_value, projection, basis, local_order_discriminant in composite_entries
+        )
+        self.final_basis = final_basis.canonical_key()
+        self.final_index = int(final_index)
+        self.final_order_discriminant = int(final_order_discriminant)
+        runtime.object.freeze(self)
+
+    def _native_matches(self) -> bool:
+        proof = self.native_proof
+        if proof is None:
+            return False
+        return bool(
+            tuple(sorted(int(prime) for prime in proof.certified_primes))
+            == self.expected_native_primes
+            and field_analysis_resource.authenticated_round2_order_proof_matches(
+                proof,
+                polynomial=list(self.coefficients),
+                certified_primes=list(self.expected_native_primes),
+                basis_numerator=[list(row) for row in proof.basis_numerator],
+                basis_denominator=int(proof.basis_denominator),
+                index=int(proof.index),
+                equation_discriminant=self.equation_discriminant,
+                order_discriminant=int(proof.order_discriminant),
+            )
+        )
+
+    def _om_entry_matches(
+        self,
+        prime: int,
+        selection: Any,
+        basis_key: tuple[int, tuple[tuple[int, ...], ...]],
+        local_order_discriminant: int,
+    ) -> bool:
+        module = __import__(
+            "sagejs.number_fields.om_auto_selector",
+            fromlist=["om_auto_selector"],
+        )
+        if type(selection) is not module.OMAutoSelection or not selection.selected:
+            return False
+        result = selection.result
+        if result is None or result.order_basis is None or result.certificate is None:
+            return False
+        certificate = result.certificate
+        local_index = int(result.local_result.index)
+        denominator_remainder = int(basis_key[0])
+        while denominator_remainder % prime == 0:
+            denominator_remainder //= prime
+        return bool(
+            tuple(int(value) for value in certificate.polynomial) == self.coefficients
+            and int(certificate.prime) == prime
+            and result.status == "complete"
+            and result.local_result.state == "complete"
+            and result.type_tree.complete
+            and certificate.validation.valid
+            and certificate.validation.locally_maximal
+            and certificate.maxmin.maximality_checked
+            and local_index > 0
+            and local_order_discriminant * local_index * local_index
+            == self.equation_discriminant
+            and _valuation(local_index, prime) > 0
+            and local_index == prime ** _valuation(local_index, prime)
+            and _valuation(local_order_discriminant, prime)
+            == _valuation(self.final_order_discriminant, prime)
+            and basis_key == result.order_basis.canonical_key()
+            and denominator_remainder == 1
+        )
+
+    def _composite_entry_matches(
+        self,
+        component_value: int,
+        projection: Any,
+        basis_key: tuple[int, tuple[tuple[int, ...], ...]],
+        local_order_discriminant: int,
+    ) -> bool:
+        module = __import__(
+            "sagejs.number_fields.buchmann_lenstra",
+            fromlist=["authenticated_buchmann_lenstra_projection_matches"],
+        )
+        matcher = getattr(
+            module, "authenticated_buchmann_lenstra_projection_matches", None
+        )
+        if matcher is None:
+            return False
+        try:
+            support = int(projection.support)
+            local_index = int(projection.index)
+            return bool(
+                projection.certified
+                and int(projection.source_component_value) == component_value
+                and int(projection.order_discriminant) == local_order_discriminant
+                and local_order_discriminant * local_index * local_index
+                == self.equation_discriminant
+                and _portfolio_remove_support(local_index, support) == 1
+                and _portfolio_remove_support(basis_key[0], support) == 1
+                and matcher(
+                    projection,
+                    polynomial=list(self.coefficients),
+                    support=support,
+                    source_component_value=component_value,
+                    component_state=str(projection.component_state),
+                    basis_numerator=[list(row) for row in basis_key[1]],
+                    basis_denominator=basis_key[0],
+                    index=local_index,
+                    equation_discriminant=self.equation_discriminant,
+                    order_discriminant=local_order_discriminant,
+                )
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def verify_local_witness(
+        self, witness: dict[str, Any], certificate: dict[str, Any]
+    ) -> bool:
+        if (
+            certificate.get("defining_polynomial") != list(self.coefficients)
+            or int(certificate.get("equation_discriminant", 0))
+            != self.equation_discriminant
+            or int(certificate.get("order_discriminant", 0))
+            != self.final_order_discriminant
+        ):
+            return False
+        witness_proof = witness.get("proof", {})
+        if not isinstance(witness_proof, dict):
+            return False
+        if "component_value" in witness:
+            component_value = abs(int(witness.get("component_value", 0)))
+            for entry in self.composite_entries:
+                if entry[0] != component_value:
+                    continue
+                projection = entry[1]
+                support = int(projection.support)
+                local_index = int(projection.index)
+                local_discriminant = int(entry[3])
+                return bool(
+                    witness.get("method") == "buchmann-lenstra"
+                    and witness.get("assumes_prime") is False
+                    and int(witness_proof.get("support", 0)) == support
+                    and int(witness_proof.get("index", 0)) == local_index
+                    and int(witness_proof.get("discriminant", 0)) == local_discriminant
+                    and witness_proof.get("theorem")
+                    == "order-discriminant-coprime-component"
+                    and self._composite_entry_matches(*entry)
+                )
+            return False
+        prime = int(witness.get("prime", 0))
+        if (
+            prime < 2
+            or int(witness.get("equation_valuation", -1))
+            != _valuation(self.equation_discriminant, prime)
+            or int(witness.get("order_valuation", -1))
+            != _valuation(self.final_order_discriminant, prime)
+            or int(witness.get("local_index_valuation", -1))
+            != _valuation(self.final_index, prime)
+        ):
+            return False
+        proof = self.native_proof
+        if self._native_matches() and prime in proof.certified_primes:
+            return bool(
+                witness.get("method") == "round2"
+                and witness_proof.get("check") == "authenticated-round2-fixed-point"
+                and _valuation(proof.order_discriminant, prime)
+                == _valuation(self.final_order_discriminant, prime)
+            )
+        for entry in self.om_entries:
+            if entry[0] == prime:
+                return bool(
+                    witness.get("method") == "om-maxmin"
+                    and witness_proof.get("check")
+                    == "authenticated-om-maxmin-local-basis"
+                    and witness_proof.get("certificate_id")
+                    == str(entry[1].result.type_tree.certificate_id)
+                    and self._om_entry_matches(*entry)
+                )
+        return False
+
+    def matches_certificate(self, certificate: dict[str, Any]) -> bool:
+        certificate_basis = _portfolio_basis_key(
+            certificate.get("basis_numerator", []),
+            int(certificate.get("basis_denominator", 0)),
+        )
+        if (
+            certificate.get("defining_polynomial") != list(self.coefficients)
+            or int(certificate.get("equation_discriminant", 0))
+            != self.equation_discriminant
+            or int(certificate.get("order_discriminant", 0))
+            != self.final_order_discriminant
+            or int(certificate.get("index", 0)) != self.final_index
+            or certificate_basis != self.final_basis
+            or self.final_order_discriminant * self.final_index * self.final_index
+            != self.equation_discriminant
+            or not self._native_matches()
+            or tuple(sorted(entry[0] for entry in self.om_entries))
+            != self.expected_om_primes
+            or tuple(
+                sorted(
+                    (entry[0], int(entry[1].support))
+                    for entry in self.composite_entries
+                )
+            )
+            != self.expected_composite_components
+        ):
+            return False
+        proof = self.native_proof
+        native_basis = _portfolio_basis_key(
+            proof.basis_numerator, proof.basis_denominator
+        )
+        source_bases = [native_basis]
+        native_remainder = int(proof.index)
+        for prime in proof.certified_primes:
+            while native_remainder % prime == 0:
+                native_remainder //= prime
+        denominator_remainder = int(proof.basis_denominator)
+        for prime in proof.certified_primes:
+            while denominator_remainder % prime == 0:
+                denominator_remainder //= prime
+        if native_remainder != 1 or denominator_remainder != 1:
+            return False
+        native_support = 1
+        for prime in proof.certified_primes:
+            native_support *= int(prime)
+        local_supports = [("native", native_support, int(proof.index))]
+        covered_primes = list(proof.certified_primes)
+        for entry in self.om_entries:
+            prime, selection, basis_key, _local_discriminant = entry
+            if prime in covered_primes or not self._om_entry_matches(*entry):
+                return False
+            covered_primes.append(prime)
+            source_bases.append(basis_key)
+            local_supports.append(
+                ("om-maxmin", prime, int(selection.result.local_result.index))
+            )
+        for entry in self.composite_entries:
+            if not self._composite_entry_matches(*entry):
+                return False
+            projection = entry[1]
+            support = int(projection.support)
+            if any(_gcd(support, previous[1]) != 1 for previous in local_supports):
+                return False
+            local_index = int(projection.index)
+            local_supports.append(("buchmann-lenstra", support, local_index))
+            source_bases.append(entry[2])
+        if not _portfolio_bases_contained(self.final_basis, source_bases):
+            return False
+        if not _portfolio_index_support_identity(local_supports, self.final_index):
+            return False
+        final_denominator_remainder = self.final_basis[0]
+        for _kind, support, _local_index in local_supports:
+            final_denominator_remainder = _portfolio_remove_support(
+                final_denominator_remainder, support
+            )
+        if final_denominator_remainder != 1:
+            return False
+        # Since C contains every locally proved order and their indices are
+        # pairwise coprime with product [C:Z[theta]], its relative index over
+        # each one is supported only at the other primes.  Thus every local
+        # fixed point persists, and the coprime sum of the proved orders is a
+        # closed order rather than merely a constructed lattice.
+        for _kind, support, local_index in local_supports:
+            relative_index = self.final_index // local_index
+            if _gcd(relative_index, support) != 1:
+                return False
+        return True
+
+
 class _CertificateAdapter:
     """Independent checker adapter closed over one candidate and its evidence."""
 
@@ -998,6 +1588,7 @@ class _CertificateAdapter:
         replay_primes: list[int],
         authenticated_analysis: Any = None,
         authenticated_composite_analysis: Any = None,
+        authenticated_local_portfolio: Any = None,
     ) -> None:
         self.coefficients = list(coefficients)
         self.scale = scale
@@ -1006,6 +1597,7 @@ class _CertificateAdapter:
         self.replay_primes = list(replay_primes)
         self.authenticated_analysis = authenticated_analysis
         self.authenticated_composite_analysis = authenticated_composite_analysis
+        self.authenticated_local_portfolio = authenticated_local_portfolio
         self._native_replay: Any = None
         self._native_replay_loaded = False
         self._candidate: Any = None
@@ -1051,6 +1643,15 @@ class _CertificateAdapter:
             # `certify_global_order` deliberately serializes the certificate.
             # The candidate is therefore supplied by the short-lived adapter.
             candidate = self._candidate
+        portfolio = self.authenticated_local_portfolio
+        if portfolio is not None and candidate is self._candidate:
+            try:
+                if portfolio.verify_local_witness(witness, certificate):
+                    return True
+            except Exception:
+                # A stale compact proof is only an optimization failure.  The
+                # existing independent replay below remains authoritative.
+                pass
         composite_analysis = self.authenticated_composite_analysis
         if composite_analysis is not None and candidate is self._candidate:
             authenticated = (
@@ -1214,6 +1815,9 @@ class _CertificateAdapter:
 
     def authenticated_proof(self, candidate: Any, certificate: dict[str, Any]) -> bool:
         """Bind one live packed proof envelope to its serialized certificate."""
+        portfolio = self.authenticated_local_portfolio
+        if portfolio is not None and candidate is self._candidate:
+            return portfolio.matches_certificate(certificate)
         composite_analysis = self.authenticated_composite_analysis
         if composite_analysis is not None and candidate is self._candidate:
             return (
@@ -1315,6 +1919,8 @@ def _authenticated_default_field_analysis(
     field: Any, coefficients: list[int], scale: int
 ) -> Any | None:
     """Return one compact authenticated projection, or defer fail-closed."""
+    if not _default_field_analysis_applicability(coefficients)["selected"]:
+        return None
     if not is_compiled(
         field_analysis_resource.packed_field_analysis_authenticate_projection
     ):
@@ -1780,6 +2386,7 @@ def compute_maximal_order(
     order = equation_order
     current_basis = _identity_basis(field.degree())
     composite_results: dict[int, BuchmannLenstraResult] = {}
+    authenticated_composite_projections: dict[int, Any] = {}
     composite_witnesses: list[dict[str, Any]] = []
     processed_composite_supports: tuple[int, ...] = ()
 
@@ -1861,11 +2468,26 @@ def compute_maximal_order(
                 raise ArithmeticError(
                     "composite local-order result omitted discriminant"
                 )
+            bl_module = __import__(
+                "sagejs.number_fields.buchmann_lenstra",
+                fromlist=["authenticate_buchmann_lenstra_result"],
+            )
+            authenticate_bl = getattr(
+                bl_module, "authenticate_buchmann_lenstra_result", None
+            )
+            if authenticate_bl is not None:
+                projection = authenticate_bl(
+                    coefficients,
+                    result,
+                    equation_discriminant=equation_discriminant,
+                )
+                if projection is not None:
+                    authenticated_composite_projections[component_value] = projection
 
             def materialize_composite_order(
                 basis: OrderBasis, discriminant: int
             ) -> Any:
-                return _order_from_basis(
+                return _authenticated_order_from_basis(
                     field,
                     basis,
                     scale,
@@ -1873,7 +2495,19 @@ def compute_maximal_order(
                 )
 
             def merge_composite_orders(left: Any, right: Any) -> Any:
-                return _merge_orders(field, left, right)
+                left_basis = _basis_from_order(left, scale)
+                right_basis = _basis_from_order(right, scale)
+                try:
+                    merged_order, _merged_basis = _merge_coprime_order_bases(
+                        field,
+                        left_basis,
+                        right_basis,
+                        scale,
+                        equation_discriminant,
+                    )
+                    return merged_order
+                except (ArithmeticError, OverflowError, TypeError, ValueError):
+                    return _merge_orders(field, left, right)
 
             order, processed_composite_supports = (
                 merge_certified_coprime_composite_order(
@@ -1938,19 +2572,29 @@ def compute_maximal_order(
         "benchmark": _SELECTOR_BENCHMARK,
     }
     native_handled_primes: list[int] = []
+    completed_local_primes: set[int] = set()
     om_auto_evidence: list[dict[str, Any]] = []
+    verified_om_entries: list[tuple[int, Any, OrderBasis, int]] = []
+    authenticated_native_proof: Any = None
     if relevant_primes and algorithm == "auto":
         for prime in relevant_primes:
             if prime > _MAX_WORD_PRIME:
                 continue
             started = time.perf_counter_ns()
             try:
-                om_order, evidence = _auto_om_local_order(
+                om_order, evidence, om_selection = _auto_om_local_order_with_proof(
                     field,
                     coefficients,
                     scale,
                     equation_discriminant,
                     prime,
+                )
+                om_basis = (
+                    None
+                    if om_selection is None
+                    or om_selection.result is None
+                    or om_selection.result.order_basis is None
+                    else om_selection.result.order_basis
                 )
             except Exception as error:
                 evidence = {
@@ -1964,6 +2608,8 @@ def compute_maximal_order(
                     "prime": prime,
                 }
                 om_order = None
+                om_selection = None
+                om_basis = None
             evidence = dict(evidence)
             evidence["prime"] = prime
             om_auto_evidence.append(evidence)
@@ -1976,13 +2622,38 @@ def compute_maximal_order(
                         duration_ns=time.perf_counter_ns() - started,
                     )
                 continue
+            completed_local_primes.add(prime)
+            if om_basis is None:
+                raise ArithmeticError("a complete OM result omitted its basis")
+            om_local_index = int(om_selection.result.local_result.index)
+            verified_om_entries.append(
+                (
+                    prime,
+                    om_selection,
+                    om_basis,
+                    equation_discriminant // (om_local_index * om_local_index),
+                )
+            )
             if (
                 current_basis.canonical_key()
                 == _identity_basis(field.degree()).canonical_key()
             ):
                 order = om_order
             else:
-                order = _merge_orders(field, order, om_order)
+                try:
+                    order, current_basis = _merge_coprime_order_bases(
+                        field,
+                        current_basis,
+                        OrderBasis(
+                            _packed_row_hnf(om_basis.numerator),
+                            om_basis.denominator,
+                            canonical=True,
+                        ),
+                        scale,
+                        equation_discriminant,
+                    )
+                except (ArithmeticError, OverflowError, TypeError, ValueError):
+                    order = _merge_orders(field, order, om_order)
             current_basis = _basis_from_order(order, scale)
             _cache_discriminant_from_basis(
                 order,
@@ -2031,26 +2702,73 @@ def compute_maximal_order(
         )
         if native_batch_primes:
             try:
-                native = native_order_from_polynomial(coefficients, native_batch_primes)
-                if native.complete:
-                    prime_order = _order_from_basis(
-                        field,
-                        native.basis,
-                        scale,
-                        native.order_discriminant,
+                if _default_field_analysis_applicability(coefficients)["selected"]:
+                    native = native_order_from_polynomial(
+                        coefficients, native_batch_primes
                     )
+                else:
+                    polynomial = field._integral_equation_polynomial_cache
+                    if polynomial is None:
+                        raise ArithmeticError(
+                            "field-owned integral polynomial resource is unavailable"
+                        )
+                    native = _native_order_from_polynomial_resource_bound(
+                        polynomial._exact_polynomial_resource(),
+                        coefficients,
+                        native_batch_primes,
+                    )
+                if native.complete:
+                    if native.equation_discriminant != equation_discriminant:
+                        raise ArithmeticError(
+                            "native local result does not match the equation order"
+                        )
+                    completed_local_primes.update(native_batch_primes)
+                    packed_coprime_merge = False
                     if (
                         current_basis.canonical_key()
                         == _identity_basis(field.degree()).canonical_key()
                     ):
-                        order = prime_order
+                        order = (
+                            _authenticated_order_from_basis(
+                                field,
+                                native.basis,
+                                scale,
+                                native.order_discriminant,
+                            )
+                            if authenticated_native_proof is not None
+                            else _order_from_basis(
+                                field,
+                                native.basis,
+                                scale,
+                                native.order_discriminant,
+                            )
+                        )
+                    elif authenticated_native_proof is not None:
+                        order, current_basis = _merge_coprime_order_bases(
+                            field,
+                            current_basis,
+                            native.basis,
+                            scale,
+                            equation_discriminant,
+                        )
+                        packed_coprime_merge = True
                     else:
                         # Local overorders at coprime supports merge as the order
                         # generated by their two lattices.  Coprimality makes the
                         # sum a ring; the global certificate independently checks
                         # closure from the resulting canonical basis.
-                        order = _merge_orders(field, order, prime_order)
-                    current_basis = _basis_from_order(order, scale)
+                        order = _merge_orders(
+                            field,
+                            order,
+                            _order_from_basis(
+                                field,
+                                native.basis,
+                                scale,
+                                native.order_discriminant,
+                            ),
+                        )
+                    if not packed_coprime_merge:
+                        current_basis = _basis_from_order(order, scale)
                     _cache_discriminant_from_basis(
                         order,
                         current_basis,
@@ -2069,6 +2787,15 @@ def compute_maximal_order(
                             "capability_partitioned": len(deferred_arbitrary_primes)
                             > 0,
                             "merged_composite_lattice": len(composite_results) > 0,
+                            "authenticated_round2_proof": (
+                                authenticated_native_proof is not None
+                            ),
+                            "proof_schema": (
+                                authenticated_native_proof.proof_schema
+                                if authenticated_native_proof is not None
+                                else None
+                            ),
+                            "packed_coprime_merge": packed_coprime_merge,
                         },
                     )
                 else:
@@ -2306,44 +3033,139 @@ def compute_maximal_order(
         return order
 
     prime_witnesses = []
+    om_selection_by_prime = {entry[0]: entry[1] for entry in verified_om_entries}
     for record in decomposition["components"]:
         if record["state"] != "proven-prime":
             continue
         prime = int(record["base"])
         if _valuation(equation_discriminant, prime) < 2:
             continue
+        om_selection = om_selection_by_prime.get(prime)
+        if om_selection is not None:
+            witness_method = "om-maxmin"
+            witness_proof = {
+                "check": "authenticated-om-maxmin-local-basis",
+                "certificate_id": om_selection.result.type_tree.certificate_id,
+            }
+        elif (
+            authenticated_native_proof is not None
+            and prime in authenticated_native_proof.certified_primes
+        ):
+            witness_method = "round2"
+            witness_proof = {"check": "authenticated-round2-fixed-point"}
+        else:
+            witness_method = "round2"
+            witness_proof = {"check": "independent-round2-fixed-point"}
         prime_witnesses.append(
             make_local_maximality_witness(
                 prime,
-                "round2",
+                witness_method,
                 _valuation(equation_discriminant, prime),
                 _valuation(order_discriminant, prime),
                 _valuation(index, prime),
-                {"check": "independent-round2-fixed-point"},
+                witness_proof,
             )
         )
 
-    certification_token = trace.begin("global-certification")
+    authenticated_local_portfolio = None
+    authenticated_composite_entries = [
+        (
+            component_value,
+            authenticated_composite_projections[component_value],
+            result.basis,
+            int(result.discriminant),
+        )
+        for component_value, result in composite_results.items()
+        if component_value in authenticated_composite_projections
+        and result.basis is not None
+        and result.discriminant is not None
+    ]
+    if (
+        authenticated_native_proof is not None
+        and len(authenticated_composite_entries) == len(composite_results)
+        and relevant_primes
+        and sorted(
+            list(authenticated_native_proof.certified_primes)
+            + [entry[0] for entry in verified_om_entries]
+        )
+        == sorted(relevant_primes)
+    ):
+        authenticated_local_portfolio = _AuthenticatedLocalPortfolio(
+            coefficients,
+            scale,
+            equation_discriminant,
+            native_batch_primes,
+            [entry[0] for entry in verified_om_entries],
+            [
+                (component_value, int(result.component.value))
+                for component_value, result in composite_results.items()
+            ],
+            authenticated_native_proof,
+            verified_om_entries,
+            authenticated_composite_entries,
+            current_basis,
+            index,
+            order_discriminant,
+        )
+
     adapter = _CertificateAdapter(
         coefficients,
         scale,
         equation_discriminant,
         composite_results,
         relevant_primes,
+        authenticated_local_portfolio=authenticated_local_portfolio,
     )
     adapter.bind_candidate(order)
-    certificate = certify_global_order(
-        adapter,
-        order,
-        decomposition,
-        composite_witnesses + prime_witnesses,
+
+    def materialize_certificate() -> dict[str, Any]:
+        return certify_global_order(
+            adapter,
+            order,
+            decomposition,
+            composite_witnesses + prime_witnesses,
+        )
+
+    defer_certificate = bool(
+        not trace_enabled
+        and not composite_results
+        and relevant_primes
+        and all(prime in completed_local_primes for prime in relevant_primes)
     )
-    trace.end(
-        certification_token,
-        "certified",
-        {"index": index, "order_discriminant": order_discriminant},
-    )
-    order._maximal_order_certificate = certificate
+    if authenticated_local_portfolio is not None:
+        certification_token = trace.begin("global-certification")
+        certificate = materialize_certificate()
+        trace.end(
+            certification_token,
+            "authenticated-local-portfolio",
+            {
+                "index": index,
+                "order_discriminant": order_discriminant,
+                "native_primes": list(authenticated_native_proof.certified_primes),
+                "om_primes": [entry[0] for entry in verified_om_entries],
+            },
+        )
+        order._maximal_order_certificate = certificate
+    elif defer_certificate:
+        trace.emit(
+            "global-certification",
+            "deferred-complete-local-results",
+            {
+                "index": index,
+                "order_discriminant": order_discriminant,
+                "completed_local_primes": sorted(completed_local_primes),
+            },
+        )
+        order._install_pending_maximal_order_certificate(materialize_certificate)
+    else:
+        certification_token = trace.begin("global-certification")
+        certificate = materialize_certificate()
+        trace.end(
+            certification_token,
+            "certified",
+            {"index": index, "order_discriminant": order_discriminant},
+        )
+        order._maximal_order_certificate = certificate
     order._maximal_order_local_evidence = runtime.undefined
     order._maximal_order_trace = trace.to_dict()
     return order
