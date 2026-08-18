@@ -43,6 +43,9 @@ from sagejs.kernels.matrix.word_prime_krylov import (
     word_prime_krylov_minimal_polynomial,
     word_prime_krylov_workspace_length,
 )
+from sagejs.kernels.polynomial.packed_rational import (
+    packed_integral_number_field_power_basis,
+)
 from sagejs.native import (
     integer_buffer_values,
     is_compiled,
@@ -1740,7 +1743,35 @@ def _round4_uniformizer(
         prime_exponent += numerator
     if prime_exponent < 0:
         raise Round4InvariantError("a Round-4 uniformizer acquired p in its numerator")
-    return beta**exponent / prime**prime_exponent, exponent, prime_exponent
+    return (
+        _divide_field_element_by_integer(
+            beta.parent(),
+            beta**exponent,
+            prime**prime_exponent,
+        ),
+        exponent,
+        prime_exponent,
+    )
+
+
+def _divide_field_element_by_integer(
+    field: Any,
+    element: Any,
+    divisor: Any,
+) -> Any:
+    """Divide a field element by a rational integer coordinatewise.
+
+    A rational integer acts as a scalar on the power-basis coordinate vector.
+    Scaling those `QQ` coordinates is therefore exactly field division, while
+    avoiding the general inverse and quotient-reduction path for an element
+    already known to lie in the prime field.
+    """
+    divisor = sage.ZZ(divisor)
+    if divisor == 0:
+        raise ZeroDivisionError("number-field scalar division by zero")
+    return field._from_coefficients(
+        [coefficient / divisor for coefficient in element.list()]
+    )
 
 
 def _p_adic_reduce_element(
@@ -1919,6 +1950,55 @@ def _bounded_residue_roots(
 
 def _power_basis_rows(field: Any, generator: Any) -> list[list[Any]]:
     degree = field.degree()
+    kernel = packed_integral_number_field_power_basis
+    if is_compiled(kernel):
+        integer_rows, denominator, _row_bounds = _integer_multiplication_matrix_data(
+            field,
+            generator,
+        )
+        row_norm = max(sum(abs(value) for value in row) for row in integer_rows)
+        orbit_bound = sage.ZZ(1)
+        step_bound = max(sage.ZZ(1), row_norm, denominator)
+        for _exponent in range(degree - 1):
+            orbit_bound *= step_bound
+        word_capacity = max(
+            8,
+            (_positive_integer_bits(orbit_bound) + 63) // 64 + 2,
+        )
+        output_numerators = kernel_integer_zeros(
+            kernel,
+            degree * degree,
+            word_capacity,
+        )
+        output_denominators = kernel_integer_zeros(
+            kernel,
+            degree,
+            word_capacity,
+        )
+        matrix = kernel_integer_buffer(
+            kernel,
+            [value for row in integer_rows for value in row],
+        )
+        packed_denominator = kernel_integer_buffer(kernel, [denominator])
+        workspace = kernel_integer_zeros(kernel, 2 * degree, word_capacity)
+        completed = kernel(
+            output_numerators,
+            output_denominators,
+            matrix,
+            packed_denominator,
+            workspace,
+            degree,
+        )
+        if runtime.number(completed):
+            numerators = integer_buffer_values(output_numerators)
+            denominators = integer_buffer_values(output_denominators)
+            return [
+                [
+                    sage.QQ(numerators[row * degree + column]) / denominators[row]
+                    for column in range(degree)
+                ]
+                for row in range(degree)
+            ]
     rows = []
     power = field.one()
     for _exponent in range(degree):
@@ -2045,7 +2125,11 @@ def _round4_residue_refinement(
             - quotient * ramification_degree
         )
 
-        gamma = beta / prime**quotient
+        gamma = _divide_field_element_by_integer(
+            field,
+            beta,
+            prime**quotient,
+        )
         if remainder:
             gamma = _exact_field_element_quotient(
                 field,
@@ -2073,7 +2157,11 @@ def _round4_residue_refinement(
                 local_numerator * ramification_degree // local_denominator
                 - quotient * ramification_degree
             )
-            gamma = beta / prime**quotient
+            gamma = _divide_field_element_by_integer(
+                field,
+                beta,
+                prime**quotient,
+            )
             if remainder:
                 gamma = _exact_field_element_quotient(
                     field,
@@ -2250,10 +2338,10 @@ def _round4_residue_refinement(
             while old_power < 0:
                 old_power += ramification_degree
                 prime_power += 1
-            composition = (
-                nu_at_phi**old_power
-                * error_uniformizer**error_power
-                / prime**prime_power
+            composition = _divide_field_element_by_integer(
+                field,
+                nu_at_phi**old_power * error_uniformizer**error_power,
+                prime**prime_power,
             )
             composition = _p_adic_reduce_element(
                 field,

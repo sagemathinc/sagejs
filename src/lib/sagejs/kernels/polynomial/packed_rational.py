@@ -278,3 +278,77 @@ def packed_integral_number_field_multiply_reduce(
     for output_index in range(degree):
         output[output_index + one] = workspace[output_index] // content
     return True
+
+
+@native
+def packed_integral_number_field_power_basis(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    multiplication_matrix: IntegerBuffer,
+    multiplication_denominator: IntegerBuffer,
+    workspace: IntegerBuffer,
+    degree: uint64,
+) -> bool:
+    """Build `1, phi, ..., phi**(degree - 1)` by one exact orbit.
+
+    `multiplication_matrix / multiplication_denominator[0]` is the row-major
+    regular-representation matrix for multiplication by `phi` in the ambient
+    power basis.  Row `k` of `output_numerators`, divided by
+    `output_denominators[k]`, is the coordinate vector of `phi**k`.  Every row
+    is divided by the gcd of its denominator and numerators.  The caller owns
+    a `2 * degree` exact workspace sized from the matrix infinity norm.
+
+    This is just repeated matrix-vector multiplication, so its output is
+    certified by the same regular-representation identity as a sequence of
+    field multiplications.  The ordinary body is the dynamic oracle.
+    """
+    zero = degree - degree
+    if degree == zero:
+        return False
+    one = degree // degree
+    valid = len(output_numerators) == degree * degree
+    if len(output_denominators) != degree:
+        valid = False
+    if len(multiplication_matrix) != degree * degree:
+        valid = False
+    if len(multiplication_denominator) != one:
+        valid = False
+    if len(workspace) != degree + degree:
+        valid = False
+    if valid and multiplication_denominator[zero] <= zero:
+        valid = False
+    if not valid:
+        return False
+    integer_one = multiplication_denominator[zero] // multiplication_denominator[zero]
+    integer_zero = integer_one - integer_one
+
+    for index in range(degree + degree):
+        workspace[index] = zero
+    workspace[zero] = integer_one
+    denominator = integer_one
+    for exponent in range(degree):
+        content = denominator
+        for column in range(degree):
+            content = packed_rational_polynomial_gcd(content, workspace[column])
+        denominator = denominator // content
+        output_denominators[exponent] = denominator
+        output_offset = exponent * degree
+        for column in range(degree):
+            workspace[column] = workspace[column] // content
+            output_numerators[output_offset + column] = workspace[column]
+        if exponent + one < degree:
+            for row in range(degree):
+                value = integer_zero
+                matrix_offset = row * degree
+                for column in range(degree):
+                    value = (
+                        value
+                        + multiplication_matrix[matrix_offset + column]
+                        * workspace[column]
+                    )
+                workspace[degree + row] = value
+            denominator = denominator * multiplication_denominator[zero]
+            for row in range(degree):
+                workspace[row] = workspace[degree + row]
+                workspace[degree + row] = zero
+    return True

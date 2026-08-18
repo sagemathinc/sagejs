@@ -10,6 +10,7 @@ const { compile } = require("@sagemath/sagejs/native");
 const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
+const sagejs = join(root, "bin", "sagejs");
 const sourcePath = join(
   root,
   "src",
@@ -52,12 +53,40 @@ function oracle(left, right, defining) {
   ];
 }
 
+function orbitOracle(matrix, denominator, degree) {
+  const numerators = [];
+  const denominators = [];
+  let vector = Array(degree).fill(0n);
+  vector[0] = 1n;
+  let powerDenominator = 1n;
+  for (let exponent = 0; exponent < degree; exponent += 1) {
+    let content = powerDenominator;
+    for (const value of vector) content = gcd(content, value);
+    powerDenominator /= content;
+    vector = vector.map((value) => value / content);
+    denominators.push(powerDenominator);
+    numerators.push(...vector);
+    if (exponent + 1 < degree) {
+      vector = Array.from({ length: degree }, (_unused, row) => {
+        let value = 0n;
+        for (let column = 0; column < degree; column += 1) {
+          value += matrix[row * degree + column] * vector[column];
+        }
+        return value;
+      });
+      powerDenominator *= denominator;
+    }
+  }
+  return { numerators, denominators };
+}
+
 test("packed integral number-field multiplication matches exact oracles", async () => {
   const cache = mkdtempSync(join(tmpdir(), "sagejs-packed-integral-nf-"));
   try {
     const compiled = await compile({ sourcePath, cacheRoot: cache });
     const module = require(compiled.modulePath);
     const multiply = module.packed_integral_number_field_multiply_reduce;
+    const powerBasis = module.packed_integral_number_field_power_basis;
     const declaration = compiled.ir.functions.find(
       (candidate) =>
         candidate.name === "packed_integral_number_field_multiply_reduce",
@@ -67,6 +96,12 @@ test("packed integral number-field multiplication matches exact oracles", async 
       readFileSync(compiled.coreSourcePath, "utf8"),
       /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
     );
+
+    const powerDeclaration = compiled.ir.functions.find(
+      (candidate) =>
+        candidate.name === "packed_integral_number_field_power_basis",
+    );
+    assert.equal(powerDeclaration.kernelKind, "integer");
 
     let state = 0x243f6a8885a308d3n;
     for (let degree = 1; degree <= 9; degree += 1) {
@@ -113,6 +148,47 @@ test("packed integral number-field multiplication matches exact oracles", async 
           true,
         );
         assert.deepEqual(dynamicOutput, expected);
+
+        const matrix = Array.from({ length: degree * degree }, next);
+        const matrixDenominator = BigInt(3 ** (trial % 5));
+        const expectedOrbit = orbitOracle(
+          matrix,
+          matrixDenominator,
+          degree,
+        );
+        const orbitNumerators = powerBasis.createIntegerBuffer(
+          degree * degree,
+          512,
+        );
+        const orbitDenominators = powerBasis.createIntegerBuffer(degree, 512);
+        assert.equal(
+          powerBasis(
+            orbitNumerators,
+            orbitDenominators,
+            powerBasis.packIntegerBuffer(matrix),
+            powerBasis.packIntegerBuffer([matrixDenominator]),
+            powerBasis.createIntegerBuffer(2 * degree, 512),
+            BigInt(degree),
+          ),
+          true,
+        );
+        assert.deepEqual(orbitNumerators.toArray(), expectedOrbit.numerators);
+        assert.deepEqual(orbitDenominators.toArray(), expectedOrbit.denominators);
+        const dynamicNumerators = Array(degree * degree).fill(0n);
+        const dynamicDenominators = Array(degree).fill(0n);
+        assert.equal(
+          powerBasis.javascript(
+            dynamicNumerators,
+            dynamicDenominators,
+            matrix,
+            [matrixDenominator],
+            Array(2 * degree).fill(0n),
+            BigInt(degree),
+          ),
+          true,
+        );
+        assert.deepEqual(dynamicNumerators, expectedOrbit.numerators);
+        assert.deepEqual(dynamicDenominators, expectedOrbit.denominators);
       }
     }
 
@@ -127,12 +203,65 @@ test("packed integral number-field multiplication matches exact oracles", async 
       ),
       false,
     );
+    assert.equal(
+      powerBasis(
+        powerBasis.createIntegerBuffer(4, 8),
+        powerBasis.createIntegerBuffer(2, 8),
+        powerBasis.packIntegerBuffer([1n, 0n, 0n, 1n]),
+        powerBasis.packIntegerBuffer([0n]),
+        powerBasis.createIntegerBuffer(4, 8),
+        2n,
+      ),
+      false,
+    );
+
+    const sageProgram = String.raw`
+from sagejs.native import is_compiled
+import sagejs.number_fields.round4 as round4
+from sagejs.kernels.polynomial.packed_rational import packed_integral_number_field_power_basis
+R = PolynomialRing(ZZ, 'x')
+x = R.gen()
+records = 0
+for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1, x**6+x+1]:
+    K = NumberField(polynomial, 'a')
+    for phi in [K.gen() + QQ(1)/3, K.gen()**2 + K.gen()/5 - QQ(2)/7]:
+        actual = round4._power_basis_rows(K, phi)
+        expected = []
+        power = K.one()
+        for exponent in range(K.degree()):
+            coefficients = list(power.list())
+            coefficients += [QQ(0) for _ in range(K.degree() - len(coefficients))]
+            expected.append(coefficients)
+            power *= phi
+        assert actual == expected
+        for scalar in [1, 2, 3**7, -11]:
+            assert round4._divide_field_element_by_integer(K, phi, scalar) == phi / scalar
+        records += 1
+assert is_compiled(packed_integral_number_field_power_basis)
+print(records)
+`;
+    const sage = spawnSync(process.execPath, [sagejs, "--python"], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+      },
+      input: sageProgram,
+      timeout: 120_000,
+    });
+    if (sage.error) throw sage.error;
+    assert.equal(sage.status, 0, sage.stderr || sage.stdout);
+    assert.equal(sage.stdout.trim(), "10");
 
     const pythonProgram = String.raw`
 import sys
 from fractions import Fraction
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
-from sagejs.kernels.polynomial.packed_rational import packed_integral_number_field_multiply_reduce
+from sagejs.kernels.polynomial.packed_rational import (
+    packed_integral_number_field_multiply_reduce,
+    packed_integral_number_field_power_basis,
+)
 
 def generic(left, right, defining):
     degree = len(defining)
@@ -153,6 +282,14 @@ output = [0] * 5
 assert packed_integral_number_field_multiply_reduce(output, left, right, defining, [0] * 7, 4)
 actual = [Fraction(value, output[0]) for value in output[1:]]
 assert actual == generic(left, right, defining)
+matrix = [2, 3, 5, 7]
+orbit_numerators = [0] * 4
+orbit_denominators = [0] * 2
+assert packed_integral_number_field_power_basis(
+    orbit_numerators, orbit_denominators, matrix, [11], [0] * 4, 2,
+)
+assert orbit_numerators == [1, 0, 2, 5]
+assert orbit_denominators == [1, 11]
 print('cpython-ok')
 `;
     const python = spawnSync("python3", ["-c", pythonProgram], {

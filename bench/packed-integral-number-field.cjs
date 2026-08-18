@@ -30,6 +30,7 @@ async function main() {
     const compiled = await compile({ sourcePath, cacheRoot: cache });
     const module = require(compiled.modulePath);
     const multiply = module.packed_integral_number_field_multiply_reduce;
+    const powerBasis = module.packed_integral_number_field_power_basis;
     const degree = 32;
     const iterations = 80;
     let state = 0x9e3779b97f4a7c15n;
@@ -81,6 +82,57 @@ async function main() {
         );
       }
     });
+    const orbitIterations = 8;
+    const multiplicationMatrix = Array.from(
+      { length: degree * degree },
+      next,
+    );
+    const multiplicationDenominator = [1n << 127n];
+    const packedMatrix = powerBasis.packIntegerBuffer(multiplicationMatrix);
+    const packedMatrixDenominator = powerBasis.packIntegerBuffer(
+      multiplicationDenominator,
+    );
+    const orbitNumerators = powerBasis.createIntegerBuffer(
+      degree * degree,
+      512,
+    );
+    const orbitDenominators = powerBasis.createIntegerBuffer(degree, 512);
+    const orbitWorkspace = powerBasis.createIntegerBuffer(2 * degree, 512);
+    powerBasis(
+      orbitNumerators,
+      orbitDenominators,
+      packedMatrix,
+      packedMatrixDenominator,
+      orbitWorkspace,
+      BigInt(degree),
+    );
+    const orbitNativeNs = elapsedNs(() => {
+      for (let index = 0; index < orbitIterations; index += 1) {
+        powerBasis(
+          orbitNumerators,
+          orbitDenominators,
+          packedMatrix,
+          packedMatrixDenominator,
+          orbitWorkspace,
+          BigInt(degree),
+        );
+      }
+    });
+    const dynamicOrbitNumerators = Array(degree * degree).fill(0n);
+    const dynamicOrbitDenominators = Array(degree).fill(0n);
+    const dynamicOrbitWorkspace = Array(2 * degree).fill(0n);
+    const orbitDynamicNs = elapsedNs(() => {
+      for (let index = 0; index < orbitIterations; index += 1) {
+        powerBasis.javascript(
+          dynamicOrbitNumerators,
+          dynamicOrbitDenominators,
+          multiplicationMatrix,
+          multiplicationDenominator,
+          dynamicOrbitWorkspace,
+          BigInt(degree),
+        );
+      }
+    });
     process.stdout.write(
       `${JSON.stringify(
         {
@@ -92,6 +144,18 @@ async function main() {
           nativeNsPerCall: Number(nativeNs / BigInt(iterations)),
           dynamicNsPerCall: Number(dynamicNs / BigInt(iterations)),
           speedup: Number(dynamicNs) / Number(nativeNs),
+          orbit: {
+            workload:
+              "degree-32 exact regular-representation power-basis orbit",
+            iterations: orbitIterations,
+            nativeNsPerCall: Number(
+              orbitNativeNs / BigInt(orbitIterations),
+            ),
+            dynamicNsPerCall: Number(
+              orbitDynamicNs / BigInt(orbitIterations),
+            ),
+            speedup: Number(orbitDynamicNs) / Number(orbitNativeNs),
+          },
           sourceHash: compiled.sourceHash,
           nativeAbi: compiled.nativeAbi,
         },
