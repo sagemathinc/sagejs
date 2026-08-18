@@ -1,7 +1,8 @@
 {
   "schema": "sagejs.number-fields/round2-native-state-benchmark/v1",
   "source": {
-    "commit": "4308a933"
+    "commit": "4308a933",
+    "headerSha256": "28fe7bd46d66cdccb3ca8fb1e380f35f485d00b7b983ee78b1059701a6b2c13b"
   },
   "environment": {
     "platform": "linux-x64",
