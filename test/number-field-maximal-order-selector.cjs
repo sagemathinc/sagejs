@@ -78,6 +78,71 @@ test(
 );
 
 test(
+  "irregular arbitrary primes continue through exact multiplier evidence",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(
+        [
+          "from sagejs.number_fields.maximal_order_certification import check_order_lattice",
+          "from sagejs.number_fields.maximal_order_engine import _basis_from_order",
+          "from sagejs.number_fields.buchmann_lenstra import BuchmannLenstraResult",
+          "import sagejs.number_fields.maximal_order as maximal_order_module",
+          "import sagejs.number_fields.maximal_order_engine as maximal_order_engine",
+          "p = 18446744073709551629",
+          "coefficients = [p^3 + p^4, 3*p^2, 3*p, 1]",
+          "R.<x> = QQ[]",
+          "K.<a> = NumberField(R(coefficients))",
+          "saved_dynamic = maximal_order_module.p_maximal_overorder_dynamic",
+          "def forbid_arbitrary_matrix(order, prime):",
+          "    if prime > 18446744073709551615:",
+          "        raise AssertionError('arbitrary prime entered the dynamic matrix path')",
+          "    return saved_dynamic(order, prime)",
+          "maximal_order_module.p_maximal_overorder_dynamic = forbid_arbitrary_matrix",
+          "try:",
+          "    local = K.maximal_order(v=p, trace=True)",
+          "    global_order = K.maximal_order(trace=True)",
+          "finally:",
+          "    maximal_order_module.p_maximal_overorder_dynamic = saved_dynamic",
+          "saved_cycle = maximal_order_engine.buchmann_lenstra_multiplier_cycle",
+          "blocked_states = []",
+          "for blocked_state in ['resource-error', 'stalled', 'certification-error']:",
+          "    def bounded_cycle(coefficients, component, basis, **kwargs):",
+          "        return BuchmannLenstraResult(blocked_state, component, message='bounded fixture')",
+          "    maximal_order_engine.buchmann_lenstra_multiplier_cycle = bounded_cycle",
+          "    try:",
+          "        maximal_order_engine._arbitrary_prime_local_order(K, coefficients, 1, -27*p^8, p)",
+          "    except ArithmeticError:",
+          "        blocked_states.append(blocked_state)",
+          "    else:",
+          "        blocked_states.append('promoted-' + blocked_state)",
+          "maximal_order_engine.buchmann_lenstra_multiplier_cycle = saved_cycle",
+          "local_basis = _basis_from_order(local, 1)",
+          "global_basis = _basis_from_order(global_order, 1)",
+          "lattice = check_order_lattice(coefficients, local_basis.numerator, local_basis.denominator)",
+          "corrupt_rows = [list(row) for row in local_basis.numerator]",
+          "corrupt_rows[0][0] = corrupt_rows[0][0] + 1",
+          "corrupt = check_order_lattice(coefficients, corrupt_rows, local_basis.denominator)",
+          "local_event = [event for event in local.maximal_order_trace()['events'] if event['stage'] == 'arbitrary-prime-local-order'][0]",
+          "details = local_event['details']",
+          "fallback_stages = [event['stage'] for event in details['fallback_events']]",
+          "certificate = global_order.maximality_certificate()",
+          "local_index = local_basis.denominator^3 // abs(local_basis.determinant_numerator)",
+          "[local.basis(), local.discriminant(), local_basis.denominator == p^2, local_basis.numerator == [[p^2,0,0],[0,p,0],[0,0,1]], lattice['valid'], local_index == p^3, corrupt['valid'], details['used_algorithm'], details['fallback'], details['polygon_state'], details['polygon_result_state'], details['fallback_certificate'], fallback_stages, blocked_states, global_order.basis(), global_order.discriminant(), global_basis.canonical_key() == local_basis.canonical_key(), global_order.is_maximal(), certificate['certified'], sorted([w['prime'] for w in certificate['local_witnesses']])]",
+        ].join("\n"),
+      );
+      assert.equal(
+        result.repr,
+        "[[1, 1/18446744073709551629*a, 1/340282366920938463942989953348216553641*a^2], -9187623906865338526460728740401846948307, True, True, True, True, False, 'buchmann-lenstra', True, 'fallback-required', 'not-applicable', 'p-radical-multiplier-fixed-point', ['component-reduction', 'q-radical', 'multiplier-ring', 'component-reduction', 'q-radical', 'multiplier-ring', 'component-reduction', 'q-radical'], ['resource-error', 'stalled', 'certification-error'], [1, 1/18446744073709551629*a, 1/340282366920938463942989953348216553641*a^2], -9187623906865338526460728740401846948307, True, True, True, [3, 18446744073709551629]]",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
   "mixed support keeps word primes native and certifies only the exact fallback",
   { timeout: 120_000 },
   async () => {

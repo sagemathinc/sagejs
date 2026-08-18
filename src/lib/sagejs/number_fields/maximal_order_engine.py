@@ -766,22 +766,71 @@ def _arbitrary_prime_local_order(
         _valuation(equation_discriminant, prime),
         equation_discriminant,
     )
-    if result.state != "complete" or result.basis is None:
-        raise ArithmeticError(
-            "arbitrary-prime polygon fallback did not certify a complete local order"
+    if result.state == "complete" and result.basis is not None:
+        discriminant = (
+            equation_discriminant // (result.index * result.index)
+            if result.discriminant is None
+            else int(result.discriminant)
         )
-    discriminant = (
-        equation_discriminant // (result.index * result.index)
-        if result.discriminant is None
-        else int(result.discriminant)
+        return (
+            _order_from_basis(field, result.basis, scale, discriminant),
+            "polygon",
+            {
+                "selection": "arbitrary-prime-exact-fallback",
+                "word_prime_cap": _MAX_WORD_PRIME,
+                "local_index": result.index,
+                "polygon_state": result.state,
+                "fallback": False,
+            },
+        )
+
+    # First-order irregularity is not a mathematical failure.  Continue from
+    # the equation order, whose ring property is unconditional, with the exact
+    # integer p-radical/ring-of-multipliers cycle.  Starting from the polygon
+    # lattice here would make an unproved partial enlargement part of the
+    # trusted boundary.  The general cycle is bounded and returns typed
+    # resource/split/certification states, none of which are promoted.
+    starting_basis = _identity_basis(field.degree())
+    fallback = buchmann_lenstra_multiplier_cycle(
+        coefficients,
+        component,
+        starting_basis,
+        equation_discriminant=equation_discriminant,
     )
+    if (
+        fallback.state != "complete"
+        or fallback.basis is None
+        or fallback.discriminant is None
+    ):
+        raise ArithmeticError(
+            "arbitrary-prime multiplier fallback did not certify a complete local order"
+        )
+    if not check_buchmann_lenstra_general_result(
+        coefficients,
+        starting_basis,
+        fallback,
+        equation_discriminant=equation_discriminant,
+    ):
+        raise ArithmeticError("arbitrary-prime multiplier evidence failed replay")
     return (
-        _order_from_basis(field, result.basis, scale, discriminant),
-        "polygon",
+        _order_from_basis(
+            field,
+            fallback.basis,
+            scale,
+            int(fallback.discriminant),
+        ),
+        "buchmann-lenstra",
         {
             "selection": "arbitrary-prime-exact-fallback",
             "word_prime_cap": _MAX_WORD_PRIME,
-            "local_index": result.index,
+            "local_index": fallback.index,
+            "polygon_state": result.evidence.get("status", result.state),
+            "polygon_result_state": result.state,
+            "polygon_message": result.message,
+            "fallback": True,
+            "fallback_algorithm": "p-radical-multiplier-ring",
+            "fallback_certificate": fallback.evidence.get("certificate"),
+            "fallback_events": fallback.evidence.get("events", []),
         },
     )
 
@@ -875,6 +924,39 @@ class _CertificateAdapter:
         order_discriminant = _exact_integer(candidate.discriminant())
         if _valuation(order_discriminant, prime) <= 1:
             return True
+        if prime > _MAX_WORD_PRIME:
+            # The construction result is deliberately not trusted here.  A
+            # fresh identity-start exact cycle is replayed, then only its
+            # p-local discriminant valuation is compared because the global
+            # candidate may also contain overorders at coprime primes.
+            component = DiscriminantComponent(
+                prime,
+                "proven-prime",
+                evidence={"source": "global-certificate-replay"},
+            )
+            starting_basis = _identity_basis(len(self.coefficients) - 1)
+            try:
+                replay = buchmann_lenstra_multiplier_cycle(
+                    self.coefficients,
+                    component,
+                    starting_basis,
+                    equation_discriminant=self.equation_disc,
+                )
+                replay_valid = check_buchmann_lenstra_general_result(
+                    self.coefficients,
+                    starting_basis,
+                    replay,
+                    equation_discriminant=self.equation_disc,
+                )
+            except Exception:
+                return False
+            return bool(
+                replay_valid
+                and replay.state == "complete"
+                and replay.discriminant is not None
+                and _valuation(int(replay.discriminant), prime)
+                == _valuation(order_discriminant, prime)
+            )
         if prime in self.replay_primes:
             if not self._native_replay_loaded:
                 word_primes = [
