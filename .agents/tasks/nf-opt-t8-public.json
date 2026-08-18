@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure and implement a generic packed decomposition/BL/proof dataflow that brings checked public T(8,2^32) toward the 25 ms gate while preserving independent verification and exact equivalence",
-  "base_commit": "be80fd37236530d890dc384d6a594870de05ed00",
+  "base_commit": "87d880d1140b3231514369250faf38ab5118fae6",
   "claims": [
     "src/lib/sagejs/number_fields/composite_field_analysis.py",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
@@ -92,6 +92,26 @@
       "started_at": "2026-08-18T09:12:31.913Z",
       "commit": "ab0a1303b25518e856a818acd9811a1c76980b3c",
       "workspace_fingerprint": "c6083d1f4af8a1358a65b6f4e8285407272d50e33a686430061ed7cd83435fd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 23.693,
+      "started_at": "2026-08-18T09:14:04.562Z",
+      "commit": "3946a9d64186c91e9a7ee741ffc5d3213dc66030",
+      "workspace_fingerprint": "204cbe8302ae880e35f1a7ddd756dee7aaed7aecb43654af70153f49e00e3f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.169,
+      "started_at": "2026-08-18T09:15:24.055Z",
+      "commit": "3946a9d64186c91e9a7ee741ffc5d3213dc66030",
+      "workspace_fingerprint": "2954b4d1ea6491dd5e12ab6cc0a2fc0ee7698710e5d2b279e318a60bb603fdd8",
       "platform": "linux-x64"
     }
   ],
