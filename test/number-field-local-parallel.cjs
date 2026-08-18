@@ -52,6 +52,7 @@ assert isinstance(job, tuple)
 assert all(isinstance(value, tuple) for value in (job[1], job[2], job[2][3]))
 assert validate_local_job(job) is not None
 assert validate_local_result(results[0]) is not None
+assert results[0][12] in jobs
 assert local_job_component(job).to_dict()["value"] == 2
 assert local_result_contract(results[0]).to_dict()["state"] == "complete"
 assert job == make_local_job([17, -3, 0, 1], 2, 1, [1, 1], 5, 9500000, 1000)
@@ -67,6 +68,14 @@ except LocalPayloadError:
     pass
 else:
     raise AssertionError("accepted a host object in a result")
+other = make_local_job([19, -3, 0, 1], 2, 1, [1, 1], 5, 9500000, 1000)
+tampered = results[0][0:12] + (other,)
+try:
+    validate_local_result(tampered)
+except LocalPayloadError:
+    pass
+else:
+    raise AssertionError("accepted a result rebound to another complete job")
 print("canonical-wire-ok")
 `);
   assert.equal(output, "canonical-wire-ok");
@@ -133,13 +142,16 @@ class FakePool:
         self.joined = False
         FakePool.last = self
     class Handle:
-        def __init__(self, worker, values):
-            self.worker = worker
-            self.values = values
+        def __init__(self, worker, arguments):
+            self.value = worker(*arguments)
+        def ready(self):
+            return True
+        def wait(self, timeout=None):
+            return None
         def get(self):
-            return [self.worker(value) for value in self.values]
-    def map_async(self, worker, values, chunksize=1):
-        return FakePool.Handle(worker, list(values))
+            return self.value
+    def apply_async(self, worker, arguments):
+        return FakePool.Handle(worker, arguments)
     def terminate(self):
         self.terminated = True
     def close(self):
@@ -161,7 +173,7 @@ else:
 assert FakePool.last.terminated and FakePool.last.joined
 
 class BrokenPool(FakePool):
-    def map_async(self, worker, values, chunksize=1):
+    def apply_async(self, worker, arguments):
         raise OSError("transport lost")
 try:
     run_local_jobs(jobs, answer, max_workers=3, cpu_count=8, pool_factory=BrokenPool)
@@ -173,6 +185,39 @@ assert FakePool.last.terminated and FakePool.last.joined
 print("cancellation-ok")
 `);
   assert.equal(output, "cancellation-ok");
+});
+
+test("a fatal result promptly cancels a sleeping process-pool sibling", (t) => {
+  if (process.platform === "win32") {
+    t.skip("CPython has no fork process context on native Windows");
+    return;
+  }
+  const output = runCPython(String.raw`
+${fixtureSource}
+import time
+import multiprocessing
+def fatal_or_sleep(job):
+    if local_job_key(job)[1] == 2:
+        return make_fatal_result(job, "deterministic fatal")
+    time.sleep(30)
+    return answer(job)
+started = time.monotonic()
+try:
+    run_local_jobs(
+        jobs,
+        fatal_or_sleep,
+        max_workers=3,
+        cpu_count=8,
+        pool_factory=multiprocessing.get_context("fork").Pool,
+    )
+except LocalCertificationError:
+    elapsed = time.monotonic() - started
+else:
+    raise AssertionError("fatal certification was ignored")
+assert elapsed < 3.0, elapsed
+print("prompt-cancellation-ok")
+`);
+  assert.equal(output, "prompt-cancellation-ok");
 });
 
 test("Sage.js executes the strict module through its worker serialization contract", async (t) => {
