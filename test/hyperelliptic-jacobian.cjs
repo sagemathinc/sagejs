@@ -53,6 +53,7 @@ assert D1 + D2 == J([x**2 + 5*x + 2, 9*x + 3])
 assert 2*D1 == J([x + 10, 4])
 assert D1.order() == 234
 assert J.order() == 234
+assert J.count_points(3) == [234, 28548, 5107050]
 assert (2**256 + 1)*D1 == ((2**256 + 1) % 234)*D1
 
 K3 = GF(5)
@@ -146,6 +147,16 @@ for A in points2:
         for C in points2:
             assert (A + B) + C == A + (B + C)
 
+K5 = GF(5)
+R5 = PolynomialRing(K5, "w")
+w = R5.gen()
+Jnoncyclic = HyperellipticJacobian(JacobianTestCurve(
+    w**5 + w + 1,
+    frobenius=T**4 + 10*T**2 + 25,
+))
+assert len(Jnoncyclic.points()) == 36
+assert Jnoncyclic.group_structure() == (6, 6)
+
 J3 = HyperellipticJacobian(JacobianTestCurve(
     x**7 + 2*x + 1,
     frobenius=(
@@ -161,15 +172,19 @@ assert A == J3([x, 1])
 assert 2*A == J3([x**2, x + 1])
 assert A.order() == 94
 assert J3.filter_order_candidates([93, 94, 95], [A]) == [94]
+sample = J3.random_elements(count=4, max_attempts=20)
+assert 1 <= len(sample) <= 4
+assert all(D in J3 and 94*D == J3.zero() for D in sample)
 for index in range(len(points3)):
     assert 94*points3[index] == J3.zero()
     B = points3[(17*index + 3) % len(points3)]
     C = points3[(43*index + 7) % len(points3)]
     assert (points3[index] + B) + C == points3[index] + (B + C)
-[len(points2), J2.group_structure(), len(points3), J3.group_structure()]
+[len(points2), J2.group_structure(), Jnoncyclic.group_structure(),
+ len(points3), J3.group_structure()]
 `,
       );
-      assert.equal(result.repr, "[10, (10,), 94, (94,)]");
+      assert.equal(result.repr, "[10, (10,), (6, 6), 94, (94,)]");
     } finally {
       await session.close();
     }
@@ -222,6 +237,36 @@ True
 `,
     );
     assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});
+
+test("Cantor arithmetic uses the extension-field polynomial fallback", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      `${mockCurve}
+K = GF(9, "a")
+R = PolynomialRing(K, "x")
+x = R.gen()
+J = HyperellipticJacobian(JacobianTestCurve(x**5 + 1))
+divisors = []
+for x_coordinate in K:
+    for y_coordinate in K:
+        if y_coordinate**2 == x_coordinate**5 + 1:
+            divisors.append(J.point_to_divisor((x_coordinate, y_coordinate)))
+assert len(divisors) >= 2
+for index in range(len(divisors)):
+    A = divisors[index]
+    B = divisors[(3*index + 1) % len(divisors)]
+    C = divisors[(7*index + 2) % len(divisors)]
+    assert A + B - A == B
+    assert (A + B) + C == A + (B + C)
+[len(divisors), all(D in J for D in divisors)]
+`,
+    );
+    assert.match(result.repr, /^\[\d+, True\]$/);
   } finally {
     await session.close();
   }
