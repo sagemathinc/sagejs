@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round2-proof-resource",
+  "title": "Nf Round2 Proof Resource",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Emit and independently validate an immutable compact proof resource for completed native Round-2 orders at supplied proved word primes without rerunning Round-2",
+  "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource-python.cjs",
+    "bench/number-field-round2-proof-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and dynamic Sage.js same-source differential",
+      "Native generated kernel differential with exact corruption rejection"
+    ],
+    "exceptions": [
+      "Extend the already-audited FLINT-backed field-analysis resource adapter with compact representation construction; mathematical validation remains ordinary CPython-parseable source-transparent Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

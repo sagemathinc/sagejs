@@ -171,11 +171,14 @@ import sys
 sys.path.append(${JSON.stringify(resolve(root, "src", "lib"))})
 
 from sagejs.number_fields.field_analysis_resource import (
+    AuthenticatedRound2OrderProof,
     _modular_rref,
     _order_arithmetic,
     _p_radical_rows,
     _radical_lattice,
     _selected_multiplier_rows,
+    authenticated_round2_order_proof_matches,
+    decode_round2_order_proof_resource,
     packed_field_analysis_fixed_points_are_valid,
 )
 
@@ -244,6 +247,99 @@ assert not packed_field_analysis_fixed_points_are_valid(
     [0] * len(workspace), polynomial, numerator, 1, primes, dimensions,
     radicals, selectors, -107, degree, 2,
 )
+
+def encoded_integer(value):
+    negative = value < 0
+    magnitude = -value if negative else value
+    body = []
+    while magnitude:
+        body.append(magnitude & 255)
+        magnitude >>= 8
+    header = len(body) | (0x80000000 if negative else 0)
+    return [(header >> (8 * index)) & 255 for index in range(4)] + body
+
+def u64(value):
+    return [(value >> (8 * index)) & 255 for index in range(8)]
+
+def proof_payload(
+    proof_polynomial=polynomial,
+    proof_primes=primes,
+    proof_radicals=radical_rows,
+    proof_selectors=selectors_by_prime,
+    proof_numerator=numerator,
+):
+    values = [1, 1, -108, -108] + list(proof_polynomial)
+    for prime, radical, selected in zip(
+        proof_primes, proof_radicals, proof_selectors
+    ):
+        values.extend([prime, len(radical)])
+        for row in radical:
+            values.extend(row)
+        values.extend(selected)
+    values.extend(proof_numerator)
+    raw = [83, 74, 78, 70, 80, 1, 0, 0]
+    raw += u64(3) + u64(2) + u64(len(values)) + u64(1) + u64(0)
+    for value in values:
+        raw.extend(encoded_integer(value))
+    return raw
+
+proof = decode_round2_order_proof_resource(
+    proof_payload(),
+    expected_polynomial=polynomial,
+    expected_primes=primes,
+    expected_basis_numerator=[numerator[row * degree:(row + 1) * degree] for row in range(degree)],
+    expected_basis_denominator=1,
+    expected_index=1,
+    expected_equation_discriminant=-108,
+    expected_order_discriminant=-108,
+)
+assert proof.certified and proof.certified_primes == (2, 3)
+assert authenticated_round2_order_proof_matches(
+    proof,
+    polynomial=polynomial,
+    certified_primes=primes,
+    basis_numerator=[numerator[row * degree:(row + 1) * degree] for row in range(degree)],
+    basis_denominator=1,
+    index=1,
+    equation_discriminant=-108,
+    order_discriminant=-108,
+)
+for corrupted in (
+    proof_payload(proof_polynomial=[-3, 0, 0, 1]),
+    proof_payload(proof_primes=[5, 3]),
+    proof_payload(proof_radicals=[[[0, 0, 0], [0, 0, 1]], radical_rows[1]]),
+    proof_payload(proof_selectors=[[0, 0, 2], selectors_by_prime[1]]),
+    proof_payload(proof_numerator=[1, 0, 1, 0, 1, 0, 0, 0, 1]),
+):
+    try:
+        decode_round2_order_proof_resource(
+            corrupted,
+            expected_polynomial=polynomial,
+            expected_primes=primes,
+            expected_basis_numerator=[numerator[row * degree:(row + 1) * degree] for row in range(degree)],
+            expected_basis_denominator=1,
+            expected_index=1,
+            expected_equation_discriminant=-108,
+            expected_order_discriminant=-108,
+        )
+        raise AssertionError("corrupted Round-2 proof was accepted")
+    except ValueError:
+        pass
+try:
+    proof.index = 2
+    raise AssertionError("authenticated Round-2 proof was mutable")
+except AttributeError:
+    pass
+direct = AuthenticatedRound2OrderProof(
+    polynomial,
+    primes,
+    [numerator[row * degree:(row + 1) * degree] for row in range(degree)],
+    1,
+    1,
+    -108,
+    -108,
+)
+assert not direct.certified
 print("CPYTHON_PACKED_FIELD_ANALYSIS_OK")
 `;
   const python = process.platform === "win32" ? "python" : "python3";
@@ -287,9 +383,11 @@ from sagejs.number_fields.field_analysis_resource import (
     _p_radical_rows,
     _radical_lattice,
     _selected_multiplier_rows,
+    decode_round2_order_proof_resource,
     native_field_analysis,
     packed_field_analysis_decode_integers,
     packed_field_analysis_fixed_points_are_valid,
+    packed_round2_order_proof_is_valid,
 )
 
 cases = [
@@ -334,8 +432,42 @@ assert not packed_field_analysis_decode_integers(
     kernel_integer_zeros(packed_field_analysis_decode_integers, 2, 8),
     2,
 )
+def encoded_integer(value):
+    negative = value < 0
+    magnitude = -value if negative else value
+    body = []
+    while magnitude:
+        body.append(magnitude & 255)
+        magnitude >>= 8
+    header = len(body) | (2147483648 if negative else 0)
+    return [(header >> (8 * index)) & 255 for index in range(4)] + body
+def u64(value):
+    return [(value >> (8 * index)) & 255 for index in range(8)]
+proof_values = [
+    1, 1, -108, -108,
+    -2, 0, 0, 1,
+    2, 2, 0, 1, 0, 0, 0, 1, 0, 1, 2,
+    3, 2, 1, 0, 2, 0, 1, 1, 0, 1, 2,
+    1, 0, 0, 0, 1, 0, 0, 0, 1,
+]
+proof_payload = [83, 74, 78, 70, 80, 1, 0, 0]
+proof_payload += u64(3) + u64(2) + u64(len(proof_values)) + u64(1) + u64(0)
+for value in proof_values:
+    proof_payload.extend(encoded_integer(value))
+proof = decode_round2_order_proof_resource(
+    proof_payload,
+    expected_polynomial=[-2, 0, 0, 1],
+    expected_primes=[2, 3],
+    expected_basis_numerator=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    expected_basis_denominator=1,
+    expected_index=1,
+    expected_equation_discriminant=-108,
+    expected_order_discriminant=-108,
+)
+assert proof.certified
 print("compiled=" + str(is_compiled(packed_field_analysis_fixed_points_are_valid)))
 print("decoder_compiled=" + str(is_compiled(packed_field_analysis_decode_integers)))
+print("round2_proof_compiled=" + str(is_compiled(packed_round2_order_proof_is_valid)))
 print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
 `;
   function run(args, env = {}) {
@@ -374,6 +506,8 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
         "import sagejs.number_fields.field_analysis_resource as _field_analysis",
         "_field_analysis.packed_field_analysis_fixed_points_are_valid = getattr(_field_analysis.packed_field_analysis_fixed_points_are_valid, '__sagejs_native_source__', _field_analysis.packed_field_analysis_fixed_points_are_valid)",
         "_field_analysis.packed_field_analysis_decode_integers = getattr(_field_analysis.packed_field_analysis_decode_integers, '__sagejs_native_source__', _field_analysis.packed_field_analysis_decode_integers)",
+        "_field_analysis.packed_round2_order_proof_decode_word_bytes = getattr(_field_analysis.packed_round2_order_proof_decode_word_bytes, '__sagejs_native_source__', _field_analysis.packed_round2_order_proof_decode_word_bytes)",
+        "_field_analysis.packed_round2_order_proof_is_valid = getattr(_field_analysis.packed_round2_order_proof_is_valid, '__sagejs_native_source__', _field_analysis.packed_round2_order_proof_is_valid)",
         program,
       ].join("\n"),
     );
@@ -382,8 +516,10 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     });
     assert.match(nativeResult, /compiled=True/);
     assert.match(nativeResult, /decoder_compiled=True/);
+    assert.match(nativeResult, /round2_proof_compiled=True/);
     assert.match(dynamicResult, /compiled=False/);
     assert.match(dynamicResult, /decoder_compiled=False/);
+    assert.match(dynamicResult, /round2_proof_compiled=False/);
     assert.match(nativeResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
     assert.match(dynamicResult, /FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK/);
   } finally {

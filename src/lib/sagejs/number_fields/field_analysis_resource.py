@@ -34,6 +34,9 @@ ANALYSIS_FALLBACK_NATIVE_FAILURE = 3
 AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA = (
     "sagejs.number-fields/authenticated-field-analysis-proof-v1"
 )
+AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA = (
+    "sagejs.number-fields/authenticated-round2-order-proof-v1"
+)
 
 COMPONENT_PROVEN_WORD_PRIME = 0
 COMPONENT_UNRESOLVED = 1
@@ -50,6 +53,13 @@ def _new_projection_workspace_cache() -> dict[
 
 
 _projection_workspace_cache = _new_projection_workspace_cache()
+
+
+def _new_round2_proof_workspace_cache() -> dict[tuple[int, int, int], tuple[Any, ...]]:
+    return {}
+
+
+_round2_proof_workspace_cache = _new_round2_proof_workspace_cache()
 
 
 def _byte(payload: Any, index: int) -> int:
@@ -374,6 +384,54 @@ def packed_field_analysis_decode_word_bytes(
     if encoded_count != entry_count:
         return False
     offset = 80
+    for output_index in range(entry_count):
+        if offset + 4 > len(payload):
+            return False
+        header = 0
+        header_factor = 1
+        for byte_index in range(4):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            header += byte * header_factor
+            header_factor *= 256
+        negative = header >= 2147483648
+        length = header
+        if negative:
+            length -= 2147483648
+        offset += 4
+        if length > len(payload) - offset or (negative and length == 0):
+            return False
+        value = 0
+        multiplier = 1
+        for byte_index in range(length):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            value += byte * multiplier
+            multiplier *= 256
+        if length != 0 and payload[offset + length - 1] == 0:
+            return False
+        if negative:
+            value = -value
+        output[output_index] = value
+        offset += length
+    return offset == len(payload)
+
+
+@native
+def packed_round2_order_proof_decode_word_bytes(
+    payload: UInt64Buffer,
+    output: IntegerBuffer,
+    entry_count: uint64,
+) -> bool:
+    """Decode the compact Round-2 proof's canonical integer stream."""
+    if len(payload) < 48 or len(output) != entry_count:
+        return False
+    encoded_count = _packed_unsigned_words(payload, 24, 8)
+    if encoded_count != entry_count:
+        return False
+    offset = 48
     for output_index in range(entry_count):
         if offset + 4 > len(payload):
             return False
@@ -1049,6 +1107,211 @@ def packed_field_analysis_fixed_points_are_valid(
 
 
 @native
+def packed_round2_order_proof_is_valid(
+    payload: UInt64Buffer,
+    decoded: IntegerBuffer,
+    polynomial: IntegerBuffer,
+    numerator: IntegerBuffer,
+    primes: IntegerBuffer,
+    radical_dimensions: IntegerBuffer,
+    radicals: IntegerBuffer,
+    selectors: IntegerBuffer,
+    workspace: IntegerBuffer,
+    expected_polynomial: IntegerBuffer,
+    expected_numerator: IntegerBuffer,
+    expected_primes: IntegerBuffer,
+    expected_denominator: int,
+    expected_index: int,
+    expected_equation_discriminant: int,
+    expected_order_discriminant: int,
+    degree: uint64,
+    witness_count: uint64,
+    entry_count: uint64,
+) -> bool:
+    """Authenticate one source-bound terminal Round-2 proof in one crossing.
+
+    The proof producer only assembles terminal radical RREF rows and multiplier
+    selectors from a completed native order.  This source-transparent body is
+    the independent authority: it binds the complete source/order/prime tuple,
+    proves the word primes, recomputes the polynomial discriminant and order
+    multiplication table, and checks every supplied fixed point exactly.
+    """
+    square = degree * degree
+    if (
+        degree == 0
+        or len(payload) < 48
+        or len(decoded) != entry_count
+        or len(polynomial) != degree + 1
+        or len(numerator) != square
+        or len(primes) != witness_count
+        or len(radical_dimensions) != witness_count
+        or len(radicals) != witness_count * square
+        or len(selectors) != witness_count * degree
+        or len(expected_polynomial) != degree + 1
+        or len(expected_numerator) != square
+        or len(expected_primes) != witness_count
+    ):
+        return False
+    if (
+        payload[0] != 83
+        or payload[1] != 74
+        or payload[2] != 78
+        or payload[3] != 70
+        or payload[4] != 80
+        or payload[5] != 1
+        or payload[6] != 0
+        or payload[7] != 0
+        or _packed_unsigned_words(payload, 8, 8) != degree
+        or _packed_unsigned_words(payload, 16, 8) != witness_count
+        or _packed_unsigned_words(payload, 24, 8) != entry_count
+        or _packed_unsigned_words(payload, 32, 8) != 1
+        or _packed_unsigned_words(payload, 40, 8) != 0
+        or not packed_round2_order_proof_decode_word_bytes(
+            payload, decoded, entry_count
+        )
+    ):
+        return False
+
+    minimum_entries = 4 + degree + 1 + witness_count * (2 + degree) + square
+    if entry_count < minimum_entries:
+        return False
+    denominator = decoded[0]
+    index = decoded[1]
+    equation_discriminant = decoded[2]
+    order_discriminant = decoded[3]
+    if (
+        denominator != expected_denominator
+        or index != expected_index
+        or equation_discriminant != expected_equation_discriminant
+        or order_discriminant != expected_order_discriminant
+        or denominator < 1
+        or index < 1
+        or equation_discriminant == 0
+    ):
+        return False
+
+    polynomial_start = 4
+    coefficient = 0
+    while coefficient <= degree:
+        value = decoded[polynomial_start + coefficient]
+        polynomial[coefficient] = value
+        if value != expected_polynomial[coefficient]:
+            return False
+        coefficient += 1
+    if polynomial[degree] != 1:
+        return False
+
+    witness_cursor = polynomial_start + degree + 1
+    witness = 0
+    while witness < witness_count:
+        if witness_cursor + 2 > entry_count:
+            return False
+        prime = decoded[witness_cursor]
+        dimension = decoded[witness_cursor + 1]
+        if (
+            prime != expected_primes[witness]
+            or not _packed_word_prime_is_proven(prime)
+            or equation_discriminant % prime != 0
+            or dimension < 0
+            or dimension > degree
+        ):
+            return False
+        previous = 0
+        while previous < witness:
+            if primes[previous] == prime:
+                return False
+            previous += 1
+        primes[witness] = prime
+        radical_dimensions[witness] = dimension
+        witness_cursor += 2
+        radical_entry = 0
+        while radical_entry < square:
+            radicals[witness * square + radical_entry] = 0
+            radical_entry += 1
+        supplied_entries = dimension * degree
+        if supplied_entries > entry_count - witness_cursor:
+            return False
+        radical_entry = 0
+        while radical_entry < supplied_entries:
+            radical_value = decoded[witness_cursor + radical_entry]
+            if radical_value < 0 or radical_value >= prime:
+                return False
+            radicals[witness * square + radical_entry] = radical_value
+            radical_entry += 1
+        witness_cursor += supplied_entries
+        if degree > entry_count - witness_cursor:
+            return False
+        selector = 0
+        while selector < degree:
+            selected = decoded[witness_cursor + selector]
+            if selected < 0 or selected >= square:
+                return False
+            prior_selector = 0
+            while prior_selector < selector:
+                if decoded[witness_cursor + prior_selector] == selected:
+                    return False
+                prior_selector += 1
+            selectors[witness * degree + selector] = selected
+            selector += 1
+        witness_cursor += degree
+        witness += 1
+
+    basis_start = witness_cursor
+    if basis_start + square != entry_count:
+        return False
+    content = denominator
+    determinant = 1
+    row = 0
+    while row < degree:
+        diagonal = decoded[basis_start + row * degree + row]
+        if diagonal <= 0:
+            return False
+        determinant *= diagonal
+        column = 0
+        while column < degree:
+            basis_value = decoded[basis_start + row * degree + column]
+            if basis_value != expected_numerator[row * degree + column]:
+                return False
+            if column < row and basis_value != 0:
+                return False
+            if column > row:
+                later_diagonal = decoded[basis_start + column * degree + column]
+                if basis_value < 0 or basis_value >= later_diagonal:
+                    return False
+            numerator[row * degree + column] = basis_value
+            content = _packed_gcd(content, basis_value)
+            column += 1
+        row += 1
+    if content != 1:
+        return False
+    denominator_power = 1
+    power = 0
+    while power < degree:
+        denominator_power *= denominator
+        power += 1
+    if determinant == 0 or denominator_power % determinant != 0:
+        return False
+    if (
+        denominator_power // determinant != index
+        or order_discriminant * index * index != equation_discriminant
+    ):
+        return False
+    return packed_field_analysis_fixed_points_are_valid(
+        workspace,
+        polynomial,
+        numerator,
+        denominator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        equation_discriminant,
+        degree,
+        witness_count,
+    )
+
+
+@native
 def packed_field_analysis_authenticate_projection(
     payload: UInt64Buffer,
     decoded: IntegerBuffer,
@@ -1650,6 +1913,102 @@ class FixedPointWitness(_ImmutableCertificatePart):
         }
 
 
+class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
+    """Immutable authentication of a completed order at exact word primes."""
+
+    def __init__(
+        self,
+        polynomial: list[int],
+        certified_primes: list[int],
+        basis_numerator: list[list[int]],
+        basis_denominator: int,
+        index: int,
+        equation_discriminant: int,
+        order_discriminant: int,
+    ) -> None:
+        self.polynomial = tuple(int(value) for value in polynomial)
+        self.certified_primes = tuple(int(value) for value in certified_primes)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in basis_numerator
+        )
+        self.basis_denominator = int(basis_denominator)
+        self.index = int(index)
+        self.equation_discriminant = int(equation_discriminant)
+        self.order_discriminant = int(order_discriminant)
+        self._freeze_certificate()
+
+    @property
+    def proof_schema(self) -> str:
+        return AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA
+
+    @property
+    def certified(self) -> bool:
+        return self.__dict__.get("_authentication_snapshot") == (
+            AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA,
+            self.polynomial,
+            self.certified_primes,
+            self.basis_numerator,
+            self.basis_denominator,
+            self.index,
+            self.equation_discriminant,
+            self.order_discriminant,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.proof_schema,
+            "certified": self.certified,
+            "polynomial": list(self.polynomial),
+            "certified_primes": list(self.certified_primes),
+            "basis_numerator": [list(row) for row in self.basis_numerator],
+            "basis_denominator": self.basis_denominator,
+            "index": self.index,
+            "equation_discriminant": self.equation_discriminant,
+            "order_discriminant": self.order_discriminant,
+        }
+
+
+def _seal_authenticated_round2_order_proof(
+    result: AuthenticatedRound2OrderProof,
+) -> None:
+    result.__dict__["_authentication_snapshot"] = (
+        AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA,
+        result.polynomial,
+        result.certified_primes,
+        result.basis_numerator,
+        result.basis_denominator,
+        result.index,
+        result.equation_discriminant,
+        result.order_discriminant,
+    )
+
+
+def authenticated_round2_order_proof_matches(
+    result: Any,
+    *,
+    polynomial: list[int],
+    certified_primes: list[int],
+    basis_numerator: list[list[int]],
+    basis_denominator: int,
+    index: int,
+    equation_discriminant: int,
+    order_discriminant: int,
+) -> bool:
+    """Bind a module-authenticated proof to the complete caller-owned order."""
+    return (
+        type(result) is AuthenticatedRound2OrderProof
+        and result.certified is True
+        and result.polynomial == tuple(int(value) for value in polynomial)
+        and result.certified_primes == tuple(int(value) for value in certified_primes)
+        and result.basis_numerator
+        == tuple(tuple(int(value) for value in row) for row in basis_numerator)
+        and result.basis_denominator == int(basis_denominator)
+        and result.index == int(index)
+        and result.equation_discriminant == int(equation_discriminant)
+        and result.order_discriminant == int(order_discriminant)
+    )
+
+
 class NativeFieldAnalysisResult(_ImmutableCertificatePart):
     """An immutable fused discriminant, decomposition, and order certificate."""
 
@@ -2161,6 +2520,122 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         )
 
 
+def decode_round2_order_proof_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+    expected_basis_numerator: list[list[int]],
+    expected_basis_denominator: int,
+    expected_index: int,
+    expected_equation_discriminant: int,
+    expected_order_discriminant: int,
+) -> AuthenticatedRound2OrderProof:
+    """Authenticate a compact terminal proof against the complete live order.
+
+    Witnesses remain in packed scratch storage and never become host objects.
+    Only caller-owned immutable source, prime, and canonical basis values are
+    retained after the one source-transparent proof check.
+    """
+    coefficients = [int(value) for value in expected_polynomial]
+    certified_primes = [int(value) for value in expected_primes]
+    rows = [[int(value) for value in row] for row in expected_basis_numerator]
+    degree = len(coefficients) - 1
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or len(rows) != degree
+        or any(len(row) != degree for row in rows)
+        or len(payload) < 48
+        or [_byte(payload, index) for index in range(8)]
+        != [83, 74, 78, 70, 80, 1, 0, 0]
+    ):
+        raise ValueError("invalid Round-2 proof source or resource header")
+    header_degree = _unsigned(payload, 8, 8)
+    witness_count = _unsigned(payload, 16, 8)
+    entry_count = _unsigned(payload, 24, 8)
+    version = _unsigned(payload, 32, 8)
+    reserved = _unsigned(payload, 40, 8)
+    if (
+        header_degree != degree
+        or witness_count != len(certified_primes)
+        or witness_count == 0
+        or version != 1
+        or reserved != 0
+        or entry_count < 4 + degree + 1 + witness_count * (2 + degree) + degree * degree
+        or entry_count > (len(payload) - 48) // 4
+    ):
+        raise ValueError("inconsistent Round-2 proof resource shape")
+
+    kernel = packed_round2_order_proof_is_valid
+    shape = (degree, witness_count, entry_count)
+    buffers = _round2_proof_workspace_cache.get(shape)
+    if buffers is None:
+        square = degree * degree
+        workspace_length = (
+            degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
+        )
+        buffers = (
+            kernel_integer_zeros(kernel, entry_count, 64),
+            kernel_integer_zeros(kernel, degree + 1, 64),
+            kernel_integer_zeros(kernel, square, 64),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count * square, 64),
+            kernel_integer_zeros(kernel, witness_count * degree, 64),
+            kernel_integer_zeros(kernel, workspace_length, 64),
+        )
+        _round2_proof_workspace_cache[shape] = buffers
+    (
+        decoded,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+    ) = buffers
+    flat_numerator = [value for row in rows for value in row]
+    denominator = int(expected_basis_denominator)
+    index = int(expected_index)
+    equation_discriminant = int(expected_equation_discriminant)
+    order_discriminant = int(expected_order_discriminant)
+    if not kernel(
+        kernel_uint64_buffer(kernel, payload),
+        decoded,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+        kernel_integer_buffer(kernel, coefficients),
+        kernel_integer_buffer(kernel, flat_numerator),
+        kernel_integer_buffer(kernel, certified_primes),
+        denominator,
+        index,
+        equation_discriminant,
+        order_discriminant,
+        degree,
+        witness_count,
+        entry_count,
+    ):
+        raise ValueError("Round-2 order proof failed independent authentication")
+    result = AuthenticatedRound2OrderProof(
+        coefficients,
+        certified_primes,
+        rows,
+        denominator,
+        index,
+        equation_discriminant,
+        order_discriminant,
+    )
+    _seal_authenticated_round2_order_proof(result)
+    return result
+
+
 def decode_field_analysis_resource(
     payload: Any,
     *,
@@ -2467,6 +2942,43 @@ def _native_field_analysis_projection_from_polynomial_bound(
             expected_polynomial=coefficients,
             expected_scale=scale,
             expected_trial_bound=trial_bound,
+        )
+    finally:
+        resource.close()
+
+
+def native_round2_order_proof_from_resources(
+    polynomial: Any,
+    order_resource: Any,
+    prime_hints: Any,
+    *,
+    coefficients_low_to_high: list[int],
+    certified_primes: list[int],
+    basis_numerator: list[list[int]],
+    basis_denominator: int,
+    index: int,
+    equation_discriminant: int,
+    order_discriminant: int,
+) -> AuthenticatedRound2OrderProof:
+    """Prove a completed native order while its three inputs remain borrowed.
+
+    The caller owns the sealed polynomial, completed order resource, and prime
+    matrix and must keep them live for this synchronous call.  This helper owns
+    and deterministically closes only the compact proof result.
+    """
+    resource = _flint_module.number_field_round2_proof_resource(
+        polynomial, order_resource, prime_hints
+    )
+    try:
+        return decode_round2_order_proof_resource(
+            resource.copy_bytes(),
+            expected_polynomial=coefficients_low_to_high,
+            expected_primes=certified_primes,
+            expected_basis_numerator=basis_numerator,
+            expected_basis_denominator=basis_denominator,
+            expected_index=index,
+            expected_equation_discriminant=equation_discriminant,
+            expected_order_discriminant=order_discriminant,
         )
     finally:
         resource.close()
