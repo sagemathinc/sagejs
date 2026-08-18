@@ -56,6 +56,7 @@ test("batched BL membership agrees with its dynamic source and fails closed", as
     const source = String.raw`
 from sagejs.native import execution_mode, kernel_integer_buffer, kernel_integer_zeros
 from sagejs.number_fields import buchmann_lenstra as bl
+from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent
 
 coefficients = [${t8.coefficients_low_to_high.join(",")}]
 modulus = ${t8.reduced_resultant_component}
@@ -122,6 +123,65 @@ assert call(packed, vectors, denominators, bad_numerator) == call(
     dynamic, vectors, denominators, bad_numerator
 )
 assert not call(packed, vectors, denominators, bad_numerator)
+
+source_component = modulus * modulus
+component = DiscriminantComponent(
+    modulus,
+    "composite",
+    evidence={"source_component": source_component},
+)
+result = bl.buchmann_lenstra_overorder(coefficients, component)
+projection = bl.authenticate_buchmann_lenstra_result(coefficients, result)
+assert projection is not None and projection.certified
+assert projection.proof_schema == bl.AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA
+assert projection.support == modulus
+assert projection.source_component_value == source_component
+assert bl.authenticated_buchmann_lenstra_projection_matches(
+    projection,
+    polynomial=coefficients,
+    support=modulus,
+    source_component_value=source_component,
+    component_state=component.state,
+    basis_numerator=result.basis.numerator,
+    basis_denominator=result.basis.denominator,
+    index=result.index,
+    equation_discriminant=projection.equation_discriminant,
+    order_discriminant=result.discriminant,
+)
+assert not bl.authenticated_buchmann_lenstra_projection_matches(
+    projection,
+    polynomial=coefficients,
+    support=modulus,
+    source_component_value=source_component + 1,
+)
+try:
+    projection.index += 1
+    assert False
+except AttributeError:
+    pass
+
+saved_stage = result.evidence["stage"]
+result.evidence["stage"] = "corrupted"
+assert not projection.certified
+assert not bl.authenticated_buchmann_lenstra_projection_matches(
+    projection,
+    polynomial=coefficients,
+    support=modulus,
+    source_component_value=source_component,
+)
+result.evidence["stage"] = saved_stage
+assert projection.certified
+
+result.component.evidence["source_component"] = source_component + 1
+assert not projection.certified
+result.component.evidence["source_component"] = source_component
+assert projection.certified
+
+saved_basis_entry = result.basis.numerator[0][1]
+result.basis.numerator[0][1] += 1
+assert not projection.certified
+result.basis.numerator[0][1] = saved_basis_entry
+assert projection.certified
 
 print(execution_mode(packed))
 None

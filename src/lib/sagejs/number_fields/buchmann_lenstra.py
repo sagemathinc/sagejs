@@ -889,6 +889,148 @@ class BuchmannLenstraResult:
         )
 
 
+AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA = (
+    "sagejs.number-fields/authenticated-buchmann-lenstra-projection-v1"
+)
+_AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN = object()
+
+
+def _freeze_authentication_value(value: Any) -> Any:
+    """Return an exact immutable snapshot of one JSON-safe value."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_authentication_value(item) for item in value)
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("authentication snapshot keys must be strings")
+        return tuple(
+            (key, _freeze_authentication_value(value[key])) for key in sorted(value)
+        )
+    raise TypeError("authentication snapshots require JSON-safe values")
+
+
+def _buchmann_lenstra_result_snapshot(result: BuchmannLenstraResult) -> Any:
+    """Snapshot every mutable field of one live BL result."""
+    return _freeze_authentication_value(result.to_dict())
+
+
+class AuthenticatedBuchmannLenstraProjection:
+    """Immutable live seal for one independently accepted BL result.
+
+    Instances are issued only by `authenticate_buchmann_lenstra_result` after
+    a full replay.  The projection retains a private reference to that live
+    result and compares its exact nested snapshot whenever `certified` is
+    queried, so later mutation of its component, basis, evidence, index, or
+    discriminant fails closed without replaying the expensive proof.
+    """
+
+    def __init__(
+        self,
+        token: object,
+        polynomial: list[int],
+        result: BuchmannLenstraResult,
+        equation_discriminant: int,
+    ) -> None:
+        if token is not _AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN:
+            raise TypeError("authenticated BL projections are module-issued")
+        if result.basis is None or result.discriminant is None:
+            raise ValueError("an authenticated BL result requires an order basis")
+        component_evidence = result.component.evidence
+        source_component = component_evidence.get(
+            "source_component", result.component.value
+        )
+        self.polynomial = tuple(int(value) for value in polynomial)
+        self.state = str(result.state)
+        self.support = int(result.component.value)
+        self.source_component_value = int(source_component)
+        if self.support <= 1 or self.source_component_value <= 1:
+            raise ValueError("authenticated BL supports must exceed one")
+        self.component_state = str(result.component.state)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in result.basis.numerator
+        )
+        self.basis_denominator = int(result.basis.denominator)
+        self.index = int(result.index)
+        self.equation_discriminant = int(equation_discriminant)
+        self.order_discriminant = int(result.discriminant)
+        self.evidence_stage = result.evidence.get("stage")
+        self.evidence_certificate = result.evidence.get("certificate")
+        self.locally_maximal = result.evidence.get("locally_maximal")
+        self.evidence_schema = tuple(sorted(str(key) for key in result.evidence))
+        self.__dict__["_source_result"] = result
+        self.__dict__["_source_snapshot"] = _buchmann_lenstra_result_snapshot(result)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated BL projections are immutable")
+        self.__dict__[name] = value
+
+    @property
+    def proof_schema(self) -> str:
+        return AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA
+
+    @property
+    def certified(self) -> bool:
+        try:
+            source = self.__dict__.get("_source_result")
+            if type(source) is not BuchmannLenstraResult:
+                return False
+            return (
+                self.state == "complete"
+                and self.locally_maximal is True
+                and self.__dict__.get("_authentication_snapshot")
+                == _authenticated_buchmann_lenstra_projection_snapshot(self)
+                and self.__dict__.get("_source_snapshot")
+                == _buchmann_lenstra_result_snapshot(source)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA,
+            "certified": self.certified,
+            "polynomial": list(self.polynomial),
+            "state": self.state,
+            "support": self.support,
+            "source_component_value": self.source_component_value,
+            "component_state": self.component_state,
+            "basis_numerator": [list(row) for row in self.basis_numerator],
+            "basis_denominator": self.basis_denominator,
+            "index": self.index,
+            "equation_discriminant": self.equation_discriminant,
+            "order_discriminant": self.order_discriminant,
+            "evidence_stage": self.evidence_stage,
+            "evidence_certificate": self.evidence_certificate,
+            "locally_maximal": self.locally_maximal,
+            "evidence_schema": list(self.evidence_schema),
+        }
+
+
+def _authenticated_buchmann_lenstra_projection_snapshot(
+    projection: AuthenticatedBuchmannLenstraProjection,
+) -> tuple[Any, ...]:
+    return (
+        AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA,
+        projection.polynomial,
+        projection.state,
+        projection.support,
+        projection.source_component_value,
+        projection.component_state,
+        projection.basis_numerator,
+        projection.basis_denominator,
+        projection.index,
+        projection.equation_discriminant,
+        projection.order_discriminant,
+        projection.evidence_stage,
+        projection.evidence_certificate,
+        projection.locally_maximal,
+        projection.evidence_schema,
+    )
+
+
 def buchmann_lenstra_overorder(
     polynomial_coefficients: list[int],
     component: DiscriminantComponent,
@@ -1190,6 +1332,104 @@ def check_buchmann_lenstra_result(
             )
         return remaining == 1 and result.evidence.get("locally_maximal") is True
     return remaining != 1 and result.evidence.get("locally_maximal") is False
+
+
+def authenticate_buchmann_lenstra_result(
+    polynomial_coefficients: list[int],
+    result: BuchmannLenstraResult,
+    *,
+    equation_discriminant: int | None = None,
+) -> AuthenticatedBuchmannLenstraProjection | None:
+    """Issue an immutable live seal after one successful complete replay.
+
+    Returning `None` is fail-closed: callers must never treat an ordinary
+    mutable `BuchmannLenstraResult` as authenticated.  Subsequent consumers
+    can bind exact public basis/index/support fields through
+    `authenticated_buchmann_lenstra_projection_matches` without repeating
+    the arithmetic replay.
+    """
+    if type(result) is not BuchmannLenstraResult:
+        return None
+    try:
+        coefficients = [int(value) for value in polynomial_coefficients]
+        if (
+            result.state != "complete"
+            or result.basis is None
+            or result.discriminant is None
+        ):
+            return None
+        equation_disc = (
+            polynomial_discriminant(coefficients)
+            if equation_discriminant is None
+            else int(equation_discriminant)
+        )
+        if not check_buchmann_lenstra_result(
+            coefficients,
+            result,
+            equation_discriminant=equation_disc,
+        ):
+            return None
+        projection = AuthenticatedBuchmannLenstraProjection(
+            _AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN,
+            coefficients,
+            result,
+            equation_disc,
+        )
+        projection.__dict__["_authentication_snapshot"] = (
+            _authenticated_buchmann_lenstra_projection_snapshot(projection)
+        )
+        return projection if projection.certified else None
+    except (ArithmeticError, AttributeError, TypeError, ValueError):
+        return None
+
+
+def authenticated_buchmann_lenstra_projection_matches(
+    projection: Any,
+    *,
+    polynomial: list[int],
+    support: int,
+    source_component_value: int,
+    component_state: str | None = None,
+    basis_numerator: list[list[int]] | None = None,
+    basis_denominator: int | None = None,
+    index: int | None = None,
+    equation_discriminant: int | None = None,
+    order_discriminant: int | None = None,
+) -> bool:
+    """Bind a live accepted BL proof to exact public certificate fields."""
+    if (
+        type(projection) is not AuthenticatedBuchmannLenstraProjection
+        or not projection.certified
+    ):
+        return False
+    try:
+        if tuple(int(value) for value in polynomial) != projection.polynomial:
+            return False
+        if int(support) != projection.support:
+            return False
+        if int(source_component_value) != projection.source_component_value:
+            return False
+        checks = (
+            (component_state, projection.component_state),
+            (
+                None
+                if basis_numerator is None
+                else tuple(
+                    tuple(int(value) for value in row) for row in basis_numerator
+                ),
+                projection.basis_numerator,
+            ),
+            (basis_denominator, projection.basis_denominator),
+            (index, projection.index),
+            (equation_discriminant, projection.equation_discriminant),
+            (order_discriminant, projection.order_discriminant),
+        )
+        for supplied, expected in checks:
+            if supplied is not None and supplied != expected:
+                return False
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 def _fraction_add(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
@@ -2764,7 +3004,11 @@ def check_buchmann_lenstra_general_result(
 
 
 __all__ = [
+    "AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA",
+    "AuthenticatedBuchmannLenstraProjection",
     "BuchmannLenstraResult",
+    "authenticate_buchmann_lenstra_result",
+    "authenticated_buchmann_lenstra_projection_matches",
     "buchmann_lenstra_general_overorder",
     "buchmann_lenstra_multiplier_cycle",
     "buchmann_lenstra_overorder",
