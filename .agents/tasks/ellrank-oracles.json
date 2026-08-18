@@ -4,7 +4,7 @@
   "id": "ellrank-oracles",
   "title": "Analytic rank oracle corpus and benchmarks",
   "lane": "elliptic-curves",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Create a pinned rank 0-4 and pathological-zero corpus, persistent Sage/PARI and Magma oracle harnesses, and reproducible analytic-rank benchmark reports",
   "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
