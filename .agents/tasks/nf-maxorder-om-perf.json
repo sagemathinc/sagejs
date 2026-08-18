@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Profile scalable higher-order OM workloads and source-transparently accelerate the exact polynomial and MaxMin loops enough to establish a measured crossover boundary without changing public selection",
-  "base_commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+  "base_commit": "c5c253b1b0bb622aff7a8e20549c18f8525d0eba",
   "claims": [
     "src/lib/sagejs/number_fields/om_types.py",
     "src/lib/sagejs/number_fields/om_maxmin.py",
@@ -75,16 +75,16 @@
     }
   ],
   "handoff": {
-    "summary": "The follow-up reduces degree-one residual extensions exactly to the certified F_p[x] factorizer and accelerates the independent exhaustive MaxMin checker with common-denominator integer valuations while reconstructing only selected numerators. On v429/p=7 the same certificate is complete with local index 480: CPython falls from 6.65s to 1.09s and Sage.js from a 45s timeout to 23.16s. Opt-in scalable and v429 benchmark profiles preserve certificate identifiers and state explicitly that p=2 local timings are not comparable to full-global PARI/Hecke timings.",
+    "summary": "A source-transparent packed MaxMin kernel preserves all 83,521 v429/p=7 valuation combinations in one crossing with zero callbacks. The dynamic CPython fallback and Sage.js native result agree on valid and deliberately corrupted selections. With both same-source MaxMin and closure artifacts installed, the complete exact local certificate takes 0.78s in CPython and 3.02s in Sage.js, down from 6.65s and a 45s timeout before the two performance follow-ups.",
     "risks": [
-      "The complete Sage.js v429/p=7 certificate remains about 21 times slower than CPython and is not an end-to-end crossover against PARI.",
+      "The complete Sage.js v429/p=7 certificate remains slower than CPython and is one local component, so it does not prove an end-to-end crossover against PARI.",
       "Higher nonlinear residual extensions at v429 primes 2, 3, and 5 still fail closed; p=59 hits the bounded factor-candidate resource limit.",
       "Full bad-generator index factorization exceeded the bounded oracle timeout and belongs to discriminant-component orchestration rather than this local OM lane."
     ],
     "next_steps": [
       "Keep public auto-selection disabled: direct PARI nfbasis remains faster and the measured OM stress rows are local-only.",
       "Add scalable higher residual-field factorization to cover the v429 p=2,3,5 boundary without weakening fail-closed evidence.",
-      "Profile the remaining 11s Sage.js exhaustive integer-valuation loop before considering a same-source native lowering."
+      "Compile both same-source packed kernels together in production native inventories so a module source-hash change cannot leave closure on the dynamic fallback."
     ]
   }
 }

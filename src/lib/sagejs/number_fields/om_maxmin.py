@@ -151,31 +151,76 @@ def _values_for_index(
     return tuple(values), minimum
 
 
-def _enumerate_degree_indices(
-    tables: tuple[LocalNumeratorTable, ...],
-    degree: int,
-    *,
-    max_combinations: int,
-) -> tuple[tuple[int, ...], ...]:
-    answer: list[tuple[int, ...]] = []
-    current = [0] * len(tables)
-
-    def visit(position: int, remaining: int) -> None:
-        if len(answer) > max_combinations:
-            raise OMDomainError("MaxMin exhaustive validation bound exceeded")
-        if position == len(tables):
-            if remaining == 0:
-                answer.append(tuple(current))
-            return
-        maximum = min(tables[position].degree, remaining)
-        for index in range(maximum + 1):
-            current[position] = index
-            visit(position + 1, remaining - index)
-
-    visit(0, degree)
-    if len(answer) > max_combinations:
-        raise OMDomainError("MaxMin exhaustive validation bound exceeded")
-    return tuple(answer)
+@native
+def packed_maxmin_valuations_are_maximal(
+    workspace: IntegerBuffer,
+    table_degrees: IntegerBuffer,
+    scaled_values: IntegerBuffer,
+    finite_flags: IntegerBuffer,
+    selected_minima: IntegerBuffer,
+    branch_count: uint64,
+    maximum_degree: uint64,
+    expected_combinations: uint64,
+) -> bool:
+    """Exhaustively compare every packed MaxMin valuation combination."""
+    row_count = maximum_degree + 1
+    packed_length = branch_count * row_count * branch_count
+    valid = (
+        branch_count > 0
+        and len(workspace) == 2 * branch_count
+        and len(table_degrees) == branch_count
+        and len(scaled_values) == packed_length
+        and len(finite_flags) == packed_length
+    )
+    combinations = 1
+    table = 0
+    while valid and table < branch_count:
+        degree = table_degrees[table]
+        if degree < 0 or degree > maximum_degree:
+            valid = False
+        else:
+            combinations *= degree + 1
+        table += 1
+    if combinations != expected_combinations:
+        valid = False
+    encoded = 0
+    while valid and encoded < combinations:
+        branch = 0
+        while branch < branch_count:
+            workspace[branch] = 0
+            workspace[branch_count + branch] = 1
+            branch += 1
+        remaining = encoded
+        candidate_degree = 0
+        table = 0
+        while table < branch_count:
+            radix = table_degrees[table] + 1
+            row = remaining % radix
+            remaining //= radix
+            candidate_degree += row
+            offset = (table * row_count + row) * branch_count
+            branch = 0
+            while branch < branch_count:
+                if finite_flags[offset + branch] == 0:
+                    workspace[branch_count + branch] = 0
+                elif workspace[branch_count + branch] != 0:
+                    workspace[branch] += scaled_values[offset + branch]
+                branch += 1
+            table += 1
+        if candidate_degree < len(selected_minima):
+            found = False
+            minimum = 0
+            branch = 0
+            while branch < branch_count:
+                if workspace[branch_count + branch] != 0:
+                    if not found or workspace[branch] < minimum:
+                        minimum = workspace[branch]
+                        found = True
+                branch += 1
+            if not found or selected_minima[candidate_degree] < minimum:
+                valid = False
+        encoded += 1
+    return valid
 
 
 def validate_maxmin_certificate(
@@ -220,6 +265,7 @@ def validate_maxmin_certificate(
         )
         for table in tables
     )
+    selected_minima: list[int] = []
     for candidate in certificate.candidates:
         numerator, values, minimum = _candidate_for_index(tables, candidate.multi_index)
         if numerator != candidate.numerator:
@@ -234,31 +280,40 @@ def validate_maxmin_certificate(
             failures.append(
                 "candidate degree differs at degree " + str(candidate.degree)
             )
-        selected_scaled = candidate.minimum.numerator * (
-            valuation_scale // candidate.minimum.denominator
+        selected_minima.append(
+            candidate.minimum.numerator
+            * (valuation_scale // candidate.minimum.denominator)
         )
-        for other_index in _enumerate_degree_indices(
-            tables,
-            candidate.degree,
-            max_combinations=max_combinations,
-        ):
-            scaled_values: list[int | None] = [0] * len(tables)
-            for table_index, row_index in enumerate(other_index):
-                row = scaled_tables[table_index][row_index]
-                for branch, contribution in enumerate(row):
-                    current = scaled_values[branch]
-                    if current is None or contribution is None:
-                        scaled_values[branch] = None
-                    else:
-                        scaled_values[branch] = current + contribution
-            finite_scaled = [value for value in scaled_values if value is not None]
-            other_minimum = min(finite_scaled)
-            if selected_scaled < other_minimum:
-                failures.append(
-                    "candidate is not valuation-maximal at degree "
-                    + str(candidate.degree)
-                )
-                break
+    maximum_degree = max(table.degree for table in tables)
+    packed_values: list[int] = []
+    finite_flags: list[int] = []
+    accumulator_bound = 1
+    for table, scaled_table in zip(tables, scaled_tables, strict=True):
+        table_bound = 0
+        for row_index in range(maximum_degree + 1):
+            if row_index <= table.degree:
+                for value in scaled_table[row_index]:
+                    packed_values.append(0 if value is None else value)
+                    finite_flags.append(0 if value is None else 1)
+                    if value is not None and abs(value) > table_bound:
+                        table_bound = abs(value)
+            else:
+                packed_values.extend([0] * len(tables))
+                finite_flags.extend([0] * len(tables))
+        accumulator_bound += table_bound
+    workspace = [0] * (2 * len(tables))
+    workspace[0] = accumulator_bound
+    if not packed_maxmin_valuations_are_maximal(
+        workspace,
+        [table.degree for table in tables],
+        packed_values,
+        finite_flags,
+        selected_minima,
+        len(tables),
+        maximum_degree,
+        combinations,
+    ):
+        failures.append("candidate is not valuation-maximal")
     return tuple(failures)
 
 

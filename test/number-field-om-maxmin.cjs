@@ -516,6 +516,41 @@ print(json.dumps([
   }
 });
 
+test("packed MaxMin proof exhausts and rejects a nonmaximal selection", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
+
+degrees = [1, 1]
+values = [0, 0, 0, 2, 0, 0, 1, 0]
+finite = [1, 1, 0, 1, 1, 1, 1, 0]
+valid = packed_maxmin_valuations_are_maximal(
+    [4, 0, 0, 0], degrees, values, finite, [0, 2], 2, 1, 4
+)
+corrupt = packed_maxmin_valuations_are_maximal(
+    [4, 0, 0, 0], degrees, values, finite, [0, 1], 2, 1, 4
+)
+print(json.dumps([valid, corrupt]))
+`;
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [
+      true,
+      false,
+    ]);
+  }
+});
+
 test("OM stress matrix is stable under equivalent translated generators", () => {
   const script = String.raw`
 import json
