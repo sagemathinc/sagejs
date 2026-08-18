@@ -241,6 +241,24 @@ def _cache_discriminant_from_basis(
     return discriminant
 
 
+def _simple_bl_complete_uses_global_theorem(
+    result: BuchmannLenstraResult,
+    starting_basis: OrderBasis,
+    identity_basis: OrderBasis,
+) -> bool:
+    """Test the exact BL shape subsumed by global closure and coprimality."""
+    return (
+        starting_basis.canonical_key() == identity_basis.canonical_key()
+        and result.state == "complete"
+        and result.basis is not None
+        and result.discriminant is not None
+        and result.evidence.get("stage") == "composite-dedekind"
+        and result.evidence.get("certificate")
+        == "component-coprime-to-order-discriminant"
+        and result.evidence.get("locally_maximal") is True
+    )
+
+
 # These scale factors are intentionally conservative calibration constants,
 # not mathematical cutoffs.  They convert the stable operation-count models
 # below into scheduling microseconds.  The selector benchmark records both
@@ -780,6 +798,8 @@ class _CertificateAdapter:
         self.equation_disc = equation_discriminant
         self.composite_results = composite_results
         self.replay_primes = list(replay_primes)
+        self._native_replay: Any = None
+        self._native_replay_loaded = False
         self._candidate: Any = None
 
     def defining_polynomial(self, candidate: Any) -> list[int]:
@@ -852,17 +872,28 @@ class _CertificateAdapter:
         if _valuation(order_discriminant, prime) <= 1:
             return True
         if prime in self.replay_primes:
-            try:
-                replay = native_order_from_polynomial(self.coefficients, [prime])
-                if (
-                    replay.complete
-                    and replay.equation_discriminant == self.equation_disc
-                    and _valuation(replay.order_discriminant, prime)
-                    == _valuation(order_discriminant, prime)
-                ):
-                    return True
-            except Exception:
-                pass
+            if not self._native_replay_loaded:
+                word_primes = [
+                    value for value in self.replay_primes if value <= _MAX_WORD_PRIME
+                ]
+                try:
+                    self._native_replay = (
+                        native_order_from_polynomial(self.coefficients, word_primes)
+                        if word_primes
+                        else None
+                    )
+                except Exception:
+                    self._native_replay = None
+                self._native_replay_loaded = True
+            replay = self._native_replay
+            if (
+                replay is not None
+                and replay.complete
+                and replay.equation_discriminant == self.equation_disc
+                and _valuation(replay.order_discriminant, prime)
+                == _valuation(order_discriminant, prime)
+            ):
+                return True
         field = candidate.number_field()
         if candidate._basis_rows == field.equation_order()._basis_rows:
             return bool(
@@ -1169,7 +1200,11 @@ def compute_maximal_order(
                     raise ArithmeticError(
                         "general Buchmann--Lenstra replay rejected its result"
                     )
-            elif not check_buchmann_lenstra_result(coefficients, result):
+            elif not _simple_bl_complete_uses_global_theorem(
+                result,
+                starting_basis,
+                identity_basis,
+            ) and not check_buchmann_lenstra_result(coefficients, result):
                 raise ArithmeticError("Buchmann--Lenstra evidence failed replay")
 
             if result.state == "enlarged" and result.basis is not None:

@@ -57,6 +57,20 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
         "R.<x> = QQ[]",
         "coefficients = [463168356949264781694283940034751631413079938662562256157830336031652518559742, -68719476736, -737869762948382064640, -2535301200456458802993406410752, -1361129467683753853853498429727072845824, 0, 0, 0, 1]",
         "K.<a> = NumberField(R(coefficients))",
+        "import sagejs.number_fields.maximal_order_engine as maximal_order_engine",
+        "from sagejs.number_fields.buchmann_lenstra import BuchmannLenstraResult",
+        "from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent, OrderBasis",
+        "identity = OrderBasis([[1 if row == column else 0 for column in range(8)] for row in range(8)], 1)",
+        "shortcut_probe = BuchmannLenstraResult('complete', DiscriminantComponent(15, 'composite'), basis=identity, discriminant=1, evidence={'stage': 'composite-dedekind', 'certificate': 'component-coprime-to-order-discriminant', 'locally_maximal': True})",
+        "shortcut_shape_checks = [maximal_order_engine._simple_bl_complete_uses_global_theorem(shortcut_probe, identity, identity)]",
+        "shortcut_probe.evidence['certificate'] = 'composite-dedekind-obstruction-one'",
+        "shortcut_shape_checks.append(maximal_order_engine._simple_bl_complete_uses_global_theorem(shortcut_probe, identity, identity))",
+        "simple_bl_replays = []",
+        "original_bl_replay = maximal_order_engine.check_buchmann_lenstra_result",
+        "def counted_bl_replay(*args, **kwds):",
+        "    simple_bl_replays.append(1)",
+        "    return original_bl_replay(*args, **kwds)",
+        "maximal_order_engine.check_buchmann_lenstra_result = counted_bl_replay",
         "O = K.maximal_order(trace=True)",
         "certificate = O.maximality_certificate()",
         "from sagejs.number_fields.maximal_order_certification import check_discriminant_coprime_component_witness",
@@ -68,7 +82,7 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
         "corrupt_witness['proof'] = corrupt_proof",
         "theorem_checks = [check_discriminant_coprime_component_witness(O.discriminant(), component, witness), check_discriminant_coprime_component_witness(O.discriminant(), component, corrupt_witness), check_discriminant_coprime_component_witness(component['base'], component, witness)]",
         "events = O.maximal_order_trace()['events']",
-        "[O.discriminant(), O.is_maximal(), len(O.basis()), certificate['index'], [event['stage'] for event in events], events[2]['details']['merged_composite_lattice'], theorem_checks]",
+        "[O.discriminant(), O.is_maximal(), len(O.basis()), certificate['index'], [event['stage'] for event in events], events[2]['details']['merged_composite_lattice'], theorem_checks, shortcut_shape_checks, len(simple_bl_replays)]",
       ].join("\n"),
     );
     const elapsed = performance.now() - started;
@@ -79,8 +93,48 @@ test("T(8,2^32) avoids full factorization through the public API", async () => {
     assert.match(result.repr, /'composite-local-order'/);
     assert.match(result.repr, /'native-local-orders'/);
     assert.match(result.repr, /'global-certification'/);
-    assert.match(result.repr, /, True, \[True, False, False\]\]$/);
+    assert.match(result.repr, /, True, \[True, False, False\], \[True, False\], 0\]$/);
     assert.ok(elapsed < 20_000, `catastrophic public case took ${elapsed}ms`);
+  } finally {
+    await session.close();
+  }
+});
+
+test("independent native certification replays all primes in one batch", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R.<x> = QQ[]",
+        "import sagejs.number_fields.maximal_order_engine as maximal_order_engine",
+        "native_calls = []",
+        "original_native_order = maximal_order_engine.native_order_from_polynomial",
+        "def counted_native_order(coefficients, primes):",
+        "    native_calls.append(tuple(primes))",
+        "    return original_native_order(coefficients, primes)",
+        "maximal_order_engine.native_order_from_polynomial = counted_native_order",
+        "K.<a> = NumberField(R([-25772600, 0, 0, 0, 0, -29080, 0, 0, 0, 0, 1]))",
+        "O = K.maximal_order()",
+        "certificate = O.maximality_certificate()",
+        "bad_index = dict(certificate)",
+        "bad_index['index'] = bad_index['index'] + 1",
+        "omitted = dict(certificate)",
+        "omitted['local_witnesses'] = list(certificate['local_witnesses'][1:])",
+        "duplicated = dict(certificate)",
+        "duplicated['local_witnesses'] = list(certificate['local_witnesses']) + [dict(certificate['local_witnesses'][0])]",
+        "wrong_support = dict(certificate)",
+        "wrong_witnesses = [dict(witness) for witness in certificate['local_witnesses']]",
+        "wrong_witnesses[0]['prime'] = 1009",
+        "wrong_support['local_witnesses'] = wrong_witnesses",
+        "from sagejs.number_fields.maximal_order_certification import check_certificate",
+        "corruptions = [check_certificate(value)['reason'] for value in [bad_index, omitted, duplicated, wrong_support]]",
+        "[O.discriminant(), O.is_maximal(), len(native_calls), native_calls[0] == native_calls[1], corruptions]",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "[551496736222216254722000000000000000000, True, 2, True, ['discriminant-index', 'missing-local-witness', 'duplicate-local-witness', 'missing-local-witness']]",
+    );
   } finally {
     await session.close();
   }
