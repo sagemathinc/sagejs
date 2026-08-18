@@ -200,7 +200,14 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
         "except Round4Unsupported as error:",
         "    post_failed_closed = 'diagnostic' in str(error)",
         "post_summary = (post_failed_closed, metrics['characteristic_polynomial_calls'], metrics['characteristic_strategy_counts'], metrics['characteristic_strategy_max_bound_bits'], metrics['modular_characteristic_calls'], metrics['modular_characteristic_primes'], metrics['modular_characteristic_max_modulus_bits'], metrics['modular_characteristic_certifications'], metrics['characteristic_polynomial_inputs'][-1]['label'])",
-        "(failed_closed, first_metrics, post_summary)",
+        "metrics = {'characteristic_polynomial_call_limit': 48}",
+        "quotient_failed_closed = False",
+        "try:",
+        `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
+        "except Round4Unsupported as error:",
+        "    quotient_failed_closed = 'diagnostic' in str(error)",
+        "quotient_summary = (quotient_failed_closed, metrics['characteristic_polynomial_calls'], metrics['characteristic_strategy_counts'], metrics['characteristic_strategy_max_bound_bits'], metrics['modular_characteristic_calls'], metrics['modular_characteristic_primes'], metrics['modular_characteristic_max_modulus_bits'], metrics['modular_characteristic_certifications'], metrics['characteristic_polynomial_inputs'][-1]['label'], metrics['characteristic_polynomial_inputs'][-1]['coefficient_bits'], metrics['characteristic_polynomial_inputs'][-1]['denominator_bits'], metrics['exact_field_quotient_calls'], metrics['exact_field_quotient_recoveries'], metrics['exact_field_quotient_inputs'][-1])",
+        "(failed_closed, first_metrics, post_summary, quotient_summary)",
       ].join("\n"),
     );
     const normalized = result.repr.replaceAll("'", '"').replace("(true,", "[true,");
@@ -235,6 +242,10 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
         `\\(True, ${post.attempted_calls}, \\{'direct-exact': ${post.strategy_counts["direct-exact"]}, 'modular-crt': ${post.strategy_counts["modular-crt"]}\\}, ${post.max_hadamard_bound_bits}, ${post.modular_characteristic_calls}, ${post.modular_characteristic_primes}, ${post.modular_characteristic_max_modulus_bits}, \\{'${post.modular_characteristic_certification}': ${post.modular_characteristic_certification_calls}\\}, '${post.next_bound_label}'\\)`,
       ),
     );
+    assert.match(
+      result.repr,
+      /\(True, 49, \{'direct-exact': 15, 'modular-crt': 13\}, 5970, 13, 1537, 3660, \{'cyclic-krylov': 13\}, 'residue-gamma', 2773, 13, 12, 12, \{'label': 'residue-gamma-normalization', 'degree': 32, 'matrix_denominator_bits': 13\}\)/,
+    );
   } finally {
     await session.close();
   }
@@ -260,6 +271,46 @@ test("bounded residue matching returns a complete Frobenius root orbit", async (
         )
       ).repr,
       "[[0, 1, 1], [1, 1, 1]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("exact Round-4 field quotients certify multiplication recovery", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "from sagejs.number_fields.round4 import _exact_field_element_quotient, Round4Unsupported",
+            "checked = 0",
+            "for polynomial in [x^2+x+1, x^3-x+1, x^4+x+1, x^5-x+1]:",
+            "    K = NumberField(polynomial, 'a')",
+            "    a = K.gen()",
+            "    expected = 3 + 2*a - a^(K.degree()-1)",
+            "    for divisor in [1+a, 2-a+a^2]:",
+            "        dividend = divisor*expected",
+            "        metrics = {}",
+            "        quotient = _exact_field_element_quotient(K, dividend, divisor, metrics, 'bounded-control')",
+            "        assert quotient == dividend/divisor",
+            "        assert quotient*divisor == dividend",
+            "        assert metrics['exact_field_quotient_calls'] == 1",
+            "        assert metrics['exact_field_quotient_recoveries'] == 1",
+            "        assert metrics['exact_field_quotient_inputs'][0]['label'] == 'bounded-control'",
+            "        checked += 1",
+            "failed_closed = False",
+            "try:",
+            "    _exact_field_element_quotient(K, K.one(), K.zero())",
+            "except Round4Unsupported as error:",
+            "    failed_closed = 'zero divisor' in str(error)",
+            "(checked, failed_closed)",
+          ].join("\n"),
+        )
+      ).repr,
+      "(8, True)",
     );
   } finally {
     await session.close();

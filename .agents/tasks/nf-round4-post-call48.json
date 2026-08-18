@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round4-post-call48",
+  "title": "Round4 post-call48 residue refinement",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Diagnose and correct the generic post-characteristic residue matching/refinement transition that stalls vector010 after call48 while preserving exact fail-closed certification",
+  "base_commit": "bd695b4ccdc5c2d9a3bfab173b57f4de27aeedbc",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "test/number-field-round4.cjs",
+    "bench/number-field-round4-primary.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "pari-round4",
+      "frozen-2510-008",
+      "exact-invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=deep primary Round-4 stages construct frozen PARI local orders|vector 010 fails closed at its measured coefficient-growth boundary|exact Round-4 field quotients certify multiplication recovery test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 72.569,
+      "started_at": "2026-08-18T03:04:48.802Z",
+      "commit": "bd695b4ccdc5c2d9a3bfab173b57f4de27aeedbc",
+      "workspace_fingerprint": "c75478a5f4c9f223f610fe0869583d4e2c034b95f7c7decd8d5b3f51caf5f652",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Round4 residue normalization now divides by powers of the local prime element through an integer-cleared regular-representation solve, certifies exact matrix multiplication recovery, and fails closed on zero or unsolvable divisors. Vector010 advances from the post-call48 inversion stall to its bounded call49 residue-gamma diagnostic in 22.64 seconds.",
+    "risks": [
+      "The repository-wide native tier remains delegated to integration; strict Python, architecture, parallel scope, frozen #2510/#008, vector010 bounds, and exact quotient differentials pass.",
+      "Vector010 is not complete: the next frozen invariant is call49 residue-gamma with 2773 coefficient bits and denominator bits 13."
+    ],
+    "next_steps": [
+      "Diagnose call49 residue-gamma under the unchanged diagnostic bound without extending this exact-division checkpoint.",
+      "Run the integrated native tier after cherry-picking."
+    ]
+  }
+}

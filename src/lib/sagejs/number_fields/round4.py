@@ -1554,6 +1554,69 @@ def _power_basis_rows(field: Any, generator: Any) -> list[list[Any]]:
     return rows
 
 
+def _exact_field_element_quotient(
+    field: Any,
+    dividend: Any,
+    divisor: Any,
+    metrics: dict[str, Any] | None = None,
+    metric_label: str = "exact-field-quotient",
+) -> Any:
+    """Return `dividend / divisor` with exact multiplication evidence.
+
+    Direct number-field inversion forms a rational function modulo the
+    defining polynomial.  During Round-4 normalization that route can create
+    enormous intermediate coefficients even when the quotient itself has a
+    small reduced representative.  Multiplication by a nonzero field element
+    is instead an invertible `QQ`-linear map.  Solve its integer-cleared
+    regular representation, then verify the exact matrix product before
+    accepting the quotient.
+    """
+    if divisor == field.zero():
+        raise Round4Unsupported("exact field-element division has zero divisor")
+    degree = field.degree()
+    integer_rows, denominator, _row_bounds = _integer_multiplication_matrix_data(
+        field,
+        divisor,
+    )
+    if metrics is not None:
+        metrics["exact_field_quotient_calls"] = (
+            metrics.get("exact_field_quotient_calls", 0) + 1
+        )
+    multiplication = _nf_global("matrix")(sage.ZZ, integer_rows)
+    coordinates = list(dividend.list())
+    coordinates += [sage.QQ(0) for _index in range(degree - len(coordinates))]
+    right = _nf_global("vector")(
+        sage.QQ,
+        [sage.QQ(denominator) * coordinate for coordinate in coordinates],
+    )
+    try:
+        solution = multiplication.solve_right(right)
+    except (ArithmeticError, ValueError) as error:
+        raise Round4Unsupported(
+            "exact field-element multiplication system is not solvable"
+        ) from error
+    if multiplication * solution != right:
+        raise Round4InvariantError(
+            "exact field-element quotient failed multiplication recovery"
+        )
+    if metrics is not None:
+        metrics["exact_field_quotient_recoveries"] = (
+            metrics.get("exact_field_quotient_recoveries", 0) + 1
+        )
+        inputs = metrics.get("exact_field_quotient_inputs")
+        if inputs is None:
+            inputs = []
+            metrics["exact_field_quotient_inputs"] = inputs
+        inputs.append(
+            {
+                "label": metric_label,
+                "degree": degree,
+                "matrix_denominator_bits": _positive_integer_bits(denominator),
+            }
+        )
+    return field._from_coefficients(list(solution))
+
+
 def _round4_residue_refinement(
     field: Any,
     phi: Any,
@@ -1609,7 +1672,13 @@ def _round4_residue_refinement(
 
         gamma = beta / prime**quotient
         if remainder:
-            gamma /= nu_at_phi**remainder
+            gamma = _exact_field_element_quotient(
+                field,
+                gamma,
+                nu_at_phi**remainder,
+                characteristic_metrics,
+                "residue-gamma-normalization",
+            )
         gamma = _p_adic_reduce_element(field, gamma, prime, precision)
         gamma_characteristic = _integral_characteristic_polynomial(
             field,
@@ -1631,7 +1700,13 @@ def _round4_residue_refinement(
             )
             gamma = beta / prime**quotient
             if remainder:
-                gamma /= nu_at_phi**remainder
+                gamma = _exact_field_element_quotient(
+                    field,
+                    gamma,
+                    nu_at_phi**remainder,
+                    characteristic_metrics,
+                    "residue-gamma-minimum-valuation-normalization",
+                )
             gamma = _p_adic_reduce_element(field, gamma, prime, precision)
             gamma_characteristic = _integral_characteristic_polynomial(
                 field,
