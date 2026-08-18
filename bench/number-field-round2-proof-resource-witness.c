@@ -63,6 +63,7 @@ static slong initialize_primes(sagejs_fmpz_matrix_t hints, ulong constant)
     return count;
 }
 
+#if !defined(SAGEJS_NF_ANALYSIS_PROOF_EXPECT_FAILURE)
 static uint64_t hash_bytes(
     uint64_t hash, const unsigned char *data, size_t length)
 {
@@ -73,15 +74,18 @@ static uint64_t hash_bytes(
     }
     return hash;
 }
+#endif
 
 int main(void)
 {
     static const ulong constants[] = {
         2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19
     };
+#if !defined(SAGEJS_NF_ANALYSIS_PROOF_EXPECT_FAILURE)
     uint64_t hash = UINT64_C(1469598103934665603);
     size_t total_length = 0;
     size_t completed = 0;
+#endif
     for (size_t case_index = 0;
          case_index < sizeof(constants) / sizeof(*constants); case_index++)
     {
