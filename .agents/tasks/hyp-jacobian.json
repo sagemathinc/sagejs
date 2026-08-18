@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-jacobian",
+  "title": "Hyperelliptic Jacobian arithmetic",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement canonical genus-2/3 Jacobian divisor classes, odd-degree Cantor group law, scalar arithmetic, orders/basic structure where feasible, exhaustive law tests, and benchmarks in ordinary Python",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+    "test/hyperelliptic-jacobian.cjs",
+    "bench/hyperelliptic-jacobian.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagelite",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "exhaustive small Jacobians"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
