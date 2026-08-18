@@ -22,6 +22,8 @@ from typing import Any
 
 from sagejs.number_fields.om_types import (
     ModularFactor,
+    NewtonPoint,
+    NewtonSide,
     OMLevel,
     OMType,
     OMTypeTree,
@@ -39,8 +41,9 @@ from sagejs.number_fields.om_types import (
     _residual_subtract,
     _residue_multiply,
     _residue_normalize,
+    coefficient_valuation,
     factor_mod_prime,
-    newton_polygon,
+    lower_newton_polygon,
     normalize_polynomial,
     p_adic_valuation,
     phi_adic_expansion,
@@ -176,10 +179,14 @@ def _tree_snapshot(tree: OMTypeTree) -> tuple[Any, ...]:
 def _modular_product(factors: tuple[ModularFactor, ...], prime: int) -> Polynomial:
     product: Polynomial = (1,)
     for factor in factors:
-        for _copy in range(factor.multiplicity):
-            product = _mod_polynomial(
-                polynomial_multiply(product, factor.polynomial), prime
-            )
+        power = factor.polynomial
+        exponent = factor.multiplicity
+        while exponent:
+            if exponent % 2:
+                product = _mod_polynomial(polynomial_multiply(product, power), prime)
+            exponent //= 2
+            if exponent:
+                power = _mod_polynomial(polynomial_multiply(power, power), prime)
     return product
 
 
@@ -221,6 +228,20 @@ def _maximum_coefficient_valuation(polynomial: Polynomial, prime: int) -> int:
         if valuation is not None and valuation > maximum:
             maximum = valuation
     return maximum
+
+
+def _newton_sides_from_expansion(
+    expansion: tuple[Polynomial, ...], prime: int
+) -> tuple[NewtonSide, ...]:
+    """Reuse the retained phi-adic expansion for the exact Newton sides."""
+    points = []
+    for exponent, coefficient in enumerate(expansion):
+        valuation = coefficient_valuation(coefficient, prime)
+        if valuation is not None:
+            points.append(NewtonPoint(exponent, valuation))
+    if len(points) < 2:
+        return ()
+    return lower_newton_polygon(tuple(points))
 
 
 def _prime_divisors(value: int) -> tuple[int, ...]:
@@ -325,8 +346,14 @@ def _residual_factorization_is_exact(
         supplied_degree += (len(factor.polynomial) - 1) * factor.multiplicity
         if supplied_degree > expected_degree:
             return False
-        for _copy in range(factor.multiplicity):
-            product = _residual_multiply(product, factor.polynomial, prime, modulus)
+        power = factor.polynomial
+        exponent = factor.multiplicity
+        while exponent:
+            if exponent % 2:
+                product = _residual_multiply(product, power, prime, modulus)
+            exponent //= 2
+            if exponent:
+                power = _residual_multiply(power, power, prime, modulus)
     return (
         tuple(keys) == tuple(sorted(keys))
         and len(set(keys)) == len(keys)
@@ -396,7 +423,7 @@ def _authenticate_first_order_relations(tree: OMTypeTree) -> bool:
         optimized_prefix: list[OMLevel] = []
         while True:
             expansion = phi_adic_expansion(polynomial, key)
-            sides = newton_polygon(polynomial, prime, key)
+            sides = _newton_sides_from_expansion(expansion, prime)
             residual_data = []
             for side in sides:
                 residual = residual_polynomial(expansion, side, prime, key)
