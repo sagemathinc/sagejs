@@ -86,7 +86,8 @@ def packed_strong_probable_prime_screen_in_place(
     )
     if not valid:
         return False
-    index = 0
+    index: uint64 = 0
+    one: uint64 = 1
     while index < base_count:
         if bases[index] < 2:
             return False
@@ -94,7 +95,7 @@ def packed_strong_probable_prime_screen_in_place(
             control[0] = 2  # PRIMALITY_SCREEN_WITNESS
             control[1] = index
             return True
-        index += 1
+        index = index + one
     control[0] = 1  # PRIMALITY_SCREEN_SURVIVOR
     return True
 
