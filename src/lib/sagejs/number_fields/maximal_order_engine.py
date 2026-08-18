@@ -18,6 +18,7 @@ import time
 from typing import Any
 
 import sagejs as sage
+import sagejs.number_fields.composite_field_analysis as composite_field_analysis
 import sagejs.number_fields.field_analysis_resource as field_analysis_resource
 import sagejs.runtime as runtime
 from sagejs.native import is_compiled
@@ -119,6 +120,31 @@ def _order_from_basis(
             power *= scale
         rows.append(row)
     order = NumberFieldOrder(field, rows, False, False)
+    order._discriminant_cache = runtime.normalize_integer(discriminant)
+    return order
+
+
+def _authenticated_order_from_basis(
+    field: Any,
+    basis: OrderBasis,
+    scale: int,
+    discriminant: int,
+) -> Any:
+    """Install rows already authenticated in packed canonical storage.
+
+    The public order owns an immutable snapshot and lazily projects rational
+    rows on first use.  This helper is private because bypassing another HNF is
+    justified only after an independent packed proof has authenticated the
+    exact numerator, denominator, and generator scale.
+    """
+    flat_numerator = tuple(value for row in basis.numerator for value in row)
+    order = NumberFieldOrder(
+        field,
+        [],
+        False,
+        False,
+        (flat_numerator, basis.denominator, scale),
+    )
     order._discriminant_cache = runtime.normalize_integer(discriminant)
     return order
 
@@ -850,6 +876,7 @@ class _CertificateAdapter:
         composite_results: dict[int, BuchmannLenstraResult],
         replay_primes: list[int],
         authenticated_analysis: Any = None,
+        authenticated_composite_analysis: Any = None,
     ) -> None:
         self.coefficients = list(coefficients)
         self.scale = scale
@@ -857,6 +884,7 @@ class _CertificateAdapter:
         self.composite_results = composite_results
         self.replay_primes = list(replay_primes)
         self.authenticated_analysis = authenticated_analysis
+        self.authenticated_composite_analysis = authenticated_composite_analysis
         self._native_replay: Any = None
         self._native_replay_loaded = False
         self._candidate: Any = None
@@ -866,6 +894,8 @@ class _CertificateAdapter:
 
     def basis_data(self, candidate: Any) -> tuple[list[list[int]], int]:
         analysis = self.authenticated_analysis
+        if analysis is None:
+            analysis = self.authenticated_composite_analysis
         if analysis is not None and candidate is self._candidate:
             return (
                 [list(row) for row in analysis.basis_numerator],
@@ -878,9 +908,15 @@ class _CertificateAdapter:
         return self.equation_disc
 
     def order_discriminant(self, candidate: Any) -> int:
+        analysis = self.authenticated_composite_analysis
+        if analysis is not None and candidate is self._candidate:
+            return int(analysis.order_discriminant)
         return _exact_integer(candidate.discriminant())
 
     def index(self, candidate: Any) -> int:
+        analysis = self.authenticated_composite_analysis
+        if analysis is not None and candidate is self._candidate:
+            return int(analysis.index)
         return _index_from_discriminants(
             self.equation_disc,
             _exact_integer(candidate.discriminant()),
@@ -894,6 +930,40 @@ class _CertificateAdapter:
             # `certify_global_order` deliberately serializes the certificate.
             # The candidate is therefore supplied by the short-lived adapter.
             candidate = self._candidate
+        composite_analysis = self.authenticated_composite_analysis
+        if composite_analysis is not None and candidate is self._candidate:
+            authenticated = (
+                composite_field_analysis.authenticated_composite_field_analysis_matches(
+                    composite_analysis,
+                    polynomial=list(certificate.get("defining_polynomial", [])),
+                    scale=self.scale,
+                    equation_discriminant=int(
+                        certificate.get("equation_discriminant", 0)
+                    ),
+                    basis_numerator=[
+                        list(row) for row in certificate.get("basis_numerator", [])
+                    ],
+                    basis_denominator=int(certificate.get("basis_denominator", 0)),
+                    index=int(certificate.get("index", 0)),
+                    order_discriminant=int(certificate.get("order_discriminant", 0)),
+                )
+            )
+            if authenticated:
+                if "component_value" in witness:
+                    proof = witness.get("proof", {})
+                    return bool(
+                        abs(int(witness.get("component_value", 0)))
+                        == composite_analysis.square_support**2
+                        and proof.get("theorem")
+                        == "order-discriminant-coprime-component"
+                        and abs(int(proof.get("support", 0)))
+                        == composite_analysis.square_support
+                    )
+                proof = witness.get("proof", {})
+                return bool(
+                    int(witness.get("prime", 0)) == composite_analysis.residual_prime
+                    and proof.get("check") == "monomial-dedekind-p-maximal"
+                )
         if "component_value" in witness:
             component_value = abs(int(witness.get("component_value", 0)))
             result = self.composite_results.get(component_value)
@@ -1023,6 +1093,24 @@ class _CertificateAdapter:
 
     def authenticated_proof(self, candidate: Any, certificate: dict[str, Any]) -> bool:
         """Bind one live packed proof envelope to its serialized certificate."""
+        composite_analysis = self.authenticated_composite_analysis
+        if composite_analysis is not None and candidate is self._candidate:
+            return (
+                composite_field_analysis.authenticated_composite_field_analysis_matches(
+                    composite_analysis,
+                    polynomial=list(certificate.get("defining_polynomial", [])),
+                    scale=self.scale,
+                    equation_discriminant=int(
+                        certificate.get("equation_discriminant", 0)
+                    ),
+                    basis_numerator=[
+                        list(row) for row in certificate.get("basis_numerator", [])
+                    ],
+                    basis_denominator=int(certificate.get("basis_denominator", 0)),
+                    index=int(certificate.get("index", 0)),
+                    order_discriminant=int(certificate.get("order_discriminant", 0)),
+                )
+            )
         analysis = self.authenticated_analysis
         if analysis is None or candidate is not self._candidate:
             return False
@@ -1133,6 +1221,104 @@ def _authenticated_default_field_analysis(
     except (ArithmeticError, AttributeError, OverflowError, TypeError, ValueError):
         return None
     return analysis, basis, decomposition
+
+
+def _authenticated_composite_square_support(
+    coefficients: list[int], scale: int
+) -> tuple[Any, OrderBasis, dict[str, Any], list[dict[str, Any]]] | None:
+    """Return one independently proved square-support candidate, if eligible."""
+    # The structural path pays several native resource setups. Restrict its
+    # automatic probe to coefficient sizes that amortize those crossings and
+    # leave ordinary public microcases on the fused field-analysis boundary.
+    if _coefficient_bits(coefficients) < 128:
+        return None
+    analysis = composite_field_analysis.construct_composite_field_analysis(
+        coefficients, scale
+    )
+    if not composite_field_analysis.authenticated_composite_field_analysis_matches(
+        analysis,
+        polynomial=coefficients,
+        scale=scale,
+    ):
+        return None
+    basis = OrderBasis(
+        [list(row) for row in analysis.basis_numerator],
+        int(analysis.basis_denominator),
+        canonical=True,
+    )
+    if not composite_field_analysis.authenticated_composite_field_analysis_matches(
+        analysis,
+        polynomial=coefficients,
+        scale=scale,
+        basis_numerator=[list(row) for row in basis.numerator],
+        basis_denominator=basis.denominator,
+        index=int(analysis.index),
+        equation_discriminant=int(analysis.equation_discriminant),
+        order_discriminant=int(analysis.order_discriminant),
+    ):
+        return None
+    prime = int(analysis.residual_prime)
+    exponent = int(analysis.residual_exponent)
+    support = int(analysis.square_support)
+    prime_state, prime_evidence = primality_status(prime)
+    if prime_state != "proven-prime":
+        return None
+    decomposition = {
+        "version": 1,
+        "original": abs(int(analysis.equation_discriminant)),
+        "components": [
+            {
+                "value": prime**exponent,
+                "state": prime_state,
+                "base": prime,
+                "exponent": exponent,
+                "evidence": prime_evidence,
+            },
+            {
+                "value": support * support,
+                "state": "unresolved-coprime-component",
+                "base": support,
+                "exponent": 2,
+                "evidence": {
+                    "kind": "exact-square-support",
+                    "root": support,
+                },
+            },
+        ],
+        "events": [
+            {
+                "kind": "exact-square-support",
+                "residual_prime": prime,
+                "residual_exponent": exponent,
+                "support_bits": support.bit_length(),
+            }
+        ],
+        "certified": False,
+    }
+    decomposition["components"].sort(key=lambda component: int(component["value"]))
+    if not check_decomposition_certificate(decomposition, require_proven=False):
+        return None
+    local_witnesses = [
+        make_local_maximality_witness(
+            prime,
+            "dedekind",
+            _valuation(int(analysis.equation_discriminant), prime),
+            _valuation(int(analysis.order_discriminant), prime),
+            _valuation(int(analysis.index), prime),
+            {"check": "monomial-dedekind-p-maximal"},
+        ),
+        make_composite_local_maximality_witness(
+            support * support,
+            "composite-square-support",
+            {
+                "support": support,
+                "index": int(analysis.index),
+                "discriminant": int(analysis.order_discriminant),
+                "theorem": "order-discriminant-coprime-component",
+            },
+        ),
+    ]
+    return analysis, basis, decomposition, local_witnesses
 
 
 def _proven_prime_components(
@@ -1364,6 +1550,45 @@ def compute_maximal_order(
     coefficients, scale = _integral_polynomial_data(field)
 
     if requested is None and algorithm == "auto" and not trace_enabled:
+        try:
+            composite_authenticated = _authenticated_composite_square_support(
+                coefficients, scale
+            )
+        except (ArithmeticError, AttributeError, OverflowError, TypeError, ValueError):
+            # The packed envelope is an optional acceleration.  A malformed,
+            # stale, or unavailable result must retain the complete generic
+            # path and must never reach the public cache.
+            composite_authenticated = None
+        if composite_authenticated is not None:
+            analysis, basis, decomposition, local_witnesses = composite_authenticated
+            order = _authenticated_order_from_basis(
+                field,
+                basis,
+                scale,
+                int(analysis.order_discriminant),
+            )
+            adapter = _CertificateAdapter(
+                coefficients,
+                scale,
+                int(analysis.equation_discriminant),
+                {},
+                [],
+                authenticated_composite_analysis=analysis,
+            )
+            adapter.bind_candidate(order)
+            certificate = certify_global_order(
+                adapter,
+                order,
+                decomposition,
+                local_witnesses,
+            )
+            order._maximal_order_certificate = certificate
+            order._maximal_order_local_evidence = runtime.undefined
+            public_trace = trace.to_dict()
+            public_trace["analysis_trace"] = dict(analysis.trace)
+            order._maximal_order_trace = public_trace
+            return order
+
         authenticated = _authenticated_default_field_analysis(coefficients, scale)
         if authenticated is not None:
             analysis, basis, decomposition = authenticated
