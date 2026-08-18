@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-coprime-composite-merge",
+  "title": "Coprime composite local-order merge",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Construct independently complete local overorders for coprime composite discriminant supports and merge their certified lattices without whole-component factorization fallback",
+  "base_commit": "c7b9c85370a3521a04fa64e9afc6921b757e44bf",
+  "claims": [
+    "src/lib/sagejs/number_fields/composite_local_merge.py",
+    "test/number-field-coprime-composite-merge.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing Buchmann--Lenstra independent checker and exact global lattice certificate"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-coprime-composite-merge.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.253,
+      "started_at": "2026-08-18T09:18:24.846Z",
+      "commit": "c7b9c85370a3521a04fa64e9afc6921b757e44bf",
+      "workspace_fingerprint": "bce90a8617e90bdb44aaa0b01d63ad4bace3b5e62f3de576169bfdcb4f17a4f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-coprime-composite-merge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.273,
+      "started_at": "2026-08-18T09:18:39.576Z",
+      "commit": "c7b9c85370a3521a04fa64e9afc6921b757e44bf",
+      "workspace_fingerprint": "bce90a8617e90bdb44aaa0b01d63ad4bace3b5e62f3de576169bfdcb4f17a4f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/composite_local_merge.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.365,
+      "started_at": "2026-08-18T09:18:41.580Z",
+      "commit": "c7b9c85370a3521a04fa64e9afc6921b757e44bf",
+      "workspace_fingerprint": "bce90a8617e90bdb44aaa0b01d63ad4bace3b5e62f3de576169bfdcb4f17a4f1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a host-neutral helper that constructs and independently replays each composite local overorder from the equation order, continues only that component when necessary, rejects non-coprime merges, and delegates host materialization and lattice join through explicit callbacks. The exact degree-4 large-prime compositum regression proves both 387-bit and 731-bit local results complete independently, merges their lattices, checks closure and the square-index identity, and rejects an overlapping support.",
+    "risks": [
+      "The maximal_order_engine.py call site is intentionally withheld because the T8 and OM-auto integration lanes currently share that file.",
+      "The full strict suite on base c7b9c853 has five unrelated existing errors in field_analysis_resource.py and maximal_order_engine.py; direct Pyright validation of the new module is clean.",
+      "Only Linux x64 focused execution ran in this lane; the helper is ordinary dynamic Python and still needs the repository's normal supported-host sweep after integration."
+    ],
+    "next_steps": [
+      "After the shared engine lanes land, import certified_composite_overorder_from_equation and merge_certified_coprime_composite_order in maximal_order_engine.py.",
+      "Track processed composite supports, construct every pending composite from the equation order, and use the helper to merge complete results before prime-local work.",
+      "Add the new module to pyrightconfig.json and register the focused test in test/node-test-manifest.cjs in the integration lane.",
+      "Rerun the large-prime public case under the uniform 30-second policy and the full exact certificate suite."
+    ]
+  }
+}
