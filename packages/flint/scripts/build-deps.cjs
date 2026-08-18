@@ -137,6 +137,7 @@ function run(command, args, options = {}) {
   process.stdout.write(`+ ${command} ${args.join(" ")}\n`);
   const result = spawnSync(command, args, {
     cwd: options.cwd,
+    windowsVerbatimArguments: options.windowsVerbatimArguments,
     env: {
       ...process.env,
       ...(macosDeploymentTarget
@@ -332,7 +333,9 @@ async function buildWindowsSmalljac() {
     `-Prefix "${prefix}"`,
   ].join(" ");
   const command = `call "${vcvars}" >nul && ${powershell}`;
-  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command]);
+  run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command], {
+    windowsVerbatimArguments: true,
+  });
   writeFileSync(
     stampPath,
     `${JSON.stringify({ build: expectedBuild }, null, 2)}\n`,
