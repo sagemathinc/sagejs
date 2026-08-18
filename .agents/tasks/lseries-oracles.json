@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "lseries-oracles",
+  "title": "Elliptic L-series oracle corpus",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create a pinned complex L-value corpus, Sage/PARI and Magma harnesses, and reproducible single/batch benchmarks",
+  "base_commit": "9804aad23a6a277b469a2f7322b08c4574c714a7",
+  "claims": [
+    "test/data/elliptic-lseries/",
+    "bench/elliptic-lseries/",
+    "upstream-tests/sage/elliptic-lseries.sage",
+    "test/elliptic-lseries-oracles.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/elliptic-curve-lseries-complex-evaluation-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage 10.9 PARI lfun and installed Magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/elliptic-lseries-oracles.cjs",
+    "node bench/elliptic-lseries/verify-sage-capture.cjs",
+    "/home/user/sagelite/sage bench/elliptic-lseries/benchmark.sage"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
