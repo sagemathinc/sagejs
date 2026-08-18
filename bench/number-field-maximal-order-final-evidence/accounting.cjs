@@ -90,6 +90,13 @@ const BOUNDARY_CONTRACTS = Object.freeze({
   },
 });
 
+const ALGORITHM_OVERLAP_BOUNDARIES = Object.freeze([
+  "dynamic-public",
+  "round2-local",
+  "round4-local",
+  "om-local",
+]);
+
 function recordKey(record) {
   return `${record.case_id}\t${record.system}\t${record.boundary}`;
 }
@@ -182,6 +189,42 @@ function oracleMatrix(records, families) {
   );
 }
 
+function algorithmOverlapSupport(records, cases) {
+  const caseIds = [...new Set((cases || []).map((entry) => entry.id))].sort();
+  const byCase = new Map(caseIds.map((caseId) => [caseId, new Map()]));
+  for (const record of records) {
+    if (!record.system?.startsWith("sagejs") ||
+        !ALGORITHM_OVERLAP_BOUNDARIES.includes(record.boundary) ||
+        !byCase.has(record.case_id)) {
+      continue;
+    }
+    const rows = byCase.get(record.case_id);
+    if (!rows.has(record.boundary)) rows.set(record.boundary, []);
+    rows.get(record.boundary).push(record);
+  }
+  const evaluatedCaseIds = caseIds.filter((caseId) =>
+    ALGORITHM_OVERLAP_BOUNDARIES.every(
+      (boundary) => byCase.get(caseId).get(boundary)?.length === 1,
+    ),
+  );
+  const supportedCaseIds = evaluatedCaseIds.filter((caseId) =>
+    ALGORITHM_OVERLAP_BOUNDARIES.every((boundary) => {
+      const record = byCase.get(caseId).get(boundary)[0];
+      return !["unavailable", "unsupported"].includes(record.status);
+    }),
+  );
+  return {
+    schema: "sagejs.number-fields/maximal-order-algorithm-overlap-support-v1",
+    boundaries: ALGORITHM_OVERLAP_BOUNDARIES,
+    selected_case_ids: caseIds,
+    evaluated_case_ids: evaluatedCaseIds,
+    supported_case_ids: supportedCaseIds,
+    evaluation_complete: evaluatedCaseIds.length === caseIds.length,
+    declaration_rule:
+      "A case is supported exactly when all four requested boundaries returned a terminal state other than unavailable/unsupported.",
+  };
+}
+
 function payloadDigest(report) {
   const payload = { ...report };
   delete payload.integrity;
@@ -232,6 +275,7 @@ function finalizeEvidenceReport(rawReport, {
       ]),
     ),
     oracle_matrix: oracleMatrix(records, families),
+    algorithm_overlap_support: algorithmOverlapSupport(records, rawReport.cases),
     platform_validation: platformValidation,
     cache_identity_api: {
       records: records
@@ -271,7 +315,9 @@ function verifyEvidenceIntegrity(report) {
 }
 
 module.exports = {
+  ALGORITHM_OVERLAP_BOUNDARIES,
   BOUNDARY_CONTRACTS,
+  algorithmOverlapSupport,
   expectedMatrix,
   finalizeEvidenceReport,
   oracleMatrix,
