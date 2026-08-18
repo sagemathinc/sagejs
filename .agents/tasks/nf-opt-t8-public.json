@@ -116,7 +116,7 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented a generic structural square-support path with packed discriminant/square-root/closure kernels, packed BL/Dedekind construction, exact CRT lattice merge, immutable authenticated proof envelope, lazy public basis and certificate projection, fail-closed fallback, focused corruption/equivalence tests, and a 17-sample checked public T8 receipt. On AMD EPYC 7B13 the final fresh-field public median is 21.349 ms against the 25 ms gate; the generic path has exactly the same canonical numerator, denominator, index, and discriminant.",
+    "summary": "Implemented a generic structural square-support path with packed discriminant/square-root/closure kernels, packed BL/Dedekind construction, exact CRT lattice merge, immutable authenticated proof envelope, lazy public basis and certificate projection, fail-closed fallback, focused corruption/equivalence tests, and a 17-sample checked public T8 receipt. On AMD EPYC 7B13 the final rebased fresh-field public median is 21.654 ms against the 25 ms gate; the generic path has exactly the same canonical numerator, denominator, index, and discriminant.",
     "risks": [
       "The structural selector is intentionally narrow: monic integral inputs with at least 128 coefficient bits, one small proved residual prime, exact coprime square support, and the monomial Dedekind residual shape. All other cases retain the established generic path.",
       "The final full production native/platform suite remains an integration-lane responsibility."
