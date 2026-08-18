@@ -555,18 +555,46 @@ def _construct_support_bases(
 
     if word_primes:
         word_primes.sort()
+        fallback_primes: list[int] = []
+        packed_index = 1
         started = time.perf_counter_ns()
-        native = native_order_from_polynomial(coefficients, word_primes)
+        for prime in word_primes:
+            data = bl._composite_dedekind_data(coefficients, prime)
+            if data.get("status") == "complete":
+                continue
+            if data.get("status") != "enlarge":
+                fallback_primes.append(prime)
+                continue
+            basis, index = bl._dedekind_overorder_basis(
+                coefficients,
+                prime,
+                data["generator"],
+                data.get("packed_hnf"),
+            )
+            if (
+                equation_discriminant % (index * index) != 0
+                or integer_gcd(abs(equation_discriminant // (index * index)), prime)
+                != 1
+            ):
+                fallback_primes.append(prime)
+                continue
+            bases.append(basis)
+            packed_index *= index
+        if fallback_primes:
+            native = native_order_from_polynomial(coefficients, fallback_primes)
+            if not native.complete:
+                raise ArithmeticError("native word-prime support did not complete")
+            bases.append(native.basis)
+            packed_index *= int(native.index)
         timings["local_work_ns"] += time.perf_counter_ns() - started
-        if not native.complete:
-            raise ArithmeticError("native word-prime support did not complete")
-        bases.append(native.basis)
         events.append(
             {
                 "stage": "local-work",
                 "state": "complete",
                 "prime_count": len(word_primes),
-                "index_bits": int(native.index).bit_length(),
+                "packed_prime_count": len(word_primes) - len(fallback_primes),
+                "native_fallback_count": len(fallback_primes),
+                "index_bits": packed_index.bit_length(),
             }
         )
     return bases, timings, events

@@ -126,7 +126,7 @@ def _order_from_basis(
 
 def _authenticated_order_from_basis(
     field: Any,
-    basis: OrderBasis,
+    basis: Any,
     scale: int,
     discriminant: int,
 ) -> Any:
@@ -137,13 +137,18 @@ def _authenticated_order_from_basis(
     justified only after an independent packed proof has authenticated the
     exact numerator, denominator, and generator scale.
     """
-    flat_numerator = tuple(value for row in basis.numerator for value in row)
+    if isinstance(basis, OrderBasis):
+        basis_numerator = basis.numerator
+        basis_denominator = basis.denominator
+    else:
+        basis_numerator, basis_denominator = basis
+    flat_numerator = tuple(value for row in basis_numerator for value in row)
     order = NumberFieldOrder(
         field,
         [],
         False,
         False,
-        (flat_numerator, basis.denominator, scale),
+        (flat_numerator, basis_denominator, scale),
     )
     order._discriminant_cache = runtime.normalize_integer(discriminant)
     return order
@@ -1225,7 +1230,7 @@ def _authenticated_default_field_analysis(
 
 def _authenticated_composite_square_support(
     coefficients: list[int], scale: int
-) -> tuple[Any, OrderBasis, dict[str, Any], list[dict[str, Any]]] | None:
+) -> tuple[Any, dict[str, Any], list[dict[str, Any]]] | None:
     """Return one independently proved square-support candidate, if eligible."""
     # The structural path pays several native resource setups. Restrict its
     # automatic probe to coefficient sizes that amortize those crossings and
@@ -1239,22 +1244,6 @@ def _authenticated_composite_square_support(
         analysis,
         polynomial=coefficients,
         scale=scale,
-    ):
-        return None
-    basis = OrderBasis(
-        [list(row) for row in analysis.basis_numerator],
-        int(analysis.basis_denominator),
-        canonical=True,
-    )
-    if not composite_field_analysis.authenticated_composite_field_analysis_matches(
-        analysis,
-        polynomial=coefficients,
-        scale=scale,
-        basis_numerator=[list(row) for row in basis.numerator],
-        basis_denominator=basis.denominator,
-        index=int(analysis.index),
-        equation_discriminant=int(analysis.equation_discriminant),
-        order_discriminant=int(analysis.order_discriminant),
     ):
         return None
     prime = int(analysis.residual_prime)
@@ -1319,7 +1308,7 @@ def _authenticated_composite_square_support(
             },
         ),
     ]
-    return analysis, basis, decomposition, local_witnesses
+    return analysis, decomposition, local_witnesses
 
 
 def _proven_prime_components(
@@ -1561,10 +1550,10 @@ def compute_maximal_order(
             # path and must never reach the public cache.
             composite_authenticated = None
         if composite_authenticated is not None:
-            analysis, basis, decomposition, local_witnesses = composite_authenticated
+            analysis, decomposition, local_witnesses = composite_authenticated
             order = _authenticated_order_from_basis(
                 field,
-                basis,
+                (analysis.basis_numerator, int(analysis.basis_denominator)),
                 scale,
                 int(analysis.order_discriminant),
             )
