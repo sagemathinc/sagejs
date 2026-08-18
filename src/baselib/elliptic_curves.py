@@ -1149,6 +1149,7 @@ class Lseries_ell:
             }
         adaptive = region is not None and bool(_lseries_record_get(region, "adaptive"))
         refinement_bits = 8 if adaptive else 32
+        native_tile_limit = 10000
         point_pairs = []
         expansion = []
         conjugate_signs = []
@@ -1173,20 +1174,42 @@ class Lseries_ell:
                 point_pairs.append(pair)
             expansion.append(int(index))
             conjugate_signs.append(-1.0 if imaginary_part < 0 and adaptive else 1.0)
-        planned = self._curve._lseries_values_native(
-            [0, 1], point_pairs, target, refinement_bits
-        )
-        required = int(runtime.reflect.get(planned, "required_cutoff"))
-        coefficients = self._coefficient_prefix.through(required)
-        result = self._curve._lseries_values_native(
-            coefficients, point_pairs, target, refinement_bits
-        )
-        if str(runtime.reflect.get(result, "status")) != "ok" or not bool(
-            runtime.reflect.get(result, "known_error_target_met")
-        ):
-            raise ArithmeticError("elliptic L-series plot batch did not stabilize")
-        fine_values = list(runtime.reflect.get(result, "values"))
-        coarse_values = list(runtime.reflect.get(result, "coarse_values"))
+        fine_values = []
+        coarse_values = []
+        tile_diagnostics = []
+        for start in range(0, len(point_pairs), native_tile_limit):
+            tile_pairs = point_pairs[start : start + native_tile_limit]
+            planned = self._curve._lseries_values_native(
+                [0, 1], tile_pairs, target, refinement_bits
+            )
+            required = int(runtime.reflect.get(planned, "required_cutoff"))
+            coefficients = self._coefficient_prefix.through(required)
+            result = self._curve._lseries_values_native(
+                coefficients, tile_pairs, target, refinement_bits
+            )
+            if str(runtime.reflect.get(result, "status")) != "ok" or not bool(
+                runtime.reflect.get(result, "known_error_target_met")
+            ):
+                raise ArithmeticError("elliptic L-series plot tile did not stabilize")
+            tile_fine = list(runtime.reflect.get(result, "values"))
+            tile_coarse = list(runtime.reflect.get(result, "coarse_values"))
+            if len(tile_fine) != len(tile_pairs) or len(tile_coarse) != len(tile_pairs):
+                raise ArithmeticError("elliptic L-series plot tile has invalid size")
+            fine_values.extend(tile_fine)
+            coarse_values.extend(tile_coarse)
+            tile_diagnostics.append(
+                {
+                    "point_count": len(tile_pairs),
+                    "cutoff": int(runtime.reflect.get(result, "cutoff")),
+                    "grid_points": int(runtime.reflect.get(result, "grid_points")),
+                    "coefficient_terms": int(
+                        runtime.reflect.get(result, "coefficient_terms")
+                    ),
+                    "fine_precision_bits": int(
+                        runtime.reflect.get(result, "fine_precision_bits")
+                    ),
+                }
+            )
         if len(fine_values) != len(point_pairs) or len(coarse_values) != len(
             point_pairs
         ):
@@ -1218,15 +1241,24 @@ class Lseries_ell:
         diagnostics = {
             "route": "mellin-native-nested",
             "precision_bits": target,
-            "fine_precision_bits": int(
-                runtime.reflect.get(result, "fine_precision_bits")
+            "fine_precision_bits": max(
+                tile["fine_precision_bits"] for tile in tile_diagnostics
             ),
             "point_count": len(points),
             "evaluated_point_count": len(point_pairs),
             "conjugation_reconstructed": len(points) - len(point_pairs),
-            "cutoff": int(runtime.reflect.get(result, "cutoff")),
-            "grid_points": int(runtime.reflect.get(result, "grid_points")),
-            "coefficient_terms": int(runtime.reflect.get(result, "coefficient_terms")),
+            "tile_count": len(tile_diagnostics),
+            "tile_point_limit": native_tile_limit,
+            "native_call_count": 2 * len(tile_diagnostics),
+            "cutoff": max(tile["cutoff"] for tile in tile_diagnostics),
+            "grid_points": max(tile["grid_points"] for tile in tile_diagnostics),
+            "coefficient_terms": sum(
+                tile["coefficient_terms"] for tile in tile_diagnostics
+            ),
+            "point_grid_terms": sum(
+                tile["point_count"] * tile["grid_points"] for tile in tile_diagnostics
+            ),
+            "tiles": tile_diagnostics,
             "coefficient_backend": self._coefficient_prefix.backend,
             "rigorous": False,
             "quadrature_error_status": "estimated_by_nested_refinement",

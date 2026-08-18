@@ -1,7 +1,6 @@
 ---
 title: "Exploring elliptic-curve L-series"
 ---
-
 # Exploring elliptic-curve L-series
 
 Sage.js can evaluate the complex `L`-series of an elliptic curve over the
@@ -134,7 +133,12 @@ For a finished image, increase `plot_points` to 100 or more and enlarge the
 rectangle. The default `plot_precision="auto"` is usually the right choice:
 most pixels need only enough numerical accuracy to choose a stable color.
 Set `plot_precision=53` to force full double precision throughout when making
-a comparison image.
+a comparison image. Large grids are transparently divided into native tiles
+of at most 10,000 distinct points while every tile reuses the `L`-series'
+coefficient cache. Thus, for example,
+`complex_plot(L, (0, 2), (-4, 4), plot_points=300)` makes a 300-by-300 image;
+it does not attempt one 90,000-point native allocation. With automatic
+precision, conjugate pixels are also evaluated only once before tiling.
 
 ## Estimate analytic rank
 

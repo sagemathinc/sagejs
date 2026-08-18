@@ -168,3 +168,26 @@ test("complex_plot uses adaptive regional L-series batches", async () => {
     await session.close();
   }
 });
+
+test("complex_plot tiles L-series grids larger than one native batch", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "E = EllipticCurve([0,-1,1,-10,-20])",
+        "L = E.lseries()",
+        "large_plot = complex_plot(L,(0,2),(-2,2),plot_points=142,",
+        "                          interpolation='nearest')",
+        "d = large_plot._plot_spec_diagnostics[0]",
+        "run = d['runs'][0]",
+        "[d['pixel_count'], d['unstable_pixels'], run['tile_count'],",
+        " max(tile['point_count'] for tile in run['tiles']),",
+        " run['evaluated_point_count'], run['conjugation_reconstructed']]",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[20164, 0, 2, 10000, 10082, 10082]");
+  } finally {
+    await session.close();
+  }
+});
