@@ -31,6 +31,11 @@ test("Unix smalljac builds expose dependency headers to implicit Make rules", ()
     buildScript.match(/`CPPFLAGS=-I\$\{join\(prefix, "include"\)\}`/g)?.length,
     2,
   );
+  assert.equal(buildScript.match(/smalljacPortability: digest\(/g)?.length, 2);
+  assert.match(
+    buildScript,
+    /prepareSources\(ffpolySource, smalljacSource\);/,
+  );
 });
 
 test("tiny-prime traces retain their sign when plain char is unsigned", () => {
