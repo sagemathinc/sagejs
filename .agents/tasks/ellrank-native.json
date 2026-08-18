@@ -1,0 +1,97 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "ellrank-native",
+  "title": "Portable native elliptic L-function boundary",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Expose eclib root numbers and implement a host-independent batched FLINT/Arb central-derivative accelerator with Node adapter and native tests",
+  "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
+  "claims": [
+    "packages/flint/src/addon.c",
+    "packages/flint/src/eclib_rank.cc",
+    "packages/flint/src/eclib_rank.h",
+    "packages/flint/src/elliptic_lfunction.c",
+    "packages/flint/src/elliptic_lfunction.h",
+    "packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+    "packages/flint/binding.gyp",
+    "packages/flint/index.cjs",
+    "packages/flint/package.json",
+    "packages/flint/test/elliptic-native.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/elliptic-curve-analytic-rank-plan.md",
+    "/tmp/sagejs-analytic-rank.7W9sgD/pari-2.17.4/src/basemath/ellanal.c"
+  ],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary Python analytic-rank evaluator",
+      "PARI ellanalyticrank"
+    ],
+    "exceptions": [
+      "Arb foreign-library adapter and compact batched numerical primitive; the readable mathematics and dynamic fallback live in ordinary Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.76,
+      "started_at": "2026-08-18T00:16:47.202Z",
+      "commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
+      "workspace_fingerprint": "0489f24114c62179630840e8b9b89a766efee77eee4b8cfad38559a5075a1d2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint/test/elliptic-native.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.278,
+      "started_at": "2026-08-18T00:20:34.823Z",
+      "commit": "5a43cbff01b2a88e7cd982393ce724ef10cc7a1e",
+      "workspace_fingerprint": "296e48eefed91647117b767267334598af1a1fa619b89f27026a4696d5335836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.074,
+      "started_at": "2026-08-18T00:20:40.549Z",
+      "commit": "5a43cbff01b2a88e7cd982393ce724ef10cc7a1e",
+      "workspace_fingerprint": "296e48eefed91647117b767267334598af1a1fa619b89f27026a4696d5335836",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Commit 5a43cbff exposes eclib global root numbers and a portable C/FLINT-Arb completed central-Lambda derivative jet through ecRootNumber and ecCompletedCentralDerivatives. The jet returns consecutive actual derivatives with exact functional-equation parity, decimal arithmetic-ball diagnostics, a separate coefficient-tail bound, and explicit coefficient/resource status. Focused native tests cover canonical normalization, ranks 0/1/2, rational Q-isomorphic models, insufficient coefficients, and oversized conductors; the complete packages/flint test suite passes on Linux x64.",
+    "risks": [
+      "The Arb balls enclose arithmetic rounding only. The coefficient tail is reported separately, and the unproved trapezoid/grid discretization error means rigorous is deliberately false; the Python layer must use precision/grid stability checks and must sum independent error contributions.",
+      "Windows x64, macOS arm64, and Linux arm64 runtime receipts remain pending. The implementation uses the existing C17/Node-API/FLINT build path and avoids POSIX-only APIs; the integration lane will validate Windows once the shared checkout is free.",
+      "pnpm test:portable fails only because architecture/native-code inventory metrics for packages/flint/src/addon.c are stale after this lane's export additions. This lane was explicitly told not to edit architecture inventories.",
+      "The simple all-coefficients-at-every-grid-node implementation is O(KL). A future measured optimization may use node-dependent cutoffs if their omitted tails are included explicitly."
+    ],
+    "next_steps": [
+      "Integration lane: classify the new native ABI/kernel and refresh architecture inventory metrics, then rerun pnpm test:portable and pnpm architecture:check.",
+      "Integration lane: run the focused native test and build on Windows x64, macOS arm64, and Linux arm64 and record receipts.",
+      "Math lane: combine arithmetic radius and coefficient-tail bounds additively, retain the non-rigorous status, and perform completed-to-raw gamma convolution in ordinary Python.",
+      "After integration, run the full pnpm test:native and pnpm test:sea suites; this lane's cold dependency rebuilds were interrupted to avoid delaying the committed handoff."
+    ]
+  }
+}
