@@ -38,6 +38,35 @@ test("strict Python decodes and owns the direct number-field order resource", as
       "answer",
     ].join("\n"));
     assert.equal(noStatusAccessor.repr, "[True, 0, 2]");
+
+    const borrowedPolynomial = await session.evaluate([
+      "from sagejs.number_fields.order_resource import _native_order_from_polynomial_resource_bound",
+      "from sagejs.number_fields.order_resource import _native_order_with_round2_proof_from_polynomial_resource_bound",
+      "from sagejs.number_fields.field_analysis_resource import authenticated_round2_order_proof_matches",
+      "R = PolynomialRing(ZZ, 'x')",
+      "polynomial = R([-5, 0, 1])",
+      "resource = polynomial._exact_polynomial_resource()",
+      "bound = _native_order_from_polynomial_resource_bound(resource, [-5, 0, 1], [2])",
+      "scalar = native_order_from_polynomial([-5, 0, 1], [2])",
+      "length_mismatch_rejected = False",
+      "try:",
+      "    _native_order_from_polynomial_resource_bound(resource, [-5, 1], [2])",
+      "except ValueError:",
+      "    length_mismatch_rejected = True",
+      "same_length_mismatch_rejected = False",
+      "try:",
+      "    _native_order_from_polynomial_resource_bound(resource, [-6, 0, 1], [2])",
+      "except ValueError:",
+      "    same_length_mismatch_rejected = True",
+      "second = _native_order_from_polynomial_resource_bound(resource, [-5, 0, 1], [2])",
+      "proved, proof = _native_order_with_round2_proof_from_polynomial_resource_bound(resource, [-5, 0, 1], [2])",
+      "proof_matches = authenticated_round2_order_proof_matches(proof, polynomial=[-5, 0, 1], certified_primes=[2], basis_numerator=proved.basis.numerator, basis_denominator=proved.basis.denominator, index=proved.index, equation_discriminant=proved.equation_discriminant, order_discriminant=proved.order_discriminant)",
+      "[bound.to_dict() == scalar.to_dict(), second.to_dict() == bound.to_dict(), proved.to_dict() == bound.to_dict(), proof.certified, proof_matches, length_mismatch_rejected, same_length_mismatch_rejected, polynomial == R([-5, 0, 1])]",
+    ].join("\n"));
+    assert.equal(
+      borrowedPolynomial.repr,
+      "[True, True, True, True, True, True, True, True]",
+    );
   } finally {
     await session.close();
   }

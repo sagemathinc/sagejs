@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import sagejs.runtime as runtime
 from sagejs.number_fields.maximal_order_contracts import OrderBasis
 
 RESOURCE_COMPLETE = 0
@@ -188,22 +189,122 @@ def native_order_from_polynomial(
 
     flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
     polynomial = flint.fmpz_polynomial(len(coefficients))
-    hints = flint.fmpz_matrix(len(primes), 1)
     try:
         for index, coefficient in enumerate(coefficients):
             flint.fmpz_polynomial_set_coefficient(polynomial, index, coefficient)
         flint.fmpz_polynomial_seal(polynomial)
+        return _native_order_from_polynomial_resource_bound(
+            polynomial,
+            coefficients,
+            primes,
+        )
+    finally:
+        polynomial.close()
+
+
+def _native_order_from_polynomial_resource_bound(
+    polynomial_resource: Any,
+    coefficients_low_to_high: list[int],
+    certified_prime_hints: list[int],
+) -> NativeOrderResourceResult:
+    """Run the native order boundary on one field-owned sealed polynomial.
+
+    This internal adapter compares the borrowed immutable resource with one
+    canonical packed serialization of the ordinary coefficient source.  The
+    public scalar constructor above remains the dynamic oracle and fallback.
+    """
+    result, _proof = _native_order_and_proof_from_polynomial_resource_bound(
+        polynomial_resource,
+        coefficients_low_to_high,
+        certified_prime_hints,
+        authenticate_round2=False,
+    )
+    return result
+
+
+def _native_order_with_round2_proof_from_polynomial_resource_bound(
+    polynomial_resource: Any,
+    coefficients_low_to_high: list[int],
+    certified_prime_hints: list[int],
+) -> tuple[NativeOrderResourceResult, Any | None]:
+    """Construct and independently prove one complete borrowed native order."""
+    return _native_order_and_proof_from_polynomial_resource_bound(
+        polynomial_resource,
+        coefficients_low_to_high,
+        certified_prime_hints,
+        authenticate_round2=True,
+    )
+
+
+def _native_order_and_proof_from_polynomial_resource_bound(
+    polynomial_resource: Any,
+    coefficients_low_to_high: list[int],
+    certified_prime_hints: list[int],
+    *,
+    authenticate_round2: bool,
+) -> tuple[NativeOrderResourceResult, Any | None]:
+    """Keep the native order live until optional fixed-point authentication."""
+    if len(coefficients_low_to_high) < 2:
+        raise ValueError("an integral defining polynomial must have positive degree")
+    coefficients = [int(value) for value in coefficients_low_to_high]
+    if coefficients[-1] != 1:
+        raise ValueError("the direct order boundary requires a monic polynomial")
+    primes = [int(value) for value in certified_prime_hints]
+    if any(prime < 2 for prime in primes):
+        raise ValueError("certified prime hints must be at least two")
+
+    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    if int(flint.fmpz_polynomial_length(polynomial_resource)) != len(coefficients):
+        raise ValueError("sealed polynomial resource length does not match its source")
+    polynomial_module = __import__(
+        "sagejs._baselib.polynomial", fromlist=["polynomial"]
+    )
+    source_body = runtime.exact_integer_values_to_packed_bytes(coefficients)
+    expected_source = polynomial_module._exact_polynomial_bytes(
+        source_body, len(coefficients), False
+    )
+    serialized = flint.fmpz_polynomial_serialize(polynomial_resource)
+    try:
+        actual_source = serialized.copy_bytes()
+    finally:
+        serialized.close()
+    if list(actual_source) != list(expected_source):
+        raise ValueError("sealed polynomial resource does not match its exact source")
+    hints = flint.fmpz_matrix(len(primes), 1)
+    try:
         for row, prime in enumerate(primes):
             flint.fmpz_matrix_set_entry(hints, row, 0, prime)
-        resource = flint.number_field_order_from_polynomial_resource(polynomial, hints)
+        resource = flint.number_field_order_from_polynomial_resource(
+            polynomial_resource, hints
+        )
         try:
             # The validated compact payload is the authoritative transfer and
             # includes the status.  Reading the same field through a scalar
             # FFI accessor would add a redundant host crossing.
             payload = resource.copy_bytes()
-            return decode_order_resource(payload)
+            result = decode_order_resource(payload)
+            if result.equation_discriminant == 0:
+                raise ValueError("native order result omitted its source discriminant")
+            proof = None
+            if authenticate_round2 and result.complete:
+                analysis = __import__(
+                    "sagejs.number_fields.field_analysis_resource",
+                    fromlist=["field_analysis_resource"],
+                )
+                proof = analysis.native_round2_order_proof_from_resources(
+                    polynomial_resource,
+                    resource,
+                    hints,
+                    coefficients_low_to_high=coefficients,
+                    certified_primes=primes,
+                    basis_numerator=result.basis.numerator,
+                    basis_denominator=result.basis.denominator,
+                    index=result.index,
+                    equation_discriminant=result.equation_discriminant,
+                    order_discriminant=result.order_discriminant,
+                )
         finally:
             resource.close()
     finally:
         hints.close()
-        polynomial.close()
+    return result, proof
