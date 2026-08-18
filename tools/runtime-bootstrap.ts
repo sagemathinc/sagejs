@@ -348,10 +348,16 @@ export function runRuntimeBootstrap(
       const id = declaration?.id;
       const declarationIdentity = declaration?.declarationIdentity;
       const dynamicPackage = declaration?.dynamicPackage;
+      const identityMatch = typeof id === "string" &&
+          typeof declarationIdentity === "string"
+        ? declarationIdentity.match(
+          new RegExp(`^${id}@[a-f0-9]{64}(?::([a-z][a-z0-9_]*))?$`),
+        )
+        : null;
       if (
         typeof id !== "string" || !/^[a-z][a-z0-9_]*$/.test(id) ||
         typeof declarationIdentity !== "string" ||
-        !new RegExp(`^${id}@[a-f0-9]{64}$`).test(declarationIdentity) ||
+        identityMatch === null ||
         typeof dynamicPackage !== "string" || dynamicPackage.length === 0 ||
         seen.has(id)
       ) {
@@ -370,7 +376,17 @@ export function runRuntimeBootstrap(
           (typeof backend !== "object" && typeof backend !== "function")
         ? undefined
         : Reflect.get(backend, "__sagejs_ffi_manifest__");
-      if (manifest?.library !== declarationIdentity) {
+      const libraryIdentity = declarationIdentity.split(":", 1)[0];
+      const selectedFunction = identityMatch[1];
+      const manifestProvidesSelection = selectedFunction === undefined ||
+        (Array.isArray(manifest?.functions) && manifest.functions.some(
+          (entry: unknown) =>
+            entry !== null && typeof entry === "object" &&
+            Reflect.get(entry, "declaration") === `${id}:${selectedFunction}`,
+        ));
+      if (
+        manifest?.library !== libraryIdentity || !manifestProvidesSelection
+      ) {
         throw staleNativeArtifact(
           filename,
           `FFI declaration ${declarationIdentity} is not provided by ` +
