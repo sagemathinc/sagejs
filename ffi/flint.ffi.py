@@ -4855,6 +4855,71 @@ def fmpz_mat_hnf(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatHnfModularEldiv",
+    symbol="sagejs_flint_fmpz_mat_hnf_modular_eldiv",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "elementary_divisor",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="elementary_divisor",
+                rows="one",
+                columns="one",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT modular integer Hermite form failed",
+    ),
+    wasm=True,
+)
+def fmpz_mat_hnf_modular_eldiv(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    elementary_divisor: IntegerBuffer,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatHnfTransform",
     symbol="sagejs_flint_fmpz_mat_hnf_transform",
     returns=int,

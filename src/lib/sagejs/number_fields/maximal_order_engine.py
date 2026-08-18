@@ -295,17 +295,33 @@ def _merge_coprime_order_bases(
     equation_discriminant: int,
 ) -> tuple[Any, OrderBasis]:
     """Merge exact coprime local bases through one packed integer HNF."""
+    if left.degree != right.degree:
+        raise ValueError("coprime local bases must have the same degree")
     if _gcd(left.denominator, right.denominator) != 1:
         raise ValueError("a coprime local merge requires coprime denominators")
-    denominator = int(_nf_lcm(left.denominator, right.denominator))
-    generators = [
-        [value * (denominator // left.denominator) for value in row]
-        for row in left.numerator
-    ] + [
-        [value * (denominator // right.denominator) for value in row]
-        for row in right.numerator
-    ]
-    merged = OrderBasis(_packed_row_hnf(generators), denominator, canonical=True)
+    identity_key = _identity_basis(left.degree).canonical_key()
+    if left.canonical_key() == identity_key:
+        merged = right
+    elif right.canonical_key() == identity_key:
+        merged = left
+    else:
+        denominator = int(_nf_lcm(left.denominator, right.denominator))
+        generators = [
+            [value * (denominator // left.denominator) for value in row]
+            for row in left.numerator
+        ] + [
+            [value * (denominator // right.denominator) for value in row]
+            for row in right.numerator
+        ]
+        # Every local overorder contains the equation order, so the scaled
+        # generator lattice contains denominator * Z^n.  Its largest
+        # elementary divisor therefore divides `denominator`, exactly the
+        # precondition of FLINT's modular elementary-divisor HNF algorithm.
+        merged = OrderBasis(
+            _packed_row_hnf(generators, denominator),
+            denominator,
+            canonical=True,
+        )
     determinant = abs(merged.determinant_numerator)
     denominator_power = merged.denominator**merged.degree
     if determinant == 0 or denominator_power % determinant != 0:

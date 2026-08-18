@@ -334,13 +334,60 @@ def _row_hnf(rows: list[list[int]]) -> list[list[int]]:
     return answer[:columns]
 
 
-def _packed_row_hnf(rows: list[list[int]]) -> list[list[int]]:
+def _flint_modular_row_hnf(
+    rows: list[list[int]], elementary_divisor: int
+) -> list[list[int]] | None:
+    """Use FLINT modular HNF when a lattice annihilator is proved."""
+    if _rt is None or elementary_divisor < 1 or not rows:
+        return None
+    columns = len(rows[0])
+    try:
+        from sagejs.ffi.flint import fmpz_mat_hnf_modular_eldiv
+
+        flat = [int(value) for row in rows for value in row]
+        source = _rt.integer_buffer(flat)
+        output = _rt.integer_buffer(
+            [0] * len(flat),
+            max(2, (elementary_divisor.bit_length() + 63) // 64 + 2),
+        )
+        divisor = _rt.integer_buffer([elementary_divisor])
+        if not fmpz_mat_hnf_modular_eldiv(
+            output,
+            source,
+            len(rows),
+            columns,
+            divisor,
+            1,
+        ):
+            return None
+        values = integer_buffer_values(output)
+        answer = [
+            [int(values[row * columns + column]) for column in range(columns)]
+            for row in range(len(rows))
+            if any(
+                int(values[row * columns + column]) != 0 for column in range(columns)
+            )
+        ]
+        if len(answer) != columns:
+            raise ArithmeticError("modular HNF did not return a full-rank lattice")
+        return answer
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def _packed_row_hnf(
+    rows: list[list[int]], elementary_divisor: int | None = None
+) -> list[list[int]]:
     """Run the same row-HNF algorithm through one packed integer kernel."""
     if not rows:
         return []
     columns = len(rows[0])
     if any(len(row) != columns for row in rows):
         raise ValueError("lattice rows must have a common length")
+    if elementary_divisor is not None:
+        modular = _flint_modular_row_hnf(rows, elementary_divisor)
+        if modular is not None:
+            return modular
     flat = [value for row in rows for value in row]
     maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
     # Extended-gcd elimination can add a constant number of limbs at each

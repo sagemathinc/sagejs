@@ -247,6 +247,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_det as _ffi_fmpz_mat_det,
     fmpz_mat_charpoly as _ffi_fmpz_mat_charpoly,
     fmpz_mat_hnf as _ffi_fmpz_mat_hnf,
+    fmpz_mat_hnf_modular_eldiv as _ffi_fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
     fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
     fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
@@ -2702,6 +2703,25 @@ def ffiFmpzMatHnf(
         source,
         rows,
         columns,
+    )
+
+
+@native
+def ffiFmpzMatHnfModularEldiv(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    elementary_divisor: IntegerBuffer,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_hnf_modular_eldiv(
+        output,
+        source,
+        rows,
+        columns,
+        elementary_divisor,
+        one,
     )
 
 

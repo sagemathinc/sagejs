@@ -430,7 +430,7 @@ def _merge_bases(bases: list[OrderBasis]) -> OrderBasis:
         generators.extend(
             [[int(value) * scale for value in row] for row in basis.numerator]
         )
-    numerator = bl._packed_row_hnf(generators)
+    numerator = bl._packed_row_hnf(generators, denominator)
     return OrderBasis(numerator, denominator, canonical=True)
 
 
