@@ -57,6 +57,7 @@ const integration = [
   "test/number-field-maximal-order-engine.cjs",
   "test/number-field-maximal-order-parallel-worker.cjs",
   "test/number-field-maximal-order-public-micro-perf.cjs",
+  "test/number-field-maximal-order-performance-receipt.cjs",
   "test/number-field-large-prime-maximal-order.cjs",
   "test/number-field-maximal-order-profiler.cjs",
   "test/number-field-maximal-order-selector.cjs",
