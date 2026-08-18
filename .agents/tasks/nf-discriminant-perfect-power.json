@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-discriminant-perfect-power",
+  "title": "Exact discriminant perfect-power extraction",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate maximal-exponent perfect-power extraction for large discriminant components with one source-transparent arbitrary-integer call, exact host validation, positive and negative semantics, portable fallback, differential oracles, and degree-90 phase evidence",
+  "base_commit": "ce10fcabaefbeb7c78752be6c207255e356789e5",
+  "claims": [
+    "src/lib/sagejs/number_fields/discriminant_perfect_power_kernel.py",
+    "test/number-field-discriminant-perfect-power.cjs",
+    "bench/number-field-discriminant-perfect-power.cjs",
+    "bench/results/number-field-discriminant-perfect-power-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "Prime-exponent extraction theorem for maximal integer perfect powers"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "discriminant_components.perfect_power_data readable oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
