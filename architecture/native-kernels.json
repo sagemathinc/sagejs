@@ -316,9 +316,10 @@
         "packed_rational_polynomial_subtract",
         "packed_rational_polynomial_negate",
         "packed_rational_polynomial_multiply",
-        "packed_rational_polynomial_equal"
+        "packed_rational_polynomial_equal",
+        "packed_integral_number_field_multiply_reduce"
       ],
-      "semantic_domain": "production normalized QQ[x] numerator and denominator arithmetic over compiler-owned IntegerBuffer storage",
+      "semantic_domain": "production normalized QQ[x] arithmetic and canonical integral-monic number-field multiply-reduce over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],

@@ -269,25 +269,6 @@ def _packed_word_prime_is_proven(number: int) -> bool:
     return True
 
 
-def _packed_unsigned(
-    payload: IntegerBuffer,
-    offset: int,
-    width: int,
-) -> int:
-    """Read one bounded little-endian unsigned header field."""
-    answer = 0
-    factor = 1
-    index = 0
-    while index < width:
-        byte = payload[offset + index]
-        if byte > 255:
-            return -1
-        answer += byte * factor
-        factor *= 256
-        index += 1
-    return answer
-
-
 def _packed_unsigned_words(
     payload: UInt64Buffer,
     offset: int,

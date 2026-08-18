@@ -1157,7 +1157,7 @@ def _proven_decomposition_from_field_analysis(
         return int(component["value"])
 
     components.sort(key=component_value)
-    decomposition = {
+    decomposition: dict[str, Any] = {
         "version": 1,
         "original": abs(int(equation_discriminant)),
         "components": components,
@@ -1263,28 +1263,30 @@ def _authenticated_composite_square_support(
     prime_state, prime_evidence = primality_status(prime)
     if prime_state != "proven-prime":
         return None
-    decomposition = {
+    components: list[dict[str, Any]] = [
+        {
+            "value": prime**exponent,
+            "state": prime_state,
+            "base": prime,
+            "exponent": exponent,
+            "evidence": prime_evidence,
+        },
+        {
+            "value": support * support,
+            "state": "unresolved-coprime-component",
+            "base": support,
+            "exponent": 2,
+            "evidence": {
+                "kind": "exact-square-support",
+                "root": support,
+            },
+        },
+    ]
+    components.sort(key=lambda component: int(component["value"]))
+    decomposition: dict[str, Any] = {
         "version": 1,
         "original": abs(int(analysis.equation_discriminant)),
-        "components": [
-            {
-                "value": prime**exponent,
-                "state": prime_state,
-                "base": prime,
-                "exponent": exponent,
-                "evidence": prime_evidence,
-            },
-            {
-                "value": support * support,
-                "state": "unresolved-coprime-component",
-                "base": support,
-                "exponent": 2,
-                "evidence": {
-                    "kind": "exact-square-support",
-                    "root": support,
-                },
-            },
-        ],
+        "components": components,
         "events": [
             {
                 "kind": "exact-square-support",
@@ -1295,7 +1297,6 @@ def _authenticated_composite_square_support(
         ],
         "certified": False,
     }
-    decomposition["components"].sort(key=lambda component: int(component["value"]))
     if not check_decomposition_certificate(decomposition, require_proven=False):
         return None
     local_witnesses = [

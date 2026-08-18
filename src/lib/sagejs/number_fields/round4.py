@@ -1604,9 +1604,7 @@ def _element_characteristic_polynomial(
         field,
         element,
     )
-    integer_coefficients = list(
-        _nf_global("matrix")(sage.ZZ, rows).charpoly().list()
-    )
+    integer_coefficients = list(_nf_global("matrix")(sage.ZZ, rows).charpoly().list())
     scale = sage.ZZ(denominator) ** degree
     answer = []
     for coefficient in integer_coefficients:
