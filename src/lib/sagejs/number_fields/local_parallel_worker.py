@@ -14,8 +14,115 @@ from typing import Any
 from sagejs.number_fields.local_parallel import (
     JobPayload,
     ResultPayload,
+    make_schedule,
     run_local_jobs,
 )
+
+PUBLIC_DECISION_SCHEMA = "sagejs.number-fields.public-local-worker-decision.v1"
+PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cjs:v1"
+PUBLIC_PARALLEL_SETUP_MARGIN_MICROS = 20_000_000
+PUBLIC_PARALLEL_PARENT_RSS_BYTES = 640 * 1024 * 1024
+PUBLIC_PARALLEL_WORKER_RSS_BYTES = 224 * 1024 * 1024
+PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES = 1536 * 1024 * 1024
+
+
+def public_worker_capability() -> bool:
+    """Return whether this runtime can import the exact worker module.
+
+    Ordinary CPython process workers import installed modules normally.  The
+    smaller Sage.js worker runtime instead exposes a read-only query for the
+    generated allowlist; missing optional assets therefore fail closed.
+    """
+    multiprocessing = __import__(
+        "multiprocessing", fromlist=["worker_module_available"]
+    )
+    capability_query = getattr(multiprocessing, "worker_module_available", None)
+    if capability_query is None:
+        return True
+    return bool(capability_query("sagejs.number_fields.local_parallel_worker"))
+
+
+def _predicted_critical_path(jobs: tuple[JobPayload, ...], workers: int) -> int:
+    loads = [0 for _ in range(max(1, workers))]
+    ordered = sorted(jobs, key=lambda job: (-int(job[4]), job[1], int(job[3])))
+    for job in ordered:
+        target = min(range(len(loads)), key=lambda index: (loads[index], index))
+        loads[target] += int(job[4])
+    return max(loads, default=0)
+
+
+def public_worker_decision(
+    jobs: list[JobPayload] | tuple[JobPayload, ...],
+    *,
+    after_native_fallback: bool,
+    cpu_count: int | None = None,
+    memory_budget_bytes: int = PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES,
+    worker_capability: bool | None = None,
+) -> dict[str, Any]:
+    """Return the measured fallback-only public parallel gate.
+
+    The time model is deliberately conservative and affects execution mode,
+    never the mathematical algorithm or canonical result.  Four fresh worker
+    realms measured about 1.43 GB peak RSS on the reference corpus, so the
+    memory estimate includes fixed evaluator overhead rather than pretending
+    that the small wire payload is the whole cost.
+    """
+    actual_capability = public_worker_capability()
+    capability = actual_capability
+    if worker_capability is not None:
+        capability = actual_capability and bool(worker_capability)
+    candidate = make_schedule(
+        jobs,
+        cpu_count=cpu_count,
+        worker_capability=capability,
+    )
+    canonical_jobs = tuple(jobs)
+    workers = int(candidate[2])
+    predicted_total = sum(int(job[4]) for job in canonical_jobs)
+    predicted_critical = _predicted_critical_path(canonical_jobs, workers)
+    predicted_savings = max(0, predicted_total - predicted_critical)
+    predicted_peak = (
+        PUBLIC_PARALLEL_PARENT_RSS_BYTES + workers * PUBLIC_PARALLEL_WORKER_RSS_BYTES
+    )
+    selected = True
+    reason = "measured-native-fallback-crossover"
+    if not after_native_fallback:
+        selected = False
+        reason = "native-first-boundary"
+    elif not capability:
+        selected = False
+        reason = "precompiled-worker-module-unavailable"
+    elif candidate[1] != "parallel":
+        selected = False
+        reason = str(candidate[6])
+    elif predicted_savings < PUBLIC_PARALLEL_SETUP_MARGIN_MICROS:
+        selected = False
+        reason = "predicted-savings-below-setup-margin"
+    elif predicted_peak > int(memory_budget_bytes):
+        selected = False
+        reason = "measured-peak-exceeds-memory-budget"
+    return {
+        "schema": PUBLIC_DECISION_SCHEMA,
+        "selected": selected,
+        "reason": reason,
+        "after_native_fallback": bool(after_native_fallback),
+        "worker_capability": capability,
+        "candidate_schedule": candidate,
+        "predicted_total_micros": predicted_total,
+        "predicted_critical_path_micros": predicted_critical,
+        "predicted_savings_micros": predicted_savings,
+        "required_setup_margin_micros": PUBLIC_PARALLEL_SETUP_MARGIN_MICROS,
+        "predicted_peak_rss_bytes": predicted_peak,
+        "memory_budget_bytes": int(memory_budget_bytes),
+        "measured_vector001_median": {
+            "sequential_total_micros": 55_214_067,
+            "parallel_total_micros": 36_545_808,
+            "sequential_peak_rss_bytes": 596_627_456,
+            "parallel_peak_rss_bytes": 1_427_484_672,
+            "fresh_samples": 3,
+        },
+        "benchmark": PUBLIC_PARALLEL_BENCHMARK,
+    }
 
 
 def execute_public_local_job(job: JobPayload) -> ResultPayload:
@@ -127,13 +234,7 @@ def run_public_local_jobs(
     An explicit false value remains useful for differential measurements; an
     explicit true value never overrides the host capability boundary.
     """
-    multiprocessing = __import__(
-        "multiprocessing", fromlist=["worker_module_available"]
-    )
-    capability_query = getattr(multiprocessing, "worker_module_available", None)
-    available = True
-    if capability_query is not None:
-        available = bool(capability_query("sagejs.number_fields.local_parallel_worker"))
+    available = public_worker_capability()
     capability = available
     if worker_capability is not None:
         capability = available and bool(worker_capability)
@@ -155,4 +256,15 @@ def run_public_local_jobs(
     )
 
 
-__all__ = ["execute_public_local_job", "run_public_local_jobs"]
+__all__ = [
+    "PUBLIC_DECISION_SCHEMA",
+    "PUBLIC_PARALLEL_BENCHMARK",
+    "PUBLIC_PARALLEL_MEMORY_BUDGET_BYTES",
+    "PUBLIC_PARALLEL_PARENT_RSS_BYTES",
+    "PUBLIC_PARALLEL_SETUP_MARGIN_MICROS",
+    "PUBLIC_PARALLEL_WORKER_RSS_BYTES",
+    "execute_public_local_job",
+    "public_worker_capability",
+    "public_worker_decision",
+    "run_public_local_jobs",
+]
