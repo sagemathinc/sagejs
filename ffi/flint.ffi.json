@@ -32737,6 +32737,88 @@
       }
     },
     {
+      "id": "number_field_order_with_round2_proof_resource",
+      "python_name": "number_field_order_with_round2_proof_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "prime_hints",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NumberFieldAnalysisResource",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderWithRound2ProofResource"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_with_round2_proof_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_number_field_analysis_resource_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "prime_hints",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid proof-carrying number-field order input"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "number_field_analyze_resource",
       "python_name": "number_field_analyze_resource",
       "signature": {

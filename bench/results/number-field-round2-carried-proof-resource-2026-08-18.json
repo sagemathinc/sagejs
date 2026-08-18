@@ -1,0 +1,46 @@
+{
+  "schema": "sagejs.benchmark/number-field-round2-carried-proof-resource-v1",
+  "case_id": "pari-round4-vector-429",
+  "degree": 64,
+  "primes": [2, 3, 5, 37, 59, 277, 311, 613, 719, 1319, 2894951, 6222169],
+  "sample_count": 1,
+  "startup_and_setup_ns": 3235802624,
+  "raw_native_order_ns": [1860290816],
+  "carried_native_construction_ns": [2096914432],
+  "carried_terminal_proof_delta_ns": [236623616],
+  "carried_projection_decode_snapshot_ns": [298993408],
+  "carried_order_and_proof_total_ns": [2398616832],
+  "authenticated_projection_integer_count": [4173],
+  "exact": true,
+  "post_construction_round2_replays": 0,
+  "peak_rss_kib": 516356,
+  "statistics": {
+    "combined_median_ms": 2398.616832,
+    "startup_and_setup_ms": 3235.802624,
+    "raw_native_order_ms": 1860.290816,
+    "carried_native_construction_ms": 2096.914432,
+    "carried_terminal_proof_delta_ms": 236.623616,
+    "carried_projection_decode_snapshot_ms": 298.993408,
+    "target_ms": 5000,
+    "target_met": true
+  },
+  "identity": {
+    "fixture_sha256": "03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f",
+    "order_kernel_sha256": "44bf72e57ad97517c62fc488fe7d2a3d97279d2e49889b579f895cd376cac0ac",
+    "analysis_header_sha256": "1c21ea885d8b3fb106cd93d1f2fe98c33f0ffbf6ada8a19f1a9af843b667e56a",
+    "proof_source_sha256": "3a140a6a17452d6f57996c77ec9b564040e915104a485dc1d47c8ea7b81ae798",
+    "ffi_declaration_sha256": "f4db1ca8f2403853c3a52a31ae5ff636528b51b60aa68321bbdef3690a416405",
+    "generated_addon_sha256": "cb8b8c13a654d525bdce5c47b3f5bd921fe733722643c28694a3864c771f3733",
+    "node": "v26.7.0"
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "receipt": {
+    "kind": "single-report-only-sample",
+    "gate_claim": true,
+    "note": "Focused C/Python/sanitizer and randomized external-corruption matrix passed before this sole optimized sample."
+  }
+}
