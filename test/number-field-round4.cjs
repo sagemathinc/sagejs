@@ -193,7 +193,7 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
         "except Round4Unsupported as error:",
         "    failed_closed = 'diagnostic' in str(error)",
         "first_metrics = metrics",
-        `metrics = {'characteristic_polynomial_call_limit': ${record.post_reconstruction.characteristic_polynomial_call_limit}}`,
+        `metrics = {'characteristic_polynomial_call_limit': ${record.post_root_error.characteristic_polynomial_call_limit}}`,
         "post_failed_closed = False",
         "try:",
         `    round4_primary_power_basis(K.equation_order(), ${record.prime}, verify=False, characteristic_metrics=metrics)`,
@@ -228,11 +228,11 @@ test("vector 010 fails closed at its measured coefficient-growth boundary", asyn
       result.repr,
       new RegExp(`'max_denominator_bits': ${record.max_denominator_bits}`),
     );
-    const post = record.post_reconstruction;
+    const post = record.post_root_error;
     assert.match(
       result.repr,
       new RegExp(
-        `\\(True, ${post.attempted_calls}, \\{'direct-exact': ${post.strategy_counts["direct-exact"]}, 'modular-crt': ${post.strategy_counts["modular-crt"]}\\}, ${post.max_hadamard_bound_bits}, ${post.modular_characteristic_calls}, ${post.modular_characteristic_primes}, ${post.modular_characteristic_max_modulus_bits}, \\{'${post.modular_characteristic_certification}': 1\\}, '${post.next_bound_label}'\\)`,
+        `\\(True, ${post.attempted_calls}, \\{'direct-exact': ${post.strategy_counts["direct-exact"]}, 'modular-crt': ${post.strategy_counts["modular-crt"]}\\}, ${post.max_hadamard_bound_bits}, ${post.modular_characteristic_calls}, ${post.modular_characteristic_primes}, ${post.modular_characteristic_max_modulus_bits}, \\{'${post.modular_characteristic_certification}': ${post.modular_characteristic_certification_calls}\\}, '${post.next_bound_label}'\\)`,
       ),
     );
   } finally {
@@ -352,7 +352,7 @@ test("bounded modular characteristic reconstruction equals direct exact arithmet
             "assert _modular_characteristic_polynomial(K, shifted_generator, metrics) == _element_characteristic_polynomial(K, shifted_generator)",
             "assert metrics['modular_characteristic_certifications'] == {'cyclic-krylov': 1}",
             "assert residue_characteristic_strategy(K, shifted_generator)['strategy'] == 'direct-exact'",
-            "larger_shift = 2^300",
+            "larger_shift = 2^500",
             "L = NumberField((x-larger_shift)^4+2*(x-larger_shift)+2, 'd')",
             "large_decision = residue_characteristic_strategy(L, L.gen()-larger_shift)",
             "assert large_decision['strategy'] == 'modular-crt'",
