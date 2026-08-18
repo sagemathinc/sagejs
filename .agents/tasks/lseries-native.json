@@ -59,11 +59,48 @@
       "commit": "9804aad23a6a277b469a2f7322b08c4574c714a7",
       "workspace_fingerprint": "01846d5b242e12027598dccdf6243b22d4d4164836bd0797ebd83032dd7567b1",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.186,
+      "started_at": "2026-08-18T07:59:38.896Z",
+      "commit": "d4419b4b6d6f072c38f214ed239292ae0d4574f1",
+      "workspace_fingerprint": "93d4e1f07cd9d8574671dd5f8fbfe5a5e60c4f5017f589ef81295b4aebb10163",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1329.072,
+      "started_at": "2026-08-18T08:00:09.296Z",
+      "commit": "d4419b4b6d6f072c38f214ed239292ae0d4574f1",
+      "workspace_fingerprint": "93d4e1f07cd9d8574671dd5f8fbfe5a5e60c4f5017f589ef81295b4aebb10163",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:elliptic-curves",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.296,
+      "started_at": "2026-08-18T08:22:38.448Z",
+      "commit": "d4419b4b6d6f072c38f214ed239292ae0d4574f1",
+      "workspace_fingerprint": "93d4e1f07cd9d8574671dd5f8fbfe5a5e60c4f5017f589ef81295b4aebb10163",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented the shared split-Mellin Acb batch evaluator and N-API adapter with canonical raw/completed normalization, explicit nonrigorous diagnostics and resource limits, and focused Sage/PARI, functional-equation, parity, trivial-zero, and high-precision oracle tests.",
+    "risks": [
+      "Trapezoidal discretization is intentionally not enclosed, so every returned value remains explicitly nonrigorous even when the known coefficient, local-grid, and outer-tail target is met.",
+      "The full native suite passes all executable tests but its native-export inventory gate fails until the integration lane registers and classifies sagejs_ec_lseries_values; that shared inventory is outside this lane's claims.",
+      "Heights above 100, real offsets above 8, and resource plans exceeding the declared operation limits are rejected by design."
+    ],
+    "next_steps": [
+      "Register ecLseriesValues in addon.c, consume the documented top-level and per-point schema, update shared native architecture inventories and audit hashes, and rerun the integrated native suite.",
+      "Run the integrated API and oracle corpus on Linux x64/arm64, macOS arm64, and Windows x64."
+    ]
   }
 }
