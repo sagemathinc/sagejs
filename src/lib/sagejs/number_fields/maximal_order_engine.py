@@ -37,6 +37,8 @@ from sagejs.number_fields.discriminant_components import (
 )
 from sagejs.number_fields.local_parallel import (
     JobPayload,
+    LocalCertificationError,
+    LocalWorkerError,
     local_job_component,
     local_job_key,
     local_result_contract,
@@ -44,6 +46,10 @@ from sagejs.number_fields.local_parallel import (
     make_local_result,
     make_schedule,
     run_local_jobs,
+)
+from sagejs.number_fields.local_parallel_worker import (
+    public_worker_decision,
+    run_public_local_jobs,
 )
 from sagejs.number_fields.maximal_order_certification import (
     certify_global_order,
@@ -257,7 +263,17 @@ _PUBLIC_CORPUS_EVIDENCE = {
         "composite": 6_440_000,
     },
     "certification_dominates": True,
-    "end_to_end_parallel_crossover_measured": False,
+    "end_to_end_parallel_crossover_measured": True,
+    "parallel_scope": "after-native-fallback-only",
+    "parallel_vector001_fresh_samples": 3,
+    "parallel_vector001_median_micros": {
+        "sequential": 55_214_067,
+        "parallel": 36_545_808,
+    },
+    "parallel_vector001_median_peak_rss_bytes": {
+        "sequential": 596_627_456,
+        "parallel": 1_427_484_672,
+    },
 }
 
 
@@ -510,11 +526,9 @@ def inspect_maximal_order_selection(
 ) -> dict[str, Any]:
     """Return the deterministic public selector and scheduler evidence.
 
-    `worker_capability=False` describes today's public arithmetic boundary:
-    local solvers still need a host order, which is deliberately never put in
-    a worker payload.  Passing `True` is useful for inspecting the measured
-    crossover once a pointer-free arithmetic worker is available; it never
-    changes the selector's mathematical decisions.
+    `worker_capability=False` inspects the native-first public boundary.
+    Passing `True` inspects the measured fallback crossover as if the native
+    batch had been unavailable; it never changes mathematical decisions.
     """
     coefficients = [int(value) for value in polynomial_coefficients]
     if len(coefficients) < 2 or coefficients[-1] != 1:
@@ -529,13 +543,24 @@ def inspect_maximal_order_selection(
     ):
         raise ValueError("unknown maximal-order algorithm")
     local_primes = sorted({int(value) for value in primes})
-    jobs, decisions, schedule = _local_selection_plan(
+    jobs, decisions, _schedule = _local_selection_plan(
         coefficients,
         int(equation_discriminant),
         local_primes,
         algorithm,
         worker_capability=worker_capability,
         cpu_count=cpu_count,
+    )
+    parallel_decision = public_worker_decision(
+        jobs,
+        after_native_fallback=bool(worker_capability),
+        cpu_count=cpu_count,
+        worker_capability=worker_capability,
+    )
+    schedule = make_schedule(
+        jobs,
+        cpu_count=cpu_count,
+        worker_capability=bool(parallel_decision["selected"]),
     )
     if algorithm == "auto" and local_primes:
         primary = "native"
@@ -560,7 +585,8 @@ def inspect_maximal_order_selection(
         "local_decisions": ordered_decisions,
         "schedule": schedule,
         "parallel_arithmetic_capability": bool(worker_capability),
-        "parallel_gate": dict(_PUBLIC_CORPUS_EVIDENCE),
+        "parallel_gate": parallel_decision,
+        "parallel_corpus_evidence": dict(_PUBLIC_CORPUS_EVIDENCE),
         "sequential_canonical": True,
         "benchmark": _SELECTOR_BENCHMARK,
     }
@@ -1235,6 +1261,7 @@ def compute_maximal_order(
         "benchmark": _SELECTOR_BENCHMARK,
     }
     native_handled_primes: list[int] = []
+    native_fallback_for_parallel = False
     if len(relevant_primes) and algorithm in ("auto", "native"):
         # The native resource is complete for a batch of certified word
         # primes, while an arbitrary prime has a separate exact polygon path.
@@ -1300,6 +1327,8 @@ def compute_maximal_order(
                         },
                     )
                 else:
+                    if algorithm == "auto":
+                        native_fallback_for_parallel = True
                     trace.end(
                         token,
                         "fallback",
@@ -1315,6 +1344,7 @@ def compute_maximal_order(
                 trace.end(token, "unavailable", {"message": str(error)})
                 if algorithm == "native":
                     raise
+                native_fallback_for_parallel = True
         else:
             # This is a capability deferral, not a failed native computation:
             # there is no word-prime batch to submit to the resource.
@@ -1327,6 +1357,8 @@ def compute_maximal_order(
                     "capability_partitioned": True,
                 },
             )
+            if algorithm == "auto":
+                native_fallback_for_parallel = True
 
     remaining_primes = [
         prime for prime in relevant_primes if prime not in native_handled_primes
@@ -1342,15 +1374,26 @@ def compute_maximal_order(
                 },
             )
         # The immutable scheduler owns canonical ordering, payload validation,
-        # resource evidence, and the merge plan.  Arithmetic remains
-        # sequential today: the local implementations still require the host
-        # order, which is never serialized or transferred to a worker.
+        # resource evidence, and the merge plan.  Public workers are considered
+        # only after the native batch is unavailable or incomplete; every
+        # worker reconstructs its field and host resources from exact wire data.
         jobs, decisions, selected_schedule = _local_selection_plan(
             coefficients,
             equation_discriminant,
             remaining_primes,
             algorithm,
             worker_capability=False,
+        )
+        parallel_decision = public_worker_decision(
+            jobs,
+            after_native_fallback=(
+                algorithm == "auto" and native_fallback_for_parallel
+            ),
+        )
+        use_public_workers = bool(parallel_decision["selected"])
+        selected_schedule = make_schedule(
+            jobs,
+            worker_capability=use_public_workers,
         )
         worker_details: dict[tuple[Any, ...], dict[str, Any]] = {}
 
@@ -1411,11 +1454,39 @@ def compute_maximal_order(
                 elapsed_micros=elapsed_micros,
             )
 
-        local_run = run_local_jobs(
-            jobs,
-            run_local_job,
-            worker_capability=False,
-        )
+        if use_public_workers:
+            try:
+                local_run = run_public_local_jobs(
+                    jobs,
+                    worker_capability=True,
+                )
+                for payload in local_run[2]:
+                    contract = local_result_contract(payload)
+                    key = payload[1]
+                    details = dict(contract.evidence)
+                    details["selection_decision"] = decisions[key]
+                    details["elapsed_micros"] = int(payload[9])
+                    worker_details[key] = details
+            except (LocalCertificationError, LocalWorkerError) as error:
+                # Capability can become stale between selection and pool
+                # construction.  Auto mode preserves completeness by returning
+                # to the canonical in-process path after the pool has cancelled.
+                parallel_decision = dict(parallel_decision)
+                parallel_decision["selected"] = False
+                parallel_decision["reason"] = "worker-runtime-fallback"
+                parallel_decision["worker_error"] = str(error)
+                local_run = run_local_jobs(
+                    jobs,
+                    run_local_job,
+                    worker_capability=False,
+                )
+                selected_schedule = local_run[1]
+        else:
+            local_run = run_local_jobs(
+                jobs,
+                run_local_job,
+                worker_capability=False,
+            )
         if local_run[1] != selected_schedule:
             raise ArithmeticError("local scheduler selection changed during execution")
         for payload in local_run[2]:
@@ -1442,7 +1513,7 @@ def compute_maximal_order(
             prime = int(key[1])
             details = dict(worker_details[key])
             details["order_discriminant"] = _exact_integer(order.discriminant())
-            if details.get("selection") == "arbitrary-prime-exact-fallback":
+            if prime > _MAX_WORD_PRIME:
                 event_stage = "arbitrary-prime-local-order"
             elif algorithm in ("auto", "native", "round2"):
                 event_stage = "round2-local-order"
@@ -1462,11 +1533,14 @@ def compute_maximal_order(
                 "schedule": local_run[1],
                 "merge_plan": local_run[3],
                 "resources": local_run[4],
-                "arithmetic_worker_capability": False,
-                "parallel_limitation": (
-                    "local solvers require a host order; native pointers and host "
-                    "identity are never transferred; certification dominates the "
-                    "public corpus and no end-to-end parallel crossover is measured"
+                "arithmetic_worker_capability": bool(
+                    parallel_decision["worker_capability"]
+                ),
+                "parallel_decision": parallel_decision,
+                "parallel_boundary": (
+                    "native-first; immutable pointer-free jobs only after measured "
+                    "native fallback crossover; parent merge and independent global "
+                    "certification remain sequential"
                 ),
             },
         )
