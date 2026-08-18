@@ -4,7 +4,7 @@
   "id": "nf-opt-round4-crt",
   "title": "Nf Opt Round4 Crt",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Batch modified Round-4 modular Krylov and CRT reconstruction with exact bounds and annihilation certificates, preserving dynamic fallback and vector010 exactness",
   "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
@@ -53,19 +53,39 @@
       "commit": "849961ad4144c6fe6768fc5441383ea64ed045fb",
       "workspace_fingerprint": "ebc2ab78955d0d4b4747670a22ae7cca5b6f3f7d2412e46c5c34b07d1fc16d9d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.328,
+      "started_at": "2026-08-18T09:52:12.387Z",
+      "commit": "84785c8c5bbbba81dbffa4c9cd00deaeb61fae7a",
+      "workspace_fingerprint": "f3a9d5e625914a20893e77a757e5ce0575e82574ca8f8639def28e12349e1ca7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-round4-crt-batch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.33,
+      "started_at": "2026-08-18T09:52:35.396Z",
+      "commit": "84785c8c5bbbba81dbffa4c9cd00deaeb61fae7a",
+      "workspace_fingerprint": "f3a9d5e625914a20893e77a757e5ce0575e82574ca8f8639def28e12349e1ca7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented source-transparent varying-prime Krylov batches, two-level exact CRT, coefficient-bound and exact-annihilation certificates, deterministic certified-prime reuse, a compiled Horner certificate, scalar/direct crossover fallback, focused randomized/corruption/CPython/FLINT differentials, and a vector010 benchmark. Exact vector010 construction fell from the 56-76s baseline range to 27.7-28.3s in loaded runs; all characteristic calls account for about 5.8s and the batched CRT path about 4.9s. Exact HNF, index, discriminant, 67 characteristic calls, 24 modular calls, and Ford-Letard e=16/f=2 remain certified.",
+    "summary": "Implemented source-transparent varying-prime Krylov batches, exact two-level CRT, theorem-sized reconstruction and annihilation certificates, direct characteristic recurrence, packed power-basis/scalar arithmetic, moderate-degree exact quotient solving, and delayed safe word-prime reductions. Round-4 results now retain a compact proof envelope binding canonical input/output HNFs, exact index and discriminants, Ford-Letard e*f=n, all 24 minimal-polynomial events, and all 17 quotient multiply-backs. Vector010 construction is 25.67s and compact independent verification is 2.05s, down from 56-76s construction and 29.5s verification; exact HNF/index/discriminant, 67 characteristic calls, 24 modular calls, 3936 primes, and e=16/f=2 remain certified.",
     "risks": [
-      "The compiler support commit 6cac3769 must be integrated before this kernel; it provides borrowed UInt64Buffer exact-kernel lowering and Integer modulo uint64.",
-      "The package architecture byte budget needs an integration-lane increase or source split; this lane intentionally did not edit the central package registry.",
-      "The independent verify_round4_local_result call still costs about 25s and is owned by the Round-2 verification lane, not this CRT path."
+      "The 37ms PARI nfbasis reference means 25.67s construction is still about 700x slower; incremental host-object cleanup cannot satisfy the final gate.",
+      "The final construction profile is modular characteristic 24 calls/5.87s, exact quotient 17/4.45s, and residue refinement 2/13.54s inclusive; a packed whole-state algorithmic boundary is required.",
+      "The delayed-reduction source adds 915 bytes before generated registry overhead; the integration lane owns the final package-budget adjustment and full native/platform suite."
     ],
     "next_steps": [
-      "Integrate commits 690f99cf, 75534a9c, f003aee2, and 849961ad after d43fafaf.",
-      "Register the focused test and benchmark centrally, adjust the package byte budget, then run pnpm test:native and pnpm architecture:check on the integrated compiler/source tree.",
-      "Treat the remaining roughly 22s non-characteristic construction boundary as NumberFieldElement multiplication/reduction and exact field quotient work; do not widen CRT correctness bounds."
+      "Integrate c6b6be63 for the public field-analysis discriminant/closure ABI and 84785c8c for safe delayed word-prime reductions.",
+      "The nf-opt-round4-native-state lane owns the packed whole residue-refinement/type state machine, retaining this lane's characteristic and quotient proof-event schemas.",
+      "Register focused tests and benchmarks centrally, make one evidence-backed package-budget adjustment, then run pnpm test:native and pnpm architecture:check on the integrated tree."
     ]
   }
 }
