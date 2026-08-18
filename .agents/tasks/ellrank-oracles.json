@@ -4,7 +4,7 @@
   "id": "ellrank-oracles",
   "title": "Analytic rank oracle corpus and benchmarks",
   "lane": "elliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Create a pinned rank 0-4 and pathological-zero corpus, persistent Sage/PARI and Magma oracle harnesses, and reproducible analytic-rank benchmark reports",
   "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
@@ -35,14 +35,108 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves",
+    "pnpm architecture:check",
     "node bench/elliptic-analytic-rank/run-oracles.cjs --tier core --check --require-sage --require-magma",
     "/home/user/sagelite/sage -c load(\"upstream-tests/sage/elliptic-analytic-rank.sage\")",
-    "pnpm test:changed"
+    "node --check bench/elliptic-analytic-rank/run-oracles.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/elliptic-analytic-rank/run-oracles.cjs --tier core --check --require-sage --require-magma",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.885,
+      "started_at": "2026-08-18T00:18:28.237Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/sagelite/sage -c load(\"upstream-tests/sage/elliptic-analytic-rank.sage\")",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.858,
+      "started_at": "2026-08-18T00:18:35.800Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 100.938,
+      "started_at": "2026-08-18T00:18:43.926Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/elliptic-analytic-rank/run-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.098,
+      "started_at": "2026-08-18T00:20:54.461Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.303,
+      "started_at": "2026-08-18T00:21:29.268Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.823,
+      "started_at": "2026-08-18T00:21:42.095Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:elliptic-curves",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.376,
+      "started_at": "2026-08-18T00:22:06.062Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.196,
+      "started_at": "2026-08-18T00:24:45.315Z",
+      "commit": "260f3934e7d518ceabc8196ae6c7a12d02ab6d62",
+      "workspace_fingerprint": "3794f732a1039a2368e9ca49a51634cf5bf863a8ba98ff521af37847dc058e7c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Pinned a network-free 12-curve corpus spanning probable ranks 0-5, exact coefficient digests, root signs, leading derivatives, GRH-conditional zero-sum regressions, nonminimal/additive models, and conductor stress. Added one-process Sage/PARI and Magma adapters, factorial normalization for Magma's Taylor coefficients, timing-boundary documentation, baseline validation, and an explicit lcalc capability skip.",
+    "risks": [
+      "Magma 2.18-5 is proprietary, optional, and uses a coarse CPU timer; ordinary CI must allow its explicit unavailable record.",
+      "No standalone lcalc executable is installed. The probe deliberately refuses to count lcalc until coefficient sufficiency is recorded and validated.",
+      "pnpm test:changed passed architecture checks but its broad unit tier failed in the unrelated all-baselib-modules-have-stable-Python-identity test on the shared concurrent host; the lane-specific oracle, Sage, syntax, JSON, and diff checks pass.",
+      "The legacy elliptic benchmark could not start because this documentation/oracle worktree had no FLINT addon. Its cold native dependency rebuild was terminated to avoid duplicating a concurrent integration build; pnpm test:native remains for the integration lane."
+    ],
+    "next_steps": [
+      "Consume curves.json and oracle-baseline.json from the analytic-rank implementation's reference/native differential tests.",
+      "Add lcalc results only after installing a pinned executable and implementing a coefficient-sufficiency-aware adapter.",
+      "Keep the large-conductor and rank-5 records in opt-in stress runs rather than the quick developer loop."
+    ]
   }
 }
