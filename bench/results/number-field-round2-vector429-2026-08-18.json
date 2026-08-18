@@ -3,7 +3,7 @@
   "date": "2026-08-18",
   "source": {
     "baselineCommit": "dc753f5a7fc8141949c4c173df53924df6c74494",
-    "headerSha256": "55273dc1068feab7063c20fe2611fac426d9c8f6b68235d91e9f33b8b34320a3",
+    "headerSha256": "87a84e58e85872d1567c11518379922ac84e30a89f63620790976d01e561aff3",
     "witnessSha256": "c03eb5769c82e78b24c9a409473aef363a27fb6f82fd227883ab9f38ddf6423f",
     "testSha256": "2914edf475489d7cb187dfe2029f694ad04f0ae84673b00c17ad6a5bf02ef1fc"
   },
@@ -38,19 +38,19 @@
         }
       },
       "optimized": {
-        "round2Us": 11802125.321002677,
-        "speedupFromIsolatedBaseline": 1.643643706,
-        "reductionPercent": 39.159563814,
+        "round2Us": 6128672.327031381,
+        "speedupFromIsolatedBaseline": 3.165202505,
+        "reductionPercent": 68.406444816,
         "phaseUs": {
-          "setup": 7936.69000268,
-          "modularTable": 1057025.929214433,
-          "radical": 149231.368210167,
-          "multiplier": 957505.200989544,
-          "basisPrepare": 2863.112255,
-          "basisTransform": 9603909.914148971,
-          "basisOutput": 11681.969626807
+          "setup": 8544.518961571,
+          "modularTable": 687118.790810928,
+          "radical": 142444.086144678,
+          "multiplier": 954585.075960495,
+          "basisPrepare": 1977.439969778,
+          "basisTransform": 4301711.402717046,
+          "basisOutput": 13389.821047895
         },
-        "basisTransformPercent": 81.374410564,
+        "basisTransformPercent": 70.189939569,
         "iterations": 84,
         "enlargements": 83,
         "meanRadicalDimension": 61.857142857,
@@ -78,19 +78,19 @@
         }
       },
       "optimized": {
-        "round2Us": 584712.476935238,
-        "speedup": 1.549672763,
-        "reductionPercent": 35.470247419,
+        "round2Us": 233145.153033547,
+        "speedup": 3.886475821,
+        "reductionPercent": 74.269748582,
         "phaseUs": {
-          "setup": 760.409981012,
-          "modularTable": 46411.830582656,
-          "radical": 15613.235300407,
-          "multiplier": 77545.709209517,
-          "basisPrepare": 1027.342164889,
-          "basisTransform": 440074.531710707,
-          "basisOutput": 2008.719020523
+          "setup": 830.688979477,
+          "modularTable": 32556.606340222,
+          "radical": 13898.784178309,
+          "multiplier": 68701.773299836,
+          "basisPrepare": 564.021524042,
+          "basisTransform": 114098.36425446,
+          "basisOutput": 1738.262362778
         },
-        "basisTransformPercent": 75.263407112,
+        "basisTransformPercent": 48.938767446,
         "iterations": 112,
         "enlargements": 111,
         "meanRadicalDimension": 30.964285714,
@@ -102,8 +102,8 @@
       "references": {
         "forcedRound4Us": 26500000,
         "pariNfbasisUs": 37000,
-        "ratioToForcedRound4": 0.022064622,
-        "ratioToPari": 15.803039917,
+        "ratioToForcedRound4": 0.00879793,
+        "ratioToPari": 6.301220352,
         "forcedPolygon": ">30000000us timeout",
         "forcedOmMaxmin": ">30000000us timeout"
       },
@@ -117,23 +117,25 @@
     "compact zero and duplicate multiplier equations with an exact collision-checked hash table",
     "reduce the exact multiplication tensor modulo p^2 once and derive its modulo-p table",
     "use the exact low limb for power-of-two fmpz remainders, including signed correction",
-    "avoid zero initialization and generic addmul dispatch in sparse exact basis combinations"
+    "avoid zero initialization and generic addmul dispatch in sparse exact basis combinations",
+    "apply the Round-2 block form [I R; 0 pI] directly so unchanged generators avoid division, mixed products divide only by p, and only the pivot block divides by p^2",
+    "fill transposed input columns by exact commutativity instead of transforming them twice"
   ],
   "residual": {
     "dominantKernel": "exact fmpz multiplication-tensor basis transformation",
-    "reason": "after 4.0x modular-table and 4.6x multiplier improvements on vector429, 169-bit exact tensor transformations account for 81.4% of Round-2 time",
-    "boundedConclusion": "a further order-of-magnitude improvement requires a new proved representation such as precision-tracked modular tensors or a validated block transform; incremental multiplier and host-boundary cleanup cannot close the remaining PARI gap"
+    "reason": "the direct block transform removes unnecessary full-tensor p^2 divisions and cuts the second-pass vector429 basis phase by 2.23x and vector010 by 3.86x; it still accounts for 70.2% and 48.9% of Round-2 respectively",
+    "boundedConclusion": "the requested block representation is now implemented; reaching the remaining vector010 PARI gap requires reducing the still-iterated multiplier/modular phases or a separately proved precision-tracked modular tensor"
   },
   "selector": {
     "productionCandidate": "sealed native Round-2 resource",
-    "reason": "the current auto path already tries the complete word-prime native batch before local Round-4 fallback; on vector010 p=2 it is 45.3x faster than forced Round-4 while polygon and OM exceed 30 seconds",
+    "reason": "the current auto path already tries the complete word-prime native batch before local Round-4 fallback; on vector010 p=2 it is 113.7x faster than forced Round-4 while polygon and OM exceed 30 seconds",
     "fixtureSpecificBranchAdded": false,
     "centralSourceChangeRequired": false
   },
   "architectureAuditHandoff": {
     "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
-    "oldMetrics": { "lines": 1309, "bytes": 53642 },
-    "newMetrics": { "lines": 1410, "bytes": 58164 },
+    "oldMetrics": { "lines": 1410, "bytes": 58164 },
+    "newMetrics": { "lines": 1639, "bytes": 68585 },
     "registryChange": "update only lines/bytes and extend the existing p-squared multiplier/storage rationale in architecture/native-audit.json; the native-code category remains mathematical-algorithm",
     "validation": "pnpm architecture:check"
   },
