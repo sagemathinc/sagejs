@@ -34,6 +34,29 @@ This corpus is an oracle sample, not a claim that 20 points prove the whole
 implementation. The full stream also has to match across the supported
 platforms, and unresolved rows must use the exact fallback.
 
+The handwritten Jacobian search kernel has a second, independent differential
+gate:
+
+```sh
+node --test test/hyperelliptic-genus3-jacobian-search-differential.cjs
+```
+
+That test constructs canonical Mumford divisors with the ordinary Python
+Cantor law, including zero, inverse, doubling, same-input addition,
+non-coprime `u` cases, deterministic scalar combinations, and a completed-
+square generalized model. It compares native element-order certificates with
+the ordinary law, exercises not-found/resource/cancellation/invalid-input
+statuses, and repeats searches in independent Node workers to detect shared
+mutable state. The fixtures are generated deterministically at test time and
+do not depend on PARI, Magma, or network access.
+
+The direct addon probe also passes on Linux x86-64, Linux aarch64, macOS
+arm64, and native Windows x86-64. Every platform returned order 94 with
+factorization `2*47` over `F_3`, order 764 with factorization `2^2*191` for
+the generalized `F_11` model, and identical resource-limit and cancellation
+statuses. This probe caught and fixed a Node-API BigInt size-query error that
+the C-only kernel test could not expose.
+
 ## Stage benchmark
 
 Run the complete acceptance workload with:
@@ -60,9 +83,11 @@ The JSON result keeps the following stages separate:
 2. `candidates` includes the checked Python boundary and exact Weil-candidate
    enumeration. It records row count, total/max candidates, and a deterministic
    digest of the candidate-count stream.
-3. `certification` calls `certified_genus3_local_rows`, records primary and
-   twist sample/operation counts, sums any stage timing instrumentation, and
-   digests every uniquely completed polynomial.
+3. `certification` calls the internal
+   `rforest_genus3_local_factors` orchestration (and recognizes the earlier
+   development API name), records candidate totals, primary/twist element and
+   scalar-operation counts, backend/status/event counts, and digests every
+   completed polynomial.
 4. `public` constructs a fresh curve and consumes
    `local_lpolynomial_chunks(..., algorithm='rforest')`, including exact
    per-row fallback and public polynomial construction.
@@ -95,6 +120,15 @@ that the old transpiled-Python enumeration is not a viable `10^6` path; the
 new completion work must accelerate it before a full acceptance receipt can
 exist. The raw times also show why the limit must remain an explicit benchmark
 dimension instead of extrapolating from a 100-prime smoke test.
+
+The replacement native exact enumerator was separately measured by
+`pnpm bench:hyperelliptic-genus3-candidates` on the same development host. Its
+one-row wall times were 2.7 ms, 2.2 ms, 5.9 ms, 27 ms, and 166 ms at
+`p=101`, `1009`, `10007`, `100003`, and `1000003`, respectively. Those
+numbers isolate candidate lifting; they do not include the rforest traversal,
+primary/twist Jacobian witnesses, exact fallback, or public polynomial
+construction. They therefore remove candidate enumeration as the obvious
+scaling blocker without serving as an end-to-end acceptance result.
 
 ## One-off oracle measurements
 
