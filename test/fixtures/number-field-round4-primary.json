@@ -21,9 +21,9 @@
         "max_input_coefficient_bits": 83,
         "max_denominator_bits": 5,
         "residue_beta_strategy": {
-          "counts": {"direct-exact": 9},
-          "max_hadamard_bound_bits": 246,
-          "crt_bound_bits_cutoff": 2048
+          "counts": {"direct-exact": 17},
+          "max_hadamard_bound_bits": 324,
+          "crt_bound_bits_cutoff": 4096
         }
       },
       "required_power_stages": [
@@ -47,9 +47,9 @@
         "max_input_coefficient_bits": 2168,
         "max_denominator_bits": 5,
         "residue_beta_strategy": {
-          "counts": {"direct-exact": 9},
-          "max_hadamard_bound_bits": 955,
-          "crt_bound_bits_cutoff": 2048
+          "counts": {"direct-exact": 18},
+          "max_hadamard_bound_bits": 2343,
+          "crt_bound_bits_cutoff": 4096
         }
       },
       "required_power_stages": [
@@ -72,16 +72,17 @@
       "max_denominator_bits": 12,
       "expected_status": "diagnostic-fail-closed",
       "remaining_bound_label": "residue-beta",
-      "post_reconstruction": {
-        "characteristic_polynomial_call_limit": 46,
-        "attempted_calls": 47,
-        "next_bound_label": "residue-root-error",
-        "strategy_counts": {"direct-exact": 13, "modular-crt": 1},
+      "post_root_error": {
+        "characteristic_polynomial_call_limit": 47,
+        "attempted_calls": 48,
+        "next_bound_label": "residue-beta",
+        "strategy_counts": {"direct-exact": 15, "modular-crt": 12},
         "max_hadamard_bound_bits": 5970,
-        "modular_characteristic_calls": 1,
-        "modular_characteristic_primes": 122,
+        "modular_characteristic_calls": 12,
+        "modular_characteristic_primes": 1415,
         "modular_characteristic_max_modulus_bits": 3660,
-        "modular_characteristic_certification": "cyclic-krylov"
+        "modular_characteristic_certification": "cyclic-krylov",
+        "modular_characteristic_certification_calls": 12
       }
     }
   ]

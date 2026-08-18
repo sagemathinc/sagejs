@@ -963,18 +963,18 @@ def _modular_characteristic_polynomial(
     return coefficients
 
 
-_RESIDUE_BETA_CRT_BOUND_BITS = 2048
+_ROUND4_CRT_BOUND_BITS = 4096
 
 
 def residue_characteristic_strategy(field: Any, element: Any) -> dict[str, Any]:
     """Choose direct or modular characteristic arithmetic from exact cost data.
 
-    The cutoff is a measured crossover for the Round-4 corpus.  Direct FLINT
+    The cutoff is a measured crossover for the Round-4 corpus. Direct FLINT
     arithmetic wins for the #2510 and vector008 residue matrices, whose
-    largest observed bounds are 246 and 955 bits.  Vector010's obstructing
-    matrix has a 5970-bit bound and requires the modular path.  The decision
+    measured bounds stay below 2344 bits. Vector010's obstructing residue
+    matrices exceed 5740 bits and require the modular path. The decision
     depends only on the matrix dimension and its deterministic Hadamard bound,
-    never on a polynomial identity or corpus label.
+    never on a polynomial identity, stage label, or corpus identity.
     """
     _rows, _denominator, row_bounds = _integer_multiplication_matrix_data(
         field,
@@ -982,15 +982,13 @@ def residue_characteristic_strategy(field: Any, element: Any) -> dict[str, Any]:
     )
     coefficient_bounds = _characteristic_coefficient_bounds(row_bounds)
     bound_bits = _positive_integer_bits(max(coefficient_bounds))
-    strategy = (
-        "modular-crt" if bound_bits >= _RESIDUE_BETA_CRT_BOUND_BITS else "direct-exact"
-    )
+    strategy = "modular-crt" if bound_bits >= _ROUND4_CRT_BOUND_BITS else "direct-exact"
     return {
         "strategy": strategy,
         "degree": field.degree(),
         "hadamard_bound_bits": bound_bits,
         "estimated_crt_primes": (bound_bits + 29) // 30,
-        "crt_bound_bits_cutoff": _RESIDUE_BETA_CRT_BOUND_BITS,
+        "crt_bound_bits_cutoff": _ROUND4_CRT_BOUND_BITS,
     }
 
 
@@ -1104,7 +1102,7 @@ def _integral_characteristic_polynomial(
             if metrics is not None:
                 metrics["characteristic_polynomial_cache_hits"] += 1
             return list(cached)
-    if metric_label == "residue-beta":
+    if metric_label in ["residue-beta", "residue-root-error"]:
         if metrics is not None:
             _record_characteristic_input(element, metrics, metric_label)
         decision = residue_characteristic_strategy(field, element)
