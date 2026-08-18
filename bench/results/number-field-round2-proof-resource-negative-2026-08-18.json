@@ -1,0 +1,48 @@
+{
+  "schema": "sagejs.benchmark/number-field-round2-proof-resource-negative-v1",
+  "recorded_at": "2026-08-18",
+  "case_id": "pari-round4-vector-429",
+  "degree": 64,
+  "primes": [
+    2,
+    3,
+    5,
+    37,
+    59,
+    277,
+    311,
+    613,
+    719,
+    1319,
+    2894951,
+    6222169
+  ],
+  "source_commit": "418f6165b581f54f92132562e9dc5cc9b1c68eaf",
+  "sample_count": 1,
+  "startup_and_setup_ns": 3201120512,
+  "raw_native_order_ns": [1851151616],
+  "proof_native_independent_check_ns": [3776356864],
+  "combined_order_and_proof_ns": [6247375616],
+  "proof_projection_decode_snapshot_ns": null,
+  "proof_projection_note": "The mathematical sample completed, but the benchmark instrumented a non-exported transpiled order-module binding, so this subphase was not recorded separately. The combined and native verifier phases are exact; no replacement sample was run.",
+  "round2_replays_during_proof": 0,
+  "authenticated_projection_integer_count": 4173,
+  "target_ns": 5000000000,
+  "target_met": false,
+  "gate_claim": "none",
+  "peak_observed_process_group_rss_kib": 572368,
+  "peak_memory_note": "Maximum aggregate RSS observed by process-group polling, including the outer benchmark and Sage.js runtime; this is an observation, not an allocator or gate claim.",
+  "artifacts": {
+    "fixture_sha256": "03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f",
+    "ffi_declaration_sha256": "73d6ee772e83938368c6b764125fee5d2d54aeb050cd4d85f5818a3622303aaa",
+    "analysis_header_sha256": "7441b629c0d63dc5e942f0521d36bdc7048543b19fe72e7710fdee836bb538a5",
+    "generated_ffi_addon_sha256": "d567aa5ddaad1c5ea86f1461678e51bcb2a0de12b78edd9c5ceebc90a285f10f"
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "kernel": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "node": "v26.7.0"
+  }
+}

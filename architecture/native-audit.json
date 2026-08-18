@@ -160,16 +160,17 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
-      "lines": 3165,
-      "bytes": 130579,
+      "lines": 3639,
+      "bytes": 150970,
       "decision": "typed-remediation-pilot",
       "priority": "high",
       "responsibilities": [
         "Zassenhaus Round-2 local maximal-order iteration",
         "nilradical and multiplier-ring kernels over FLINT storage",
-        "exact packed-integer order-basis transformations and p-squared multiplier equations with exact fallbacks"
+        "exact packed-integer order-basis transformations and p-squared multiplier equations with exact fallbacks",
+        "construction-time terminal radical and multiplier-minor proof capture"
       ],
-      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using sparse radical RREF rows to form p-squared multiplier equations, exact hash deduplication, a single p-squared reduction with a derived p image, packed integer basis transforms, reusable workspaces, checked sparse basis addmul transforms, power-of-two low-limb reduction, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. The radical trace pairing precomputes the traces of the algebra basis and uses linearity of the regular representation to form the exact pairing in cubic rather than quartic time; the original entrywise matrix-product construction remains a compile-time differential oracle. For the canonical Round-2 block change [I R; 0 pI], the exact tensor transform preserves nonpivot products, divides mixed products only by p, divides only the pivot block by p-squared, and fills the symmetric half by commutativity; the forced generic lattice-inverse transform remains the differential oracle. At terminal degree-at-most-64 word-prime precision for p at most 251 it keeps the exact multiplication tensor modulo a proof-carrying p-power, projects the mod-p and mod-p-squared tables from that state, and consumes exactly two p-adic digits per accepted [I R; 0 pI] enlargement after checking exact p and p-squared divisibility. Precision exhaustion replays the immutable prime-boundary state at the required precision. Beginning at the measured degree-64 crossover, batches with pairwise-coprime proved primes use bounded native lanes to compute every local overorder from the immutable source order. Their scaled basis generators contain the common denominator times the equation lattice, so that denominator bounds the largest elementary divisor and certifies FLINT's modular tall-HNF merge; a forced generic HNF, a forced compounded sequential path, and a correct single-lane fallback where pthreads are unavailable remain exact differentials. Every accelerated step retains an exact fallback because the native compiler still lacks a general packed three-dimensional fmpz value type.",
+      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using sparse radical RREF rows to form p-squared multiplier equations, exact hash deduplication, a single p-squared reduction with a derived p image, packed integer basis transforms, reusable workspaces, checked sparse basis addmul transforms, power-of-two low-limb reduction, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. The radical trace pairing precomputes the traces of the algebra basis and uses linearity of the regular representation to form the exact pairing in cubic rather than quartic time; the original entrywise matrix-product construction remains a compile-time differential oracle. For the canonical Round-2 block change [I R; 0 pI], the exact tensor transform preserves nonpivot products, divides mixed products only by p, divides only the pivot block by p-squared, and fills the symmetric half by commutativity; the forced generic lattice-inverse transform remains the differential oracle. At terminal degree-at-most-64 word-prime precision for p at most 251 it keeps the exact multiplication tensor modulo a proof-carrying p-power, projects the mod-p and mod-p-squared tables from that state, and consumes exactly two p-adic digits per accepted [I R; 0 pI] enlargement after checking exact p and p-squared divisibility. Precision exhaustion replays the immutable prime-boundary state at the required precision. Beginning at the measured degree-64 crossover, batches with pairwise-coprime proved primes use bounded native lanes to compute every local overorder from the immutable source order. Their scaled basis generators contain the common denominator times the equation lattice, so that denominator bounds the largest elementary divisor and certifies FLINT's modular tall-HNF merge; a forced generic HNF, a forced compounded sequential path, and a correct single-lane fallback where pthreads are unavailable remain exact differentials. Optional proof-carrying workers publish only after a second terminal check independently derives a canonical radical and full-rank multiplier minor. P-adic workers rerun this theorem from their live certified modulo-p-squared tensor with a fresh multiplier workspace and generic selector pass; non-p-adic workers use their live exact table. Every accelerated step retains an exact fallback because the native compiler still lacks a general packed three-dimensional fmpz value type.",
       "fallback": "The complete ordinary-Python Round-2 implementation and the forced original exact lattice-inverse path remain correct for every supported prime. Both are exercised against deterministic randomized optimized-versus-exact differentials; the native word-prime path is an optional acceleration.",
       "oracles": [
         "CPython",
@@ -182,8 +183,8 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
-      "lines": 482,
-      "bytes": 17680,
+      "lines": 526,
+      "bytes": 19522,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -205,18 +206,19 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 781,
-      "bytes": 31310,
+      "lines": 1032,
+      "bytes": 40984,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "bounded exact discriminant decomposition without eager full factorization",
         "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
         "canonical compact source, component, and HNF evidence ownership",
-        "terminal local fixed-point witness construction after final HNF rebasing"
+        "terminal local fixed-point witness construction after final HNF rebasing",
+        "proof-carrying packing of independently checked local terminal witnesses in caller-prime order"
       ],
-      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. FLINT owns the mature arithmetic and the existing audited Round-2 helper owns local completion; the durable part is the resource representation and fail-closed status protocol.",
-      "fallback": "The packed result is never trusted directly. An ordinary-Python checker independently recomputes the discriminant, authenticates components, HNF/index/order closure, and word-prime local maximality; unresolved composite and arbitrary-size probable-prime states remain incomplete and available to strict fallback.",
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for a three-prime FLINT resource producer. A later standalone full-12-prime verifier measured 3.776s and made the combined vector429 path 6.247s, so its production FFI/API was removed; its negative receipt and ordinary mathematical oracle remain. Proof-carrying construction instead packs the independently checked terminal state already published by each local worker without replaying enlargement. The optimized vector429 boundary measured 2.399s total, including 0.237s native proof overhead and 0.299s current projection. The ordinary source remains the independent mathematical oracle.",
+      "fallback": "Externally supplied, copied, or malformed packed proofs are never directly trusted: the ordinary-Python checker recomputes the polynomial discriminant, HNF/index/order closure, each local exact multiplication table and fixed point, and the coprime merge into the final order. Linear authentication exists only synchronously around the actual current generated construction call and binds its nested order bytes, polynomial, complete caller-prime tuple, witness shapes, and final basis before sealing. Worker allocation is bounded to five lanes under 512 MiB, pthread-creation failure runs the missing lane synchronously, and native Windows uses the exact sequential path.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
@@ -226,7 +228,7 @@
         "native Windows x64 witness",
         "Linux arm64 witness"
       ],
-      "next": "Retain the immutable payload boundary, but migrate bounded decomposition and dispatch to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
+      "next": "Retain the immutable payload boundary, but migrate bounded decomposition, dispatch, and terminal fixed-point derivation to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
     },
     {
       "path": "packages/graph/src/addon.c",
