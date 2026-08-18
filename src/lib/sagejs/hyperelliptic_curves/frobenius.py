@@ -710,7 +710,30 @@ def _count_quadratic_solutions(field: Any, linear: Any, constant: Any) -> int:
 def _coefficient_in_field(field: Any, coefficient: Any) -> Any:
     if isinstance(field, _ReferenceExtensionField):
         return field(coefficient)
-    return field(coefficient)
+    try:
+        return field(coefficient)
+    except TypeError:
+        lift = getattr(coefficient, "lift", None)
+        if not callable(lift):
+            raise
+        return field(lift())
+
+
+def _extension_field_for_counting(base: Any, degree: int) -> Any:
+    """Choose the fastest exact extension that preserves coefficient embeddings.
+
+    A prime-field coefficient has a canonical embedding in Sage.js's native
+    FLINT field of order `p^degree`. Curves over an extension base need a
+    compatible relative embedding, so they retain the small ordinary-Python
+    reference tower until that embedding is part of the public field API.
+    """
+    if getattr(base, "_kind", None) == "GF":
+        finite_fields = __import__(
+            "sagejs._baselib.finite_fields",
+            fromlist=["GF"],
+        )
+        return finite_fields.GF(_field_order(base) ** degree, "a")
+    return _ReferenceExtensionField(base, degree)
 
 
 def _evaluate_curve_polynomial(polynomial: Any, x_value: Any, field: Any) -> Any:
@@ -767,7 +790,7 @@ def exhaustive_cardinality(curve: Any, extension_degree: int = 1) -> int:
         raise ValueError("extension_degree must be positive")
     field: Any = base
     if extension_degree > 1:
-        field = _ReferenceExtensionField(base, extension_degree)
+        field = _extension_field_for_counting(base, extension_degree)
     order = _field_order(field)
     if order > MAX_EXHAUSTIVE_FIELD_ORDER:
         raise ValueError(

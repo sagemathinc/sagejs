@@ -146,6 +146,33 @@ test("genus-3 odd and even models reconstruct every independent coefficient", as
   }
 });
 
+test("genus-3 prime-field reconstruction uses exact native extensions", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "import sagejs.hyperelliptic_curves.frobenius as F",
+            "K = GF(11)",
+            "R = PolynomialRing(K, 'x')",
+            "x = R.gen()",
+            "C = HyperellipticCurve(x^7-x+1, x^2)",
+            "K3 = F._extension_field_for_counting(K, 3)",
+            "[K3._kind, C.count_points(3, 'exhaustive'),",
+            " C.frobenius_polynomial('exhaustive')]",
+          ].join("\n"),
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "['GF_EXTENSION', [13, 137, 1243], " +
+        "x^6 + x^5 + 8*x^4 - 22*x^3 + 88*x^2 + 121*x + 1331]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("characteristic two and extension base fields use the exact field tower", async () => {
   const session = await createSage();
   try {
