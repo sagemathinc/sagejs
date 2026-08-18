@@ -17,9 +17,9 @@ with degrees from 2 through 160. Its sources are:
 | Generated hard families | 18 | Bad primitive generators of pure fields, including the catastrophic degree-8 case, degrees 112--160, depth parameters 512 and 2048, and explicit wild/many-prime scaled-generator families |
 
 The manifest content digest is
-`e6bf006b01c7cd47d6b0f7fc70db142d85b725ad8d45aeee38aa7775a55b3c07`.
+`8d2542159374a799aaf2d726498020a437bee407fab01325ec458f7ee47f46ea`.
 The JSON file's byte digest is
-`695152efb47b614b15f08a140f7f65d11c32d997588c8ccd6f7962f2f025f52f`.
+`03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f`.
 
 ## Stable representation
 
@@ -99,9 +99,18 @@ Magma is a third black-box family.
   earlier 180-second observation.
 
 There were no mathematical disagreements among completed oracle calls. The
-manifest has 17 cases with cross-family lattice agreement. Oracle agreement is
+manifest has 18 cases with cross-family lattice agreement. Oracle agreement is
 fixture evidence, not a substitute for Sage.js's independent closure, index,
 and local-maximality checker.
+
+The named `addprimes-degree-7` regression has a dedicated checked oracle
+record. Its first frozen row accidentally passed `80000` to PARI as a local
+maximality bound, producing the order maximal only at the small index prime
+`3`. Plain global `nfbasis`, `nfinit`, Sage 10.9, and Hecke 0.39.21 instead
+agree on index `558573 = 3 * 186191`, field discriminant
+`-1654803061237150235374988302272`, and the same canonical HNF lattice. The
+upstream `addprimes` call affects factor discovery and is not permission to
+freeze a partially maximal order.
 
 ## Deterministic checks and regeneration
 
@@ -121,8 +130,9 @@ The developer tools under
 `upstream-tests/sage/number-fields/maximal-order/` are not runtime
 dependencies:
 
-- `build_pari_round4.py` extracts the public PARI `v` vector and normalizes GP
-  bases;
+- `build_pari_round4.py` extracts the public PARI `v` vector and normalizes
+  full global GP bases; its `80000` bound is used only to present factors of an
+  already exact equation-order index;
 - `build_stress_families.py` regenerates the eleven scalable families from
   exact resultant/transition formulas, deterministic trial division below
   10,000, and bounded GP discriminant/HNF checks;

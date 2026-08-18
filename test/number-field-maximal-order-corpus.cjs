@@ -1,6 +1,8 @@
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
@@ -8,6 +10,19 @@ const fixturePath = path.join(
   __dirname,
   "fixtures",
   "number-field-maximal-order-corpus.json",
+);
+const addprimesEvidencePath = path.join(
+  __dirname,
+  "..",
+  "upstream-tests",
+  "sage",
+  "number-fields",
+  "maximal-order",
+  "addprimes-degree-7-oracle.json",
+);
+const round4GeneratorPath = path.join(
+  path.dirname(addprimesEvidencePath),
+  "build_pari_round4.py",
 );
 
 function digest(domain, value) {
@@ -56,6 +71,76 @@ function badGeneratorPolynomial(degree, c) {
 function scaledGeneratorPolynomial(degree, scale) {
   return [String(-2n * pow(scale, degree)), ...Array(degree - 1).fill("0"), "1"];
 }
+
+function addprimesProjection(entry) {
+  return {
+    ordinal: 1,
+    coefficients: entry.polynomial.coefficients,
+    equation_discriminant: entry.equationDiscriminant,
+    field_discriminant: entry.fieldDiscriminant,
+    index: entry.equationOrderIndex,
+    local_index_factors: entry.localIndexFactors.map((factor) => [
+      factor.value,
+      factor.valuation,
+      factor.state,
+    ]),
+    basis_denominator: entry.basis.denominator,
+    basis_numerator: entry.basis.numerator,
+  };
+}
+
+test("addprimes regression is frozen from a global, cross-family maximal order", () => {
+  const manifest = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+  const evidence = JSON.parse(fs.readFileSync(addprimesEvidencePath, "utf8"));
+  const entry = manifest.cases.find((item) => item.id === evidence.caseId);
+  assert(entry, `missing corpus entry ${evidence.caseId}`);
+  assert.deepEqual(addprimesProjection(entry), evidence.generatedRow);
+  assert.equal(
+    evidence.oracles.pariGp.fieldDiscriminant,
+    evidence.generatedRow.field_discriminant,
+  );
+  assert.equal(
+    evidence.oracles.hecke.basisDigest,
+    entry.basis.digest,
+  );
+  assert.equal(evidence.oracles.sage.equationOrderIndex, entry.equationOrderIndex);
+  assert.deepEqual(
+    evidence.oracles.sage.transitionDeterminantsToAndFromCanonicalHnf,
+    ["1", "1"],
+  );
+});
+
+const gpExecutable = process.env.PARI_GP || "gp";
+const gpAvailable =
+  childProcess.spawnSync(gpExecutable, ["--version"], { encoding: "utf8" })
+    .status === 0;
+
+test(
+  "Round-4 generator regenerates the addprimes global maximal order",
+  { skip: gpAvailable ? false : `${gpExecutable} is unavailable` },
+  () => {
+    const evidence = JSON.parse(fs.readFileSync(addprimesEvidencePath, "utf8"));
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), "sagejs-addprimes-round4-"),
+    );
+    const sourcePath = path.join(temporaryDirectory, "round4");
+    const polynomial = evidence.polynomial.coefficients
+      .map((coefficient, exponent) => `(${coefficient})*x^${exponent}`)
+      .join("+");
+    fs.writeFileSync(sourcePath, `{ v = [${polynomial}]; }\n`);
+    try {
+      const result = childProcess.spawnSync(
+        "python3",
+        [round4GeneratorPath, sourcePath, "--gp", gpExecutable],
+        { encoding: "utf8", timeout: 30_000 },
+      );
+      assert.equal(result.status, 0, result.stderr);
+      assert.deepEqual(JSON.parse(result.stdout), evidence.generatedRow);
+    } finally {
+      fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+  },
+);
 
 test("maximal-order corpus is a canonical self-consistent authority", () => {
   const manifest = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
