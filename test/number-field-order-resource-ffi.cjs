@@ -104,6 +104,55 @@ function compileUnix() {
   ], { cwd: root, encoding: "utf8", timeout: 120_000 });
 }
 
+function compileHardWitness(name, defines = []) {
+  const output = join(temporary, name);
+  const libraries = [
+    "libflint.a",
+    "libopenblas.a",
+    "libmpc.a",
+    "libmpfr.a",
+    "libgmp.a",
+  ].map((library) => join(prefix, "lib", library));
+  const compiled = spawnSync(process.env.CC || "cc", [
+    "-std=c11",
+    "-O3",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    ...defines.map((define) => `-D${define}`),
+    `-I${join(root, "packages", "flint", "include")}`,
+    `-I${join(prefix, "include")}`,
+    join(root, "bench", "number-field-order-resource-witness.c"),
+    ...libraries,
+    "-lm",
+    "-lpthread",
+    "-o",
+    output,
+  ], { cwd: root, encoding: "utf8", timeout: 120_000 });
+  assert.equal(compiled.status, 0, `${compiled.stdout}\n${compiled.stderr}`);
+  return output;
+}
+
+function hardPayload(executablePath, caseIndex) {
+  const executed = spawnSync(executablePath, [String(caseIndex), "0", "1"], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 120_000,
+  });
+  assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
+  return JSON.parse(executed.stdout).payloadHex;
+}
+
+function randomizedPayloads(executablePath, seed, count) {
+  const executed = spawnSync(executablePath, [
+    "--randomized",
+    String(seed),
+    String(count),
+  ], { cwd: root, encoding: "utf8", timeout: 120_000 });
+  assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
+  return executed.stdout;
+}
+
 function readU64(buffer, offset) {
   return Number(buffer.readBigUInt64LE(offset));
 }
@@ -228,6 +277,25 @@ try {
   assert.equal(large.unramified, 1);
   assert.equal(large.denominator, 1n);
   assert.equal(report.largeFallbackStatus, 1);
+
+  if (!sanitize && process.platform !== "win32") {
+    const optimized = compileHardWitness("hard-optimized");
+    const exact = compileHardWitness("hard-exact", [
+      "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
+    ]);
+    for (const caseIndex of [4, 5]) {
+      assert.equal(
+        hardPayload(optimized, caseIndex),
+        hardPayload(exact, caseIndex),
+        `hard case ${caseIndex} p^2 multiplier differs from the exact lattice-inverse oracle`,
+      );
+    }
+    assert.equal(
+      randomizedPayloads(optimized, 0x5a17, 32),
+      randomizedPayloads(exact, 0x5a17, 32),
+      "randomized p^2 multiplier results differ from the exact lattice-inverse oracle",
+    );
+  }
 
   const header = readFileSync(
     join(root, "packages", "flint", "include", "sagejs", "number_field_order_resource_ffi.h"),
