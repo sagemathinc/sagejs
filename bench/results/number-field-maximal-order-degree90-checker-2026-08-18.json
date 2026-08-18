@@ -1,0 +1,36 @@
+{
+  "schema": "sagejs.number-fields/degree90-bl-checker-receipt-v1",
+  "source_commit": "3f2e26fb0725148f569966b199cd490525a159f3",
+  "integration_commit": "049732200e72be31e722f02a9a0825b574a64b8b",
+  "production_kernel": {
+    "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "cache_key": "481f5b190a98de42c8d61be86de65f3a93b7d19df45a312e22e5d0bea27d4ae5",
+    "source_hash": "476c6597d65c1d61ebdfee444d80f9be70473096b96ec5f92d57d2b081732e66",
+    "index_sha256": "000b0ca7b90b3014caff5d00b70e007d027e7fb8b1f05183737530fe0ab7f1ed"
+  },
+  "raw_output_sha256": "6909ee029419d9d5ddfe6632305affccefc502e86d42c4901705f9ab8c360dfd",
+  "raw_output": {
+    "batch_mode": "native-capable",
+    "compact_closure_seconds": 0.910679808,
+    "construction_seconds": 1.044193536,
+    "degree": 90,
+    "exact_child_seconds": 1.968191232,
+    "fixture": "hecke-degree-90",
+    "fused_mode": "native-capable",
+    "module_import_seconds": 2.850772224,
+    "native_autoload_seconds": 0.013732352,
+    "other_certificate_seconds": 0.013317888,
+    "proof_seconds": 0.923997696,
+    "same_input_warmups": 0,
+    "schema": "sagejs.number-fields/degree90-bl-checker-timing-v1",
+    "script_seconds": 4.948539648,
+    "shift_count": 5,
+    "support_bits": 1277,
+    "process_wall_seconds": 5.470165574
+  },
+  "validation": {
+    "cpython_dynamic_projection_and_corruption": "pass",
+    "baselib_strict": "0 errors",
+    "parallel_check": "pass"
+  }
+}
