@@ -347,7 +347,13 @@ Plot a complex function using Sage's domain-coloring convention.
 
 Function argument is represented by hue and magnitude by lightness.
 `contoured=True` adds magnitude contours; `tiled=True` also adds evenly
-spaced phase contours.
+spaced phase contours. A callable implementing the private regional batch
+protocol is sampled in bounded batches. Elliptic `L`-series use
+`plot_precision="auto"` by default: rendered colors are compared at
+successively refined numerical precisions and unresolved near-zero phases
+are shown as neutral pixels. Set an integer `plot_precision` from 16 to 53
+for a reproducible floor, and use `color_tolerance` to change the default
+one-8-bit-channel acceptance threshold.
 
 ### Examples
 

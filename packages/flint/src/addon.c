@@ -1121,7 +1121,7 @@ static void *elliptic_ap_worker(void *argument)
 static napi_value elliptic_anlist_integral(
     napi_env env, napi_callback_info info)
 {
-    napi_value args[7], result, entry;
+    napi_value args[7], result, array_buffer;
     fmpz_t coefficients[5], discriminant;
     ulong bound, candidate, multiple, index;
     ulong *smallest, *primes;
@@ -1277,17 +1277,26 @@ static napi_value elliptic_anlist_integral(
         values[index] = values[rest] * prime_power_value;
     }
 
-    if (!check_napi(env,
-        napi_create_array_with_length(env, bound + 1, &result)))
+    void *packed_data = NULL;
+    if (!check_napi(env, napi_create_arraybuffer(
+            env, ((size_t) bound + 1) * sizeof(int32_t),
+            &packed_data, &array_buffer)))
         goto fail_after_alloc;
+    int32_t *packed_values = (int32_t *) packed_data;
     for (index = 0; index <= bound; index++)
     {
-        if (!check_napi(env,
-                napi_create_int64(env, values[index], &entry)) ||
-            !check_napi(env,
-                napi_set_element(env, result, (uint32_t) index, entry)))
+        if (values[index] < INT32_MIN || values[index] > INT32_MAX)
+        {
+            napi_throw_range_error(env, NULL,
+                "elliptic coefficient exceeds packed signed storage");
             goto fail_after_alloc;
+        }
+        packed_values[index] = (int32_t) values[index];
     }
+    if (!check_napi(env, napi_create_typedarray(
+            env, napi_int32_array, (size_t) bound + 1, array_buffer, 0,
+            &result)))
+        goto fail_after_alloc;
     free(smallest); free(values); free(ap_values);
     free(available); free(primes);
     for (int i = 0; i < initialized; i++)
@@ -4319,6 +4328,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             sagejs_ec_completed_central_derivatives,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecLseriesValues", NULL, sagejs_ec_lseries_values,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ecLseriesDirectValues", NULL, sagejs_ec_lseries_direct_values,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},

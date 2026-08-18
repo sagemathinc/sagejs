@@ -5556,7 +5556,13 @@ def complex_plot(
 
     Function argument is represented by hue and magnitude by lightness.
     `contoured=True` adds magnitude contours; `tiled=True` also adds evenly
-    spaced phase contours.
+    spaced phase contours. A callable implementing the private regional batch
+    protocol is sampled in bounded batches. Elliptic `L`-series use
+    `plot_precision="auto"` by default: rendered colors are compared at
+    successively refined numerical precisions and unresolved near-zero phases
+    are shown as neutral pixels. Set an integer `plot_precision` from 16 to 53
+    for a reproducible floor, and use `color_tolerance` to change the default
+    one-8-bit-channel acceptance threshold.
 
     ### Examples
 
@@ -5568,6 +5574,10 @@ def complex_plot(
     """
     xmin, xmax = _plot_range(x_range)
     ymin, ymax = _plot_range(y_range)
+    plot_precision = _option_pop(options, "plot_precision", "auto")
+    color_tolerance = float(_option_pop(options, "color_tolerance", 1.0 / 255.0))
+    if color_tolerance < 0:
+        raise ValueError("color_tolerance must be nonnegative")
     plot_points = _option_pop(options, "plot_points", 100)
     counts = _grid_counts_2d(plot_points, 100)
     xstep = (xmax - xmin) / float(counts[0] - 1)
@@ -5614,23 +5624,154 @@ def complex_plot(
 
         evaluator = constant_evaluator
 
-    sampled = []
-    for yvalue in yvalues:
-        row = []
-        for xvalue in xvalues:
-            try:
-                if coordinate_evaluator is not None:
-                    row.append(coordinate_evaluator(xvalue, yvalue))
-                else:
-                    argument = runtime.reflect.apply(
-                        cdf_function,
-                        runtime.undefined,
-                        [xvalue, yvalue],
+    plot_diagnostics = None
+    batch_provider = getattr(function_value, "_plot_complex_batch", None)
+    if batch_provider is not None:
+        coordinates = []
+        for yvalue in yvalues:
+            for xvalue in xvalues:
+                coordinates.append([xvalue, yvalue])
+        final_values = [None for _point in coordinates]
+        remaining = list(range(len(coordinates)))
+        accepted_counts = {}
+        runs = []
+        if plot_precision == "auto":
+            precision_tiers = [16, 24, 32]
+        else:
+            fixed_precision = int(plot_precision)
+            if fixed_precision < 16 or fixed_precision > 53:
+                raise ValueError("plot_precision must be 'auto' or 16 through 53")
+            precision_tiers = [fixed_precision]
+
+        for precision in precision_tiers:
+            if not remaining:
+                break
+            subset = [coordinates[index] for index in remaining]
+            batch = batch_provider(
+                subset,
+                precision,
+                {
+                    "xmin": xmin,
+                    "xmax": xmax,
+                    "ymin": ymin,
+                    "ymax": ymax,
+                    "xcount": counts[0],
+                    "ycount": counts[1],
+                    "adaptive": plot_precision == "auto",
+                },
+            )
+            coarse_values = list(runtime.reflect.get(batch, "coarse"))
+            fine_values = list(runtime.reflect.get(batch, "fine"))
+            errors = list(runtime.reflect.get(batch, "errors"))
+            if (
+                len(coarse_values) != len(remaining)
+                or len(fine_values) != len(remaining)
+                or len(errors) != len(remaining)
+            ):
+                raise ArithmeticError("complex plot batch provider returned bad size")
+            if cmap is None:
+                coarse_colors = complex_to_rgb(
+                    [coarse_values],
+                    contoured=contoured,
+                    tiled=tiled,
+                    contour_type=contour_type,
+                    contour_base=contour_base,
+                    dark_rate=dark_rate,
+                    nphases=nphases,
+                )[0]
+                fine_colors = complex_to_rgb(
+                    [fine_values],
+                    contoured=contoured,
+                    tiled=tiled,
+                    contour_type=contour_type,
+                    contour_base=contour_base,
+                    dark_rate=dark_rate,
+                    nphases=nphases,
+                )[0]
+            else:
+                coarse_colors = complex_to_cmap_rgb(
+                    [coarse_values],
+                    cmap=cmap,
+                    contoured=contoured,
+                    tiled=tiled,
+                    contour_type=contour_type,
+                    contour_base=contour_base,
+                    dark_rate=dark_rate,
+                    nphases=nphases,
+                )[0]
+                fine_colors = complex_to_cmap_rgb(
+                    [fine_values],
+                    cmap=cmap,
+                    contoured=contoured,
+                    tiled=tiled,
+                    contour_type=contour_type,
+                    contour_base=contour_base,
+                    dark_rate=dark_rate,
+                    nphases=nphases,
+                )[0]
+            next_remaining = []
+            accepted = 0
+            for local_index, original_index in enumerate(remaining):
+                coarse_parts = _complex_numeric_parts(coarse_values[local_index])
+                fine_parts = _complex_numeric_parts(fine_values[local_index])
+                difference = runtime.math.hypot(
+                    fine_parts[0] - coarse_parts[0],
+                    fine_parts[1] - coarse_parts[1],
+                )
+                magnitude = runtime.math.hypot(fine_parts[0], fine_parts[1])
+                near_zero = magnitude <= 4.0 * (difference + float(errors[local_index]))
+                color_difference = max(
+                    abs(
+                        fine_colors[local_index][channel]
+                        - coarse_colors[local_index][channel]
                     )
-                    row.append(evaluator(argument))
-            except Exception:
-                row.append(None)
-        sampled.append(row)
+                    for channel in range(3)
+                )
+                if not near_zero and color_difference <= color_tolerance:
+                    final_values[original_index] = fine_values[local_index]
+                    accepted += 1
+                else:
+                    next_remaining.append(original_index)
+            accepted_counts[str(precision)] = accepted
+            runs.append(runtime.reflect.get(batch, "diagnostics"))
+            remaining = next_remaining
+
+        # Unresolved pixels are deliberately neutral/missing.  Giving their
+        # unstable phase a plausible hue would overstate numerical evidence.
+        unstable_count = len(remaining)
+        sampled = [
+            final_values[row * counts[0] : (row + 1) * counts[0]]
+            for row in range(counts[1])
+        ]
+        plot_diagnostics = {
+            "kind": "complex_plot_batch",
+            "provider": "private_plot_complex_batch",
+            "plot_precision": str(plot_precision),
+            "color_tolerance": color_tolerance,
+            "pixel_count": len(coordinates),
+            "accepted_by_precision": accepted_counts,
+            "unstable_pixels": unstable_count,
+            "runs": runs,
+            "rigorous": False,
+        }
+    else:
+        sampled = []
+        for yvalue in yvalues:
+            row = []
+            for xvalue in xvalues:
+                try:
+                    if coordinate_evaluator is not None:
+                        row.append(coordinate_evaluator(xvalue, yvalue))
+                    else:
+                        argument = runtime.reflect.apply(
+                            cdf_function,
+                            runtime.undefined,
+                            [xvalue, yvalue],
+                        )
+                        row.append(evaluator(argument))
+                except Exception:
+                    row.append(None)
+            sampled.append(row)
     if cmap is None:
         rgb_data = complex_to_rgb(
             sampled,
@@ -5668,6 +5809,8 @@ def complex_plot(
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(ComplexPlot(rgb_data, (xmin, xmax), (ymin, ymax), defaults))
+    if plot_diagnostics is not None:
+        graphic._plot_spec_diagnostics.append(plot_diagnostics)
     return graphic
 
 

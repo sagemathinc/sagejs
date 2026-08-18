@@ -17,7 +17,7 @@
 
 #define SAGEJS_PI 3.141592653589793238462643383279502884
 #define SAGEJS_LN2 0.693147180559945309417232121458176568
-#define SAGEJS_EC_LSERIES_MAX_POINTS 256
+#define SAGEJS_EC_LSERIES_MAX_POINTS 10000
 #define SAGEJS_EC_LSERIES_MAX_CUTOFF 5000000
 #define SAGEJS_EC_LSERIES_MAX_GRID_POINTS 20000
 #define SAGEJS_EC_LSERIES_MAX_COEFFICIENT_TERMS 100000000
@@ -109,21 +109,18 @@ static void grid_omission_term_bound(
 typedef struct
 {
     arb_t exponent;
-    arb_t power;
     arb_t sum;
 } mellin_grid_scratch;
 
 static void mellin_grid_scratch_init(mellin_grid_scratch *scratch)
 {
     arb_init(scratch->exponent);
-    arb_init(scratch->power);
     arb_init(scratch->sum);
 }
 
 static void mellin_grid_scratch_clear(mellin_grid_scratch *scratch)
 {
     arb_clear(scratch->exponent);
-    arb_clear(scratch->power);
     arb_clear(scratch->sum);
 }
 
@@ -142,6 +139,7 @@ static slong mellin_grid_node(
     slong required_cutoff,
     slong cutoff,
     const fmpz *coefficients,
+    const int32_t *packed_coefficients,
     mellin_grid_scratch *scratch,
     slong precision)
 {
@@ -157,16 +155,31 @@ static slong mellin_grid_node(
     arb_mul(scratch->exponent, a, y, precision);
     arb_neg(scratch->exponent, scratch->exponent);
     arb_exp(q, scratch->exponent, precision);
-    arb_one(scratch->power);
     arb_zero(scratch->sum);
-    for (slong n = 1; n <= local_cutoff; ++n)
+    /*
+     * Evaluate sum(a_n*q^n) by descending Horner accumulation.  The previous
+     * loop maintained every successive q^n and then performed an addmul,
+     * costing two full Arb operations per coefficient.  This is the same
+     * polynomial with one multiplication and (for nonzero coefficients) one
+     * cheap exact-integer addition per coefficient.
+     */
+    for (slong n = local_cutoff; n >= 1; --n)
     {
-        arb_mul(scratch->power, scratch->power, q, precision);
-        if (!fmpz_is_zero(coefficients + n - 1))
-            arb_addmul_fmpz(
-                scratch->sum, scratch->power, coefficients + n - 1,
+        arb_mul(scratch->sum, scratch->sum, q, precision);
+        if (packed_coefficients != NULL)
+        {
+            const int32_t coefficient = packed_coefficients[n - 1];
+            if (coefficient != 0)
+                arb_add_si(
+                    scratch->sum, scratch->sum, (slong) coefficient,
+                    precision);
+        }
+        else if (!fmpz_is_zero(coefficients + n - 1))
+            arb_add_fmpz(
+                scratch->sum, scratch->sum, coefficients + n - 1,
                 precision);
     }
+    arb_mul(scratch->sum, scratch->sum, q, precision);
     arb_mul(value, y, scratch->sum, precision);
 
     if (local_cutoff < cutoff)
@@ -293,7 +306,7 @@ int sagejs_ec_completed_lseries_jet(
     {
         const slong local_cutoff = mellin_grid_node(
             value, omission, jh, y, q, a, h, h_double, a_double, 0.0, grid,
-            required_cutoff, cutoff, coefficients, &grid_scratch,
+            required_cutoff, cutoff, coefficients, NULL, &grid_scratch,
             work_precision);
         if (diagnostics->coefficient_terms > WORD_MAX - local_cutoff)
             diagnostics->coefficient_terms = WORD_MAX;
@@ -696,7 +709,9 @@ cleanup:
     arb_clear(temporary);
 }
 
-int sagejs_ec_lseries_values_acb(
+static int ec_lseries_values_acb_internal(
+    acb_ptr coarse_completed,
+    acb_ptr coarse_raw,
     acb_ptr completed,
     acb_ptr raw,
     mag_ptr coefficient_tail_bounds,
@@ -704,13 +719,14 @@ int sagejs_ec_lseries_values_acb(
     mag_ptr outer_tail_bounds,
     mag_ptr raw_conversion_magnitudes,
     sagejs_ec_lfunction_diagnostics *diagnostics,
-    const fmpz *coefficients,
+    const int32_t *coefficients,
     slong available_cutoff,
     const fmpz_t conductor,
     int root_number,
     acb_srcptr points,
     slong point_count,
     slong target_bits,
+    slong refinement_bits,
     slong work_precision)
 {
     if (completed == NULL || raw == NULL || coefficient_tail_bounds == NULL ||
@@ -719,7 +735,9 @@ int sagejs_ec_lseries_values_acb(
         coefficients == NULL || points == NULL || available_cutoff < 1 ||
         point_count < 1 || fmpz_sgn(conductor) <= 0 ||
         (root_number != 1 && root_number != -1) || target_bits < 16 ||
-        work_precision < target_bits)
+        refinement_bits < 0 || refinement_bits > 256 ||
+        work_precision < target_bits + refinement_bits ||
+        ((coarse_completed == NULL) != (coarse_raw == NULL)))
     {
         if (diagnostics != NULL)
             diagnostics->status = SAGEJS_EC_LFUNCTION_INVALID_INPUT;
@@ -751,12 +769,55 @@ int sagejs_ec_lseries_values_acb(
     arb_div(a, a, conductor_arb, work_precision);
 
     ec_lseries_plan plan;
+    const slong fine_target_bits = target_bits + refinement_bits;
     const int plan_status = make_ec_lseries_plan(
-        &plan, a, a_double, points, point_count, target_bits, work_precision);
+        &plan, a, a_double, points, point_count, fine_target_bits,
+        work_precision);
     if (plan_status != SAGEJS_EC_LFUNCTION_OK)
     {
         diagnostics->status = plan_status;
         goto cleanup_scalars;
+    }
+    if (coarse_completed != NULL)
+    {
+        /*
+         * Use the already planned fine grid exactly once.  Every even fine
+         * node forms a second trapezoid sum with step 2h.  The stronger fine
+         * cutoff and outer extent are shared by both sums; the coarse value is
+         * only a stability witness, so it need not duplicate an independent
+         * target-bit planner's step.
+         */
+        if ((plan.grid_points & 1) == 0)
+        {
+            if (plan.grid_points >= SAGEJS_EC_LSERIES_MAX_GRID_POINTS)
+            {
+                diagnostics->status = SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+                goto cleanup_scalars;
+            }
+            plan.grid_points += 1;
+        }
+        plan.coefficient_terms = 0;
+        for (slong grid = 0; grid < plan.grid_points; ++grid)
+        {
+            const double u = (double) grid * plan.grid_step;
+            double local = ceil(
+                ((double) plan.required_cutoff +
+                    plan.max_abs_real_offset * u / a_double) * exp(-u));
+            if (local < 1.0) local = 1.0;
+            if (plan.coefficient_terms >
+                SAGEJS_EC_LSERIES_MAX_COEFFICIENT_TERMS - (slong) local)
+            {
+                diagnostics->status = SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+                goto cleanup_scalars;
+            }
+            plan.coefficient_terms += (slong) local;
+        }
+        if (plan.grid_points >
+            SAGEJS_EC_LSERIES_MAX_POINT_GRID_TERMS / point_count)
+        {
+            diagnostics->status = SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+            goto cleanup_scalars;
+        }
     }
     const slong cutoff = available_cutoff < plan.required_cutoff
         ? available_cutoff : plan.required_cutoff;
@@ -767,7 +828,7 @@ int sagejs_ec_lseries_values_acb(
     diagnostics->required_cutoff = plan.required_cutoff;
     diagnostics->grid_points = plan.grid_points;
     diagnostics->coefficient_terms = plan.coefficient_terms;
-    diagnostics->target_bits = target_bits;
+    diagnostics->target_bits = fine_target_bits;
     diagnostics->work_precision = work_precision;
     diagnostics->point_count = point_count;
     diagnostics->grid_step = plan.grid_step;
@@ -775,11 +836,18 @@ int sagejs_ec_lseries_values_acb(
     diagnostics->max_abs_real_offset = plan.max_abs_real_offset;
     diagnostics->known_error_target_met = 1;
     diagnostics->rigorous_enclosure = 0;
+    if (diagnostics->status == SAGEJS_EC_LFUNCTION_INSUFFICIENT_COEFFICIENTS)
+    {
+        diagnostics->known_error_target_met = 0;
+        goto cleanup_scalars;
+    }
     arb_set_d(h, plan.grid_step);
 
     acb_ptr z = _acb_vec_init(point_count);
     acb_ptr forward = _acb_vec_init(point_count);
     acb_ptr backward = _acb_vec_init(point_count);
+    acb_ptr forward_step = _acb_vec_init(point_count);
+    acb_ptr backward_step = _acb_vec_init(point_count);
     acb_ptr weight = _acb_vec_init(point_count);
     acb_ptr term = _acb_vec_init(point_count);
     acb_ptr raw_factor = _acb_vec_init(point_count);
@@ -799,10 +867,22 @@ int sagejs_ec_lseries_values_acb(
     {
         acb_zero(completed + index);
         acb_zero(raw + index);
+        if (coarse_completed != NULL)
+        {
+            acb_zero(coarse_completed + index);
+            acb_zero(coarse_raw + index);
+        }
         mag_zero(coefficient_tail_bounds + index);
         mag_zero(grid_omission_bounds + index);
         mag_zero(outer_tail_bounds + index);
         acb_sub_ui(z + index, points + index, 1, work_precision);
+        acb_mul_arb(forward_step + index, z + index, h, work_precision);
+        acb_exp(
+            forward_step + index, forward_step + index, work_precision);
+        acb_inv(
+            backward_step + index, forward_step + index, work_precision);
+        acb_one(forward + index);
+        acb_one(backward + index);
         acb_pow(raw_factor + index, base, points + index, work_precision);
         acb_rgamma(gamma_reciprocal, points + index, work_precision);
         acb_mul(
@@ -816,14 +896,33 @@ int sagejs_ec_lseries_values_acb(
         mellin_grid_node(
             value, omission, jh, y, q, a, h, plan.grid_step, a_double,
             plan.max_abs_real_offset, grid,
-            plan.required_cutoff, cutoff, coefficients, &grid_scratch,
+            plan.required_cutoff, cutoff, NULL, coefficients, &grid_scratch,
             work_precision);
         arb_get_mag(omission_magnitude, omission);
         for (slong index = 0; index < point_count; ++index)
         {
-            acb_mul_arb(forward + index, z + index, jh, work_precision);
-            acb_exp(forward + index, forward + index, work_precision);
-            acb_inv(backward + index, forward + index, work_precision);
+            if (grid != 0)
+            {
+                /* Re-anchor occasionally to keep ball-width growth bounded. */
+                if ((grid & 63) == 0)
+                {
+                    acb_mul_arb(
+                        forward + index, z + index, jh, work_precision);
+                    acb_exp(
+                        forward + index, forward + index, work_precision);
+                    acb_inv(
+                        backward + index, forward + index, work_precision);
+                }
+                else
+                {
+                    acb_mul(
+                        forward + index, forward + index,
+                        forward_step + index, work_precision);
+                    acb_mul(
+                        backward + index, backward + index,
+                        backward_step + index, work_precision);
+                }
+            }
             if (root_number == 1)
                 acb_add(
                     weight + index, forward + index, backward + index,
@@ -838,6 +937,10 @@ int sagejs_ec_lseries_values_acb(
             acb_add(
                 completed + index, completed + index, term + index,
                 work_precision);
+            if (coarse_completed != NULL && (grid & 1) == 0)
+                acb_add(
+                    coarse_completed + index, coarse_completed + index,
+                    term + index, work_precision);
 
             if (!arb_is_zero(omission))
             {
@@ -859,6 +962,16 @@ int sagejs_ec_lseries_values_acb(
         acb_mul(
             raw + index, completed + index, raw_factor + index,
             work_precision);
+        if (coarse_completed != NULL)
+        {
+            acb_mul_arb(
+                coarse_completed + index, coarse_completed + index, h,
+                work_precision);
+            acb_mul_2exp_si(coarse_completed + index, coarse_completed + index, 1);
+            acb_mul(
+                coarse_raw + index, coarse_completed + index,
+                raw_factor + index, work_precision);
+        }
         acb_get_mag(weight_magnitude, raw_factor + index);
         if (mag_cmp_2exp_si(weight_magnitude, 0) > 0)
             mag_mul(
@@ -875,7 +988,7 @@ int sagejs_ec_lseries_values_acb(
             grid_omission_bounds + index);
         mag_add(
             weight_magnitude, weight_magnitude, outer_tail_bounds + index);
-        if (mag_cmp_2exp_si(weight_magnitude, -target_bits) > 0)
+        if (mag_cmp_2exp_si(weight_magnitude, -fine_target_bits) > 0)
             diagnostics->known_error_target_met = 0;
     }
 
@@ -888,6 +1001,8 @@ int sagejs_ec_lseries_values_acb(
     _acb_vec_clear(raw_factor, point_count);
     _acb_vec_clear(term, point_count);
     _acb_vec_clear(weight, point_count);
+    _acb_vec_clear(backward_step, point_count);
+    _acb_vec_clear(forward_step, point_count);
     _acb_vec_clear(backward, point_count);
     _acb_vec_clear(forward, point_count);
     _acb_vec_clear(z, point_count);
@@ -904,6 +1019,193 @@ cleanup_scalars:
     arb_clear(pi);
     return plan_status == SAGEJS_EC_LFUNCTION_OK
         ? (int) diagnostics->status : plan_status;
+}
+
+int sagejs_ec_lseries_values_acb(
+    acb_ptr completed,
+    acb_ptr raw,
+    mag_ptr coefficient_tail_bounds,
+    mag_ptr grid_omission_bounds,
+    mag_ptr outer_tail_bounds,
+    mag_ptr raw_conversion_magnitudes,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong work_precision)
+{
+    return ec_lseries_values_acb_internal(
+        NULL, NULL, completed, raw, coefficient_tail_bounds,
+        grid_omission_bounds, outer_tail_bounds,
+        raw_conversion_magnitudes, diagnostics, coefficients,
+        available_cutoff, conductor, root_number, points, point_count,
+        target_bits, 0, work_precision);
+}
+
+int sagejs_ec_lseries_values_refined_acb(
+    acb_ptr coarse_completed,
+    acb_ptr coarse_raw,
+    acb_ptr fine_completed,
+    acb_ptr fine_raw,
+    mag_ptr coefficient_tail_bounds,
+    mag_ptr grid_omission_bounds,
+    mag_ptr outer_tail_bounds,
+    mag_ptr raw_conversion_magnitudes,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong refinement_bits,
+    slong work_precision)
+{
+    if (coarse_completed == NULL || coarse_raw == NULL ||
+        refinement_bits < 1)
+    {
+        if (diagnostics != NULL)
+            diagnostics->status = SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+        return SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+    }
+    return ec_lseries_values_acb_internal(
+        coarse_completed, coarse_raw, fine_completed, fine_raw,
+        coefficient_tail_bounds, grid_omission_bounds, outer_tail_bounds,
+        raw_conversion_magnitudes, diagnostics, coefficients,
+        available_cutoff, conductor, root_number, points, point_count,
+        target_bits, refinement_bits, work_precision);
+}
+
+int sagejs_ec_lseries_direct_values_acb(
+    acb_ptr completed,
+    acb_ptr raw,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    acb_srcptr points,
+    const slong *cutoffs,
+    slong point_count,
+    slong target_bits,
+    slong work_precision)
+{
+    if (completed == NULL || raw == NULL || diagnostics == NULL ||
+        coefficients == NULL || points == NULL || cutoffs == NULL ||
+        available_cutoff < 1 || point_count < 1 ||
+        fmpz_sgn(conductor) <= 0 || target_bits < 16 ||
+        work_precision < target_bits)
+    {
+        if (diagnostics != NULL)
+            diagnostics->status = SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+        return SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+    }
+
+    slong maximum_cutoff = 0;
+    slong coefficient_terms = 0;
+    for (slong index = 0; index < point_count; ++index)
+    {
+        if (!acb_is_finite(points + index) || cutoffs[index] < 1 ||
+            cutoffs[index] > available_cutoff)
+        {
+            diagnostics->status = SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+            return SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+        }
+        if (cutoffs[index] > maximum_cutoff)
+            maximum_cutoff = cutoffs[index];
+        if (coefficient_terms > WORD_MAX - cutoffs[index] ||
+            coefficient_terms >
+                SAGEJS_EC_LSERIES_MAX_COEFFICIENT_TERMS - cutoffs[index])
+        {
+            diagnostics->status = SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+            return SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+        }
+        coefficient_terms += cutoffs[index];
+    }
+
+    diagnostics->status = SAGEJS_EC_LFUNCTION_OK;
+    diagnostics->actual_cutoff = maximum_cutoff;
+    diagnostics->required_cutoff = maximum_cutoff;
+    diagnostics->grid_points = 0;
+    diagnostics->coefficient_terms = coefficient_terms;
+    diagnostics->target_bits = target_bits;
+    diagnostics->work_precision = work_precision;
+    diagnostics->point_count = point_count;
+    diagnostics->grid_step = 0.0;
+    diagnostics->max_abs_imaginary = 0.0;
+    diagnostics->max_abs_real_offset = 0.0;
+    diagnostics->known_error_target_met = 1;
+    diagnostics->rigorous_enclosure = 0;
+
+    arb_t integer, logarithm, pi, conductor_arb, a, A;
+    arb_init(integer);
+    arb_init(logarithm);
+    arb_init(pi);
+    arb_init(conductor_arb);
+    arb_init(a);
+    arb_init(A);
+    acb_t term, factor, gamma_value, base;
+    acb_init(term);
+    acb_init(factor);
+    acb_init(gamma_value);
+    acb_init(base);
+
+    for (slong index = 0; index < point_count; ++index)
+    {
+        acb_zero(raw + index);
+        acb_zero(completed + index);
+    }
+    for (slong n = 1; n <= maximum_cutoff; ++n)
+    {
+        if (coefficients[n - 1] == 0)
+            continue;
+        arb_set_ui(integer, (ulong) n);
+        arb_log(logarithm, integer, work_precision);
+        for (slong index = 0; index < point_count; ++index)
+        {
+            if (n > cutoffs[index])
+                continue;
+            acb_mul_arb(term, points + index, logarithm, work_precision);
+            acb_neg(term, term);
+            acb_exp(term, term, work_precision);
+            acb_addmul_si(
+                raw + index, term, (slong) coefficients[n - 1],
+                work_precision);
+        }
+    }
+
+    arb_const_pi(pi, work_precision);
+    arb_set_fmpz(conductor_arb, conductor);
+    arb_sqrt(conductor_arb, conductor_arb, work_precision);
+    arb_mul_ui(a, pi, 2, work_precision);
+    arb_div(a, a, conductor_arb, work_precision);
+    arb_inv(A, a, work_precision);
+    acb_set_arb(base, A);
+    for (slong index = 0; index < point_count; ++index)
+    {
+        acb_pow(factor, base, points + index, work_precision);
+        acb_gamma(gamma_value, points + index, work_precision);
+        acb_mul(factor, factor, gamma_value, work_precision);
+        acb_mul(
+            completed + index, raw + index, factor,
+            work_precision);
+    }
+
+    acb_clear(base);
+    acb_clear(gamma_value);
+    acb_clear(factor);
+    acb_clear(term);
+    arb_clear(A);
+    arb_clear(a);
+    arb_clear(conductor_arb);
+    arb_clear(pi);
+    arb_clear(logarithm);
+    arb_clear(integer);
+    return SAGEJS_EC_LFUNCTION_OK;
 }
 
 static int check_napi(napi_env env, napi_status status)
@@ -980,6 +1282,107 @@ static int value_to_fmpz(napi_env env, napi_value value, fmpz_t result)
     }
     napi_throw_type_error(env, NULL, "coefficient must be an integer or BigInt");
     return 0;
+}
+
+typedef struct
+{
+    const int32_t *data;
+    int32_t *owned;
+    slong length;
+} packed_coefficient_view;
+
+static void packed_coefficient_view_clear(packed_coefficient_view *view)
+{
+    flint_free(view->owned);
+    view->data = NULL;
+    view->owned = NULL;
+    view->length = 0;
+}
+
+static int value_to_packed_coefficients(
+    napi_env env, napi_value value, packed_coefficient_view *view)
+{
+    view->data = NULL;
+    view->owned = NULL;
+    view->length = 0;
+    bool is_typed = false;
+    if (!check_napi(env, napi_is_typedarray(env, value, &is_typed)))
+        return 0;
+    if (is_typed)
+    {
+        napi_typedarray_type type;
+        size_t length = 0;
+        void *data = NULL;
+        napi_value array_buffer;
+        size_t byte_offset = 0;
+        if (!check_napi(env, napi_get_typedarray_info(
+                env, value, &type, &length, &data, &array_buffer,
+                &byte_offset)))
+            return 0;
+        (void) array_buffer;
+        (void) byte_offset;
+        if (type != napi_int32_array || length < 2 || length > INT32_MAX)
+        {
+            napi_throw_type_error(env, NULL,
+                "coefficients must be an Int32Array containing a_0 through a_K");
+            return 0;
+        }
+        view->data = (const int32_t *) data;
+        view->length = (slong) length;
+        return 1;
+    }
+
+    bool is_array = false;
+    uint32_t length = 0;
+    if (!check_napi(env, napi_is_array(env, value, &is_array)) || !is_array ||
+        !check_napi(env, napi_get_array_length(env, value, &length)) ||
+        length < 2)
+    {
+        napi_throw_type_error(env, NULL,
+            "coefficients must contain a_0 through a_K");
+        return 0;
+    }
+    view->owned = flint_malloc((size_t) length * sizeof(*view->owned));
+    if (view->owned == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate packed coefficients");
+        return 0;
+    }
+    fmpz_t converted;
+    fmpz_init(converted);
+    for (uint32_t index = 0; index < length; ++index)
+    {
+        napi_value entry;
+        if (!check_napi(env, napi_get_element(env, value, index, &entry)) ||
+            !value_to_fmpz(env, entry, converted))
+        {
+            fmpz_clear(converted);
+            packed_coefficient_view_clear(view);
+            return 0;
+        }
+        if (!fmpz_fits_si(converted))
+        {
+            fmpz_clear(converted);
+            packed_coefficient_view_clear(view);
+            napi_throw_range_error(env, NULL,
+                "coefficient exceeds packed signed storage");
+            return 0;
+        }
+        const slong coefficient = fmpz_get_si(converted);
+        if (coefficient < INT32_MIN || coefficient > INT32_MAX)
+        {
+            fmpz_clear(converted);
+            packed_coefficient_view_clear(view);
+            napi_throw_range_error(env, NULL,
+                "coefficient exceeds packed signed storage");
+            return 0;
+        }
+        view->owned[index] = (int32_t) coefficient;
+    }
+    fmpz_clear(converted);
+    view->data = view->owned;
+    view->length = (slong) length;
+    return 1;
 }
 
 static napi_value decimal_from_arf(
@@ -1167,39 +1570,17 @@ napi_value sagejs_ec_completed_central_derivatives(
         return NULL;
     }
 
-    bool is_array = false;
-    uint32_t coefficient_count = 0;
-    if (!check_napi(env, napi_is_array(env, args[2], &is_array)) || !is_array ||
-        !check_napi(env,
-            napi_get_array_length(env, args[2], &coefficient_count)) ||
-        coefficient_count < 2)
+    packed_coefficient_view coefficient_view;
+    if (!value_to_packed_coefficients(env, args[2], &coefficient_view))
     {
         fmpz_clear(conductor);
-        napi_throw_type_error(env, NULL,
-            "coefficients must be an array containing a_0 through a_K");
         return NULL;
     }
 
-    const slong cutoff = (slong) coefficient_count - 1;
+    const slong cutoff = coefficient_view.length - 1;
     fmpz *coefficients = _fmpz_vec_init(cutoff);
-    int valid = 1;
     for (slong n = 1; n <= cutoff; ++n)
-    {
-        napi_value coefficient;
-        if (!check_napi(env,
-                napi_get_element(env, args[2], (uint32_t) n, &coefficient)) ||
-            !value_to_fmpz(env, coefficient, coefficients + n - 1))
-        {
-            valid = 0;
-            break;
-        }
-    }
-    if (!valid)
-    {
-        _fmpz_vec_clear(coefficients, cutoff);
-        fmpz_clear(conductor);
-        return NULL;
-    }
+        fmpz_set_si(coefficients + n - 1, coefficient_view.data[n]);
 
     const slong work_precision = target_bits + 24;
     arb_ptr derivatives = _arb_vec_init(derivative_count);
@@ -1213,6 +1594,7 @@ napi_value sagejs_ec_completed_central_derivatives(
         coefficients, cutoff, conductor, (int) root_number, first_order,
         derivative_count, target_bits, work_precision);
     _fmpz_vec_clear(coefficients, cutoff);
+    packed_coefficient_view_clear(&coefficient_view);
     fmpz_clear(conductor);
     if (call_status == SAGEJS_EC_LFUNCTION_INVALID_INPUT ||
         call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT)
@@ -1326,16 +1708,16 @@ failure:
 
 napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
 {
-    napi_value args[5];
-    size_t argc = 5;
+    napi_value args[6];
+    size_t argc = 6;
     if (!check_napi(env,
             napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
-    if (argc != 5)
+    if (argc != 5 && argc != 6)
     {
         napi_throw_type_error(env, NULL,
             "ecLseriesValues expects conductor, root number, coefficient "
-            "array, complex-point array, and precision");
+            "array, complex-point array, precision, and optional refinement bits");
         return NULL;
     }
 
@@ -1343,9 +1725,12 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
     fmpz_init(conductor);
     slong root_number = 0;
     slong target_bits = 0;
+    slong refinement_bits = 0;
     if (!value_to_fmpz(env, args[0], conductor) ||
         !value_to_slong(env, args[1], -1, 1, &root_number) ||
-        !value_to_slong(env, args[4], 16, 4096, &target_bits))
+        !value_to_slong(env, args[4], 16, 4096, &target_bits) ||
+        (argc == 6 && !value_to_slong(
+            env, args[5], 0, 256, &refinement_bits)))
     {
         fmpz_clear(conductor);
         return NULL;
@@ -1366,12 +1751,13 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         point_count_u32 > SAGEJS_EC_LSERIES_MAX_POINTS)
     {
         napi_throw_range_error(env, NULL,
-            "points must be a nonempty array with at most 256 entries");
+            "points must be a nonempty array with at most 10000 entries");
         fmpz_clear(conductor);
         return NULL;
     }
     const slong point_count = (slong) point_count_u32;
-    const slong planning_precision = target_bits + 128;
+    const slong fine_target_bits = target_bits + refinement_bits;
+    const slong planning_precision = fine_target_bits + 128;
     acb_ptr points = _acb_vec_init(point_count);
     if (!values_to_acb_points(
             env, args[3], points, point_count, planning_precision))
@@ -1419,14 +1805,14 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
     const double summation_bits =
         2.0 * fmax(0.0, -log(a_double) / SAGEJS_LN2);
     const double preliminary_D =
-        (double) target_bits * SAGEJS_LN2 +
+        (double) fine_target_bits * SAGEJS_LN2 +
         SAGEJS_PI * initial_tmax / 2.0 + 64.0;
     const double preliminary_U =
         fmax(0.0, log(preliminary_D / a_double));
     const double real_growth_bits =
         initial_real_width * preliminary_U / SAGEJS_LN2;
     const double work_double =
-        (double) target_bits + conversion_bits + summation_bits +
+        (double) fine_target_bits + conversion_bits + summation_bits +
         real_growth_bits + 48.0;
     if (!isfinite(work_double) || work_double > 8192.0)
     {
@@ -1454,48 +1840,41 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
     arb_clear(conductor_arb);
     arb_clear(pi);
 
-    uint32_t coefficient_count = 0;
-    is_array = false;
-    if (!check_napi(env, napi_is_array(env, args[2], &is_array)) || !is_array ||
-        !check_napi(env,
-            napi_get_array_length(env, args[2], &coefficient_count)) ||
-        coefficient_count < 2)
+    packed_coefficient_view coefficient_view;
+    if (!value_to_packed_coefficients(env, args[2], &coefficient_view))
     {
-        napi_throw_type_error(env, NULL,
-            "coefficients must be an array containing a_0 through a_K");
         _acb_vec_clear(points, point_count);
         fmpz_clear(conductor);
         return NULL;
     }
-    const slong cutoff = (slong) coefficient_count - 1;
-    fmpz *coefficients = _fmpz_vec_init(cutoff);
-    for (slong n = 1; n <= cutoff; ++n)
-    {
-        napi_value coefficient;
-        if (!check_napi(env,
-                napi_get_element(env, args[2], (uint32_t) n, &coefficient)) ||
-            !value_to_fmpz(env, coefficient, coefficients + n - 1))
-        {
-            _fmpz_vec_clear(coefficients, cutoff);
-            _acb_vec_clear(points, point_count);
-            fmpz_clear(conductor);
-            return NULL;
-        }
-    }
+    const slong cutoff = coefficient_view.length - 1;
 
     acb_ptr completed = _acb_vec_init(point_count);
     acb_ptr raw = _acb_vec_init(point_count);
+    acb_ptr coarse_completed = refinement_bits == 0
+        ? NULL : _acb_vec_init(point_count);
+    acb_ptr coarse_raw = refinement_bits == 0
+        ? NULL : _acb_vec_init(point_count);
     mag_ptr coefficient_tail_bounds = _mag_vec_init(point_count);
     mag_ptr grid_omission_bounds = _mag_vec_init(point_count);
     mag_ptr outer_tail_bounds = _mag_vec_init(point_count);
     mag_ptr raw_conversion_magnitudes = _mag_vec_init(point_count);
     sagejs_ec_lfunction_diagnostics diagnostics;
-    const int call_status = sagejs_ec_lseries_values_acb(
-        completed, raw, coefficient_tail_bounds, grid_omission_bounds,
-        outer_tail_bounds, raw_conversion_magnitudes, &diagnostics,
-        coefficients, cutoff, conductor, (int) root_number, points,
-        point_count, target_bits, work_precision);
-    _fmpz_vec_clear(coefficients, cutoff);
+    const int call_status = refinement_bits == 0
+        ? sagejs_ec_lseries_values_acb(
+            completed, raw, coefficient_tail_bounds, grid_omission_bounds,
+            outer_tail_bounds, raw_conversion_magnitudes, &diagnostics,
+            coefficient_view.data + 1, cutoff, conductor,
+            (int) root_number, points, point_count, target_bits,
+            work_precision)
+        : sagejs_ec_lseries_values_refined_acb(
+            coarse_completed, coarse_raw, completed, raw,
+            coefficient_tail_bounds, grid_omission_bounds,
+            outer_tail_bounds, raw_conversion_magnitudes, &diagnostics,
+            coefficient_view.data + 1, cutoff, conductor,
+            (int) root_number, points, point_count, target_bits,
+            refinement_bits, work_precision);
+    packed_coefficient_view_clear(&coefficient_view);
     fmpz_clear(conductor);
     if (call_status == SAGEJS_EC_LFUNCTION_INVALID_INPUT ||
         call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT)
@@ -1506,6 +1885,9 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         _mag_vec_clear(coefficient_tail_bounds, point_count);
         _acb_vec_clear(raw, point_count);
         _acb_vec_clear(completed, point_count);
+        if (coarse_raw != NULL) _acb_vec_clear(coarse_raw, point_count);
+        if (coarse_completed != NULL)
+            _acb_vec_clear(coarse_completed, point_count);
         _acb_vec_clear(points, point_count);
         napi_throw_range_error(env, NULL,
             call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT
@@ -1514,12 +1896,16 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         return NULL;
     }
 
-    napi_value result, values, status, rigorous, analytic_status;
+    napi_value result, values, coarse_values = NULL;
+    napi_value status, rigorous, analytic_status;
     napi_value discretization_status;
     napi_value known_error_target_met;
     if (!check_napi(env, napi_create_object(env, &result)) ||
         !check_napi(env,
             napi_create_array_with_length(env, point_count_u32, &values)) ||
+        (refinement_bits != 0 && !check_napi(env,
+            napi_create_array_with_length(
+                env, point_count_u32, &coarse_values))) ||
         !check_napi(env, napi_create_string_utf8(
             env,
             diagnostics.status == SAGEJS_EC_LFUNCTION_OK
@@ -1537,6 +1923,8 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
             &discretization_status)) ||
         !set_named(env, result, "status", status) ||
         !set_named(env, result, "values", values) ||
+        (refinement_bits != 0 &&
+            !set_named(env, result, "coarseValues", coarse_values)) ||
         !set_named(env, result, "rigorous", rigorous) ||
         !set_named(env, result, "knownErrorTargetMet",
             known_error_target_met) ||
@@ -1544,6 +1932,10 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         !set_named(env, result, "trapezoidDiscretizationStatus",
             discretization_status) ||
         !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(
+            env, result, "finePrecisionBits", fine_target_bits) ||
+        !set_named_slong(
+            env, result, "refinementBits", refinement_bits) ||
         !set_named_slong(
             env, result, "workPrecisionBits", work_precision) ||
         !set_named_slong(env, result, "cutoff", diagnostics.actual_cutoff) ||
@@ -1561,7 +1953,8 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
             diagnostics.max_abs_real_offset))
         goto lseries_failure;
 
-    const slong digits = (slong) ceil((double) target_bits * 0.30103) + 12;
+    const slong digits =
+        (slong) ceil((double) fine_target_bits * 0.30103) + 12;
     arf_t converted;
     arf_init(converted);
     mag_t total_error;
@@ -1634,6 +2027,22 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
             !check_napi(env,
                 napi_set_element(env, values, (uint32_t) index, item)))
             goto lseries_value_failure;
+        if (refinement_bits != 0)
+        {
+            napi_value coarse_item = NULL;
+            napi_value coarse_completed_object = complex_ball_to_object(
+                env, coarse_completed + index, digits, work_precision);
+            napi_value coarse_raw_object = complex_ball_to_object(
+                env, coarse_raw + index, digits, work_precision);
+            if (coarse_completed_object == NULL || coarse_raw_object == NULL ||
+                !check_napi(env, napi_create_object(env, &coarse_item)) ||
+                !set_named(
+                    env, coarse_item, "completed", coarse_completed_object) ||
+                !set_named(env, coarse_item, "raw", coarse_raw_object) ||
+                !check_napi(env, napi_set_element(
+                    env, coarse_values, (uint32_t) index, coarse_item)))
+                goto lseries_value_failure;
+        }
     }
     arf_set_mag(converted, maximum_coefficient_tail);
     napi_value maximum_coefficient = decimal_from_arf(env, converted, digits);
@@ -1664,6 +2073,9 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
     _mag_vec_clear(coefficient_tail_bounds, point_count);
     _acb_vec_clear(raw, point_count);
     _acb_vec_clear(completed, point_count);
+    if (coarse_raw != NULL) _acb_vec_clear(coarse_raw, point_count);
+    if (coarse_completed != NULL)
+        _acb_vec_clear(coarse_completed, point_count);
     _acb_vec_clear(points, point_count);
     return result;
 
@@ -1680,6 +2092,176 @@ lseries_failure:
     _mag_vec_clear(outer_tail_bounds, point_count);
     _mag_vec_clear(grid_omission_bounds, point_count);
     _mag_vec_clear(coefficient_tail_bounds, point_count);
+    _acb_vec_clear(raw, point_count);
+    _acb_vec_clear(completed, point_count);
+    if (coarse_raw != NULL) _acb_vec_clear(coarse_raw, point_count);
+    if (coarse_completed != NULL)
+        _acb_vec_clear(coarse_completed, point_count);
+    _acb_vec_clear(points, point_count);
+    return NULL;
+}
+
+napi_value sagejs_ec_lseries_direct_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[5];
+    size_t argc = 5;
+    if (!check_napi(env,
+            napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 5)
+    {
+        napi_throw_type_error(env, NULL,
+            "ecLseriesDirectValues expects conductor, coefficient array, "
+            "complex-point array, cutoff array, and precision");
+        return NULL;
+    }
+
+    fmpz_t conductor;
+    fmpz_init(conductor);
+    slong target_bits = 0;
+    if (!value_to_fmpz(env, args[0], conductor) ||
+        !value_to_slong(env, args[4], 16, 4096, &target_bits))
+    {
+        fmpz_clear(conductor);
+        return NULL;
+    }
+
+    bool is_array = false;
+    uint32_t point_count_u32 = 0;
+    uint32_t cutoff_count_u32 = 0;
+    if (!check_napi(env, napi_is_array(env, args[2], &is_array)) ||
+        !is_array ||
+        !check_napi(env,
+            napi_get_array_length(env, args[2], &point_count_u32)) ||
+        point_count_u32 < 1 || point_count_u32 > 10000 ||
+        !check_napi(env, napi_is_array(env, args[3], &is_array)) ||
+        !is_array ||
+        !check_napi(env,
+            napi_get_array_length(env, args[3], &cutoff_count_u32)) ||
+        cutoff_count_u32 != point_count_u32)
+    {
+        napi_throw_range_error(env, NULL,
+            "direct points and cutoffs must be equal nonempty arrays with "
+            "at most 10000 entries");
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    const slong point_count = (slong) point_count_u32;
+    const slong work_precision = target_bits + 96;
+    acb_ptr points = _acb_vec_init(point_count);
+    slong *cutoffs = flint_malloc((size_t) point_count * sizeof(*cutoffs));
+    if (cutoffs == NULL || !values_to_acb_points(
+            env, args[2], points, point_count, work_precision))
+    {
+        flint_free(cutoffs);
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    slong maximum_cutoff = 0;
+    for (slong index = 0; index < point_count; ++index)
+    {
+        napi_value cutoff_value;
+        if (!check_napi(env, napi_get_element(
+                env, args[3], (uint32_t) index, &cutoff_value)) ||
+            !value_to_slong(
+                env, cutoff_value, 1, SAGEJS_EC_LSERIES_MAX_CUTOFF,
+                cutoffs + index))
+        {
+            flint_free(cutoffs);
+            _acb_vec_clear(points, point_count);
+            fmpz_clear(conductor);
+            return NULL;
+        }
+        if (cutoffs[index] > maximum_cutoff)
+            maximum_cutoff = cutoffs[index];
+    }
+
+    packed_coefficient_view coefficient_view;
+    if (!value_to_packed_coefficients(env, args[1], &coefficient_view) ||
+        coefficient_view.length - 1 < maximum_cutoff)
+    {
+        if (coefficient_view.data != NULL)
+        {
+            packed_coefficient_view_clear(&coefficient_view);
+            napi_throw_range_error(env, NULL,
+                "direct coefficients must contain every requested prefix");
+        }
+        flint_free(cutoffs);
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    const slong available_cutoff = coefficient_view.length - 1;
+
+    acb_ptr completed = _acb_vec_init(point_count);
+    acb_ptr raw = _acb_vec_init(point_count);
+    sagejs_ec_lfunction_diagnostics diagnostics;
+    const int call_status = sagejs_ec_lseries_direct_values_acb(
+        completed, raw, &diagnostics, coefficient_view.data + 1, available_cutoff,
+        conductor, points, cutoffs, point_count, target_bits,
+        work_precision);
+    packed_coefficient_view_clear(&coefficient_view);
+    flint_free(cutoffs);
+    fmpz_clear(conductor);
+    if (call_status != SAGEJS_EC_LFUNCTION_OK)
+    {
+        _acb_vec_clear(raw, point_count);
+        _acb_vec_clear(completed, point_count);
+        _acb_vec_clear(points, point_count);
+        napi_throw_range_error(env, NULL,
+            call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT
+                ? "direct elliptic L-series request exceeds resource limits"
+                : "invalid direct elliptic L-series input");
+        return NULL;
+    }
+
+    napi_value result, values, status, algorithm, rigorous;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_array_with_length(
+            env, point_count_u32, &values)) ||
+        !check_napi(env, napi_create_string_utf8(
+            env, "ok", NAPI_AUTO_LENGTH, &status)) ||
+        !check_napi(env, napi_create_string_utf8(
+            env, "direct", NAPI_AUTO_LENGTH, &algorithm)) ||
+        !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !set_named(env, result, "status", status) ||
+        !set_named(env, result, "algorithm", algorithm) ||
+        !set_named(env, result, "values", values) ||
+        !set_named(env, result, "rigorous", rigorous) ||
+        !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(
+            env, result, "workPrecisionBits", work_precision) ||
+        !set_named_slong(
+            env, result, "cutoff", diagnostics.actual_cutoff) ||
+        !set_named_slong(
+            env, result, "coefficientTerms", diagnostics.coefficient_terms) ||
+        !set_named_slong(env, result, "pointCount", point_count))
+        goto direct_failure;
+
+    const slong digits = (slong) ceil((double) target_bits * 0.30103) + 12;
+    for (slong index = 0; index < point_count; ++index)
+    {
+        napi_value item = NULL;
+        napi_value raw_object = complex_ball_to_object(
+            env, raw + index, digits, target_bits + 32);
+        napi_value completed_object = complex_ball_to_object(
+            env, completed + index, digits, target_bits + 32);
+        if (raw_object == NULL || completed_object == NULL ||
+            !check_napi(env, napi_create_object(env, &item)) ||
+            !set_named(env, item, "raw", raw_object) ||
+            !set_named(env, item, "completed", completed_object) ||
+            !check_napi(env, napi_set_element(
+                env, values, (uint32_t) index, item)))
+            goto direct_failure;
+    }
+    _acb_vec_clear(raw, point_count);
+    _acb_vec_clear(completed, point_count);
+    _acb_vec_clear(points, point_count);
+    return result;
+
+direct_failure:
     _acb_vec_clear(raw, point_count);
     _acb_vec_clear(completed, point_count);
     _acb_vec_clear(points, point_count);

@@ -5,6 +5,7 @@
 #include <flint/arb.h>
 #include <flint/fmpz.h>
 #include <flint/mag.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,11 +97,60 @@ int sagejs_ec_lseries_values_acb(
     mag_ptr outer_tail_bounds,
     mag_ptr raw_conversion_magnitudes,
     sagejs_ec_lfunction_diagnostics *diagnostics,
-    const fmpz *coefficients,
+    const int32_t *coefficients,
     slong available_cutoff,
     const fmpz_t conductor,
     int root_number,
     acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong work_precision);
+
+/* One nested refinement: the target+refinement fine grid is evaluated once,
+   and every even node forms a coarse sum with step 2h. Fine outputs and
+   diagnostics obey `target_bits + refinement_bits`; coarse outputs are the
+   non-rigorous stability witness. */
+int sagejs_ec_lseries_values_refined_acb(
+    acb_ptr coarse_completed,
+    acb_ptr coarse_raw,
+    acb_ptr fine_completed,
+    acb_ptr fine_raw,
+    mag_ptr coefficient_tail_bounds,
+    mag_ptr grid_omission_bounds,
+    mag_ptr outer_tail_bounds,
+    mag_ptr raw_conversion_magnitudes,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong refinement_bits,
+    slong work_precision);
+
+/*
+ * Evaluate finite direct Dirichlet prefixes
+ *
+ *   L_K(E,s) = sum_{n=1}^K a_n n^(-s)
+ *
+ * for a batch of points.  `cutoffs[index]` selects the checked prefix used
+ * for that point, while `available_cutoff` describes the shared coefficient
+ * storage.  Tail planning and route selection intentionally remain in the
+ * ordinary Python layer; this primitive accelerates only the measured Acb
+ * finite-sum/compiler limitation.  `completed` uses the same canonical
+ * normalization as `sagejs_ec_lseries_values_acb`.
+ */
+int sagejs_ec_lseries_direct_values_acb(
+    acb_ptr completed,
+    acb_ptr raw,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    acb_srcptr points,
+    const slong *cutoffs,
     slong point_count,
     slong target_bits,
     slong work_precision);

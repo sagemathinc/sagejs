@@ -175,7 +175,7 @@ test("dispatcher retries native coefficients and preserves per-point errors", as
         "E = MockCurve()",
         'R = M.lseries_values(E, [["1","1"]], 1, 53, algorithm="native")',
         "[R['algorithm'] == 'native', R['coefficient_prefix_extensions'] == 1,",
-        " E.calls == 3, R['point_diagnostics'][0]['raw_accuracy_bits'] == 105,",
+        " E.calls == 4, R['point_diagnostics'][0]['raw_accuracy_bits'] == 105,",
         " R['analytic_error_bound'] != '0',",
         " R['conversion_amplification_bound'] == '4.0', R['refinement_stable']]",
       ].join("\n"),

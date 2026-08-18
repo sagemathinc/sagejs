@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 4424,
-      "bytes": 142418,
+      "lines": 4435,
+      "bytes": 142932,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -61,8 +61,8 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 1687,
-      "bytes": 62766,
+      "lines": 2269,
+      "bytes": 84742,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [

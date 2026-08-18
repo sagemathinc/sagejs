@@ -852,3 +852,29 @@ Keep these outside this bounded optimization pass:
 5. derivatives and Taylor series at arbitrary complex points;
 6. twists and family-wide prepared evaluators;
 7. higher-genus and general motivic `L`-functions.
+
+## Implementation receipt
+
+Implemented on the `ell-lseries` branch in August 2026.
+
+- Added an explicit-tail direct Dirichlet-series route for far-right points,
+  including native Acb evaluation and independent refinement.
+- Reworked the split-Mellin kernel around a descending Horner grid,
+  recurrent point weights, packed signed coefficients, plan-before-copy, and
+  a nested coarse/fine refinement witness.
+- Fixed batches larger than the 64-entry LRU, preserved order and duplicates,
+  raised the native batch ceiling under operation limits, added
+  `values_along_line`, and exposed concise last-request diagnostics.
+- Added a private regional plotting protocol. `complex_plot(L, ...)` now uses
+  bounded batches, conjugation symmetry, adaptive 16/24/32-bit visual
+  refinement, rendered-channel comparison, and explicit unstable pixels.
+- Retained the readable arbitrary-precision reference implementation and the
+  public non-rigorous numerical contract.
+
+On the development x86-64 host, the user curve's warm `L(10+I)` direct call is
+about 12--14 ms, a 16-by-16 rectangle is about 0.76 s, a 101-point line is
+about 0.72 s, and a default 100-by-100 adaptive plot is about 3.1 s. The same
+plot forced to 53 bits is about 5.6 s: materially faster, though the measured
+1.8x ratio is below the aspirational 2x target. Every accepted adaptive pixel
+in the regression grid is within one 8-bit channel level of the 53-bit
+baseline, and unresolved phase is never rendered as a plausible hue.

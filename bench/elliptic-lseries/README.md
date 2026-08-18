@@ -1,10 +1,12 @@
 # Elliptic `L`-series benchmark
 
 The matched workload measures construction, first evaluation, repeated
-evaluation, and five independent points. The independent and batch workloads
-each use a separate, freshly constructed L-series object, so neither path can
-reuse values populated by the other. Sage.js also reports its `values` batch
-path.
+evaluation, and five independent points. For the motivating large-conductor
+curve it additionally records the user-provided moderate-height points, the
+proved direct-series route at `10+i`, a 101-point line, a 16-by-16 rectangle,
+and adaptive versus forced-53-bit 100-by-100 domain-coloring plots. The
+independent and batch workloads use separate L-series objects, so neither path
+can reuse values populated by the other.
 
 ```sh
 # Sage/PARI, one process
@@ -31,3 +33,8 @@ The production target from the implementation plan is no worse than twice the
 same-host Sage/PARI time for the first `L(1+i)` on `[1,2,3,4,999]`, with a batch
 materially faster than independent cold calls. These are engineering targets,
 not cross-machine constants.
+
+The plotting timers include numerical evaluation and result transfer but not
+browser rendering. `complex_plot_diagnostics` records evaluated versus
+conjugation-reconstructed pixels and the accepted precision tier, making a
+fast but numerically unresolved image visible in the benchmark output.

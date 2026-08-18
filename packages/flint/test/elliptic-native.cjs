@@ -63,7 +63,7 @@ test("smalljac tiny-prime traces remain signed on every native ABI", () => {
     1n, 2n, 3n, 4n, 999n, 430250329n, 16n,
   );
   assert.deepEqual(
-    coefficients.map(String),
+    Array.from(coefficients, String),
     [
       "0", "1", "1", "0", "-1", "2", "0", "-1", "-3",
       "-3", "2", "-4", "0", "-4", "-1", "0", "-1",

@@ -696,14 +696,28 @@ def _lseries_complex_argument(field: Any, value: Any) -> Any:
         return field(real_part, imag_part)
 
 
+def _lseries_record_get(record: Any, name: str) -> Any:
+    """Read both strict-library mappings and baselib native records."""
+    getter = runtime.reflect.get(record, "get")
+    if runtime.jstype(getter) == "function":
+        return runtime.reflect.apply(getter, record, [name])
+    return runtime.reflect.get(record, name)
+
+
 @runtime.callable_instance_class
 class Lseries_ell:
     """Numerical complex `L`-series attached to an elliptic curve over `QQ`.
 
-    Values use a portable split-Mellin evaluator at 32 through 512 bits and
-    moderate imaginary height.  Results are arbitrary-precision numerical
-    approximations: coefficient truncation and Acb rounding are tracked, but
-    the quadrature discretization error does not yet have a proved enclosure.
+    Values use a proved-tail direct series in the far-right half-plane and a
+    portable split-Mellin evaluator at 32 through 512 bits and moderate
+    imaginary height. `values` and `values_along_line` share prepared native
+    work across points. `complex_plot(L, ...)` additionally uses adaptive
+    16/24/32-bit rendered-color stability and reports its aggregate decisions
+    in the graphics PlotSpec diagnostics.
+
+    Results are non-rigorous arbitrary-precision numerical approximations:
+    coefficient truncation and Acb rounding are tracked, but the Mellin
+    quadrature discretization error does not yet have a proved enclosure.
     """
 
     def __init__(self, curve: Any) -> None:
@@ -737,7 +751,229 @@ class Lseries_ell:
         self._value_cache.set(key, value)
         if len(self._value_cache_keys) > 64:
             oldest = self._value_cache_keys.pop(0)
-            self._value_cache.delete(oldest)
+            runtime.reflect.apply(
+                runtime.reflect.get(self._value_cache, "delete"),
+                self._value_cache,
+                [oldest],
+            )
+
+    def _fast_direct_plan(self, point: list[str], precision: int) -> Any:
+        """Return conservative binary64 cutoffs for the proved direct tail.
+
+        This warm default-precision path mirrors the arbitrary-precision
+        planner's bound `K^(2-sigma)/(sigma-2)`.  The cutoff is inflated before
+        the inequality is checked again, so binary64 planning cannot shave an
+        integer off the requested prefix.
+        """
+        sigma = float(point[0])
+        if precision > 53 or sigma < 4.0 or sigma > 40.0:
+            return None
+        exponent = sigma - 2.0
+        cutoffs = []
+        tail_bounds = []
+        for tail_bits in (precision + 20, precision + 52):
+            log_cutoff = (
+                tail_bits * runtime.math.LN2 - runtime.math.log(exponent)
+            ) / exponent
+            if log_cutoff >= runtime.math.log(5000000.0):
+                return None
+            cutoff = int(runtime.math.ceil(runtime.math.exp(log_cutoff))) + 2
+            target = runtime.math.pow(2.0, -tail_bits)
+            tail = runtime.math.pow(cutoff, -exponent) / exponent
+            while tail > target and cutoff < 5000000:
+                cutoff += 1
+                tail = runtime.math.pow(cutoff, -exponent) / exponent
+            if cutoff >= 5000000:
+                return None
+            cutoffs.append(cutoff)
+            tail_bounds.append(tail)
+        return {"cutoffs": cutoffs, "tail_bounds": tail_bounds}
+
+    def _fast_direct_values(
+        self,
+        point_pairs: list[list[str]],
+        precision: int,
+        algorithm: str,
+    ) -> Any:
+        """Use the native direct series without loading mpmath policy code."""
+        if algorithm == "reference":
+            return None
+        plans = []
+        for point in point_pairs:
+            plan = self._fast_direct_plan(point, precision)
+            if plan is None:
+                return None
+            plans.append(plan)
+        first_cutoffs = [_lseries_record_get(plan, "cutoffs")[0] for plan in plans]
+        final_cutoffs = [_lseries_record_get(plan, "cutoffs")[1] for plan in plans]
+        maximum_cutoff = max(final_cutoffs)
+        coefficients = self._coefficient_prefix.through(maximum_cutoff)
+        first = self._curve._lseries_direct_values_native(
+            coefficients, point_pairs, first_cutoffs, precision
+        )
+        final = self._curve._lseries_direct_values_native(
+            coefficients, point_pairs, final_cutoffs, precision + 32
+        )
+        first_values = list(runtime.reflect.get(first, "values"))
+        final_values = list(runtime.reflect.get(final, "values"))
+        if len(first_values) != len(point_pairs) or len(final_values) != len(
+            point_pairs
+        ):
+            raise ArithmeticError("native direct L-series returned invalid size")
+        maximum_difference = 0.0
+        for first_value, final_value in zip(first_values, final_values, strict=True):
+            if int(_lseries_record_get(final_value, "raw_accuracy_bits")) < precision:
+                raise ArithmeticError(
+                    "native direct L-series arithmetic accuracy is insufficient"
+                )
+            for prefix in ("raw_", "completed_"):
+                first_real = float(_lseries_record_get(first_value, prefix + "real"))
+                first_imag = float(_lseries_record_get(first_value, prefix + "imag"))
+                final_real = float(_lseries_record_get(final_value, prefix + "real"))
+                final_imag = float(_lseries_record_get(final_value, prefix + "imag"))
+                difference = runtime.math.hypot(
+                    final_real - first_real, final_imag - first_imag
+                )
+                scale = max(1.0, runtime.math.hypot(final_real, final_imag))
+                if not runtime.number.isFinite(
+                    difference
+                ) or not runtime.number.isFinite(scale):
+                    raise ArithmeticError(
+                        "native direct L-series refinement is not finite"
+                    )
+                maximum_difference = max(maximum_difference, difference)
+                if difference > runtime.math.pow(2.0, -precision + 4) * scale:
+                    raise ArithmeticError(
+                        "native direct L-series refinement did not stabilize"
+                    )
+        maximum_tail = max(
+            _lseries_record_get(plan, "tail_bounds")[1] for plan in plans
+        )
+        return {
+            "algorithm": "direct",
+            "status": "ok",
+            "precision_bits": precision,
+            "work_precision_bits": precision + 32 + 96,
+            "cutoff": maximum_cutoff,
+            "required_cutoff": maximum_cutoff,
+            "grid_points": 0,
+            "coefficient_terms": sum(final_cutoffs),
+            "coefficient_backend": self._coefficient_prefix.backend,
+            "coefficient_prefix_extensions": self._coefficient_prefix.extensions,
+            "values": final_values,
+            "point_count": len(point_pairs),
+            "coefficient_tail_bound": str(maximum_tail),
+            "refinement_difference": str(maximum_difference),
+            "refinement_stable": True,
+            "rigorous": False,
+            "analytic_error_status": "proved_direct_coefficient_tail_only",
+            "quadrature_error_status": "not_applicable",
+        }
+
+    def _fast_mellin_values(
+        self,
+        point_pairs: list[list[str]],
+        precision: int,
+        algorithm: str,
+    ) -> Any:
+        """Run the nested native policy without mpmath point round-trips."""
+        if algorithm == "reference" or precision > 53:
+            return None
+        for point in point_pairs:
+            real_part = float(point[0])
+            imaginary_part = float(point[1])
+            if abs(real_part - 1.0) > 8.0 or abs(imaginary_part) > 100.0:
+                return None
+        refinement_bits = 32
+        planned = self._curve._lseries_values_native(
+            [0, 1], point_pairs, precision, refinement_bits
+        )
+        required = int(_lseries_record_get(planned, "required_cutoff"))
+        if required < 1 or required > 5000000:
+            return None
+        extensions_before = self._coefficient_prefix.extensions
+        coefficients = self._coefficient_prefix.through(required)
+        native = self._curve._lseries_values_native(
+            coefficients, point_pairs, precision, refinement_bits
+        )
+        if str(_lseries_record_get(native, "status")) != "ok" or not bool(
+            _lseries_record_get(native, "known_error_target_met")
+        ):
+            raise ArithmeticError("native elliptic L-series batch did not stabilize")
+        first_values = list(_lseries_record_get(native, "coarse_values"))
+        final_values = list(_lseries_record_get(native, "values"))
+        if len(first_values) != len(point_pairs) or len(final_values) != len(
+            point_pairs
+        ):
+            raise ArithmeticError("native elliptic L-series returned invalid size")
+        maximum_difference = 0.0
+        point_diagnostics = []
+        for first_value, final_value in zip(first_values, final_values, strict=True):
+            if int(_lseries_record_get(final_value, "raw_accuracy_bits")) < precision:
+                raise ArithmeticError(
+                    "native elliptic L-series arithmetic accuracy is insufficient"
+                )
+            for prefix in ("raw_", "completed_"):
+                first_real = float(_lseries_record_get(first_value, prefix + "real"))
+                first_imag = float(_lseries_record_get(first_value, prefix + "imag"))
+                final_real = float(_lseries_record_get(final_value, prefix + "real"))
+                final_imag = float(_lseries_record_get(final_value, prefix + "imag"))
+                difference = runtime.math.hypot(
+                    final_real - first_real, final_imag - first_imag
+                )
+                scale = max(1.0, runtime.math.hypot(final_real, final_imag))
+                maximum_difference = max(maximum_difference, difference)
+                if (
+                    not runtime.number.isFinite(difference)
+                    or not runtime.number.isFinite(scale)
+                    or difference > runtime.math.pow(2.0, -precision + 4) * scale
+                ):
+                    raise ArithmeticError(
+                        "native elliptic L-series refinement did not stabilize"
+                    )
+            point_diagnostics.append(
+                {
+                    "raw_accuracy_bits": int(
+                        _lseries_record_get(final_value, "raw_accuracy_bits")
+                    ),
+                    "completed_accuracy_bits": int(
+                        _lseries_record_get(final_value, "completed_accuracy_bits")
+                    ),
+                    "analytic_error_bound": str(
+                        _lseries_record_get(final_value, "analytic_error_bound")
+                    ),
+                    "rigorous": False,
+                }
+            )
+        return {
+            "algorithm": "native",
+            "status": "ok",
+            "precision_bits": precision,
+            "work_precision_bits": int(
+                _lseries_record_get(native, "work_precision_bits")
+            ),
+            "cutoff": int(_lseries_record_get(native, "cutoff")),
+            "required_cutoff": required,
+            "grid_points": int(_lseries_record_get(native, "grid_points")),
+            "coefficient_terms": int(_lseries_record_get(native, "coefficient_terms")),
+            "coefficient_backend": self._coefficient_prefix.backend,
+            "coefficient_prefix_extended": (
+                self._coefficient_prefix.extensions > extensions_before
+            ),
+            "values": final_values,
+            "point_diagnostics": point_diagnostics,
+            "point_count": len(point_pairs),
+            "analytic_error_bound": str(
+                _lseries_record_get(native, "analytic_error_bound")
+            ),
+            "refinement_difference": str(maximum_difference),
+            "refinement_stable": True,
+            "rigorous": False,
+            "analytic_error_status": str(
+                _lseries_record_get(native, "analytic_error_status")
+            ),
+            "quadrature_error_status": "estimated_by_nested_refinement",
+        }
 
     def _evaluate(
         self,
@@ -748,45 +984,63 @@ class Lseries_ell:
         precision = _lseries_precision(precision_value)
         algorithm = _lseries_algorithm(algorithm_value)
         point_pairs = [self._point_pair(point, precision) for point in points]
-        cached = []
+        resolved = runtime.map()
         missing_points = []
         missing_keys = []
+        scheduled = runtime.map()
         for point in point_pairs:
             key = self._cache_key(point, precision, algorithm)
             value = self._value_cache.get(key)
             if value is runtime.undefined:
-                missing_points.append(point)
-                missing_keys.append(key)
+                if scheduled.get(key) is runtime.undefined:
+                    missing_points.append(point)
+                    missing_keys.append(key)
+                    scheduled.set(key, True)
             else:
-                cached.append(value)
+                resolved.set(key, value)
         if missing_points:
-            result = _elliptic_lseries().lseries_values(
-                self._curve,
-                missing_points,
-                self._curve.root_number(),
-                precision,
-                algorithm=algorithm,
-                coefficient_prefix=self._coefficient_prefix,
-            )
-            if str(result.get("status")) != "ok":
+            result = self._fast_direct_values(missing_points, precision, algorithm)
+            if result is None:
+                result = self._fast_mellin_values(missing_points, precision, algorithm)
+                if result is None:
+                    result = _elliptic_lseries().lseries_values(
+                        self._curve,
+                        missing_points,
+                        self._curve.root_number(),
+                        precision,
+                        algorithm=algorithm,
+                        coefficient_prefix=self._coefficient_prefix,
+                    )
+            if str(_lseries_record_get(result, "status")) != "ok":
                 raise ArithmeticError(
                     "elliptic L-series evaluation failed with status "
-                    + str(result.get("status"))
+                    + str(_lseries_record_get(result, "status"))
                 )
-            new_values = list(result.get("values"))
+            new_values = list(_lseries_record_get(result, "values"))
             if len(new_values) != len(missing_keys):
                 raise ArithmeticError(
                     "elliptic L-series evaluator returned the wrong batch size"
                 )
             for key, value in zip(missing_keys, new_values, strict=True):
+                resolved.set(key, value)
                 self._cache_result(key, value)
             self._last_diagnostics = result
-            cached = []
-            for point in point_pairs:
-                cached.append(
-                    self._value_cache.get(self._cache_key(point, precision, algorithm))
+        # Build this call's answer from the local result table.  A batch may
+        # contain far more entries than the deliberately small persistent LRU;
+        # reconstructing from that LRU would lose values evicted by the same
+        # call.  Duplicate points share one evaluation without changing order.
+        answer = []
+        for point in point_pairs:
+            key = self._cache_key(point, precision, algorithm)
+            value = resolved.get(key)
+            if value is runtime.undefined:
+                value = self._value_cache.get(key)
+            if value is runtime.undefined:
+                raise ArithmeticError(
+                    "elliptic L-series batch result was evicted before use"
                 )
-        return cached, precision
+            answer.append(value)
+        return answer, precision
 
     def _coerce_results(
         self,
@@ -799,7 +1053,10 @@ class Lseries_ell:
         )
         prefix = "completed_" if completed else "raw_"
         return [
-            complex_field(value.get(prefix + "real"), value.get(prefix + "imag"))
+            complex_field(
+                _lseries_record_get(value, prefix + "real"),
+                _lseries_record_get(value, prefix + "imag"),
+            )
             for value in values
         ]
 
@@ -822,12 +1079,164 @@ class Lseries_ell:
         prec: Any = 53,
         algorithm: str = "auto",
     ) -> Any:
-        """Evaluate `L(E, s)` at several points using one shared batch."""
+        """Evaluate `L(E, s)` at several points using one shared batch.
+
+        Input order and duplicates are preserved. Compatible points share
+        coefficients and a Mellin grid; feasible points with real part greater
+        than two use the explicit direct-series tail bound.
+        """
         point_list = list(points)
         if not point_list:
             return []
         values, precision = self._evaluate(point_list, prec, algorithm)
         return self._coerce_results(values, precision, False)
+
+    def values_along_line(
+        self,
+        s0: Any,
+        s1: Any,
+        number_samples: Any,
+        prec: Any = 53,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Return `(s,L(E,s))` at equally spaced points from `s0` toward `s1`.
+
+        As in Sage/lcalc, `number_samples` is the denominator of the step and
+        the endpoint `s1` is not included.
+        """
+        count = int(number_samples)
+        if count < 1:
+            raise ValueError("number_samples must be positive")
+        precision = _lseries_precision(prec)
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            precision
+        )
+        start = _lseries_complex_argument(complex_field, s0)
+        finish = _lseries_complex_argument(complex_field, s1)
+        step = (finish - start) / count
+        points = [start + index * step for index in range(count)]
+        values = self.values(points, prec=precision, algorithm=algorithm)
+        return list(zip(points, values, strict=True))
+
+    def last_diagnostics(self) -> Any:
+        """Return diagnostics for the most recent uncached numerical request."""
+        if self._last_diagnostics is runtime.undefined:
+            return None
+        return self._last_diagnostics
+
+    def _plot_complex_batch(
+        self,
+        points: list[list[float]],
+        precision: int,
+        region: Any = None,
+    ) -> dict[str, Any]:
+        """Evaluate one plot tile with a nested low-precision native grid.
+
+        This private protocol deliberately bypasses the individual-value LRU
+        and returns machine complex values only after Acb has computed a
+        coarse/fine stability pair.  Ordinary `L(s)` precision semantics are
+        unchanged.
+        """
+        target = int(precision)
+        if target < 16 or target > 53:
+            raise ValueError("plot precision must be between 16 and 53 bits")
+        if not points:
+            return {
+                "coarse": [],
+                "fine": [],
+                "errors": [],
+                "diagnostics": {"point_count": 0, "precision_bits": target},
+            }
+        adaptive = region is not None and bool(_lseries_record_get(region, "adaptive"))
+        refinement_bits = 8 if adaptive else 32
+        point_pairs = []
+        expansion = []
+        conjugate_signs = []
+        canonical_indices = runtime.map()
+        for point in points:
+            real_part = float(point[0])
+            imaginary_part = float(point[1])
+            canonical_imaginary = abs(imaginary_part) if adaptive else imaginary_part
+            pair = [str(real_part), str(canonical_imaginary)]
+            if adaptive:
+                key = (
+                    str(runtime.math.round(real_part * 1000000000000.0))
+                    + "|"
+                    + str(runtime.math.round(canonical_imaginary * 1000000000000.0))
+                )
+            else:
+                key = pair[0] + "|" + pair[1]
+            index = canonical_indices.get(key)
+            if index is runtime.undefined:
+                index = len(point_pairs)
+                canonical_indices.set(key, index)
+                point_pairs.append(pair)
+            expansion.append(int(index))
+            conjugate_signs.append(-1.0 if imaginary_part < 0 and adaptive else 1.0)
+        planned = self._curve._lseries_values_native(
+            [0, 1], point_pairs, target, refinement_bits
+        )
+        required = int(runtime.reflect.get(planned, "required_cutoff"))
+        coefficients = self._coefficient_prefix.through(required)
+        result = self._curve._lseries_values_native(
+            coefficients, point_pairs, target, refinement_bits
+        )
+        if str(runtime.reflect.get(result, "status")) != "ok" or not bool(
+            runtime.reflect.get(result, "known_error_target_met")
+        ):
+            raise ArithmeticError("elliptic L-series plot batch did not stabilize")
+        fine_values = list(runtime.reflect.get(result, "values"))
+        coarse_values = list(runtime.reflect.get(result, "coarse_values"))
+        if len(fine_values) != len(point_pairs) or len(coarse_values) != len(
+            point_pairs
+        ):
+            raise ArithmeticError("elliptic L-series plot batch has invalid size")
+        complex_double = runtime.reflect.get(runtime.global_object, "CDF")
+        fine = []
+        coarse = []
+        errors = []
+        for index, sign in zip(expansion, conjugate_signs, strict=True):
+            coarse_value = coarse_values[index]
+            fine_value = fine_values[index]
+            coarse.append(
+                complex_double(
+                    float(runtime.reflect.get(coarse_value, "raw_real")),
+                    sign * float(runtime.reflect.get(coarse_value, "raw_imag")),
+                )
+            )
+            fine.append(
+                complex_double(
+                    float(runtime.reflect.get(fine_value, "raw_real")),
+                    sign * float(runtime.reflect.get(fine_value, "raw_imag")),
+                )
+            )
+            errors.append(
+                float(runtime.reflect.get(fine_value, "analytic_error_bound"))
+                + float(runtime.reflect.get(fine_value, "raw_real_radius"))
+                + float(runtime.reflect.get(fine_value, "raw_imag_radius"))
+            )
+        diagnostics = {
+            "route": "mellin-native-nested",
+            "precision_bits": target,
+            "fine_precision_bits": int(
+                runtime.reflect.get(result, "fine_precision_bits")
+            ),
+            "point_count": len(points),
+            "evaluated_point_count": len(point_pairs),
+            "conjugation_reconstructed": len(points) - len(point_pairs),
+            "cutoff": int(runtime.reflect.get(result, "cutoff")),
+            "grid_points": int(runtime.reflect.get(result, "grid_points")),
+            "coefficient_terms": int(runtime.reflect.get(result, "coefficient_terms")),
+            "coefficient_backend": self._coefficient_prefix.backend,
+            "rigorous": False,
+            "quadrature_error_status": "estimated_by_nested_refinement",
+        }
+        return {
+            "coarse": coarse,
+            "fine": fine,
+            "errors": errors,
+            "diagnostics": diagnostics,
+        }
 
     def completed_value(
         self,
@@ -1235,6 +1644,7 @@ class EllipticCurveParent(sage.Parent):
         coefficients: list[Any],
         points: list[list[str]],
         precision_bits: int,
+        refinement_bits: int = 0,
     ) -> dict[str, Any]:
         """Call the optional batched Acb complex-value boundary."""
         backend = runtime.flint_backend()
@@ -1243,17 +1653,16 @@ class EllipticCurveParent(sage.Parent):
             raise NotImplementedError(
                 "the native Acb elliptic L-series evaluator is unavailable"
             )
-        native = runtime.reflect.apply(
-            native_function,
-            backend,
-            [
-                runtime.integer_bigint(self.conductor()),
-                self.root_number(),
-                coefficients,
-                points,
-                precision_bits,
-            ],
-        )
+        native_arguments = [
+            runtime.integer_bigint(self.conductor()),
+            self.root_number(),
+            coefficients,
+            points,
+            precision_bits,
+        ]
+        if refinement_bits > 0:
+            native_arguments.append(refinement_bits)
+        native = runtime.reflect.apply(native_function, backend, native_arguments)
         values = []
         for value in runtime.reflect.get(native, "values"):
             raw = runtime.reflect.get(value, "raw")
@@ -1297,9 +1706,42 @@ class EllipticCurveParent(sage.Parent):
                     ),
                 }
             )
+        coarse_values = []
+        native_coarse_values = runtime.reflect.get(native, "coarseValues")
+        if native_coarse_values is not runtime.undefined:
+            for value in native_coarse_values:
+                raw = runtime.reflect.get(value, "raw")
+                completed = runtime.reflect.get(value, "completed")
+                coarse_values.append(
+                    {
+                        "raw_real": str(runtime.reflect.get(raw, "realMidpoint")),
+                        "raw_imag": str(runtime.reflect.get(raw, "imagMidpoint")),
+                        "raw_real_radius": str(runtime.reflect.get(raw, "realRadius")),
+                        "raw_imag_radius": str(runtime.reflect.get(raw, "imagRadius")),
+                        "raw_accuracy_bits": int(
+                            runtime.reflect.get(raw, "accuracyBits")
+                        ),
+                        "completed_real": str(
+                            runtime.reflect.get(completed, "realMidpoint")
+                        ),
+                        "completed_imag": str(
+                            runtime.reflect.get(completed, "imagMidpoint")
+                        ),
+                        "completed_real_radius": str(
+                            runtime.reflect.get(completed, "realRadius")
+                        ),
+                        "completed_imag_radius": str(
+                            runtime.reflect.get(completed, "imagRadius")
+                        ),
+                        "completed_accuracy_bits": int(
+                            runtime.reflect.get(completed, "accuracyBits")
+                        ),
+                    }
+                )
         return {
             "status": str(runtime.reflect.get(native, "status")),
             "values": values,
+            "coarse_values": coarse_values,
             "rigorous": bool(runtime.reflect.get(native, "rigorous")),
             "analytic_error_status": str(
                 runtime.reflect.get(native, "analyticErrorStatus")
@@ -1311,6 +1753,10 @@ class EllipticCurveParent(sage.Parent):
                 runtime.reflect.get(native, "knownErrorTargetMet")
             ),
             "precision_bits": int(runtime.reflect.get(native, "precisionBits")),
+            "fine_precision_bits": int(
+                runtime.reflect.get(native, "finePrecisionBits")
+            ),
+            "refinement_bits": int(runtime.reflect.get(native, "refinementBits")),
             "work_precision_bits": int(
                 runtime.reflect.get(native, "workPrecisionBits")
             ),
@@ -1337,6 +1783,73 @@ class EllipticCurveParent(sage.Parent):
             "raw_conversion_magnitude": str(
                 runtime.reflect.get(native, "rawConversionMagnitude")
             ),
+        }
+
+    def _lseries_direct_values_native(
+        self,
+        coefficients: list[Any],
+        points: list[list[str]],
+        cutoffs: list[int],
+        precision_bits: int,
+    ) -> dict[str, Any]:
+        """Accelerate finite direct Dirichlet prefixes with Acb."""
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecLseriesDirectValues")
+        if native_function is runtime.undefined:
+            raise NotImplementedError(
+                "the native Acb direct elliptic L-series evaluator is unavailable"
+            )
+        native = runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                runtime.integer_bigint(self.conductor()),
+                coefficients,
+                points,
+                cutoffs,
+                precision_bits,
+            ],
+        )
+        values = []
+        for value in runtime.reflect.get(native, "values"):
+            raw = runtime.reflect.get(value, "raw")
+            completed = runtime.reflect.get(value, "completed")
+            values.append(
+                {
+                    "raw_real": str(runtime.reflect.get(raw, "realMidpoint")),
+                    "raw_imag": str(runtime.reflect.get(raw, "imagMidpoint")),
+                    "raw_real_radius": str(runtime.reflect.get(raw, "realRadius")),
+                    "raw_imag_radius": str(runtime.reflect.get(raw, "imagRadius")),
+                    "raw_accuracy_bits": int(runtime.reflect.get(raw, "accuracyBits")),
+                    "completed_real": str(
+                        runtime.reflect.get(completed, "realMidpoint")
+                    ),
+                    "completed_imag": str(
+                        runtime.reflect.get(completed, "imagMidpoint")
+                    ),
+                    "completed_real_radius": str(
+                        runtime.reflect.get(completed, "realRadius")
+                    ),
+                    "completed_imag_radius": str(
+                        runtime.reflect.get(completed, "imagRadius")
+                    ),
+                    "completed_accuracy_bits": int(
+                        runtime.reflect.get(completed, "accuracyBits")
+                    ),
+                }
+            )
+        return {
+            "status": str(runtime.reflect.get(native, "status")),
+            "algorithm": str(runtime.reflect.get(native, "algorithm")),
+            "values": values,
+            "precision_bits": int(runtime.reflect.get(native, "precisionBits")),
+            "work_precision_bits": int(
+                runtime.reflect.get(native, "workPrecisionBits")
+            ),
+            "cutoff": int(runtime.reflect.get(native, "cutoff")),
+            "coefficient_terms": int(runtime.reflect.get(native, "coefficientTerms")),
+            "point_count": int(runtime.reflect.get(native, "pointCount")),
+            "rigorous": False,
         }
 
     def _rank_descent_data(self, saturate: bool = False) -> Any:

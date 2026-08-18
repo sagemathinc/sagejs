@@ -81,3 +81,90 @@ test("elliptic L-series handles trivial zeros and explicit algorithms", async ()
     await session.close();
   }
 });
+
+test("elliptic L-series routes far right and preserves large batch order", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "E = EllipticCurve([1,2,3,4,999])",
+        "L = E.lseries()",
+        "far = L(10+I)",
+        "far64 = L.value(10+I, prec=64, algorithm='native')",
+        "points = [10 + k/100*I for k in range(70)]",
+        "batch = L.values(points)",
+        "line = L.values_along_line(10, 10+I, 5)",
+        "[abs(float(far.real()) - 1.0007510301635383) < 2e-13,",
+        " abs(float(far.imag()) + 0.0006232463759930876) < 2e-13,",
+        " abs(float(far64.real()) - 1.0007510301635383) < 2e-13,",
+        " L.last_diagnostics()['algorithm'] == 'direct',",
+        " len(batch) == 70 and len(L._value_cache_keys) <= 64,",
+        " all(batch[k] == L.values([points[k]])[0] for k in [0,17,69]),",
+        " len(line) == 5 and abs(line[0][0]-10) < 1e-15 and",
+        " abs(line[-1][0]-CC(10,0.8)) < 1e-14]",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[True, True, True, True, True, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("complex_plot uses adaptive regional L-series batches", async () => {
+  const session = await createSage();
+  try {
+    const adaptive = await session.evaluate(
+      [
+        "E = EllipticCurve([1,2,3,4,999])",
+        "L = E.lseries()",
+        "cache_before = len(L._value_cache_keys)",
+        "adaptive_plot = complex_plot(L,(0,2),(-4,4),plot_points=12,",
+        "                             interpolation='nearest')",
+        "cache_after = len(L._value_cache_keys)",
+        "adaptive_plot",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    const forced = await session.evaluate(
+      [
+        "forced_plot = complex_plot(L,(0,2),(-4,4),plot_points=12,",
+        "                           plot_precision=53,interpolation='nearest')",
+        "forced_plot",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    const adaptivePixels = adaptive.display?.data.data[0].z;
+    const forcedPixels = forced.display?.data.data[0].z;
+    assert.equal(adaptivePixels.length, 12);
+    assert.equal(adaptivePixels[0].length, 12);
+    let maximumChannelDifference = 0;
+    for (let row = 0; row < 12; row += 1) {
+      for (let column = 0; column < 12; column += 1) {
+        for (let channel = 0; channel < 3; channel += 1) {
+          maximumChannelDifference = Math.max(
+            maximumChannelDifference,
+            Math.abs(
+              adaptivePixels[row][column][channel] -
+                forcedPixels[row][column][channel],
+            ),
+          );
+        }
+      }
+    }
+    assert.ok(maximumChannelDifference <= 1);
+    const diagnostics = await session.evaluate(
+      [
+        "d = adaptive_plot._plot_spec_diagnostics[0]",
+        "[d['provider'], d['pixel_count'], d['unstable_pixels'],",
+        " d['accepted_by_precision']['16'], cache_before == cache_after]",
+      ].join("\n"),
+    );
+    assert.equal(
+      diagnostics.repr,
+      "['private_plot_complex_batch', 144, 0, 144, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
