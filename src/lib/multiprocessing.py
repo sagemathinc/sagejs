@@ -194,6 +194,23 @@ def worker_module_available(name):
         return False
 
 
+def worker_memory_budget_bytes():
+    """Return the host-derived parallel-worker memory budget, if known.
+
+    The Node host accounts for current platform/container availability and
+    reserves headroom before exposing this read-only value.  A missing host or
+    unknown limit returns `None`, allowing arithmetic selectors to fail closed.
+    """
+    try:
+        value = _host_call("multiprocessingMemoryBudgetBytes")
+    except Exception:
+        return None
+    if value is None:
+        return None
+    value = int(value)
+    return value if value >= 0 else None
+
+
 def _apply_call(func, args, kwds):
     """Worker-side adapter for `Pool.apply` keyword arguments."""
     return func(*args, **kwds)

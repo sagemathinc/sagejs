@@ -14,6 +14,7 @@ const {
 const { tmpdir } = require("node:os");
 const { dirname, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -30,6 +31,7 @@ const packageDynamicTemporary = join(temporary, "dynamic-packages");
 const taskDynamicTemporary = join(temporary, "dynamic-tasks");
 const filenameMarker = "__sagejs_precompiled_module_filename__";
 const taskManifestFilename = "task-runtime-modules.json";
+const compilerFilename = join(root, "dist", "compiler", "compiler.js");
 const moduleNamePattern =
   /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 
@@ -55,6 +57,20 @@ function moduleName(filename) {
 
 function cacheResource(name) {
   return `${name.replaceAll(".", "-")}.json`;
+}
+
+function digest(algorithm, value) {
+  return createHash(algorithm).update(value).digest("hex");
+}
+
+function sourceResource(sourceFilename) {
+  const resource = relative(libraryDirectory, sourceFilename)
+    .split(sep)
+    .join("/");
+  if (resource.startsWith("../") || resource === "..") {
+    throw new Error(`compiled source is outside src/lib: ${sourceFilename}`);
+  }
+  return resource;
 }
 
 function portableModuleFilename(name, sourceFilename) {
@@ -146,12 +162,21 @@ function copyCompiledModules(moduleDirectory, taskModules) {
       count += 1;
     }
     if (taskModules) {
+      const source = sourceResource(cached.filename);
+      const sourceSignature = digest(
+        "sha1",
+        readFileSync(join(libraryDirectory, source), "utf8"),
+      );
+      if (sourceSignature !== cached.signature) {
+        throw new Error(`compiled source signature is stale for ${name}`);
+      }
       taskModules[name] = {
         resource,
         version: cached.version,
         signature: cached.signature,
         mode: cached.mode,
         filename: portableModuleFilename(name, cached.filename),
+        source,
       };
     }
   }
@@ -217,7 +242,8 @@ try {
   writeFileSync(
     join(outputDirectory, taskManifestFilename),
     JSON.stringify({
-      schema: "sagejs.task-runtime-modules/v1",
+      schema: "sagejs.task-runtime-modules/v2",
+      compilerSha256: digest("sha256", readFileSync(compilerFilename)),
       roots: [...taskImports].sort(),
       modules: sortedTaskModules,
     }),
