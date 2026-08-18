@@ -113,7 +113,7 @@
       "category": "mathematical-algorithm",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Its optional proof-carrying mode performs a distinct exact terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot; it does not replay enlargement."
+      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Its optional proof-carrying mode performs a distinct terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot: p-adic workers rerun the theorem from their certified modulo-p-squared tensor with fresh workspaces and generic row selection, while non-p-adic workers use their live exact table. It does not replay enlargement."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
@@ -127,7 +127,7 @@
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It packs a proof-carrying construction result that binds the nested canonical order, sealed polynomial, full caller-prime tuple, local canonical bases, and independently rederived terminal radicals and full-rank multiplier minors. This representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, while a FLINT resource producer took 2.356s for three primes; the later full 12-prime standalone verifier still cost 3.776s and was rejected from the hot path. The ordinary source remains the external mathematical oracle, immediate generated-call authentication is linear and source-bound, and Windows retains an exact sequential fallback."
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It packs a proof-carrying construction result that binds the nested canonical order, sealed polynomial, full caller-prime tuple, local canonical bases, and independently rederived terminal radicals and full-rank multiplier minors. This representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, while a FLINT resource producer took 2.356s for three primes; the later full 12-prime standalone verifier still cost 3.776s and was removed from the production FFI. Construction-carried verification measured 2.399s total on vector429, including a 0.237s native proof delta and 0.299s current projection. The ordinary source remains the external mathematical oracle, immediate generated-call authentication is prefix-only and source-bound, and Windows retains an exact sequential fallback."
     },
     {
       "path": "bench/number-field-round2-proof-resource-witness.c",

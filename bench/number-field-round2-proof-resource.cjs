@@ -135,14 +135,62 @@ print(json.dumps({
 hints.close()
 `;
 
-const timePath = "/usr/bin/time";
-const timed = process.platform === "linux" && existsSync(timePath);
+const rssWrapper = String.raw`
+import os
+import subprocess
+import sys
+import threading
+import time
+
+source = sys.stdin.buffer.read()
+process = subprocess.Popen(
+    sys.argv[1:],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    start_new_session=True,
+)
+result = {}
+
+def communicate():
+    result["stdout"], result["stderr"] = process.communicate(source)
+
+worker = threading.Thread(target=communicate)
+worker.start()
+peak = 0
+while worker.is_alive():
+    total = 0
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            stat = open("/proc/" + name + "/stat", encoding="ascii").read()
+            close = stat.rfind(")")
+            fields = stat[close + 2:].split()
+            if int(fields[2]) != process.pid:
+                continue
+            status = open("/proc/" + name + "/status", encoding="ascii").read()
+            for line in status.splitlines():
+                if line.startswith("VmRSS:"):
+                    total += int(line.split()[1])
+                    break
+        except (FileNotFoundError, PermissionError, ProcessLookupError, ValueError):
+            pass
+    peak = max(peak, total)
+    time.sleep(0.05)
+worker.join()
+sys.stdout.buffer.write(result["stdout"])
+sys.stderr.buffer.write(result["stderr"])
+sys.stderr.write("__SAGEJS_MAX_RSS_KIB__=" + str(peak) + "\n")
+raise SystemExit(process.returncode)
+`;
+const sampleRss = process.platform === "linux";
 const result = spawnSync(
-  timed ? timePath : process.execPath,
-  timed
+  sampleRss ? "python3" : process.execPath,
+  sampleRss
     ? [
-        "-f",
-        "__SAGEJS_MAX_RSS_KIB__=%M",
+        "-c",
+        rssWrapper,
         process.execPath,
         join(root, "bin/sagejs"),
         "--python",
@@ -184,6 +232,9 @@ report.statistics = {
 };
 report.identity = {
   fixture_sha256: sha256(fixturePath),
+  order_kernel_sha256: sha256(
+    join(root, "packages/flint/include/sagejs/number_field_order_ffi.h"),
+  ),
   proof_source_sha256: sha256(
     join(root, "src/lib/sagejs/number_fields/field_analysis_resource.py"),
   ),

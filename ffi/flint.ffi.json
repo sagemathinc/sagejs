@@ -32737,20 +32737,13 @@
       }
     },
     {
-      "id": "number_field_round2_proof_resource",
-      "python_name": "number_field_round2_proof_resource",
+      "id": "number_field_order_with_round2_proof_resource",
+      "python_name": "number_field_order_with_round2_proof_resource",
       "signature": {
         "parameters": [
           {
             "name": "polynomial",
             "type": "FmpzPolynomial",
-            "ownership": "borrowed",
-            "mutability": "read",
-            "aliasing": "allowed"
-          },
-          {
-            "name": "order",
-            "type": "NumberFieldOrderResource",
             "ownership": "borrowed",
             "mutability": "read",
             "aliasing": "allowed"
@@ -32768,10 +32761,10 @@
         "borrow_from": null
       },
       "dynamic": {
-        "export": "ffiNumberFieldRound2ProofResource"
+        "export": "ffiNumberFieldOrderWithRound2ProofResource"
       },
       "native": {
-        "symbol": "sagejs_number_field_round2_proof_resource",
+        "symbol": "sagejs_number_field_order_with_round2_proof_resource",
         "return_type": "int",
         "arguments": [
           {
@@ -32783,12 +32776,6 @@
           {
             "source": "polynomial",
             "abi_type": "sagejs_fmpz_polynomial_t",
-            "direction": "in",
-            "adapter": null
-          },
-          {
-            "source": "order",
-            "abi_type": "sagejs_number_field_order_resource_t",
             "direction": "in",
             "adapter": null
           },
@@ -32819,7 +32806,7 @@
       },
       "errors": {
         "exception": "ValueError",
-        "message": "invalid completed Round-2 proof input"
+        "message": "invalid proof-carrying number-field order input"
       },
       "exceptions": {
         "policy": "none",

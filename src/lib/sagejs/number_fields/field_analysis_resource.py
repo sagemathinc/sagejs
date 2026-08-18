@@ -22,7 +22,10 @@ from sagejs.native import (
     native,
     uint64,
 )
-from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
+from sagejs.number_fields.maximal_order_certification import (
+    _scaled_integral_inverse,
+    check_order_lattice,
+)
 
 _flint_module: Any = None
 
@@ -126,6 +129,102 @@ def _determinant(rows: list[list[int]]) -> int:
             matrix[row][column] = 0
         previous = pivot
     return sign * matrix[-1][-1]
+
+
+def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
+    old_remainder, remainder = left, right
+    old_left, left_coefficient = 1, 0
+    old_right, right_coefficient = 0, 1
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = (
+            remainder,
+            old_remainder - quotient * remainder,
+        )
+        old_left, left_coefficient = (
+            left_coefficient,
+            old_left - quotient * left_coefficient,
+        )
+        old_right, right_coefficient = (
+            right_coefficient,
+            old_right - quotient * right_coefficient,
+        )
+    if old_remainder < 0:
+        return -old_remainder, -old_left, -old_right
+    return old_remainder, old_left, old_right
+
+
+def _ordinary_row_hnf(rows: list[list[int]]) -> list[list[int]]:
+    """Return the canonical row HNF of full-rank integer generators."""
+    if not rows:
+        return []
+    columns = len(rows[0])
+    matrix = [list(row) for row in rows]
+    if any(len(row) != columns for row in matrix):
+        raise ValueError("lattice rows must have a common length")
+    pivot_row = 0
+    for column in range(columns):
+        candidate = pivot_row
+        while candidate < len(matrix) and matrix[candidate][column] == 0:
+            candidate += 1
+        if candidate == len(matrix):
+            continue
+        matrix[pivot_row], matrix[candidate] = matrix[candidate], matrix[pivot_row]
+        for row_index in range(pivot_row + 1, len(matrix)):
+            if matrix[row_index][column] == 0:
+                continue
+            upper = list(matrix[pivot_row])
+            lower = list(matrix[row_index])
+            common, left_coefficient, right_coefficient = _extended_gcd(
+                upper[column], lower[column]
+            )
+            upper_scale = upper[column] // common
+            lower_scale = lower[column] // common
+            matrix[pivot_row] = [
+                left_coefficient * upper[index] + right_coefficient * lower[index]
+                for index in range(columns)
+            ]
+            matrix[row_index] = [
+                -lower_scale * upper[index] + upper_scale * lower[index]
+                for index in range(columns)
+            ]
+        if matrix[pivot_row][column] < 0:
+            matrix[pivot_row] = [-value for value in matrix[pivot_row]]
+        pivot = matrix[pivot_row][column]
+        for row_index in range(pivot_row):
+            quotient = matrix[row_index][column] // pivot
+            matrix[row_index] = [
+                matrix[row_index][index] - quotient * matrix[pivot_row][index]
+                for index in range(columns)
+            ]
+        pivot_row += 1
+        if pivot_row == len(matrix):
+            break
+    answer = [row for row in matrix if any(value != 0 for value in row)]
+    if len(answer) < columns:
+        raise ArithmeticError("lattice generators do not have full rank")
+    return answer[:columns]
+
+
+def _ordinary_polynomial_discriminant(coefficients: list[int]) -> int:
+    degree = len(coefficients) - 1
+    derivative = [
+        exponent * coefficients[exponent] for exponent in range(1, degree + 1)
+    ]
+    size = 2 * degree - 1
+    polynomial_high = list(reversed(coefficients))
+    derivative_high = list(reversed(derivative))
+    sylvester: list[list[int]] = []
+    for shift in range(degree - 1):
+        sylvester.append(
+            [0] * shift + polynomial_high + [0] * (size - shift - len(polynomial_high))
+        )
+    for shift in range(degree):
+        sylvester.append(
+            [0] * shift + derivative_high + [0] * (size - shift - len(derivative_high))
+        )
+    answer = _determinant(sylvester)
+    return -answer if degree * (degree - 1) // 2 % 2 else answer
 
 
 def _miller_rabin_witness(number: int, base: int) -> bool:
@@ -1601,20 +1700,9 @@ def _order_arithmetic(
     polynomial: list[int], numerator: list[list[int]], denominator: int
 ) -> tuple[list[list[list[int]]], list[int]]:
     degree = len(numerator)
-    scaled_inverse = [[0 for _column in range(degree)] for _row in range(degree)]
-    for row in range(degree - 1, -1, -1):
-        diagonal = numerator[row][row]
-        if diagonal == 0:
-            raise ValueError("fixed-point order basis is singular")
-        for column in range(degree):
-            value = denominator if row == column else 0
-            for source in range(row + 1, degree):
-                value -= numerator[row][source] * scaled_inverse[source][column]
-            if value % diagonal != 0:
-                raise ValueError(
-                    "fixed-point order does not contain the equation order"
-                )
-            scaled_inverse[row][column] = value // diagonal
+    scaled_inverse = _scaled_integral_inverse(numerator, denominator)
+    if scaled_inverse is None:
+        raise ValueError("fixed-point order does not contain the equation order")
     identity = list(scaled_inverse[0])
     denominator_squared = denominator * denominator
     table: list[list[list[int]]] = []
@@ -2688,96 +2776,6 @@ def _current_round2_proof_integer(payload: Any, offset: int) -> tuple[int, int]:
     return (-value if negative else value), offset + length
 
 
-def _current_round2_proof_projection_matches(
-    payload: Any,
-    *,
-    expected_polynomial: list[int],
-    expected_primes: list[int],
-    expected_basis_numerator: list[list[int]],
-    expected_basis_denominator: int,
-    expected_index: int,
-    expected_equation_discriminant: int,
-    expected_order_discriminant: int,
-) -> bool:
-    """Bind one unexposed current native result without replaying its theorem.
-
-    This is deliberately private and only called synchronously around the
-    result of the current generated native verifier.  It authenticates that
-    verifier's canonical transfer against every value retained by the compact
-    host certificate.  Copied or externally supplied payloads instead use the
-    independent ordinary mathematical decoder above.
-    """
-    coefficients = [int(value) for value in expected_polynomial]
-    primes = [int(value) for value in expected_primes]
-    rows = [[int(value) for value in row] for row in expected_basis_numerator]
-    degree = len(coefficients) - 1
-    square = degree * degree
-    if (
-        degree < 1
-        or coefficients[-1] != 1
-        or len(rows) != degree
-        or any(len(row) != degree for row in rows)
-        or len(payload) < 48
-        or [_byte(payload, index) for index in range(8)]
-        != [83, 74, 78, 70, 80, 1, 0, 0]
-        or _unsigned(payload, 8, 8) != degree
-        or _unsigned(payload, 16, 8) != len(primes)
-        or _unsigned(payload, 32, 8) != 1
-        or _unsigned(payload, 40, 8) != 0
-    ):
-        return False
-    entry_count = _unsigned(payload, 24, 8)
-    minimum_entries = 4 + degree + 1 + len(primes) * (2 + degree) + square
-    if entry_count < minimum_entries or entry_count > (len(payload) - 48) // 4:
-        return False
-
-    try:
-        offset = 48
-        consumed = 0
-
-        def read() -> int:
-            nonlocal offset, consumed
-            value, offset = _current_round2_proof_integer(payload, offset)
-            consumed += 1
-            return value
-
-        metadata = [
-            int(expected_basis_denominator),
-            int(expected_index),
-            int(expected_equation_discriminant),
-            int(expected_order_discriminant),
-        ]
-        if [read() for _unused in range(4)] != metadata:
-            return False
-        if [read() for _unused in range(degree + 1)] != coefficients:
-            return False
-        seen_primes: set[int] = set()
-        for prime in primes:
-            packed_prime = read()
-            dimension = read()
-            if packed_prime != prime or prime in seen_primes:
-                return False
-            if dimension < 0 or dimension > degree:
-                return False
-            seen_primes.add(prime)
-            for _unused in range(dimension * degree):
-                radical_value = read()
-                if radical_value < 0 or radical_value >= prime:
-                    return False
-            selectors: set[int] = set()
-            for _unused in range(degree):
-                selector = read()
-                if selector < 0 or selector >= square or selector in selectors:
-                    return False
-                selectors.add(selector)
-        for row in rows:
-            if [read() for _unused in range(degree)] != row:
-                return False
-        return consumed == entry_count and offset == len(payload)
-    except (IndexError, ValueError):
-        return False
-
-
 def _decode_current_carried_round2_order_resource(
     payload: Any,
     *,
@@ -2789,10 +2787,12 @@ def _decode_current_carried_round2_order_resource(
 
     The terminal fixed-point theorem is checked independently inside each
     native construction worker before its slot is published.  This immediate
-    host boundary binds the exact nested order bytes and source tuple, then
-    checks canonical radical shape and full rank of every carried terminal
-    minor.  It never rebuilds an order table or replays enlargement.  External
-    payloads use the ordinary mathematical replay boundary instead.
+    host boundary binds the exact nested order bytes and source tuple.  The
+    full terminal witness stream was produced only after the native workers'
+    independent fixed-point checks; decoding it again would materialize
+    `O(r n^2)` arbitrary-precision integers without adding a current-call
+    theorem.  External payloads use the ordinary mathematical replay boundary
+    and decode every witness instead.
     """
     coefficients = [int(value) for value in expected_polynomial]
     primes = [int(value) for value in expected_primes]
@@ -2855,6 +2855,31 @@ def _decode_current_carried_round2_order_resource(
         if proof_count != len(native_primes) or proof_count != order.native_primes:
             raise ValueError("proof-carrying order omitted a native prime")
         square = degree * degree
+        if not ordinary_replay:
+            # The resource is still owned by the exact generated call in
+            # `native_carried_round2_order_from_resources`.  Bind its compact
+            # source/order prefix and leave the full local witness stream for
+            # the external ordinary-replay decoder.  Every carried witness has
+            # three metadata entries, an n-by-n local basis, n selectors, and
+            # an n-by-n minor (plus a variable canonical radical).
+            minimum_entries = (
+                degree + 1 + len(primes) + proof_count * (3 + 2 * square + degree)
+            )
+            if entry_count < minimum_entries:
+                raise ValueError("proof-carrying order omitted terminal evidence")
+            rows = [list(row) for row in order.basis.numerator]
+            proof = AuthenticatedRound2OrderProof(
+                coefficients,
+                native_primes,
+                rows,
+                order.basis.denominator,
+                order.index,
+                order.equation_discriminant,
+                order.order_discriminant,
+                "current-generated-proof-carrying-round2",
+            )
+            _seal_authenticated_round2_order_proof(proof)
+            return order, proof
         carried_witnesses: list[
             tuple[
                 int, list[list[int]], int, list[list[int]], list[int], list[list[int]]
@@ -2909,10 +2934,9 @@ def _decode_current_carried_round2_order_resource(
     except IndexError as error:
         raise ValueError("truncated proof-carrying order evidence") from error
 
-    if ordinary_replay:
-        _ordinary_validate_carried_round2_order(
-            order, coefficients, native_primes, carried_witnesses
-        )
+    _ordinary_validate_carried_round2_order(
+        order, coefficients, native_primes, carried_witnesses
+    )
 
     proof = None
     if order.complete:
@@ -2925,11 +2949,7 @@ def _decode_current_carried_round2_order_resource(
             order.index,
             order.equation_discriminant,
             order.order_discriminant,
-            (
-                "ordinary-mathematical-proof-carrying-round2"
-                if ordinary_replay
-                else "current-generated-proof-carrying-round2"
-            ),
+            "ordinary-mathematical-proof-carrying-round2",
         )
         _seal_authenticated_round2_order_proof(proof)
     return order, proof
@@ -2944,15 +2964,7 @@ def _ordinary_validate_carried_round2_order(
     ],
 ) -> None:
     """Independently replay the mathematical theorem for external bytes."""
-    arithmetic = __import__(
-        "sagejs.number_fields.buchmann_lenstra",
-        fromlist=["buchmann_lenstra"],
-    )
-    certification = __import__(
-        "sagejs.number_fields.maximal_order_certification",
-        fromlist=["maximal_order_certification"],
-    )
-    equation_discriminant = arithmetic.polynomial_discriminant(polynomial)
+    equation_discriminant = _ordinary_polynomial_discriminant(polynomial)
     if any(not _packed_word_prime_is_proven(prime) for prime in native_primes):
         raise ValueError("carried terminal proof has a nonprime support value")
     final_numerator = [list(row) for row in order.basis.numerator]
@@ -2965,9 +2977,9 @@ def _ordinary_validate_carried_round2_order(
         or final_determinant == 0
         or final_denominator ** len(polynomial[:-1]) != order.index * final_determinant
         or equation_discriminant != order.order_discriminant * order.index**2
-        or not certification.check_order_lattice(
-            polynomial, final_numerator, final_denominator
-        ).get("valid", False)
+        or not check_order_lattice(polynomial, final_numerator, final_denominator).get(
+            "valid", False
+        )
     ):
         raise ValueError("carried terminal proof has inconsistent order arithmetic")
 
@@ -2980,12 +2992,8 @@ def _ordinary_validate_carried_round2_order(
         prime_free = denominator
         while prime_free % prime == 0:
             prime_free //= prime
-        if (
-            prime_free != 1
-            or not _canonical_row_hnf(numerator)
-            or arithmetic._row_hnf(numerator) != numerator
-        ):
-            raise ValueError("carried terminal local basis is not canonical p-primary")
+        if prime_free != 1:
+            raise ValueError("carried terminal local denominator is not p-primary")
         table, identity = _order_arithmetic(polynomial, numerator, denominator)
         expected_radical = _p_radical_rows(table, identity, prime)
         if radical != expected_radical:
@@ -3005,7 +3013,7 @@ def _ordinary_validate_carried_round2_order(
         scale = common_denominator // denominator
         generators.extend([[scale * value for value in row] for row in numerator])
     merged = (
-        arithmetic._row_hnf(generators)
+        _ordinary_row_hnf(generators)
         if generators
         else [
             [1 if row == column else 0 for column in range(len(polynomial) - 1)]
@@ -3372,60 +3380,6 @@ def _native_field_analysis_projection_from_polynomial_bound(
             expected_scale=scale,
             expected_trial_bound=trial_bound,
         )
-    finally:
-        resource.close()
-
-
-def native_round2_order_proof_from_resources(
-    polynomial: Any,
-    order_resource: Any,
-    prime_hints: Any,
-    *,
-    coefficients_low_to_high: list[int],
-    certified_primes: list[int],
-    basis_numerator: list[list[int]],
-    basis_denominator: int,
-    index: int,
-    equation_discriminant: int,
-    order_discriminant: int,
-) -> AuthenticatedRound2OrderProof:
-    """Prove a completed order in one current generated native call.
-
-    The caller owns the sealed polynomial, completed order resource, and prime
-    matrix and must keep them live for this synchronous call.  No caller-owned
-    or copied proof payload enters this fast path: only successful return from
-    the current content-addressed generated boundary can issue authentication.
-    External payloads always use `decode_round2_order_proof_resource` and its
-    ordinary packed mathematical replay.  This helper owns and deterministically
-    closes the unexposed compact proof result.
-    """
-    resource = _field_analysis_flint_module().number_field_round2_proof_resource(
-        polynomial, order_resource, prime_hints
-    )
-    try:
-        if not _current_round2_proof_projection_matches(
-            resource.copy_bytes(),
-            expected_polynomial=coefficients_low_to_high,
-            expected_primes=certified_primes,
-            expected_basis_numerator=basis_numerator,
-            expected_basis_denominator=basis_denominator,
-            expected_index=index,
-            expected_equation_discriminant=equation_discriminant,
-            expected_order_discriminant=order_discriminant,
-        ):
-            raise ValueError("current native Round-2 proof lost its source binding")
-        result = AuthenticatedRound2OrderProof(
-            coefficients_low_to_high,
-            certified_primes,
-            basis_numerator,
-            basis_denominator,
-            index,
-            equation_discriminant,
-            order_discriminant,
-            "current-generated-native-fixed-point",
-        )
-        _seal_authenticated_round2_order_proof(result)
-        return result
     finally:
         resource.close()
 

@@ -500,7 +500,8 @@ static inline void sagejs_nf_multiplier_workspace_clear(
 static inline slong sagejs_nf_multiplier_kernel_mod_p2(
     nmod_mat_t kernel, const ulong *table_squared,
     const nmod_mat_t radical, slong radical_dimension,
-    slong degree, ulong prime, sagejs_nf_multiplier_workspace *workspace)
+    slong degree, ulong prime, sagejs_nf_multiplier_workspace *workspace,
+    slong *retained_source_rows, slong *retained_count_out)
 {
     const ulong modulus = prime * prime;
     const ulong modulus_inverse = n_preinvert_limb(modulus);
@@ -679,9 +680,12 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
             for (slong column = 0; column < degree; column++)
                 nmod_mat_entry(equations, retained_rows, column) =
                     nmod_mat_entry(equations, source_row, column);
+        if (retained_source_rows != NULL)
+            retained_source_rows[retained_rows] = source_row;
         equation_hash_slots[slot] = retained_rows;
         retained_rows++;
     }
+    if (retained_count_out != NULL) *retained_count_out = retained_rows;
     SAGEJS_NF_ORDER_PROFILE_EQUATIONS(equation_rows, retained_rows);
     nmod_mat_t retained_equations;
     nmod_mat_window_init(
@@ -705,7 +709,7 @@ static inline slong sagejs_nf_multiplier_kernel(
     if (table_squared != NULL)
         return sagejs_nf_multiplier_kernel_mod_p2(
             kernel, table_squared, radical, radical_dimension,
-            degree, prime, workspace);
+            degree, prime, workspace, NULL, NULL);
 #endif
     return sagejs_nf_multiplier_kernel_exact(
         kernel, multiplication, radical, radical_dimension,
@@ -2664,8 +2668,9 @@ fail:
 }
 
 /* Select the lexicographically earliest independent equation rows. */
-static inline int sagejs_nf_analysis_select_rows(
-    slong *selectors, const nmod_mat_t equations, slong degree, ulong prime)
+static inline int sagejs_nf_analysis_select_row_prefix(
+    slong *selectors, const nmod_mat_t equations,
+    slong row_count, slong degree, ulong prime)
 {
     ulong *basis = (ulong *) flint_calloc(
         (size_t) degree * (size_t) degree, sizeof(ulong));
@@ -2673,7 +2678,7 @@ static inline int sagejs_nf_analysis_select_rows(
     ulong *candidate = (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
     const ulong inverse = n_preinvert_limb(prime);
     slong rank = 0;
-    for (slong row = 0; row < degree * degree && rank < degree; row++)
+    for (slong row = 0; row < row_count && rank < degree; row++)
     {
         for (slong column = 0; column < degree; column++)
             candidate[column] = nmod_mat_entry(equations, row, column);
@@ -2705,6 +2710,13 @@ static inline int sagejs_nf_analysis_select_rows(
     return rank == degree;
 }
 
+static inline int sagejs_nf_analysis_select_rows(
+    slong *selectors, const nmod_mat_t equations, slong degree, ulong prime)
+{
+    return sagejs_nf_analysis_select_row_prefix(
+        selectors, equations, degree * degree, degree, prime);
+}
+
 typedef struct
 {
     int initialized;
@@ -2729,6 +2741,59 @@ static inline void sagejs_nf_order_terminal_proof_clear(
     memset(proof, 0, sizeof(*proof));
 }
 
+/* Independently rebuild the terminal radical and a full-rank equation minor
+ * from a certified multiplication tensor modulo p^2.  This deliberately uses
+ * a fresh generic nmod radical, fresh multiplier workspace, and a separate
+ * lexicographic row-selection pass; it does not trust the enlargement loop's
+ * terminal nullity or retained rows. */
+static inline int sagejs_nf_order_capture_terminal_mod_p2(
+    sagejs_nf_order_terminal_proof *proof,
+    const ulong *table_squared, const fmpz *identity,
+    slong degree, ulong prime)
+{
+    if (table_squared == NULL || prime > UWORD_MAX / prime) return 0;
+    const size_t table_size =
+        (size_t) degree * (size_t) degree * (size_t) degree;
+    ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
+    for (size_t entry = 0; entry < table_size; entry++)
+        table[entry] = table_squared[entry] % prime;
+    sagejs_nf_p_radical(proof->radical, &proof->radical_dimension,
+        table, identity, degree, prime, n_preinvert_limb(prime));
+    flint_free(table);
+
+    sagejs_nf_multiplier_workspace workspace;
+    sagejs_nf_multiplier_workspace_init(&workspace, degree, prime);
+    nmod_mat_t kernel;
+    nmod_mat_init(kernel, degree, degree, prime);
+    const size_t equation_rows = (size_t) degree * (size_t) degree;
+    slong *retained_sources = (slong *) flint_malloc(
+        equation_rows * sizeof(slong));
+    slong retained_count = 0;
+    const slong nullity = sagejs_nf_multiplier_kernel_mod_p2(
+        kernel, table_squared, proof->radical, proof->radical_dimension,
+        degree, prime, &workspace, retained_sources, &retained_count);
+    slong *compressed_selectors = (slong *) flint_malloc(
+        (size_t) degree * sizeof(slong));
+    const int valid = nullity == 0 &&
+        sagejs_nf_analysis_select_row_prefix(compressed_selectors,
+            workspace.equations, retained_count, degree, prime);
+    if (valid)
+        for (slong row = 0; row < degree; row++)
+        {
+            const slong compressed = compressed_selectors[row];
+            proof->selectors[row] = retained_sources[compressed];
+            for (slong column = 0; column < degree; column++)
+                nmod_mat_entry(proof->minor, row, column) =
+                    nmod_mat_entry(
+                        workspace.equations, compressed, column);
+        }
+    flint_free(compressed_selectors);
+    flint_free(retained_sources);
+    nmod_mat_clear(kernel);
+    sagejs_nf_multiplier_workspace_clear(&workspace);
+    return valid;
+}
+
 /* Independently rederive the terminal radical and full-rank multiplier minor
  * from the stable exact local multiplication state.  This is one terminal
  * check, never an enlargement replay. */
@@ -2740,6 +2805,7 @@ static inline int sagejs_nf_order_capture_terminal_proof(
     slong degree, ulong prime,
     const sagejs_nf_binary_tensor_workspace *binary)
 {
+    (void) source;
     if (proof == NULL || proof->initialized) return 0;
     memset(proof, 0, sizeof(*proof));
     proof->prime = prime;
@@ -2758,19 +2824,41 @@ static inline int sagejs_nf_order_capture_terminal_proof(
     const size_t table_size =
         (size_t) degree * (size_t) degree * (size_t) degree;
     if (table_size > SIZE_MAX / sizeof(ulong)) goto fail;
+    const ulong *certified_table_squared = NULL;
+    ulong *binary_table_squared = NULL;
+    if (binary != NULL && prime == 2)
+    {
+        binary_table_squared = (ulong *) flint_malloc(
+            table_size * sizeof(ulong));
+        for (slong left = 0; left < degree; left++)
+            for (slong right = 0; right < degree; right++)
+            {
+                const size_t product =
+                    (size_t) left * (size_t) degree + (size_t) right;
+                for (slong output = 0; output < degree; output++)
+                    binary_table_squared[product * (size_t) degree +
+                            (size_t) output] =
+                        ((binary->table_low[product] >> output) & UWORD(1)) |
+                        (((binary->table_high[product] >> output) & UWORD(1))
+                            << 1);
+            }
+        certified_table_squared = binary_table_squared;
+    }
+    else if (binary != NULL)
+        certified_table_squared = binary->word_table_squared;
+    if (certified_table_squared != NULL)
+    {
+        const int valid = sagejs_nf_order_capture_terminal_mod_p2(
+            proof, certified_table_squared, identity, degree, prime);
+        flint_free(binary_table_squared);
+        binary_table_squared = NULL;
+        if (!valid) goto fail;
+        return 1;
+    }
+
+    /* Non-p-adic workers keep their exact multiplication state live. */
     const fmpz_mat_t *stable_multiplication = multiplication;
     const fmpz *stable_identity = identity;
-    fmpz_mat_t *rebuilt_multiplication = NULL;
-    fmpz *rebuilt_identity = NULL;
-    if (binary != NULL)
-    {
-        if (!sagejs_nf_order_hnf_multiplication(
-                &rebuilt_multiplication, &rebuilt_identity, source,
-                local_numerator, local_denominator))
-            goto fail;
-        stable_multiplication = rebuilt_multiplication;
-        stable_identity = rebuilt_identity;
-    }
     ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
     for (slong left = 0; left < degree; left++)
         for (slong right = 0; right < degree; right++)
@@ -2798,22 +2886,11 @@ static inline int sagejs_nf_order_capture_terminal_proof(
                     nmod_mat_entry(
                         equations, proof->selectors[row], column);
     nmod_mat_clear(equations);
-    if (rebuilt_multiplication != NULL)
-    {
-        _fmpz_vec_clear(rebuilt_identity, degree);
-        sagejs_nf_order_clear_multiplication(rebuilt_multiplication, degree);
-        rebuilt_multiplication = NULL;
-        rebuilt_identity = NULL;
-    }
     if (!valid) goto fail;
     return 1;
 
 fail:
-    if (rebuilt_multiplication != NULL)
-    {
-        _fmpz_vec_clear(rebuilt_identity, degree);
-        sagejs_nf_order_clear_multiplication(rebuilt_multiplication, degree);
-    }
+    flint_free(binary_table_squared);
     sagejs_nf_order_terminal_proof_clear(proof);
     return 0;
 }
@@ -3341,6 +3418,10 @@ static inline void *sagejs_nf_order_independent_prime_thread(void *argument)
 {
     sagejs_nf_order_run_independent_prime_lane(
         (sagejs_nf_independent_prime_lane *) argument);
+    /* FLINT caches temporary exact matrices per thread.  These pthread lanes
+     * are owned and joined here, so release their thread-local allocator state
+     * before the thread exits rather than leaving it to process teardown. */
+    flint_cleanup();
     return NULL;
 }
 #endif
@@ -3391,7 +3472,7 @@ static inline void sagejs_nf_order_run_independent_primes(
         lanes[lane].item_count = item_count;
     }
 #if FLINT_USES_PTHREAD
-    pthread_t workers[4];
+    pthread_t workers[4] = {0, 0, 0, 0};
     int started[4] = {0, 0, 0, 0};
     for (slong lane = 1; lane < worker_count; lane++)
         if (SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(

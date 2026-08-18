@@ -207,43 +207,7 @@ def _native_order_from_polynomial_resource_bound(
     coefficients_low_to_high: list[int],
     certified_prime_hints: list[int],
 ) -> NativeOrderResourceResult:
-    """Run the native order boundary on one field-owned sealed polynomial.
-
-    This internal adapter compares the borrowed immutable resource with one
-    canonical packed serialization of the ordinary coefficient source.  The
-    public scalar constructor above remains the dynamic oracle and fallback.
-    """
-    result, _proof = _native_order_and_proof_from_polynomial_resource_bound(
-        polynomial_resource,
-        coefficients_low_to_high,
-        certified_prime_hints,
-        authenticate_round2=False,
-    )
-    return result
-
-
-def _native_order_with_round2_proof_from_polynomial_resource_bound(
-    polynomial_resource: Any,
-    coefficients_low_to_high: list[int],
-    certified_prime_hints: list[int],
-) -> tuple[NativeOrderResourceResult, Any | None]:
-    """Construct and independently prove one complete borrowed native order."""
-    return _native_order_and_proof_from_polynomial_resource_bound(
-        polynomial_resource,
-        coefficients_low_to_high,
-        certified_prime_hints,
-        authenticate_round2=True,
-    )
-
-
-def _native_order_and_proof_from_polynomial_resource_bound(
-    polynomial_resource: Any,
-    coefficients_low_to_high: list[int],
-    certified_prime_hints: list[int],
-    *,
-    authenticate_round2: bool,
-) -> tuple[NativeOrderResourceResult, Any | None]:
-    """Keep the native order live until optional fixed-point authentication."""
+    """Run the native order boundary on one field-owned sealed polynomial."""
     if len(coefficients_low_to_high) < 2:
         raise ValueError("an integral defining polynomial must have positive degree")
     coefficients = [int(value) for value in coefficients_low_to_high]
@@ -274,17 +238,6 @@ def _native_order_and_proof_from_polynomial_resource_bound(
     try:
         for row, prime in enumerate(primes):
             flint.fmpz_matrix_set_entry(hints, row, 0, prime)
-        if authenticate_round2:
-            analysis = __import__(
-                "sagejs.number_fields.field_analysis_resource",
-                fromlist=["field_analysis_resource"],
-            )
-            return analysis.native_carried_round2_order_from_resources(
-                polynomial_resource,
-                hints,
-                coefficients_low_to_high=coefficients,
-                certified_primes=primes,
-            )
         resource = flint.number_field_order_from_polynomial_resource(
             polynomial_resource, hints
         )
@@ -296,9 +249,8 @@ def _native_order_and_proof_from_polynomial_resource_bound(
             result = decode_order_resource(payload)
             if result.equation_discriminant == 0:
                 raise ValueError("native order result omitted its source discriminant")
-            proof = None
         finally:
             resource.close()
     finally:
         hints.close()
-    return result, proof
+    return result

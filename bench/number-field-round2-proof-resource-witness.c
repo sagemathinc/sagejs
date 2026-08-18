@@ -22,6 +22,7 @@ static int sagejs_test_pthread_create_failure(
 
 #include "sagejs/number_field_analysis_resource_ffi.h"
 
+#if !defined(SAGEJS_NF_ORDER_TERMINAL_PROOF_EXPECT_FAILURE)
 static uint64_t hash_word(uint64_t hash, uint64_t value)
 {
     for (size_t byte = 0; byte < 8; byte++)
@@ -49,6 +50,7 @@ static uint64_t hash_bytes(
     }
     return hash;
 }
+#endif
 
 static void initialize_sparse_polynomial(
     sagejs_fmpz_polynomial_t polynomial, slong degree,
@@ -147,10 +149,11 @@ static uint64_t check_carried_resource(size_t *length_result)
 
 int main(void)
 {
-    const uint64_t terminal_hash = check_independent_terminal_proofs();
 #if defined(SAGEJS_NF_ORDER_TERMINAL_PROOF_EXPECT_FAILURE)
+    (void) check_independent_terminal_proofs();
     puts("{\"failure_injection\":true}");
 #else
+    const uint64_t terminal_hash = check_independent_terminal_proofs();
     size_t carried_length = 0;
     const uint64_t carried_hash = check_carried_resource(&carried_length);
     printf("{\"failure_injection\":false,\"terminal_hash\":\"%016" PRIx64
@@ -158,5 +161,6 @@ int main(void)
            "\",\"carried_length\":%zu}\n",
         terminal_hash, carried_hash, carried_length);
 #endif
+    flint_cleanup_master();
     return 0;
 }

@@ -1,0 +1,20 @@
+{
+  "schema": "sagejs.benchmark/number-field-round2-carried-proof-resource-v1",
+  "case_id": "pari-round4-vector-429",
+  "degree": 64,
+  "sample_count": 1,
+  "raw_native_order_ns": [1897657856],
+  "carried_native_construction_ns": [3496579584],
+  "carried_terminal_proof_delta_ns": [1598921728],
+  "carried_projection_decode_snapshot_ns": [2478689024],
+  "carried_order_and_proof_total_ns": [5977958400],
+  "peak_rss_kib": 571836,
+  "post_construction_round2_replays": 0,
+  "target_ms": 5000,
+  "target_met": false,
+  "receipt": {
+    "kind": "single-report-only-negative-attribution",
+    "gate_claim": false,
+    "note": "Before the prefix-only current projection and live modulo-p-squared terminal pass, Python materialized the full witness stream and p-adic workers rebuilt exact terminal multiplication."
+  }
+}

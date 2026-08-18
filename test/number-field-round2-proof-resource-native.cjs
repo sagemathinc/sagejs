@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -142,8 +142,7 @@ def corrupt_integer(payload, location):
     return answer
 
 state = 17
-checked = 0
-for unused in range(16):
+for case_index in range(16):
     state = (1103515245 * state + 12345) % 2147483648
     constant = 2 + state % 97
     coefficients = [-constant, 0, 0, 1]
@@ -159,10 +158,8 @@ for unused in range(16):
         resource = flint.number_field_order_with_round2_proof_resource(
             polynomial, hints
         )
-        try:
-            payload = list(resource.copy_bytes())
-        finally:
-            resource.close()
+        payload = list(resource.copy_bytes())
+        resource.close()
         replay_order, replay = decode_carried_round2_order_resource(
             payload,
             expected_polynomial=coefficients,
@@ -190,7 +187,7 @@ for unused in range(16):
                 order_discriminant=direct_order.order_discriminant,
             )
 
-        if checked == 0:
+        if case_index == 0:
             order_length = sum(payload[32 + index] << (8 * index) for index in range(8))
             degree = 3
             nested_locations, unused_offset = integer_locations(
@@ -246,21 +243,25 @@ for unused in range(16):
                     raise AssertionError("mismatched carried source was accepted")
                 except ValueError:
                     pass
-        checked += 1
     finally:
         hints.close()
         polynomial.close()
-assert checked == 16
 print("ROUND2_CARRIED_RANDOM_DIFFERENTIAL_OK")
 `;
-  const result = spawnSync(process.execPath, [join(root, "bin/sagejs"), "--python"], {
-    cwd: root,
-    encoding: "utf8",
-    input: program,
-    timeout: 120_000,
-    env: process.env,
-  });
-  if (result.error) throw result.error;
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /ROUND2_CARRIED_RANDOM_DIFFERENTIAL_OK/);
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-round2-carried-python-"));
+  try {
+    const source = join(temporary, "differential.py");
+    writeFileSync(source, program);
+    const result = spawnSync(process.execPath, [join(root, "bin/sagejs"), source], {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 120_000,
+      env: process.env,
+    });
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /ROUND2_CARRIED_RANDOM_DIFFERENTIAL_OK/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });

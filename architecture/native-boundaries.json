@@ -4553,14 +4553,14 @@
       "disposition": "declared-safe-ffi"
     },
     {
-      "id": "ffi:flint:number_field_round2_proof_resource",
+      "id": "ffi:flint:number_field_order_with_round2_proof_resource",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
       "library": "flint",
-      "export": "number_field_round2_proof_resource",
+      "export": "number_field_order_with_round2_proof_resource",
       "dynamic_package": "@sagemath/sagejs-flint",
-      "dynamic_export": "ffiNumberFieldRound2ProofResource",
-      "symbol": "sagejs_number_field_round2_proof_resource",
+      "dynamic_export": "ffiNumberFieldOrderWithRound2ProofResource",
+      "symbol": "sagejs_number_field_order_with_round2_proof_resource",
       "disposition": "declared-safe-ffi"
     },
     {

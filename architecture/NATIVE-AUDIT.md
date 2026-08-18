@@ -127,16 +127,22 @@ hot-path export.
 
 The retained exception is proof-carrying construction.  Each independent
 local Round-2 worker performs a second terminal check against its stable final
-exact order state, independently derives the canonical radical and a selected
-full-rank multiplier minor, and only then publishes its immutable slot.  The
+order state, independently derives the canonical radical and a selected
+full-rank multiplier minor, and only then publishes its immutable slot.  A
+p-adic worker performs that distinct check from its still-live certified
+modulo-`p^2` tensor with a fresh radical, multiplier workspace, and generic
+row-selection pass; non-p-adic workers use their still-live exact table.  The
 single packed result binds those slots in caller-prime order to the sealed
 polynomial and nested canonical order bytes.  Immediate authentication is
-linear and exists only around the actual current generated call.  External or
+prefix-only and exists only around the actual current generated call.  External or
 copied bytes use ordinary exact Python to recompute the polynomial
 discriminant, order arithmetic, every local fixed point, and the coprime merge
 to the final HNF basis.  Forced-one-worker, pthread-creation fallback, injected
 terminal-check failure, randomized corruption, and sanitizer witnesses guard
-this lifecycle.
+this lifecycle.  On vector429's 12-prime degree-64 native support, one
+report-only sample measured 1.860 seconds for the raw order, 2.097 seconds for
+proof-carrying construction, 0.299 seconds for the current projection, and
+2.399 seconds total at 516,356 KiB peak RSS.
 
 At `p=1009`, weight 4, the compiled typed-Python action stage writes 49,284
 coefficients in median 0.745 milliseconds with GCC and 0.447 milliseconds with
