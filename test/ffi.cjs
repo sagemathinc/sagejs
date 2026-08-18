@@ -363,6 +363,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_mod_polynomial_factor_resource",
       "fmpz_mod_polynomial_roots_resource", "fmpz_mod_polynomial_format",
       "fmpz_mod_polynomial_serialize", "fmpz_mod_polynomial_deserialize",
+      "number_field_order_pmaximal",
+      "number_field_order_maximal_at_primes",
     ],
   );
   assert.deepEqual(
@@ -440,7 +442,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /398 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /400 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -490,7 +492,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 10,
-      flint: 355,
+      flint: 357,
       igraph: 2,
       m4ri: 26,
     }[declaration.library.id]);
@@ -546,7 +548,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 356],
+    ["../packages/flint", 358],
     ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
@@ -724,7 +726,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 398);
+  assert.equal(current.counts["declared-ffi"], 400);
   assert.equal(current.counts["declared-ffi-resource"], 27);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -748,7 +750,7 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
     JSON.parse(readFileSync(filename, "utf8")), { root },
   );
   assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
-  assert.equal(inventory.exports.length, 292);
+  assert.equal(inventory.exports.length, 295);
   assert.equal(inventory.exports.filter((item) =>
     item.family.startsWith("dense-matrix")).length, 50);
   assert.equal(inventory.exports.filter((item) =>

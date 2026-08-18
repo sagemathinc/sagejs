@@ -8,6 +8,7 @@ const {
   createHash,
 } = require("node:crypto");
 const {
+  cpSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -431,7 +432,7 @@ async function prepareEclibSource() {
   const dependency = dependencies.find(({ name }) => name === "eclib");
   const archive = await obtainArchive(dependency);
   const source = extract(archive, dependency);
-  if (source !== ECLIB_SOURCE_PATH || basename(source) !== ECLIB_SOURCE_NAME) {
+  if (basename(source) !== ECLIB_SOURCE_NAME) {
     throw new Error(`unexpected eclib source path ${source}`);
   }
   run(
@@ -449,6 +450,11 @@ async function prepareEclibSource() {
       env: { GIT_CEILING_DIRECTORIES: packageRoot },
     },
   );
+  if (source !== ECLIB_SOURCE_PATH) {
+    rmSync(ECLIB_SOURCE_PATH, { recursive: true, force: true });
+    mkdirSync(dirname(ECLIB_SOURCE_PATH), { recursive: true });
+    cpSync(source, ECLIB_SOURCE_PATH, { recursive: true });
+  }
   process.stdout.write(
     `Prepared FLINT-only eclib rank source ${ECLIB_REVISION}\n`,
   );

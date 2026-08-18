@@ -50,7 +50,10 @@ const supportedTargets = new Set([
 const identityInputs = Object.freeze([
   "scripts/native-math-profile.cjs",
   "scripts/darwin-native.cjs",
+  "packages/flint/patches",
   "packages/flint/scripts/build-deps.cjs",
+  "packages/flint/scripts/eclib-source.cjs",
+  "packages/flint/scripts/portable-smalljac",
   "packages/flint/scripts/triplets",
   "packages/flint/scripts/vcpkg-ports",
   "packages/flint/vcpkg.json",

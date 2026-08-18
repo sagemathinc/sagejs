@@ -51,6 +51,9 @@ const { pnpmInvocation } = require("./pnpm-invocation.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { nativeMathBuildProfile } = require("./native-math-profile.cjs");
 const {
+  ECLIB_SOURCE_NAME,
+} = require("../packages/flint/scripts/eclib-source.cjs");
+const {
   appleAccelerateSdkInputs,
   fflasMathBuildProfile,
 } = require("./darwin-native.cjs");
@@ -470,7 +473,10 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     flint: {
       dependencyInputs: [
         "scripts/native-math-profile.cjs",
+        "packages/flint/patches",
         "packages/flint/scripts/build-deps.cjs",
+        "packages/flint/scripts/eclib-source.cjs",
+        "packages/flint/scripts/portable-smalljac",
         "packages/flint/scripts/triplets",
         "packages/flint/scripts/vcpkg-ports",
         "packages/flint/vcpkg.json",
@@ -500,12 +506,16 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? [
           `${dependencyPrefix("flint", platform)}/lib/flint.lib`,
           `${dependencyPrefix("flint", platform)}/lib/openblas.lib`,
+          `${dependencyPrefix("flint", platform)}/share/sagejs/` +
+            `${ECLIB_SOURCE_NAME}/libsrc/eclib/descent.h`,
         ]
         : [
           `${dependencyPrefix("flint", platform)}/lib/libflint.a`,
           `${dependencyPrefix("flint", platform)}/lib/libgmp.a`,
           `${dependencyPrefix("flint", platform)}/lib/libopenblas.a`,
           `${dependencyPrefix("flint", platform)}/.sagejs-flint-dependencies.json`,
+          `${dependencyPrefix("flint", platform)}/share/sagejs/` +
+            `${ECLIB_SOURCE_NAME}/libsrc/eclib/descent.h`,
         ],
     },
     fflas: {

@@ -1756,11 +1756,12 @@
           "modular forms"
         ],
         "backends": [
-          "Sage.js exact arithmetic"
+          "Sage.js exact arithmetic",
+          "eclib 2-descent over FLINT"
         ],
         "sage_compatibility": {
           "status": "partial",
-          "notes": "General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported."
+          "notes": "General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported. Over QQ, a FLINT-only eclib port supplies rank bounds, 2-Selmer ranks, and found points."
         },
         "provenance": [
           {
@@ -1772,7 +1773,7 @@
         ],
         "references": [],
         "limitations": [
-          "General ranks, descent, isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional arithmetic algorithms or databases."
+          "The found rational points are not fully saturated. Isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional algorithms or databases."
         ]
       },
       {
@@ -13799,11 +13800,12 @@
         "modular forms"
       ],
       "backends": [
-        "Sage.js exact arithmetic"
+        "Sage.js exact arithmetic",
+        "eclib 2-descent over FLINT"
       ],
       "sage_compatibility": {
         "status": "partial",
-        "notes": "General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported."
+        "notes": "General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported. Over QQ, a FLINT-only eclib port supplies rank bounds, 2-Selmer ranks, and found points."
       },
       "provenance": [
         {
@@ -13815,22 +13817,22 @@
       ],
       "references": [],
       "limitations": [
-        "General ranks, descent, isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional arithmetic algorithms or databases."
+        "The found rational points are not fully saturated. Isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional algorithms or databases."
       ],
       "source": {
         "name": "EllipticCurve",
         "qualified": "EllipticCurve",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 1224,
+        "line": 1457,
         "excerpt": {
-          "start_line": 1212,
+          "start_line": 1445,
           "text": "    model: Any = None,\n    check: bool = True,\n    algorithm: Any = None,\n) -> Any:\n    \"\"\"Construct a normalized explicit-kernel Vélu isogeny lazily.\"\"\"\n    advanced = _elliptic_advanced()\n    return runtime.reflect.construct(\n        runtime.reflect.get(advanced, \"EllipticCurveIsogeny\"),\n        [domain, kernel, codomain, degree, model, check, algorithm],\n    )\n\n\ndef EllipticCurve(\n    data: Any,\n    coefficients: Any = None,\n) -> EllipticCurveParent:\n    \"\"\"\n    Construct an elliptic curve in general Weierstrass form.\n\n    ```sage\n    sage: E = EllipticCurve([0,0,1,-1,0])\n    sage: E\n    Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n    sage: 10 * E([0,0])\n    (161/16 : -2065/64 : 1)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/elliptic_curves.py#d74ccc1fa7a76510-e3b0c44298fc1c14~2",
-          "line": 1232,
+          "line": 1465,
           "source": "E = EllipticCurve([0,0,1,-1,0])",
           "want": "",
           "tags": [],
@@ -13846,7 +13848,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#a9f51566bd6705f7-2a7afe0198baf94e",
-          "line": 1233,
+          "line": 1466,
           "source": "E",
           "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
           "tags": [],
@@ -13862,7 +13864,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
-          "line": 1235,
+          "line": 1468,
           "source": "10 * E([0,0])",
           "want": "(161/16 : -2065/64 : 1)\n",
           "tags": [],
@@ -27519,9 +27521,9 @@
         "name": "NumberField",
         "qualified": "NumberField",
         "path": "src/baselib/number_fields.py",
-        "line": 1848,
+        "line": 1817,
         "excerpt": {
-          "start_line": 1836,
+          "start_line": 1805,
           "text": "                    \"general class groups need a number-field backend\"\n                )\n        return self._class_group_cache\n\n    def class_number(self) -> int:\n        if self._is_tutorial_cubic():\n            return 1\n        if self.degree() == 2:\n            return self._quadratic_backend()[0].class_number()\n        raise NotImplementedError(\"general class numbers need a number-field backend\")\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
         }
       },
@@ -28893,9 +28895,9 @@
         "name": "points",
         "qualified": "EllipticCurveParent.points",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 725,
+        "line": 741,
         "excerpt": {
-          "start_line": 713,
+          "start_line": 729,
           "text": "        return self._ainvs[3]\n\n    def a6(self) -> Any:\n        return self._ainvs[4]\n\n    def lift_x(\n        self,\n        x_value: Any,\n        all: bool = False,\n    ) -> Any:\n        return _elliptic_advanced()._ec_lift_x(self, x_value, all)\n\n    def points(self) -> list[EllipticCurvePoint]:\n        if getattr(self._base, \"_kind\", None) not in [\"GF\", \"ZMOD\"]:\n            raise NotImplementedError(\"point enumeration requires a prime finite field\")\n        base = _untyped(self._base)\n        if not base.is_field():\n            raise ValueError(\"the base ring must be a field\")\n        order = runtime.integer_bigint(base.order())\n        if order > runtime.bigint(10000):\n            raise ValueError(\"the field is too large to enumerate points\")\n        answer = [self(0)]\n        for x_value in base:\n            for y_value in base:\n                if self._contains_coordinates(x_value, y_value):"
         }
       },
@@ -29576,16 +29578,16 @@
         "name": "QuadraticField",
         "qualified": "QuadraticField",
         "path": "src/baselib/number_fields.py",
-        "line": 2970,
+        "line": 2939,
         "excerpt": {
-          "start_line": 2958,
+          "start_line": 2927,
           "text": "        # Split and ramified primes are represented by every first-quadrant\n        # solution a^2+b^2=p.  Ordered pairs give the two conjugate ideals.\n        for real in range(1, coordinate_bound + 1):\n            for imag in range(1, coordinate_bound + 1):\n                norm = real * real + imag * imag\n                if norm > limit:\n                    break\n                if runtime.flint_backend().isPrime(runtime.bigint(norm)):\n                    generators.append(GaussianInteger(self, real, imag))\n        return [GaussianPrimeIdeal(generator) for generator in generators]\n\n\ndef QuadraticField(\n    radicand: Any,\n    names: Any = None,\n) -> QuadraticField_class:\n    r\"\"\"Construct an exact imaginary quadratic field.\n\n    Negative radicands support exact field arithmetic, the maximal order,\n    integral bases, discriminants, and finite ideal class groups.\n\n    ### Examples\n\n    ```sage\n    sage: K.<a> = QuadraticField(-23)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
-          "line": 2982,
+          "line": 2951,
           "source": "K.<a> = QuadraticField(-23)",
           "want": "",
           "tags": [],
@@ -29601,7 +29603,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#44cb607cdf73cfb4-163f9d874bf45bcc",
-          "line": 2983,
+          "line": 2952,
           "source": "K.discriminant()",
           "want": "-23\n",
           "tags": [],
@@ -29617,7 +29619,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
-          "line": 2985,
+          "line": 2954,
           "source": "K.class_group().invariants()",
           "want": "(3,)\n",
           "tags": [],

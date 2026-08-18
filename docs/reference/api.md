@@ -1156,9 +1156,9 @@ sage: 10 * E([0,0])
 - Module: `sage.schemes.elliptic_curves.constructor`
 - Aliases: `EllipticCurve_from_j`
 - Tags: elliptic curves, number theory, Weierstrass equations, modular forms
-- Backends: Sage.js exact arithmetic
-- Sage compatibility: partial — General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported.
-- Limitations: General ranks, descent, isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional arithmetic algorithms or databases.
+- Backends: Sage.js exact arithmetic, eclib 2-descent over FLINT
+- Sage compatibility: partial — General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported. Over QQ, a FLINT-only eclib port supplies rank bounds, 2-Selmer ranks, and found points.
+- Limitations: The found rational points are not fully saturated. Isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional algorithms or databases.
 
 ### Provenance
 
