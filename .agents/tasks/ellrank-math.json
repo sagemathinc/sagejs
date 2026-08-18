@@ -4,7 +4,7 @@
   "id": "ellrank-math",
   "title": "Elliptic analytic rank mathematics and API",
   "lane": "elliptic-curves",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement the ordinary Python central-derivative engine, adaptive probable analytic-rank API, GRH-conditional zero-sum upper bound, caching, documentation, and public regression tests",
   "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
