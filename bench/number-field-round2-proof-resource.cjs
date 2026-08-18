@@ -162,6 +162,10 @@ assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 const report = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
 const peakMatch = result.stderr.match(/__SAGEJS_MAX_RSS_KIB__=(\d+)/);
 report.peak_rss_kib = peakMatch ? Number(peakMatch[1]) : null;
+const sha256 = (path) =>
+  existsSync(path)
+    ? createHash("sha256").update(readFileSync(path)).digest("hex")
+    : null;
 const ordered = [...report.carried_order_and_proof_total_ns].sort(
   (left, right) => left - right,
 );
@@ -179,19 +183,20 @@ report.statistics = {
   target_met: ordered[Math.floor(ordered.length / 2)] < 5e9,
 };
 report.identity = {
-  fixture_sha256: createHash("sha256")
-    .update(readFileSync(fixturePath))
-    .digest("hex"),
-  proof_source_sha256: createHash("sha256")
-    .update(
-      readFileSync(
-        join(
-          root,
-          "src/lib/sagejs/number_fields/field_analysis_resource.py",
-        ),
-      ),
-    )
-    .digest("hex"),
+  fixture_sha256: sha256(fixturePath),
+  proof_source_sha256: sha256(
+    join(root, "src/lib/sagejs/number_fields/field_analysis_resource.py"),
+  ),
+  native_header_sha256: sha256(
+    join(
+      root,
+      "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    ),
+  ),
+  ffi_declaration_sha256: sha256(join(root, "ffi/flint.ffi.json")),
+  generated_addon_sha256: sha256(
+    join(root, "packages/flint/build/generated-ffi/sagejs_flint_ffi.node"),
+  ),
   node: process.version,
 };
 report.host = {
