@@ -28,7 +28,9 @@ test(
           "sequential = run_public_local_jobs(jobs, worker_capability=False, cpu_count=4, policy=forced_pool)",
           "parallel = run_public_local_jobs(jobs, worker_capability=True, cpu_count=4, policy=forced_pool)",
           "native_first = public_worker_decision(jobs, after_native_fallback=False, cpu_count=4)",
-          "fallback_parallel = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, memory_budget_bytes=1536 * 1024 * 1024)",
+          "fallback_parallel = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, memory_budget_bytes=2 * 1024 * 1024 * 1024)",
+          "exact_memory = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, memory_budget_bytes=fallback_parallel['predicted_peak_rss_bytes'])",
+          "just_short_memory = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, memory_budget_bytes=fallback_parallel['predicted_peak_rss_bytes'] - 1)",
           "memory_declined = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, memory_budget_bytes=1)",
           "capability_declined = public_worker_decision(jobs, after_native_fallback=True, cpu_count=4, worker_capability=False)",
           "assert fallback_parallel['memory_budget_source'] == 'caller-explicit'",
@@ -42,12 +44,12 @@ test(
           "        completion_order[offset], completion_order[swap] = completion_order[swap], completion_order[offset]",
           "    replay = assemble_local_run(jobs, completion_order, parallel[1])",
           "    randomized_equivalent = randomized_equivalent and replay[2:] == parallel[2:]",
-          "[(sequential[1][1], sequential[1][2], sequential[1][6]), (parallel[1][1], parallel[1][2], parallel[1][6]), sequential[2] == parallel[2], sequential[3] == parallel[3], randomized_equivalent, (native_first['selected'], native_first['reason']), (fallback_parallel['selected'], fallback_parallel['reason']), (memory_declined['selected'], memory_declined['reason']), (capability_declined['selected'], capability_declined['reason']), fallback_parallel['predicted_peak_rss_bytes'] == fallback_parallel['memory_budget_bytes'], parallel[4][0], parallel[4][5] > sequential[4][5], [(result[1][1], result[2], result[5]) for result in parallel[2]]]",
+          "[(sequential[1][1], sequential[1][2], sequential[1][6]), (parallel[1][1], parallel[1][2], parallel[1][6]), sequential[2] == parallel[2], sequential[3] == parallel[3], randomized_equivalent, (native_first['selected'], native_first['reason']), (fallback_parallel['selected'], fallback_parallel['reason']), (memory_declined['selected'], memory_declined['reason']), (capability_declined['selected'], capability_declined['reason']), (exact_memory['selected'], just_short_memory['reason']), fallback_parallel['wire_and_branch_peak_bytes'] > 0, fallback_parallel['predicted_peak_rss_bytes'] == fallback_parallel['fixed_runtime_peak_rss_bytes'] + fallback_parallel['wire_and_branch_peak_bytes'], fallback_parallel['useful_job_count'], parallel[4][0], parallel[4][5] > sequential[4][5], [(result[1][1], result[2], result[5]) for result in parallel[2]]]",
         ].join("\n"),
       );
       assert.equal(
         result.repr,
-        "[('sequential', 1, 'worker-capability-unavailable'), ('parallel', 4, 'parallel-threshold-met'), True, True, True, (False, 'native-first-boundary'), (True, 'measured-native-fallback-crossover'), (False, 'measured-peak-exceeds-memory-budget'), (False, 'precompiled-worker-module-unavailable'), True, 'sagejs.number-fields.local-resources.v1', True, [(2, 'ok', 2), (3, 'ok', 3), (5, 'ok', 5), (7, 'ok', 7)]]",
+        "[('sequential', 1, 'worker-capability-unavailable'), ('parallel', 4, 'parallel-threshold-met'), True, True, True, (False, 'native-first-boundary'), (True, 'measured-native-fallback-crossover'), (False, 'measured-peak-exceeds-memory-budget'), (False, 'precompiled-worker-module-unavailable'), (True, 'measured-peak-exceeds-memory-budget'), True, True, 4, 'sagejs.number-fields.local-resources.v1', True, [(2, 'ok', 2), (3, 'ok', 3), (5, 'ok', 5), (7, 'ok', 7)]]",
       );
     } finally {
       await session.close();
@@ -105,7 +107,7 @@ test(
           "def unavailable(coefficients, primes):",
           "    raise RuntimeError('forced native unavailability')",
           "def enough_memory(jobs, **options):",
-          "    options['memory_budget_bytes'] = 1536 * 1024 * 1024",
+          "    options['memory_budget_bytes'] = 2 * 1024 * 1024 * 1024",
           "    return decision(jobs, **options)",
           "engine.native_order_from_polynomial = unavailable",
           "engine.public_worker_decision = enough_memory",

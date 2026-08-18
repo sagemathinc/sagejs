@@ -120,6 +120,27 @@ async function measureLocal(entry, workerCapability) {
   );
 }
 
+async function inspectDecision(entry) {
+  return evaluateWithPeakRss(
+    [
+      ...commonSource(entry.polynomial.coefficients),
+      "from sagejs.number_fields.discriminant_components import decompose_discriminant",
+      "from sagejs.number_fields.local_parallel_worker import public_worker_decision, public_worker_capability",
+      "from sagejs.number_fields.maximal_order_engine import _integral_polynomial_data, _local_selection_plan, _proven_prime_components",
+      "K.<a> = NumberField(R(source_coefficients))",
+      "coefficients, scale = _integral_polynomial_data(K)",
+      "equation_discriminant = _exact_integer(K.equation_order().discriminant())",
+      "decomposition = decompose_discriminant(coefficients, equation_discriminant)",
+      "primes = _proven_prime_components(decomposition, None)",
+      "jobs, decisions, ignored = _local_selection_plan(coefficients, equation_discriminant, primes, 'auto', worker_capability=True)",
+      "gate = public_worker_decision(jobs, after_native_fallback=True, memory_budget_bytes=4 * 1024 * 1024 * 1024)",
+      "report = {'worker_capability':public_worker_capability(), 'prime_count':len(primes), 'job_predicted_micros':[job[4] for job in jobs], 'job_predicted_peak_bytes':[job[5] for job in jobs], 'selected':gate['selected'], 'reason':gate['reason'], 'workers':gate['candidate_schedule'][2], 'predicted_total_micros':gate['predicted_total_micros'], 'predicted_critical_path_micros':gate['predicted_critical_path_micros'], 'predicted_savings_micros':gate['predicted_savings_micros'], 'required_setup_margin_micros':gate['required_setup_margin_micros'], 'useful_job_count':gate['useful_job_count'], 'fixed_runtime_peak_rss_bytes':gate['fixed_runtime_peak_rss_bytes'], 'wire_and_branch_peak_bytes':gate['wire_and_branch_peak_bytes'], 'predicted_peak_rss_bytes':gate['predicted_peak_rss_bytes'], 'memory_budget_source':gate['memory_budget_source'], 'benchmark':gate['benchmark']}",
+      "print(json.dumps(report))",
+      "None",
+    ].join("\n"),
+  );
+}
+
 function measureFreshProcess(id, mode) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [__filename, "--measure", id, mode], {
@@ -163,6 +184,7 @@ async function runMeasurement(id, mode) {
   if (mode === "native") return measureNative(entry);
   if (mode === "sequential") return measureLocal(entry, false);
   if (mode === "parallel") return measureLocal(entry, true);
+  if (mode === "decision") return inspectDecision(entry);
   throw new Error(`unknown measurement mode ${mode}`);
 }
 
@@ -174,11 +196,13 @@ async function main() {
   }
   const cases = [];
   for (const id of ids) {
+    const decision = await measureFreshProcess(id, "decision");
     const native = await measureFreshProcess(id, "native");
     const sequential = await measureFreshProcess(id, "sequential");
     const parallel = await measureFreshProcess(id, "parallel");
     cases.push({
       id,
+      decision,
       native,
       sequential_local: sequential,
       parallel_local: parallel,
@@ -189,12 +213,19 @@ async function main() {
         sequential.discriminant === parallel.discriminant &&
         native.index === sequential.index &&
         sequential.index === parallel.index,
+      fallback_speedup: sequential.total_micros / parallel.total_micros,
+      parallel_fallback_won: parallel.total_micros < sequential.total_micros,
+      native_first_won:
+        native.total_micros < sequential.total_micros &&
+        native.total_micros < parallel.total_micros,
+      parallel_peak_rss_ratio:
+        parallel.process_peak_rss_bytes / sequential.process_peak_rss_bytes,
     });
   }
   process.stdout.write(
     `${JSON.stringify(
       {
-        schema: "sagejs.benchmark/number-field-public-parallel-worker-v1",
+        schema: "sagejs.benchmark/number-field-public-parallel-worker-v2",
         boundary:
           "fresh field through decomposition, pointer-free local workers, deterministic merge, and independent global certification",
         rss_scope:
