@@ -135,19 +135,59 @@
       "commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
       "workspace_fingerprint": "7f40374547577ee9b471f84e7f3f2a765b7d0aad34c5230550731232b4b408d0",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/number-field-maximal-order-final-evidence/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.172,
+      "started_at": "2026-08-18T08:47:47.257Z",
+      "commit": "8011315043a2418df993bb47f3826b5a6a1be332",
+      "workspace_fingerprint": "9b657f837a3c96cc11ab45cf4aab96cd427bf325a6f877ec830f0c0a7ed48d78",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.724,
+      "started_at": "2026-08-18T08:47:50.488Z",
+      "commit": "8011315043a2418df993bb47f3826b5a6a1be332",
+      "workspace_fingerprint": "9b657f837a3c96cc11ab45cf4aab96cd427bf325a6f877ec830f0c0a7ed48d78",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.189,
+      "started_at": "2026-08-18T08:48:17.882Z",
+      "commit": "8011315043a2418df993bb47f3826b5a6a1be332",
+      "workspace_fingerprint": "9b657f837a3c96cc11ab45cf4aab96cd427bf325a6f877ec830f0c0a7ed48d78",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 23.334,
+      "started_at": "2026-08-18T08:48:23.165Z",
+      "commit": "8011315043a2418df993bb47f3826b5a6a1be332",
+      "workspace_fingerprint": "9b657f837a3c96cc11ab45cf4aab96cd427bf325a6f877ec830f0c0a7ed48d78",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a canonical-corpus-derived final evidence CLI with uniform primary, per-case cold, authenticated non-substituting diagnostic, exact terminal-accounting, source/native/platform identity, oracle-family labeling, and machine gate evaluation. Added a 9-test focused suite and an audit with runnable stable-source commands and explicit evidence gaps. No final corpus or stress sweep was launched.",
+    "summary": "Completed the reusable final-evidence producers: optimized warm-public is untraced, traced diagnostics remain separate, and direct native, forced Round 2/Round 4/OM, and sequential/production-parallel public boundaries now emit exact algorithm and scheduler evidence. Added authenticated randomized-generator schedules, same-commit platform receipts, cache-identity evidence, clean source plus complete production-native module hashing, process-tree RSS accounting, and stronger sample/tiny-case/memory gates. Fifteen focused harness tests and bounded one-case protocol smokes passed; no final corpus or stress sweep was launched.",
     "risks": [
-      "The lane is based on pre-optimization commit 93e6c22f and must be rebased or cherry-picked after the arithmetic source stabilizes.",
-      "The current profiler still lacks producers for true native-kernel, forced Round2/Round4/OM overlap, automatic OM selection, and sequential/parallel public records; the evaluator reports these as not measured.",
-      "Only Linux x64 harness validation ran here; supported-host lifecycle/corruption metadata still belongs in platform evidence."
+      "The integrated arithmetic branch exceeds the number-field-algorithms package budget: 793509 bytes versus 725000, so architecture:check remains red outside this harness claim.",
+      "The portable tier also remains red because test/number-field-hard-local-selector.cjs and test/number-field-round4-crt-batch.cjs are not registered in test/node-test-manifest.cjs; it repeats the same package-budget failure.",
+      "Only bounded Linux x64 harness smokes ran here. Final source must be clean and rebuilt with a complete dist/native-kernels/index.json before measurement, and platform receipts are still needed from Linux arm64, macOS arm64, and native Windows x64."
     ],
     "next_steps": [
-      "Integrate the harness onto the stabilized optimization branch and run a fresh complete production-native build.",
-      "Use plan first, then run the 489 standard and 16 stress primary matrices without substituting longer diagnostics.",
-      "Attach direct-kernel, algorithm-overlap, scheduler, randomized-generator, and four-platform reports before evaluating final gates."
+      "Fix the central package budget and register the two new host tests, then rerun architecture:check and test:portable.",
+      "Build the stabilized clean source and attach same-commit exactness/autoload/lifecycle/corruption receipts for all four supported targets.",
+      "Use the plan command first, run standard/stress/randomized and direct/forced/scheduler matrices with at least three samples for performance rows, then evaluate the authenticated gate report."
     ]
   }
 }
