@@ -221,6 +221,27 @@
       "rationale": "Internal addon declaration for the eclib rank-data boundary."
     },
     {
+      "path": "packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "elliptic-curves",
+      "rationale": "Host-neutral Arb ABI for the canonical completed elliptic L-function jet, with explicit coefficient-tail diagnostics and an ordinary-Python differential fallback."
+    },
+    {
+      "path": "packages/flint/src/elliptic_lfunction.c",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "elliptic-curves",
+      "rationale": "Combines the compact Molin/Arb completed-L-function kernel with exact coefficient conversion and its batched Node-API adapter."
+    },
+    {
+      "path": "packages/flint/src/elliptic_lfunction.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "elliptic-curves",
+      "rationale": "Internal addon declaration for the batched completed elliptic L-function boundary."
+    },
+    {
       "path": "packages/flint/src/extension_field.c",
       "category": "external-library-bridge",
       "review_status": "accepted",

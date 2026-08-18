@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 65,
+    "classified-native-file": 68,
     "declared-ffi": 400,
     "declared-ffi-resource": 27,
-    "napi-export": 293,
+    "napi-export": 295,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -5220,6 +5220,16 @@
       "family": "elliptic"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:ecCompletedCentralDerivatives",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecCompletedCentralDerivatives",
+      "symbol": "sagejs_ec_completed_central_derivatives",
+      "disposition": "retain-host-adapter",
+      "family": "elliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:ecRankData",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -5227,6 +5237,16 @@
       "export": "ecRankData",
       "symbol": "sagejs_ec_rank_data",
       "disposition": "retain-host-adapter",
+      "family": "elliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecRootNumber",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecRootNumber",
+      "symbol": "sagejs_ec_root_number",
+      "disposition": "migrate-to-declared-ffi",
       "family": "elliptic"
     },
     {
@@ -7783,6 +7803,14 @@
       "lane": "distribution"
     },
     {
+      "id": "native-file:packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "elliptic-curves"
+    },
+    {
       "id": "native-file:packages/flint/include/sagejs/exact_polynomial_ffi.h",
       "kind": "classified-native-file",
       "path": "packages/flint/include/sagejs/exact_polynomial_ffi.h",
@@ -7949,6 +7977,22 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/elliptic_lfunction.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/elliptic_lfunction.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "elliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/elliptic_lfunction.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/elliptic_lfunction.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "elliptic-curves"
     },
     {
       "id": "native-file:packages/flint/src/extension_field.c",

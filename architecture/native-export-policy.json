@@ -435,9 +435,19 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:ecCompletedCentralDerivatives",
+      "family": "elliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:ecRankData",
       "family": "elliptic",
       "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecRootNumber",
+      "family": "elliptic",
+      "decision": "migrate-to-declared-ffi"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",

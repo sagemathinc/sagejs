@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 4406,
-      "bytes": 141548,
+      "lines": 4412,
+      "bytes": 141837,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -58,6 +58,22 @@
       "fallback": "Dynamic Python character construction remains correct without the native capability.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Separate conversion-only exports from character assembly and benchmark batched packed output."
+    },
+    {
+      "path": "packages/flint/src/elliptic_lfunction.c",
+      "lines": 513,
+      "bytes": 18021,
+      "decision": "retain-primitive",
+      "priority": "medium",
+      "responsibilities": [
+        "canonical completed elliptic L-function moment evaluation",
+        "FLINT and Arb coefficient, ball, and tail-bound arithmetic",
+        "batched Node-API input validation and diagnostic conversion"
+      ],
+      "rationale": "The compact host-neutral numerical core is a justified arbitrary-precision primitive over Arb, while the surrounding adapter provides one batched exact-coefficient crossing. Rank selection, precision refinement, gamma conversion, and the readable mathematical fallback remain ordinary Python.",
+      "fallback": "The ordinary Python Mellin evaluator preserves the same completed-function normalization and probable-rank semantics whenever the native capability is unavailable.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "Sage/PARI", "Magma"],
+      "next": "Keep differential tests for every supported platform and add a proved Molin discretization enclosure before changing the diagnostic from non-rigorous."
     },
     {
       "path": "packages/flint/src/matrix.c",

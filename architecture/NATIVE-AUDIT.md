@@ -12,7 +12,7 @@ form one category and should not receive one blanket rewrite:
 
 | Source | Lines | Decision | Priority |
 | --- | ---: | --- | --- |
-| `packages/flint/src/addon.c` | 4,406 | split adapters from local algorithms | high |
+| `packages/flint/src/addon.c` | 4,412 | split adapters from local algorithms | high |
 | `packages/flint/src/cyclotomic_rref.c` | 1,008 | retain FLINT storage; migrate control flow later | medium |
 | `packages/flint/src/dirichlet.c` | 971 | retain FLINT bridge; migrate orchestration | medium |
 | `packages/flint/src/matrix.c` | 5,803 | split FLINT ABI from local algorithms | high |
