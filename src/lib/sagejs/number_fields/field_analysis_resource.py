@@ -13,7 +13,10 @@ from __future__ import annotations
 from typing import Any
 
 from sagejs.number_fields.buchmann_lenstra import polynomial_discriminant
-from sagejs.number_fields.maximal_order_certification import check_order_lattice
+from sagejs.number_fields.maximal_order_certification import (
+    _scaled_integral_inverse,
+    check_order_lattice,
+)
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
@@ -144,128 +147,61 @@ def _canonical_row_hnf(rows: list[list[int]]) -> bool:
     return True
 
 
-Rational = tuple[int, int]
-
-
-def _fraction(numerator: int, denominator: int = 1) -> Rational:
-    if denominator == 0:
-        raise ZeroDivisionError("zero rational denominator")
-    if denominator < 0:
-        numerator = -numerator
-        denominator = -denominator
-    common = _gcd(numerator, denominator)
-    return numerator // common, denominator // common
-
-
-def _fraction_add(left: Rational, right: Rational) -> Rational:
-    return _fraction(left[0] * right[1] + right[0] * left[1], left[1] * right[1])
-
-
-def _fraction_subtract(left: Rational, right: Rational) -> Rational:
-    return _fraction(left[0] * right[1] - right[0] * left[1], left[1] * right[1])
-
-
-def _fraction_multiply(left: Rational, right: Rational) -> Rational:
-    return _fraction(left[0] * right[0], left[1] * right[1])
-
-
-def _fraction_divide(left: Rational, right: Rational) -> Rational:
-    return _fraction(left[0] * right[1], left[1] * right[0])
-
-
-def _inverse_fraction_matrix(rows: list[list[int | Rational]]) -> list[list[Rational]]:
-    degree = len(rows)
-    augmented = [
-        [value if isinstance(value, tuple) else _fraction(value) for value in row]
-        + [_fraction(1 if row_index == column else 0) for column in range(degree)]
-        for row_index, row in enumerate(rows)
-    ]
-    for column in range(degree):
-        pivot = column
-        while pivot < degree and augmented[pivot][column][0] == 0:
-            pivot += 1
-        if pivot == degree:
-            raise ValueError("fixed-point lattice is singular")
-        augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
-        scale = augmented[column][column]
-        augmented[column] = [
-            _fraction_divide(value, scale) for value in augmented[column]
-        ]
-        for row in range(degree):
-            if row == column:
-                continue
-            scalar = augmented[row][column]
-            if scalar[0]:
-                augmented[row] = [
-                    _fraction_subtract(
-                        augmented[row][entry],
-                        _fraction_multiply(scalar, augmented[column][entry]),
-                    )
-                    for entry in range(2 * degree)
-                ]
-    return [row[degree:] for row in augmented]
-
-
-def _power_product(
-    left: list[Rational], right: list[Rational], polynomial: list[int]
-) -> list[Rational]:
+def _integer_power_product(
+    left: list[int], right: list[int], polynomial: list[int]
+) -> list[int]:
     degree = len(polynomial) - 1
-    product = [_fraction(0) for _index in range(2 * degree - 1)]
+    product = [0 for _index in range(2 * degree - 1)]
     for left_index, left_value in enumerate(left):
+        if left_value == 0:
+            continue
         for right_index, right_value in enumerate(right):
-            product[left_index + right_index] = _fraction_add(
-                product[left_index + right_index],
-                _fraction_multiply(left_value, right_value),
-            )
+            product[left_index + right_index] += left_value * right_value
     for exponent in range(2 * degree - 2, degree - 1, -1):
         leading = product[exponent]
-        if leading[0]:
+        if leading:
             for index in range(degree):
-                target = exponent - degree + index
-                product[target] = _fraction_subtract(
-                    product[target],
-                    _fraction_multiply(leading, _fraction(polynomial[index])),
-                )
+                product[exponent - degree + index] -= leading * polynomial[index]
     return product[:degree]
-
-
-def _vector_times_matrix(
-    vector: list[Rational], matrix: list[list[Rational]]
-) -> list[Rational]:
-    answer: list[Rational] = []
-    for column in range(len(matrix)):
-        value = _fraction(0)
-        for row in range(len(vector)):
-            value = _fraction_add(
-                value, _fraction_multiply(vector[row], matrix[row][column])
-            )
-        answer.append(value)
-    return answer
 
 
 def _order_arithmetic(
     polynomial: list[int], numerator: list[list[int]], denominator: int
 ) -> tuple[list[list[list[int]]], list[int]]:
     degree = len(numerator)
-    basis = [[_fraction(value, denominator) for value in row] for row in numerator]
-    inverse = _inverse_fraction_matrix(basis)
-    identity_values = _vector_times_matrix(
-        [_fraction(1)] + [_fraction(0) for _index in range(degree - 1)], inverse
-    )
-    if any(value[1] != 1 for value in identity_values):
-        raise ValueError("fixed-point order does not contain one")
+    scaled_inverse = [[0 for _column in range(degree)] for _row in range(degree)]
+    for row in range(degree - 1, -1, -1):
+        diagonal = numerator[row][row]
+        if diagonal == 0:
+            raise ValueError("fixed-point order basis is singular")
+        for column in range(degree):
+            value = denominator if row == column else 0
+            for source in range(row + 1, degree):
+                value -= numerator[row][source] * scaled_inverse[source][column]
+            if value % diagonal != 0:
+                raise ValueError(
+                    "fixed-point order does not contain the equation order"
+                )
+            scaled_inverse[row][column] = value // diagonal
+    identity = list(scaled_inverse[0])
+    denominator_squared = denominator * denominator
     table: list[list[list[int]]] = []
-    for left in basis:
+    for left in numerator:
         products: list[list[int]] = []
-        for right in basis:
-            coordinates = _vector_times_matrix(
-                _power_product(left, right, polynomial), inverse
-            )
-            if any(value[1] != 1 for value in coordinates):
-                raise ValueError("fixed-point order multiplication is not integral")
-            products.append([value[0] for value in coordinates])
+        for right in numerator:
+            product = _integer_power_product(left, right, polynomial)
+            coordinates: list[int] = []
+            for column in range(degree):
+                value = sum(
+                    product[source] * scaled_inverse[source][column]
+                    for source in range(degree)
+                )
+                if value % denominator_squared != 0:
+                    raise ValueError("fixed-point order multiplication is not integral")
+                coordinates.append(value // denominator_squared)
+            products.append(coordinates)
         table.append(products)
-    return table, [value[0] for value in identity_values]
+    return table, identity
 
 
 def _modular_rref(
@@ -435,7 +371,10 @@ def _selected_multiplier_rows(
     prime: int,
 ) -> list[list[int]]:
     degree = len(table)
-    inverse = _inverse_fraction_matrix(lattice)
+    determinant = abs(_determinant(lattice))
+    inverse = _scaled_integral_inverse(lattice, determinant)
+    if determinant == 0 or inverse is None:
+        raise ValueError("fixed-point radical lattice is singular")
     answer: list[list[int]] = []
     for selector in selectors:
         if selector < 0 or selector >= degree * degree:
@@ -450,23 +389,35 @@ def _selected_multiplier_rows(
                 )
                 for target in range(degree)
             ]
-            coordinates = _vector_times_matrix(
-                [_fraction(value) for value in product], inverse
+            coordinate_numerator = sum(
+                product[source] * inverse[source][coordinate]
+                for source in range(degree)
             )
-            if any(value[1] != 1 for value in coordinates):
+            if coordinate_numerator % determinant != 0:
                 raise ValueError("fixed-point multiplier coordinate is inexact")
-            equation.append(coordinates[coordinate][0] % prime)
+            equation.append(coordinate_numerator // determinant % prime)
         answer.append(equation)
     return answer
 
 
-class FieldAnalysisComponent:
+class _ImmutableCertificatePart:
+    def __setattr__(self, name: str, value: Any) -> None:
+        if bool(self.__dict__.get("_certificate_frozen", False)):
+            raise AttributeError("field-analysis certificates are immutable")
+        self.__dict__[name] = value
+
+    def _freeze_certificate(self) -> None:
+        self.__dict__["_certificate_frozen"] = True
+
+
+class FieldAnalysisComponent(_ImmutableCertificatePart):
     """One exact coprime component with a deliberately bounded proof state."""
 
     def __init__(self, value: int, exponent: int, state: int) -> None:
         self.value = int(value)
         self.exponent = int(exponent)
         self.state = int(state)
+        self._freeze_certificate()
 
     def to_dict(self) -> dict[str, Any]:
         names = {
@@ -481,15 +432,18 @@ class FieldAnalysisComponent:
         }
 
 
-class FixedPointWitness:
+class FixedPointWitness(_ImmutableCertificatePart):
     """Compact, independently checkable proof of one terminal local fixed point."""
 
     def __init__(
         self, prime: int, radical_rows: list[list[int]], selectors: list[int]
     ) -> None:
         self.prime = int(prime)
-        self.radical_rows = [list(row) for row in radical_rows]
-        self.selectors = [int(value) for value in selectors]
+        self.radical_rows = tuple(
+            tuple(int(value) for value in row) for row in radical_rows
+        )
+        self.selectors = tuple(int(value) for value in selectors)
+        self._freeze_certificate()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -499,7 +453,7 @@ class FixedPointWitness:
         }
 
 
-class NativeFieldAnalysisResult:
+class NativeFieldAnalysisResult(_ImmutableCertificatePart):
     """An immutable fused discriminant, decomposition, and order certificate."""
 
     def __init__(
@@ -523,14 +477,17 @@ class NativeFieldAnalysisResult:
         self.resolved_components = resolved_components
         self.native_primes = native_primes
         self.scale = scale
-        self.polynomial = list(polynomial)
-        self.components = list(components)
-        self.fixed_point_witnesses = list(fixed_point_witnesses)
-        self.basis_numerator = [list(row) for row in basis_numerator]
+        self.polynomial = tuple(int(value) for value in polynomial)
+        self.components = tuple(components)
+        self.fixed_point_witnesses = tuple(fixed_point_witnesses)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in basis_numerator
+        )
         self.basis_denominator = basis_denominator
         self.index = index
         self.equation_discriminant = equation_discriminant
         self.order_discriminant = order_discriminant
+        self._freeze_certificate()
 
     @property
     def candidate_complete(self) -> bool:
@@ -579,7 +536,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         ANALYSIS_FALLBACK_NATIVE_FAILURE,
     ):
         raise ValueError("unknown field-analysis status")
-    coefficients = result.polynomial
+    coefficients = list(result.polynomial)
     degree = len(coefficients) - 1
     if degree < 1 or coefficients[-1] != 1 or result.scale < 1:
         raise ValueError("field-analysis source polynomial/scale is invalid")
@@ -643,7 +600,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
     if len(result.fixed_point_witnesses) != result.native_primes:
         raise ValueError("field-analysis fixed-point witness count is inconsistent")
 
-    rows = result.basis_numerator
+    rows = [list(row) for row in result.basis_numerator]
     if len(rows) != degree or any(len(row) != degree for row in rows):
         raise ValueError("field-analysis basis has the wrong shape")
     if result.basis_denominator < 1 or not _canonical_row_hnf(rows):
@@ -663,6 +620,17 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         raise ValueError("field-analysis order index is inconsistent")
     if result.order_discriminant * index * index != discriminant:
         raise ValueError("field-analysis order discriminant is inconsistent")
+    if result.status == ANALYSIS_FALLBACK_NATIVE_FAILURE and (
+        result.basis_denominator != 1
+        or result.index != 1
+        or result.order_discriminant != result.equation_discriminant
+        or any(
+            rows[row][column] != (1 if row == column else 0)
+            for row in range(degree)
+            for column in range(degree)
+        )
+    ):
+        raise ValueError("failed native analysis did not preserve the identity order")
     lattice = check_order_lattice(coefficients, rows, result.basis_denominator)
     if not bool(lattice["valid"]):
         raise ValueError(
@@ -677,7 +645,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
     ):
         if witness.prime != expected_prime:
             raise ValueError("field-analysis fixed-point witness has the wrong prime")
-        radical = witness.radical_rows
+        radical = [list(row) for row in witness.radical_rows]
         if len(radical) > degree or any(len(row) != degree for row in radical):
             raise ValueError("field-analysis fixed-point radical has the wrong shape")
         if any(value < 0 or value >= witness.prime for row in radical for value in row):
@@ -690,7 +658,7 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         if len(witness.selectors) != degree or len(set(witness.selectors)) != degree:
             raise ValueError("field-analysis fixed-point selectors are not distinct")
         selected = _selected_multiplier_rows(
-            witness.selectors,
+            list(witness.selectors),
             _radical_lattice(radical, degree, witness.prime),
             table,
             witness.prime,
@@ -707,6 +675,7 @@ def decode_field_analysis_resource(
     *,
     expected_polynomial: list[int] | None = None,
     expected_scale: int | None = None,
+    expected_trial_bound: int | None = None,
 ) -> NativeFieldAnalysisResult:
     """Decode and independently authenticate a packed native certificate."""
     if len(payload) < 80:
@@ -814,6 +783,8 @@ def decode_field_analysis_resource(
         raise ValueError("field-analysis certificate describes another polynomial")
     if expected_scale is not None and int(expected_scale) != scale:
         raise ValueError("field-analysis certificate describes another generator scale")
+    if expected_trial_bound is not None and int(expected_trial_bound) != trial_bound:
+        raise ValueError("field-analysis certificate used another trial bound")
     return result
 
 
@@ -846,6 +817,7 @@ def native_field_analysis(
                 payload,
                 expected_polynomial=coefficients,
                 expected_scale=scale_value,
+                expected_trial_bound=bound,
             )
         finally:
             resource.close()
