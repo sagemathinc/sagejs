@@ -494,16 +494,221 @@ class ResidualFactor(ImmutableOMRecord):
     multiplicity: int
 
 
-def _monic_polynomials(degree: int, prime: int) -> Iterator[Polynomial]:
-    count = prime**degree
-    for encoded in range(count):
-        coefficients = []
-        value = encoded
-        for _index in range(degree):
+def _modular_make_monic(polynomial: Polynomial, prime: int) -> Polynomial:
+    polynomial = _mod_polynomial(polynomial, prime)
+    if polynomial == (0,):
+        return polynomial
+    inverse = _mod_inverse(polynomial[-1], prime)
+    return _mod_polynomial(tuple(value * inverse for value in polynomial), prime)
+
+
+def _modular_gcd(
+    left: Polynomial,
+    right: Polynomial,
+    prime: int,
+) -> Polynomial:
+    left = _mod_polynomial(left, prime)
+    right = _mod_polynomial(right, prime)
+    while right != (0,):
+        _quotient, remainder = modular_divmod(left, right, prime)
+        left, right = right, remainder
+    return _modular_make_monic(left, prime)
+
+
+def _modular_exact_quotient(
+    dividend: Polynomial,
+    divisor: Polynomial,
+    prime: int,
+) -> Polynomial:
+    quotient, remainder = modular_divmod(dividend, divisor, prime)
+    if remainder != (0,):
+        raise ArithmeticError("a modular squarefree quotient was not exact")
+    return _modular_make_monic(quotient, prime)
+
+
+def _modular_multiply_reduce(
+    left: Polynomial,
+    right: Polynomial,
+    modulus: Polynomial,
+    prime: int,
+) -> Polynomial:
+    product = polynomial_multiply(left, right)
+    _quotient, remainder = modular_divmod(product, modulus, prime)
+    return remainder
+
+
+def _modular_power_reduce(
+    value: Polynomial,
+    exponent: int,
+    modulus: Polynomial,
+    prime: int,
+) -> Polynomial:
+    result: Polynomial = (1,)
+    _quotient, power = modular_divmod(value, modulus, prime)
+    remaining = exponent
+    while remaining:
+        if remaining % 2:
+            result = _modular_multiply_reduce(result, power, modulus, prime)
+        remaining //= 2
+        if remaining:
+            power = _modular_multiply_reduce(power, power, modulus, prime)
+    return result
+
+
+def _modular_derivative(polynomial: Polynomial, prime: int) -> Polynomial:
+    if len(polynomial) <= 1:
+        return (0,)
+    return _mod_polynomial(
+        tuple(index * polynomial[index] for index in range(1, len(polynomial))),
+        prime,
+    )
+
+
+def _modular_pth_root(polynomial: Polynomial, prime: int) -> Polynomial:
+    coefficients: list[int] = []
+    for index, value in enumerate(polynomial):
+        if index % prime:
+            if value % prime:
+                raise ArithmeticError("a derivative-zero polynomial is not a pth power")
+        else:
             coefficients.append(value % prime)
-            value //= prime
-        coefficients.append(1)
-        yield tuple(coefficients)
+    return normalize_polynomial(coefficients)
+
+
+def _squarefree_modular_parts(
+    polynomial: Polynomial,
+    prime: int,
+) -> tuple[tuple[Polynomial, int], ...]:
+    """Return monic squarefree parts with their exact multiplicities."""
+    answer: list[tuple[Polynomial, int]] = []
+
+    def visit(current: Polynomial, multiplicity_scale: int) -> None:
+        current = _modular_make_monic(current, prime)
+        if polynomial_degree(current) <= 0:
+            return
+        derivative = _modular_derivative(current, prime)
+        if derivative == (0,):
+            visit(_modular_pth_root(current, prime), multiplicity_scale * prime)
+            return
+        common = _modular_gcd(current, derivative, prime)
+        remaining = _modular_exact_quotient(current, common, prime)
+        multiplicity = 1
+        while remaining != (1,):
+            repeated = _modular_gcd(remaining, common, prime)
+            layer = _modular_exact_quotient(remaining, repeated, prime)
+            if layer != (1,):
+                answer.append((layer, multiplicity_scale * multiplicity))
+            remaining = repeated
+            common = _modular_exact_quotient(common, repeated, prime)
+            multiplicity += 1
+        if common != (1,):
+            visit(_modular_pth_root(common, prime), multiplicity_scale * prime)
+
+    visit(polynomial, 1)
+    return tuple(answer)
+
+
+def _distinct_degree_modular_parts(
+    polynomial: Polynomial,
+    prime: int,
+) -> tuple[tuple[Polynomial, int], ...]:
+    """Group a squarefree polynomial by irreducible factor degree."""
+    answer: list[tuple[Polynomial, int]] = []
+    remaining = polynomial
+    variable: Polynomial = (0, 1)
+    frobenius = variable
+    factor_degree = 1
+    while 2 * factor_degree <= polynomial_degree(remaining):
+        frobenius = _modular_power_reduce(
+            frobenius,
+            prime,
+            remaining,
+            prime,
+        )
+        group = _modular_gcd(
+            polynomial_subtract(frobenius, variable),
+            remaining,
+            prime,
+        )
+        if group != (1,):
+            answer.append((group, factor_degree))
+            remaining = _modular_exact_quotient(remaining, group, prime)
+            if remaining == (1,):
+                break
+            _quotient, frobenius = modular_divmod(frobenius, remaining, prime)
+        factor_degree += 1
+    if remaining != (1,):
+        answer.append((remaining, polynomial_degree(remaining)))
+    return tuple(answer)
+
+
+def _deterministic_modular_candidate(encoded: int, prime: int) -> Polynomial:
+    coefficients: list[int] = []
+    value = encoded + prime
+    while value:
+        coefficients.append(value % prime)
+        value //= prime
+    return normalize_polynomial(coefficients)
+
+
+def _equal_degree_modular_factors(
+    polynomial: Polynomial,
+    factor_degree: int,
+    prime: int,
+    work: list[int],
+    maximum_work: int,
+) -> tuple[Polynomial, ...]:
+    """Split one distinct-degree group by deterministic Cantor--Zassenhaus."""
+    target_count = polynomial_degree(polynomial) // factor_degree
+    if target_count <= 1:
+        return (polynomial,)
+    factors: list[Polynomial] = [polynomial]
+    attempt = 0
+    while len(factors) < target_count:
+        if work[0] >= maximum_work:
+            raise OMResourceError(
+                "bounded equal-degree factorization candidate limit exceeded"
+            )
+        candidate = _deterministic_modular_candidate(attempt, prime)
+        attempt += 1
+        work[0] += 1
+        changed = False
+        next_factors: list[Polynomial] = []
+        for factor in factors:
+            if polynomial_degree(factor) == factor_degree:
+                next_factors.append(factor)
+                continue
+            common = _modular_gcd(candidate, factor, prime)
+            if common == (1,) or common == factor:
+                if prime == 2:
+                    trace: Polynomial = (0,)
+                    term = candidate
+                    for _index in range(factor_degree):
+                        trace = _mod_polynomial(polynomial_add(trace, term), prime)
+                        term = _modular_multiply_reduce(term, term, factor, prime)
+                    common = _modular_gcd(trace, factor, prime)
+                else:
+                    character = _modular_power_reduce(
+                        candidate,
+                        (prime**factor_degree - 1) // 2,
+                        factor,
+                        prime,
+                    )
+                    common = _modular_gcd(
+                        polynomial_subtract(character, (1,)),
+                        factor,
+                        prime,
+                    )
+            if common == (1,) or common == factor:
+                next_factors.append(factor)
+                continue
+            next_factors.append(common)
+            next_factors.append(_modular_exact_quotient(factor, common, prime))
+            changed = True
+        factors = next_factors
+        if not changed and attempt >= maximum_work:
+            raise OMResourceError("deterministic equal-degree splitting stalled")
+    return tuple(sorted(factors, key=lambda item: (polynomial_degree(item), item)))
 
 
 def factor_mod_prime(
@@ -514,37 +719,35 @@ def factor_mod_prime(
 ) -> tuple[ModularFactor, ...]:
     """Deterministically factor a bounded monic polynomial over `F_p`.
 
-    Trial division by increasing monic degree is intentionally used here: it is
-    small, independently auditable, and sufficient for differential fixtures.
-    Larger residual problems are delegated to the future FLINT-backed lane.
+    Squarefree decomposition, distinct-degree factorization, and bounded
+    deterministic Cantor--Zassenhaus splitting avoid enumerating `p^d` monic
+    candidates.  The work bound counts split candidates and therefore remains
+    independent of the residue-field cardinality.
     """
     remaining = _mod_polynomial(polynomial, prime)
     if remaining == (0,) or remaining[-1] != 1:
         raise OMDomainError("bounded modular factorization requires monic input")
     factors: list[ModularFactor] = []
-    used = 0
-    degree = 1
-    while 2 * degree <= polynomial_degree(remaining):
-        count = prime**degree
-        used += count
-        if used > max_enumerated_candidates:
-            raise OMResourceError(
-                "bounded modular factorization candidate limit exceeded"
-            )
-        for candidate in _monic_polynomials(degree, prime):
-            multiplicity = 0
-            while polynomial_degree(remaining) >= degree:
-                quotient, remainder = modular_divmod(remaining, candidate, prime)
-                if remainder != (0,):
-                    break
-                remaining = quotient
-                multiplicity += 1
-            if multiplicity:
-                factors.append(ModularFactor(candidate, multiplicity))
-        degree += 1
-    if polynomial_degree(remaining) > 0:
-        factors.append(ModularFactor(remaining, 1))
-    return tuple(factors)
+    work = [0]
+    for squarefree, multiplicity in _squarefree_modular_parts(remaining, prime):
+        for distinct, factor_degree in _distinct_degree_modular_parts(
+            squarefree,
+            prime,
+        ):
+            for factor in _equal_degree_modular_factors(
+                distinct,
+                factor_degree,
+                prime,
+                work,
+                max_enumerated_candidates,
+            ):
+                factors.append(ModularFactor(factor, multiplicity))
+    return tuple(
+        sorted(
+            factors,
+            key=lambda item: (polynomial_degree(item.polynomial), item.polynomial),
+        )
+    )
 
 
 def _residue_elements(prime: int, modulus: Polynomial) -> Iterator[ResidueElement]:

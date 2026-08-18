@@ -567,3 +567,76 @@ print(json.dumps(answer))
     ]);
   }
 });
+
+test("scalable bad generators factor quickly and fail closed without MaxMin proof", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_maxmin import regular_local_basis
+
+def bad_generator_polynomial(degree, coefficient):
+    previous = [2]
+    current = [-1]
+    for _index in range(2, degree + 1):
+        following = [0] * max(len(current), len(previous) + 1)
+        for index in range(len(current)):
+            following[index] -= current[index]
+        for index in range(len(previous)):
+            following[index + 1] += coefficient * previous[index]
+        previous, current = current, following
+    answer = [-2 * value for value in current]
+    answer[0] += 4 * coefficient ** degree
+    answer.extend([0] * (degree + 1 - len(answer)))
+    answer[degree] += 1
+    return tuple(answer)
+
+polynomial = bad_generator_polynomial(32, 1009)
+regular = regular_local_basis(
+    polynomial,
+    2,
+    local_discriminant_valuation=191,
+)
+ramified = regular_local_basis(
+    polynomial,
+    7,
+    local_discriminant_valuation=4,
+)
+if regular.status != "complete" or regular.certificate is None:
+    raise AssertionError(regular.reason)
+if regular.type_tree.expected_index_valuation != 0:
+    raise AssertionError("the pure-field equation order must be 2-maximal")
+if (
+    ramified.status != "incomplete"
+    or not ramified.type_tree.complete
+    or ramified.certificate is None
+    or not ramified.certificate.validation.valid
+    or ramified.certificate.maxmin.maximality_checked
+    or ramified.order_basis is not None
+    or ramified.local_result.state != "not-applicable"
+):
+    raise AssertionError(ramified.reason)
+print(json.dumps([
+    len(ramified.type_tree.types),
+    ramified.type_tree.expected_index_valuation,
+    list(ramified.certificate.maxmin.maximality_failures),
+]))
+`;
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [
+      13,
+      2,
+      ["MaxMin exhaustive validation bound exceeded"],
+    ]);
+  }
+});

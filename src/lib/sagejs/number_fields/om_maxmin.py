@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
 
+from sagejs.native import IntegerBuffer, native, uint64
+
 from .maximal_order_contracts import (
     DiscriminantComponent,
     LocalOrderResult,
@@ -34,7 +36,6 @@ from .om_types import (
     normalize_polynomial,
     phi_quotients,
     polynomial_degree,
-    polynomial_divmod_monic,
     polynomial_multiply,
     polynomial_power,
     representative_from_level,
@@ -179,6 +180,12 @@ def validate_maxmin_certificate(
     if len(certificate.candidates) != expected_degree:
         failures.append("candidate count differs from total local degree")
         return tuple(failures)
+    combinations = 1
+    for table in tables:
+        combinations *= len(table.numerators)
+        if combinations > max_combinations:
+            failures.append("MaxMin exhaustive validation bound exceeded")
+            return tuple(failures)
     for candidate in certificate.candidates:
         numerator, values, minimum = _candidate_for_index(tables, candidate.multi_index)
         if numerator != candidate.numerator:
@@ -547,6 +554,84 @@ def _basis_coordinates_are_integral(
     return True
 
 
+@native
+def packed_triangular_basis_is_closed(
+    workspace: IntegerBuffer,
+    basis_numerators: IntegerBuffer,
+    basis_denominators: IntegerBuffer,
+    polynomial: IntegerBuffer,
+    degree: uint64,
+) -> bool:
+    """Check every basis product in one exact packed-integer kernel.
+
+    Basis numerator rows are dense, row-major, and monic triangular. The
+    defining polynomial is monic with `degree + 1` coefficients. CPython and
+    an uncompiled Sage.js runtime execute this same loop as the dynamic
+    fallback; a compiled artifact keeps all products, reductions, and
+    coordinate eliminations inside one isolated GMP-backed core.
+    """
+    valid = (
+        degree > 0
+        and len(workspace) == degree * 2 - 1
+        and len(basis_numerators) == degree * degree
+        and len(basis_denominators) == degree
+        and len(polynomial) == degree + 1
+        and polynomial[degree] == 1
+    )
+    if valid:
+        for row in range(degree):
+            if basis_denominators[row] <= 0:
+                valid = False
+            if basis_numerators[row * degree + row] != 1:
+                valid = False
+            for column in range(row + 1, degree):
+                if basis_numerators[row * degree + column] != 0:
+                    valid = False
+    left = 0
+    while valid and left < degree:
+        right = left
+        while valid and right < degree:
+            if basis_denominators[left] != 1 or basis_denominators[right] != 1:
+                for index in range(len(workspace)):
+                    workspace[index] = 0
+                for left_index in range(left + 1):
+                    left_value = basis_numerators[left * degree + left_index]
+                    if left_value != 0:
+                        for right_index in range(right + 1):
+                            right_value = basis_numerators[right * degree + right_index]
+                            if right_value != 0:
+                                workspace[left_index + right_index] += (
+                                    left_value * right_value
+                                )
+                reduction_offset = 0
+                while reduction_offset < degree - 1:
+                    exponent = len(workspace) - 1 - reduction_offset
+                    leading = workspace[exponent]
+                    if leading != 0:
+                        shift = exponent - degree
+                        for index in range(degree + 1):
+                            workspace[shift + index] -= leading * polynomial[index]
+                    reduction_offset += 1
+                value_denominator = basis_denominators[left] * basis_denominators[right]
+                coordinate_offset = 0
+                while valid and coordinate_offset < degree:
+                    coordinate = degree - 1 - coordinate_offset
+                    leading = workspace[coordinate]
+                    if (
+                        leading * basis_denominators[coordinate]
+                    ) % value_denominator != 0:
+                        valid = False
+                    else:
+                        for index in range(coordinate + 1):
+                            workspace[index] -= (
+                                leading * basis_numerators[coordinate * degree + index]
+                            )
+                    coordinate_offset += 1
+            right += 1
+        left += 1
+    return valid
+
+
 def validate_triangular_basis(
     polynomial: Polynomial,
     prime: int,
@@ -587,26 +672,30 @@ def validate_triangular_basis(
                 failures.append("equation-order monomial is not contained")
                 break
     multiplication_closed = triangular
-    if triangular:
-        for left in basis:
-            for right in basis:
-                product = polynomial_multiply(left.numerator, right.numerator)
-                _quotient, remainder = polynomial_divmod_monic(product, polynomial)
-                if not _basis_coordinates_are_integral(
-                    remainder,
-                    left.denominator * right.denominator,
-                    basis,
-                ):
-                    multiplication_closed = False
-                    failures.append(
-                        "basis product is nonintegral at degrees "
-                        + str(left.degree)
-                        + ","
-                        + str(right.degree)
-                    )
-                    break
-            if not multiplication_closed:
-                break
+    if triangular and any(element.denominator != 1 for element in basis):
+        packed_numerators: list[int] = []
+        coefficient_bound = 1
+        for coefficient in polynomial:
+            if abs(coefficient) > coefficient_bound:
+                coefficient_bound = abs(coefficient)
+        for element in basis:
+            packed_numerators.extend(element.numerator)
+            packed_numerators.extend([0] * (degree - len(element.numerator)))
+            for coefficient in element.numerator:
+                if abs(coefficient) > coefficient_bound:
+                    coefficient_bound = abs(coefficient)
+        capacity_seed = (coefficient_bound + 1) ** (2 * degree + 2)
+        workspace = [0] * (degree * 2 - 1)
+        workspace[0] = capacity_seed
+        multiplication_closed = packed_triangular_basis_is_closed(
+            workspace,
+            packed_numerators,
+            [element.denominator for element in basis],
+            list(polynomial),
+            degree,
+        )
+        if not multiplication_closed:
+            failures.append("basis multiplication is not integral")
     local_index = sum(element.denominator_exponent for element in basis)
     index_matches = local_index == expected_index_valuation
     if not index_matches:
@@ -1026,6 +1115,20 @@ def regular_local_basis(
             certificate,
             None,
             local_result,
+        )
+    if not maxmin.maximality_checked:
+        message = (
+            "independent lattice checks passed, but exhaustive MaxMin evidence "
+            "is incomplete: " + "; ".join(maxmin.maximality_failures)
+        )
+        return LocalBasisResult(
+            "incomplete",
+            message,
+            tree,
+            metrics,
+            certificate,
+            None,
+            _not_applicable_result(tree, metrics, message),
         )
     order_basis = OrderBasis(
         [list(row) for row in common_rows],

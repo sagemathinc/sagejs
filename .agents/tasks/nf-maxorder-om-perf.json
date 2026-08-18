@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-om-perf",
+  "title": "OM scalable crossover profiling",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile scalable higher-order OM workloads and source-transparently accelerate the exact polynomial and MaxMin loops enough to establish a measured crossover boundary without changing public selection",
+  "base_commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-maxmin.cjs",
+    "bench/number-field-om-maxmin.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/2405.13577"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath/PARI exact maximal-order discriminant and index",
+      "Hecke 0.39.21 maximal-order basis/discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-om-maxmin.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-om-maxmin.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.656,
+      "started_at": "2026-08-18T00:51:50.510Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.472,
+      "started_at": "2026-08-18T00:52:06.932Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.342,
+      "started_at": "2026-08-18T00:52:29.164Z",
+      "commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+      "workspace_fingerprint": "2e6a9f2cf9e8377b7ea5c3ad3c530237d7cd4fd5c5de2f59b565b56f45be0697",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Checkpoint replaces exponential monic-candidate enumeration with deterministic squarefree, distinct-degree, and Cantor-Zassenhaus modular factorization. It adds a same-source packed IntegerBuffer kernel for exact triangular-lattice closure, skips redundant products already in the equation order, and preserves a dynamic CPython fallback. The degree-32 bad-generator p=7 tree now builds in milliseconds; because exhaustive MaxMin evidence exceeds its bound, the independently valid lattice remains an inspectable incomplete candidate and cannot reach LocalOrderResult complete.",
+    "risks": [
+      "Equal-degree splitting remains deterministically bounded and can still return an explicit resource error on adversarial candidates.",
+      "The degree-32 p=7 candidate has valid closure/index/type evidence but deliberately remains incomplete until scalable independent MaxMin evidence is available.",
+      "Full bad-generator index factorization exceeded the bounded oracle timeout and belongs to discriminant-component orchestration rather than this local OM lane."
+    ],
+    "next_steps": [
+      "Measure warmed direct PARI nfbasis and pinned Hecke maximal_order at degrees 32 and 48 with bounded processes.",
+      "Profile and source-transparently compile the remaining type-tree and numerator-table loops on the degree-48 crossover candidate.",
+      "Coordinate the v429 exact-polynomial local candidate boundary with nf_timeout_cluster without editing its timeout or engine paths."
+    ]
+  }
+}
