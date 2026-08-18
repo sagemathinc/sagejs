@@ -51,6 +51,17 @@ static inline ulong sagejs_nf_mulmod(
     return n_mulmod2_preinv(left, right, prime, inverse);
 }
 
+static inline ulong sagejs_nf_fmpz_fdiv_ui(
+    const fmpz_t value, ulong modulus)
+{
+    if ((modulus & (modulus - 1)) != 0)
+        return fmpz_fdiv_ui(value, modulus);
+    ulong remainder = fmpz_get_ui(value) & (modulus - 1);
+    if (fmpz_sgn(value) < 0 && remainder != 0)
+        remainder = modulus - remainder;
+    return remainder;
+}
+
 static inline void sagejs_nf_modular_product(
     ulong *result, const ulong *left, const ulong *right,
     const ulong *table, slong degree, ulong prime, ulong inverse)
@@ -355,6 +366,11 @@ typedef struct
     slong degree;
     slong *pivots;
     slong *nonpivots;
+    slong *radical_offsets;
+    slong *radical_sources;
+    ulong *radical_coefficients;
+    slong *equation_hash_slots;
+    size_t equation_hash_capacity;
     unsigned char *is_pivot;
     ulong *product;
     nmod_mat_t equations;
@@ -369,6 +385,18 @@ static inline void sagejs_nf_multiplier_workspace_init(
         (slong *) flint_malloc((size_t) degree * sizeof(slong));
     workspace->nonpivots =
         (slong *) flint_malloc((size_t) degree * sizeof(slong));
+    workspace->radical_offsets =
+        (slong *) flint_malloc((size_t) (degree + 1) * sizeof(slong));
+    workspace->radical_sources = (slong *) flint_malloc(
+        (size_t) degree * (size_t) degree * sizeof(slong));
+    workspace->radical_coefficients = (ulong *) flint_malloc(
+        (size_t) degree * (size_t) degree * sizeof(ulong));
+    const size_t equation_rows = (size_t) degree * (size_t) degree;
+    workspace->equation_hash_capacity = 1;
+    while (workspace->equation_hash_capacity < 2 * equation_rows)
+        workspace->equation_hash_capacity <<= 1;
+    workspace->equation_hash_slots = (slong *) flint_malloc(
+        workspace->equation_hash_capacity * sizeof(slong));
     workspace->is_pivot = (unsigned char *) flint_calloc(
         (size_t) degree, sizeof(unsigned char));
     workspace->product =
@@ -384,6 +412,10 @@ static inline void sagejs_nf_multiplier_workspace_clear(
     nmod_mat_clear(workspace->equations);
     flint_free(workspace->product);
     flint_free(workspace->is_pivot);
+    flint_free(workspace->equation_hash_slots);
+    flint_free(workspace->radical_coefficients);
+    flint_free(workspace->radical_sources);
+    flint_free(workspace->radical_offsets);
     flint_free(workspace->nonpivots);
     flint_free(workspace->pivots);
 }
@@ -402,12 +434,30 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
     if (workspace->degree != degree) return -1;
     slong *pivots = workspace->pivots;
     slong *nonpivots = workspace->nonpivots;
+    slong *radical_offsets = workspace->radical_offsets;
+    slong *radical_sources = workspace->radical_sources;
+    ulong *radical_coefficients = workspace->radical_coefficients;
     unsigned char *is_pivot = workspace->is_pivot;
     ulong *product = workspace->product;
     memset(is_pivot, 0, (size_t) degree * sizeof(unsigned char));
     sagejs_nf_pivot_columns(pivots, radical, radical_dimension, degree);
     for (slong row = 0; row < radical_dimension; row++)
         is_pivot[pivots[row]] = 1;
+    slong radical_nonzeros = 0;
+    radical_offsets[0] = 0;
+    for (slong row = 0; row < radical_dimension; row++)
+    {
+        for (slong source = 0; source < degree; source++)
+        {
+            const ulong coefficient =
+                nmod_mat_entry(radical, row, source);
+            if (coefficient == 0) continue;
+            radical_sources[radical_nonzeros] = source;
+            radical_coefficients[radical_nonzeros] = coefficient;
+            radical_nonzeros++;
+        }
+        radical_offsets[row + 1] = radical_nonzeros;
+    }
     slong nonpivot_count = 0;
     for (slong column = 0; column < degree; column++)
         if (!is_pivot[column])
@@ -426,21 +476,25 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
                     ulong sum = 0;
                     if (accumulation_fits)
                     {
-                        for (slong source = 0; source < degree; source++)
-                            sum += nmod_mat_entry(
-                                    radical, ideal_row, source) *
-                                table_squared[(basis * degree + source) *
+                        for (slong position = radical_offsets[ideal_row];
+                             position < radical_offsets[ideal_row + 1];
+                             position++)
+                            sum += radical_coefficients[position] *
+                                table_squared[(basis * degree +
+                                    radical_sources[position]) *
                                     degree + coordinate];
                         sum = binary_prime ? (sum & 3) : sum % modulus;
                     }
                     else
-                        for (slong source = 0; source < degree; source++)
+                        for (slong position = radical_offsets[ideal_row];
+                             position < radical_offsets[ideal_row + 1];
+                             position++)
                         {
                             const ulong coefficient =
-                                nmod_mat_entry(radical, ideal_row, source);
-                            if (coefficient == 0) continue;
+                                radical_coefficients[position];
                             const ulong entry = table_squared[
-                                (basis * degree + source) * degree + coordinate];
+                                (basis * degree + radical_sources[position]) *
+                                    degree + coordinate];
                             const ulong term = n_mulmod2_preinv(
                                 coefficient, entry, modulus, modulus_inverse);
                             sum = n_addmod(sum, term, modulus);
@@ -506,21 +560,32 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
             }
         }
     const slong equation_rows = degree * degree;
+    slong *equation_hash_slots = workspace->equation_hash_slots;
+    memset(equation_hash_slots, 0xff,
+        workspace->equation_hash_capacity * sizeof(slong));
     slong retained_rows = 0;
     for (slong source_row = 0; source_row < equation_rows; source_row++)
     {
         int is_zero = 1;
+        uint64_t hash = UINT64_C(1469598103934665603);
         for (slong column = 0; column < degree; column++)
-            if (nmod_mat_entry(equations, source_row, column) != 0)
+        {
+            const ulong entry =
+                nmod_mat_entry(equations, source_row, column);
+            hash ^= (uint64_t) entry;
+            hash *= UINT64_C(1099511628211);
+            if (entry != 0)
             {
                 is_zero = 0;
-                break;
             }
+        }
         if (is_zero) continue;
         int duplicate = 0;
-        for (slong prior_row = 0; prior_row < retained_rows && !duplicate;
-             prior_row++)
+        size_t slot = (size_t) hash &
+            (workspace->equation_hash_capacity - 1);
+        while (equation_hash_slots[slot] >= 0)
         {
+            const slong prior_row = equation_hash_slots[slot];
             duplicate = 1;
             for (slong column = 0; column < degree; column++)
                 if (nmod_mat_entry(equations, source_row, column) !=
@@ -529,12 +594,15 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
                     duplicate = 0;
                     break;
                 }
+            if (duplicate) break;
+            slot = (slot + 1) & (workspace->equation_hash_capacity - 1);
         }
         if (duplicate) continue;
         if (retained_rows != source_row)
             for (slong column = 0; column < degree; column++)
                 nmod_mat_entry(equations, retained_rows, column) =
                     nmod_mat_entry(equations, source_row, column);
+        equation_hash_slots[slot] = retained_rows;
         retained_rows++;
     }
     SAGEJS_NF_ORDER_PROFILE_EQUATIONS(equation_rows, retained_rows);
@@ -574,7 +642,11 @@ static inline slong sagejs_nf_multiplier_kernel(
 static inline void sagejs_nf_fmpz_addmul_sparse_coefficient(
     fmpz_t target, const fmpz_t value, const fmpz_t coefficient)
 {
-    if (fmpz_fits_si(coefficient))
+    if (*coefficient == 1)
+        fmpz_add(target, target, value);
+    else if (*coefficient == -1)
+        fmpz_sub(target, target, value);
+    else if (fmpz_fits_si(coefficient))
         fmpz_addmul_si(target, value, fmpz_get_si(coefficient));
     else
         fmpz_addmul(target, value, coefficient);
@@ -1060,14 +1132,29 @@ static inline int sagejs_nf_change_basis(
             workspace, multiplication, degree);
         for (slong i = 0; i < degree; i++)
         {
-            fmpz_mat_zero(linear_combination);
+            int has_linear_term = 0;
             for (slong source = 0; source < degree; source++)
                 if (!fmpz_is_zero(
                         fmpz_mat_entry(change_numerator, i, source)))
                 {
                     const fmpz *coefficient =
                         fmpz_mat_entry(change_numerator, i, source);
-                    if (fmpz_fits_si(coefficient))
+                    if (!has_linear_term)
+                    {
+                        if (*coefficient == 1)
+                            fmpz_mat_set(
+                                linear_combination, multiplication[source]);
+                        else if (fmpz_fits_si(coefficient))
+                            fmpz_mat_scalar_mul_si(
+                                linear_combination, multiplication[source],
+                                fmpz_get_si(coefficient));
+                        else
+                            fmpz_mat_scalar_mul_fmpz(
+                                linear_combination, multiplication[source],
+                                coefficient);
+                        has_linear_term = 1;
+                    }
+                    else if (fmpz_fits_si(coefficient))
                         fmpz_mat_scalar_addmul_si(
                             linear_combination, multiplication[source],
                             fmpz_get_si(coefficient));
@@ -1076,6 +1163,7 @@ static inline int sagejs_nf_change_basis(
                             linear_combination, multiplication[source],
                             coefficient);
                 }
+            if (!has_linear_term) goto fail;
             sagejs_nf_fmpz_mul_right_transpose_sparse(
                 temporary, linear_combination, change_numerator);
             sagejs_nf_fmpz_mul_left_transpose_sparse(
@@ -1200,23 +1288,36 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                             const slong entry =
                                 change_workspace.word_multiplication[
                                     (i * degree + k) * degree + j];
-                            table[(i * degree + j) * degree + k] =
-                                sagejs_nf_slong_fdiv_ui(entry, prime);
                             if (square_fits)
-                                table_squared[
-                                    (i * degree + j) * degree + k] =
+                            {
+                                const ulong squared =
                                     sagejs_nf_slong_fdiv_ui(
                                         entry, prime_squared);
+                                table_squared[
+                                    (i * degree + j) * degree + k] = squared;
+                                table[(i * degree + j) * degree + k] =
+                                    prime == 2 ? squared & 1 : squared % prime;
+                            }
+                            else
+                                table[(i * degree + j) * degree + k] =
+                                    sagejs_nf_slong_fdiv_ui(entry, prime);
                             continue;
                         }
 #endif
                         const fmpz *entry =
                             fmpz_mat_entry(multiplication[i], k, j);
-                        table[(i * degree + j) * degree + k] =
-                            fmpz_fdiv_ui(entry, prime);
                         if (square_fits)
+                        {
+                            const ulong squared =
+                                sagejs_nf_fmpz_fdiv_ui(entry, prime_squared);
                             table_squared[(i * degree + j) * degree + k] =
-                                fmpz_fdiv_ui(entry, prime_squared);
+                                squared;
+                            table[(i * degree + j) * degree + k] =
+                                prime == 2 ? squared & 1 : squared % prime;
+                        }
+                        else
+                            table[(i * degree + j) * degree + k] =
+                                sagejs_nf_fmpz_fdiv_ui(entry, prime);
                     }
             SAGEJS_NF_ORDER_PROFILE_END("modular-table");
             slong radical_dimension;

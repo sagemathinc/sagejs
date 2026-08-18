@@ -1,0 +1,148 @@
+{
+  "schema": "sagejs.number-fields/round2-high-degree-optimization/v1",
+  "date": "2026-08-18",
+  "source": {
+    "baselineCommit": "dc753f5a7fc8141949c4c173df53924df6c74494",
+    "headerSha256": "55273dc1068feab7063c20fe2611fac426d9c8f6b68235d91e9f33b8b34320a3",
+    "witnessSha256": "c03eb5769c82e78b24c9a409473aef363a27fb6f82fd227883ab9f38ddf6423f",
+    "testSha256": "2914edf475489d7cb187dfe2029f694ad04f0ae84673b00c17ad6a5bf02ef1fc"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "compiler": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flint": "3.6.0",
+    "openblasThreads": 1
+  },
+  "policy": {
+    "boundary": "sealed fmpz polynomial plus p=2 hint to compact canonical HNF order resource",
+    "samples": 1,
+    "sampleReason": "each degree-64 sample performs 83 exact order enlargements; one controlled profile is paired with exact payload and randomized differentials rather than repeated noisy shared-host runs",
+    "exactness": "optimized payloads agree byte-for-byte with the forced exact lattice-inverse multiplier and forced exact basis transform; the focused suite also covers 32 deterministic randomized fields and ASan/UBSan lifecycle checks",
+    "scope": "general storage and FLINT/GMP primitive improvements inside the existing audited Round-2 resource; no second algorithm or fixture-specific branch"
+  },
+  "cases": [
+    {
+      "id": "pari-round4-vector-429-p2",
+      "degree": 64,
+      "coefficientHeightBits": 169,
+      "localIndexValuation": 332,
+      "baseline": {
+        "isolatedRound2Us": 19398489,
+        "reportedIntegrationBoundaryUs": 22529000,
+        "phaseUs": {
+          "modularTable": 4271347,
+          "radical": 148500,
+          "multiplier": 4416774,
+          "basisTransform": 10525514
+        }
+      },
+      "optimized": {
+        "round2Us": 11802125.321002677,
+        "speedupFromIsolatedBaseline": 1.643643706,
+        "reductionPercent": 39.159563814,
+        "phaseUs": {
+          "setup": 7936.69000268,
+          "modularTable": 1057025.929214433,
+          "radical": 149231.368210167,
+          "multiplier": 957505.200989544,
+          "basisPrepare": 2863.112255,
+          "basisTransform": 9603909.914148971,
+          "basisOutput": 11681.969626807
+        },
+        "basisTransformPercent": 81.374410564,
+        "iterations": 84,
+        "enlargements": 83,
+        "meanRadicalDimension": 61.857142857,
+        "meanPositiveNullity": 4,
+        "allocatedEquationRows": 344064,
+        "distinctNonzeroEquationRows": 249685,
+        "multiplierRequestedBytes": 650252200
+      },
+      "exactPayloadSha256": "5a280b45048b47724958bb2a9e40228c32243b2b3c8913cb0ad54829832ed23a",
+      "forcedExactPayloadSha256": "5a280b45048b47724958bb2a9e40228c32243b2b3c8913cb0ad54829832ed23a",
+      "exact": true
+    },
+    {
+      "id": "pari-round4-vector-010-p2",
+      "degree": 32,
+      "coefficientHeightBits": 42,
+      "localIndexValuation": 222,
+      "baseline": {
+        "round2Us": 906113,
+        "phaseUs": {
+          "modularTable": 200466,
+          "radical": 15800,
+          "multiplier": 185028,
+          "basisTransform": 499273
+        }
+      },
+      "optimized": {
+        "round2Us": 584712.476935238,
+        "speedup": 1.549672763,
+        "reductionPercent": 35.470247419,
+        "phaseUs": {
+          "setup": 760.409981012,
+          "modularTable": 46411.830582656,
+          "radical": 15613.235300407,
+          "multiplier": 77545.709209517,
+          "basisPrepare": 1027.342164889,
+          "basisTransform": 440074.531710707,
+          "basisOutput": 2008.719020523
+        },
+        "basisTransformPercent": 75.263407112,
+        "iterations": 112,
+        "enlargements": 111,
+        "meanRadicalDimension": 30.964285714,
+        "meanPositiveNullity": 2,
+        "allocatedEquationRows": 114688,
+        "distinctNonzeroEquationRows": 49537,
+        "multiplierRequestedBytes": 52524192
+      },
+      "references": {
+        "forcedRound4Us": 26500000,
+        "pariNfbasisUs": 37000,
+        "ratioToForcedRound4": 0.022064622,
+        "ratioToPari": 15.803039917,
+        "forcedPolygon": ">30000000us timeout",
+        "forcedOmMaxmin": ">30000000us timeout"
+      },
+      "exactPayloadSha256": "14138da4aa969483f6bb998bd7f6936a93476e3df7c89dd482e47ed26131a0aa",
+      "forcedExactPayloadSha256": "14138da4aa969483f6bb998bd7f6936a93476e3df7c89dd482e47ed26131a0aa",
+      "exact": true
+    }
+  ],
+  "generalOptimizations": [
+    "store each radical RREF row as reusable nonzero source/coefficient spans",
+    "compact zero and duplicate multiplier equations with an exact collision-checked hash table",
+    "reduce the exact multiplication tensor modulo p^2 once and derive its modulo-p table",
+    "use the exact low limb for power-of-two fmpz remainders, including signed correction",
+    "avoid zero initialization and generic addmul dispatch in sparse exact basis combinations"
+  ],
+  "residual": {
+    "dominantKernel": "exact fmpz multiplication-tensor basis transformation",
+    "reason": "after 4.0x modular-table and 4.6x multiplier improvements on vector429, 169-bit exact tensor transformations account for 81.4% of Round-2 time",
+    "boundedConclusion": "a further order-of-magnitude improvement requires a new proved representation such as precision-tracked modular tensors or a validated block transform; incremental multiplier and host-boundary cleanup cannot close the remaining PARI gap"
+  },
+  "selector": {
+    "productionCandidate": "sealed native Round-2 resource",
+    "reason": "the current auto path already tries the complete word-prime native batch before local Round-4 fallback; on vector010 p=2 it is 45.3x faster than forced Round-4 while polygon and OM exceed 30 seconds",
+    "fixtureSpecificBranchAdded": false,
+    "centralSourceChangeRequired": false
+  },
+  "architectureAuditHandoff": {
+    "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "oldMetrics": { "lines": 1309, "bytes": 53642 },
+    "newMetrics": { "lines": 1410, "bytes": 58164 },
+    "registryChange": "update only lines/bytes and extend the existing p-squared multiplier/storage rationale in architecture/native-audit.json; the native-code category remains mathematical-algorithm",
+    "validation": "pnpm architecture:check"
+  },
+  "gates": {
+    "vector429MaterialReduction": true,
+    "vector010MaterialReduction": true,
+    "highDegreeForcedExactDifferential": true,
+    "randomizedExactDifferential": true,
+    "sanitizers": true,
+    "windowsFallbackPreserved": true
+  }
+}

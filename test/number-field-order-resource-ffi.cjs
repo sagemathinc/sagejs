@@ -134,13 +134,13 @@ function compileHardWitness(name, defines = []) {
 }
 
 function hardPayload(executablePath, caseIndex) {
-  const executed = spawnSync(executablePath, [String(caseIndex), "0", "1"], {
+  const executed = spawnSync(executablePath, ["--payload", String(caseIndex)], {
     cwd: root,
     encoding: "utf8",
     timeout: 120_000,
   });
   assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
-  return JSON.parse(executed.stdout).payloadHex;
+  return executed.stdout.trim();
 }
 
 function randomizedPayloads(executablePath, seed, count) {
@@ -151,6 +151,16 @@ function randomizedPayloads(executablePath, seed, count) {
   ], { cwd: root, encoding: "utf8", timeout: 120_000 });
   assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
   return executed.stdout;
+}
+
+function checkPowerTwoRemainders(executablePath) {
+  const executed = spawnSync(executablePath, ["--check-power-two-remainders"], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+  assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
+  assert.equal(executed.stdout, "power-two remainders: exact\n");
 }
 
 function readU64(buffer, offset) {
@@ -280,6 +290,7 @@ try {
 
   if (!sanitize && process.platform !== "win32") {
     const optimized = compileHardWitness("hard-optimized");
+    checkPowerTwoRemainders(optimized);
     const exact = compileHardWitness("hard-exact", [
       "SAGEJS_NF_ORDER_FORCE_EXACT_MULTIPLIER=1",
       "SAGEJS_NF_ORDER_FORCE_EXACT_CHANGE_BASIS=1",
