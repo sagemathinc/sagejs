@@ -1185,9 +1185,7 @@ class EllipticCurveParent(sage.Parent):
         precision = 53 if prec is None else int(prec)
         real_field = runtime.reflect.get(runtime.global_object, "RealField")
         field = runtime.reflect.apply(real_field, runtime.undefined, [precision])
-        derivative = runtime.reflect.apply(
-            field, runtime.undefined, [result["leading_derivative"]]
-        )
+        derivative = _untyped(field)(result["leading_derivative"])
         return runtime.math_tuple([rank, derivative])
 
     def analytic_rank_upper_bound(

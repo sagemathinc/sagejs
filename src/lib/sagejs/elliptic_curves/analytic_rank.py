@@ -18,6 +18,10 @@ Gauss--Legendre quadrature.  It is an ordinary CPython-parseable fallback and
 an oracle for the accelerated Arb evaluator.  Numerical containment of zero
 does *not* prove vanishing; :func:`probable_analytic_rank` therefore requires
 independent precision and cutoff refinements and returns a probable rank.
+For the normal through-128-bit diagnostic range, its damped Fourier-series
+Horner loop uses binary64 while the quadrature moments and gamma conversion
+use arbitrary precision; higher requested precision uses arbitrary precision
+throughout.  The returned diagnostics state this mixed-precision policy.
 
 The zero-sum function is logically separate.  It implements the sinc-squared
 explicit formula used by Sage and returns an upper bound conditional on GRH.
@@ -61,6 +65,7 @@ class CoefficientPrefix:
         self.curve = curve
         self.values: list[int] = [0, 1]
         self.backend = "elliptic-curve anlist"
+        self.extensions = 0
 
     def through(self, cutoff: int) -> list[int]:
         """Return `a_0,...,a_cutoff`, extending the cached prefix if needed."""
@@ -69,6 +74,7 @@ class CoefficientPrefix:
         if cutoff >= len(self.values):
             raw = self.curve.anlist(cutoff)
             self.values = [int(value) for value in raw]
+            self.extensions += 1
         return self.values[: cutoff + 1]
 
 
@@ -109,6 +115,43 @@ def _coefficient_tail_log(conductor: int, cutoff: int, order: int) -> float:
     )
 
 
+def _node_truncation_tail_log(conductor: int, cutoff: int, order: int) -> float:
+    """Bound the extra tail from the per-quadrature-node coefficient cutoff.
+
+    At height `y=exp(u)` the evaluator keeps terms through
+    `ceil(cutoff/y)`.  Every omitted pair therefore has `n*y > cutoff`.
+    Splitting `n <= cutoff` from the ordinary coefficient tail and using
+    `log(z) <= log(cutoff) + (z-cutoff)/cutoff` after `z=n*y` bounds the
+    former region without paying for a full Horner sweep at every node.
+    """
+    a_value = 2.0 * pi / sqrt(float(conductor))
+    x_value = a_value * cutoff
+    log_cutoff = log(float(cutoff))
+    polynomial = 0.0
+    for index in range(order + 1):
+        binomial = _factorial(order) / (_factorial(index) * _factorial(order - index))
+        polynomial += (
+            binomial
+            * log_cutoff ** (order - index)
+            * _factorial(index)
+            / x_value**index
+        )
+    return log(2.0) + log(float(cutoff)) - x_value - log(a_value) + log(polynomial)
+
+
+def _reference_tail_log(conductor: int, cutoff: int, order: int) -> float:
+    fixed = _coefficient_tail_log(conductor, cutoff, order)
+    node = _node_truncation_tail_log(conductor, cutoff, order)
+    maximum = max(fixed, node)
+    return maximum + log(exp(fixed - maximum) + exp(node - maximum))
+
+
+def node_truncation_tail_bound(conductor: int, cutoff: int, order: int) -> float:
+    """Return the completed-derivative bound for dynamic node truncation."""
+    logarithm = _node_truncation_tail_log(conductor, cutoff, order)
+    return 0.0 if logarithm < -745.0 else exp(logarithm)
+
+
 def choose_cutoff(conductor: int, precision_bits: int, max_order: int) -> int:
     """Choose a coefficient cutoff with a conservative analytic tail target."""
     log_target = (-precision_bits - 12) * log(2.0)
@@ -116,7 +159,7 @@ def choose_cutoff(conductor: int, precision_bits: int, max_order: int) -> int:
     cutoff = max(8, int(ceil((precision_bits * log(2.0) + 24.0) / a_value)))
     while (
         max(
-            _coefficient_tail_log(conductor, cutoff, order)
+            _reference_tail_log(conductor, cutoff, order)
             for order in range(max_order + 1)
         )
         > log_target
@@ -146,7 +189,12 @@ def _legendre_moments(
         mesh = max(1, quadrature_degree // 16)
         interval_count = max(1, int(mp.ceil(upper)) * mesh)
         positive_rule = [(mp.mpf(node), mp.mpf(weight)) for node, weight in _GL16]
-        exact = [mp.mpf(value) for value in coefficients[1:]]
+        fast_horner = precision_bits <= 128
+        exact = [
+            (float(value) if fast_horner else mp.mpf(value))
+            for value in coefficients[1:]
+        ]
+        full_cutoff = len(exact)
         moments = [mp.mpf(0) for _order in range(max_order + 1)]
 
         for interval in range(interval_count):
@@ -158,10 +206,21 @@ def _legendre_moments(
                 for node in (-positive_node, positive_node):
                     u_value = midpoint + radius * node
                     exponential_u = mp.exp(u_value)
-                    q_value = mp.exp(-c_value * exponential_u)
-                    modular_value = mp.mpf(0)
-                    for coefficient in reversed(exact):
-                        modular_value = (modular_value + coefficient) * q_value
+                    q_value = (
+                        exp(-float(c_value) * float(exponential_u))
+                        if fast_horner
+                        else mp.exp(-c_value * exponential_u)
+                    )
+                    node_cutoff = max(
+                        1,
+                        min(
+                            full_cutoff,
+                            int(mp.ceil(full_cutoff / exponential_u)),
+                        ),
+                    )
+                    modular_value = 0.0 if fast_horner else mp.mpf(0)
+                    for index in range(node_cutoff - 1, -1, -1):
+                        modular_value = (modular_value + exact[index]) * q_value
                     common = radius * weight * exponential_u * modular_value
                     power = mp.mpf(1)
                     for order in range(max_order + 1):
@@ -246,8 +305,12 @@ def reference_central_derivatives(
         quadrature_degree,
     )
     derivatives = _completed_to_l_derivatives(completed, conductor, precision_bits)
-    tail = max(
+    coefficient_tail = max(
         coefficient_tail_bound(conductor, cutoff, order)
+        for order in range(max_order + 1)
+    )
+    node_tail = max(
+        node_truncation_tail_bound(conductor, cutoff, order)
         for order in range(max_order + 1)
     )
     return {
@@ -257,8 +320,21 @@ def reference_central_derivatives(
         "quadrature_degree": quadrature_degree,
         "completed_derivatives": [mp.nstr(value, n=30) for value in completed],
         "derivatives": [mp.nstr(value, n=30) for value in derivatives],
-        "tail_bound": tail,
+        "coefficient_tail_bound": coefficient_tail,
+        "node_truncation_tail_bound": node_tail,
+        "tail_bound": coefficient_tail + node_tail,
+        "node_cutoff_policy": "ceil(cutoff*exp(-u))",
+        "coefficient_horner": (
+            "binary64" if precision_bits <= 128 else "arbitrary precision"
+        ),
+        "coefficient_roundoff_status": (
+            "controlled by independent cutoff/mesh refinement"
+            if precision_bits <= 128
+            else "mpmath working precision"
+        ),
+        "quadrature_error_status": "estimated by independent mesh refinement",
         "coefficient_backend": prefix.backend,
+        "coefficient_prefix_extensions": prefix.extensions,
     }
 
 
@@ -308,6 +384,7 @@ def native_central_derivatives(
         "rigorous": native["rigorous"],
         "analytic_error_status": native["analytic_error_status"],
         "coefficient_backend": prefix.backend,
+        "coefficient_prefix_extensions": prefix.extensions,
     }
 
 
@@ -395,6 +472,7 @@ def probable_analytic_rank(
     first_cutoff = choose_cutoff(conductor, initial_precision, max_order)
     second_precision = initial_precision + 24
     second_cutoff = choose_cutoff(conductor, second_precision, max_order)
+    prefix.through(second_cutoff)
     evaluator = "reference"
     if algorithm in ("auto", "native"):
         try:
