@@ -31,6 +31,15 @@ Sizes describe the expected implementation surface, not elapsed wall time:
 
 **Priority 1 / ready / M**
 
+**Completed 2026-08-18 in `3d9a8747`.** The public `C.local_data(...)`
+iterator now supplies exact and explicit omitted records, bounded native
+windows, optional bounded caching, progress/cancellation, derived invariants,
+proof summaries, and optional complete certificates. Versioned JSONL export
+uses decimal-string integers and supports verified crash-safe resume. The exact
+same four-record genus-3 exhaustive export was produced on Linux x64, Linux
+arm64, macOS arm64, and native Windows x64 with SHA-256
+`84fdc1a3502bdf28451cbbbc759fc2b00fa79a71e64f5db185b7397366abeb7a`.
+
 Turn the exact local-factor pipeline into a bounded-memory, restartable data
 source. A research computation should be able to consume records resembling
 
