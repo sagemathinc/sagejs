@@ -45,6 +45,7 @@
     "src/lib/sagejs/number_fields/local_parallel.py",
     "src/lib/sagejs/number_fields/local_parallel_worker.py",
     "src/lib/sagejs/number_fields/om_maxmin.py",
+    "src/lib/sagejs/number_fields/om_higher_residue.py",
     "src/lib/sagejs/number_fields/om_types.py",
     "src/lib/sagejs/number_fields/order_resource.py",
     "src/lib/sagejs/number_fields/round4.py",
