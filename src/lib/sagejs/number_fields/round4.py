@@ -1033,13 +1033,16 @@ def _minimal_polynomial_coefficient_bounds(
 ) -> list[Any]:
     """Bound minimal coefficients using the exact infinity operator norm."""
     root_bound = max(sum(abs(value) for value in row) for row in rows)
+    root_powers = [sage.ZZ(1)]
+    for _power in range(minimal_degree):
+        root_powers.append(root_powers[-1] * root_bound)
     binomial = sage.ZZ(1)
     bounds = []
     for power in range(minimal_degree, -1, -1):
         index = minimal_degree - power
         if index:
             binomial = binomial * (minimal_degree - index + 1) // index
-        bounds.append(binomial * root_bound**power)
+        bounds.append(binomial * root_powers[power])
     return bounds
 
 
@@ -1113,6 +1116,9 @@ def _batched_integer_field_element_characteristic_polynomial(
     degree = len(rows)
     root_bound = max(sum(abs(value) for value in row) for row in rows)
     bounds_by_degree: dict[int, list[Any]] = {}
+    root_powers = [sage.ZZ(1)]
+    for _power in range(degree):
+        root_powers.append(root_powers[-1] * root_bound)
 
     def degree_bounds(minimal_degree: int) -> list[Any]:
         cached = bounds_by_degree.get(minimal_degree)
@@ -1123,7 +1129,7 @@ def _batched_integer_field_element_characteristic_polynomial(
                 index = minimal_degree - power
                 if index:
                     binomial = binomial * (minimal_degree - index + 1) // index
-                cached.append(binomial * root_bound**power)
+                cached.append(binomial * root_powers[power])
             bounds_by_degree[minimal_degree] = cached
         return cached
 
