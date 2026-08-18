@@ -807,11 +807,19 @@ def _is_prime_word(value: int) -> bool:
     return True
 
 
+_RECONSTRUCTION_PRIME_CACHE: dict[int, tuple[int, int]] = {}
+
+
 def _next_reconstruction_prime(candidate: int) -> tuple[int, int]:
+    cached = _RECONSTRUCTION_PRIME_CACHE.get(candidate)
+    if cached is not None:
+        return cached
     current = candidate if candidate % 2 else candidate - 1
     while current >= 2:
         if _is_prime_word(current):
-            return current, current - 2
+            answer = (current, current - 2)
+            _RECONSTRUCTION_PRIME_CACHE[candidate] = answer
+            return answer
         current -= 2
     raise Round4InvariantError("the deterministic CRT prime stream was exhausted")
 
@@ -919,13 +927,16 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
     batch_state: Any | None = None,
     crt_word_capacity: int = 8,
     batch_word_capacity: int = 8,
+    materialize_polynomials: bool = True,
 ) -> tuple[list[list[int]], Any, Any, Any, Any, Any]:
-    """Return one modular Krylov relation per certified word prime.
+    """Compute a modular Krylov relation for every certified word prime.
 
     Packing the exact matrix and allocating the reusable workspace occur once
     per characteristic-polynomial problem.  The compiled call then performs
     all exact reductions and word-prime Krylov computations in one isolated
     crossing.  The ordinary Python body of the kernel is the dynamic oracle.
+    Production CRT callers can leave the independently testable modular rows
+    packed and materialize only the exact global state.
     """
     degree = len(rows)
     prime_count = len(primes)
@@ -974,6 +985,8 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
             "the packed word-prime Krylov batch rejected its input"
         )
     answer = []
+    if not materialize_polynomials:
+        return answer, packed_matrix, workspace, crt_degree, crt_state, batch_state
     for prime_index in range(prime_count):
         minimal_degree = runtime.number(degrees[prime_index])
         if minimal_degree <= 0 or minimal_degree > degree:
@@ -1155,6 +1168,7 @@ def _batched_integer_field_element_characteristic_polynomial(
             batch_state,
             crt_word_capacity,
             batch_word_capacity,
+            False,
         )
         batch_calls += 1
         computed_prime_count += len(batch_primes)
