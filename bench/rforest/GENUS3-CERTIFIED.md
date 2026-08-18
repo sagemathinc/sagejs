@@ -34,6 +34,29 @@ This corpus is an oracle sample, not a claim that 20 points prove the whole
 implementation. The full stream also has to match across the supported
 platforms, and unresolved rows must use the exact fallback.
 
+The handwritten Jacobian search kernel has a second, independent differential
+gate:
+
+```sh
+node --test test/hyperelliptic-genus3-jacobian-search-differential.cjs
+```
+
+That test constructs canonical Mumford divisors with the ordinary Python
+Cantor law, including zero, inverse, doubling, same-input addition,
+non-coprime `u` cases, deterministic scalar combinations, and a completed-
+square generalized model. It compares native element-order certificates with
+the ordinary law, exercises not-found/resource/cancellation/invalid-input
+statuses, and repeats searches in independent Node workers to detect shared
+mutable state. The fixtures are generated deterministically at test time and
+do not depend on PARI, Magma, or network access.
+
+The direct addon probe also passes on Linux x86-64, Linux aarch64, macOS
+arm64, and native Windows x86-64. Every platform returned order 94 with
+factorization `2*47` over `F_3`, order 764 with factorization `2^2*191` for
+the generalized `F_11` model, and identical resource-limit and cancellation
+statuses. This probe caught and fixed a Node-API BigInt size-query error that
+the C-only kernel test could not expose.
+
 ## Stage benchmark
 
 Run the complete acceptance workload with:
@@ -113,6 +136,15 @@ the development host. Consequently `auto` remains unchanged. The full default
 benchmark command remains the acceptance gate for a future batched or
 source-transparent independent recheck implementation; results must be
 measured rather than inferred from this small interval.
+
+The replacement native exact enumerator was separately measured by
+`pnpm bench:hyperelliptic-genus3-candidates` on the same development host. Its
+one-row wall times were 2.7 ms, 2.2 ms, 5.9 ms, 27 ms, and 166 ms at
+`p=101`, `1009`, `10007`, `100003`, and `1000003`, respectively. Those
+numbers isolate candidate lifting; they do not include the rforest traversal,
+primary/twist Jacobian witnesses, exact fallback, or public polynomial
+construction. They therefore remove candidate enumeration as the obvious
+scaling blocker without serving as an end-to-end acceptance result.
 
 ## One-off oracle measurements
 
