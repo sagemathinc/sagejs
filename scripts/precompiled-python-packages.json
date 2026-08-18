@@ -2,6 +2,7 @@
   "imports": [
     "conway_polynomials",
     "mpmath",
-    "sage.databases.conway"
+    "sage.databases.conway",
+    "sagejs.elliptic_curves.lseries"
   ]
 }
