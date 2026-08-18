@@ -160,8 +160,8 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
-      "lines": 1410,
-      "bytes": 58164,
+      "lines": 1639,
+      "bytes": 68585,
       "decision": "typed-remediation-pilot",
       "priority": "high",
       "responsibilities": [
@@ -169,7 +169,7 @@
         "nilradical and multiplier-ring kernels over FLINT storage",
         "exact packed-integer order-basis transformations and p-squared multiplier equations with exact fallbacks"
       ],
-      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using sparse radical RREF rows to form p-squared multiplier equations, exact hash deduplication, a single p-squared reduction with a derived p image, packed integer basis transforms, reusable workspaces, checked sparse basis addmul transforms, power-of-two low-limb reduction, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. Every accelerated step retains an exact fallback because the native compiler still lacks packed three-dimensional fmpz multiplication tables.",
+      "rationale": "The strict ordinary-Python implementation remains the primary readable algorithm. This host-neutral batched kernel preserves its Round-2 control flow while using sparse radical RREF rows to form p-squared multiplier equations, exact hash deduplication, a single p-squared reduction with a derived p image, packed integer basis transforms, reusable workspaces, checked sparse basis addmul transforms, power-of-two low-limb reduction, and a conservatively bounded signed-word multiplication tensor with lazy exact synchronization. It compacts exact duplicate and zero multiplier equations before the FLINT nullspace. For the canonical Round-2 block change [I R; 0 pI], the exact tensor transform preserves nonpivot products, divides mixed products only by p, divides only the pivot block by p-squared, and fills the symmetric half by commutativity; the forced generic lattice-inverse transform remains the differential oracle. Every accelerated step retains an exact fallback because the native compiler still lacks packed three-dimensional fmpz multiplication tables.",
       "fallback": "The complete ordinary-Python Round-2 implementation and the forced original exact lattice-inverse path remain correct for every supported prime. Both are exercised against deterministic randomized optimized-versus-exact differentials; the native word-prime path is an optional acceleration.",
       "oracles": [
         "CPython",
