@@ -474,6 +474,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-discriminant-primality-screen-production",
+      "source": "src/lib/sagejs/number_fields/discriminant_primality_kernel.py",
+      "functions": ["packed_strong_probable_prime_screen_in_place"],
+      "semantic_domain": "witness-only strong-probable-prime screening for large discriminant components, with exact host replay and no survivor primality claim",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-witness-replay"],
+      "benchmark": "bench:number-field-discriminant-primality-screen",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-discriminant-prefactor-production",
       "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
       "functions": ["packed_composite_polynomial_split_hint_in_place"],

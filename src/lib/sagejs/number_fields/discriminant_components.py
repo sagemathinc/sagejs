@@ -27,6 +27,9 @@ from sagejs.number_fields.discriminant_prefactor_kernel import (
     PREFACTOR_UNRESOLVED,
     packed_composite_polynomial_split_hint_in_place,
 )
+from sagejs.number_fields.discriminant_primality_kernel import (
+    compiled_strong_probable_prime_screen,
+)
 
 PROVEN_PRIME = "proven-prime"
 PROBABLE_PRIME = "probable-prime-awaiting-proof"
@@ -183,6 +186,21 @@ def primality_status(number: int) -> tuple[str, dict[str, Any]]:
             return PROVEN_PRIME, {"kind": "trial-prime", "prime": value}
         if value % prime == 0:
             return COMPOSITE, {"kind": "factor", "factor": prime}
+    if value >= 1 << 64:
+        outcome = compiled_strong_probable_prime_screen(
+            value, _PROBABLE_BASES, _miller_rabin_witness
+        )
+        if outcome is not None:
+            if outcome["status"] == "witness":
+                return COMPOSITE, {
+                    "kind": "miller-rabin-witness",
+                    "base": int(outcome["base"]),
+                }
+            return PROBABLE_PRIME, {
+                "kind": "strong-probable-prime",
+                "value": value,
+                "bases": list(_PROBABLE_BASES),
+            }
     bases = _MR64_BASES if value < 1 << 64 else _PROBABLE_BASES
     for base in bases:
         if _miller_rabin_witness(value, base):

@@ -217,6 +217,7 @@
     "bench:number-field-analysis-public-hook": "node bench/number-field-analysis-public-hook.cjs",
     "bench:number-field-t8-fused-analysis": "node bench/number-field-t8-fused-analysis.cjs",
     "bench:number-field-discriminant-prefactorization": "node bench/number-field-discriminant-prefactorization.cjs",
+    "bench:number-field-discriminant-primality-screen": "node bench/number-field-discriminant-primality-screen.cjs",
     "bench:number-field-round2-native-state": "node bench/number-field-round2-native-state.cjs",
     "bench:number-field-round2-degree90": "node bench/number-field-round2-degree90.cjs",
     "bench:number-field-round4": "node bench/number-field-round4.cjs",

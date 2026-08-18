@@ -73,6 +73,7 @@ const integration = [
   "test/number-field-t8-fused-analysis.cjs",
   "test/number-field-discriminant-components.cjs",
   "test/number-field-discriminant-prefactorization.cjs",
+  "test/number-field-discriminant-primality-screen.cjs",
   "test/number-field-coprime-composite-merge.cjs",
   "test/number-field-buchmann-lenstra.cjs",
   "test/number-field-buchmann-lenstra-fallback.cjs",
