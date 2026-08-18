@@ -32,6 +32,13 @@
       "rationale": "Standalone six-case timing and exact-lattice witness for the direct number-field order resource. It is compiled only by the Unix cross-oracle benchmark and is not linked into Sage.js or exposed as a runtime boundary."
     },
     {
+      "path": "bench/number-field-analysis-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone exact-payload and sanitizer lifecycle witness for the fused field-analysis resource. It is compiled only by focused tests and benchmarks and is not linked into Sage.js or exposed as a runtime boundary."
+    },
+    {
       "path": "bench/cowasm/buffer-landscape/c.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -114,6 +121,13 @@
       "review_status": "audited",
       "lane": "integration",
       "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; arbitrary-size unsupported local work is returned intact to the strict fallback."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It computes the equation discriminant, bounded exact component hints, and partial canonical HNF evidence while retaining unresolved and arbitrary-size residuals for independent strict checking."
     },
     {
       "path": "packages/flint/test/number_field_order_resource_ffi.c",

@@ -36,6 +36,7 @@ flint = Library(
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
+        "sagejs/number_field_analysis_resource_ffi.h",
         "sagejs/number_field_order_ffi.h",
         "sagejs/number_field_order_resource_ffi.h",
     ],
@@ -149,6 +150,23 @@ NumberFieldOrderResource = flint.resource(
         dynamic="ffiNumberFieldOrderResourceCopyBytes",
         data="sagejs_number_field_order_resource_data",
         length="sagejs_number_field_order_resource_length",
+        wasm=False,
+    ),
+    wasm=False,
+)
+
+
+NumberFieldAnalysisResource = flint.resource(
+    id="number_field_analysis_resource",
+    abi=sagejs_number_field_analysis_resource_t,
+    ownership="owned",
+    close="ffiNumberFieldAnalysisResourceClose",
+    clear="sagejs_number_field_analysis_resource_clear",
+    size="sagejs_number_field_analysis_resource_allocated_bytes",
+    host_transfer=copied_bytes(
+        dynamic="ffiNumberFieldAnalysisResourceCopyBytes",
+        data="sagejs_number_field_analysis_resource_data",
+        length="sagejs_number_field_analysis_resource_length",
         wasm=False,
     ),
     wasm=False,
@@ -9921,3 +9939,28 @@ def number_field_order_resource_native_primes(
 def number_field_order_resource_unramified_primes(
     resource: NumberFieldOrderResource,
 ) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldAnalyzeResource",
+    symbol="sagejs_number_field_analyze_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_number_field_analysis_resource_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("scale", fmpz_t),
+        in_("trial_bound", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid fused number-field analysis input",
+    ),
+    wasm=False,
+)
+def number_field_analyze_resource(
+    polynomial: FmpzPolynomial,
+    scale: Integer,
+    trial_bound: uint64,
+) -> NumberFieldAnalysisResource: ...
