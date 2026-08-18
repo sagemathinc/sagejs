@@ -1,0 +1,103 @@
+{
+  "schema": "sagejs.number-fields/round2-native-state-optimization/v1",
+  "date": "2026-08-18",
+  "source": {
+    "checkpointCommit": "819759cefc3e18c47f41d3da7262d062c9f5ca10",
+    "integrationBase": "47d9e2c0820f15deebdc6f3c7f4b9a1da652e7ab",
+    "headerSha256": "d8a4d8d66ea9d4a93006d182324b176e8ec9513f9bd33cef78ea57e78d9127e0",
+    "benchmarkSha256": "3600dbd8c115a57fc30e59d827ffa62ff119d5601774b6b7b0299012f8c31b7f"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "cpu": "AMD EPYC 7B13",
+    "compiler": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flint": "3.6.0",
+    "openblasThreads": 1
+  },
+  "policy": {
+    "boundary": "sealed fmpz polynomial plus terminal p=2 hint to compact canonical HNF order resource",
+    "vector010Samples": 7,
+    "vector429Samples": 1,
+    "pariVector010ReferenceUs": 37000,
+    "exactness": "byte-identical forced-exact vector010 payload, frozen forced-exact vector429 payload SHA-256, 32 deterministic randomized forced-exact differentials, and ASan/UBSan lifecycle execution",
+    "scope": "general precision-tracked packed state for terminal binary Round-2 cycles; no polynomial, degree, index, or fixture branch"
+  },
+  "vector010": {
+    "degree": 32,
+    "localIndexValuation": 222,
+    "baselineRound2Us": 233145.153033547,
+    "optimizedRound2MeanUs": 69673.351727293,
+    "speedup": 3.346260367,
+    "pariReferenceUs": 37000,
+    "ratioToPari": 1.88306356,
+    "iterations": 112,
+    "enlargements": 111,
+    "phaseMeanUs": {
+      "setup": 475.038408435,
+      "modularTable": 4.925266174,
+      "radical": 510.581220234,
+      "multiplier": 11763.535356814,
+      "basisPrepare": 453.297564361,
+      "basisTransform": 53364.884391028,
+      "basisOutput": 1639.911605577,
+      "publish": 79.324419078,
+      "cleanup": 154.756990794
+    },
+    "payloadSha256": "468557a15427f8ec9404e3e47c9884f8c7d2f5ed5b25b694d65be6739706fa4f",
+    "forcedExactPayloadSha256": "468557a15427f8ec9404e3e47c9884f8c7d2f5ed5b25b694d65be6739706fa4f",
+    "underTwoTimesPari": true
+  },
+  "vector429": {
+    "degree": 64,
+    "localIndexValuation": 332,
+    "baselineRound2Us": 6128672.327031381,
+    "optimizedRound2Us": 650439.252029173,
+    "speedup": 9.422358053,
+    "iterations": 84,
+    "enlargements": 83,
+    "phaseUs": {
+      "setup": 11330.45903407,
+      "radical": 1806.252286769,
+      "multiplier": 89968.024403788,
+      "basisTransform": 526947.750127874,
+      "basisOutput": 6448.93955905
+    },
+    "payloadSha256": "b28344d042188afbe0098851928665faaae0268ad8b5cf0e03d790468cb6a644",
+    "forcedExactPayloadSha256WithTrailingNewline": "5a280b45048b47724958bb2a9e40228c32243b2b3c8913cb0ad54829832ed23a"
+  },
+  "randomizedDifferential": {
+    "seed": 23063,
+    "count": 32,
+    "payloadSha256": "01c0c3820b59ad60b930f621ed38c47fbf415658c712f73644cee7ddd3e788d7",
+    "forcedExactPayloadSha256": "01c0c3820b59ad60b930f621ed38c47fbf415658c712f73644cee7ddd3e788d7"
+  },
+  "design": [
+    "retain only the exact accumulated order basis as public state for a terminal p=2 cycle",
+    "represent the internal multiplication tensor modulo a proof-carrying power of two",
+    "consume two certified bits per exact [I R; 0 2I] basis change",
+    "restart from an immutable prime-boundary snapshot at doubled precision if the four-bit margin is reached",
+    "maintain multiplication modulo four as two packed bit planes",
+    "compute Frobenius radicals and multiplier equations with packed GF(2) kernels",
+    "reuse each divided-generator linear combination for its mixed and divided products",
+    "retain the generic fmpz tensor transform for nonterminal primes, degrees above 64, unsupported capability, and forced exact differential execution"
+  ],
+  "platform": {
+    "nativeWindowsX64": "the packed path uses FLINT/GMP limbs and portable exact shifts; it does not require __int128",
+    "fallback": "degrees above 64 and nonterminal primes retain the existing exact FLINT path",
+    "sanitizers": true
+  },
+  "architectureAuditHandoff": {
+    "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
+    "oldMetrics": { "lines": 1639, "bytes": 68585 },
+    "newMetrics": { "lines": 2344, "bytes": 97540 },
+    "registryChange": "refresh lines and bytes and extend the existing packed p-squared storage rationale to cover adaptive precision-tracked binary tensor state, bit-sliced GF(2) kernels, and the forced exact fallback; the native-code category remains mathematical-algorithm"
+  },
+  "gates": {
+    "vector010NoCaseAboveTwoTimesPari": true,
+    "vector010ForcedExactDifferential": true,
+    "vector429FrozenForcedExactDifferential": true,
+    "randomizedForcedExactDifferential": true,
+    "sanitizerLifecycle": true,
+    "fixtureSpecificBranchAdded": false
+  }
+}
