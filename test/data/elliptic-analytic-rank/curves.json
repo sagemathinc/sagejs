@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "description": "Offline differential corpus for probable analytic rank of elliptic curves over QQ.",
+  "semantic_warning": "The analytic ranks are numerical expectations, not proofs of vanishing. In particular, the rank-4 and rank-5 entries are not unconditional proofs of those analytic ranks.",
+  "integer_encoding": "All a-invariants and conductors are decimal strings so JavaScript never rounds large integers.",
+  "provenance": {
+    "captured_on": "2026-08-18",
+    "sage": {
+      "version": "10.9.post1",
+      "git_revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+      "pari_version": "2.17.1",
+      "algorithm": "EllipticCurve.analytic_rank(algorithm='pari', leading_coefficient=True)"
+    },
+    "magma": {
+      "version": "2.18-5",
+      "algorithm": "AnalyticRank(E : Precision := 15)",
+      "note": "Magma returns L^(r)(1)/r!; the normalized derivative stored here is multiplied by r!."
+    },
+    "lmfdb": {
+      "accessed_on": "2026-08-18",
+      "record_api": "https://www.lmfdb.org/api/ec_curvedata/",
+      "note": "Labels, a-invariants, conductors, and displayed analytic ranks were pinned for offline use. Tests never query LMFDB. Cremona and LMFDB curve numbers can differ within an isogeny class (for example Cremona 11a1 is LMFDB 11.a2)."
+    }
+  },
+  "curves": [
+    {
+      "id": "11a1",
+      "labels": { "cremona": "11a1", "lmfdb": "11.a2" },
+      "a_invariants": ["0", "-1", "1", "-10", "-20"],
+      "conductor": "11",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 0,
+      "expected_leading_derivative": "0.253841860855910684",
+      "zero_sum_upper_bounds": [{ "delta": 1.0, "raw_sum": "0.014514638707608959", "bound": 0 }],
+      "tiers": ["core", "quick"],
+      "purposes": ["rank-0", "tiny-conductor"],
+      "sources": ["https://www.lmfdb.org/EllipticCurve/Q/11/a/2"]
+    },
+    {
+      "id": "37a1",
+      "labels": { "cremona": "37a1", "lmfdb": "37.a1" },
+      "a_invariants": ["0", "0", "1", "-1", "0"],
+      "conductor": "37",
+      "root_number": -1,
+      "expected_probable_analytic_rank": 1,
+      "expected_leading_derivative": "0.305999773834052302",
+      "zero_sum_upper_bounds": [{ "delta": 1.0, "raw_sum": "1.0103840698356263", "bound": 1 }],
+      "tiers": ["core", "quick"],
+      "purposes": ["rank-1", "odd-functional-equation"],
+      "sources": ["https://www.lmfdb.org/EllipticCurve/Q/37/a/1"]
+    },
+    {
+      "id": "389a1",
+      "labels": { "cremona": "389a1", "lmfdb": "389.a1" },
+      "a_invariants": ["0", "1", "1", "-2", "0"],
+      "conductor": "389",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 2,
+      "expected_leading_derivative": "1.51863300057685354",
+      "zero_sum_upper_bounds": [{ "delta": 1.0, "raw_sum": "2.037500084595065", "bound": 2 }],
+      "tiers": ["core", "quick"],
+      "purposes": ["rank-2", "even-functional-equation"],
+      "sources": ["https://www.lmfdb.org/EllipticCurve/Q/389/a/1"]
+    },
+    {
+      "id": "5077a1",
+      "labels": { "cremona": "5077a1", "lmfdb": "5077.a1" },
+      "a_invariants": ["0", "0", "1", "-7", "6"],
+      "conductor": "5077",
+      "root_number": -1,
+      "expected_probable_analytic_rank": 3,
+      "expected_leading_derivative": "10.3910994007158041",
+      "zero_sum_upper_bounds": [{ "delta": 1.0, "raw_sum": "3.058817805800659", "bound": 3 }],
+      "tiers": ["core", "quick"],
+      "purposes": ["rank-3", "odd-high-derivative"],
+      "sources": ["https://www.lmfdb.org/EllipticCurve/Q/5077/a/1"]
+    },
+    {
+      "id": "234446a1",
+      "labels": { "cremona": "234446a1", "lmfdb": "234446.a1" },
+      "a_invariants": ["1", "-1", "0", "-79", "289"],
+      "conductor": "234446",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 4,
+      "expected_leading_derivative": "214.652337501621337",
+      "zero_sum_upper_bounds": [{ "delta": 1.0, "raw_sum": "4.136137858266707", "bound": 4 }],
+      "tiers": ["core", "quick"],
+      "purposes": ["rank-4", "high-derivative", "non-proof-documentation"],
+      "sources": ["https://www.lmfdb.org/EllipticCurve/Q/234446/a/1"]
+    },
+    {
+      "id": "user-rank2",
+      "labels": { "description": "motivating Sage.js example" },
+      "a_invariants": ["2", "3", "1", "4", "50"],
+      "conductor": "1008811",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 2,
+      "expected_leading_derivative": "14.7552475203802700",
+      "tiers": ["core", "quick", "benchmark"],
+      "purposes": ["rank-2", "large-prime-factors", "performance"],
+      "sources": ["user-provided example; conductor = 193 * 5227"]
+    },
+    {
+      "id": "256944c1",
+      "labels": { "cremona": "256944c1" },
+      "a_invariants": ["0", "-1", "0", "-7460362000712", "-7842981500851012704"],
+      "conductor": "256944",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 0,
+      "expected_leading_derivative": "0.00577750108784272178",
+      "tiers": ["core", "pathological"],
+      "purposes": ["rank-0", "low-lying-zero", "large-a-invariants", "zero-sum-regression"],
+      "zero_sum_upper_bounds": [
+        { "delta": 0.5, "bound": 2 },
+        { "delta": 0.6, "bound": 2 },
+        { "delta": 1.0, "bound": 2 },
+        { "delta": 1.5, "bound": 2 },
+        { "delta": 2.0, "bound": 2 }
+      ],
+      "sources": [
+        "Sage 10.9 ell_rational_field.py analytic_rank_upper_bound documentation",
+        "https://www.lmfdb.org/EllipticCurve/Q/256944/c/1"
+      ]
+    },
+    {
+      "id": "rank5-sage",
+      "labels": { "description": "Sage rank() documentation example" },
+      "a_invariants": ["0", "0", "1", "-79", "342"],
+      "conductor": "19047851",
+      "root_number": -1,
+      "expected_probable_analytic_rank": 5,
+      "expected_leading_derivative": "3634.28250646374201",
+      "tiers": ["stress", "high-rank"],
+      "purposes": ["rank-5", "numerical-stress", "non-proof-documentation"],
+      "sources": ["Sage 10.9 ell_rational_field.py rank documentation"]
+    },
+    {
+      "id": "11a1-nonminimal",
+      "labels": { "derived_from": "11a1 by integral scaling u=2" },
+      "a_invariants": ["0", "-4", "8", "-160", "-1280"],
+      "conductor": "11",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 0,
+      "expected_leading_derivative": "0.253841860855910684",
+      "tiers": ["models", "quick"],
+      "purposes": ["nonminimal-model", "isomorphism-invariance"],
+      "sources": ["exact change of variables from pinned 11a1"]
+    },
+    {
+      "id": "additive-at-2",
+      "labels": { "cremona": "32a2", "description": "y^2 = x^3 - x" },
+      "a_invariants": ["0", "0", "0", "-1", "0"],
+      "conductor": "32",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 0,
+      "expected_leading_derivative": "0.655514388573029953",
+      "tiers": ["models", "quick"],
+      "purposes": ["additive-reduction-at-2", "root-number"],
+      "sources": ["standard CM curve"]
+    },
+    {
+      "id": "additive-at-2-and-3",
+      "labels": { "description": "y^2 = x^3 + 1" },
+      "a_invariants": ["0", "0", "0", "0", "1"],
+      "conductor": "36",
+      "root_number": 1,
+      "expected_probable_analytic_rank": 0,
+      "expected_leading_derivative": "0.701091052662727131",
+      "tiers": ["models", "quick"],
+      "purposes": ["additive-reduction-at-2-and-3", "root-number"],
+      "sources": ["standard CM curve"]
+    },
+    {
+      "id": "large-conductor-stress",
+      "labels": { "description": "Sage analytic_rank_upper_bound documentation example" },
+      "a_invariants": ["0", "0", "0", "-2934", "19238"],
+      "conductor": "1456559178048",
+      "root_number": -1,
+      "expected_probable_analytic_rank": 1,
+      "expected_leading_derivative": "54.1450144550632105",
+      "tiers": ["stress", "large-conductor"],
+      "purposes": ["conductor-over-1e9", "resource-limit", "large-prime-factor"],
+      "sources": ["Sage 10.9 ell_rational_field.py analytic_rank_upper_bound documentation"]
+    }
+  ]
+}

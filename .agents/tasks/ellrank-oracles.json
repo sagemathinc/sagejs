@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "ellrank-oracles",
+  "title": "Analytic rank oracle corpus and benchmarks",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create a pinned rank 0-4 and pathological-zero corpus, persistent Sage/PARI and Magma oracle harnesses, and reproducible analytic-rank benchmark reports",
+  "base_commit": "4d404264fc81a0807498516a7dbe9bc11db8471e",
+  "claims": [
+    "bench/elliptic-analytic-rank/",
+    "test/data/elliptic-analytic-rank/",
+    "upstream-tests/sage/elliptic-analytic-rank.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/elliptic-curve-analytic-rank-plan.md",
+    "https://www.lmfdb.org/EllipticCurve/Q/234446/a/1"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "LMFDB pinned records",
+      "Sage/PARI",
+      "Magma 2.18-5"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
