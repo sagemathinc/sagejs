@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rforest-native",
+  "title": "Rforest Native",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Pin and port rforest 3103d396, implement the Harvey-Sutherland genus-2/3 Hasse-Witt batch adapter and packed N-API boundary, and validate exact modular streams on Linux x64/arm64, macOS arm64, and native Windows x64",
+  "base_commit": "5c2f5da189a09bd6d40121b8d275859d36b852ce",
+  "claims": [
+    "packages/flint/scripts/build-deps.cjs",
+    "packages/flint/scripts/portable-rforest/",
+    "packages/flint/patches/rforest-portability.patch",
+    "packages/flint/binding.gyp",
+    "packages/flint/src/addon.c",
+    "packages/flint/src/addon.h",
+    "packages/flint/src/hyperelliptic/rforest.c",
+    "packages/flint/include/sagejs/hyperelliptic/rforest.h",
+    "packages/flint/test/hyperelliptic/rforest.cjs",
+    "packages/flint/test/hyperelliptic/rforest_bridge.c",
+    "packages/flint/README.md",
+    "packages/flint/package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint/test/hyperelliptic/rforest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.547,
+      "started_at": "2026-08-18T09:01:48.031Z",
+      "commit": "c2212c95863675165f96e48afbbfd0a8a0eae631",
+      "workspace_fingerprint": "47a82c91ea218d57fe474f6ba63a7ac9bd95a4d972bb7a385561b9188fab51e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/tmp/sagejs-rforest-bridge",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.306,
+      "started_at": "2026-08-18T09:01:56.868Z",
+      "commit": "c2212c95863675165f96e48afbbfd0a8a0eae631",
+      "workspace_fingerprint": "47a82c91ea218d57fe474f6ba63a7ac9bd95a4d972bb7a385561b9188fab51e3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pinned canonical rforest 3103d396c67cb1685131b1f11e84975cca335bdf (archive SHA-256 3e94db94c2cc518fa86633d136607ea2af1f4d327f0f5cbcc9920d474ce55754), verified and installed its MIT LICENSE and bundled zz BSD COPYING, and built the exact 20-C-source upstream closure on every supported host. Added the LLP64-safe clzll patch with a 64-bit GMP limb gate, reproducible Unix and clang-cl Windows builders, a host-neutral fixed-width C adapter, and packed Node-API genus-2/3 Hasse--Witt batches. The adapter accepts ascending completed-model coefficients as BigUint64Array two's-complement int64 words, returns stride-three det(I-T*W) residues, shares smalljac's process-global mutex, and gives explicit aligned direct/bad/characteristic-two/resource-limit rows. Dense Sage genus-3 oracles, genus-2 normalization fixtures, exceptional cases, truncation, ingress errors, and worker concurrency pass. Four-host fresh-build receipts: Linux x86_64 GCC 13.3.0, librforest.a 01559f66620e77df7aaa1dd4b97516c7d235ef8ec3d21fe675f0b71ea53113b2 and bridge eaa6387973a8146d735b620949cb427cecd4b1014fb982a0cfb13b41f9d8c2f9; Linux aarch64 GCC 13.3.0, library 6dec38f957a3d2b65da5f697dafbbdddaa4330c1f5f059222bc90e8f61d2b4af and bridge 5eb715629dd9d7985d702f05f82357f26ca9ea0f3c94854f99b1b95d1aee494c; macOS arm64 Apple clang 17.0.0, library e44b721fdcafceab65c0cd2d431425c1c3cc79a7b1498886e7ab707d92a6fafe and bridge cb220d838ca0860b48d41e86bc9d1ea18b7ed30a59e181e9aca88a280b665252; native Windows x64 clang-cl 19.1.5, rforest.lib 5b0dc82e15969972479a92614a5181b09a2ef8d65516935657f5a916d463d433 and bridge.exe 4d89c0000b44139fc8007e87c3537d5cea51f22d98c83dedcd5498d66b61c9d3. Every bridge printed 'rforest bridge genus-2/3 residue streams passed'.",
+    "risks": [
+      "The native result is only det(I-T*W) modulo p; the ordinary Python layer must perform exact Weil-bound lifting and must not expose these rows as local L-polynomials.",
+      "The forest is capped at p <= 2^31-1 for an identical fixed-width contract across LP64 and LLP64. Exceptional rows above the direct fallback cap p=100000 deliberately report RESOURCE_LIMIT.",
+      "The native Windows standalone link emits existing vcpkg FLINT/GMP inconsistent-dllimport LNK42xx warnings; the adapter itself compiles with clang-cl /W4 /WX after suppressing that third-party header diagnostic, and the executable passes.",
+      "Broad repository-native and SEA suites were intentionally not rerun in this lane at integration's request; focused addon, dense Node oracle, standalone bridge, dependency rebuild, and four-host receipts are current."
+    ],
+    "next_steps": [
+      "Integration has cherry-picked 221e0917, f6a05969, and c2212c95; include this receipt commit and classify the new adapter/header/standalone test in the integration branch native-code inventory.",
+      "Keep rforestCapabilities and rforestHasseWittBatch private to the mathematical lifting layer until the exact coefficient-completion contract is tested end to end."
+    ]
+  }
+}

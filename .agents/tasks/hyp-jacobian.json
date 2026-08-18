@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-jacobian",
+  "title": "Hyperelliptic Jacobian arithmetic",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement canonical genus-2/3 Jacobian divisor classes, odd-degree Cantor group law, scalar arithmetic, orders/basic structure where feasible, exhaustive law tests, and benchmarks in ordinary Python",
+  "base_commit": "2c360a9451b45a63d660e7fdc6a4874f8d9fe5ed",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+    "test/hyperelliptic-jacobian.cjs",
+    "bench/hyperelliptic-jacobian.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagelite",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "exhaustive small Jacobians"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-jacobian.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.355,
+      "started_at": "2026-08-18T08:03:56.740Z",
+      "commit": "25dc75c839cd6c60eab3d1a342d5406b2ad8f661",
+      "workspace_fingerprint": "312a8a031a79254ce98339cc24eafe55f2588c4b5f256eade9d178a7699d93af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.946,
+      "started_at": "2026-08-18T08:04:45.173Z",
+      "commit": "25dc75c839cd6c60eab3d1a342d5406b2ad8f661",
+      "workspace_fingerprint": "312a8a031a79254ce98339cc24eafe55f2588c4b5f256eade9d178a7699d93af",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented ordinary-Python genus-2/3 odd-degree Mumford divisors, generalized Cantor composition/reduction for y^2+h*y=f, exact scalar and element orders, Frobenius-derived Jacobian extension orders, practical point/random sampling, bounded enumeration and invariant factors, and an exact one-sided order-candidate filter. Sage differential vectors, h!=0 collisions, 256-bit scalars, cyclic/noncyclic groups, exhaustive small-field laws, and GF(9) polynomial fallback pass.",
+    "risks": [
+      "Characteristic 2 is explicitly unsupported because smooth models require the unimplemented even-degree infinity representation.",
+      "Even-degree split/inert Jacobians and certified embedded abelian-group generators remain unimplemented.",
+      "Generic group_structure() is deliberately exhaustive and resource-capped; it is a small-workload correctness fallback, not a production large-field algorithm.",
+      "architecture:check reaches the native gate but currently fails on unclassified files introduced by the rebased smalljac lane; test:native was therefore not rerun in this lane."
+    ],
+    "next_steps": [
+      "Integrate the curve model's C.jacobian() lazy hook and run the combined public API/oracle suite.",
+      "Use elements_from_points() or random_elements() with filter_order_candidates() in the genus-3 exact-completion lane.",
+      "Run the focused suite on Windows x64, macOS arm64, and Linux arm64 after integration.",
+      "Implement the extended (u,v,n) representation before enabling even-degree or characteristic-2 Jacobian arithmetic."
+    ]
+  }
+}

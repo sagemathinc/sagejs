@@ -32,6 +32,7 @@
         "compiler-runtime",
         "arithmetic-algebra",
         "elliptic-curves",
+        "hyperelliptic-curves",
         "modular-forms",
         "symbolic",
         "graphics",

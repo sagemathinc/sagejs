@@ -1,0 +1,213 @@
+{
+  "schema": "sagejs.hyperelliptic-oracle-cases.v1",
+  "equation": "y^2 + h(x)*y = f(x)",
+  "cases": [
+    {
+      "id": "g2-quintic-generic-p5",
+      "genus": 2,
+      "f": [1, 1, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-5", "generic", "twist-base"],
+      "twist_pair": "g2-quintic-twist-p5"
+    },
+    {
+      "id": "g2-quintic-twist-p5",
+      "genus": 2,
+      "f": [2, 2, 0, 0, 0, 2],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-5", "quadratic-twist"],
+      "twist_pair": "g2-quintic-generic-p5"
+    },
+    {
+      "id": "g2-quintic-generic-p7",
+      "genus": 2,
+      "f": [1, 1, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 7,
+      "expect_bad": true,
+      "tags": ["degree-5", "bad-reduction", "same-model-good-elsewhere"]
+    },
+    {
+      "id": "g2-quintic-generic-p11",
+      "genus": 2,
+      "f": [1, 1, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 11,
+      "tags": ["degree-5", "generic", "same-model-bad-elsewhere"]
+    },
+    {
+      "id": "g2-quintic-special-p7",
+      "genus": 2,
+      "f": [1, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 7,
+      "tags": ["degree-5", "special"]
+    },
+    {
+      "id": "g2-quintic-split-p5",
+      "genus": 2,
+      "f": [0, -1, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-5", "split-jacobian-candidate"]
+    },
+    {
+      "id": "g2-sextic-generic-p5",
+      "genus": 2,
+      "f": [1, 1, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-6", "generic"]
+    },
+    {
+      "id": "g2-sextic-supersingular-p5",
+      "genus": 2,
+      "f": [-1, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-6", "supersingular", "special"]
+    },
+    {
+      "id": "g2-quintic-prank1-p5",
+      "genus": 2,
+      "f": [1, 0, 0, 1, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-5", "p-rank-witness"]
+    },
+    {
+      "id": "g2-quintic-prank2-p5",
+      "genus": 2,
+      "f": [1, 1, 0, 1, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-5", "p-rank-witness"]
+    },
+    {
+      "id": "g2-generalized-p7",
+      "genus": 2,
+      "f": [3, 2, 0, 0, 0, 1],
+      "h": [0, 1],
+      "prime": 7,
+      "tags": ["degree-5", "nonzero-h"]
+    },
+    {
+      "id": "g2-characteristic2",
+      "genus": 2,
+      "f": [1, 1, 0, 0, 0, 1],
+      "h": [1, 1, 1],
+      "prime": 2,
+      "tags": ["degree-5", "nonzero-h", "characteristic-2"]
+    },
+    {
+      "id": "g2-bad-p5",
+      "genus": 2,
+      "f": [0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "expect_bad": true,
+      "tags": ["degree-5", "bad-reduction"]
+    },
+    {
+      "id": "g3-septic-generic-p5",
+      "genus": 3,
+      "f": [1, 1, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "generic", "twist-base"],
+      "twist_pair": "g3-septic-twist-p5"
+    },
+    {
+      "id": "g3-septic-twist-p5",
+      "genus": 3,
+      "f": [2, 2, 0, 0, 0, 0, 0, 2],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "quadratic-twist"],
+      "twist_pair": "g3-septic-generic-p5"
+    },
+    {
+      "id": "g3-septic-special-p5",
+      "genus": 3,
+      "f": [0, -1, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "special"]
+    },
+    {
+      "id": "g3-septic-supersingular-p5",
+      "genus": 3,
+      "f": [1, 0, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "special", "supersingular"]
+    },
+    {
+      "id": "g3-septic-prank1-p5",
+      "genus": 3,
+      "f": [1, 0, 0, 0, 0, 1, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "p-rank-witness"]
+    },
+    {
+      "id": "g3-septic-prank2-p5",
+      "genus": 3,
+      "f": [1, 3, 0, 1, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-7", "p-rank-witness"]
+    },
+    {
+      "id": "g3-septic-generic-p7",
+      "genus": 3,
+      "f": [1, 1, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 7,
+      "tags": ["degree-7", "generic"]
+    },
+    {
+      "id": "g3-octic-generic-p5",
+      "genus": 3,
+      "f": [1, 1, 0, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 5,
+      "tags": ["degree-8", "generic"]
+    },
+    {
+      "id": "g3-octic-special-p7",
+      "genus": 3,
+      "f": [1, 0, 0, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 7,
+      "tags": ["degree-8", "special"]
+    },
+    {
+      "id": "g3-generalized-p7",
+      "genus": 3,
+      "f": [2, 3, 0, 0, 0, 0, 0, 1],
+      "h": [1, 0, 1],
+      "prime": 7,
+      "tags": ["degree-7", "nonzero-h"]
+    },
+    {
+      "id": "g3-characteristic2",
+      "genus": 3,
+      "f": [1, 1, 0, 0, 0, 0, 0, 1],
+      "h": [1, 1, 0, 1],
+      "prime": 2,
+      "tags": ["degree-7", "nonzero-h", "characteristic-2"]
+    },
+    {
+      "id": "g3-bad-p7",
+      "genus": 3,
+      "f": [0, 0, 0, 0, 0, 0, 0, 1],
+      "h": [0],
+      "prime": 7,
+      "expect_bad": true,
+      "tags": ["degree-7", "bad-reduction"]
+    }
+  ]
+}

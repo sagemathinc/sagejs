@@ -6704,6 +6704,41 @@
       },
       {
         "schema_version": 1,
+        "name": "HyperellipticCurve",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.schemes.hyperelliptic_curves.constructor",
+        "signature": "HyperellipticCurve(f: Any, h: Any=0, names: Any=None, check_squarefree: bool=True) -> Any",
+        "summary": "Construct a genus-2 or genus-3 hyperelliptic curve.",
+        "doc": "Construct a genus-2 or genus-3 hyperelliptic curve.\n\nThe equation is `y^2 + h(x)y = f(x)`. Substantial model validation,\npoint counting, and Frobenius arithmetic live in the lazy\n`sagejs.hyperelliptic_curves` package.\n\n```sage\nsage: R.<x> = PolynomialRing(GF(5))\nsage: C = HyperellipticCurve(x^5 + x + 1)\nsage: C.genus()\n2\n```",
+        "tags": [
+          "hyperelliptic curves",
+          "finite fields",
+          "point counting",
+          "L-polynomials"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Genus-2 and genus-3 models over QQ and finite fields, with an exact exhaustive finite-field Frobenius fallback."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath hyperelliptic curves API",
+            "url": "https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "The exhaustive reference algorithm is intended for modest finite fields. Genus-2 local factors use native smalljac; the genus-3 rforest backend currently exposes modular development diagnostics rather than public completed local factors."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "icosahedron",
         "aliases": [],
         "kind": "function",
@@ -24772,6 +24807,101 @@
     },
     {
       "schema_version": 1,
+      "name": "HyperellipticCurve",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.schemes.hyperelliptic_curves.constructor",
+      "signature": "HyperellipticCurve(f: Any, h: Any=0, names: Any=None, check_squarefree: bool=True) -> Any",
+      "summary": "Construct a genus-2 or genus-3 hyperelliptic curve.",
+      "doc": "Construct a genus-2 or genus-3 hyperelliptic curve.\n\nThe equation is `y^2 + h(x)y = f(x)`. Substantial model validation,\npoint counting, and Frobenius arithmetic live in the lazy\n`sagejs.hyperelliptic_curves` package.\n\n```sage\nsage: R.<x> = PolynomialRing(GF(5))\nsage: C = HyperellipticCurve(x^5 + x + 1)\nsage: C.genus()\n2\n```",
+      "tags": [
+        "hyperelliptic curves",
+        "finite fields",
+        "point counting",
+        "L-polynomials"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Genus-2 and genus-3 models over QQ and finite fields, with an exact exhaustive finite-field Frobenius fallback."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath hyperelliptic curves API",
+          "url": "https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "The exhaustive reference algorithm is intended for modest finite fields. Genus-2 local factors use native smalljac; the genus-3 rforest backend currently exposes modular development diagnostics rather than public completed local factors."
+      ],
+      "source": {
+        "name": "HyperellipticCurve",
+        "qualified": "HyperellipticCurve",
+        "path": "src/baselib/hyperelliptic_curves.py",
+        "line": 26,
+        "excerpt": {
+          "start_line": 14,
+          "text": "\ndef _hyperelliptic_module() -> Any:\n    \"\"\"Load the ordinary-Python hyperelliptic implementation lazily.\"\"\"\n    global _hyperelliptic_module_cache\n    if _hyperelliptic_module_cache is runtime.undefined:\n        _hyperelliptic_module_cache = __import__(\n            \"sagejs.hyperelliptic_curves.model\",\n            fromlist=[\"HyperellipticCurve\"],\n        )\n    return _hyperelliptic_module_cache\n\n\ndef HyperellipticCurve(\n    f: Any,\n    h: Any = 0,\n    names: Any = None,\n    check_squarefree: bool = True,\n) -> Any:\n    \"\"\"Construct a genus-2 or genus-3 hyperelliptic curve.\n\n    The equation is `y^2 + h(x)y = f(x)`. Substantial model validation,\n    point counting, and Frobenius arithmetic live in the lazy\n    `sagejs.hyperelliptic_curves` package.\n\n    ```sage"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#795c664f1fca1e0a-e3b0c44298fc1c14",
+          "line": 39,
+          "source": "R.<x> = PolynomialRing(GF(5))",
+          "want": "",
+          "tags": [],
+          "owner": "HyperellipticCurve",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/hyperelliptic_curves.py#795c664f1fca1e0a-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#4f291915802e5acb-e3b0c44298fc1c14",
+          "line": 40,
+          "source": "C = HyperellipticCurve(x^5 + x + 1)",
+          "want": "",
+          "tags": [],
+          "owner": "HyperellipticCurve",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/hyperelliptic_curves.py#4f291915802e5acb-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#214119a1bbf071a5-d4735e3a265e16ee",
+          "line": 41,
+          "source": "C.genus()",
+          "want": "2\n",
+          "tags": [],
+          "owner": "HyperellipticCurve",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/hyperelliptic_curves.py#214119a1bbf071a5-d4735e3a265e16ee",
+            "status": "pass",
+            "actual": "2\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "icosahedron",
       "aliases": [],
       "kind": "function",
@@ -31031,23 +31161,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 268,
-      "with_docstring": 268,
-      "with_summary": 268,
-      "with_tags": 268,
-      "with_backend": 268,
-      "with_provenance": 268,
-      "with_compatibility_notes": 268,
+      "registry_entries": 269,
+      "with_docstring": 269,
+      "with_summary": 269,
+      "with_tags": 269,
+      "with_backend": 269,
+      "with_provenance": 269,
+      "with_compatibility_notes": 269,
       "with_references": 86,
-      "markdown_docstrings": 268,
+      "markdown_docstrings": 269,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 173,
+      "entries_with_examples": 174,
       "entries_without_examples": 95,
-      "documented": 133,
-      "verified": 127,
+      "documented": 136,
+      "verified": 130,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

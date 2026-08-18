@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 79,
+    "classified-native-file": 88,
     "declared-ffi": 408,
     "declared-ffi-resource": 29,
-    "napi-export": 296,
+    "napi-export": 301,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -7587,6 +7587,56 @@
       "family": "numerical"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:rforestCapabilities",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "rforestCapabilities",
+      "symbol": "sagejs_rforest_capabilities_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:rforestHasseWittBatch",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "rforestHasseWittBatch",
+      "symbol": "sagejs_rforest_hasse_witt_batch_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacCapabilities",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacCapabilities",
+      "symbol": "sagejs_smalljac_capabilities_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacGroupBatch",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacGroupBatch",
+      "symbol": "sagejs_smalljac_group_batch_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacLpolyBatch",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacLpolyBatch",
+      "symbol": "sagejs_smalljac_lpoly_batch_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:smalljacVersion",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7899,6 +7949,14 @@
       "lane": "native-compiler"
     },
     {
+      "id": "native-file:bench/hyperelliptic/smalljac_batch.c",
+      "kind": "classified-native-file",
+      "path": "bench/hyperelliptic/smalljac_batch.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
       "id": "native-file:bench/native-p1-heilbronn-reference.c",
       "kind": "classified-native-file",
       "path": "bench/native-p1-heilbronn-reference.c",
@@ -7921,6 +7979,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/rforest/portable_trace_harness.c",
+      "kind": "classified-native-file",
+      "path": "bench/rforest/portable_trace_harness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:packages/fflas/include/sagejs/fflas_matrix_ffi.h",
@@ -8019,6 +8085,22 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/flint/include/sagejs/hyperelliptic/rforest.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/hyperelliptic/rforest.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/hyperelliptic/smalljac.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
       "id": "native-file:packages/flint/include/sagejs/native.h",
       "kind": "classified-native-file",
       "path": "packages/flint/include/sagejs/native.h",
@@ -8104,6 +8186,14 @@
       "path": "packages/flint/src/addon.c",
       "disposition": "mixed-native",
       "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/addon.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/addon.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
       "lane": "arithmetic-algebra"
     },
     {
@@ -8235,6 +8325,22 @@
       "lane": "arithmetic-algebra"
     },
     {
+      "id": "native-file:packages/flint/src/hyperelliptic/rforest.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/rforest.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/hyperelliptic/smalljac.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/hyperelliptic/smalljac.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
       "id": "native-file:packages/flint/src/matrix.c",
       "kind": "classified-native-file",
       "path": "packages/flint/src/matrix.c",
@@ -8361,6 +8467,22 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/test/hyperelliptic/rforest_bridge.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/hyperelliptic/rforest_bridge.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/test/hyperelliptic/smalljac_bridge.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/hyperelliptic/smalljac_bridge.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves"
     },
     {
       "id": "native-file:packages/flint/test/number_field_order_ffi.c",

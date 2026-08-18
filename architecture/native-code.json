@@ -18,6 +18,20 @@
   },
   "files": [
     {
+      "path": "bench/hyperelliptic/smalljac_batch.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone packed genus-2 smalljac timing and exact-stream checksum baseline; it is not linked into Sage.js."
+    },
+    {
+      "path": "bench/rforest/portable_trace_harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone upstream-source portability oracle for the generic rforest remainder-forest kernel; it is not linked into Sage.js."
+    },
+    {
       "path": "bench/native-p1-heilbronn-reference.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -179,6 +193,20 @@
       "rationale": "Host-neutral generated owned-resource ABI over word-characteristic FLINT extension contexts, elements, and univariate polynomials, with bulk canonical power-basis coordinates, exact context identity, thread-affine shared ownership, structural arithmetic, and deterministic lifecycle accounting."
     },
     {
+      "path": "packages/flint/include/sagejs/hyperelliptic/smalljac.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-width ABI for batched genus-2 local factors and supported smalljac Jacobian group invariants."
+    },
+    {
+      "path": "packages/flint/include/sagejs/hyperelliptic/rforest.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Host-neutral fixed-width ABI for batched genus-2/3 rforest Hasse--Witt residues with explicit modular normalization and row statuses."
+    },
+    {
       "path": "packages/flint/include/sagejs/native.h",
       "category": "public-abi",
       "review_status": "accepted",
@@ -226,6 +254,13 @@
       "review_status": "audited",
       "lane": "arithmetic-algebra",
       "rationale": "Large Node-API adapter containing both boundary code and locally implemented helpers."
+    },
+    {
+      "path": "packages/flint/src/addon.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Shared declarations for the FLINT Node-API addon registration boundary."
     },
     {
       "path": "packages/flint/src/algebraic.c",
@@ -347,6 +382,20 @@
       "rationale": "Declarations for native floating-point operations."
     },
     {
+      "path": "packages/flint/src/hyperelliptic/smalljac.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Narrow validated adapter from smalljac callbacks to bounded packed local-factor and Jacobian-invariant buffers, with an exact ordinary-Python fallback."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/rforest.c",
+      "category": "mixed-native",
+      "review_status": "audited",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Checked Harvey--Sutherland curve-transition construction around the pinned rforest matrix-product library, returning only modular Hasse--Witt residues."
+    },
+    {
       "path": "packages/flint/src/matrix.c",
       "category": "mixed-native",
       "review_status": "audited",
@@ -464,6 +513,20 @@
       "review_status": "accepted",
       "lane": "native-compiler",
       "rationale": "Host-neutral igraph resource and borrowed-view ABI shared by generated kernels and the Node adapter."
+    },
+    {
+      "path": "packages/flint/test/hyperelliptic/smalljac_bridge.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone C regression harness for the host-neutral genus-2 smalljac boundary and packed result contract."
+    },
+    {
+      "path": "packages/flint/test/hyperelliptic/rforest_bridge.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "hyperelliptic-curves",
+      "rationale": "Standalone cross-platform regression harness for exact genus-2/3 modular streams at the rforest boundary."
     },
     {
       "path": "packages/graph/src/addon.c",

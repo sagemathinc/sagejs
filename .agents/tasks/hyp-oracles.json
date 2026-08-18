@@ -1,0 +1,139 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-oracles",
+  "title": "Higher-genus oracle corpus and benchmarks",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create compact offline Sage/Magma/PARI/exhaustive genus-2/3 local-polynomial, Hasse-Witt, point-count, Jacobian-order, and group-structure fixtures plus reproducible benchmark harnesses",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "test/data/hyperelliptic/",
+    "test/hyperelliptic-oracles.cjs",
+    "bench/hyperelliptic/"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagelite",
+    "/home/user/bin/magma",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-oracles.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "started_at": "2026-08-18T08:14:41.931Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "2fd8b157687a018187f9c8dedbe3f5b29db30f29a9a3240b7facd5976cb8763d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.969,
+      "started_at": "2026-08-18T08:14:49.264Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "2fd8b157687a018187f9c8dedbe3f5b29db30f29a9a3240b7facd5976cb8763d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.537,
+      "started_at": "2026-08-18T08:15:20.485Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "2fd8b157687a018187f9c8dedbe3f5b29db30f29a9a3240b7facd5976cb8763d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/benchmark-oracles.cjs --repeat 3",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.934,
+      "started_at": "2026-08-18T08:15:33.635Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "2fd8b157687a018187f9c8dedbe3f5b29db30f29a9a3240b7facd5976cb8763d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-oracles.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.228,
+      "started_at": "2026-08-18T08:17:57.164Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "d1c9f8c95b3c120fffb7194bbd2d536c65634dbad49ce95c545249c5cdef80d7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/benchmark-oracles.cjs --repeat 3",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.179,
+      "started_at": "2026-08-18T08:17:58.679Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "d1c9f8c95b3c120fffb7194bbd2d536c65634dbad49ce95c545249c5cdef80d7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.978,
+      "started_at": "2026-08-18T08:18:09.998Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "d1c9f8c95b3c120fffb7194bbd2d536c65634dbad49ce95c545249c5cdef80d7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.828,
+      "started_at": "2026-08-18T08:18:48.545Z",
+      "commit": "26dbd35cdb0bba03597d8827dd9b3288afa67ad3",
+      "workspace_fingerprint": "d1c9f8c95b3c120fffb7194bbd2d536c65634dbad49ce95c545249c5cdef80d7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Committed a deterministic 25-row genus-2/3 oracle corpus with degrees 5-8, good/bad reduction, twists, generalized equations, characteristic 2, all p-ranks, supersingular/ordinary witnesses, local L-polynomials, first g extension counts, Jacobian orders/invariants, and odd-model Hasse-Witt matrices. Independent pure-Python exhaustive, Sage 10.9, PARI 2.17, and Magma 2.18 generators agree exactly where supported; Sage invariant factors reproduce Magma element-order histograms. Added offline arithmetic/provenance tests and a hashed cold/warm benchmark harness. Offline tests also pass on Linux arm64 and macOS arm64.",
+    "risks": [
+      "PARI hyperellcharpoly rejects the two generalized characteristic-2 cases; exhaustive Python, Sage, and Magma agree on them.",
+      "The benchmark is an oracle-cost baseline on deliberately small exhaustive cases, not a production Sage.js throughput claim.",
+      "The repository-wide test:native run was stopped at integration-owner request because simultaneous full builds saturated the shared host; focused oracle, strict-Python, and architecture receipts pass."
+    ],
+    "next_steps": [
+      "Integration lane should consume local-data-v1.json for finite-field, Jacobian, smalljac, rforest, and genus-3 completion differential tests.",
+      "Run repository-wide native and platform packaging suites once at final integration rather than duplicating them per data-only lane.",
+      "Add large-prime or LMFDB rows only when a consumer needs a regression not represented by the compact exhaustive corpus."
+    ]
+  }
+}

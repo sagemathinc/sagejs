@@ -13,16 +13,17 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 4424,
-      "bytes": 142418,
+      "lines": 5101,
+      "bytes": 166090,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "Node-API module registration and value conversion",
         "GMP and FLINT representation wrappers",
-        "locally implemented integer, polynomial, and factoring helpers"
+        "locally implemented integer, polynomial, and factoring helpers",
+        "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 4,422-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,101-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -285,6 +286,28 @@
         "Linux arm64 witness"
       ],
       "next": "Retain the immutable payload boundary, but migrate bounded decomposition and dispatch to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
+    },
+    {
+      "path": "packages/flint/src/hyperelliptic/rforest.c",
+      "lines": 867,
+      "bytes": 29248,
+      "decision": "retain-bridge",
+      "priority": "medium",
+      "responsibilities": [
+        "Harvey--Sutherland transition-matrix construction for integral genus-2/3 models",
+        "paired rforest product planning, exceptional-prime fallback, and normalization",
+        "bounded packed modular-row ownership and status reporting"
+      ],
+      "rationale": "The generic pinned rforest library does not know about curves, so this compact adapter supplies the published curve-to-matrix construction and exact modular normalization. It deliberately stops at det(I-TW) modulo p; ordinary Python owns candidate lifting and refuses ambiguous integer local polynomials.",
+      "fallback": "Ordinary exact Hasse--Witt expansion and exhaustive point-count reconstruction remain available; public genus-3 local factors do not depend on rforest.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SageMath Cartier matrices",
+        "Magma local polynomials",
+        "four-host standalone rforest bridge"
+      ],
+      "next": "Keep modular and exact-completion timings separate, retain the shared non-reentrant native lock, and expose a full local factor only after unique certified completion."
     },
     {
       "path": "packages/graph/src/addon.c",

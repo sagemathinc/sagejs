@@ -103,6 +103,76 @@ is based on Kiran Kedlaya and Andrew Sutherland, “Computing L-series of
 hyperelliptic curves,” ANTS VIII (2008), 312–326. The pinned upstream release
 is GPL-2.0-or-later and depends on Andrew Sutherland's `ffpoly` 1.2.7.
 
+The same dependency now has a packed, in-process genus-2 boundary for the
+hyperelliptic layer. `smalljacLpolyBatch(curveText, start, stop, options)`
+accepts a private checked integral smalljac model string, traverses the closed
+prime interval once, and returns aligned typed arrays. `primes`, `good`,
+`coefficientCounts`, and `rowStatus` have one entry per emitted callback;
+`coefficients` stores row-major `(c1,c2)` for `det(1-T*Frob)`. Bad-reduction
+rows remain present with count zero. A finite `options.maxRows` limits stored
+rows while `requiredRows` reports the complete callback count and `truncated`
+records the loss. The accepted upstream grammar used by this adapter is an
+integral quintic or sextic `f(x)`, or the integral pair `[f(x),h(x)]` defining
+`y^2+h(x)y=f(x)`. The public mathematical layer, not this private adapter,
+owns model transformations and excluded denominator primes.
+
+`smalljacGroupBatch` uses the same row alignment and returns invariant factors
+as packed `BigUint64Array` storage with `invariantOffsets`. Upstream supports
+this only for odd-degree genus-2 models over `QQ`; even-degree calls return the
+explicit `UNSUPPORTED_CURVE` status. `smalljacCapabilities()` publishes the
+backend version, normalization, exact numeric status table, supported genera,
+and fixed-width prime limits. Full genus-2 coefficients are admitted only
+through `p < 2^32`: the Weil bounds give `|c1| <= 4*sqrt(p)` and
+`|c2| <= 6*p`, safely inside `int64`. Group invariants use the stricter
+`p < 2^30` capability, where the genus-2 Jacobian order bound is below signed
+64-bit upstream arithmetic; positivity, invariant-factor divisibility, and
+product overflow are checked before conversion. These are capability limits,
+not promises to coerce an unsupported result.
+
+All elliptic and hyperelliptic calls share one native mutex because ffpoly's
+finite-field context is process-global. Callback allocation/range failures
+cancel the upstream traversal, clean up the curve, release the mutex, and
+return a distinct batch status; mathematical parse, singularity, model, and
+interval failures retain their own statuses.
+
+Genus-2 and genus-3 hyperelliptic curves also have a private packed
+Hasse--Witt batch boundary backed by Edgar Costa and Andrew Sutherland's
+[`rforest`](https://github.com/edgarcosta/rforest), pinned at commit
+`3103d396c67cb1685131b1f11e84975cca335bdf`.  The upstream library and its
+bundled `zz` arithmetic layer are respectively MIT-licensed and BSD-licensed;
+both checked license files are installed with the dependency.  The build uses
+the exact 20-translation-unit closure of the pinned upstream makefile.  The
+Windows build uses clang-cl, fixed-width carry arithmetic, and the same GMP
+64-bit limb requirement as Unix; rforest's private `long` ABI never crosses
+the Sage.js boundary.  The narrow downstream patch also frees the temporary
+GMP vector allocated by upstream `mproduct`; ASan/UBSan/LeakSanitizer covers
+the standalone genus-2/3 bridge.
+
+`rforestHasseWittBatch(coefficients, genus, start, stop, options)` accepts a
+`BigUint64Array` containing the ascending coefficients of the already
+completed model `y^2 = F(x)`, encoded as two's-complement signed 64-bit words.
+Thus every coefficient must lie in `[-2^63,2^63-1]`; negative `BigInt` values
+are encoded with `BigInt.asUintN(64, value)`.  Genus must be 2 or 3, and `F`
+must have exact degree `2*g+1` or `2*g+2`.  The closed prime interval starts at
+2 and is capped at `2^31-1`; `options.maxRows` may cap storage while retaining
+the full `requiredRows` count. Results are row-aligned typed arrays: `primes`,
+`good`, `coefficientCounts`, `rowStatus`, and a stride-three `coefficients` array. An
+available residue row contains the coefficients `(c1,...,cg)` modulo `p` of
+`det(I-T*W)`, where `W` is the Hasse--Witt matrix; unused stride entries are
+zero.  These residues are not local L-polynomials.  The mathematical layer
+owns model completion and uses the residues only as congruence input for exact
+coefficient lifting.
+
+The matrix-factorial forest handles ordinary rows in one batch.  Primes where
+the chosen translations or transition normalizers degenerate use a direct
+FLINT polynomial-power fallback through `p <= 100000`; larger exceptional
+primes receive an explicit `RESOURCE_LIMIT` row rather than a guessed value.
+Characteristic two and a singular reduction of the supplied integral model
+likewise retain aligned rows with explicit statuses. This does not by itself
+prove bad reduction of the rational curve. `rforestCapabilities()` publishes
+the normalization, limits, backend revision, and complete status table. The rforest and
+smalljac entry points share the same process-global native mutex.
+
 Prime-field elliptic-curve scalar multiplication uses a portable native
 Jacobian ladder over arbitrary-size FLINT integers. General Weierstrass models
 are moved exactly to short form in characteristic greater than three, the
@@ -226,8 +296,9 @@ The upstream sources assume the LP64 ABI. During a native Windows build,
 Sage.js prepares a fixed-width `uint64_t`/`int64_t` source tree and routes
 GMP's C-`long` `_ui` and `_si` interfaces through exact 64-bit adapters. This
 avoids silently truncating primes at the 32-bit LLP64 boundary. The Windows
-library is the complete `smalljac_Lpolys` genus-one link closure. It omits
-`STgroups.c` and `smalljac_moments.c`, which implement a separate public
+library is the complete `smalljac_Lpolys` genus-one and genus-two link closure,
+including the supported odd-degree group-structure path. It omits `STgroups.c`
+and `smalljac_moments.c`, which implement a separate public
 Sato--Tate statistics API and are unreachable from that entry point.
 
 The portable word layer is differentially checked against an independent

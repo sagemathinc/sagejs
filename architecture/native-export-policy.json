@@ -121,6 +121,18 @@
         "upstream eclib"
       ]
     },
+    "hyperelliptic": {
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ]
+    },
     "graph": {
       "rationale": "Graph exports adapt mature igraph algorithms and opaque graph storage through the graph native package.",
       "fallback": "The ordinary graph implementation remains available without the igraph capability.",
@@ -1486,6 +1498,16 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:rforestCapabilities",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:rforestHasseWittBatch",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realAdd",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
@@ -1554,6 +1576,21 @@
       "id": "napi:@sagemath/sagejs-flint:realToString",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacCapabilities",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacGroupBatch",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacLpolyBatch",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:smalljacVersion",
