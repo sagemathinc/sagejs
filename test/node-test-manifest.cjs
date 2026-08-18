@@ -209,6 +209,7 @@ const integration = [
   "test/dirichlet.cjs",
   "test/modular.cjs",
   "test/modular-symbols.cjs",
+  "test/elliptic-analytic-rank.cjs",
   "test/elliptic-curves.cjs",
   "test/number-fields.cjs",
   "test/polynomial-ideals.cjs",
