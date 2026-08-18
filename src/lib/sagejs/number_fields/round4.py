@@ -3473,7 +3473,7 @@ def _verify_packed_round4_closure(
                 empty,
                 empty,
                 degree,
-                0,
+                runtime.integer_bigint(0),
             )
         )
     )
