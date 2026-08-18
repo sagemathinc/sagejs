@@ -27,10 +27,21 @@ test("Unix smalljac builds expose dependency headers to implicit Make rules", ()
     join(packageRoot, "scripts", "build-deps.cjs"),
     "utf8",
   );
+  const start = buildScript.indexOf("function buildSmalljac(source)");
+  const end = buildScript.indexOf("\n}\n", start) + 2;
+  assert.notEqual(start, -1);
+  assert.ok(end > start);
+  const implementation = buildScript.slice(start, end);
   assert.equal(
     buildScript.match(/`CPPFLAGS=-I\$\{join\(prefix, "include"\)\}`/g)?.length,
-    2,
+    1,
   );
+  assert.match(
+    implementation,
+    /const includes = `-I\$\{join\(prefix, "include"\)\}`/,
+  );
+  assert.match(implementation, /`CPPFLAGS=\$\{includes\}`/);
+  assert.match(implementation, /`INCLUDES=\$\{includes\}`/);
 });
 
 function run(command, args, options = {}) {

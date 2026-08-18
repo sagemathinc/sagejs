@@ -29,6 +29,7 @@ LOCAL_ALGORITHMS = (
     "round2",
     "polygon",
     "round4",
+    "buchmann-lenstra",
     "om-maxmin",
 )
 

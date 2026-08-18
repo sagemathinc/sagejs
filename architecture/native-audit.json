@@ -238,6 +238,54 @@
       "next": "Keep native Windows CI at the public fixed-width smalljac ABI and propose the conversion boundary upstream."
     },
     {
+      "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
+      "lines": 482,
+      "bytes": 17680,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "sealed integral-polynomial ingress and native multiplication-table construction",
+        "canonical HNF order-basis transfer and retained-size ownership",
+        "batched word-prime Round-2 dispatch and arbitrary-prime fallback signaling"
+      ],
+      "rationale": "This removes the measured n^3 host ingress and per-entry rational egress while preserving the ordinary-Python mathematical oracle. The compact resource and transfer protocol are durable representation primitives, but the Round-2 selection should migrate to source-transparent typed Python once the compiler supports these packed FLINT operations.",
+      "fallback": "Every nonzero resource status retains the exact fallback prime and is closed before the strict ordinary-Python local solver continues; no prime is narrowed or silently accepted.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SageMath",
+        "PARI/GP",
+        "native Windows x64 witness",
+        "Linux arm64 witness"
+      ],
+      "next": "Move HNF transfer primitives into a smaller generated representation resource and compile the readable polynomial-to-local-order driver when typed FLINT polynomial and matrix resources are available."
+    },
+    {
+      "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+      "lines": 781,
+      "bytes": 31310,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "bounded exact discriminant decomposition without eager full factorization",
+        "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
+        "canonical compact source, component, and HNF evidence ownership",
+        "terminal local fixed-point witness construction after final HNF rebasing"
+      ],
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. FLINT owns the mature arithmetic and the existing audited Round-2 helper owns local completion; the durable part is the resource representation and fail-closed status protocol.",
+      "fallback": "The packed result is never trusted directly. An ordinary-Python checker independently recomputes the discriminant, authenticates components, HNF/index/order closure, and word-prime local maximality; unresolved composite and arbitrary-size probable-prime states remain incomplete and available to strict fallback.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath",
+        "PARI/GP",
+        "native Windows x64 witness",
+        "Linux arm64 witness"
+      ],
+      "next": "Retain the immutable payload boundary, but migrate bounded decomposition and dispatch to typed source-transparent Python once exact FLINT polynomial and matrix resources compile without object-at-a-time crossings."
+    },
+    {
       "path": "packages/graph/src/addon.c",
       "lines": 665,
       "bytes": 21764,

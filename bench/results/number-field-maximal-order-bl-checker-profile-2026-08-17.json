@@ -1,0 +1,240 @@
+{
+  "schema": "sagejs.number-fields/maximal-order-bl-checker-profile-v1",
+  "generated_at": "2026-08-17T23:59:00Z",
+  "base_commit": "52f2344b",
+  "source_timeout_artifact_commit": "d8973759",
+  "source_timeout_artifact": "bench/results/number-field-maximal-order-timeout-delta-56ea43a8-2026-08-17.json",
+  "measurement_correction": {
+    "case_id": "pari-round4-vector-420",
+    "incorrect_claim": "The post-7f2ecaf6 public run exceeded 30000 ms.",
+    "cause": "The benchmark orchestration treated an exec yield with a live session identifier as a terminal timeout instead of polling the session to completion.",
+    "corrected_result_ms": 6078.146,
+    "original_uniform_timeout_still_valid": true,
+    "original_uniform_timeout_ms": 5000,
+    "scope": "This correction applies only to the custom post-7f2ecaf6 30000 ms measurement; it does not alter the source timeout artifact."
+  },
+  "policy": {
+    "fresh_worker": true,
+    "public_timeout_ms": 30000,
+    "warmups": 0,
+    "samples": 1,
+    "excluded_cases": [
+      "pari-round4-vector-010",
+      "pari-round4-vector-139"
+    ],
+    "exclusion_reason": "vector010 belongs to the Round-4 lane; vector139 was reconciled as a transient concurrent-run timeout"
+  },
+  "clusters": [
+    {
+      "name": "completed-composite-dedekind-checker",
+      "case_ids": [
+        "pari-round4-vector-007",
+        "pari-round4-vector-104",
+        "pari-round4-vector-419",
+        "pari-round4-vector-420",
+        "pari-round4-vector-421",
+        "pari-round4-vector-422",
+        "pari-round4-vector-423",
+        "pari-round4-vector-424",
+        "pari-round4-vector-425",
+        "pari-round4-vector-426"
+      ],
+      "shared_stage": "check_buchmann_lenstra_result",
+      "certificate": "component-coprime-to-order-discriminant",
+      "diagnosis": "The exact Dedekind construction is subsecond, but its generic rational multiplication-closure replay dominates the public boundary."
+    },
+    {
+      "name": "composite-split-downstream",
+      "case_ids": [
+        "pari-round4-vector-429",
+        "hecke-degree-90",
+        "hecke-precision-degree-12"
+      ],
+      "shared_stage": "initial composite split",
+      "diagnosis": "The initial component produces a certified split; later decomposition/local work is distinct from the completed-Dedekind checker cluster."
+    }
+  ],
+  "initial_composite_stage": [
+    { "case_id": "pari-round4-vector-007", "degree": 24, "elapsed_ms": 198.074, "state": "complete" },
+    { "case_id": "pari-round4-vector-104", "degree": 22, "elapsed_ms": 241.235, "state": "complete" },
+    { "case_id": "pari-round4-vector-419", "degree": 21, "elapsed_ms": 354.157, "state": "complete" },
+    { "case_id": "pari-round4-vector-420", "degree": 21, "elapsed_ms": 394.386, "state": "complete" },
+    { "case_id": "pari-round4-vector-421", "degree": 21, "elapsed_ms": 253.864, "state": "complete" },
+    { "case_id": "pari-round4-vector-422", "degree": 21, "elapsed_ms": 347.04, "state": "complete" },
+    { "case_id": "pari-round4-vector-423", "degree": 21, "elapsed_ms": 345.22, "state": "complete" },
+    { "case_id": "pari-round4-vector-424", "degree": 21, "elapsed_ms": 293.979, "state": "complete" },
+    { "case_id": "pari-round4-vector-425", "degree": 21, "elapsed_ms": 296.908, "state": "complete" },
+    { "case_id": "pari-round4-vector-426", "degree": 24, "elapsed_ms": 503.124, "state": "complete" },
+    { "case_id": "pari-round4-vector-429", "degree": 64, "elapsed_ms": 591.011, "state": "split" },
+    { "case_id": "hecke-degree-90", "degree": 90, "elapsed_ms": 4367.82, "state": "split" },
+    { "case_id": "hecke-precision-degree-12", "degree": 12, "elapsed_ms": 132.697, "state": "split" }
+  ],
+  "checker_before_after": [
+    {
+      "case_id": "pari-round4-vector-419",
+      "before_ms": 23375.27,
+      "after_ms": 347.08,
+      "speedup": 67.35,
+      "accepted": true
+    },
+    { "case_id": "pari-round4-vector-420", "after_ms": 344.532, "accepted": true },
+    { "case_id": "pari-round4-vector-007", "after_ms": 305.757, "accepted": true },
+    { "case_id": "pari-round4-vector-104", "after_ms": 292.865, "accepted": true }
+  ],
+  "public_before": [
+    { "case_id": "pari-round4-vector-419", "status": "timeout", "lower_bound_ms": 30000 },
+    { "case_id": "pari-round4-vector-420", "status": "timeout", "lower_bound_ms": 30000 },
+    { "case_id": "pari-round4-vector-421", "status": "timeout", "lower_bound_ms": 30000 }
+  ],
+  "public_after": [
+    {
+      "case_id": "pari-round4-vector-419",
+      "status": "ok",
+      "first_fresh_worker_ms": 14895.127,
+      "repeat_fresh_worker_ms": 4121.935,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "canonical_basis_digest": "b577bd6ec4b05bf8b823257d68ff9413e529a3533e3fe0e3d62f066b499cf77e",
+      "expected_canonical_basis_digest": "b577bd6ec4b05bf8b823257d68ff9413e529a3533e3fe0e3d62f066b499cf77e",
+      "equation_index_identity": true
+    },
+    {
+      "case_id": "pari-round4-vector-007",
+      "status": "ok",
+      "fresh_worker_ms": 2989.177,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "canonical_basis_digest": "4c59dbf1b9d3eb932423691a69b04c8a45441f7a8b68d4cd3ee3a2a57fac3ddf",
+      "expected_canonical_basis_digest": "4c59dbf1b9d3eb932423691a69b04c8a45441f7a8b68d4cd3ee3a2a57fac3ddf"
+    },
+    {
+      "case_id": "pari-round4-vector-104",
+      "status": "ok",
+      "fresh_worker_ms": 2389.814,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "canonical_basis_digest": "127216a90d17dfd76ca67916a26dcb44267a432f34723316de09f3172489ccf2",
+      "expected_canonical_basis_digest": "127216a90d17dfd76ca67916a26dcb44267a432f34723316de09f3172489ccf2"
+    },
+    {
+      "case_id": "pari-round4-vector-420",
+      "status": "ok",
+      "fresh_worker_ms": 6078.146,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "792696226576452305767009651523584",
+      "stages_ns": {
+        "decomposition": 378231552,
+        "composite": 647453440,
+        "native": 1668694016,
+        "global_certificate": 3144978176
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-421",
+      "status": "ok",
+      "fresh_worker_ms": 1982.985,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "1120727194291010174129782797578125",
+      "stages_ns": {
+        "decomposition": 176125440,
+        "composite": 516867072,
+        "native": 320162048,
+        "global_certificate": 778504448
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-422",
+      "status": "ok",
+      "fresh_worker_ms": 5801.817,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "1677627312816188946952964414636032",
+      "stages_ns": {
+        "decomposition": 308429056,
+        "composite": 586761472,
+        "native": 1946923264,
+        "global_certificate": 2721722368
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-423",
+      "status": "ok",
+      "fresh_worker_ms": 2085.395,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "40650250977089753091644821936498677",
+      "stages_ns": {
+        "decomposition": 371405312,
+        "composite": 537812992,
+        "native": 290429952,
+        "global_certificate": 676513536
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-424",
+      "status": "ok",
+      "fresh_worker_ms": 2519.383,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "82968596939468322350524272929144832",
+      "stages_ns": {
+        "decomposition": 353737984,
+        "composite": 592215296,
+        "native": 271626240,
+        "global_certificate": 1079165440
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-425",
+      "status": "ok",
+      "fresh_worker_ms": 4172.134,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "86620507852136986313803229728551889",
+      "stages_ns": {
+        "decomposition": 304068352,
+        "composite": 587289088,
+        "native": 1075376896,
+        "global_certificate": 1978078208
+      }
+    },
+    {
+      "case_id": "pari-round4-vector-426",
+      "status": "ok",
+      "fresh_worker_ms": 3057.296,
+      "certified": true,
+      "field_discriminant_matches": true,
+      "field_discriminant": "-48269476692516748870958029675063944413184",
+      "stages_ns": {
+        "decomposition": 813487616,
+        "composite": 452242176,
+        "native": 746673664,
+        "global_certificate": 763137280
+      }
+    }
+  ],
+  "post_fix_tail_conclusion": {
+    "comparison_case": "pari-round4-vector-419",
+    "comparison_repeat_fresh_worker_ms": 4121.935,
+    "cases_over_original_5000_ms_policy": [
+      "pari-round4-vector-420",
+      "pari-round4-vector-422"
+    ],
+    "cases_over_custom_30000_ms_bound": [],
+    "diagnosis": "Completed traces show no shared post-checker cliff. Remaining time is distributed across expected native local work and exact global certification, so these measurements do not justify another theorem-specific optimization."
+  },
+  "corruption_tests": {
+    "case_id": "pari-round4-vector-419",
+    "rejected": [
+      "overorder_generator",
+      "canonical_basis",
+      "index",
+      "discriminant",
+      "shared_discriminant_component_factor"
+    ],
+    "restored_exact_result_accepted": true,
+    "cpython_sagejs_exact_lattice_equal": true
+  }
+}

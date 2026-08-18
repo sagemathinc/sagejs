@@ -178,6 +178,39 @@ def cpu_count():
     return os.cpu_count()
 
 
+def worker_module_available(name):
+    """Return whether `name` can be loaded by lightweight workers.
+
+    The check is exact and read-only. It is false when the host has no worker
+    capability, the optional precompiled graph is absent, or its manifest or
+    named module resource does not validate. Callers can therefore select a
+    deterministic sequential fallback before creating a pool.
+    """
+    if not isinstance(name, str):
+        return False
+    try:
+        return bool(_host_call("multiprocessingWorkerModuleAvailable", name))
+    except Exception:
+        return False
+
+
+def worker_memory_budget_bytes():
+    """Return the host-derived parallel-worker memory budget, if known.
+
+    The Node host accounts for current platform/container availability and
+    reserves headroom before exposing this read-only value.  A missing host or
+    unknown limit returns `None`, allowing arithmetic selectors to fail closed.
+    """
+    try:
+        value = _host_call("multiprocessingMemoryBudgetBytes")
+    except Exception:
+        return None
+    if value is None:
+        return None
+    value = int(value)
+    return value if value >= 0 else None
+
+
 def _apply_call(func, args, kwds):
     """Worker-side adapter for `Pool.apply` keyword arguments."""
     return func(*args, **kwds)

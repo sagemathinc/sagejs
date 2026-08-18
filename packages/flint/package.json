@@ -25,7 +25,7 @@
     "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs flint",
     "build": "node scripts/build.cjs",
     "validate:eclib:clean": "node scripts/validate-clean-eclib-build.cjs",
-    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/eclib-rank.cjs test/elliptic-native.cjs test/modular.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs test/smalljac-portability.cjs test/windows-vcpkg-source.cjs",
+    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/eclib-rank.cjs test/elliptic-native.cjs test/modular.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs test/smalljac-portability.cjs test/unix-build-deps-source.cjs test/windows-vcpkg-source.cjs",
     "test:eclib:corpus": "node --test test/eclib-rank-corpus.cjs",
     "generate:eclib:corpus": "node scripts/generate-eclib-rank-oracle.cjs",
     "bench": "node bench/benchmark.cjs"

@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-bl-precision",
+  "title": "Buchmann-Lenstra precision-tail optimization",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce exact construction and independent replay time for the 2772-bit Hecke precision degree-12 component without weakening certification",
+  "base_commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "test/number-field-buchmann-lenstra-precision.cjs",
+    "bench/number-field-buchmann-lenstra-precision.cjs",
+    "bench/results/number-field-buchmann-lenstra-precision-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython exact replay",
+      "Sage.js dynamic differential",
+      "Sage/PARI fixture invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs test/number-field-buchmann-lenstra-precision.cjs",
+    "node bench/number-field-buchmann-lenstra-precision.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/buchmann_lenstra.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.816,
+      "started_at": "2026-08-18T01:18:48.522Z",
+      "commit": "f7fd13b5c6690087e1acd6abd75e56689f508668",
+      "workspace_fingerprint": "f7e7a05f652a748b5f270a8cad992b0cccc07f8f8505cee396af2bb4bbd2f183",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs test/number-field-buchmann-lenstra-precision.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.848,
+      "started_at": "2026-08-18T01:18:55.914Z",
+      "commit": "f7fd13b5c6690087e1acd6abd75e56689f508668",
+      "workspace_fingerprint": "f7e7a05f652a748b5f270a8cad992b0cccc07f8f8505cee396af2bb4bbd2f183",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-buchmann-lenstra-precision.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.14,
+      "started_at": "2026-08-18T01:19:26.208Z",
+      "commit": "f7fd13b5c6690087e1acd6abd75e56689f508668",
+      "workspace_fingerprint": "f7e7a05f652a748b5f270a8cad992b0cccc07f8f8505cee396af2bb4bbd2f183",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The 2772-bit general Buchmann--Lenstra construction and full independent replay now have warmed Sage.js dynamic medians near 4.4 seconds each, down from prior single-sample evidence of 44.7 and 65.3 seconds. Exact CPython/Sage.js lattices and event evidence agree, the equation-discriminant identity holds, and index, discriminant, and event corruption are rejected.",
+    "risks": [
+      "Only Linux x64 was exercised in this lane; final integration should repeat the focused dynamic test on Windows x64 and Linux arm64.",
+      "Repository-wide strict validation on the rebased main-1 reports two pre-existing invariant-list errors in field_analysis_resource.py; the claimed Buchmann--Lenstra module itself has zero Pyright errors."
+    ],
+    "next_steps": [
+      "Integrate the rebased commits and run the standard maximal-order corpus so the public precision-degree-12 timing includes decomposition, native prime work, merge, and global certification.",
+      "Repeat the focused exact test on the required platform matrix."
+    ]
+  }
+}

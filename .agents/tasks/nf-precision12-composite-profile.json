@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-precision12-composite-profile",
+  "title": "Isolate precision-12 composite stage",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bound and attribute the Hecke precision-degree-12 composite maximal-order stage, preserving exact certificate evidence and handing off without engine optimization unless a theorem-shared cause is established",
+  "base_commit": "2da5793275d7f701121ed04176d082680da66b26",
+  "claims": [
+    "bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Completed fresh-worker stage isolation with exact certified lattice and discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "jq empty bench/results/number-field-maximal-order-high-degree-tail-2026-08-18.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.008,
+      "started_at": "2026-08-18T00:55:59.097Z",
+      "commit": "2da5793275d7f701121ed04176d082680da66b26",
+      "workspace_fingerprint": "4fb2e9f3c58a485e19d11fa3371a92795ca047d8d6ebf512a8d9e2d4439c0f71",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Recorded correctly polled 120-second tail evidence. Precision-degree12 completes exact/certified in 114.076 seconds; one 2772-bit q-radical/multiplier-cycle component costs 44.651 seconds to construct and 65.301 seconds to replay independently. Vector429 reaches a native word-prime batch after 9.6 seconds of completed exact work and does not complete that batch within the remaining bound. Degree90's overlapping-factor transition is resolved by integrated commit 2da57932.",
+    "risks": [
+      "Single-sample wall timings depend on machine load, but stage completion, timeout location, exact discriminants, and certificate outcomes do not."
+    ],
+    "next_steps": [
+      "Treat vector429 as a Round4/OM native local-kernel handoff, not engine orchestration work.",
+      "Retain the generic q-radical/multiplier-cycle checker for precision-degree12 unless a separate theorem and representative shared corpus justify a faster independent replay."
+    ]
+  }
+}

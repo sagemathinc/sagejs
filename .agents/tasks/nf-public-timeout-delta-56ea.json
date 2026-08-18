@@ -1,0 +1,59 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-public-timeout-delta-56ea",
+  "title": "Nf Public Timeout Delta 56ea",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure exact retained maximal-order timeout outcomes at 56ea43a8 with independent lattice verification",
+  "base_commit": "56ea43a81750da2259e9f121252ff6487663d7d1",
+  "claims": [
+    "bench/results/number-field-maximal-order-timeout-delta-56ea43a8-2026-08-17.json",
+    "bench/results/number-field-maximal-order-timeout-delta-56ea43a8-2026-08-17.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "independent exact lattice verifier against the frozen public corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node -e const fs=require(\"fs\");const j=JSON.parse(fs.readFileSync(\"bench/results/number-field-maximal-order-timeout-delta-56ea43a8-2026-08-17.json\",\"utf8\"));const p=JSON.parse(fs.readFileSync(\"bench/results/number-field-maximal-order-timeout-delta-2026-08-17.json\",\"utf8\"));const expected=p.checked_summary.still_timeout_case_ids;const ids=j.records.map(r=>r.case_id);if(ids.length!==31||new Set(ids).size!==31||expected.some(id=>!ids.includes(id)))throw Error(\"cardinality\");const s=j.checked_summary;if(s.recovered_exact!==16||s.still_timeout!==15||s.invalid_lattices!==0||s.other_terminal_states!==0||!s.zero_dropped_cases)throw Error(\"partition\");if(j.records.some(r=>r.fresh_worker!==true||r.prior_outcome.artifact_status!==\"timeout\"||r.comparison.status_transition!==`timeout->${r.status}`))throw Error(\"comparison\");if(j.records.some(r=>r.status===\"ok\"&&r.verification?.verified!==true))throw Error(\"verification\");if(j.diagnostic_vector_010?.status!==\"timeout\"||j.diagnostic_vector_010?.timeout_ms!==30000)throw Error(\"010 diagnostic\");if(j.records.find(r=>r.case_id===\"pari-round4-vector-139\")?.status!==\"timeout\"||j.diagnostic_vector_139?.verification?.verified!==true||j.vector_139_investigation?.uniform_outcome_retained!==true)throw Error(\"139 reconciliation\");console.log(\"56ea timeout delta integrity ok\")",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.044,
+      "started_at": "2026-08-17T23:36:42.673Z",
+      "commit": "56ea43a81750da2259e9f121252ff6487663d7d1",
+      "workspace_fingerprint": "1f5b5f14a035f63209c3337273fd0047af5129c366272abfc60f132190cb0635",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reran all 31 timeout IDs retained by the c1b31206 delta against 56ea43a8 with a fresh worker and fresh public field per case. Sixteen cases recovered within the unchanged five-second request policy and passed independent exact-lattice verification; 15 remained explicit timeouts, with no invalid, other, duplicated, or dropped outcomes. Vector 010 remained a timeout under a separate fresh-worker 30-second diagnostic. The raw vector 139 uniform timeout is preserved and reconciled with a same-policy isolated exact rerun, excluding stale native routing and timeout accounting.",
+    "risks": [
+      "The 15 retained timeouts are bounded performance outcomes, not correctness failures.",
+      "This is a Linux x64 shared-host measurement; vector 139 demonstrates that near-bound classifications can vary under transient contention, so its uniform timeout and controlled rerun are both retained."
+    ],
+    "next_steps": [
+      "Use the exact 15-case retained list for the next performance iteration without replacing this raw fixed-policy result.",
+      "Treat vector 139 as normally sub-bound but retain repeat-trial or isolated-host evidence when making a stable performance claim."
+    ]
+  }
+}

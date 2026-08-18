@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-om-length4",
+  "title": "Length-four higher OM residual extension",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certify v429 p=3 length-four order-two residual branches and exact MaxMin lattice while preserving fail-closed bounds",
+  "base_commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+  "claims": [
+    "src/lib/sagejs/number_fields/om_higher_residue.py",
+    "src/lib/sagejs/number_fields/om_types.py",
+    "src/lib/sagejs/number_fields/om_maxmin.py",
+    "test/number-field-om-length4.cjs",
+    "bench/number-field-om-length4.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://arxiv.org/abs/0902.3428",
+    "https://arxiv.org/abs/0807.2620"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Sage/PARI exact local index and maximal-order lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native",
+    "node --test test/number-field-om-length4.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.308,
+      "started_at": "2026-08-18T04:33:22.389Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "f94be1837c1f209cedc79a9acf28a2208dac96f1a2138481ee592e4bb3480ded",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.043,
+      "started_at": "2026-08-18T04:33:53.615Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "f94be1837c1f209cedc79a9acf28a2208dac96f1a2138481ee592e4bb3480ded",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-om-length4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.218,
+      "started_at": "2026-08-18T04:47:22.444Z",
+      "commit": "325330bfd2b487c0bf5bcd9b7197d1a1be9d89fe",
+      "workspace_fingerprint": "f94be1837c1f209cedc79a9acf28a2208dac96f1a2138481ee592e4bb3480ded",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Certifies the v429 p=3 depth-three OM tree, exact local index 544, and mixed-radix quotient-HNF lattice against the frozen PARI oracle while retaining the p=2 higher-residual bound.",
+    "risks": [
+      "The bounded order-three residual and representative search intentionally support only the prime-field/quadratic tower exercised by this checkpoint.",
+      "The broad native suite was stopped during its performance tail at integration's request after all package, FFI, sanitizer, and resource stages seen so far passed."
+    ],
+    "next_steps": [
+      "Register test/number-field-om-length4.cjs in test/node-test-manifest.cjs from the integration lane.",
+      "Optionally expose bench/number-field-om-length4.cjs as bench:number-field-om-length4 in package.json.",
+      "Keep the v429 p=2 effective length-eight F4 path fail-closed until its separate checkpoint."
+    ]
+  }
+}

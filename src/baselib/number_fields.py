@@ -10,8 +10,8 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 
-_nf_flint_ffi_cache = runtime.undefined
 _nf_maximal_order_module_cache = runtime.undefined
+_nf_maximal_order_engine_module_cache = runtime.undefined
 
 
 def _untyped(value: Any) -> Any:
@@ -25,16 +25,6 @@ def _nf_global(name: str) -> Any:
     return value
 
 
-def _nf_flint_ffi() -> Any:
-    global _nf_flint_ffi_cache
-    if _nf_flint_ffi_cache is runtime.undefined:
-        _nf_flint_ffi_cache = __import__(
-            "sagejs.ffi.flint",
-            fromlist=["flint"],
-        )
-    return _nf_flint_ffi_cache
-
-
 def _nf_maximal_order_module() -> Any:
     global _nf_maximal_order_module_cache
     if _nf_maximal_order_module_cache is runtime.undefined:
@@ -43,6 +33,16 @@ def _nf_maximal_order_module() -> Any:
             fromlist=["maximal_order"],
         )
     return _nf_maximal_order_module_cache
+
+
+def _nf_maximal_order_engine_module() -> Any:
+    global _nf_maximal_order_engine_module_cache
+    if _nf_maximal_order_engine_module_cache is runtime.undefined:
+        _nf_maximal_order_engine_module_cache = __import__(
+            "sagejs.number_fields.maximal_order_engine",
+            fromlist=["maximal_order_engine"],
+        )
+    return _nf_maximal_order_engine_module_cache
 
 
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
@@ -1446,6 +1446,9 @@ class NumberFieldOrder(sage.Parent):
             # every local Round-2 enlargement.
             self._basis_rows = _nf_canonical_lattice(rows, field.degree())
         self._is_maximal = is_maximal
+        self._maximal_order_certificate = runtime.undefined
+        self._maximal_order_local_evidence = runtime.undefined
+        self._maximal_order_trace = runtime.undefined
         self._discriminant_cache = runtime.undefined
         self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
@@ -1494,7 +1497,22 @@ class NumberFieldOrder(sage.Parent):
         return self._discriminant_cache
 
     def is_maximal(self) -> bool:
-        return self._is_maximal
+        return (
+            self._maximal_order_certificate is not runtime.undefined
+            and self._maximal_order_certificate.get("certified") is True
+        )
+
+    def maximality_certificate(self) -> Any:
+        """Return the independently checked global certificate, if any."""
+        if self._maximal_order_certificate is runtime.undefined:
+            return None
+        return self._maximal_order_certificate
+
+    def maximal_order_trace(self) -> Any:
+        """Return the opt-in maximal-order stage trace, if one was recorded."""
+        if self._maximal_order_trace is runtime.undefined:
+            return None
+        return self._maximal_order_trace
 
     def ideal(self, *generators: Any) -> NumberFieldIdeal:
         values = list(generators)
@@ -1518,7 +1536,7 @@ class NumberFieldOrder(sage.Parent):
         return self._field.class_number()
 
     def __repr__(self) -> str:
-        label = "Maximal Order" if self._is_maximal else "Order"
+        label = "Maximal Order" if self.is_maximal() else "Order"
         generators = self.basis()[1:]
         return (
             label
@@ -1562,6 +1580,10 @@ class NumberFieldParent(sage.Parent):
         generator_coefficients = [sage.QQ(0), sage.QQ(1)]
         self._generator = NumberFieldElement(self, generator_coefficients)
         self._equation_order_cache = runtime.undefined
+        # `None`, rather than the JavaScript `undefined` sentinel, keeps this
+        # private invariant visible to independently compiled lazy modules.
+        self._integral_equation_polynomial_cache = None
+        self._integral_equation_scale_cache = None
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
@@ -1648,16 +1670,31 @@ class NumberFieldParent(sage.Parent):
 
     def equation_order(self) -> NumberFieldOrder:
         if self._equation_order_cache is runtime.undefined:
-            scale = runtime.bigint(1)
-            for coefficient in self._defining_coefficients:
-                scale = _nf_lcm(scale, coefficient._denominator)
-            integral_generator = self(scale) * self.gen()
+            scale = self._integral_equation_scale_cache
+            if scale is None:
+                scale = runtime.bigint(1)
+                for coefficient in self._defining_coefficients:
+                    scale = _nf_lcm(scale, coefficient._denominator)
+                self._integral_equation_scale_cache = scale
+            degree = self.degree()
+            zero = sage.QQ(0)
             rows = []
-            power = self.one()
-            for _index in range(self.degree()):
-                rows.append(_nf_coordinates(power, self.degree()))
-                power *= integral_generator
-            self._equation_order_cache = NumberFieldOrder(self, rows, False)
+            power = runtime.bigint(1)
+            for index in range(degree):
+                # In the public power basis, `(scale*a)^index` has the one
+                # nonzero coordinate `scale^index`.  Constructing these
+                # diagonal rows directly is the exact defining theorem for
+                # the equation order and avoids reducing field products that
+                # are already known to be powers below the field degree.
+                row = [zero for _column in range(degree)]
+                row[index] = sage.QQ(power)
+                rows.append(row)
+                power *= scale
+            # Powers of the integral generator form an order by construction.
+            # Canonicalize that proven-closed lattice without repeating all
+            # pairwise products; a global maximal-order certificate still
+            # checks the final candidate independently.
+            self._equation_order_cache = NumberFieldOrder(self, rows, False, False)
             equation_polynomial = (
                 _nf_maximal_order_module().integral_equation_polynomial(self)
             )
@@ -1679,47 +1716,34 @@ class NumberFieldParent(sage.Parent):
             rows += self.equation_order()._basis_rows
         return NumberFieldOrder(self, rows, False)
 
-    def maximal_order(self) -> NumberFieldOrder:
-        if self._maximal_order_cache is not runtime.undefined:
+    def maximal_order(
+        self,
+        v: Any = None,
+        assume_maximal: Any = "non-maximal-non-unique",
+        algorithm: str = "auto",
+        trace: bool = False,
+    ) -> NumberFieldOrder:
+        """Return a certified global order or an explicitly local order.
+
+        The global path never completely factors the defining discriminant.
+        Forced algorithms, local-prime requests, and traced runs do not poison
+        the single certified default cache.
+        """
+        use_cache = v is None and algorithm == "auto" and not trace
+        if use_cache and self._maximal_order_cache is not runtime.undefined:
             return self._maximal_order_cache
-        order = self.equation_order()
-        discriminant = runtime.integer_bigint(order.discriminant())
-        word_primes = []
-        large_primes = []
-        for prime_value, exponent_value in sage.factor(abs(discriminant)):
-            exponent = runtime.number(exponent_value)
-            if exponent < 2:
-                continue
-            prime = runtime.normalize_integer(prime_value)
-            if runtime.jstype(prime) == "number":
-                word_primes.append(prime)
-            else:
-                large_primes.append(prime)
-        if len(word_primes):
-            native_available = True
-            try:
-                _nf_flint_ffi()
-            except Exception:
-                native_available = False
-            if not native_available:
-                for prime in word_primes:
-                    if not _nf_maximal_order_module().equation_order_is_p_maximal(
-                        self, prime
-                    ):
-                        order = _nf_maximal_order_module().p_maximal_overorder_dynamic(
-                            order, prime
-                        )
-            else:
-                order = _nf_maximal_order_module().maximal_overorder_native(
-                    order, word_primes
-                )
-        for prime in large_primes:
-            if not _nf_maximal_order_module().equation_order_is_p_maximal(self, prime):
-                order = _nf_maximal_order_module().p_maximal_overorder_dynamic(
-                    order, prime
-                )
-        order._is_maximal = True
-        self._maximal_order_cache = order
+        if v is not None and assume_maximal is True:
+            raise ValueError(
+                "assume_maximal=True is incompatible with certified local orders"
+            )
+        order = _nf_maximal_order_engine_module().compute_maximal_order(
+            self,
+            requested_primes=v,
+            algorithm=algorithm,
+            trace_enabled=trace,
+        )
+        if use_cache:
+            self._maximal_order_cache = order
         return order
 
     ring_of_integers = maximal_order
@@ -3022,6 +3046,13 @@ runtime.register_doc(
                     "trace radicals and integral overorder enumeration"
                 ),
             },
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Buchmann--Lenstra composite-component cycles, Newton "
+                    "polygons, modified Round Four, and OM/MaxMin local bases"
+                ),
+            },
         ],
         "limitations": [
             (
@@ -3030,10 +3061,10 @@ runtime.register_doc(
                 "algorithms."
             ),
             (
-                "Maximal-order overorder enumeration is correctness-first "
-                "and can be exponential in the dimension of a large trace "
-                "radical; machine-sized discriminant primes are currently "
-                "required."
+                "Modified Round Four and OM/MaxMin currently have bounded "
+                "domains. Unsupported local shapes use a certified exact "
+                "fallback; arbitrary-size primes are never narrowed to a "
+                "machine word."
             ),
         ],
     },

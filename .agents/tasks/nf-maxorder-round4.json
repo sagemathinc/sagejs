@@ -1,0 +1,125 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-round4",
+  "title": "Nf Maxorder Round4",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement an explicit modified Round-4 local maximal-order algorithm with inspectable stages, exact certificates, selector inputs, and differential regressions from P3",
+  "base_commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "test/number-field-round4.cjs",
+    "test/fixtures/number-field-round4.json",
+    "bench/number-field-round4.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-pari-parity-plan.md",
+    "PARI base2.c",
+    "Ford-Letard 1994"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "GP/PARI",
+      "Hecke",
+      "existing Round-2 implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-round4.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm exec pyright src/lib/sagejs/number_fields/round4.py",
+    "pnpm architecture:check",
+    "node --test test/number-fields.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-round4.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.28,
+      "started_at": "2026-08-17T19:48:33.300Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.051,
+      "started_at": "2026-08-17T19:48:46.595Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/round4.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.346,
+      "started_at": "2026-08-17T19:49:10.745Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.143,
+      "started_at": "2026-08-17T19:49:20.214Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-fields.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.173,
+      "started_at": "2026-08-17T19:49:32.354Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 725.606,
+      "started_at": "2026-08-17T19:50:29.509Z",
+      "commit": "b93e6d262f3b71141a71ce3a4ed0b2a3abd20847",
+      "workspace_fingerprint": "63ca9990609303c8daa621e23506aa9f245c7eac0fadb3320bd5f1675e117d46",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implements ordinary-Python modified Round-4 planning and execution: exact modular arithmetic, certified multifactor Hensel refinement, Dedekind coefficient-ring integral elements, canonical HNF/local discriminant evidence, stable serializable traces, pure selector metrics, fail-closed strict mode, and thin adapters for shared maximal-order contracts. Frozen PARI/Ford-Letard regressions and deterministic randomized degree-2-through-4 differentials agree with the existing Round-2 implementation.",
+    "risks": [
+      "The Ford-Letard primary power-basis search is not implemented in this lane; deep primary branches explicitly record and use Round 2, or raise Round4Unsupported in strict mode.",
+      "The pure Sage.js orchestration path is currently slower than native Round 2 on the four benchmark cases; the intended performance follow-up is native compilation of the same-source polynomial stages and one-crossing P2 integration.",
+      "pnpm test:changed rebuilt successfully but its unit tier saw two unrelated integration-workspace failures: another live worktree had unsafe native-cache symlinks, and this lane cannot claim the central test runner manifest needed to register test/number-field-round4.cjs.",
+      "The full native suite restored newer shared-cache FLINT artifacts containing the two c0c67dcf order-resource exports onto this older lane base, then correctly failed exact FFI ratchets (400 generated functions versus this base's 398); FLINT, FFLAS, graph, and M4RI package suites passed before that integration mismatch."
+    ],
+    "next_steps": [
+      "Integration lane: add test/number-field-round4.cjs to the central host test manifest and add round4.py to pyrightconfig.json after cherry-pick.",
+      "Wire modified_round4_hnf_contract and round4_selection_decision into the shared maximal-order dispatcher introduced by ef0595fb.",
+      "Compile the exact polynomial/Hensel source transparently at P2 and implement the remaining Ford-Letard primary power-basis search before selecting Round 4 for that domain."
+    ]
+  }
+}

@@ -32,6 +32,8 @@ from sagejs.ffi.flint import (
     FqElement,
     FqPolynomial,
     NmodMatrix,
+    NumberFieldAnalysisResource,
+    NumberFieldOrderResource,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
@@ -389,6 +391,14 @@ from sagejs.ffi.flint import (
     fmpz_mod_polynomial_deserialize as _ffi_fmpz_mod_polynomial_deserialize,
     number_field_order_pmaximal as _ffi_number_field_order_pmaximal,
     number_field_order_maximal_at_primes as _ffi_number_field_order_maximal_at_primes,
+    number_field_order_from_polynomial_resource as _ffi_number_field_order_from_polynomial_resource,
+    number_field_order_resource_status as _ffi_number_field_order_resource_status,
+    number_field_order_resource_degree as _ffi_number_field_order_resource_degree,
+    number_field_order_resource_supplied_primes as _ffi_number_field_order_resource_supplied_primes,
+    number_field_order_resource_resolved_primes as _ffi_number_field_order_resource_resolved_primes,
+    number_field_order_resource_native_primes as _ffi_number_field_order_resource_native_primes,
+    number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
+    number_field_analyze_resource as _ffi_number_field_analyze_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -4661,4 +4671,82 @@ def ffiNumberFieldOrderMaximalAtPrimes(
         multiplication_table,
         primes,
         prime_count,
+    )
+
+
+@native
+def ffiNumberFieldOrderFromPolynomialResource(
+    polynomial: FmpzPolynomial,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldOrderResource:
+    return _ffi_number_field_order_from_polynomial_resource(
+        polynomial,
+        prime_hints,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceStatus(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_status(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceDegree(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_degree(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceSuppliedPrimes(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_supplied_primes(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceResolvedPrimes(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_resolved_primes(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceNativePrimes(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_native_primes(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderResourceUnramifiedPrimes(
+    resource: NumberFieldOrderResource,
+) -> uint64:
+    return _ffi_number_field_order_resource_unramified_primes(
+        resource,
+    )
+
+
+@native
+def ffiNumberFieldAnalyzeResource(
+    polynomial: FmpzPolynomial,
+    scale: Integer,
+    trial_bound: uint64,
+) -> NumberFieldAnalysisResource:
+    return _ffi_number_field_analyze_resource(
+        polynomial,
+        scale,
+        trial_bound,
     )

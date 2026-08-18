@@ -657,6 +657,7 @@ function buildFfpoly(source) {
 function buildSmalljac(source) {
   const cflags =
     "-O3 -fPIC -fomit-frame-pointer -funroll-loops -std=gnu99";
+  const includes = `-I${join(prefix, "include")}`;
   run(
     "make",
     [
@@ -664,8 +665,8 @@ function buildSmalljac(source) {
       "libsmalljac.a",
       `CC=${process.env.CC || "cc"}`,
       `CFLAGS=${cflags}`,
-      `CPPFLAGS=-I${join(prefix, "include")}`,
-      `INCLUDES=-I${join(prefix, "include")}`,
+      `CPPFLAGS=${includes}`,
+      `INCLUDES=${includes}`,
     ],
     { cwd: source }
   );

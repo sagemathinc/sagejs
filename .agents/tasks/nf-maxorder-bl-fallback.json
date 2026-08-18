@@ -1,0 +1,227 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-maxorder-bl-fallback",
+  "title": "Nf Maxorder Bl Fallback",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement certified p-radical/ring-of-multipliers fallback iteration for nonidentity local orders with HNF updates, component split propagation, irregular corpus coverage, and selector crossover evidence",
+  "base_commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/local_polygons.py",
+    "test/number-field-buchmann-lenstra-fallback.cjs",
+    "test/fixtures/number-field-buchmann-lenstra-fallback.json",
+    "bench/number-field-buchmann-lenstra-fallback.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagejs-main/agents/number-field-maximal-order-pari-parity-plan.md",
+    "Hecke eab7e5566e56d8864fe9cd7b895811ab9df2fe32 NumFieldOrd/NfOrd/MaxOrd/MaxOrd.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "node bench/number-field-buchmann-lenstra-fallback.cjs --check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.676,
+      "started_at": "2026-08-17T21:21:27.115Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "445983bcc3a112e4f6dab1557c82476f20aff040c07294d642bcd3a9e00b16a8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.195,
+      "started_at": "2026-08-17T21:21:31.630Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "445983bcc3a112e4f6dab1557c82476f20aff040c07294d642bcd3a9e00b16a8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.719,
+      "started_at": "2026-08-17T21:21:52.583Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "445983bcc3a112e4f6dab1557c82476f20aff040c07294d642bcd3a9e00b16a8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-buchmann-lenstra-fallback.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.117,
+      "started_at": "2026-08-17T21:22:00.072Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "445983bcc3a112e4f6dab1557c82476f20aff040c07294d642bcd3a9e00b16a8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.277,
+      "started_at": "2026-08-17T21:25:03.507Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "bab4c0a1ff3b85f0911360a22a68a4b9916c8df52c039f4f8e3d4b73654a1d2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.549,
+      "started_at": "2026-08-17T21:25:06.715Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "bab4c0a1ff3b85f0911360a22a68a4b9916c8df52c039f4f8e3d4b73654a1d2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.985,
+      "started_at": "2026-08-17T21:25:30.048Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "bab4c0a1ff3b85f0911360a22a68a4b9916c8df52c039f4f8e3d4b73654a1d2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-buchmann-lenstra-fallback.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.287,
+      "started_at": "2026-08-17T21:25:37.854Z",
+      "commit": "c31f545bd4ce1ec8854f39db19494c9bd7ff1dfa",
+      "workspace_fingerprint": "bab4c0a1ff3b85f0911360a22a68a4b9916c8df52c039f4f8e3d4b73654a1d2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.607,
+      "started_at": "2026-08-17T21:37:42.228Z",
+      "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+      "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.62,
+      "started_at": "2026-08-17T21:37:45.681Z",
+      "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+      "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.986,
+      "started_at": "2026-08-17T21:38:07.029Z",
+      "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+      "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-buchmann-lenstra-fallback.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.178,
+      "started_at": "2026-08-17T21:38:32.175Z",
+      "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+      "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 773.983,
+      "started_at": "2026-08-17T21:38:44.154Z",
+      "commit": "51f8fca168ed85ed06e62c4978f3b87b10e1c0c4",
+      "workspace_fingerprint": "3e7b50b0e666da59b9c5d7d4996a3b987dd5ed616c71cd8deef76ef57a42f870",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.987,
+      "started_at": "2026-08-17T22:06:22.685Z",
+      "commit": "37237a5a339e4b1bcfaa54bef41ee1672b5d1a4f",
+      "workspace_fingerprint": "7165ce69c1d86773b48223bbc9bbcf37e8661ca9442eaf7a0b8485a8ff473be0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/baselib-boundaries.cjs test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.181,
+      "started_at": "2026-08-17T22:07:36.741Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.386,
+      "started_at": "2026-08-17T22:07:39.662Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.694,
+      "started_at": "2026-08-17T22:07:46.803Z",
+      "commit": "4a5502deabdd6af7d27ba96a612fdbe322b12165",
+      "workspace_fingerprint": "8aba9fa6b1634082a198b9ff608cbddbd75102f06ef65c407f7cd599bd81e426",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extends the integrated general Buchmann--Lenstra cycle with an exact proven-prime p-radical path, using the tame trace radical for p greater than the degree and a sufficiently high Frobenius kernel for wild small primes. A stable buchmann_lenstra_multiplier_cycle API canonicalizes arbitrary current OrderBasis inputs, reuses the existing certified multiplier/HNF/event machinery, and certifies prime fixed points. Sage 10.9 fixtures cover the two irregular polygon timeout cases; the crossover benchmark shows one saved radical iteration and 1.60x--1.89x measured speedup when reusing polygon/current-order evidence. The final portable follow-up removes a prose-only runtime namespace false positive in local_polygons.py.",
+    "risks": [
+      "Focused CPython/Sage.js differential tests, strict Pyright/Ruff, the benchmark guard, and an ad hoc Sage 10.9 comparison across 30 local primes in 24 deterministic irreducible cubics pass."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane and route proven-prime nonidentity/current-order local fallbacks to buchmann_lenstra_multiplier_cycle.",
+      "Retain the selector's preference for polygon-produced current-order evidence on the two irregular cubic families."
+    ]
+  }
+}

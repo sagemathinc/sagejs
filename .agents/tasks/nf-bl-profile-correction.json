@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-bl-profile-correction",
+  "title": "Correct BL tail timing evidence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct the post-7f2 vector420 timing evidence and record completed fresh-worker traces for vectors 421 through 426 without changing mathematical source",
+  "base_commit": "7f2ecaf68d5c2b2e7800421d2f4a964484404c0a",
+  "claims": [
+    "bench/results/number-field-maximal-order-bl-checker-profile-2026-08-17.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Completed fresh-worker public adapter output with exact certified lattice/discriminant"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "jq empty bench/results/number-field-maximal-order-bl-checker-profile-2026-08-17.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.011,
+      "started_at": "2026-08-18T00:15:20.163Z",
+      "commit": "7f2ecaf68d5c2b2e7800421d2f4a964484404c0a",
+      "workspace_fingerprint": "d54be96b0b9015d626ad08d078492fdecf3bd6c808fe98d66ba7843cd844a2a1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.94,
+      "started_at": "2026-08-18T00:15:42.774Z",
+      "commit": "7f2ecaf68d5c2b2e7800421d2f4a964484404c0a",
+      "workspace_fingerprint": "d54be96b0b9015d626ad08d078492fdecf3bd6c808fe98d66ba7843cd844a2a1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Corrected the erroneous post-7f2 vector420 greater-than-30-second claim: the completed fresh-worker run took 6078.146 ms and remained exact/certified. Recorded completed stage traces for vectors 421 through 426; none exceeded 30 seconds, and only vectors 420 and 422 exceeded the original uniform 5000 ms policy.",
+    "risks": [
+      "Single-sample fresh-worker timings remain sensitive to machine load, but the correction concerns completion versus timeout and preserves exact result checks."
+    ],
+    "next_steps": [
+      "Do not infer a new theorem-specific optimization from this tail: the completed traces show distributed native and exact global-certification costs rather than a shared cliff."
+    ]
+  }
+}

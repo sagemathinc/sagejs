@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round4-vector010-freeze",
+  "title": "Freeze Round4 vector 010",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Promote PARI Round4 vector 010 at p=2 from a fail-closed diagnostic to an exact frozen primary fixture with compiled-kernel, certificate, corruption, and characteristic-metric regression coverage",
+  "base_commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+  "claims": [
+    "test/fixtures/number-field-round4-primary.json",
+    "test/number-field-round4.cjs",
+    "bench/number-field-round4-primary.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI Round4 vector 010 canonical local index and ramification/residue data",
+      "independent exact Sage.js certificate verification and corruption rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

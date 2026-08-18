@@ -47,6 +47,9 @@ assert certificate.to_dict()["schema"].endswith("certificate-v1")
 decision = SelectionDecision("round2", "tiny shallow local problem",
                              {"degree": 2, "valuation": 1})
 assert decision.to_dict()["algorithm"] == "round2"
+assert SelectionDecision("buchmann-lenstra", "composite component", {}).to_dict()[
+    "algorithm"
+] == "buchmann-lenstra"
 
 trace = MaximalOrderTrace(True)
 token = trace.begin("factor-discovery", {"bits": 200})

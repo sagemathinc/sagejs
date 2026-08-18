@@ -949,13 +949,13 @@ function sagejsFfiPublicResource(value, identity, argument) {
   const borrow = value === null || value === undefined
     ? undefined : Reflect.get(value, "_ffi_borrow");
   if (typeof borrow !== "function") {
-    throw new TypeError(argument + " must be a declared FFI resource");
+    nativeRaise("TypeError", argument + " must be a declared FFI resource");
   }
   const token = Reflect.apply(borrow, value, []);
   const tag = globalThis.__sagejs_ffi_resource_tag__;
   const state = tag === undefined ? undefined : token?.[tag];
   if (state === undefined || state.identity !== identity) {
-    throw new TypeError(argument + " has the wrong FFI resource type");
+    nativeRaise("TypeError", argument + " has the wrong FFI resource type");
   }
   if ((state.root || state).closed) {
     nativeRaise("ValueError", "FFI resource is closed");
