@@ -1743,6 +1743,10 @@ def compute_maximal_order(
                     result,
                     trace,
                 )
+
+                def split_component_value(child: dict[str, Any]) -> int:
+                    return int(child["value"])
+
                 pending_composites = sorted(
                     [
                         child
@@ -1750,7 +1754,7 @@ def compute_maximal_order(
                         if child["state"] != "proven-prime"
                     ]
                     + pending_composites,
-                    key=lambda child: int(child["value"]),
+                    key=split_component_value,
                 )
                 continue
             if result.state != "complete" or result.basis is None:
