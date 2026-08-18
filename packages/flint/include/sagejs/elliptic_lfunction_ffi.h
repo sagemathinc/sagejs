@@ -1,8 +1,10 @@
 #ifndef SAGEJS_ELLIPTIC_LFUNCTION_FFI_H
 #define SAGEJS_ELLIPTIC_LFUNCTION_FFI_H
 
+#include <flint/acb.h>
 #include <flint/arb.h>
 #include <flint/fmpz.h>
+#include <flint/mag.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +27,11 @@ typedef struct
     slong coefficient_terms;
     slong target_bits;
     slong work_precision;
+    slong point_count;
     double grid_step;
+    double max_abs_imaginary;
+    double max_abs_real_offset;
+    int known_error_target_met;
     /* This initial Molin kernel has a proved coefficient-tail estimate but
        does not yet attach a proof bound to trapezoid discretization. */
     int rigorous_enclosure;
@@ -60,6 +66,42 @@ int sagejs_ec_completed_lseries_jet(
     int root_number,
     slong first_order,
     slong derivative_count,
+    slong target_bits,
+    slong work_precision);
+
+/*
+ * Evaluate canonical completed and raw elliptic-curve L-values at a batch of
+ * complex points.  The normalization is
+ *
+ *   Lambda(E,s) = (sqrt(N)/(2*pi))^s Gamma(s) L(E,s),
+ *   Lambda(E,s) = w Lambda(E,2-s).
+ *
+ * `coefficients` stores a_1 through a_K (there is no a_0 entry).  Each output
+ * and diagnostic array has `point_count` entries.  Raw values are formed with
+ * Acb's reciprocal gamma operation, including at trivial zeros.  The reported
+ * tail bounds are multiplied by max(1, |a^s/Gamma(s)|), so each is a uniform
+ * bound valid for both the completed and raw result.
+ *
+ * The Acb balls enclose arithmetic on the selected finite grid.  The `mag`
+ * arrays separately bound coefficient truncation, deliberate local-grid
+ * coefficient omissions, and the continuous tail beyond the grid.  They do
+ * not include a proved
+ * trapezoidal discretization error, so `rigorous_enclosure` is always false.
+ */
+int sagejs_ec_lseries_values_acb(
+    acb_ptr completed,
+    acb_ptr raw,
+    mag_ptr coefficient_tail_bounds,
+    mag_ptr grid_omission_bounds,
+    mag_ptr outer_tail_bounds,
+    mag_ptr raw_conversion_magnitudes,
+    sagejs_ec_lfunction_diagnostics *diagnostics,
+    const fmpz *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    acb_srcptr points,
+    slong point_count,
     slong target_bits,
     slong work_precision);
 
