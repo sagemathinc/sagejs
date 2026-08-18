@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Authenticate one fused field-analysis payload in one source-transparent crossing and return an immutable lazily materialized NumberFieldOrder projection with exact corruption differentials and phase benchmarks",
-  "base_commit": "4b5363d88a8677fe2b51714292e34236ee2831e1",
+  "base_commit": "65f72a0ec0387af5a6cf12f1a8d6659545ed7da4",
   "claims": [
     "src/lib/sagejs/number_fields/field_analysis_resource.py",
     "src/baselib/number_fields.py",
