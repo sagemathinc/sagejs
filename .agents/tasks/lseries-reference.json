@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "lseries-reference",
+  "title": "Elliptic L-series reference evaluator",
+  "lane": "elliptic-curves",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement an ordinary-Python complex split-Mellin reference evaluator and focused tests without changing shared public registries",
+  "base_commit": "9804aad23a6a277b469a2f7322b08c4574c714a7",
+  "claims": [
+    "src/lib/sagejs/elliptic_curves/lseries.py",
+    "test/elliptic-lseries-reference.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/elliptic-curve-lseries-complex-evaluation-plan.md",
+    "/home/user/sagelite/src/sage/schemes/elliptic_curves/lseries_ell.py"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI lfun values and completed functional equation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.674,
+      "started_at": "2026-08-18T08:10:31.089Z",
+      "commit": "343b9637aa62c91cea76b427b8f29e2553a7a249",
+      "workspace_fingerprint": "d406c97ae8385cf1931ca2c29ada35eee719c46d1f9d676c69952444397ebee4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1166.652,
+      "started_at": "2026-08-18T08:11:28.443Z",
+      "commit": "343b9637aa62c91cea76b427b8f29e2553a7a249",
+      "workspace_fingerprint": "d406c97ae8385cf1931ca2c29ada35eee719c46d1f9d676c69952444397ebee4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:elliptic-curves",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.649,
+      "started_at": "2026-08-18T08:31:00.028Z",
+      "commit": "343b9637aa62c91cea76b427b8f29e2553a7a249",
+      "workspace_fingerprint": "d406c97ae8385cf1931ca2c29ada35eee719c46d1f9d676c69952444397ebee4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the ordinary-Python split-Mellin elliptic L-series evaluator, exact coefficient-prefix cache, target-aware resource planner, batched raw/completed values, independent refinement, incomplete-gamma oracle, and a stable native/reference dispatcher. Focused tests cover normalization, functional equation, conjugation, trivial zeros without nearby snapping, native retry/error preservation, resource rejection, 200-bit moderate-height evaluation, and GL64 accuracy through 512 bits.",
+    "risks": [
+      "Quadrature discretization remains non-rigorous by design; diagnostics distinguish refinement from the coefficient, local-grid, and outer-tail bounds.",
+      "Full-mpmath reference evaluation is intentionally slow for very large conductors; the Acb native path is the production route for the motivating curve.",
+      "Cross-platform validation must be repeated at the exact integration commit after the native bridge and public wrapper are merged."
+    ],
+    "next_steps": [
+      "Import CoefficientPrefix into analytic_rank.py so rank and general values share one exact prefix contract.",
+      "Wire the public Lseries_ell wrapper to lseries_values using decimal-string point pairs and ComplexField result coercion.",
+      "Merge the native _lseries_values_native bridge and run the focused suite against real Acb per-point radii and error diagnostics."
+    ]
+  }
+}
