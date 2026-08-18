@@ -55,9 +55,44 @@ static void coefficient_tail_bound(
     arb_clear(temporary);
 }
 
+/*
+ * Bound y * sum_{n>cutoff} n*q^n.  The Hasse bound |a_n| <= n is
+ * deliberately weaker than necessary but applies uniformly to every
+ * elliptic-curve L-series coefficient used by this adapter.
+ */
+static void grid_omission_term_bound(
+    arb_t result,
+    const arb_t y,
+    const arb_t q,
+    slong cutoff,
+    slong precision)
+{
+    arb_t numerator, denominator, temporary;
+    arb_init(numerator);
+    arb_init(denominator);
+    arb_init(temporary);
+
+    arb_pow_ui(numerator, q, (ulong) cutoff + 1, precision);
+    arb_mul_ui(temporary, q, (ulong) cutoff, precision);
+    arb_neg(temporary, temporary);
+    arb_add_ui(temporary, temporary, (ulong) cutoff + 1, precision);
+    arb_mul(numerator, numerator, temporary, precision);
+    arb_mul(numerator, numerator, y, precision);
+
+    arb_one(denominator);
+    arb_sub(denominator, denominator, q, precision);
+    arb_mul(denominator, denominator, denominator, precision);
+    arb_div(result, numerator, denominator, precision);
+
+    arb_clear(numerator);
+    arb_clear(denominator);
+    arb_clear(temporary);
+}
+
 int sagejs_ec_completed_lseries_jet(
     arb_ptr output,
-    arb_t tail_bound,
+    arb_t coefficient_tail,
+    arb_t grid_omission_bound,
     sagejs_ec_lfunction_diagnostics *diagnostics,
     const fmpz *coefficients,
     slong available_cutoff,
@@ -101,6 +136,7 @@ int sagejs_ec_completed_lseries_jet(
         diagnostics->actual_cutoff = 0;
         diagnostics->required_cutoff = 0;
         diagnostics->grid_points = 0;
+        diagnostics->coefficient_terms = 0;
         diagnostics->target_bits = target_bits;
         diagnostics->work_precision = work_precision;
         diagnostics->grid_step = 0.0;
@@ -120,13 +156,14 @@ int sagejs_ec_completed_lseries_jet(
     diagnostics->actual_cutoff = cutoff;
     diagnostics->required_cutoff = required_cutoff;
     diagnostics->grid_points = grid_points;
+    diagnostics->coefficient_terms = 0;
     diagnostics->target_bits = target_bits;
     diagnostics->work_precision = work_precision;
     diagnostics->grid_step = h_double;
     diagnostics->rigorous_enclosure = 0;
 
     arb_t pi, conductor_arb, a, h, y, exponent, q, power, sum, value;
-    arb_t jh, factor, term, current_tail;
+    arb_t jh, factor, term, current_tail, omission;
     arb_init(pi);
     arb_init(conductor_arb);
     arb_init(a);
@@ -141,6 +178,8 @@ int sagejs_ec_completed_lseries_jet(
     arb_init(factor);
     arb_init(term);
     arb_init(current_tail);
+    arb_init(omission);
+    arb_ptr omissions = _arb_vec_init(derivative_count);
 
     arb_const_pi(pi, work_precision);
     arb_set_fmpz(conductor_arb, conductor);
@@ -150,10 +189,22 @@ int sagejs_ec_completed_lseries_jet(
     arb_set_d(h, h_double);
 
     for (slong index = 0; index < derivative_count; ++index)
+    {
         arb_zero(output + index);
+        arb_zero(omissions + index);
+    }
 
     for (slong grid = 0; grid < grid_points; ++grid)
     {
+        slong local_cutoff = (slong) ceil(
+            (double) required_cutoff * exp(-(double) grid * h_double));
+        if (local_cutoff < 1) local_cutoff = 1;
+        if (local_cutoff > cutoff) local_cutoff = cutoff;
+        if (diagnostics->coefficient_terms > WORD_MAX - local_cutoff)
+            diagnostics->coefficient_terms = WORD_MAX;
+        else
+            diagnostics->coefficient_terms += local_cutoff;
+
         arb_mul_ui(jh, h, (ulong) grid, work_precision);
         arb_exp(y, jh, work_precision);
         arb_mul(exponent, a, y, work_precision);
@@ -161,7 +212,7 @@ int sagejs_ec_completed_lseries_jet(
         arb_exp(q, exponent, work_precision);
         arb_one(power);
         arb_zero(sum);
-        for (slong n = 1; n <= cutoff; ++n)
+        for (slong n = 1; n <= local_cutoff; ++n)
         {
             arb_mul(power, power, q, work_precision);
             if (!fmpz_is_zero(coefficients + n - 1))
@@ -169,6 +220,29 @@ int sagejs_ec_completed_lseries_jet(
                     sum, power, coefficients + n - 1, work_precision);
         }
         arb_mul(value, y, sum, work_precision);
+
+        if (local_cutoff < cutoff)
+        {
+            grid_omission_term_bound(
+                omission, y, q, local_cutoff, work_precision);
+            for (slong index = 0; index < derivative_count; ++index)
+            {
+                const slong order = first_order + index;
+                if (((order & 1) == 0) != (root_number == 1)) continue;
+                if (order == 0)
+                    arb_set(term, omission);
+                else
+                {
+                    arb_pow_ui(factor, jh, (ulong) order, work_precision);
+                    arb_mul(term, omission, factor, work_precision);
+                }
+                arb_mul_ui(term, term, 2, work_precision);
+                arb_mul(term, term, h, work_precision);
+                arb_add(
+                    omissions + index, omissions + index, term,
+                    work_precision);
+            }
+        }
 
         for (slong index = 0; index < derivative_count; ++index)
         {
@@ -197,14 +271,19 @@ int sagejs_ec_completed_lseries_jet(
     for (slong index = 0; index < derivative_count; ++index)
         arb_mul(output + index, output + index, h, work_precision);
 
-    arb_zero(tail_bound);
+    arb_zero(coefficient_tail);
+    arb_zero(grid_omission_bound);
     for (slong index = 0; index < derivative_count; ++index)
     {
         const slong order = first_order + index;
         if (((order & 1) == 0) != (root_number == 1)) continue;
         coefficient_tail_bound(
             current_tail, a, cutoff, order, work_precision);
-        arb_union(tail_bound, tail_bound, current_tail, work_precision);
+        arb_union(
+            coefficient_tail, coefficient_tail, current_tail, work_precision);
+        arb_union(
+            grid_omission_bound, grid_omission_bound, omissions + index,
+            work_precision);
     }
 
     arb_clear(pi);
@@ -221,6 +300,8 @@ int sagejs_ec_completed_lseries_jet(
     arb_clear(factor);
     arb_clear(term);
     arb_clear(current_tail);
+    arb_clear(omission);
+    _arb_vec_clear(omissions, derivative_count);
     return (int) diagnostics->status;
 }
 
@@ -411,20 +492,24 @@ napi_value sagejs_ec_completed_central_derivatives(
 
     const slong work_precision = target_bits + 24;
     arb_ptr derivatives = _arb_vec_init(derivative_count);
-    arb_t tail_bound;
-    arb_init(tail_bound);
+    arb_t coefficient_tail_bound, grid_omission_bound, total_tail_bound;
+    arb_init(coefficient_tail_bound);
+    arb_init(grid_omission_bound);
+    arb_init(total_tail_bound);
     sagejs_ec_lfunction_diagnostics diagnostics;
     const int call_status = sagejs_ec_completed_lseries_jet(
-        derivatives, tail_bound, &diagnostics, coefficients, cutoff, conductor,
-        (int) root_number, first_order, derivative_count, target_bits,
-        work_precision);
+        derivatives, coefficient_tail_bound, grid_omission_bound, &diagnostics,
+        coefficients, cutoff, conductor, (int) root_number, first_order,
+        derivative_count, target_bits, work_precision);
     _fmpz_vec_clear(coefficients, cutoff);
     fmpz_clear(conductor);
     if (call_status == SAGEJS_EC_LFUNCTION_INVALID_INPUT ||
         call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT)
     {
         _arb_vec_clear(derivatives, derivative_count);
-        arb_clear(tail_bound);
+        arb_clear(coefficient_tail_bound);
+        arb_clear(grid_omission_bound);
+        arb_clear(total_tail_bound);
         napi_throw_range_error(env, NULL,
             call_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT
                 ? "elliptic L-function conductor exceeds native resource limits"
@@ -446,7 +531,8 @@ napi_value sagejs_ec_completed_central_derivatives(
         !check_napi(env,
             napi_create_double(env, diagnostics.grid_step, &grid_step)) ||
         !check_napi(env, napi_create_string_utf8(
-            env, "coefficient_tail_only", NAPI_AUTO_LENGTH, &error_status)) ||
+            env, "coefficient_and_grid_omission_only", NAPI_AUTO_LENGTH,
+            &error_status)) ||
         !set_named(env, result, "status", status) ||
         !set_named(env, result, "derivatives", values) ||
         !set_named(env, result, "rigorous", rigorous) ||
@@ -457,15 +543,26 @@ napi_value sagejs_ec_completed_central_derivatives(
         !set_named_slong(env, result, "cutoff", diagnostics.actual_cutoff) ||
         !set_named_slong(
             env, result, "requiredCutoff", diagnostics.required_cutoff) ||
-        !set_named_slong(env, result, "gridPoints", diagnostics.grid_points))
+        !set_named_slong(env, result, "gridPoints", diagnostics.grid_points) ||
+        !set_named_slong(
+            env, result, "coefficientTerms", diagnostics.coefficient_terms))
         goto failure;
 
     const slong digits = (slong) ceil((double) target_bits * 0.30103) + 8;
     arf_t converted;
     arf_init(converted);
-    arb_get_ubound_arf(converted, tail_bound, work_precision);
+    arb_add(
+        total_tail_bound, coefficient_tail_bound, grid_omission_bound,
+        work_precision);
+    arb_get_ubound_arf(converted, total_tail_bound, work_precision);
     napi_value tail = decimal_from_arf(env, converted, digits);
-    if (!set_named(env, result, "tailBound", tail))
+    arb_get_ubound_arf(converted, coefficient_tail_bound, work_precision);
+    napi_value coefficient_tail = decimal_from_arf(env, converted, digits);
+    arb_get_ubound_arf(converted, grid_omission_bound, work_precision);
+    napi_value grid_omission = decimal_from_arf(env, converted, digits);
+    if (!set_named(env, result, "tailBound", tail) ||
+        !set_named(env, result, "coefficientTailBound", coefficient_tail) ||
+        !set_named(env, result, "gridOmissionBound", grid_omission))
     {
         arf_clear(converted);
         goto failure;
@@ -503,11 +600,15 @@ napi_value sagejs_ec_completed_central_derivatives(
     }
     arf_clear(converted);
     _arb_vec_clear(derivatives, derivative_count);
-    arb_clear(tail_bound);
+    arb_clear(coefficient_tail_bound);
+    arb_clear(grid_omission_bound);
+    arb_clear(total_tail_bound);
     return result;
 
 failure:
     _arb_vec_clear(derivatives, derivative_count);
-    arb_clear(tail_bound);
+    arb_clear(coefficient_tail_bound);
+    arb_clear(grid_omission_bound);
+    arb_clear(total_tail_bound);
     return NULL;
 }

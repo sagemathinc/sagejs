@@ -17,6 +17,31 @@ function relativeClose(actualText, expected, tolerance) {
   );
 }
 
+function geometricCoefficientTailBound(q, cutoff) {
+  return (
+    q ** (cutoff + 1) * ((cutoff + 1) - cutoff * q) / (1 - q) ** 2
+  );
+}
+
+test("geometric coefficient-tail formula is positive and dominant", () => {
+  for (const [q, cutoff] of [
+    [0.2, 3],
+    [0.75, 12],
+    [0.98, 150],
+  ]) {
+    const bound = geometricCoefficientTailBound(q, cutoff);
+    let partialTail = 0;
+    for (let n = cutoff + 1; n < cutoff + 10000; n++) {
+      partialTail += n * q ** n;
+    }
+    assert.ok(bound > 0, `tail bound at q=${q} must be positive`);
+    assert.ok(
+      bound >= partialTail * (1 - 1e-12),
+      `tail bound at q=${q} must dominate its partial sum`,
+    );
+  }
+});
+
 test("eclib global root numbers include rational Q-isomorphic models", () => {
   assert.equal(rootNumber([0n, -1n, 1n, -10n, -20n]), 1);
   assert.equal(rootNumber([0n, 0n, 1n, -1n, 0n]), -1);
@@ -37,11 +62,21 @@ test("completed central jet has canonical normalization and exact parity", () =>
   const odd = flint.ecCompletedCentralDerivatives(37n, -1, a37, 0, 3, 80);
   assert.equal(odd.status, "ok");
   assert.equal(odd.rigorous, false);
-  assert.equal(odd.analyticErrorStatus, "coefficient_tail_only");
+  assert.equal(
+    odd.analyticErrorStatus,
+    "coefficient_and_grid_omission_only",
+  );
   assert.equal(odd.derivatives[0].midpoint, "0");
   assert.equal(odd.derivatives[2].midpoint, "0");
   relativeClose(odd.derivatives[1].midpoint, 0.29623890869980074, 1e-10);
   assert.ok(Number(odd.tailBound) >= 0);
+  assert.ok(Number(odd.gridOmissionBound) > 0);
+  assert.ok(Number(odd.coefficientTailBound) >= 0);
+  assert.ok(
+    Number(odd.tailBound) >=
+      (Number(odd.gridOmissionBound) + Number(odd.coefficientTailBound)) *
+        (1 - 1e-12),
+  );
 
   // Only completed Lambda is parity-pure. Raw L''(1) for 37a1 is nonzero;
   // completed-to-raw gamma convolution deliberately remains in Python.
@@ -67,6 +102,10 @@ test("Molin jet reports coefficient sufficiency and rank-two normalization", () 
   assert.equal(jet.derivatives[1].midpoint, "0");
   assert.ok(Math.abs(Number(jet.derivatives[0].midpoint)) < 1e-7);
   relativeClose(jet.derivatives[2].midpoint, 2358.6936367551216, 1e-8);
+  assert.ok(
+    jet.coefficientTerms < (jet.cutoff * jet.gridPoints) / 5,
+    `variable grid used ${jet.coefficientTerms} coefficient terms`,
+  );
 
   const short = flint.ecCompletedCentralDerivatives(
     1008811n, 1, coefficients.slice(0, 101), 0, 3, 64,

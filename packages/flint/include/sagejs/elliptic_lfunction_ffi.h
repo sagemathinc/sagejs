@@ -22,6 +22,7 @@ typedef struct
     slong actual_cutoff;
     slong required_cutoff;
     slong grid_points;
+    slong coefficient_terms;
     slong target_bits;
     slong work_precision;
     double grid_step;
@@ -37,10 +38,11 @@ typedef struct
  * receives actual derivatives Lambda^(first_order+j)(1), not Taylor
  * coefficients.  Functional-equation-forbidden derivatives are exact zero.
  * `coefficient_tail_bound` receives a uniform upper bound for the omitted
- * n>K coefficient tail over the requested derivative range.  It does not
- * include the Molin/trapezoid discretization error; callers must retain the
- * `rigorous_enclosure` diagnostic instead of presenting these balls as a
- * proof of vanishing.
+ * n>K coefficient tail over the requested derivative range.
+ * `grid_omission_bound` bounds the deliberate n>K_j omission at the finite
+ * grid nodes, using |a_n|<=n.  Neither includes the Molin/trapezoid
+ * discretization error; callers must retain the `rigorous_enclosure`
+ * diagnostic instead of presenting these balls as a proof of vanishing.
  *
  * The numerical grid is Pascal Molin's elliptic-curve specialization as used
  * by PARI 2.17.4 `ellanalyticrank` (`src/basemath/ellanal.c`, `param_points`,
@@ -50,6 +52,7 @@ typedef struct
 int sagejs_ec_completed_lseries_jet(
     arb_ptr output,
     arb_t coefficient_tail_bound,
+    arb_t grid_omission_bound,
     sagejs_ec_lfunction_diagnostics *diagnostics,
     const fmpz *coefficients,
     slong cutoff,
