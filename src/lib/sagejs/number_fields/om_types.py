@@ -804,6 +804,32 @@ def factor_residual_polynomial(
             _residue_multiply(value, leading_inverse, prime, modulus)
             for value in remaining
         )
+    if polynomial_degree(modulus) == 1:
+        # A degree-one residue extension is canonically F_p.  Reuse the
+        # scalable certified F_p[x] factorizer instead of exponentially
+        # enumerating monic residual candidates.
+        ordinary = tuple(value[0] for value in remaining)
+        converted = [
+            ResidualFactor(
+                tuple((value,) for value in factor.polynomial),
+                factor.multiplicity,
+            )
+            for factor in factor_mod_prime(
+                ordinary,
+                prime,
+                max_enumerated_candidates=max_enumerated_candidates,
+            )
+        ]
+
+        def enumeration_key(factor: ResidualFactor) -> tuple[int, int]:
+            encoded = 0
+            place = 1
+            for coefficient in factor.polynomial[:-1]:
+                encoded += coefficient[0] * place
+                place *= prime
+            return (len(factor.polynomial) - 1, encoded)
+
+        return tuple(sorted(converted, key=enumeration_key))
     field_size = prime ** polynomial_degree(modulus)
     factors: list[ResidualFactor] = []
     used = 0

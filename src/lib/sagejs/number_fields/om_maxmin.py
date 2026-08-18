@@ -116,12 +116,23 @@ def _candidate_for_index(
     tables: tuple[LocalNumeratorTable, ...],
     multi_index: tuple[int, ...],
 ) -> tuple[Polynomial, tuple[FiniteValuation, ...], RationalValue]:
-    branch_count = len(tables)
     numerator: Polynomial = (1,)
-    values: list[FiniteValuation] = [RationalValue(0) for _ in range(branch_count)]
     for table_index, index in enumerate(multi_index):
         table = tables[table_index]
         numerator = polynomial_multiply(numerator, table.numerators[index])
+    values, minimum = _values_for_index(tables, multi_index)
+    return numerator, values, minimum
+
+
+def _values_for_index(
+    tables: tuple[LocalNumeratorTable, ...],
+    multi_index: tuple[int, ...],
+) -> tuple[tuple[FiniteValuation, ...], RationalValue]:
+    """Evaluate one MaxMin multi-index without constructing its numerator."""
+    branch_count = len(tables)
+    values: list[FiniteValuation] = [RationalValue(0) for _ in range(branch_count)]
+    for table_index, index in enumerate(multi_index):
+        table = tables[table_index]
         row = table.valuations[index]
         for branch in range(branch_count):
             current = values[branch]
@@ -137,7 +148,7 @@ def _candidate_for_index(
     for value in finite[1:]:
         if value < minimum:
             minimum = value
-    return numerator, tuple(values), minimum
+    return tuple(values), minimum
 
 
 def _enumerate_degree_indices(
@@ -186,6 +197,29 @@ def validate_maxmin_certificate(
         if combinations > max_combinations:
             failures.append("MaxMin exhaustive validation bound exceeded")
             return tuple(failures)
+    valuation_scale = 1
+    for table in tables:
+        for row in table.valuations:
+            for value in row:
+                if value is None:
+                    continue
+                left = valuation_scale
+                right = value.denominator
+                while right:
+                    left, right = right, left % right
+                valuation_scale *= value.denominator // left
+    scaled_tables = tuple(
+        tuple(
+            tuple(
+                None
+                if value is None
+                else value.numerator * (valuation_scale // value.denominator)
+                for value in row
+            )
+            for row in table.valuations
+        )
+        for table in tables
+    )
     for candidate in certificate.candidates:
         numerator, values, minimum = _candidate_for_index(tables, candidate.multi_index)
         if numerator != candidate.numerator:
@@ -200,15 +234,26 @@ def validate_maxmin_certificate(
             failures.append(
                 "candidate degree differs at degree " + str(candidate.degree)
             )
+        selected_scaled = candidate.minimum.numerator * (
+            valuation_scale // candidate.minimum.denominator
+        )
         for other_index in _enumerate_degree_indices(
             tables,
             candidate.degree,
             max_combinations=max_combinations,
         ):
-            _other_numerator, _other_values, other_minimum = _candidate_for_index(
-                tables, other_index
-            )
-            if candidate.minimum < other_minimum:
+            scaled_values: list[int | None] = [0] * len(tables)
+            for table_index, row_index in enumerate(other_index):
+                row = scaled_tables[table_index][row_index]
+                for branch, contribution in enumerate(row):
+                    current = scaled_values[branch]
+                    if current is None or contribution is None:
+                        scaled_values[branch] = None
+                    else:
+                        scaled_values[branch] = current + contribution
+            finite_scaled = [value for value in scaled_values if value is not None]
+            other_minimum = min(finite_scaled)
+            if selected_scaled < other_minimum:
                 failures.append(
                     "candidate is not valuation-maximal at degree "
                     + str(candidate.degree)

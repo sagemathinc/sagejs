@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Profile scalable higher-order OM workloads and source-transparently accelerate the exact polynomial and MaxMin loops enough to establish a measured crossover boundary without changing public selection",
-  "base_commit": "5a08ca4f31a0aa7a639b9b6e6c08f75fbb4b1fb5",
+  "base_commit": "979862a690e162909a4b9ab112cf570d02d6fb96",
   "claims": [
     "src/lib/sagejs/number_fields/om_types.py",
     "src/lib/sagejs/number_fields/om_maxmin.py",
@@ -75,16 +75,16 @@
     }
   ],
   "handoff": {
-    "summary": "Checkpoint replaces exponential monic-candidate enumeration with deterministic squarefree, distinct-degree, and Cantor-Zassenhaus modular factorization. It adds a same-source packed IntegerBuffer kernel for exact triangular-lattice closure, skips redundant products already in the equation order, and preserves a dynamic CPython fallback. The degree-32 bad-generator p=7 tree now builds in milliseconds; because exhaustive MaxMin evidence exceeds its bound, the independently valid lattice remains an inspectable incomplete candidate and cannot reach LocalOrderResult complete.",
+    "summary": "The follow-up reduces degree-one residual extensions exactly to the certified F_p[x] factorizer and accelerates the independent exhaustive MaxMin checker with common-denominator integer valuations while reconstructing only selected numerators. On v429/p=7 the same certificate is complete with local index 480: CPython falls from 6.65s to 1.09s and Sage.js from a 45s timeout to 23.16s. Opt-in scalable and v429 benchmark profiles preserve certificate identifiers and state explicitly that p=2 local timings are not comparable to full-global PARI/Hecke timings.",
     "risks": [
-      "Equal-degree splitting remains deterministically bounded and can still return an explicit resource error on adversarial candidates.",
-      "The degree-32 p=7 candidate has valid closure/index/type evidence but deliberately remains incomplete until scalable independent MaxMin evidence is available.",
+      "The complete Sage.js v429/p=7 certificate remains about 21 times slower than CPython and is not an end-to-end crossover against PARI.",
+      "Higher nonlinear residual extensions at v429 primes 2, 3, and 5 still fail closed; p=59 hits the bounded factor-candidate resource limit.",
       "Full bad-generator index factorization exceeded the bounded oracle timeout and belongs to discriminant-component orchestration rather than this local OM lane."
     ],
     "next_steps": [
-      "Measure warmed direct PARI nfbasis and pinned Hecke maximal_order at degrees 32 and 48 with bounded processes.",
-      "Profile and source-transparently compile the remaining type-tree and numerator-table loops on the degree-48 crossover candidate.",
-      "Coordinate the v429 exact-polynomial local candidate boundary with nf_timeout_cluster without editing its timeout or engine paths."
+      "Keep public auto-selection disabled: direct PARI nfbasis remains faster and the measured OM stress rows are local-only.",
+      "Add scalable higher residual-field factorization to cover the v429 p=2,3,5 boundary without weakening fail-closed evidence.",
+      "Profile the remaining 11s Sage.js exhaustive integer-valuation loop before considering a same-source native lowering."
     ]
   }
 }
