@@ -244,6 +244,19 @@ for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1]:
         characteristic, prime_count, modulus_bits, batch_calls, attempts, computed_primes = round4._batched_integer_field_element_characteristic_polynomial(rows)
         direct = [coefficient._numerator for coefficient in round4._element_characteristic_polynomial(K, beta)]
         assert characteristic == direct
+        columns = []
+        product = beta
+        for column_index in range(K.degree()):
+            column = list(product.list())
+            column += [QQ(0) for _index in range(K.degree() - len(column))]
+            columns.append(column)
+            product *= K.gen()
+        generic_rows = [
+            [columns[column][row] for column in range(K.degree())]
+            for row in range(K.degree())
+        ]
+        generic = list(matrix(QQ, generic_rows).charpoly().list())
+        assert round4._element_characteristic_polynomial(K, beta) == generic
         assert round4._annihilates_first_coordinate(rows, characteristic)
         corrupted = list(characteristic)
         corrupted[0] += 1
