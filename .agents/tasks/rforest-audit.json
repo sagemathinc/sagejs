@@ -4,7 +4,7 @@
   "id": "rforest-audit",
   "title": "rforest genus-3 audit and completion design",
   "lane": "hyperelliptic-curves",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Audit the newly MIT-licensed rforest implementation and papers, prove the exact genus-3 coefficient candidate/completion requirements, test standalone portability on available hosts, and deliver an implementation-ready decision with fixtures and benchmarks",
   "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
@@ -37,7 +37,8 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node bench/rforest/genus3_candidates.mjs"
   ],
   "runs": [
     {
@@ -69,6 +70,26 @@
       "commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
       "workspace_fingerprint": "d9824bbb60b0792e89d0be0d4e230759484499fda45a2ada3b4140d553e7290d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.468,
+      "started_at": "2026-08-18T08:14:21.369Z",
+      "commit": "1dc0a92ec1a6cac79e1910f18105b29b21feac2a",
+      "workspace_fingerprint": "2fe44bcb12d97683fc2dcdb4946521e712c510d3d93b8951969d353e3fc8f585",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/rforest/genus3_candidates.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.641,
+      "started_at": "2026-08-18T08:14:48.792Z",
+      "commit": "1dc0a92ec1a6cac79e1910f18105b29b21feac2a",
+      "workspace_fingerprint": "2fe44bcb12d97683fc2dcdb4946521e712c510d3d93b8951969d353e3fc8f585",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -77,10 +98,12 @@
       "rforest is only the generic remainder-forest matrix-product engine; the Harvey--Sutherland curve transition matrices, admissible-prime handling, row transformations, and reconstruction remain a separate implementation lane.",
       "The full 21-translation-unit bundled zz link closure uses GMP internals, requires 64-bit limbs, and has process-global FFT/memory state, so the private adapter must validate inputs, hide the ABI, and serialize calls.",
       "Old smalljac genus-3 completion is useful as an algorithm design but cannot be linked as shipped because genus-3 compose/square definitions and the p-adic producer are absent; Sage.js must certify candidates using its verified Jacobian law.",
-      "The exact-order p>=1601 result is a completion theorem, not a cheap way to obtain the order; practical performance still depends on the congruence-strided O(p^(1/4)) Jacobian search and a twist/fallback path."
+      "The exact-order p>=1601 result is a completion theorem, not a cheap way to obtain the order; practical performance still depends on the congruence-strided O(p^(1/4)) Jacobian search and a twist/fallback path.",
+      "The standalone portable C harness is intentionally unclassified in the shared native-code inventory because this audit lane did not claim that registry; the integration lane must classify it before the branch is merged.",
+      "The coordinator stopped the duplicate full pnpm test:native run because concurrent project builds saturated the host. The focused 101-record exact checker and four-platform upstream source smoke builds passed; repository-wide native validation remains an integration receipt."
     ],
     "next_steps": [
-      "Distribution lane: vendor the pinned 21-source rforest closure with LICENSE/COPYING, apply the fixed-width clang-cl patch, and expose only a private packed Hasse--Witt residue boundary.",
+      "Distribution lane: classify the portable harness, vendor the pinned 21-source rforest closure with LICENSE/COPYING, apply the fixed-width clang-cl patch, and expose only a private packed Hasse--Witt residue boundary.",
       "Transition lane: implement and differentially test the Harvey--Sutherland curve-to-matrix and output-normalization layer against the ordinary Hasse--Witt fallback and the committed oracle.",
       "Jacobian lane: implement exact candidate enumeration first, then the O(p^(1/4)) primary/twist certificate search; stop only on uniqueness and otherwise fall back.",
       "Integration lane: retain the portable trace fixture in Linux x86-64/arm64, macOS arm64, and Windows x64 CI and serialize all rforest calls until upstream state is made contextual."
