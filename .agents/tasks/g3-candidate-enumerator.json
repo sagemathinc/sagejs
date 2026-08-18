@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "g3-candidate-enumerator",
+  "title": "G3 Candidate Enumerator",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make exact genus-3 Weil-candidate enumeration fast while preserving exact Sturm semantics and ordinary Python fallback",
+  "base_commit": "d63d107ef21cc222d67dddf94ff1b0ad9c4ed996",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
+    "src/lib/sagejs/hyperelliptic_curves/_test_genus3_candidates.py",
+    "src/lib/sagejs/hyperelliptic_curves/_benchmark_genus3_candidates.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/hyperelliptic-genus3-certified-completion-plan.md",
+    "src/lib/sagejs/hyperelliptic_curves/genus3_completion.py"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing exact rational Sturm implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Replaced general rational Sturm allocation on the hot path with an exactly equivalent cubic endpoint/derivative criterion, retained the old Sturm implementation as a differential oracle, and added a source-transparent packed exact candidate scanner. Unfiltered enumeration uses the compiled scanner only after input validation and respects both public resource limits; filtered completion keeps its bounded dynamic stream. Dense CPython and compiled Sage.js tests cover arbitrary coefficients, residue scans, endpoint/repeated roots, resource limits, and GMP promotion. The native benchmark is 102x-303x faster than the old Sturm scan at p=101..10007 and completes the p=1000003 residue class in about 0.20 seconds on the development x64 host.",
+    "risks": [
+      "The integration lane must register the new kernel for production precompilation; without an artifact Sage.js uses the correct optimized dynamic fallback.",
+      "Tests and the benchmark live beside the claimed implementation because the hyperelliptic lane cannot claim repository-wide test/bench paths; integration may relocate them.",
+      "Packed IntegerBuffer materialization dominates the largest tested row, so a future streaming certificate interface may outperform exhaustive candidate materialization."
+    ],
+    "next_steps": [
+      "Register genus3_candidate_kernel.py in the production native-kernel build and witness inventories.",
+      "Move or wrap the in-package differential and benchmark drivers in the central test and benchmark manifests.",
+      "Run the same compiled stream on Linux arm64, macOS arm64, and native Windows x64 during integration."
+    ]
+  }
+}
