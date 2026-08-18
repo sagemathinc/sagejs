@@ -47,9 +47,12 @@ from sagejs.number_fields.om_maxmin import (
     _basis_coordinates_are_integral,
     regular_local_basis,
 )
+from sagejs.number_fields.maximal_order_engine import _auto_om_local_order
 
 case = json.loads(r'''${JSON.stringify(vector429)}''')
 polynomial = tuple(int(value) for value in case["polynomial"]["coefficients"])
+R = PolynomialRing(ZZ, "x")
+K = NumberField(R(polynomial), "a")
 prime = 7
 valuation = 1008
 degrees = (1,)
@@ -148,6 +151,19 @@ unmeasured_small_characteristics = {
     ).as_dict()
     for prime in (2, 3, 5)
 }
+engine_unmeasured_small_characteristics = {}
+for small_prime in (2, 3, 5):
+    engine_order, engine_evidence = _auto_om_local_order(
+        K,
+        list(polynomial),
+        1,
+        int(case["equationDiscriminant"]),
+        small_prime,
+    )
+    engine_unmeasured_small_characteristics[small_prime] = {
+        "returned_order": engine_order is not None,
+        "evidence": engine_evidence,
+    }
 immutable = False
 try:
     selected.prefilter.eligible = False
@@ -180,6 +196,9 @@ print(json.dumps({
     "malformed": malformed.eligible,
     "small": small.eligible,
     "unmeasured_small_characteristics": unmeasured_small_characteristics,
+    "engine_unmeasured_small_characteristics": (
+        engine_unmeasured_small_characteristics
+    ),
     "immutable": immutable,
     "evidence": evidence,
 }, sort_keys=True))
@@ -206,6 +225,12 @@ test("OM auto selection is input-derived, exact, and fail-closed", () => {
     const decision = output.unmeasured_small_characteristics[String(prime)];
     assert.equal(decision.eligible, false);
     assert.match(decision.reason, /starts at p=7/);
+    const engineDecision =
+      output.engine_unmeasured_small_characteristics[String(prime)];
+    assert.equal(engineDecision.returned_order, false);
+    assert.equal(engineDecision.evidence.stage, "shape-prefilter");
+    assert.equal(engineDecision.evidence.eligible, false);
+    assert.match(engineDecision.evidence.reason, /starts at p=7/);
   }
   assert.equal(output.immutable, true);
   assert.equal(output.evidence.algorithm, "om-maxmin");
