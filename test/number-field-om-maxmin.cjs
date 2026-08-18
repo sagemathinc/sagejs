@@ -10,6 +10,13 @@ const root = resolve(__dirname, "..");
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures/number-field-om-maxmin.json"), "utf8"),
 );
+const v429Polynomial = JSON.parse(
+  readFileSync(
+    join(__dirname, "fixtures/number-field-maximal-order-corpus.json"),
+    "utf8",
+  ),
+).cases.find((item) => item.id === "pari-round4-vector-429").polynomial
+  .coefficients;
 
 const witness = String.raw`
 import json
@@ -330,7 +337,7 @@ higher_bounded = build_om_type_tree((4, 4, 0, 0, 1), 2, max_type_depth=1)
 if higher_bounded.complete or higher_bounded.incomplete_states() != ("type-depth-bound",):
     raise AssertionError("higher type work bound did not fail closed")
 unsupported = build_om_type_tree(tuple([4, 8] + [0] * 6 + [1]), 2)
-if unsupported.complete or unsupported.incomplete_states() != ("higher-residual-degree-unsupported",):
+if unsupported.complete or unsupported.incomplete_states() != ("higher-repeated-residual-unsupported",):
     raise AssertionError("unsupported higher residue was not rejected explicitly")
 if not validate_type_tree(unsupported).valid:
     raise AssertionError("the unsupported higher certificate did not validate")
@@ -513,6 +520,175 @@ print(json.dumps([
     });
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), expected);
+  }
+});
+
+test("higher residual fields use scalable DDF and deterministic splitting", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_higher_residue import next_residue_field
+from sagejs.number_fields.om_types import (
+    OMLevel,
+    OMResourceError,
+    RationalValue,
+    _residual_normalize,
+    _residue_multiply,
+    _residue_subtract,
+    factor_residual_polynomial,
+)
+
+prime = 3
+modulus = (1, 0, 1, 1, 1)
+
+def add(left, right):
+    return _residue_subtract(
+        left,
+        _residue_subtract((0,), right, prime, modulus),
+        prime,
+        modulus,
+    )
+
+def multiply(left, right):
+    answer = [(0,)] * (len(left) + len(right) - 1)
+    for left_index, left_value in enumerate(left):
+        for right_index, right_value in enumerate(right):
+            answer[left_index + right_index] = add(
+                answer[left_index + right_index],
+                _residue_multiply(left_value, right_value, prime, modulus),
+            )
+    return _residual_normalize(tuple(answer), prime, modulus)
+
+roots = ((0, 1), (1, 1), (2, 1), (0, 0, 1))
+polynomial = ((1,),)
+for root in roots:
+    polynomial = multiply(
+        polynomial,
+        (_residue_subtract((0,), root, prime, modulus), (1,)),
+    )
+
+try:
+    factor_residual_polynomial(
+        polynomial,
+        prime,
+        modulus,
+        max_enumerated_candidates=1,
+    )
+except OMResourceError:
+    bounded = True
+else:
+    bounded = False
+factors = factor_residual_polynomial(
+    polynomial,
+    prime,
+    modulus,
+    max_enumerated_candidates=4,
+)
+
+# A certified prime-field residual factor of any degree defines the next
+# finite field; it is no longer restricted to a quadratic extension.
+level = OMLevel(
+    2,
+    (0, 1),
+    RationalValue(1),
+    RationalValue(-1),
+    (0, 1),
+    tuple((value,) for value in modulus),
+    tuple((value,) for value in modulus),
+    1,
+    4,
+    1,
+    0,
+    1,
+    0,
+    False,
+    "test-certified-irreducible-factor",
+)
+next_modulus, generator = next_residue_field(prime, level)
+print(json.dumps({
+    "bounded": bounded,
+    "factors": [
+        [[list(value) for value in factor.polynomial], factor.multiplicity]
+        for factor in factors
+    ],
+    "next_modulus": list(next_modulus),
+    "generator": list(generator),
+}))
+`;
+  const expectedFactors = [
+    [[ [0, 2], [1] ], 1],
+    [[ [1, 2], [1] ], 1],
+    [[ [2, 2], [1] ], 1],
+    [[ [0, 0, 2], [1] ], 1],
+  ];
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout.trim().split("\n").at(-1));
+    assert.equal(output.bounded, true);
+    assert.deepEqual(output.factors, expectedFactors);
+    assert.deepEqual(output.next_modulus, [1, 0, 1, 1, 1]);
+    assert.deepEqual(output.generator, [0, 1]);
+  }
+});
+
+test("OM auto-eligibility is limited to a measured complete native region", () => {
+  const script = String.raw`
+import json
+import sys
+sys.path.append("${join(root, "src/lib")}")
+from sagejs.number_fields.om_maxmin import selector_metrics
+from sagejs.number_fields.om_types import build_om_type_tree
+
+polynomial = tuple(int(value) for value in ${JSON.stringify(v429Polynomial)})
+tree = build_om_type_tree(polynomial, 7)
+enabled = selector_metrics(
+    tree,
+    local_discriminant_valuation=1008,
+    differential_evidence=True,
+)
+disabled = selector_metrics(
+    tree,
+    local_discriminant_valuation=1008,
+    differential_evidence=False,
+)
+print(json.dumps({
+    "complete": tree.complete,
+    "region": enabled.measured_crossover_region,
+    "combinations": enabled.expected_combinations,
+    "native": enabled.native_capable,
+    "enabled": enabled.auto_selectable,
+    "disabled": disabled.auto_selectable,
+    "suppressed": list(enabled.suppressed_alternatives),
+}))
+`;
+  for (const [command, args] of [
+    ["python3", ["-"]],
+    [process.execPath, [join(root, "bin/sagejs"), "--python"]],
+  ]) {
+    const result = spawnSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      input: script,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout.trim().split("\n").at(-1));
+    assert.equal(output.complete, true);
+    assert.equal(output.region, "deep-index-shallow-types-v1");
+    assert.equal(output.combinations, 83521);
+    assert.equal(output.enabled, output.native);
+    assert.equal(output.disabled, false);
+    assert.equal(output.suppressed.length, 2);
   }
 });
 
