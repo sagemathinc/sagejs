@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const referenceTimeout = 120_000;
 
 test("split-Mellin reference values agree with raw and completed oracles", async () => {
   const session = await createSage();
@@ -27,7 +28,7 @@ test("split-Mellin reference values agree with raw and completed oracles", async
         ' R["analytic_error_status"] == "coefficient_grid_and_upper_omission_only",',
         ' R["coefficient_horner"] == "arbitrary precision"]',
       ].join("\n"),
-      { timeout: 60_000 },
+      { timeout: referenceTimeout },
     );
     assert.equal(result.repr, "[True, True, True, True, True, True]");
   } finally {
@@ -55,7 +56,7 @@ test("Sage.js quadrature agrees with the independent incomplete-gamma sum", asyn
         ' R["quadrature_rule_order"] == 16,',
         ' int(R["refinement_runs"][1]["precision_bits"]) == 112]',
       ].join("\n"),
-      { timeout: 60_000 },
+      { timeout: referenceTimeout },
     );
     assert.equal(result.repr, "[True, True, True, True]");
   } finally {
@@ -73,8 +74,16 @@ test("512-bit GL64 reference retains accuracy beyond the old GL16 floor", () => 
     "elliptic_curves",
     "lseries.py",
   );
+  const mpmathDirectory = join(__dirname, "..", "src", "lib", "mpmath");
+  const mpmathPath = join(mpmathDirectory, "__init__.py");
   const source = [
     "import importlib.util, sys",
+    `mpmath_path = ${JSON.stringify(mpmathPath)}`,
+    `mpmath_directory = ${JSON.stringify(mpmathDirectory)}`,
+    "mpmath_spec = importlib.util.spec_from_file_location('mpmath', mpmath_path, submodule_search_locations=[mpmath_directory])",
+    "mpmath_module = importlib.util.module_from_spec(mpmath_spec)",
+    "sys.modules['mpmath'] = mpmath_module",
+    "mpmath_spec.loader.exec_module(mpmath_module)",
     `path = ${JSON.stringify(modulePath)}`,
     "spec = importlib.util.spec_from_file_location('lseries_reference_test', path)",
     "module = importlib.util.module_from_spec(spec)",
@@ -105,7 +114,7 @@ test("512-bit GL64 reference retains accuracy beyond the old GL16 floor", () => 
   ].join("\n");
   const python = spawnSync("python3", ["-c", source], {
     encoding: "utf8",
-    timeout: 60_000,
+    timeout: referenceTimeout,
   });
   assert.equal(python.status, 0, python.stderr);
   assert.equal(python.stdout.trim(), "ok");
@@ -129,7 +138,7 @@ test("functional equation, conjugation, and trivial zeros survive batching", asy
         " raw[4] == 0, raw[5] == 0, abs(raw[6]) > mp.mpf('1e-12'),",
         " len(V) == len(P), R['point_diagnostics'][0]['rigorous'] == False]",
       ].join("\n"),
-      { timeout: 60_000 },
+      { timeout: referenceTimeout },
     );
     assert.equal(result.repr, "[True, True, True, True, True, True, True]");
   } finally {

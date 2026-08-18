@@ -39,6 +39,20 @@ function evaluateIntegralCurve(curve, conductor, rootNumber, points, precision) 
   };
 }
 
+test("coefficient batching crosses a bad-reduction prime", () => {
+  const coefficients = flint.ecAnlistIntegral(
+    1n,
+    2n,
+    3n,
+    4n,
+    999n,
+    430250329n,
+    9371n,
+  );
+  assert.equal(coefficients[9349], 1);
+  assert.equal(coefficients[9371], -36);
+});
+
 test("native complex L-value matches the pinned Sage/PARI oracle", () => {
   const { result } = evaluateIntegralCurve(
     [1n, 2n, 3n, 4n, 999n],
