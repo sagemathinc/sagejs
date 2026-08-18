@@ -52,7 +52,31 @@ def fingerprint(certificate):
         for entry in certificate["components"]
     ]
 
-readable_status = dc.primality_status
+def readable_status(number):
+    value = int(number)
+    if value < 2:
+        return dc.COMPOSITE, {"kind": "less-than-two", "value": value}
+    for prime in dc._small_primes(47):
+        if value == prime:
+            return dc.PROVEN_PRIME, {"kind": "trial-prime", "prime": value}
+        if value % prime == 0:
+            return dc.COMPOSITE, {"kind": "factor", "factor": prime}
+    theorem_bases = dc._MR64_BASES if value < (1 << 64) else bases
+    for base in theorem_bases:
+        if dc._miller_rabin_witness(value, base):
+            return dc.COMPOSITE, {"kind": "miller-rabin-witness", "base": base}
+    if value < (1 << 64):
+        return dc.PROVEN_PRIME, {
+            "kind": "deterministic-miller-rabin-64",
+            "prime": value,
+            "bases": list(dc._MR64_BASES),
+        }
+    return dc.PROBABLE_PRIME, {
+        "kind": "strong-probable-prime",
+        "value": value,
+        "bases": list(bases),
+    }
+
 readable_phase_ns = 0
 readable_calls = []
 def timed_readable(number):
