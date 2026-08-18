@@ -106,9 +106,7 @@ readable_batch, readable_result = measure(lambda: readable_power(representative)
 compiled_batch, compiled_result = measure(
     lambda: packed_power.validated_perfect_power_data(
         representative, readable_power, kernel=kernel
-    ),
-    samples=5,
-    warmups=1,
+    )
 )
 assert compiled_result == readable_result
 

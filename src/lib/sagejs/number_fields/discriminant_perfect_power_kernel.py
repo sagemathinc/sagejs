@@ -52,12 +52,14 @@ def _packed_integer_nth_root(
         bit_index = bit_index + one
 
     previous_exponent: uint64 = exponent - one
-    while True:
+    converged = False
+    while not converged:
         divisor = _packed_integer_power(current, previous_exponent)
         following = (previous_exponent * current + value // divisor) // exponent
         if following >= current:
-            break
-        current = following
+            converged = True
+        else:
+            current = following
 
     following = current + 1
     while _packed_integer_power(following, exponent) <= value:
@@ -102,14 +104,15 @@ def packed_perfect_power_data_in_place(
     index: uint64 = 0
     one: uint64 = 1
     previous_prime: uint64 = 1
-    while index < prime_count:
+    scanning = True
+    while index < prime_count and scanning:
         exponent: uint64 = prime_exponents[index]
         if exponent <= previous_prime:
             return False
         previous_prime = exponent
         if exponent >= base_bits:
-            break
-        if not (negative and exponent == 2):
+            scanning = False
+        elif not (negative and exponent == 2):
             extracting = True
             while extracting and base > 1:
                 root = _packed_integer_nth_root(base, exponent, base_bits)
