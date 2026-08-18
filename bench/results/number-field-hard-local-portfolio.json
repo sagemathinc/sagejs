@@ -1,0 +1,468 @@
+{
+  "schema": "sagejs.number-fields/hard-local-portfolio/v1",
+  "commit": "813e5d0c263b64eab64ff4b4d2128e321a2374cd",
+  "units": "milliseconds",
+  "policy": {
+    "samples": 5,
+    "warmup": "one call per boundary; slow dynamic/Round4/OM paths retain one measured sample",
+    "exactness": "all complete paths compared to the same canonical local HNF and discriminant",
+    "caveat": "Sage.js host timings are sensitive to concurrent project load; isolated direct C resource and PARI/Hecke references come from the durable receipt"
+  },
+  "cases": [
+    {
+      "id": "pari-2510-p2",
+      "prime": 2,
+      "degree": 8,
+      "local_discriminant_valuation": 58,
+      "local_index_valuation": 18,
+      "factor_degrees": [
+        1
+      ],
+      "factor_multiplicities": [
+        8
+      ],
+      "polygon_regular": true,
+      "polygon_predicted_index_valuation": 18,
+      "round4_required_precision": 59,
+      "round4_predicted_work": 3777,
+      "round2_predicted_work": 14848,
+      "om_type_count": 1,
+      "om_maximum_type_depth": 1,
+      "hnf_dimension": 8,
+      "hnf_max_coefficient_bits": 6,
+      "selection": {
+        "schema": "sagejs.number-fields/local-algorithm-selection/v1",
+        "algorithm": "polygon",
+        "forced": false,
+        "reason": "regular first-order residual factors certify the full polygon index",
+        "features": {
+          "degree": 8,
+          "prime": 2,
+          "word_prime": true,
+          "discriminant_valuation": 58,
+          "factor_degrees": [
+            1
+          ],
+          "factor_multiplicities": [
+            8
+          ],
+          "obstruction_degree": 1,
+          "polygon_regular": true,
+          "predicted_index_valuation": 18,
+          "remaining_discriminant_valuation": 22,
+          "native_round2_available": true,
+          "om_available": true
+        },
+        "predicted_work": {
+          "dedekind": 120,
+          "polygon": 264,
+          "round2": 11776,
+          "round4": 4160,
+          "om-maxmin": 512
+        },
+        "suppressed": [
+          {
+            "algorithm": "dedekind",
+            "reason": "preconditions unavailable"
+          },
+          {
+            "algorithm": "round2",
+            "reason": "higher-priority proved path or predicted cost",
+            "predicted_work": 11776
+          },
+          {
+            "algorithm": "round4",
+            "reason": "higher-priority proved path or predicted cost",
+            "predicted_work": 4160
+          },
+          {
+            "algorithm": "om-maxmin",
+            "reason": "higher-priority proved path or predicted cost",
+            "predicted_work": 512
+          }
+        ]
+      },
+      "timings": {
+        "factor_mod_prime": {
+          "median_ms": 0.34117698669433594,
+          "samples_ms": [
+            0.3707408905029297,
+            0.7445812225341797,
+            0.34117698669433594,
+            0.2586841583251953,
+            0.2586841583251953
+          ]
+        },
+        "dedekind_evidence": {
+          "median_ms": 2.032756805419922,
+          "samples_ms": [
+            2.043008804321289,
+            2.032756805419922,
+            2.6721954345703125,
+            1.9257068634033203,
+            1.8978118896484375
+          ]
+        },
+        "first_order_polygon": {
+          "median_ms": 13.854742050170898,
+          "samples_ms": [
+            14.576196670532227,
+            15.443801879882812,
+            13.680696487426758,
+            13.854742050170898,
+            13.817310333251953
+          ]
+        },
+        "selector_from_evidence": {
+          "median_ms": 0.8223056793212891,
+          "samples_ms": [
+            0.9255409240722656,
+            0.8192062377929688,
+            0.7913112640380859,
+            0.8223056793212891,
+            0.8223056793212891
+          ]
+        },
+        "sealed_native_order_resource": {
+          "median_ms": 6.623029708862305,
+          "samples_ms": [
+            7.728099822998047,
+            6.623029708862305,
+            6.879091262817383,
+            6.586790084838867,
+            6.427288055419922
+          ]
+        },
+        "native_round2_existing_order": {
+          "median_ms": 11.887311935424805,
+          "samples_ms": [
+            13.194799423217773,
+            11.337041854858398,
+            11.887311935424805,
+            11.982917785644531,
+            10.136604309082031
+          ]
+        },
+        "round4_plan": {
+          "median_ms": 16.702890396118164,
+          "samples_ms": [
+            17.129182815551758,
+            15.233039855957031,
+            31.67247772216797,
+            16.702890396118164,
+            9.22536849975586
+          ]
+        },
+        "forced_round4_local_order": {
+          "median_ms": 310.2273941040039,
+          "samples_ms": [
+            310.2273941040039
+          ]
+        },
+        "dynamic_round2": {
+          "median_ms": 1598.7188816070557,
+          "samples_ms": [
+            1598.7188816070557
+          ]
+        },
+        "forced_om_maxmin": {
+          "median_ms": 92.0419692993164,
+          "samples_ms": [
+            92.0419692993164
+          ]
+        }
+      },
+      "exact": true
+    },
+    {
+      "id": "pari-1710-p3",
+      "prime": 3,
+      "degree": 10,
+      "local_discriminant_valuation": 20,
+      "local_index_valuation": 10,
+      "factor_degrees": [
+        1,
+        4
+      ],
+      "factor_multiplicities": [
+        2,
+        2
+      ],
+      "polygon_regular": false,
+      "polygon_predicted_index_valuation": 5,
+      "round4_required_precision": 21,
+      "round4_predicted_work": 2117,
+      "round2_predicted_work": 10000,
+      "om_type_count": 3,
+      "om_maximum_type_depth": 2,
+      "hnf_dimension": 10,
+      "hnf_max_coefficient_bits": 4,
+      "selection": {
+        "schema": "sagejs.number-fields/local-algorithm-selection/v1",
+        "algorithm": "round2",
+        "forced": false,
+        "reason": "irregular polygon evidence requires a complete native multiplier cycle",
+        "features": {
+          "degree": 10,
+          "prime": 3,
+          "word_prime": true,
+          "discriminant_valuation": 20,
+          "factor_degrees": [
+            1,
+            4
+          ],
+          "factor_multiplicities": [
+            2,
+            2
+          ],
+          "obstruction_degree": 5,
+          "polygon_regular": false,
+          "predicted_index_valuation": 5,
+          "remaining_discriminant_valuation": 10,
+          "native_round2_available": true,
+          "om_available": true
+        },
+        "predicted_work": {
+          "dedekind": 150,
+          "polygon": 1152921504606847000,
+          "round2": 12000,
+          "round4": 2500,
+          "om-maxmin": 600
+        },
+        "suppressed": [
+          {
+            "algorithm": "dedekind",
+            "reason": "preconditions unavailable"
+          },
+          {
+            "algorithm": "polygon",
+            "reason": "preconditions unavailable"
+          },
+          {
+            "algorithm": "round4",
+            "reason": "higher-priority proved path or predicted cost",
+            "predicted_work": 2500
+          },
+          {
+            "algorithm": "om-maxmin",
+            "reason": "higher-priority proved path or predicted cost",
+            "predicted_work": 600
+          }
+        ]
+      },
+      "timings": {
+        "factor_mod_prime": {
+          "median_ms": 5.544185638427734,
+          "samples_ms": [
+            5.130290985107422,
+            6.330728530883789,
+            4.999399185180664,
+            6.176948547363281,
+            5.544185638427734
+          ]
+        },
+        "dedekind_evidence": {
+          "median_ms": 6.698131561279297,
+          "samples_ms": [
+            6.614923477172852,
+            8.180618286132812,
+            6.532430648803711,
+            6.698131561279297,
+            7.096529006958008
+          ]
+        },
+        "first_order_polygon": {
+          "median_ms": 33.47635269165039,
+          "samples_ms": [
+            33.47635269165039,
+            34.70730781555176,
+            31.349897384643555,
+            33.18595886230469,
+            38.173675537109375
+          ]
+        },
+        "selector_from_evidence": {
+          "median_ms": 0.6062984466552734,
+          "samples_ms": [
+            0.6501674652099609,
+            0.7128715515136719,
+            0.6036758422851562,
+            0.6062984466552734,
+            0.5686283111572266
+          ]
+        },
+        "sealed_native_order_resource": {
+          "median_ms": 7.645845413208008,
+          "samples_ms": [
+            7.645845413208008,
+            8.05044174194336,
+            6.317615509033203,
+            7.836580276489258,
+            7.554531097412109
+          ]
+        },
+        "native_round2_existing_order": {
+          "median_ms": 11.246681213378906,
+          "samples_ms": [
+            11.246681213378906,
+            11.411905288696289,
+            10.049819946289062,
+            11.342763900756836,
+            10.641336441040039
+          ]
+        },
+        "round4_plan": {
+          "median_ms": 54.924964904785156,
+          "samples_ms": [
+            54.924964904785156,
+            53.15089225769043,
+            59.31711196899414,
+            54.579973220825195,
+            58.49170684814453
+          ]
+        },
+        "forced_round4_local_order": {
+          "median_ms": 276.5665054321289,
+          "samples_ms": [
+            276.5665054321289
+          ]
+        },
+        "dynamic_round2": {
+          "median_ms": 872.2479343414307,
+          "samples_ms": [
+            872.2479343414307
+          ]
+        },
+        "forced_om_maxmin": {
+          "median_ms": 536.8916988372803,
+          "samples_ms": [
+            536.8916988372803
+          ]
+        }
+      },
+      "exact": true
+    }
+  ],
+  "durableDirectReferences": {
+    "pari-2510": {
+      "native_order_kernel": {
+        "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+        "warmups": 4,
+        "samples": 9,
+        "rounds_per_sample": 100,
+        "raw_samples_us": [
+          1989.90055942,
+          1905.463669682,
+          2002.149859909,
+          1960.233860882,
+          2063.406649977,
+          2011.944260448,
+          1964.089659741,
+          2117.223660462,
+          1974.83496042
+        ],
+        "median_us": 1989.90055942,
+        "stage_mean_us": {
+          "discriminant": 6.427152548,
+          "hints": 0.238678185,
+          "multiplicationTable": 2.453598427,
+          "round2": 1995.813795365,
+          "normalizeHnf": 3.703722032,
+          "evidence": 2.812098246,
+          "pack": 1.202659914,
+          "cleanup": 0.659787329
+        },
+        "payload_bytes": 374,
+        "exact": true
+      },
+      "references": {
+        "pari_nfbasis_median_us": 1372,
+        "pari_samples_us": [
+          1416,
+          1408,
+          1328,
+          1372,
+          1320,
+          1372,
+          1386,
+          1332,
+          1378
+        ],
+        "hecke_core_median_us": 249.385,
+        "hecke_samples_us": [
+          254.34890000000001,
+          255.192,
+          240.03000000000003,
+          237.456,
+          247.69299999999998,
+          373.597,
+          249.385,
+          247.717,
+          321.31
+        ],
+        "best_reference_median_us": 249.385,
+        "native_to_best_reference_ratio": 7.979231146299898
+      }
+    },
+    "pari-1710": {
+      "native_order_kernel": {
+        "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+        "warmups": 4,
+        "samples": 9,
+        "rounds_per_sample": 50,
+        "raw_samples_us": [
+          5475.691820029,
+          5468.084819149,
+          5523.624001071,
+          5479.108418804,
+          5637.398799881,
+          5607.80481901,
+          5395.929438528,
+          5698.764598928,
+          5685.446199495
+        ],
+        "median_us": 5523.624001071,
+        "stage_mean_us": {
+          "discriminant": 8.843119722,
+          "hints": 0.478466973,
+          "multiplicationTable": 5.011996254,
+          "round2": 5555.754248053,
+          "normalizeHnf": 11.513158679,
+          "evidence": 4.974473268,
+          "pack": 2.352516167,
+          "cleanup": 1.380799804
+        },
+        "payload_bytes": 571,
+        "exact": true
+      },
+      "references": {
+        "pari_nfbasis_median_us": 1488,
+        "pari_samples_us": [
+          1456,
+          1472,
+          1476,
+          1504,
+          1488,
+          1476,
+          1492,
+          1532,
+          1540
+        ],
+        "hecke_core_median_us": 1184.0569,
+        "hecke_samples_us": [
+          1582.9288000000001,
+          1331.4149,
+          1207.2799,
+          1523.9559,
+          1184.0569,
+          1179.2619,
+          1170.7209,
+          1176.7269000000001,
+          1180.4379000000001
+        ],
+        "best_reference_median_us": 1184.0569,
+        "native_to_best_reference_ratio": 4.6649987860135775
+      }
+    }
+  }
+}
