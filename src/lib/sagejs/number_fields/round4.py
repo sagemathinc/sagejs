@@ -925,10 +925,11 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
     crt_degree: Any | None = None,
     crt_state: Any | None = None,
     batch_state: Any | None = None,
+    batch_matrix: Any | None = None,
     crt_word_capacity: int = 8,
     batch_word_capacity: int = 8,
     materialize_polynomials: bool = True,
-) -> tuple[list[list[int]], Any, Any, Any, Any, Any]:
+) -> tuple[list[list[int]], Any, Any, Any, Any, Any, Any]:
     """Compute a modular Krylov relation for every certified word prime.
 
     Packing the exact matrix and allocating the reusable workspace occur once
@@ -965,6 +966,12 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
             degree + 2,
             batch_word_capacity,
         )
+    if batch_matrix is None:
+        batch_matrix = kernel_integer_zeros(
+            kernel,
+            degree * degree,
+            batch_word_capacity,
+        )
     packed_primes = kernel_uint64_buffer(kernel, primes)
     degrees = kernel_uint64_zeros(kernel, prime_count)
     coefficients = kernel_uint64_zeros(kernel, prime_count * (degree + 1))
@@ -974,6 +981,7 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
         crt_degree,
         crt_state,
         batch_state,
+        batch_matrix,
         packed_matrix,
         packed_primes,
         workspace,
@@ -986,7 +994,15 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
         )
     answer = []
     if not materialize_polynomials:
-        return answer, packed_matrix, workspace, crt_degree, crt_state, batch_state
+        return (
+            answer,
+            packed_matrix,
+            workspace,
+            crt_degree,
+            crt_state,
+            batch_state,
+            batch_matrix,
+        )
     for prime_index in range(prime_count):
         minimal_degree = runtime.number(degrees[prime_index])
         if minimal_degree <= 0 or minimal_degree > degree:
@@ -1000,7 +1016,15 @@ def _word_prime_first_coordinate_minimal_polynomial_batch(
                 for index in range(minimal_degree + 1)
             ]
         )
-    return answer, packed_matrix, workspace, crt_degree, crt_state, batch_state
+    return (
+        answer,
+        packed_matrix,
+        workspace,
+        crt_degree,
+        crt_state,
+        batch_state,
+        batch_matrix,
+    )
 
 
 def _minimal_polynomial_coefficient_bounds(
@@ -1117,6 +1141,7 @@ def _batched_integer_field_element_characteristic_polynomial(
     crt_degree = None
     crt_state = None
     batch_state = None
+    batch_matrix = None
     maximum_state_bits = _positive_integer_bits(2 * max(degree_bounds(degree)))
     # The final batch deliberately crosses the reconstruction threshold in one
     # native call.  Its conservative prime estimate can overshoot by fewer
@@ -1158,6 +1183,7 @@ def _batched_integer_field_element_characteristic_polynomial(
             crt_degree,
             crt_state,
             batch_state,
+            batch_matrix,
         ) = _word_prime_first_coordinate_minimal_polynomial_batch(
             rows,
             batch_primes,
@@ -1166,6 +1192,7 @@ def _batched_integer_field_element_characteristic_polynomial(
             crt_degree,
             crt_state,
             batch_state,
+            batch_matrix,
             crt_word_capacity,
             batch_word_capacity,
             False,

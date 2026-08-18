@@ -131,12 +131,14 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
         const crtDegree = batch.createUInt64Buffer(1);
         const crtState = batch.createIntegerBuffer(degree + 2, 8);
         const batchState = batch.createIntegerBuffer(degree + 2, 8);
+        const batchMatrix = batch.createIntegerBuffer(degree * degree, 8);
         const completed = batch(
           degrees,
           coefficients,
           crtDegree,
           crtState,
           batchState,
+          batchMatrix,
           batch.packIntegerBuffer(entries),
           batch.createUInt64Buffer(primes),
           workspace,
@@ -208,6 +210,7 @@ test("exact-matrix Krylov batches agree with independent single-prime calls", as
       batch.createUInt64Buffer(1),
       batch.createUInt64Buffer(3),
       batch.createUInt64Buffer(1),
+      batch.createIntegerBuffer(4, 8),
       batch.createIntegerBuffer(4, 8),
       batch.createIntegerBuffer(4, 8),
       batch.packIntegerBuffer([1n, 0n, 0n, 1n]),
@@ -289,6 +292,7 @@ coefficients = [0] * (len(primes) * 3)
 workspace = [0] * word_prime_krylov_batch_workspace_length(2)
 assert integer_matrix_word_prime_minimal_polynomial_batch(
     degrees, coefficients, [0], [0, 0, 0, 0],
+    [0, 0, 0, 0],
     [0, 0, 0, 0],
     [value for row in rows for value in row],
     primes, workspace, 2, len(primes),
