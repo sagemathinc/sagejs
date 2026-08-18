@@ -21,6 +21,10 @@ from sagejs.native import (
     kernel_integer_buffer,
     kernel_integer_zeros,
 )
+from sagejs.number_fields.discriminant_flint_primitives import (
+    large_primality_hint,
+    perfect_power_hint,
+)
 from sagejs.number_fields.discriminant_prefactor_kernel import (
     PREFACTOR_NO_SPLIT,
     PREFACTOR_SPLIT,
@@ -94,7 +98,7 @@ def _integer_nth_root(value: int, exponent: int) -> int:
     return current
 
 
-def perfect_power_data(value: int) -> tuple[int, int]:
+def _readable_perfect_power_data(value: int) -> tuple[int, int]:
     """Return `(base, exponent)` with maximal exponent and exact witness.
 
     Non-powers return `(value, 1)`.  For negative inputs only odd exponents
@@ -123,6 +127,12 @@ def perfect_power_data(value: int) -> tuple[int, int]:
             base = root
             total_exponent *= exponent
     return (-base if number < 0 else base), total_exponent
+
+
+def perfect_power_data(value: int) -> tuple[int, int]:
+    """Return maximal exact perfect-power data with a readable fallback."""
+    hint = perfect_power_hint(value, _readable_perfect_power_data)
+    return _readable_perfect_power_data(value) if hint is None else hint
 
 
 def _small_primes(bound: int) -> list[int]:
@@ -183,6 +193,10 @@ def primality_status(number: int) -> tuple[str, dict[str, Any]]:
             return PROVEN_PRIME, {"kind": "trial-prime", "prime": value}
         if value % prime == 0:
             return COMPOSITE, {"kind": "factor", "factor": prime}
+    if value >= 1 << 64:
+        hint = large_primality_hint(value, _miller_rabin_witness, _PROBABLE_BASES)
+        if hint is not None:
+            return hint
     bases = _MR64_BASES if value < 1 << 64 else _PROBABLE_BASES
     for base in bases:
         if _miller_rabin_witness(value, base):

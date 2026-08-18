@@ -17,7 +17,6 @@ const vector429 = JSON.parse(
 const witness = String.raw`
 import json
 import sys
-from dataclasses import replace
 sys.path.append("${join(root, "src/lib")}")
 
 from sagejs.native import is_compiled
@@ -38,6 +37,14 @@ from sagejs.number_fields.om_types import (
     build_om_type_tree,
     stable_certificate_id,
 )
+
+def replace(record, **changes):
+    values = {
+        name: getattr(record, name)
+        for name in type(record).__annotations__
+    }
+    values.update(changes)
+    return type(record)(**values)
 
 def reseal(tree):
     text = _certificate_text(
@@ -157,7 +164,7 @@ except TypeError:
     constructor_rejected = True
 
 # The production target: exact vector429 p=7 tree, basis, and frozen PARI HNF.
-case = ${JSON.stringify(vector429)}
+case = json.loads(r'''${JSON.stringify(vector429)}''')
 polynomial = tuple(int(value) for value in case["polynomial"]["coefficients"])
 result = regular_local_basis(
     polynomial,

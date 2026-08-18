@@ -341,7 +341,15 @@ def _residual_factorization_is_exact(
             or not _residual_factor_is_irreducible(factor.polynomial, prime, modulus)
         ):
             return False
-        key = _residual_sort_key(factor.polynomial, prime, modulus)
+        if polynomial_degree(modulus) == 1:
+            encoded = 0
+            place = 1
+            for coefficient in factor.polynomial[:-1]:
+                encoded += coefficient[0] * place
+                place *= prime
+            key = (len(factor.polynomial) - 1, encoded)
+        else:
+            key = _residual_sort_key(factor.polynomial, prime, modulus)
         keys.append(key)
         supplied_degree += (len(factor.polynomial) - 1) * factor.multiplicity
         if supplied_degree > expected_degree:

@@ -114,6 +114,8 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_format as _ffi_fmpq_polynomial_format,
     fmpq_polynomial_from_byte_region as _ffi_fmpq_polynomial_from_byte_region,
     fmpz_vector_from_byte_region as _ffi_fmpz_vector_from_byte_region,
+    fmpz_perfect_power_data as _ffi_fmpz_perfect_power_data,
+    fmpz_is_probabprime as _ffi_fmpz_is_probabprime,
     fmpq_vector_from_byte_region as _ffi_fmpq_vector_from_byte_region,
     fmpz_vector_length as _ffi_fmpz_vector_length,
     fmpq_vector_length as _ffi_fmpq_vector_length,
@@ -1229,6 +1231,24 @@ def ffiFmpzVectorFromByteRegion(
     return _ffi_fmpz_vector_from_byte_region(
         source,
         length,
+    )
+
+
+@native
+def ffiFmpzPerfectPowerData(
+    number: Integer,
+) -> FmpzVector:
+    return _ffi_fmpz_perfect_power_data(
+        number,
+    )
+
+
+@native
+def ffiFmpzIsProbabprime(
+    number: Integer,
+) -> bool:
+    return _ffi_fmpz_is_probabprime(
+        number,
     )
 
 

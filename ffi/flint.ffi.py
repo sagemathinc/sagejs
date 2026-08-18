@@ -2030,6 +2030,34 @@ def fmpz_vector_from_byte_region(
 
 
 @flint.function(
+    dynamic="ffiFmpzPerfectPowerData",
+    symbol="sagejs_fmpz_perfect_power_data",
+    returns=int,
+    abi=[out("result", sagejs_fmpz_vector_t), in_("number", fmpz_t)],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="FLINT perfect-power extraction failed",
+    ),
+    wasm=True,
+)
+def fmpz_perfect_power_data(number: Integer) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzIsProbabprime",
+    symbol="fmpz_is_probabprime",
+    returns=int,
+    abi=[in_("number", fmpz_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpz_is_probabprime(number: Integer) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpqVectorFromByteRegion",
     symbol="sagejs_fmpq_vector_from_byte_region",
     returns=int,

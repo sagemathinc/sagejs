@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-
 COMPOSITE = "composite"
 PROBABLE_PRIME = "probable-prime-awaiting-proof"
 
@@ -31,9 +30,9 @@ def _generated_perfect_power_candidate(
     resource = None
     try:
         flint = _flint_module() if module is None else module
-        create = getattr(flint, "fmpz_perfect_power_data")
-        length = getattr(flint, "fmpz_vector_length")
-        entry = getattr(flint, "fmpz_vector_entry")
+        create = flint.fmpz_perfect_power_data
+        length = flint.fmpz_vector_length
+        entry = flint.fmpz_vector_entry
         resource = create(number)
         if int(length(resource)) != 2:
             return None
@@ -62,7 +61,7 @@ def _generated_probable_prime_screen(number: int, module: Any = None) -> bool | 
     """Return the generated FLINT screen result, or `None` if unavailable."""
     try:
         flint = _flint_module() if module is None else module
-        result = getattr(flint, "fmpz_is_probabprime")(number)
+        result = flint.fmpz_is_probabprime(number)
     except (
         ArithmeticError,
         AttributeError,

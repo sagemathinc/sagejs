@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 70,
-    "declared-ffi": 409,
+    "declared-ffi": 411,
     "declared-ffi-resource": 29,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -1858,6 +1858,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_is_probabprime",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_is_probabprime",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzIsProbabprime",
+      "symbol": "fmpz_is_probabprime",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_mat_charpoly",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2779,6 +2790,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzModPolynomialXgcdResultRightCoefficient",
       "symbol": "sagejs_fmpz_mod_polynomial_xgcd_result_right_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_perfect_power_data",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_perfect_power_data",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPerfectPowerData",
+      "symbol": "sagejs_fmpz_perfect_power_data",
       "disposition": "declared-safe-ffi"
     },
     {

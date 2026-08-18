@@ -155,7 +155,7 @@
       "category": "external-library-bridge",
       "review_status": "accepted",
       "lane": "integration",
-      "rationale": "Host-neutral generated owned-resource ABI over one-column FLINT integer and rational matrices, providing distinct exact-vector type tags, variable-size entry ownership, canonical byte streams, structural arithmetic, dot products, and deterministic lifecycle accounting."
+      "rationale": "Host-neutral generated owned-resource ABI over one-column FLINT integer and rational matrices, providing distinct exact-vector type tags, variable-size entry ownership, canonical byte streams, structural arithmetic, dot products, and deterministic lifecycle accounting. Its perfect-power adapter repeatedly applies FLINT's mature extraction primitive into a two-entry owned vector; ordinary Python independently checks the exact identity and terminal primitive root before using that result."
     },
     {
       "path": "packages/flint/include/sagejs/ffi_algorithms.h",
