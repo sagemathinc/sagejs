@@ -31,6 +31,7 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
+    packed_order_contains_vector_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
 )
@@ -601,13 +602,13 @@ def _dedekind_overorder_basis(
     return basis, index
 
 
-def _dedekind_generator_lattice_is_order(
+def _dedekind_generator_lattice_is_order_reference(
     coefficients: list[int],
     modulus: int,
     generator: list[int],
     basis: OrderBasis,
 ) -> bool:
-    """Check containment and closure of one Dedekind generator lattice.
+    """Dynamically check one Dedekind generator lattice.
 
     The checker separately proves that the candidate and
     `L = Z[a] + (generator(a)/modulus) Z[a]` have the same index.  Here the
@@ -649,6 +650,67 @@ def _dedekind_generator_lattice_is_order(
         if coordinate_numerator % denominator_squared != 0:
             return False
     return True
+
+
+def _dedekind_generator_lattice_is_order(
+    coefficients: list[int],
+    modulus: int,
+    generator: list[int],
+    basis: OrderBasis,
+) -> bool:
+    """Replay one Dedekind generator lattice through independent kernels.
+
+    The multiplication-table kernel proves that the candidate is a ring
+    containing `Z[a]` without materializing any structure constants.  The
+    separate vector-membership kernel proves that `generator(a)/modulus` is
+    in that ring.  Thus the candidate contains the generator lattice; the
+    independently checked monic-quotient index identifies them exactly.
+
+    Fixed-width overflow is only a capability failure and falls back to the
+    readable shifted-generator and generator-square proof above.
+    """
+    degree = basis.degree
+    if modulus <= 1 or len(coefficients) != degree + 1:
+        return False
+    padded_generator = list(generator)
+    while len(padded_generator) < degree:
+        padded_generator.append(0)
+    if len(padded_generator) != degree:
+        return False
+    try:
+        if not _packed_order_is_closed(coefficients, basis):
+            return False
+        workspace_words, _output_words = _packed_order_table_word_capacities(
+            coefficients, basis
+        )
+        workspace_bytes = degree * degree * workspace_words * 8
+        if workspace_bytes > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
+            return _dedekind_generator_lattice_is_order_reference(
+                coefficients, modulus, generator, basis
+            )
+        return bool(
+            packed_order_contains_vector_in_place(
+                kernel_integer_zeros(
+                    packed_order_contains_vector_in_place,
+                    degree * degree,
+                    workspace_words,
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vector_in_place,
+                    [value for row in basis.numerator for value in row],
+                ),
+                kernel_integer_buffer(
+                    packed_order_contains_vector_in_place, padded_generator
+                ),
+                basis.denominator,
+                modulus,
+                degree,
+            )
+        )
+    except OverflowError:
+        return _dedekind_generator_lattice_is_order_reference(
+            coefficients, modulus, generator, basis
+        )
 
 
 class BuchmannLenstraResult:

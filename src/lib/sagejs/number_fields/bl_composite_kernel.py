@@ -535,6 +535,78 @@ def packed_order_table_in_place(
     return valid
 
 
+@native
+def packed_order_contains_vector_in_place(
+    workspace: IntegerBuffer,
+    numerator: IntegerBuffer,
+    vector: IntegerBuffer,
+    basis_denominator: int,
+    vector_denominator: int,
+    degree: uint64,
+) -> bool:
+    """Check one rational vector against an upper row-HNF basis.
+
+    `workspace` receives `basis_denominator * numerator^-1`.  Exact backward
+    substitution simultaneously proves that the basis contains the equation
+    order.  The final divisibility checks then prove that
+    `vector / vector_denominator` belongs to the basis lattice.  This compact
+    boundary is used by the independent composite-Dedekind replay; it never
+    trusts a transformation emitted by the construction kernel.
+    """
+    square = degree * degree
+    valid = (
+        degree > 0
+        and basis_denominator > 0
+        and vector_denominator > 0
+        and len(workspace) == square
+        and len(numerator) == square
+        and len(vector) == degree
+    )
+    row = 0
+    while valid and row < degree:
+        column = 0
+        while column < row:
+            if numerator[row * degree + column] != 0:
+                valid = False
+            column += 1
+        row += 1
+    reverse_row = 0
+    while valid and reverse_row < degree:
+        row = degree - reverse_row - 1
+        diagonal = numerator[row * degree + row]
+        if diagonal == 0:
+            valid = False
+        column = 0
+        while valid and column < degree:
+            value = 0
+            if row == column:
+                value = basis_denominator
+            source = row + 1
+            while source < degree:
+                value -= (
+                    numerator[row * degree + source]
+                    * workspace[source * degree + column]
+                )
+                source += 1
+            if value % diagonal != 0:
+                valid = False
+            else:
+                workspace[row * degree + column] = value // diagonal
+            column += 1
+        reverse_row += 1
+    coordinate = 0
+    while valid and coordinate < degree:
+        value = 0
+        source = 0
+        while source < degree:
+            value += vector[source] * workspace[source * degree + coordinate]
+            source += 1
+        if value % vector_denominator != 0:
+            valid = False
+        coordinate += 1
+    return valid
+
+
 def _packed_row_hnf_in_place(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -752,6 +824,7 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_order_contains_vector_in_place",
     "packed_order_table_in_place",
     "packed_row_hnf_in_place",
 ]
