@@ -2,6 +2,8 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const test = require("node:test");
 
@@ -15,7 +17,10 @@ const {
 } = require("./accounting.cjs");
 const {
   buildEvidenceManifest,
+  buildRandomizedEvidenceManifest,
   loadCorpus,
+  SAGEJS_EVIDENCE_BOUNDARIES,
+  translatePolynomial,
 } = require("./corpus.cjs");
 const {
   evaluateGates,
@@ -23,12 +28,17 @@ const {
 } = require("./gates.cjs");
 const {
   groupDiagnosticRows,
+  loadPlatformValidation,
   makeColdRecord,
   planEvidenceRun,
   runColdEvidence,
 } = require("./runner.cjs");
+const {
+  readProcessTreeRssKilobytes,
+} = require("../../tools/number-field-maximal-order/process.cjs");
 
-function verifiedRecord(caseId, system, boundary, timingMs = 1) {
+function verifiedRecord(caseId, system, boundary, timingMs = 1, options = {}) {
+  const sampleCount = options.sampleCount ?? 3;
   return {
     case_id: caseId,
     system,
@@ -36,22 +46,23 @@ function verifiedRecord(caseId, system, boundary, timingMs = 1) {
     boundary,
     status: "ok",
     timeout_ms: 5_000,
-    samples: [{ timing_ms: timingMs }],
+    samples: Array.from({ length: sampleCount }, () => ({ timing_ms: timingMs })),
     statistics: {
       median_ms: timingMs,
       mad_ms: 0,
       minimum_ms: timingMs,
       maximum_ms: timingMs,
-      sample_count: 1,
+      sample_count: sampleCount,
     },
     verification: {
       verified: true,
       canonical_basis: { digest: `${caseId}-basis` },
     },
+    ...options.fields,
   };
 }
 
-function finalReport(records, expectedRecords = records) {
+function finalReport(records, expectedRecords = records, options = {}) {
   return finalizeEvidenceReport({
     generated_at: "2026-08-18T00:00:00.000Z",
     profile: "synthetic",
@@ -68,6 +79,7 @@ function finalReport(records, expectedRecords = records) {
     records,
     cases: [...new Set(records.map((record) => record.case_id))].map((id) => ({ id })),
     summary: {},
+    ...(options.raw || {}),
   }, {
     expectedRecords,
     identity: {
@@ -77,12 +89,24 @@ function finalReport(records, expectedRecords = records) {
         architecture: "x64",
         hostname: "evidence-test",
       },
-      native_artifacts: {},
+      native_artifacts: Object.fromEntries([
+        "packages/flint/build/Release/sagejs_flint.node",
+        "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+        "dist/tools/kernel.js",
+        "dist/native-kernels/index.json",
+      ].map((path) => [path, { status: "ok", sha256: "d".repeat(64) }])),
+      production_native: {
+        status: "ok",
+        complete: true,
+        index: { status: "ok", sha256: "c".repeat(64) },
+        modules: {},
+      },
     },
     loadStart: { load_average_1m_5m_15m: [0, 0, 0] },
     loadEnd: { load_average_1m_5m_15m: [0, 0, 0] },
     runKind: "uniform-primary",
     selection: "quick",
+    platformValidation: options.platformValidation || null,
   });
 }
 
@@ -101,6 +125,20 @@ test("final selections are derived from the corrected 505-case corpus", () => {
     addprimes.basis.digest,
     "8fb192c7a7e9aade6fef4192eff1ae429b33be25f1a5462924e34e725bc9877b",
   );
+});
+
+test("seeded equivalent-generator schedules are exact and reproducible", () => {
+  assert.deepEqual(translatePolynomial(["1", "0", "1"], 2), ["5", "4", "1"]);
+  const first = buildRandomizedEvidenceManifest({ seed: 123, count: 4 });
+  const repeated = buildRandomizedEvidenceManifest({ seed: 123, count: 4 });
+  const different = buildRandomizedEvidenceManifest({ seed: 124, count: 4 });
+  assert.deepEqual(first.randomized_generator_schedule, repeated.randomized_generator_schedule);
+  assert.notDeepEqual(first.randomized_generator_schedule, different.randomized_generator_schedule);
+  assert.equal(first.cases.length, 4);
+  assert(first.cases.every((entry) => entry.corpus_tags.includes("randomized-generator")));
+  assert(first.randomized_generator_schedule.transformations.every((entry) =>
+    /^[0-9a-f]{64}$/.test(entry.polynomial_digest),
+  ));
 });
 
 test("raw terminal accounting rejects omission, duplication, and unknown states", () => {
@@ -131,6 +169,14 @@ test("raw terminal accounting rejects omission, duplication, and unknown states"
   assert.equal(broken.missing_keys.length, 1);
   assert.equal(broken.duplicate_keys.length, 1);
   assert.equal(broken.unknown_states.length, 1);
+});
+
+test("RSS accounting identifies the measured process-tree scope", () => {
+  const sample = readProcessTreeRssKilobytes(process.pid);
+  assert(Number.isFinite(sample.kilobytes));
+  assert(sample.kilobytes > 0);
+  assert(sample.observed_processes >= 1);
+  assert.equal(sample.scope, process.platform === "linux" ? "process-tree" : "process-only");
 });
 
 test("finalized evidence labels family and boundary semantics and authenticates payload", () => {
@@ -212,6 +258,81 @@ test("gate evaluator does not mistake forced public native mode for a native ker
   assert.equal(gatePayloadDigest(roundTripped), roundTripped.integrity.payload_sha256);
 });
 
+test("performance gates reject single-sample timings and accept cache identity only untimed", () => {
+  const report = finalReport([
+    verifiedRecord("pure-bad-generator-n8-c2pow32", "sagejs", "warm-public", 20, {
+      sampleCount: 1,
+      fields: { cache_identity: { applicable: true, same_object: true, timed: false } },
+    }),
+  ]);
+  let receipt = evaluateGates([report]);
+  let byId = new Map(receipt.gates.map((entry) => [entry.id, entry]));
+  assert.equal(byId.get("performance.t8-public").status, "fail");
+  assert.equal(byId.get("evidence.performance-samples").status, "fail");
+  assert.equal(byId.get("evidence.peak-memory").status, "fail");
+  assert.equal(byId.get("api.cache-identity").status, "pass");
+
+  const timedReport = finalReport([
+    verifiedRecord("pure-bad-generator-n8-c2pow32", "sagejs", "warm-public", 20, {
+      fields: { cache_identity: { applicable: true, same_object: true, timed: true } },
+    }),
+  ]);
+  receipt = evaluateGates([timedReport]);
+  byId = new Map(receipt.gates.map((entry) => [entry.id, entry]));
+  assert.equal(byId.get("api.cache-identity").status, "fail");
+});
+
+test("OM selection requires an untraced choice paired with traced execution evidence", () => {
+  const warm = verifiedRecord("motivating-degree-7", "sagejs", "warm-public", 1, {
+    fields: {
+      algorithm_selection: { local_decisions: [{ algorithm: "om-maxmin" }] },
+      selected_algorithm: "om",
+    },
+  });
+  const traced = verifiedRecord(
+    "motivating-degree-7",
+    "sagejs",
+    "traced-public-diagnostic",
+    2,
+    { fields: { executed_algorithms: ["om-maxmin"] } },
+  );
+  const receipt = evaluateGates([finalReport([warm, traced])]);
+  assert.equal(
+    receipt.gates.find((entry) => entry.id === "selection.om-automatic").status,
+    "pass",
+  );
+});
+
+test("parallel gate requires production selection, exact equality, and process-tree RSS", () => {
+  const tiny = [
+    "motivating-degree-7",
+    "sage-essential-discriminant",
+    "lmfdb-3.1.431.1",
+    "lmfdb-5.1.17161.1",
+    "pari-2510",
+    "pari-1710",
+  ].map((caseId) => verifiedRecord(caseId, "sagejs", "warm-public", 1, {
+    fields: { algorithm_selection: { parallel_gate: { selected: false } } },
+  }));
+  const sequential = verifiedRecord("many-prime", "sagejs", "sequential-public", 12, {
+    fields: { scheduler: { parallel_decision: { selected: false } } },
+  });
+  const parallel = verifiedRecord("many-prime", "sagejs", "parallel-public", 8, {
+    fields: {
+      scheduler: { parallel_decision: { selected: true } },
+      peak_rss_kb: 250_000,
+      peak_rss_scope: "process-tree",
+      peak_rss_observed_processes: 3,
+      memory_limit_mb: 512,
+    },
+  });
+  const receipt = evaluateGates([finalReport([...tiny, sequential, parallel])]);
+  assert.equal(
+    receipt.gates.find((entry) => entry.id === "performance.parallel-public").status,
+    "pass",
+  );
+});
+
 test("direct hard-local ratio gates use only true native-kernel rows", () => {
   const report = finalReport([
     verifiedRecord("pari-2510", "sagejs", "native-kernel", 12),
@@ -247,4 +368,41 @@ test("CLI validates and plans the full standard matrix without executing it", ()
   assert.deepEqual(payload.systems, ["sagejs"]);
   assert.deepEqual(payload.boundaries, { sagejs: ["warm-public"] });
   assert.equal(planEvidenceRun({ selection: "stress" }).case_count, 16);
+
+  const boundaryPlan = planEvidenceRun({
+    selection: "quick",
+    sagejsBoundaries: SAGEJS_EVIDENCE_BOUNDARIES,
+  });
+  assert.equal(boundaryPlan.expected_record_count, 2 * SAGEJS_EVIDENCE_BOUNDARIES.length);
+  assert.deepEqual(boundaryPlan.boundaries.sagejs, SAGEJS_EVIDENCE_BOUNDARIES);
+});
+
+test("platform validation receipts bind target, commit, and named production checks", () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "sagejs-platform-evidence-"));
+  const path = resolve(directory, "receipt.json");
+  const identity = {
+    source: { commit: "a".repeat(40) },
+    platform: { platform: "linux", architecture: "x64" },
+  };
+  const receipt = {
+    schema: "sagejs.number-fields/platform-validation-v1",
+    target: "linux-x64",
+    source_commit: identity.source.commit,
+    checks: Object.fromEntries(
+      ["exactness", "production_autoload", "resource_lifecycle", "corruption"].map((name) => [
+        name,
+        { status: "pass", command: `pnpm test:${name}` },
+      ]),
+    ),
+  };
+  try {
+    writeFileSync(path, JSON.stringify(receipt));
+    const loaded = loadPlatformValidation(path, identity);
+    assert.equal(loaded.target, "linux-x64");
+    assert.match(loaded.receipt_sha256, /^[0-9a-f]{64}$/);
+    writeFileSync(path, JSON.stringify({ ...receipt, source_commit: "b".repeat(40) }));
+    assert.throws(() => loadPlatformValidation(path, identity), /source commit/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

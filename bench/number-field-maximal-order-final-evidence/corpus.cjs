@@ -46,6 +46,17 @@ const SYSTEM_BOUNDARIES = Object.freeze({
   magma: ["warm-public"],
 });
 
+const SAGEJS_EVIDENCE_BOUNDARIES = Object.freeze([
+  "warm-public",
+  "traced-public-diagnostic",
+  "native-kernel",
+  "round2-local",
+  "round4-local",
+  "om-local",
+  "sequential-public",
+  "parallel-public",
+]);
+
 const SELECTIONS = Object.freeze({
   standard: (entry) => entry.tier === "standard",
   stress: (entry) => entry.tier === "stress",
@@ -111,7 +122,11 @@ function caseSpec(entry) {
       certification: entry.certification,
     },
     local_factors: entry.localIndexFactors,
-    local_primes: [],
+    local_primes: (entry.localIndexFactors || [])
+      .filter((factor) => factor.state === "proven-prime")
+      .map((factor) => String(factor.value))
+      .filter((value) => BigInt(value) <= (1n << 64n) - 1n),
+    native_kernel_eligible: entry.primeSupportCertified === true,
     profiles: ["final"],
     inner_iterations: 1,
     provenance: entry.provenance,
@@ -119,6 +134,143 @@ function caseSpec(entry) {
     corpus_tier: entry.tier,
     corpus_tags: entry.tags,
   };
+}
+
+function binomial(n, k) {
+  let answer = 1n;
+  for (let index = 1; index <= k; index += 1) {
+    answer = answer * BigInt(n - k + index) / BigInt(index);
+  }
+  return answer;
+}
+
+function translatePolynomial(coefficients, offset) {
+  const shift = BigInt(offset);
+  const result = Array.from({ length: coefficients.length }, () => 0n);
+  for (let degree = 0; degree < coefficients.length; degree += 1) {
+    const coefficient = BigInt(coefficients[degree]);
+    for (let target = 0; target <= degree; target += 1) {
+      result[target] += coefficient * binomial(degree, target) *
+        shift ** BigInt(degree - target);
+    }
+  }
+  return result.map(String);
+}
+
+function seededWords(seed) {
+  let state = Number(seed) >>> 0;
+  if (state === 0) state = 0x9e3779b9;
+  return () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+}
+
+function buildRandomizedEvidenceManifest({
+  seed = 20260818,
+  count = 8,
+  corpusPath = DEFAULT_CORPUS,
+  systemBoundaries = SYSTEM_BOUNDARIES,
+  timeoutMs = 5_000,
+  warmups = 0,
+  samples = 1,
+} = {}) {
+  if (!Number.isSafeInteger(seed) || seed < 0) throw new Error("randomized seed must be nonnegative");
+  if (!Number.isSafeInteger(count) || count <= 0) throw new Error("randomized count must be positive");
+  const corpus = loadCorpus(corpusPath);
+  const parents = corpus.cases.filter((entry) =>
+    entry.tier === "standard" && entry.basis.state === "available" &&
+    entry.polynomial.coefficients.length <= 17,
+  );
+  if (!parents.length) throw new Error("corrected corpus has no randomized-generator parents");
+  const next = seededWords(seed);
+  const transformations = [];
+  const cases = [];
+  for (let index = 0; index < count; index += 1) {
+    const parent = parents[next() % parents.length];
+    let offset = Number(next() % 11) - 5;
+    if (offset === 0) offset = 1;
+    const coefficients = translatePolynomial(parent.polynomial.coefficients, offset);
+    const caseId = `randomized-generator-${seed}-${index}-${parent.id}`;
+    const entry = {
+      ...parent,
+      id: caseId,
+      tier: "randomized",
+      polynomial: {
+        coefficients,
+        digest: polynomialDigest(coefficients),
+      },
+      basis: { state: "unavailable", denominator: null, digest: null, numerator: null },
+      provenance: {
+        source: "sagejs-randomized-equivalent-generator",
+        parent: parent.id,
+        seed,
+        ordinal: index,
+        transformation: `x -> x + (${offset})`,
+      },
+      tags: [...new Set([...(parent.tags || []), "equivalent-generator", "randomized-generator"])],
+    };
+    cases.push(caseSpec(entry));
+    transformations.push({
+      case_id: caseId,
+      parent_case_id: parent.id,
+      offset,
+      polynomial_digest: entry.polynomial.digest,
+    });
+  }
+  const schedule = {
+    schema: "sagejs.number-fields/randomized-generator-schedule-v1",
+    seed,
+    count,
+    transformations,
+  };
+  const profile = {
+    description: "Deterministic randomized equivalent-generator exactness evidence",
+    case_ids: cases.map((entry) => entry.id),
+    warmups,
+    samples,
+    timeout_ms: timeoutMs,
+    systems: Object.fromEntries(
+      Object.entries(systemBoundaries).map(([system, boundaries]) => [system, [...boundaries]]),
+    ),
+  };
+  const policyIdentity = {
+    schema_version: 1,
+    selection: "randomized",
+    corpus_manifest_digest: corpus.manifestDigest,
+    profile,
+    schedule,
+    implementation_families: IMPLEMENTATION_FAMILIES,
+  };
+  const manifest = {
+    schema_version: 1,
+    id: `sagejs-number-field-maximal-order-randomized-${seed}-v1`,
+    description: "Seeded translated-generator cases derived from the corrected corpus",
+    corpus: "test/fixtures/number-field-maximal-order-corpus.json",
+    implementation_families: IMPLEMENTATION_FAMILIES,
+    defaults: { warmups, samples, memory_limit_mb: 4096 },
+    system_limits: Object.fromEntries(Object.keys(SYSTEM_BOUNDARIES).map((system) => [
+      system,
+      { memory_limit_mb: system === "oscar" ? 6144 : 4096 },
+    ])),
+    profiles: { final: profile },
+    cases,
+    policy_digest: digest(policyIdentity),
+    randomized_generator_schedule: schedule,
+    corpus_metadata: {
+      path: "test/fixtures/number-field-maximal-order-corpus.json",
+      manifest_digest: corpus.manifestDigest,
+      case_count: corpus.cases.length,
+      selected_case_count: cases.length,
+      selection: "randomized",
+      seed,
+    },
+  };
+  const errors = validateManifest(manifest);
+  if (errors.length) throw new Error(`invalid randomized evidence manifest:\n- ${errors.join("\n- ")}`);
+  return manifest;
 }
 
 function buildEvidenceManifest({
@@ -191,9 +343,12 @@ function buildEvidenceManifest({
 module.exports = {
   DEFAULT_CORPUS,
   IMPLEMENTATION_FAMILIES,
+  SAGEJS_EVIDENCE_BOUNDARIES,
   SELECTIONS,
   SYSTEM_BOUNDARIES,
+  buildRandomizedEvidenceManifest,
   buildEvidenceManifest,
   loadCorpus,
   selectCases,
+  translatePolynomial,
 };

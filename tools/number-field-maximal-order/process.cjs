@@ -37,6 +37,47 @@ function readRssKilobytes(pid) {
   }
 }
 
+function processChildren(pid) {
+  if (process.platform !== "linux" || !pid) return [];
+  try {
+    const text = readFileSync(`/proc/${pid}/task/${pid}/children`, "utf8").trim();
+    return text ? text.split(/\s+/).map(Number).filter(Number.isSafeInteger) : [];
+  } catch {
+    return [];
+  }
+}
+
+function readProcessTreeRssKilobytes(pid) {
+  if (process.platform !== "linux") {
+    const kilobytes = readRssKilobytes(pid);
+    return {
+      kilobytes,
+      scope: "process-only",
+      observed_processes: kilobytes === null ? 0 : 1,
+    };
+  }
+  const pending = [pid];
+  const seen = new Set();
+  let total = 0;
+  let observed = 0;
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current || seen.has(current)) continue;
+    seen.add(current);
+    const rss = readRssKilobytes(current);
+    if (rss !== null) {
+      total += rss;
+      observed += 1;
+    }
+    pending.push(...processChildren(current));
+  }
+  return {
+    kilobytes: observed ? total : null,
+    scope: "process-tree",
+    observed_processes: observed,
+  };
+}
+
 function boundedSpawn(command, args, { env, cwd, memoryMb } = {}) {
   const executable = resolveExecutable(command, env);
   if (!executable) return { child: null, executable: null, command, args };
@@ -163,6 +204,8 @@ class PersistentLineProcess {
       line: line.slice(this.resultPrefix.length),
       wall_ms: wallMs,
       peak_rss_kb: pending.peakRss,
+      peak_rss_scope: pending.peakRssScope,
+      peak_rss_observed_processes: pending.peakRssObservedProcesses,
       stderr: this.stderr,
       output_lines: pending.outputLines,
     });
@@ -188,6 +231,9 @@ class PersistentLineProcess {
       exit_code: code,
       signal,
       pid: child?.pid,
+      peak_rss_kb: pending.peakRss,
+      peak_rss_scope: pending.peakRssScope,
+      peak_rss_observed_processes: pending.peakRssObservedProcesses,
     });
   }
 
@@ -236,12 +282,24 @@ class PersistentLineProcess {
       const pending = {
         resolve,
         started: process.hrtime.bigint(),
-        peakRss: readRssKilobytes(this.child.pid),
+        peakRss: null,
+        peakRssScope: process.platform === "linux" ? "process-tree" : "process-only",
+        peakRssObservedProcesses: 0,
         outputLines: [],
       };
+      const initialRss = readProcessTreeRssKilobytes(this.child.pid);
+      pending.peakRss = initialRss.kilobytes;
+      pending.peakRssScope = initialRss.scope;
+      pending.peakRssObservedProcesses = initialRss.observed_processes || 0;
       pending.rssTimer = setInterval(() => {
-        const rss = readRssKilobytes(this.child?.pid);
-        if (rss !== null) pending.peakRss = Math.max(pending.peakRss || 0, rss);
+        const snapshot = readProcessTreeRssKilobytes(this.child?.pid);
+        if (snapshot.kilobytes !== null) {
+          pending.peakRss = Math.max(pending.peakRss || 0, snapshot.kilobytes);
+          pending.peakRssObservedProcesses = Math.max(
+            pending.peakRssObservedProcesses,
+            snapshot.observed_processes || 0,
+          );
+        }
       }, 10);
       pending.timer = setTimeout(() => {
         if (this.pending !== pending) return;
@@ -253,6 +311,8 @@ class PersistentLineProcess {
           status: "timeout",
           timeout_ms: timeoutMs,
           peak_rss_kb: peakRss,
+          peak_rss_scope: pending.peakRssScope,
+          peak_rss_observed_processes: pending.peakRssObservedProcesses,
           stderr: this.stderr,
         });
       }, timeoutMs);
@@ -293,6 +353,7 @@ module.exports = {
   PersistentLineProcess,
   boundedSpawn,
   commandVersion,
+  readProcessTreeRssKilobytes,
   readRssKilobytes,
   resolveExecutable,
 };
