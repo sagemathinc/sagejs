@@ -842,8 +842,15 @@ def _unramified_branch_valuation(
 
 def _branch_approximant(tree: OMTypeTree, branch_index: int) -> Polynomial:
     branch = tree.types[branch_index]
-    if branch.levels:
-        approximant = representative_from_level(branch.levels[-1], tree.prime)
+    active = tuple(level for level in branch.levels if not level.optimized_away)
+    if active and polynomial_degree(active[-1].key_polynomial) == branch.branch_degree:
+        approximant = active[-1].key_polynomial
+    elif len(active) == 2 and [level.order for level in active] == [1, 2]:
+        from .om_higher_residue import order_two_representative
+
+        approximant = order_two_representative(tree.prime, active[0], active[1])
+    elif active:
+        approximant = representative_from_level(active[-1], tree.prime)
     else:
         approximant = branch.initial_factor
     if polynomial_degree(approximant) != branch.branch_degree or approximant[-1] != 1:
@@ -851,6 +858,65 @@ def _branch_approximant(tree: OMTypeTree, branch_index: int) -> Polynomial:
             "the bounded branch representative does not have its certified degree"
         )
     return approximant
+
+
+def _mixed_radix_branch_table(
+    tree: OMTypeTree,
+    branch_index: int,
+) -> LocalNumeratorTable:
+    """Build one extended Okutsu table from its increasing key degrees."""
+    branch = tree.types[branch_index]
+    active = tuple(level for level in branch.levels if not level.optimized_away)
+    keys = tuple(
+        level.key_polynomial
+        for level in active
+        if polynomial_degree(level.key_polynomial) < branch.branch_degree
+    )
+    key_degrees = tuple(polynomial_degree(key) for key in keys)
+    if not keys or key_degrees[0] <= 0:
+        raise OMDomainError("mixed-radix numerators require positive key degrees")
+    if (
+        any(
+            right % left
+            for left, right in zip(key_degrees, key_degrees[1:], strict=False)
+        )
+        or branch.branch_degree % key_degrees[-1]
+    ):
+        raise OMDomainError("mixed-radix key degrees are not nested")
+    numerators: list[Polynomial] = []
+    for candidate_degree in range(branch.branch_degree):
+        remaining = candidate_degree
+        numerator: Polynomial = (1,)
+        for key, key_degree in reversed(tuple(zip(keys, key_degrees, strict=True))):
+            digit, remaining = divmod(remaining, key_degree)
+            if digit:
+                numerator = polynomial_multiply(
+                    numerator,
+                    polynomial_power(key, digit),
+                )
+        if remaining or polynomial_degree(numerator) != candidate_degree:
+            raise OMDomainError("a mixed-radix numerator has the wrong degree")
+        numerators.append(numerator)
+    numerators.append(_branch_approximant(tree, branch_index))
+    valuations: list[tuple[FiniteValuation, ...]] = []
+    for numerator_index, numerator in enumerate(numerators):
+        row: list[FiniteValuation] = []
+        for other_index, other in enumerate(tree.types):
+            if numerator_index == branch.branch_degree and branch_index == other_index:
+                row.append(None)
+            else:
+                value = maclane_valuation(numerator, tree.prime, other.levels)
+                if value is None:
+                    raise ArithmeticError(
+                        "a proper mixed-radix numerator has infinite value"
+                    )
+                row.append(value)
+        valuations.append(tuple(row))
+    return LocalNumeratorTable(
+        branch.branch_id,
+        tuple(numerators),
+        tuple(valuations),
+    )
 
 
 def _bounded_branch_table(
@@ -1104,6 +1170,199 @@ def _order_two_quotient_hnf_selection(
     )
 
 
+def _mixed_quotient_hnf_selection(tree: OMTypeTree) -> MaxMinCertificate | None:
+    """Build terminal-side quotient products for a bounded depth-three tree."""
+    if not any(
+        any(level.order == 3 for level in branch.levels) for branch in tree.types
+    ):
+        return None
+    groups: list[tuple[tuple[OMLevel, ...], list[int]]] = []
+    signatures = []
+    for branch_index, branch in enumerate(tree.types):
+        active = tuple(level for level in branch.levels if not level.optimized_away)
+        if not active or active[-1].multiplicity != 1:
+            return None
+        signature = tuple(
+            (
+                level.order,
+                level.key_polynomial,
+                level.slope,
+                level.residual_factor if level is not active[-1] else (),
+            )
+            for level in active
+        )
+        if signature in signatures:
+            groups[signatures.index(signature)][1].append(branch_index)
+        else:
+            signatures.append(signature)
+            groups.append((active, [branch_index]))
+    polynomial = tree.polynomial
+    prime = tree.prime
+    degree = polynomial_degree(polynomial)
+    initial_degree = polynomial_degree(tree.initial_factors[0].polynomial)
+    elements: list[tuple[Polynomial, int]] = []
+    for levels, branch_indices in groups:
+        products: list[tuple[Polynomial, RationalValue]] = [((1,), RationalValue(0))]
+        prior: tuple[OMLevel, ...] = ()
+        previous_ramification = 1
+        for level_index, level in enumerate(levels):
+            if level_index == 0:
+                sides = tuple(
+                    side
+                    for side in newton_polygon(polynomial, prime, level.key_polynomial)
+                    if side.slope == level.slope
+                )
+            else:
+                sides = tuple(
+                    side
+                    for side in higher_newton_polygon(
+                        polynomial,
+                        prime,
+                        level.key_polynomial,
+                        prior,
+                    )
+                    if side.slope == level.slope
+                )
+            if len(sides) != 1:
+                return None
+            side = sides[0]
+            if level_index == len(levels) - 1:
+                digit_count = sum(
+                    tree.types[index].levels[-1].ramification_index
+                    * tree.types[index].levels[-1].residue_degree
+                    for index in branch_indices
+                )
+            else:
+                digit_count = level.ramification_index * level.residue_degree
+            quotients = phi_quotients(polynomial, level.key_polynomial)
+            key_value = maclane_integer_valuation(
+                level.key_polynomial,
+                prime,
+                prior,
+            )
+            if key_value is None:
+                return None
+            choices: list[tuple[Polynomial, RationalValue]] = []
+            for digit in range(digit_count):
+                quotient_number = side.right.abscissa - digit
+                if quotient_number <= 0 or quotient_number > len(quotients):
+                    return None
+                height = (
+                    side.ordinate_at(quotient_number) - quotient_number * key_value
+                ) / previous_ramification
+                choices.append((quotients[quotient_number - 1], height))
+            expanded: list[tuple[Polynomial, RationalValue]] = []
+            for product, product_height in products:
+                for quotient, quotient_height in choices:
+                    expanded.append(
+                        (
+                            _reduce_power_numerator(
+                                polynomial_multiply(product, quotient),
+                                polynomial,
+                            ),
+                            product_height + quotient_height,
+                        )
+                    )
+            products = expanded
+            prior += (level,)
+            previous_ramification *= level.ramification_index
+        for product, height in products:
+            for initial_index in range(initial_degree):
+                numerator = _reduce_power_numerator(
+                    polynomial_multiply(
+                        product,
+                        (0,) * initial_index + (1,),
+                    ),
+                    polynomial,
+                )
+                exponent = height.floor()
+                if exponent < 0:
+                    raise ArithmeticError("a mixed quotient denominator is negative")
+                elements.append((numerator, exponent))
+    if len(elements) != degree:
+        return None
+    normalized_elements: list[tuple[Polynomial, int]] = []
+    for numerator, exponent in elements:
+        content_exponent = exponent
+        for coefficient in numerator:
+            if coefficient == 0:
+                continue
+            coefficient_exponent = 0
+            remaining = abs(coefficient)
+            while remaining % prime == 0:
+                coefficient_exponent += 1
+                remaining //= prime
+            content_exponent = min(content_exponent, coefficient_exponent)
+        if content_exponent:
+            divisor = prime**content_exponent
+            numerator = tuple(coefficient // divisor for coefficient in numerator)
+            exponent -= content_exponent
+        normalized_elements.append((numerator, exponent))
+    elements = normalized_elements
+    common_exponent = max((exponent for _numerator, exponent in elements), default=0)
+    common_denominator = prime**common_exponent
+    rows = [
+        [
+            (numerator[index] if index < len(numerator) else 0)
+            * prime ** (common_exponent - exponent)
+            % common_denominator
+            for index in range(degree)
+        ]
+        for numerator, exponent in elements
+    ]
+    hermite = [
+        [common_denominator if row == column else 0 for column in range(degree)]
+        for row in range(degree)
+    ]
+    for row in rows:
+        hermite = _row_hermite(hermite + [row], degree)
+    candidates: list[MaxMinCandidate] = []
+    local_index = 0
+    for candidate_degree, row in enumerate(hermite):
+        diagonal = row[candidate_degree]
+        if (
+            diagonal <= 0
+            or common_denominator % diagonal
+            or any(row[index] for index in range(candidate_degree + 1, degree))
+            or any(row[index] % diagonal for index in range(candidate_degree + 1))
+        ):
+            raise ArithmeticError("mixed quotient HNF is not monic triangular")
+        denominator = common_denominator // diagonal
+        denominator_exponent = 0
+        remaining = denominator
+        while remaining % prime == 0:
+            denominator_exponent += 1
+            remaining //= prime
+        if remaining != 1:
+            raise ArithmeticError("mixed quotient denominator is not a prime power")
+        local_index += denominator_exponent
+        numerator = normalize_polynomial(
+            tuple(row[index] // diagonal for index in range(candidate_degree + 1))
+        )
+        value = RationalValue(denominator_exponent)
+        candidates.append(
+            MaxMinCandidate(
+                candidate_degree,
+                (),
+                numerator,
+                tuple(value for _branch in tree.types),
+                value,
+                0,
+            )
+        )
+    if local_index != tree.expected_index_valuation:
+        raise ArithmeticError("mixed quotient HNF index differs from the OM tree")
+    return MaxMinCertificate(
+        "gmn-mixed-radix-quotient-hnf",
+        tuple(branch.branch_id for branch in tree.types),
+        tuple(candidates),
+        (),
+        len(elements),
+        True,
+        (),
+    )
+
+
 def _higher_terminal_quotient_selection(
     tree: OMTypeTree,
 ) -> MaxMinCertificate | None:
@@ -1311,12 +1570,22 @@ def regular_local_basis(
             _not_applicable_result(tree, metrics, message),
         )
     try:
-        terminal_selection = _higher_terminal_quotient_selection(tree)
+        terminal_selection = _mixed_quotient_hnf_selection(tree)
+        if terminal_selection is None:
+            terminal_selection = _higher_terminal_quotient_selection(tree)
         if terminal_selection is None:
             terminal_selection = _order_two_quotient_hnf_selection(tree)
         if terminal_selection is None:
+            has_order_three = any(
+                any(level.order == 3 for level in branch.levels)
+                for branch in tree.types
+            )
             tables = tuple(
-                _bounded_branch_table(tree, branch_index)
+                (
+                    _mixed_radix_branch_table(tree, branch_index)
+                    if has_order_three
+                    else _bounded_branch_table(tree, branch_index)
+                )
                 for branch_index in range(len(tree.types))
             )
             maxmin = maxmin_select(tables)

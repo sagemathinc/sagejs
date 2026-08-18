@@ -1300,6 +1300,223 @@ def _level_with_index(level: OMLevel, contribution: int, evidence: str) -> OMLev
     )
 
 
+def _analyze_order_three_higher_key(
+    polynomial: Polynomial,
+    prime: int,
+    initial_factor: ModularFactor,
+    parent_branch_id: str,
+    representative: Polynomial,
+    prior_levels: tuple[OMLevel, ...],
+    expected_branch_degree: int,
+    maximum_valuation: int,
+    *,
+    max_enumerated_candidates: int,
+    max_representative_refinements: int,
+    max_type_depth: int,
+) -> tuple[tuple[OMType, ...], int]:
+    """Certify a quadratic second residue through bounded order three."""
+    from .om_higher_residue import (
+        order_three_refinement,
+        order_three_residual_evidence,
+    )
+
+    prefix = parent_branch_id + "o" + str(len(prior_levels) + 1)
+    factor_degree = polynomial_degree(initial_factor.polynomial)
+    active = _active_levels(prior_levels)
+    state = "order-three-residual-unsupported"
+    if len(active) != 2 or [level.order for level in active] != [1, 2]:
+        state = "order-three-type-unsupported"
+    elif len(active[1].residual_factor) != 3 or any(
+        len(coefficient) != 1 for coefficient in active[1].residual_factor
+    ):
+        state = "order-three-residue-field-unsupported"
+    elif len(prior_levels) >= max_type_depth:
+        state = "type-depth-bound"
+    else:
+        key = representative
+        trace_levels = prior_levels
+        refinements = 0
+        while True:
+            sides = higher_newton_polygon(polynomial, prime, key, active)
+            if not sides:
+                state = "order-three-no-negative-side"
+                break
+            if any(side.lattice_length() > 2 for side in sides):
+                state = "order-three-residual-degree-unsupported"
+                break
+            previous_value = maclane_integer_valuation(key, prime, active)
+            if previous_value is None:
+                raise ArithmeticError("an order-three key has infinite value")
+            modulus = tuple(coefficient[0] for coefficient in active[1].residual_factor)
+            residual_data = []
+            total_branch_degree = 0
+            for side in sides:
+                evidence = order_three_residual_evidence(
+                    polynomial,
+                    prime,
+                    key,
+                    active[0],
+                    active[1],
+                    side,
+                )
+                factors = factor_residual_polynomial(
+                    evidence.polynomial,
+                    prime,
+                    modulus,
+                    max_enumerated_candidates=max_enumerated_candidates,
+                )
+                residual_data.append((side, evidence, factors))
+                total_branch_degree += sum(
+                    factor_degree
+                    * _ramification_product(active)
+                    * _residual_degree_product(active)
+                    * side.ramification_index
+                    * (len(factor.polynomial) - 1)
+                    * factor.multiplicity
+                    for factor in factors
+                )
+            if total_branch_degree != expected_branch_degree:
+                state = "order-three-local-degree-mismatch"
+                break
+            if len(residual_data) == 1:
+                side, evidence, factors = residual_data[0]
+                if (
+                    len(factors) == 1
+                    and len(factors[0].polynomial) == 2
+                    and factors[0].multiplicity > 1
+                ):
+                    if refinements >= max_representative_refinements:
+                        state = "representative-refinement-bound"
+                        break
+                    repeated = factors[0]
+                    optimized = OMLevel(
+                        3,
+                        key,
+                        RationalValue(
+                            side.ramification_index * previous_value + side.height,
+                            side.ramification_index * _ramification_product(active),
+                        ),
+                        side.slope,
+                        modulus,
+                        evidence.polynomial,
+                        repeated.polynomial,
+                        side.ramification_index,
+                        1,
+                        repeated.multiplicity,
+                        0,
+                        maximum_valuation + len(trace_levels) + 1,
+                        len(trace_levels),
+                        True,
+                        "order-three-representative-optimized-away;active="
+                        + str(evidence.active_exponents)
+                        + ";components="
+                        + str(evidence.component_abscissas)
+                        + ";twists="
+                        + str(evidence.twist_exponents),
+                    )
+                    key = order_three_refinement(
+                        prime,
+                        active[0],
+                        active[1],
+                        key,
+                        side,
+                        repeated.polynomial,
+                    )
+                    trace_levels += (optimized,)
+                    refinements += 1
+                    continue
+            side_indices = relative_polygon_side_indices(sides)
+            index_weight = factor_degree * _residual_degree_product(active)
+            branches: list[OMType] = []
+            emitted = 0
+            for side_index, (
+                (side, evidence, factors),
+                side_index_value,
+            ) in enumerate(zip(residual_data, side_indices, strict=True)):
+                for residual_index, factor in enumerate(factors):
+                    residual_degree = len(factor.polynomial) - 1
+                    weighted_index = (
+                        index_weight * side_index_value if residual_index == 0 else 0
+                    )
+                    branch_levels = trace_levels
+                    if emitted:
+                        branch_levels = tuple(
+                            _level_with_index(level, 0, "shared-order-three-branch")
+                            if level.index_contribution
+                            else level
+                            for level in branch_levels
+                        )
+                    higher_level = OMLevel(
+                        3,
+                        key,
+                        RationalValue(
+                            side.ramification_index * previous_value + side.height,
+                            side.ramification_index * _ramification_product(active),
+                        ),
+                        side.slope,
+                        modulus,
+                        evidence.polynomial,
+                        factor.polynomial,
+                        side.ramification_index,
+                        residual_degree,
+                        factor.multiplicity,
+                        weighted_index,
+                        maximum_valuation + len(trace_levels) + 1,
+                        len(trace_levels),
+                        False,
+                        "gmn-order-three-terminal-side;active="
+                        + str(evidence.active_exponents)
+                        + ";components="
+                        + str(evidence.component_abscissas)
+                        + ";twists="
+                        + str(evidence.twist_exponents)
+                        + ";montes-higher-polygon-index="
+                        + str(weighted_index),
+                    )
+                    branch_degree = (
+                        factor_degree
+                        * _ramification_product(active)
+                        * _residual_degree_product(active)
+                        * side.ramification_index
+                        * residual_degree
+                        * factor.multiplicity
+                    )
+                    complete = factor.multiplicity == 1
+                    branches.append(
+                        OMType(
+                            prefix + "s" + str(side_index) + "r" + str(residual_index),
+                            prefix,
+                            prime,
+                            initial_factor.polynomial,
+                            initial_factor.multiplicity,
+                            branch_levels + (higher_level,),
+                            branch_degree,
+                            complete,
+                            "complete"
+                            if complete
+                            else "order-three-repeated-residual-unsupported",
+                        )
+                    )
+                    emitted += 1
+            return tuple(branches), sum(index_weight * value for value in side_indices)
+    return (
+        (
+            OMType(
+                prefix + "s0r0",
+                prefix,
+                prime,
+                initial_factor.polynomial,
+                initial_factor.multiplicity,
+                prior_levels,
+                expected_branch_degree,
+                False,
+                state,
+            ),
+        ),
+        0,
+    )
+
+
 def _analyze_order_two_higher_key(
     polynomial: Polynomial,
     prime: int,
@@ -1311,6 +1528,7 @@ def _analyze_order_two_higher_key(
     maximum_valuation: int,
     *,
     max_enumerated_candidates: int,
+    max_representative_refinements: int,
     max_type_depth: int,
 ) -> tuple[tuple[OMType, ...], int]:
     """Certify bounded order-two types through the exact residual operator."""
@@ -1326,10 +1544,11 @@ def _analyze_order_two_higher_key(
         sides = higher_newton_polygon(polynomial, prime, representative, active)
         if not sides:
             state = "higher-no-negative-side"
-        elif any(side.lattice_length() > 2 for side in sides):
-            state = "higher-residual-degree-unsupported"
         else:
-            from .om_higher_residue import order_two_residual_evidence
+            from .om_higher_residue import (
+                order_two_representative,
+                order_two_residual_evidence,
+            )
 
             previous_value = maclane_integer_valuation(representative, prime, active)
             if previous_value is None:
@@ -1350,6 +1569,14 @@ def _analyze_order_two_higher_key(
                         side,
                     )
                 except OMDomainError:
+                    state = "higher-residual-degree-unsupported"
+                    residual_data = []
+                    break
+                sparse_prime_field_length = len(evidence.active_exponents) - 1
+                if side.lattice_length() > 2 and not (
+                    polynomial_degree(active[0].residual_field_modulus) == 1
+                    and sparse_prime_field_length <= 4
+                ):
                     state = "higher-residual-degree-unsupported"
                     residual_data = []
                     break
@@ -1374,6 +1601,7 @@ def _analyze_order_two_higher_key(
             elif total_branch_degree == expected_branch_degree:
                 branches: list[OMType] = []
                 emitted = 0
+                deeper_index = 0
                 for side_index, (
                     (side, evidence, factors),
                     side_index_value,
@@ -1405,6 +1633,8 @@ def _analyze_order_two_higher_key(
                         index_evidence = (
                             "gmn-terminal-side;gmn-definition-2.19-components="
                             + str(evidence.component_abscissas)
+                            + ";active="
+                            + str(evidence.active_exponents)
                             + ";twists="
                             + str(evidence.twist_exponents)
                             + ";montes-higher-polygon-index="
@@ -1432,28 +1662,56 @@ def _analyze_order_two_higher_key(
                             index_evidence,
                         )
                         complete = factor.multiplicity == 1
-                        branches.append(
-                            OMType(
-                                prefix
-                                + "s"
-                                + str(side_index)
-                                + "r"
-                                + str(residual_index),
-                                prefix,
-                                prime,
-                                initial_factor.polynomial,
-                                initial_factor.multiplicity,
-                                branch_levels + (higher_level,),
-                                branch_degree,
-                                complete,
-                                "complete"
-                                if complete
-                                else "higher-repeated-residual-unsupported",
-                            )
+                        branch_id = (
+                            prefix + "s" + str(side_index) + "r" + str(residual_index)
                         )
+                        if (
+                            not complete
+                            and residual_degree == 2
+                            and factor.multiplicity == 2
+                        ):
+                            next_representative = order_two_representative(
+                                prime,
+                                active[0],
+                                higher_level,
+                            )
+                            deeper_branches, contribution = (
+                                _analyze_order_three_higher_key(
+                                    polynomial,
+                                    prime,
+                                    initial_factor,
+                                    branch_id,
+                                    next_representative,
+                                    branch_levels + (higher_level,),
+                                    branch_degree,
+                                    maximum_valuation,
+                                    max_enumerated_candidates=max_enumerated_candidates,
+                                    max_representative_refinements=max_representative_refinements,
+                                    max_type_depth=max_type_depth,
+                                )
+                            )
+                            branches.extend(deeper_branches)
+                            deeper_index += contribution
+                        else:
+                            branches.append(
+                                OMType(
+                                    branch_id,
+                                    prefix,
+                                    prime,
+                                    initial_factor.polynomial,
+                                    initial_factor.multiplicity,
+                                    branch_levels + (higher_level,),
+                                    branch_degree,
+                                    complete,
+                                    "complete"
+                                    if complete
+                                    else "higher-repeated-residual-unsupported",
+                                )
+                            )
                         emitted += 1
-                return tuple(branches), sum(
-                    index_weight * value for value in side_indices
+                return (
+                    tuple(branches),
+                    sum(index_weight * value for value in side_indices) + deeper_index,
                 )
             else:
                 state = "higher-local-degree-mismatch"
@@ -1615,6 +1873,7 @@ def _analyze_bounded_key(
                     branch_degree,
                     maximum_valuation,
                     max_enumerated_candidates=max_enumerated_candidates,
+                    max_representative_refinements=max_representative_refinements,
                     max_type_depth=max_type_depth,
                 )
                 return (
@@ -1686,6 +1945,7 @@ def _analyze_bounded_key(
                         branch_degree,
                         maximum_valuation,
                         max_enumerated_candidates=max_enumerated_candidates,
+                        max_representative_refinements=max_representative_refinements,
                         max_type_depth=max_type_depth,
                     )
                     branches.extend(higher_branches)
