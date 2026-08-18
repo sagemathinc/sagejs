@@ -24,6 +24,8 @@ from sagejs.native import (
 )
 from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
 
+_flint_module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
 ANALYSIS_FALLBACK_ARBITRARY_PRIME = 2
@@ -39,6 +41,15 @@ COMPONENT_ARBITRARY_PRIME = 2
 
 _MR64_BASES = [2, 325, 9375, 28178, 450775, 9780504, 1795265022]
 _PROBABLE_BASES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41]
+
+
+def _new_projection_workspace_cache() -> dict[
+    tuple[int, int, int, int], tuple[Any, ...]
+]:
+    return {}
+
+
+_projection_workspace_cache = _new_projection_workspace_cache()
 
 
 def _byte(payload: Any, index: int) -> int:
@@ -1863,15 +1874,45 @@ def authenticated_field_analysis_projection_matches(
     polynomial: list[int],
     scale: int,
     trial_bound: int,
+    equation_discriminant: int | None = None,
+    basis_numerator: list[list[int]] | None = None,
+    basis_denominator: int | None = None,
+    index: int | None = None,
+    order_discriminant: int | None = None,
 ) -> bool:
-    """Bind a live compact projection to the exact public request."""
-    return bool(
-        type(result) is AuthenticatedFieldAnalysisProjection
-        and result.certified is True
-        and tuple(int(value) for value in polynomial) == result.polynomial
-        and int(scale) == result.scale
-        and int(trial_bound) == result.trial_bound
-    )
+    """Bind a live compact projection to request or certificate data."""
+    if (
+        type(result) is not AuthenticatedFieldAnalysisProjection
+        or result.certified is not True
+        or tuple(int(value) for value in polynomial) != result.polynomial
+        or int(scale) != result.scale
+        or int(trial_bound) != result.trial_bound
+    ):
+        return False
+    if (
+        equation_discriminant is not None
+        and int(equation_discriminant) != result.equation_discriminant
+    ):
+        return False
+    if (
+        basis_numerator is not None
+        and tuple(tuple(int(value) for value in row) for row in basis_numerator)
+        != result.basis_numerator
+    ):
+        return False
+    if (
+        basis_denominator is not None
+        and int(basis_denominator) != result.basis_denominator
+    ):
+        return False
+    if index is not None and int(index) != result.index:
+        return False
+    if (
+        order_discriminant is not None
+        and int(order_discriminant) != result.order_discriminant
+    ):
+        return False
+    return True
 
 
 def _analysis_authentication_snapshot(
@@ -2289,19 +2330,38 @@ def decode_field_analysis_projection(
         raise ValueError("field-analysis entry count is inconsistent")
 
     kernel = packed_field_analysis_authenticate_projection
-    decoded = kernel_integer_zeros(kernel, entry_count, 64)
-    projection = kernel_integer_zeros(
-        kernel, 11 + 3 * component_count + degree * degree, 64
-    )
-    polynomial = kernel_integer_zeros(kernel, degree + 1, 64)
-    numerator = kernel_integer_zeros(kernel, degree * degree, 64)
-    primes = kernel_integer_zeros(kernel, witness_count, 64)
-    radical_dimensions = kernel_integer_zeros(kernel, witness_count, 64)
-    radicals = kernel_integer_zeros(kernel, witness_count * degree * degree, 64)
-    selectors = kernel_integer_zeros(kernel, witness_count * degree, 64)
-    square = degree * degree
-    workspace_length = degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
-    workspace = kernel_integer_zeros(kernel, workspace_length, 64)
+    shape = (degree, component_count, witness_count, entry_count)
+    buffers = _projection_workspace_cache.get(shape)
+    if buffers is None:
+        square = degree * degree
+        workspace_length = (
+            degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
+        )
+        buffers = (
+            kernel_integer_zeros(kernel, entry_count, 64),
+            kernel_integer_zeros(
+                kernel, 11 + 3 * component_count + degree * degree, 64
+            ),
+            kernel_integer_zeros(kernel, degree + 1, 64),
+            kernel_integer_zeros(kernel, degree * degree, 64),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count * degree * degree, 64),
+            kernel_integer_zeros(kernel, witness_count * degree, 64),
+            kernel_integer_zeros(kernel, workspace_length, 64),
+        )
+        _projection_workspace_cache[shape] = buffers
+    (
+        decoded,
+        projection,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+    ) = buffers
     if not kernel(
         kernel_uint64_buffer(kernel, payload),
         decoded,
@@ -2382,15 +2442,31 @@ def native_field_analysis_projection_from_polynomial(
         raise ValueError("field analysis requires a positive generator scale")
     if bound < 0 or bound > 65536:
         raise ValueError("field-analysis trial bound must be between 0 and 65536")
-    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
-    resource = flint.number_field_analyze_resource(polynomial, scale_value, bound)
+    return _native_field_analysis_projection_from_polynomial_bound(
+        polynomial,
+        coefficients,
+        scale_value,
+        bound,
+    )
+
+
+def _native_field_analysis_projection_from_polynomial_bound(
+    polynomial: Any,
+    coefficients: list[int],
+    scale: int,
+    trial_bound: int,
+) -> AuthenticatedFieldAnalysisProjection:
+    """Authenticate a caller-validated immutable polynomial binding."""
+    resource = _flint_module.number_field_analyze_resource(
+        polynomial, scale, trial_bound
+    )
     try:
         payload = resource.copy_bytes()
         return decode_field_analysis_projection(
             payload,
             expected_polynomial=coefficients,
-            expected_scale=scale_value,
-            expected_trial_bound=bound,
+            expected_scale=scale,
+            expected_trial_bound=trial_bound,
         )
     finally:
         resource.close()

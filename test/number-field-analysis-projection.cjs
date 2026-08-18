@@ -141,7 +141,7 @@ print(json.dumps({
         .split(/\r?\n/).at(-1),
     );
     const dynamic = JSON.parse(
-      run([sagejs, script], { env: { SAGEJS_NATIVE_DISABLE: "1" } })
+      run([sagejs, script], { env: { SAGEJS_NATIVE_MODE: "dynamic" } })
         .split(/\r?\n/).at(-1),
     );
     assert.equal(compiled.compiled, true);

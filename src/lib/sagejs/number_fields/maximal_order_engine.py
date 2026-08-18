@@ -94,16 +94,24 @@ def _exact_integer(value: Any) -> int:
 
 
 def _integral_polynomial_data(field: Any) -> tuple[list[int], int]:
-    polynomial = _maximal_order_module().integral_equation_polynomial(field)
-    coefficients = [_exact_integer(value) for value in polynomial.list()]
+    # Ensure the field-owned sealed `ZZ` polynomial resource exists, but avoid
+    # projecting its coefficients back through a Python object list.  The
+    # immutable defining coefficients and cached scale determine exactly the
+    # same transformed polynomial.
+    polynomial = field._integral_equation_polynomial_cache
+    if polynomial is None:
+        polynomial = _maximal_order_module().integral_equation_polynomial(field)
     degree = field.degree()
-    while len(coefficients) < degree + 1:
-        coefficients.append(0)
+    scale = _exact_integer(field._integral_equation_scale_cache)
+    coefficients = []
+    for index, coefficient in enumerate(field._defining_coefficients):
+        numerator = _exact_integer(coefficient._numerator) * scale ** (degree - index)
+        denominator = _exact_integer(coefficient._denominator)
+        if numerator % denominator != 0:
+            raise ArithmeticError("failed to reconstruct the integral polynomial")
+        coefficients.append(numerator // denominator)
     if len(coefficients) != degree + 1 or coefficients[-1] != 1:
         raise ArithmeticError("the integral equation polynomial is not monic")
-    scale = 1
-    for coefficient in field._defining_coefficients:
-        scale = _exact_integer(_nf_lcm(scale, coefficient._denominator))
     return coefficients, scale
 
 
@@ -1227,6 +1235,27 @@ class _CertificateAdapter:
         analysis = self.authenticated_analysis
         if analysis is None or candidate is not self._candidate:
             return False
+        if (
+            type(analysis)
+            is field_analysis_resource.AuthenticatedFieldAnalysisProjection
+        ):
+            return (
+                field_analysis_resource.authenticated_field_analysis_projection_matches(
+                    analysis,
+                    polynomial=list(certificate.get("defining_polynomial", [])),
+                    scale=self.scale,
+                    trial_bound=_FIELD_ANALYSIS_TRIAL_BOUND,
+                    equation_discriminant=int(
+                        certificate.get("equation_discriminant", 0)
+                    ),
+                    basis_numerator=[
+                        list(row) for row in certificate.get("basis_numerator", [])
+                    ],
+                    basis_denominator=int(certificate.get("basis_denominator", 0)),
+                    index=int(certificate.get("index", 0)),
+                    order_discriminant=int(certificate.get("order_discriminant", 0)),
+                )
+            )
         return field_analysis_resource.authenticated_field_analysis_matches(
             analysis,
             polynomial=list(certificate.get("defining_polynomial", [])),
@@ -1283,15 +1312,20 @@ def _proven_decomposition_from_field_analysis(
 
 
 def _authenticated_default_field_analysis(
-    coefficients: list[int], scale: int
-) -> tuple[Any, OrderBasis, dict[str, Any]] | None:
-    """Return a fully rebound fused result, or defer to the established path."""
+    field: Any, coefficients: list[int], scale: int
+) -> Any | None:
+    """Return one compact authenticated projection, or defer fail-closed."""
     if not is_compiled(
-        field_analysis_resource.packed_field_analysis_fixed_points_are_valid
+        field_analysis_resource.packed_field_analysis_authenticate_projection
     ):
         return None
     try:
-        analysis = field_analysis_resource.native_field_analysis(
+        polynomial = field._integral_equation_polynomial_cache
+        if polynomial is None:
+            return None
+        resource = polynomial._exact_polynomial_resource()
+        analysis = field_analysis_resource._native_field_analysis_projection_from_polynomial_bound(
+            resource,
             coefficients,
             scale,
             _FIELD_ANALYSIS_TRIAL_BOUND,
@@ -1300,40 +1334,16 @@ def _authenticated_default_field_analysis(
         # Native availability and resource decoding are an optional boundary.
         return None
     try:
-        if not field_analysis_resource.authenticated_field_analysis_matches(
+        if not field_analysis_resource.authenticated_field_analysis_projection_matches(
             analysis,
             polynomial=coefficients,
             scale=scale,
             trial_bound=_FIELD_ANALYSIS_TRIAL_BOUND,
         ):
             return None
-        equation_discriminant = int(analysis.equation_discriminant)
-        basis = OrderBasis(
-            [list(row) for row in analysis.basis_numerator],
-            int(analysis.basis_denominator),
-            canonical=True,
-        )
-        analysis_rows = [list(row) for row in analysis.basis_numerator]
-        if basis.numerator != analysis_rows or basis.denominator != int(
-            analysis.basis_denominator
-        ):
-            return None
-        determinant = abs(int(basis.determinant_numerator))
-        denominator_power = basis.denominator**basis.degree
-        if denominator_power % determinant != 0:
-            return None
-        index = denominator_power // determinant
-        if (
-            int(analysis.index) != index
-            or int(analysis.order_discriminant) * index * index != equation_discriminant
-        ):
-            return None
-        decomposition = _proven_decomposition_from_field_analysis(
-            analysis, equation_discriminant
-        )
     except (ArithmeticError, AttributeError, OverflowError, TypeError, ValueError):
         return None
-    return analysis, basis, decomposition
+    return analysis
 
 
 def _authenticated_composite_square_support(
@@ -1690,50 +1700,62 @@ def compute_maximal_order(
             order._maximal_order_trace = public_trace
             return order
 
-        authenticated = _authenticated_default_field_analysis(coefficients, scale)
+        authenticated = _authenticated_default_field_analysis(
+            field, coefficients, scale
+        )
         if authenticated is not None:
-            analysis, basis, decomposition = authenticated
+            analysis = authenticated
             equation_discriminant = int(analysis.equation_discriminant)
-            order = _order_from_basis(
+            order = NumberFieldOrder(
                 field,
-                basis,
-                scale,
-                int(analysis.order_discriminant),
+                [],
+                False,
+                False,
+                (analysis.basis_flat, analysis.basis_denominator, scale),
             )
-            order_discriminant = _exact_integer(order.discriminant())
-            index = _index_from_discriminants(equation_discriminant, order_discriminant)
-            relevant_primes = [
-                int(record["base"])
-                for record in decomposition["components"]
-                if int(record["exponent"]) >= 2
-            ]
-            prime_witnesses = [
-                make_local_maximality_witness(
-                    prime,
-                    "round2",
-                    _valuation(equation_discriminant, prime),
-                    _valuation(order_discriminant, prime),
-                    _valuation(index, prime),
-                    {"check": "independent-round2-fixed-point"},
+            order_discriminant = int(analysis.order_discriminant)
+            order._discriminant_cache = runtime.normalize_integer(order_discriminant)
+
+            def materialize_certificate() -> dict[str, Any]:
+                decomposition = _proven_decomposition_from_field_analysis(
+                    analysis, equation_discriminant
                 )
-                for prime in relevant_primes
-            ]
-            adapter = _CertificateAdapter(
-                coefficients,
-                scale,
-                equation_discriminant,
-                {},
-                relevant_primes,
-                authenticated_analysis=analysis,
+                relevant_primes = [
+                    int(record["base"])
+                    for record in decomposition["components"]
+                    if int(record["exponent"]) >= 2
+                ]
+                index = int(analysis.index)
+                prime_witnesses = [
+                    make_local_maximality_witness(
+                        prime,
+                        "round2",
+                        _valuation(equation_discriminant, prime),
+                        _valuation(order_discriminant, prime),
+                        _valuation(index, prime),
+                        {"check": "independent-round2-fixed-point"},
+                    )
+                    for prime in relevant_primes
+                ]
+                adapter = _CertificateAdapter(
+                    coefficients,
+                    scale,
+                    equation_discriminant,
+                    {},
+                    relevant_primes,
+                    authenticated_analysis=analysis,
+                )
+                adapter.bind_candidate(order)
+                return certify_global_order(
+                    adapter,
+                    order,
+                    decomposition,
+                    prime_witnesses,
+                )
+
+            order._install_authenticated_maximal_order_certificate(
+                materialize_certificate
             )
-            adapter.bind_candidate(order)
-            certificate = certify_global_order(
-                adapter,
-                order,
-                decomposition,
-                prime_witnesses,
-            )
-            order._maximal_order_certificate = certificate
             order._maximal_order_local_evidence = runtime.undefined
             order._maximal_order_trace = trace.to_dict()
             return order
