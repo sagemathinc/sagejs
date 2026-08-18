@@ -41,10 +41,28 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.432,
+      "started_at": "2026-08-18T07:56:25.377Z",
+      "commit": "40eada5ef25915d78c682aa2ba68716acaa89b2c",
+      "workspace_fingerprint": "40c8930ef6dd033860241e28ae7b290ab517703d9f1286762d90da5b49be8c1c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Fused composite Dedekind data and HNF, added one packed order-table/closure boundary, and replaced accepted component-coprime cycle replay with an independently checked theorem certificate. Warm T8 construction is about 4.6-5.0 ms and its checker about 21.8 ms; precision12 compiled construction/checker is about 0.835/0.329 s.",
+    "risks": [
+      "The number-field-algorithms package is 751401 bytes and needs an integration-owned increase from the 725000-byte ratchet.",
+      "The broad native suite was stopped at coordinator request after cache preparation/build began; focused native compilation and exact differentials pass."
+    ],
+    "next_steps": [
+      "Register packed_row_hnf_in_place, packed_composite_dedekind_basis_in_place, and packed_order_table_in_place together in the production kernel registry.",
+      "Connect the fused T8 candidate directly to the packed public proof envelope without replaying the standalone BL wrapper.",
+      "Run the full native/platform matrix from the integrated source identity."
+    ]
   }
 }
