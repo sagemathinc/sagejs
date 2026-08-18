@@ -5,10 +5,305 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 import sagejs as sage
+import sagejs.runtime as runtime
 
 
 MAX_EXHAUSTIVE_FIELD_ORDER = 2_000_000
+MAX_LOCAL_FACTOR_CHUNK_SIZE = 65_536
 _LPOLYNOMIAL_BACKENDS: dict[str, Any] = {}
+_smalljac_capability_cache: Any = runtime.undefined
+
+
+def _property(value: Any, name: str) -> Any:
+    return runtime.reflect.get(value, name)
+
+
+def _smalljac_capabilities() -> Any:
+    """Return the checked native capability object, or `None` if absent."""
+    global _smalljac_capability_cache
+    if _smalljac_capability_cache is not runtime.undefined:
+        return _smalljac_capability_cache
+    try:
+        backend = runtime.flint_backend()
+        function = _property(backend, "smalljacCapabilities")
+        if function is runtime.undefined:
+            _smalljac_capability_cache = None
+            return None
+        capability = runtime.reflect.apply(function, backend, [])
+        if (
+            not bool(_property(capability, "available"))
+            or _property(capability, "normalization") != "det(1-T*Frob)"
+            or int(_property(capability, "maxGenus")) < 2
+        ):
+            _smalljac_capability_cache = None
+            return None
+        full_genera = _property(capability, "fullLpolynomialGenus")
+        supports_genus_two = False
+        for index in range(len(full_genera)):
+            if int(full_genera[index]) == 2:
+                supports_genus_two = True
+        if not supports_genus_two:
+            _smalljac_capability_cache = None
+            return None
+        bound = _property(_property(capability, "primeUpperBounds"), "lpolynomial")
+        if runtime.integer_bigint(bound) < runtime.bigint(3):
+            _smalljac_capability_cache = None
+            return None
+        _smalljac_capability_cache = capability
+        return capability
+    except Exception:
+        _smalljac_capability_cache = None
+        return None
+
+
+def _smalljac_prime_bound() -> Any:
+    capability = _smalljac_capabilities()
+    if capability is None:
+        return runtime.bigint(0)
+    bounds = _property(capability, "primeUpperBounds")
+    return runtime.integer_bigint(_property(bounds, "lpolynomial"))
+
+
+def _smalljac_supports_finite_curve(curve: Any) -> bool:
+    base = curve.base_ring()
+    return (
+        _smalljac_capabilities() is not None
+        and curve.genus() == 2
+        and getattr(base, "_kind", None) == "GF"
+        and int(base.characteristic()) != 2
+        and runtime.integer_bigint(base.order()) <= _smalljac_prime_bound()
+    )
+
+
+def _integer_polynomial_text(coefficients: list[Any]) -> str:
+    values = [runtime.integer_bigint(value) for value in coefficients]
+    while len(values) != 0 and values[-1] == 0:
+        values.pop()
+    if len(values) == 0:
+        return "0"
+    pieces = []
+    for exponent in range(len(values) - 1, -1, -1):
+        coefficient = values[exponent]
+        if coefficient == 0:
+            continue
+        negative = coefficient < 0
+        magnitude = -coefficient if negative else coefficient
+        if exponent == 0:
+            body = str(magnitude)
+        elif exponent == 1:
+            body = "x" if magnitude == 1 else str(magnitude) + "*x"
+        else:
+            power = "x^" + str(exponent)
+            body = power if magnitude == 1 else str(magnitude) + "*" + power
+        if len(pieces) == 0:
+            pieces.append(("-" if negative else "") + body)
+        else:
+            pieces.append(("-" if negative else "+") + body)
+    return "".join(pieces)
+
+
+def _smalljac_curve_text(f_coefficients: list[Any], h_coefficients: list[Any]) -> str:
+    f_text = _integer_polynomial_text(f_coefficients)
+    h_text = _integer_polynomial_text(h_coefficients)
+    curve_text = f_text if h_text == "0" else "[" + f_text + "," + h_text + "]"
+    if len(curve_text) == 0 or len(curve_text) > 1023:
+        raise ValueError("the checked smalljac curve text is too large")
+    return curve_text
+
+
+def _finite_smalljac_curve_text(curve: Any) -> str:
+    f_value, h_value = curve.hyperelliptic_polynomials()
+
+    def lifts(polynomial: Any) -> list[Any]:
+        answer = []
+        for coefficient in polynomial.list():
+            lift = getattr(coefficient, "lift", None)
+            if not callable(lift):
+                raise TypeError("smalljac requires prime-field coefficients")
+            answer.append(sage.ZZ(lift()))
+        return answer
+
+    return _smalljac_curve_text(lifts(f_value), lifts(h_value))
+
+
+def rational_smalljac_model(curve: Any) -> dict[str, Any]:
+    """Return private curve text plus exact transform diagnostics over `QQ`."""
+    data = curve._smalljac_integral_model_data()
+    return {
+        "curve_text": _smalljac_curve_text(
+            list(data["f_coefficients"]), list(data["h_coefficients"])
+        ),
+        "excluded_denominator": data["excluded_denominator"],
+        "transform_scale": data["transform_scale"],
+        "y_weight": data["y_weight"],
+        "transform": data["transform"],
+    }
+
+
+def _smalljac_status(name: str) -> int:
+    capability = _smalljac_capabilities()
+    if capability is None:
+        raise NotImplementedError(
+            "the native smalljac L-polynomial backend is unavailable"
+        )
+    statuses = _property(capability, "statuses")
+    value = _property(statuses, name)
+    if value is runtime.undefined:
+        raise RuntimeError("the native smalljac status contract is incomplete")
+    return int(value)
+
+
+def _raise_smalljac_batch_error(status: int, status_name: str) -> None:
+    message = "smalljac L-polynomial batch failed with status " + repr(status_name)
+    if status == _smalljac_status("UNAVAILABLE"):
+        raise NotImplementedError("the native smalljac backend is unavailable")
+    if status == _smalljac_status("UNSUPPORTED_CURVE"):
+        raise NotImplementedError("smalljac does not support this curve model")
+    if status == _smalljac_status("SINGULAR_CURVE"):
+        raise ArithmeticError("smalljac rejected a singular curve model")
+    if status in [
+        _smalljac_status("INVALID_ARGUMENT"),
+        _smalljac_status("INVALID_INTERVAL"),
+        _smalljac_status("PARSE_ERROR"),
+    ]:
+        raise ValueError(message)
+    if status == _smalljac_status("ALLOCATION_FAILED"):
+        raise MemoryError(message)
+    if status == _smalljac_status("COEFFICIENT_RANGE"):
+        raise OverflowError(message)
+    raise RuntimeError(message)
+
+
+def _smalljac_lpoly_batch(curve_text: str, start: Any, stop: Any, max_rows: int) -> Any:
+    capability = _smalljac_capabilities()
+    if capability is None:
+        raise NotImplementedError(
+            "the native smalljac L-polynomial backend is unavailable"
+        )
+    start_exact = runtime.integer_bigint(start)
+    stop_exact = runtime.integer_bigint(stop)
+    if start_exact < runtime.bigint(2) or stop_exact < start_exact:
+        raise ValueError("smalljac needs a nonempty closed interval starting at 2")
+    if stop_exact > _smalljac_prime_bound():
+        raise OverflowError("the prime interval exceeds the smalljac range")
+    if max_rows < 0:
+        raise ValueError("max_rows must be nonnegative")
+
+    backend = runtime.flint_backend()
+    function = _property(backend, "smalljacLpolyBatch")
+    if function is runtime.undefined:
+        raise NotImplementedError(
+            "the native smalljac L-polynomial backend is unavailable"
+        )
+    arguments: list[Any] = [curve_text, start_exact, stop_exact]
+    if max_rows != 0:
+        options = runtime.object.create(None)
+        runtime.reflect.set(options, "maxRows", max_rows)
+        arguments.append(options)
+    batch = runtime.reflect.apply(function, backend, arguments)
+    status = int(_property(batch, "status"))
+    status_name = str(_property(batch, "statusName"))
+    allowed = [_smalljac_status("OK"), _smalljac_status("TRUNCATED")]
+    if status not in allowed:
+        _raise_smalljac_batch_error(status, status_name)
+    truncated = bool(_property(batch, "truncated"))
+    if (status == _smalljac_status("TRUNCATED")) != truncated:
+        raise RuntimeError("inconsistent smalljac truncation status")
+    if int(_property(batch, "genus")) != 2:
+        raise RuntimeError("smalljac returned an unexpected genus")
+    if _property(batch, "normalization") != "det(1-T*Frob)":
+        raise RuntimeError("smalljac returned an unexpected normalization")
+    row_count = int(_property(batch, "rowCount"))
+    required_rows = int(_property(batch, "requiredRows"))
+    if row_count < 0 or required_rows < row_count:
+        raise RuntimeError("smalljac returned inconsistent row counts")
+    if truncated and (max_rows == 0 or row_count != max_rows):
+        raise RuntimeError("smalljac violated the requested row bound")
+    arrays = [
+        _property(batch, "primes"),
+        _property(batch, "good"),
+        _property(batch, "coefficientCounts"),
+        _property(batch, "coefficients"),
+        _property(batch, "rowStatus"),
+    ]
+    expected_lengths = [row_count, row_count, row_count, 2 * row_count, row_count]
+    for array, expected in zip(arrays, expected_lengths):
+        if len(array) != expected:
+            raise RuntimeError("smalljac returned a malformed packed batch")
+    return batch
+
+
+def _full_genus_two_coefficients(prime: Any, c1: Any, c2: Any) -> list[int]:
+    p_value = sage.ZZ(runtime.integer_bigint(prime))
+    first = sage.ZZ(runtime.integer_bigint(c1))
+    second = sage.ZZ(runtime.integer_bigint(c2))
+    result = [sage.ZZ(1), first, second, p_value * first, p_value * p_value]
+    _validate_lpolynomial(int(p_value), 2, result, [])
+    return result
+
+
+def _smalljac_rows(
+    curve_text: str, start: Any, stop: Any, max_rows: int = 0
+) -> tuple[list[tuple[int, list[int] | None]], bool]:
+    batch = _smalljac_lpoly_batch(curve_text, start, stop, max_rows)
+    row_count = int(_property(batch, "rowCount"))
+    primes = _property(batch, "primes")
+    good = _property(batch, "good")
+    counts = _property(batch, "coefficientCounts")
+    packed = _property(batch, "coefficients")
+    row_status = _property(batch, "rowStatus")
+    rows: list[tuple[int, list[int] | None]] = []
+    previous = runtime.bigint(0)
+    start_exact = runtime.integer_bigint(start)
+    stop_exact = runtime.integer_bigint(stop)
+    for index in range(row_count):
+        prime_exact = runtime.integer_bigint(primes[index])
+        if (
+            prime_exact < start_exact
+            or prime_exact > stop_exact
+            or prime_exact <= previous
+        ):
+            raise RuntimeError("smalljac returned an invalid prime stream")
+        previous = prime_exact
+        is_good = int(good[index])
+        coefficient_count = int(counts[index])
+        status = int(row_status[index])
+        if is_good not in [0, 1]:
+            raise RuntimeError("smalljac returned an invalid good-reduction flag")
+        if is_good == 1:
+            if coefficient_count != 2 or status != _smalljac_status("ROW_GOOD"):
+                raise RuntimeError("smalljac returned an inconsistent good row")
+            coefficients = _full_genus_two_coefficients(
+                prime_exact, packed[2 * index], packed[2 * index + 1]
+            )
+        else:
+            if (
+                coefficient_count != 0
+                or status != _smalljac_status("ROW_BAD_REDUCTION")
+                or runtime.integer_bigint(packed[2 * index]) != runtime.bigint(0)
+                or runtime.integer_bigint(packed[2 * index + 1]) != runtime.bigint(0)
+            ):
+                raise RuntimeError("smalljac returned an inconsistent bad row")
+            coefficients = None
+        rows.append((int(prime_exact), coefficients))
+    return rows, bool(_property(batch, "truncated"))
+
+
+def _smalljac_finite_lpolynomial_coefficients(curve: Any) -> list[int]:
+    if not _smalljac_supports_finite_curve(curve):
+        raise NotImplementedError(
+            "smalljac supports genus-2 curves over odd prime fields in its checked range"
+        )
+    prime = int(curve.base_ring().order())
+    rows, truncated = _smalljac_rows(
+        _finite_smalljac_curve_text(curve), prime, prime, 1
+    )
+    if truncated or len(rows) != 1 or rows[0][0] != prime:
+        raise RuntimeError("smalljac did not return the requested prime")
+    coefficients = rows[0][1]
+    if coefficients is None:
+        raise ArithmeticError("the curve has bad reduction at " + str(prime))
+    return coefficients
 
 
 def register_lpolynomial_backend(name: str, backend: Any) -> None:
@@ -27,16 +322,24 @@ def register_lpolynomial_backend(name: str, backend: Any) -> None:
 
 def select_lpolynomial_algorithm(curve: Any, algorithm: str) -> str:
     if algorithm == "auto":
+        if _smalljac_supports_finite_curve(curve):
+            return "smalljac"
         smalljac = _LPOLYNOMIAL_BACKENDS.get("smalljac")
         supports = getattr(smalljac, "supports", None)
         if smalljac is not None and (not callable(supports) or supports(curve)):
             return "smalljac"
         return "exhaustive"
+    if algorithm == "smalljac" and _smalljac_supports_finite_curve(curve):
+        return "smalljac"
     if algorithm == "exhaustive" or algorithm in _LPOLYNOMIAL_BACKENDS:
         return algorithm
     if algorithm == "smalljac":
+        if _smalljac_capabilities() is None:
+            raise NotImplementedError(
+                "the native smalljac L-polynomial backend is unavailable"
+            )
         raise NotImplementedError(
-            "the smalljac hyperelliptic L-polynomial backend is unavailable"
+            "smalljac supports genus-2 curves over odd prime fields in its checked range"
         )
     raise ValueError("unknown hyperelliptic L-polynomial algorithm " + repr(algorithm))
 
@@ -45,6 +348,8 @@ def lpolynomial_coefficients(curve: Any, algorithm: str) -> list[int]:
     """Dispatch to an exact ascending-coefficient implementation."""
     if algorithm == "exhaustive":
         return reference_lpolynomial_coefficients(curve)
+    if algorithm == "smalljac" and _smalljac_supports_finite_curve(curve):
+        return _smalljac_finite_lpolynomial_coefficients(curve)
     backend = _LPOLYNOMIAL_BACKENDS.get(algorithm)
     if backend is None:
         raise NotImplementedError(
@@ -516,14 +821,18 @@ def _reduce_rational_coefficient(field: Any, value: Any, prime: int) -> Any:
     return field(value)
 
 
-def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
-    """Compute one good local factor over `QQ` by exact reduction and counting."""
+def _checked_prime(prime: Any) -> int:
     original_prime = prime
     prime = int(original_prime)
     if prime != original_prime:
         raise ValueError("p must be prime")
     if prime < 2 or not sage.is_prime(prime):
         raise ValueError("p must be prime")
+    return prime
+
+
+def _rational_reduction(curve: Any, prime: int) -> Any:
+    """Return the checked reduction of one rational model."""
     finite_fields = __import__(
         "sagejs._baselib.finite_fields",
         fromlist=["GF"],
@@ -542,7 +851,199 @@ def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") 
         fromlist=["HyperellipticCurve_generic"],
     )
     try:
-        reduced_curve = model.HyperellipticCurve_generic(reduced_f, reduced_h)
+        return model.HyperellipticCurve_generic(reduced_f, reduced_h)
     except ValueError as error:
         raise ArithmeticError("the curve has bad reduction at " + str(prime)) from error
-    return lpolynomial(reduced_curve._lpolynomial_coefficients(algorithm))
+
+
+def _rational_smalljac_supported(curve: Any, start: int, stop: int) -> bool:
+    return (
+        _smalljac_capabilities() is not None
+        and curve.genus() == 2
+        and start >= 3
+        and stop >= start
+        and runtime.integer_bigint(stop) <= _smalljac_prime_bound()
+    )
+
+
+def _select_rational_algorithm(
+    curve: Any, algorithm: str, start: int, stop: int
+) -> str:
+    if algorithm == "auto":
+        if _rational_smalljac_supported(curve, start, stop):
+            return "smalljac"
+        return "exhaustive"
+    if algorithm == "smalljac":
+        if _smalljac_capabilities() is None:
+            raise NotImplementedError(
+                "the native smalljac L-polynomial backend is unavailable"
+            )
+        if curve.genus() != 2:
+            raise NotImplementedError(
+                "smalljac full L-polynomials are only supported in genus 2"
+            )
+        if start < 3:
+            raise NotImplementedError(
+                "smalljac L-polynomials require odd primes; use exhaustive at 2"
+            )
+        if runtime.integer_bigint(stop) > _smalljac_prime_bound():
+            raise OverflowError("the prime interval exceeds the smalljac range")
+        return "smalljac"
+    if algorithm == "exhaustive" or algorithm in _LPOLYNOMIAL_BACKENDS:
+        return algorithm
+    raise ValueError("unknown hyperelliptic L-polynomial algorithm " + repr(algorithm))
+
+
+def _local_cache(curve: Any) -> dict[tuple[str, int], list[int]]:
+    cache = getattr(curve, "_local_lpolynomial_cache", None)
+    if cache is None:
+        raise RuntimeError("the hyperelliptic curve has no local-factor cache")
+    return cache
+
+
+def _cached_local_coefficients(
+    curve: Any, prime: int, algorithm: str
+) -> list[int] | None:
+    cached = _local_cache(curve).get((algorithm, prime))
+    return None if cached is None else list(cached)
+
+
+def _store_local_coefficients(
+    curve: Any, prime: int, algorithm: str, coefficients: list[int]
+) -> None:
+    _local_cache(curve)[(algorithm, prime)] = list(coefficients)
+
+
+def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
+    """Compute one good local factor over `QQ`.
+
+    `auto` uses the native genus-2 smalljac stream at supported odd primes and
+    otherwise retains the exact exhaustive reduction/counting implementation.
+    """
+    prime = _checked_prime(prime)
+    selected = _select_rational_algorithm(curve, algorithm, prime, prime)
+    cached = _cached_local_coefficients(curve, prime, selected)
+    if cached is not None:
+        return lpolynomial(cached)
+
+    if selected == "smalljac":
+        data = rational_smalljac_model(curve)
+        if int(data["excluded_denominator"]) % prime == 0:
+            raise ArithmeticError("the curve model is not integral at this prime")
+        rows, truncated = _smalljac_rows(data["curve_text"], prime, prime, 1)
+        if truncated or len(rows) != 1 or rows[0][0] != prime:
+            raise RuntimeError("smalljac did not return the requested prime")
+        coefficients = rows[0][1]
+        if coefficients is None:
+            raise ArithmeticError("the curve has bad reduction at " + str(prime))
+    else:
+        reduced_curve = _rational_reduction(curve, prime)
+        coefficients = reduced_curve._lpolynomial_coefficients(selected)
+    _store_local_coefficients(curve, prime, selected, coefficients)
+    return lpolynomial(coefficients)
+
+
+def _checked_interval(start: Any, stop: Any, chunk_size: Any) -> tuple[int, int, int]:
+    original_start = start
+    original_stop = stop
+    original_chunk_size = chunk_size
+    start = int(original_start)
+    stop = int(original_stop)
+    chunk_size = int(original_chunk_size)
+    if start != original_start or stop != original_stop:
+        raise ValueError("prime interval bounds must be integers")
+    if chunk_size != original_chunk_size or chunk_size < 1:
+        raise ValueError("chunk_size must be a positive integer")
+    if start < 2 or stop < start:
+        raise ValueError("prime interval must be a nonempty closed interval from 2")
+    return start, stop, min(chunk_size, MAX_LOCAL_FACTOR_CHUNK_SIZE)
+
+
+def rational_local_lpolynomial_chunks(
+    curve: Any,
+    start: Any,
+    stop: Any,
+    algorithm: str = "auto",
+    chunk_size: Any = 4096,
+) -> Iterator[list[Any]]:
+    """Yield bounded ordered chunks of good `(p, L_p(T))` pairs.
+
+    The interval is closed. Bad-reduction primes and primes excluded by the
+    checked rational-to-integral transformation are deliberately omitted.
+    """
+    start, stop, chunk_size = _checked_interval(start, stop, chunk_size)
+    native_after_two = (
+        algorithm == "auto"
+        and start == 2
+        and _rational_smalljac_supported(curve, 3, stop)
+    )
+    selected = _select_rational_algorithm(
+        curve, algorithm, 3 if native_after_two else start, stop
+    )
+    if native_after_two:
+        try:
+            factor_at_two = rational_local_lpolynomial(curve, 2, "exhaustive")
+        except ArithmeticError:
+            pass
+        else:
+            yield [runtime.math_tuple([sage.ZZ(2), factor_at_two])]
+        start = 3
+    if selected != "smalljac":
+        chunk = []
+        for prime in range(start, stop + 1):
+            if not sage.is_prime(prime):
+                continue
+            try:
+                factor = rational_local_lpolynomial(curve, prime, selected)
+            except ArithmeticError:
+                continue
+            chunk.append(runtime.math_tuple([sage.ZZ(prime), factor]))
+            if len(chunk) == chunk_size:
+                yield chunk
+                chunk = []
+        if len(chunk) != 0:
+            yield chunk
+        return
+
+    data = rational_smalljac_model(curve)
+    excluded = int(data["excluded_denominator"])
+    cursor = start
+    output = []
+    while cursor <= stop:
+        rows, truncated = _smalljac_rows(data["curve_text"], cursor, stop, chunk_size)
+        if len(rows) == 0:
+            if truncated:
+                raise RuntimeError("smalljac truncated an empty prime stream")
+            break
+        for prime, coefficients in rows:
+            if excluded % prime == 0 or coefficients is None:
+                continue
+            _store_local_coefficients(curve, prime, selected, coefficients)
+            output.append(
+                runtime.math_tuple([sage.ZZ(prime), lpolynomial(coefficients)])
+            )
+        if len(output) != 0:
+            yield output
+            output = []
+        if not truncated:
+            break
+        next_cursor = rows[-1][0] + 1
+        if next_cursor <= cursor:
+            raise RuntimeError("smalljac batch iteration did not advance")
+        cursor = next_cursor
+
+
+def rational_local_lpolynomials(
+    curve: Any,
+    start: Any,
+    stop: Any,
+    algorithm: str = "auto",
+    chunk_size: Any = 4096,
+) -> list[Any]:
+    """Return good local factors in the closed interval `[start, stop]`."""
+    answer = []
+    for chunk in rational_local_lpolynomial_chunks(
+        curve, start, stop, algorithm, chunk_size
+    ):
+        answer.extend(chunk)
+    return answer

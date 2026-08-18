@@ -207,6 +207,7 @@ class HyperellipticCurve_generic(sage.Parent):
         self._characteristic = characteristic
         self._check_squarefree = check_squarefree
         self._frobenius_cache: dict[str, list[int]] = {}
+        self._local_lpolynomial_cache: dict[tuple[str, int], list[int]] = {}
         self._names = names
         self._construction = {
             "kind": "HyperellipticCurve",
@@ -361,6 +362,38 @@ class HyperellipticCurve_generic(sage.Parent):
         if p is None:
             raise TypeError("local_lpolynomial requires a prime")
         return _frobenius_module().rational_local_lpolynomial(self, p, algorithm)
+
+    def local_lpolynomial_chunks(
+        self,
+        start: Any,
+        stop: Any,
+        algorithm: str = "auto",
+        chunk_size: Any = 4096,
+    ) -> Iterator[list[Any]]:
+        """Yield bounded chunks of good local factors in a closed interval."""
+        if _is_finite_field(self._base):
+            raise TypeError("local_lpolynomial_chunks is defined for curves over QQ")
+        if self._base is not sage.QQ and getattr(self._base, "_kind", None) != "QQ":
+            raise TypeError("local_lpolynomial_chunks requires a curve over QQ")
+        return _frobenius_module().rational_local_lpolynomial_chunks(
+            self, start, stop, algorithm, chunk_size
+        )
+
+    def local_lpolynomials(
+        self,
+        start: Any,
+        stop: Any,
+        algorithm: str = "auto",
+        chunk_size: Any = 4096,
+    ) -> list[Any]:
+        """Return good local factors in the closed interval `[start, stop]`."""
+        if _is_finite_field(self._base):
+            raise TypeError("local_lpolynomials is defined for curves over QQ")
+        if self._base is not sage.QQ and getattr(self._base, "_kind", None) != "QQ":
+            raise TypeError("local_lpolynomials requires a curve over QQ")
+        return _frobenius_module().rational_local_lpolynomials(
+            self, start, stop, algorithm, chunk_size
+        )
 
     def cardinality(
         self,
