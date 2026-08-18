@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Eliminate degree-90 Buchmann-Lenstra multiplication-table allocation crashes with a theorem-backed memory-proportional packed boundary and preserve exact replay/fallback",
-  "base_commit": "eaa4a909cad186f7234e3bba042b2ac9b025de27",
+  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
   "claims": [
     "src/lib/sagejs/number_fields/buchmann_lenstra.py",
     "src/lib/sagejs/number_fields/bl_composite_kernel.py",
@@ -39,12 +39,50 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "node --test --test-concurrency=1 test/number-field-maximal-order-degree90-table.cjs",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test --test-concurrency=1 test/number-field-maximal-order-degree90-table.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.004,
+      "started_at": "2026-08-18T11:48:26.638Z",
+      "commit": "e83aabca01e4c2e37661a3fcb313ba220720f4ff",
+      "workspace_fingerprint": "bca9343cf10a89130c2ee8213b4f747c703a627d299bf899838502193f28513a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.993,
+      "started_at": "2026-08-18T11:48:47.117Z",
+      "commit": "e83aabca01e4c2e37661a3fcb313ba220720f4ff",
+      "workspace_fingerprint": "bca9343cf10a89130c2ee8213b4f747c703a627d299bf899838502193f28513a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.669,
+      "started_at": "2026-08-18T11:49:14.104Z",
+      "commit": "e83aabca01e4c2e37661a3fcb313ba220720f4ff",
+      "workspace_fingerprint": "bca9343cf10a89130c2ee8213b4f747c703a627d299bf899838502193f28513a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replaced the fatal degree-cubed BL allocation with theorem-bounded check-only and streamed kernels; compact independent replay completes the exact degree-90 composite child in 6.718s and rejects corruption.",
+    "risks": [
+      "The full public trace exceeds 120s after BL completes; the last observed stage is downstream native_order_from_polynomial."
+    ],
+    "next_steps": [
+      "nf_opt_round2_degree90 owns the downstream public terminal timeout.",
+      "The integration lane owns the single final pnpm test:native receipt and contract closure."
+    ]
   }
 }

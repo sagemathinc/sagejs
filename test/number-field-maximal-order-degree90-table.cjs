@@ -68,7 +68,7 @@ maximum_bits = max(
 )
 old_words = max(16, (4 * degree * (maximum_bits + 1) + 63) // 64 + 8)
 old_table_bytes = degree * degree * degree * old_words * 8
-assert old_table_bytes > 40 * 1024 * 1024 * 1024
+assert old_table_bytes > 40_000_000_000
 assert workspace_bytes < 16 * 1024 * 1024
 
 saved_generator = list(result.evidence["overorder_generator"])
@@ -109,7 +109,7 @@ print(json.dumps({
 None
 `;
       const result = await session.evaluate(source);
-      assert.equal(result.stderr, "");
+      assert.equal(result.stderr ?? "", "");
       const receipt = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
       assert.ok(receipt.replay_micros < 20_000_000, JSON.stringify(receipt));
       assert.match(receipt.table_mode, /^(native-capable|compiled)$/);
