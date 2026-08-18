@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-reference",
+  "title": "Hyperelliptic exact reference API",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement CPython-parseable genus-2/3 hyperelliptic curve models, exhaustive point counting, exact Frobenius/L-polynomial reconstruction, derived cardinality/zeta APIs, and focused tests without native dependencies",
+  "base_commit": "4582f5cd3ea430413074be2b1b74ad627f7a4b71",
+  "claims": [
+    "src/baselib/hyperelliptic_curves.py",
+    "src/lib/sagejs/hyperelliptic_curves/__init__.py",
+    "src/lib/sagejs/hyperelliptic_curves/model.py",
+    "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+    "test/hyperelliptic-reference.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagelite",
+    "agents/hyperelliptic-smalljac-genus2-3-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage",
+      "Magma",
+      "exhaustive finite-field enumeration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
