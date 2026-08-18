@@ -126,8 +126,19 @@ class CoefficientPrefix:
         if cutoff < 1:
             cutoff = 1
         if cutoff >= len(self.values):
-            self.values = [int(value) for value in self.curve.anlist(cutoff)]
+            provider = getattr(self.curve, "_anlist_native", None)
+            native_values = provider(cutoff) if provider is not None else None
+            if native_values is None:
+                self.values = [int(value) for value in self.curve.anlist(cutoff)]
+            else:
+                self.values = native_values
+                self.backend = "elliptic-curve native anlist"
             self.extensions += 1
+        # An extension computes exactly the requested prefix, so the common
+        # path can return it without another O(cutoff) copy. Some consumers
+        # precompute a larger prefix and later request a smaller view.
+        if len(self.values) == cutoff + 1:
+            return self.values
         return self.values[: cutoff + 1]
 
 

@@ -1921,6 +1921,7 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint/test/elliptic-native.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/elliptic_curves.py"
       ],

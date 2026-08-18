@@ -1686,26 +1686,34 @@ class EllipticCurveParent(sage.Parent):
             if sage.is_prime(candidate)
         ]
 
-    def anlist(self, bound: int) -> list[int]:
+    def _anlist_native(self, bound: int) -> Any:
         bound = int(bound)
         if bound < 0:
             raise ValueError("coefficient bound must be nonnegative")
         integral_coefficients = self._integral_model_coefficients()
-        if integral_coefficients is not None:
-            discriminant = self.discriminant()
-            if hasattr(discriminant, "_numerator"):
-                native_discriminant = discriminant._numerator
-            else:
-                native_discriminant = runtime.integer_bigint(discriminant)
-            native_values = runtime.flint_backend().ecAnlistIntegral(
-                integral_coefficients[0],
-                integral_coefficients[1],
-                integral_coefficients[2],
-                integral_coefficients[3],
-                integral_coefficients[4],
-                native_discriminant,
-                runtime.bigint(bound),
-            )
+        if integral_coefficients is None:
+            return None
+        discriminant = self.discriminant()
+        if hasattr(discriminant, "_numerator"):
+            native_discriminant = discriminant._numerator
+        else:
+            native_discriminant = runtime.integer_bigint(discriminant)
+        return runtime.flint_backend().ecAnlistIntegral(
+            integral_coefficients[0],
+            integral_coefficients[1],
+            integral_coefficients[2],
+            integral_coefficients[3],
+            integral_coefficients[4],
+            native_discriminant,
+            runtime.bigint(bound),
+        )
+
+    def anlist(self, bound: int) -> list[int]:
+        bound = int(bound)
+        if bound < 0:
+            raise ValueError("coefficient bound must be nonnegative")
+        native_values = self._anlist_native(bound)
+        if native_values is not None:
             return list(native_values)
         values = [0 for _index in range(bound + 1)]
         if bound == 0:
