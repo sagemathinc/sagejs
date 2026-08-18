@@ -1,0 +1,3629 @@
+{
+  "schema": "sagejs.number-fields/maximal-order-current-head-performance-receipt-v1",
+  "generated_at": "2026-08-18T06:11:09.381Z",
+  "scope": "Read-only consolidated performance receipt; no algorithm source modified.",
+  "identity": {
+    "measured_commit": "0abc59da72b735bbb4d90a03f980e3ffafde7b09",
+    "measured_tree": "d8afd700931b9a8cb4ddd89c8d2364e0407404fd",
+    "branch": "agent/nf-final-perf-receipt",
+    "post_measurement_changes": [
+      {
+        "commit": "3ecf3eb81cc012f4cf3618230c2b1f14bbb3003e",
+        "kind": "fixture-only vector010 completion",
+        "arithmetic_source_equivalent": true
+      },
+      {
+        "commit": "bc14914b / 1d6d23ae",
+        "kind": "OM p=2 implementation source; public auto-selection remains disabled",
+        "public_path_equivalent_to_measured_commit": true
+      }
+    ]
+  },
+  "source_hashes_sha256": {
+    "maximal_order_engine": "95973354652c9a396e6080fa677bf3c033a5684cfecfea08b8aeb5cebc2d9fec",
+    "field_analysis_resource": "33312d84827d7c7038f4f099041c2eb418c44230c58b6b7891034014307b9442",
+    "buchmann_lenstra": "b4ca1de72d34e93ce7aada818f595f8eed8d9d2fd5196ba8d29885231a109184",
+    "buchmann_lenstra_composite_kernel": "c76869deb2a7c6bff88abf47dd09a4cc53740386a50b7d4b8cfb2ee13a7e36c4",
+    "round4": "0ed8cf50b176a9a03f619788407e828035ecb83a87a3ad3d29cccedd8aaf935a",
+    "word_prime_krylov": "81083d3f301dc1c60559baff70edf031c2837583092568a3516b3789cafbee91",
+    "om_maxmin": "ac28224ca00c471377bb26d4e2c047316e92ffb1735b461e1d7307cc8a344597"
+  },
+  "artifact_hashes_sha256": {
+    "flint_addon": "f6017e952166adfe0cb87b26e467902dbb607989908d434bdfb70562240cfb1d",
+    "generated_ffi": "c3f737a4de666abecb91073e47fdb99c975e576a19659cef208b99ceb5016c3a",
+    "production_registry": "825eb5672a84c20f36786ea7ea728a801cc0831aa4201cef8743f9d77d1062e1",
+    "compiled_runtime": "e05b672aa291dc086cce82d9f9bd5d5382febee11c7f51f185f6ca40b63525ee",
+    "maximal_order_corpus": "695152efb47b614b15f08a140f7f65d11c32d997588c8ccd6f7962f2f025f52f"
+  },
+  "native_registry": {
+    "abi": 21,
+    "field_analysis_cache_key": "09aba53f",
+    "buchmann_lenstra_hnf_cache_key": "2deebe85",
+    "word_prime_krylov_cache_key": "be1c05e",
+    "production_native_kernel_count": 20
+  },
+  "environment": {
+    "host": "project-52d00914-04c1-4c7a-83d6-69240c2570f1",
+    "operating_system": "Linux 6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpu_model": "AMD EPYC 7B13",
+    "logical_cpu_count": 16,
+    "cpu_threads_per_core": 1,
+    "total_memory_bytes": 67418693632,
+    "node": "v26.7.0",
+    "node_modules_abi": 147,
+    "napi": 10,
+    "pnpm": "11.9.0",
+    "flint": "3.6.0",
+    "pari": "2.17.3",
+    "julia": "julia version 1.12.6",
+    "hecke": "0.39.21 @ eab7e5566e56d8864fe9cd7b895811ab9df2fe32",
+    "nemo": "0.56.1 @ 1dcc3625f1899332c52660f6eb074352aa3e7f40",
+    "sage": "10.9.post1",
+    "magma": "V2.18-5 (installed; disabled in checked profiler)",
+    "openblas_threads": 1
+  },
+  "build": {
+    "command": "pnpm build",
+    "status": "pass",
+    "preparation": "pnpm parallel:cache -- prepare restored selected native add-ons",
+    "result": "Generated adapters and 20 production native kernels at measured commit."
+  },
+  "measurement_policy": {
+    "exact_equivalence_required_before_timing": true,
+    "fresh_fields": true,
+    "robust_statistic": "median; raw samples retained",
+    "boundaries_are_not_interchangeable": true,
+    "note": "Public, fused resource, direct native order kernel, and external direct-core boundaries are reported separately."
+  },
+  "host_load": {
+    "logical_cpu_count": 16,
+    "caveat": "Other agent/compiler/corpus processes were visible. Load average is recorded, not normalized away; small timing deltas are directional rather than causal.",
+    "series": [
+      {
+        "measurement": "public fused hook",
+        "start_1m": 6.56,
+        "end_1m": 6.61
+      },
+      {
+        "measurement": "checked public baseline",
+        "start_1m": 6.21,
+        "end_1m": 6.14
+      },
+      {
+        "measurement": "Buchmann-Lenstra T8",
+        "start_1m": 4.92,
+        "end_1m": 4.92
+      },
+      {
+        "measurement": "selector",
+        "start_1m": 4.87,
+        "end_1m": 4.32
+      },
+      {
+        "measurement": "worker vector001",
+        "start_1m": 5.41,
+        "end_1m": 5.97
+      },
+      {
+        "measurement": "precision12",
+        "start_1m": 4.2,
+        "end_1m": 4.85
+      },
+      {
+        "measurement": "native cross-oracle",
+        "start_1m": 4.54,
+        "end_1m": 5.56
+      },
+      {
+        "measurement": "fused C resource",
+        "start_1m": 6.42,
+        "end_1m": 6.95
+      },
+      {
+        "measurement": "vector010 Round4",
+        "start_1m": 5.14,
+        "end_1m": 6.82
+      }
+    ],
+    "root_vector010_single_run": {
+      "elapsed_seconds": 55.67103099822998,
+      "host_load_metadata": "unavailable; not inferred"
+    }
+  },
+  "measurements": {
+    "six_public_cases": [
+      {
+        "id": "motivating-degree-7",
+        "polynomial_digest": "e34e031f2a26a9dafcfeb44070ba1bdde93214779a2fe72232de4158e760d155",
+        "certificate_digest": "7bf0cdbf3660f8e4e155f7b94896bf90778932582cb4525734abf9a0b6cbeadc",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            39.51287269592285,
+            35.943031311035156,
+            37.15038299560547,
+            33.26845169067383,
+            31.67891502380371
+          ],
+          "median_ms": 35.943031311035156,
+          "mad_ms": 2.674579620361328,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.0209808349609375,
+              "factor_discovery": "7005184 ns",
+              "field_construction": 2.3152828216552734,
+              "local_order_stages": {
+                "discriminant-decomposition": "7005184 ns",
+                "global-certification": "8490240 ns",
+                "native-local-orders": "14390272 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 39.51287269592285,
+              "public_object_materialization": 1.7571449279785156
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.021219253540039062,
+              "factor_discovery": "7147264 ns",
+              "field_construction": 2.265453338623047,
+              "local_order_stages": {
+                "discriminant-decomposition": "7147264 ns",
+                "global-certification": "7705344 ns",
+                "native-local-orders": "11651584 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 35.943031311035156,
+              "public_object_materialization": 1.585245132446289
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.02002716064453125,
+              "factor_discovery": "7054848 ns",
+              "field_construction": 2.034425735473633,
+              "local_order_stages": {
+                "discriminant-decomposition": "7054848 ns",
+                "global-certification": "7772672 ns",
+                "native-local-orders": "12228096 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 37.15038299560547,
+              "public_object_materialization": 1.7576217651367188
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.015974044799804688,
+              "factor_discovery": "6014208 ns",
+              "field_construction": 2.294778823852539,
+              "local_order_stages": {
+                "discriminant-decomposition": "6014208 ns",
+                "global-certification": "6532096 ns",
+                "native-local-orders": "9683968 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 33.26845169067383,
+              "public_object_materialization": 1.2695789337158203
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.016450881958007812,
+              "factor_discovery": "5880832 ns",
+              "field_construction": 1.924753189086914,
+              "local_order_stages": {
+                "discriminant-decomposition": "5880832 ns",
+                "global-certification": "6901504 ns",
+                "native-local-orders": "11322368 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 31.67891502380371,
+              "public_object_materialization": 1.1935234069824219
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 3,
+          "established_samples_ms": [
+            34.599860509236656,
+            33.07358423868815,
+            31.302134195963543,
+            32.9123338063558,
+            31.397263209025066,
+            30.04622459411621,
+            26.256879170735676
+          ],
+          "established_median_ms": 31.397263209025066,
+          "fused_samples_ms": [
+            23.55535825093587,
+            25.786320368448894,
+            23.142337799072266,
+            22.899468739827473,
+            24.212201436360676,
+            26.150067647298176,
+            26.790618896484375
+          ],
+          "fused_median_ms": 24.212201436360676,
+          "established_to_fused_speedup": 1.2967537582879276,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 5000,
+          "raw_samples_us": [
+            127.399419202,
+            121.251401608,
+            121.291895607,
+            121.511093387,
+            121.6592276,
+            128.262712993,
+            121.450141608
+          ],
+          "median_us": 121.511093387,
+          "payload_bytes": 543
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 5000,
+          "raw_samples_us": [
+            1.769883791,
+            1.661357796,
+            1.805815799,
+            1.78500982,
+            1.75442379,
+            1.861505792,
+            1.691871788,
+            1.849691803,
+            1.711179805
+          ],
+          "median_us": 1.769883791,
+          "stage_mean_us": {
+            "discriminant": 0.561401085,
+            "hints": 0.027770363,
+            "multiplicationTable": 0,
+            "round2": 0,
+            "normalizeHnf": 0,
+            "evidence": 0.543222181,
+            "pack": 0.379225286,
+            "cleanup": 0.065073534
+          },
+          "payload_bytes": 297,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 3,
+          "pari_samples_us": [
+            3.1,
+            3,
+            3,
+            2.9,
+            3,
+            3,
+            3.1,
+            3.1,
+            3.1
+          ],
+          "hecke_core_median_us": 34.005,
+          "hecke_samples_us": [
+            40.922000000000004,
+            36.3755,
+            34.1505,
+            33.9045,
+            33.6205,
+            33.569,
+            34.005,
+            34.19345,
+            32.4555
+          ],
+          "best_reference_median_us": 3,
+          "native_to_best_reference_ratio": 0.5899612636666667
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 62.7,
+          "original_plan_to_checked_speedup": 1.7444271591180451,
+          "prior_b60_single_sample_ms": 37.568569,
+          "prior_b60_to_checked_ratio": 1.045225392229669
+        }
+      },
+      {
+        "id": "sage-essential-discriminant",
+        "polynomial_digest": "d9d4b8dc5ad14dead87c6daf30ebffc847127d5c67c058f7d5e7f3c3607d5ade",
+        "certificate_digest": "2a2d645a7983332ca03ffe4b9c73a263691a0b6627025ec5540ffc10e68d2d49",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            21.776437759399414,
+            20.738601684570312,
+            22.530794143676758,
+            20.8587646484375,
+            19.437789916992188
+          ],
+          "median_ms": 20.8587646484375,
+          "mad_ms": 0.9176731109619141,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.020742416381835938,
+              "factor_discovery": "7211008 ns",
+              "field_construction": 1.8062591552734375,
+              "local_order_stages": {
+                "discriminant-decomposition": "7211008 ns",
+                "global-certification": "3238912 ns",
+                "native-local-orders": "5381632 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 21.776437759399414,
+              "public_object_materialization": 0.415802001953125
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.018835067749023438,
+              "factor_discovery": "6625024 ns",
+              "field_construction": 1.5778541564941406,
+              "local_order_stages": {
+                "discriminant-decomposition": "6625024 ns",
+                "global-certification": "3424512 ns",
+                "native-local-orders": "5186048 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 20.738601684570312,
+              "public_object_materialization": 0.34809112548828125
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.018596649169921875,
+              "factor_discovery": "7508736 ns",
+              "field_construction": 1.5251636505126953,
+              "local_order_stages": {
+                "discriminant-decomposition": "7508736 ns",
+                "global-certification": "3912704 ns",
+                "native-local-orders": "5392384 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 22.530794143676758,
+              "public_object_materialization": 0.39196014404296875
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.025987625122070312,
+              "factor_discovery": "6981888 ns",
+              "field_construction": 1.672506332397461,
+              "local_order_stages": {
+                "discriminant-decomposition": "6981888 ns",
+                "global-certification": "3056128 ns",
+                "native-local-orders": "5380864 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 20.8587646484375,
+              "public_object_materialization": 0.3147125244140625
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.01621246337890625,
+              "factor_discovery": "6227456 ns",
+              "field_construction": 1.508474349975586,
+              "local_order_stages": {
+                "discriminant-decomposition": "6227456 ns",
+                "global-certification": "3137024 ns",
+                "native-local-orders": "4939264 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 19.437789916992188,
+              "public_object_materialization": 0.28014183044433594
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 3,
+          "established_samples_ms": [
+            20.639499028523762,
+            20.30213673909505,
+            17.287015914916992,
+            18.459320068359375,
+            19.67652638753255,
+            20.203351974487305,
+            20.113309224446613
+          ],
+          "established_median_ms": 20.113309224446613,
+          "fused_samples_ms": [
+            17.798423767089844,
+            15.99558194478353,
+            13.453801472981771,
+            14.468510945638021,
+            16.43792788187663,
+            18.155972162882488,
+            13.74204953511556
+          ],
+          "fused_median_ms": 15.99558194478353,
+          "established_to_fused_speedup": 1.2574290384605828,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 5000,
+          "raw_samples_us": [
+            21.379964589,
+            21.611076407,
+            21.455954597,
+            22.051852383,
+            22.048318386,
+            22.308466421,
+            21.704208595
+          ],
+          "median_us": 21.704208595,
+          "payload_bytes": 219
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 2000,
+          "raw_samples_us": [
+            12.415434001,
+            13.09729903,
+            13.143124525,
+            13.174563996,
+            13.213189028,
+            12.425124005,
+            12.504693994,
+            12.632714002,
+            12.317674002
+          ],
+          "median_us": 12.632714002,
+          "stage_mean_us": {
+            "discriminant": 0.445487851,
+            "hints": 0.032791228,
+            "multiplicationTable": 0.348801608,
+            "round2": 10.883376002,
+            "normalizeHnf": 0.477407244,
+            "evidence": 0.085501466,
+            "pack": 0.269133598,
+            "cleanup": 0.092332833
+          },
+          "payload_bytes": 130,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 3,
+          "pari_samples_us": [
+            2.9,
+            3.1,
+            2.9,
+            3,
+            3.1,
+            3.1,
+            3,
+            3.1,
+            3
+          ],
+          "hecke_core_median_us": 37.946,
+          "hecke_samples_us": [
+            31.9455,
+            39.603500000000004,
+            38.05945,
+            38.915,
+            37.946,
+            37.864999999999995,
+            38.82845,
+            37.338,
+            37.20155
+          ],
+          "best_reference_median_us": 3,
+          "native_to_best_reference_ratio": 4.210904667333334
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 17.7,
+          "original_plan_to_checked_speedup": 0.8485641550841257,
+          "prior_b60_single_sample_ms": 28.478861,
+          "prior_b60_to_checked_ratio": 1.3653186792216532
+        }
+      },
+      {
+        "id": "lmfdb-3.1.431.1",
+        "polynomial_digest": "64a67a83849346d434d4188de7b1c894f2bc5bc86b0d70513077660b7307891c",
+        "certificate_digest": "64c8c667460a93b0cb03ad667f747fd1b77d5203a49ccd144585f13f10a1869e",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            22.711992263793945,
+            21.345853805541992,
+            22.032499313354492,
+            23.72431755065918,
+            23.01621437072754
+          ],
+          "median_ms": 22.711992263793945,
+          "mad_ms": 0.6794929504394531,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.01811981201171875,
+              "factor_discovery": "6755584 ns",
+              "field_construction": 1.859426498413086,
+              "local_order_stages": {
+                "discriminant-decomposition": "6755584 ns",
+                "global-certification": "3671296 ns",
+                "native-local-orders": "6147328 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 22.711992263793945,
+              "public_object_materialization": 0.4467964172363281
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.017404556274414062,
+              "factor_discovery": "6567168 ns",
+              "field_construction": 1.7833709716796875,
+              "local_order_stages": {
+                "discriminant-decomposition": "6567168 ns",
+                "global-certification": "3539456 ns",
+                "native-local-orders": "5654528 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 21.345853805541992,
+              "public_object_materialization": 0.3070831298828125
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.017404556274414062,
+              "factor_discovery": "6447360 ns",
+              "field_construction": 1.8715858459472656,
+              "local_order_stages": {
+                "discriminant-decomposition": "6447360 ns",
+                "global-certification": "2884096 ns",
+                "native-local-orders": "7292416 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 22.032499313354492,
+              "public_object_materialization": 0.3311634063720703
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.04792213439941406,
+              "factor_discovery": "7382784 ns",
+              "field_construction": 1.6715526580810547,
+              "local_order_stages": {
+                "discriminant-decomposition": "7382784 ns",
+                "global-certification": "3161088 ns",
+                "native-local-orders": "6141952 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 23.72431755065918,
+              "public_object_materialization": 0.6818771362304688
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.015497207641601562,
+              "factor_discovery": "6521600 ns",
+              "field_construction": 1.9783973693847656,
+              "local_order_stages": {
+                "discriminant-decomposition": "6521600 ns",
+                "global-certification": "3054848 ns",
+                "native-local-orders": "7163648 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 23.01621437072754,
+              "public_object_materialization": 0.32520294189453125
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 3,
+          "established_samples_ms": [
+            18.23902130126953,
+            20.084142684936523,
+            18.643538157145183,
+            19.20008659362793,
+            19.732077916463215,
+            17.836332321166992,
+            16.274372736612957
+          ],
+          "established_median_ms": 18.643538157145183,
+          "fused_samples_ms": [
+            14.573494593302408,
+            15.14577865600586,
+            19.48102315266927,
+            21.04489008585612,
+            16.675790150960285,
+            17.519235610961914,
+            14.809290568033854
+          ],
+          "fused_median_ms": 16.675790150960285,
+          "established_to_fused_speedup": 1.1180002859457658,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 5000,
+          "raw_samples_us": [
+            21.721328399,
+            21.797864395,
+            21.424352401,
+            21.737138601,
+            22.149280598,
+            22.151212394,
+            22.786378395
+          ],
+          "median_us": 21.797864395,
+          "payload_bytes": 218
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 2000,
+          "raw_samples_us": [
+            12.825728976,
+            12.788193999,
+            12.827504019,
+            13.239169028,
+            12.506264495,
+            13.588793983,
+            12.934059021,
+            12.431154028,
+            12.717004516
+          ],
+          "median_us": 12.825728976,
+          "stage_mean_us": {
+            "discriminant": 0.429048203,
+            "hints": 0.032892916,
+            "multiplicationTable": 0.296000391,
+            "round2": 11.239535583,
+            "normalizeHnf": 0.428982428,
+            "evidence": 0.097323849,
+            "pack": 0.26480743,
+            "cleanup": 0.095191004
+          },
+          "payload_bytes": 130,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 3,
+          "pari_samples_us": [
+            3.2,
+            3,
+            3,
+            3.1,
+            3.1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "hecke_core_median_us": 38.025999999999996,
+          "hecke_samples_us": [
+            32.7205,
+            37.3865,
+            39.144,
+            37.614,
+            38.025999999999996,
+            38.3635,
+            38.462,
+            37.8315,
+            38.0965
+          ],
+          "best_reference_median_us": 3,
+          "native_to_best_reference_ratio": 4.275242992
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 18.8,
+          "original_plan_to_checked_speedup": 0.8277565341535361,
+          "prior_b60_single_sample_ms": 26.250601,
+          "prior_b60_to_checked_ratio": 1.1558035374046463
+        }
+      },
+      {
+        "id": "lmfdb-5.1.17161.1",
+        "polynomial_digest": "a78e9bd0f313a4b793f4908fbd9c4defa5694bd7e4caa2f56785dbe5652063ac",
+        "certificate_digest": "a33d94cba68f9771c89d43c732c871234b8ac38e48ecc07a34fd58c05d02c464",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            30.446767807006836,
+            31.8295955657959,
+            35.02631187438965,
+            30.631542205810547,
+            30.06124496459961
+          ],
+          "median_ms": 30.631542205810547,
+          "mad_ms": 0.5702972412109375,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.016450881958007812,
+              "factor_discovery": "6271744 ns",
+              "field_construction": 2.0112991333007812,
+              "local_order_stages": {
+                "discriminant-decomposition": "6271744 ns",
+                "global-certification": "8545024 ns",
+                "native-local-orders": "8428544 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 30.446767807006836,
+              "public_object_materialization": 0.5943775177001953
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.019073486328125,
+              "factor_discovery": "6200832 ns",
+              "field_construction": 1.6529560089111328,
+              "local_order_stages": {
+                "discriminant-decomposition": "6200832 ns",
+                "global-certification": "11125504 ns",
+                "native-local-orders": "7298304 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 31.8295955657959,
+              "public_object_materialization": 0.6909370422363281
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.017642974853515625,
+              "factor_discovery": "7942656 ns",
+              "field_construction": 1.9297599792480469,
+              "local_order_stages": {
+                "discriminant-decomposition": "7942656 ns",
+                "global-certification": "12138496 ns",
+                "native-local-orders": "8645632 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 35.02631187438965,
+              "public_object_materialization": 0.6513595581054688
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.014066696166992188,
+              "factor_discovery": "6426880 ns",
+              "field_construction": 2.293109893798828,
+              "local_order_stages": {
+                "discriminant-decomposition": "6426880 ns",
+                "global-certification": "9224192 ns",
+                "native-local-orders": "8191488 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 30.631542205810547,
+              "public_object_materialization": 0.7121562957763672
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.01430511474609375,
+              "factor_discovery": "5667584 ns",
+              "field_construction": 2.9697418212890625,
+              "local_order_stages": {
+                "discriminant-decomposition": "5667584 ns",
+                "global-certification": "8946176 ns",
+                "native-local-orders": "9099520 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 30.06124496459961,
+              "public_object_materialization": 0.6215572357177734
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 2,
+          "established_samples_ms": [
+            25.399208068847656,
+            27.272939682006836,
+            26.752233505249023,
+            27.186989784240723,
+            28.154611587524414,
+            24.921298027038574,
+            29.332756996154785
+          ],
+          "established_median_ms": 27.186989784240723,
+          "fused_samples_ms": [
+            20.492196083068848,
+            22.002577781677246,
+            22.740483283996582,
+            22.106051445007324,
+            21.629691123962402,
+            19.814133644104004,
+            21.684885025024414
+          ],
+          "fused_median_ms": 21.684885025024414,
+          "established_to_fused_speedup": 1.253729948434906,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 2000,
+          "raw_samples_us": [
+            106.053497468,
+            109.843601997,
+            105.615132488,
+            105.349832505,
+            106.546852505,
+            106.800117472,
+            109.884142003
+          ],
+          "median_us": 106.546852505,
+          "payload_bytes": 387
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 1000,
+          "raw_samples_us": [
+            51.566377049,
+            49.176536966,
+            49.154306995,
+            48.427336034,
+            47.683996032,
+            48.681176966,
+            49.997717026,
+            51.028886926,
+            49.82177692
+          ],
+          "median_us": 49.176536966,
+          "stage_mean_us": {
+            "discriminant": 0.848163851,
+            "hints": 0.032329699,
+            "multiplicationTable": 0.729562133,
+            "round2": 45.427380712,
+            "normalizeHnf": 0.919445651,
+            "evidence": 0.486254343,
+            "pack": 0.322602107,
+            "cleanup": 0.191495754
+          },
+          "payload_bytes": 197,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 5,
+          "pari_samples_us": [
+            5,
+            5,
+            5.2,
+            5.2,
+            4.8,
+            5.4,
+            4.8,
+            5,
+            5
+          ],
+          "hecke_core_median_us": 53.98049999999999,
+          "hecke_samples_us": [
+            49.242000000000004,
+            54.269000000000005,
+            54.366949999999996,
+            52.248000000000005,
+            50.921,
+            58.459500000000006,
+            52.652499999999996,
+            53.98049999999999,
+            58.166
+          ],
+          "best_reference_median_us": 5,
+          "native_to_best_reference_ratio": 9.8353073932
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 34.7,
+          "original_plan_to_checked_speedup": 1.1328192281947105,
+          "prior_b60_single_sample_ms": 48.320055,
+          "prior_b60_to_checked_ratio": 1.577460732317751
+        }
+      },
+      {
+        "id": "pari-2510",
+        "polynomial_digest": "512787ad1e5c81e5f1fc8514da042a2dca330372b316c6641b7a25d4c24665ed",
+        "certificate_digest": "4e664333ddacd5363e970454bb87b9622475ac9b1cadc82458f508fba36d2c9e",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            53.71546745300293,
+            48.32959175109863,
+            47.203779220581055,
+            48.53057861328125,
+            54.0926456451416
+          ],
+          "median_ms": 48.53057861328125,
+          "mad_ms": 1.3267993927001953,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.016927719116210938,
+              "factor_discovery": "10883328 ns",
+              "field_construction": 2.870321273803711,
+              "local_order_stages": {
+                "discriminant-decomposition": "10883328 ns",
+                "global-certification": "16353280 ns",
+                "native-local-orders": "16801024 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 53.71546745300293,
+              "public_object_materialization": 1.573324203491211
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.0171661376953125,
+              "factor_discovery": "9084672 ns",
+              "field_construction": 1.8732547760009766,
+              "local_order_stages": {
+                "discriminant-decomposition": "9084672 ns",
+                "global-certification": "16915200 ns",
+                "native-local-orders": "13696768 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 48.32959175109863,
+              "public_object_materialization": 1.5244483947753906
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.0152587890625,
+              "factor_discovery": "9378816 ns",
+              "field_construction": 1.8846988677978516,
+              "local_order_stages": {
+                "discriminant-decomposition": "9378816 ns",
+                "global-certification": "15841024 ns",
+                "native-local-orders": "13488640 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 47.203779220581055,
+              "public_object_materialization": 1.3070106506347656
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.023126602172851562,
+              "factor_discovery": "9010432 ns",
+              "field_construction": 1.6906261444091797,
+              "local_order_stages": {
+                "discriminant-decomposition": "9010432 ns",
+                "global-certification": "15577600 ns",
+                "native-local-orders": "15344384 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 48.53057861328125,
+              "public_object_materialization": 1.7151832580566406
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.015974044799804688,
+              "factor_discovery": "9791488 ns",
+              "field_construction": 1.710653305053711,
+              "local_order_stages": {
+                "discriminant-decomposition": "9791488 ns",
+                "global-certification": "17711872 ns",
+                "native-local-orders": "16582144 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 54.0926456451416,
+              "public_object_materialization": 1.5184879302978516
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 1,
+          "established_samples_ms": [
+            53.81131172180176,
+            49.26133155822754,
+            52.186012268066406,
+            46.854257583618164,
+            51.57780647277832,
+            50.565242767333984,
+            49.66568946838379
+          ],
+          "established_median_ms": 50.565242767333984,
+          "fused_samples_ms": [
+            46.93484306335449,
+            47.507286071777344,
+            47.12224006652832,
+            49.83973503112793,
+            45.91178894042969,
+            44.1737174987793,
+            44.73996162414551
+          ],
+          "fused_median_ms": 46.93484306335449,
+          "established_to_fused_speedup": 1.0773497782676942,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 100,
+          "raw_samples_us": [
+            2563.0998204,
+            2496.329320129,
+            2526.652930537,
+            2433.266629232,
+            2517.844020622,
+            2394.953630865,
+            2396.817530971
+          ],
+          "median_us": 2496.329320129,
+          "payload_bytes": 1223
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 100,
+          "raw_samples_us": [
+            1989.90055942,
+            1905.463669682,
+            2002.149859909,
+            1960.233860882,
+            2063.406649977,
+            2011.944260448,
+            1964.089659741,
+            2117.223660462,
+            1974.83496042
+          ],
+          "median_us": 1989.90055942,
+          "stage_mean_us": {
+            "discriminant": 6.427152548,
+            "hints": 0.238678185,
+            "multiplicationTable": 2.453598427,
+            "round2": 1995.813795365,
+            "normalizeHnf": 3.703722032,
+            "evidence": 2.812098246,
+            "pack": 1.202659914,
+            "cleanup": 0.659787329
+          },
+          "payload_bytes": 374,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 1372,
+          "pari_samples_us": [
+            1416,
+            1408,
+            1328,
+            1372,
+            1320,
+            1372,
+            1386,
+            1332,
+            1378
+          ],
+          "hecke_core_median_us": 249.385,
+          "hecke_samples_us": [
+            254.34890000000001,
+            255.192,
+            240.03000000000003,
+            237.456,
+            247.69299999999998,
+            373.597,
+            249.385,
+            247.717,
+            321.31
+          ],
+          "best_reference_median_us": 249.385,
+          "native_to_best_reference_ratio": 7.979231146299898
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 72.4,
+          "original_plan_to_checked_speedup": 1.4918429177802233,
+          "prior_b60_single_sample_ms": null,
+          "prior_b60_to_checked_ratio": null
+        }
+      },
+      {
+        "id": "pari-1710",
+        "polynomial_digest": "54ab2f202bc06f64ed582117a41eed088c5b746e1dde4991b5977eccb43777c2",
+        "certificate_digest": "109b7e94753dcb83008ca5369a9f4fb32de7637ac95cfe4588406e4c5bffe77d",
+        "checked_public": {
+          "boundary": "warm-public",
+          "warmups": 2,
+          "samples": 5,
+          "raw_samples_ms": [
+            90.10553359985352,
+            88.65928649902344,
+            82.55529403686523,
+            85.22486686706543,
+            87.91375160217285
+          ],
+          "median_ms": 87.91375160217285,
+          "mad_ms": 2.191781997680664,
+          "exact_verifier": true,
+          "stage_samples": [
+            {
+              "basis_merge": false,
+              "certification": 0.017404556274414062,
+              "factor_discovery": "15674368 ns",
+              "field_construction": 1.6443729400634766,
+              "local_order_stages": {
+                "discriminant-decomposition": "15674368 ns",
+                "global-certification": "35175424 ns",
+                "native-local-orders": "26471424 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 90.10553359985352,
+              "public_object_materialization": 1.730203628540039
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.016689300537109375,
+              "factor_discovery": "18326272 ns",
+              "field_construction": 1.6734600067138672,
+              "local_order_stages": {
+                "discriminant-decomposition": "18326272 ns",
+                "global-certification": "34764032 ns",
+                "native-local-orders": "23936000 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 88.65928649902344,
+              "public_object_materialization": 1.7504692077636719
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.016689300537109375,
+              "factor_discovery": "13847808 ns",
+              "field_construction": 1.7504692077636719,
+              "local_order_stages": {
+                "discriminant-decomposition": "13847808 ns",
+                "global-certification": "34185472 ns",
+                "native-local-orders": "23698944 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 82.55529403686523,
+              "public_object_materialization": 1.6448497772216797
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.015974044799804688,
+              "factor_discovery": "14753536 ns",
+              "field_construction": 1.8911361694335938,
+              "local_order_stages": {
+                "discriminant-decomposition": "14753536 ns",
+                "global-certification": "36608768 ns",
+                "native-local-orders": "22875392 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 85.22486686706543,
+              "public_object_materialization": 1.692056655883789
+            },
+            {
+              "basis_merge": false,
+              "certification": 0.01430511474609375,
+              "factor_discovery": "17312256 ns",
+              "field_construction": 1.744985580444336,
+              "local_order_stages": {
+                "discriminant-decomposition": "17312256 ns",
+                "global-certification": "33607936 ns",
+                "native-local-orders": "25464576 ns"
+              },
+              "local_primes": [],
+              "maximal_order": 87.91375160217285,
+              "public_object_materialization": 1.6236305236816406
+            }
+          ]
+        },
+        "fused_public_hook": {
+          "boundary": "fresh field, public certified maximal_order; one fused analysis call",
+          "warmups": 3,
+          "samples": 7,
+          "rounds_per_sample": 1,
+          "established_samples_ms": [
+            76.34305953979492,
+            83.91141891479492,
+            88.41872215270996,
+            77.84366607666016,
+            75.7906436920166,
+            76.65133476257324,
+            76.81512832641602
+          ],
+          "established_median_ms": 76.81512832641602,
+          "fused_samples_ms": [
+            75.5758285522461,
+            75.43110847473145,
+            79.53977584838867,
+            74.95546340942383,
+            74.73182678222656,
+            77.16798782348633,
+            75.26755332946777
+          ],
+          "fused_median_ms": 75.43110847473145,
+          "established_to_fused_speedup": 1.018348130892816,
+          "fused_analysis_calls": 1,
+          "legacy_order_resource_calls": 0,
+          "certificate_equal": true
+        },
+        "fused_c_kernel": {
+          "boundary": "sealed polynomial to fused field-analysis resource",
+          "warmups": 4,
+          "samples": 7,
+          "rounds_per_sample": 20,
+          "raw_samples_us": [
+            6784.214498475,
+            6850.136548746,
+            7017.551502213,
+            6853.447051253,
+            7020.334998379,
+            7082.631502999,
+            6876.329501392
+          ],
+          "median_us": 6876.329501392,
+          "payload_bytes": 2347
+        },
+        "native_order_kernel": {
+          "boundary": "sealed fmpz polynomial + fmpz prime hints -> compact canonical HNF resource",
+          "warmups": 4,
+          "samples": 9,
+          "rounds_per_sample": 50,
+          "raw_samples_us": [
+            5475.691820029,
+            5468.084819149,
+            5523.624001071,
+            5479.108418804,
+            5637.398799881,
+            5607.80481901,
+            5395.929438528,
+            5698.764598928,
+            5685.446199495
+          ],
+          "median_us": 5523.624001071,
+          "stage_mean_us": {
+            "discriminant": 8.843119722,
+            "hints": 0.478466973,
+            "multiplicationTable": 5.011996254,
+            "round2": 5555.754248053,
+            "normalizeHnf": 11.513158679,
+            "evidence": 4.974473268,
+            "pack": 2.352516167,
+            "cleanup": 1.380799804
+          },
+          "payload_bytes": 571,
+          "exact": true
+        },
+        "references": {
+          "pari_nfbasis_median_us": 1488,
+          "pari_samples_us": [
+            1456,
+            1472,
+            1476,
+            1504,
+            1488,
+            1476,
+            1492,
+            1532,
+            1540
+          ],
+          "hecke_core_median_us": 1184.0569,
+          "hecke_samples_us": [
+            1582.9288000000001,
+            1331.4149,
+            1207.2799,
+            1523.9559,
+            1184.0569,
+            1179.2619,
+            1170.7209,
+            1176.7269000000001,
+            1180.4379000000001
+          ],
+          "best_reference_median_us": 1184.0569,
+          "native_to_best_reference_ratio": 4.6649987860135775
+        },
+        "comparisons_to_prior": {
+          "original_plan_public_ms": 114.6,
+          "original_plan_to_checked_speedup": 1.3035503309947198,
+          "prior_b60_single_sample_ms": null,
+          "prior_b60_to_checked_ratio": null
+        }
+      }
+    ],
+    "t8_bad_generator": {
+      "id": "pure-bad-generator-n8-c2pow32",
+      "warmups": 2,
+      "samples": 5,
+      "raw_samples_ms": [
+        111.0844612121582,
+        110.33201217651367,
+        111.91034317016602,
+        106.77528381347656,
+        111.24610900878906
+      ],
+      "median_ms": 111.0844612121582,
+      "mad_ms": 0.7524490356445312,
+      "exact_verifier": true,
+      "stage_medians_ms": {
+        "composite-local-order": 14.92096,
+        "discriminant-decomposition": 28.145152,
+        "global-certification": 30.8096,
+        "native-local-orders": 20.126464
+      },
+      "factor_discovery_only": {
+        "status": "timeout",
+        "timeout_ms": 10000
+      },
+      "prior_b60_single_sample_ms": 240.432978,
+      "prior_to_current_speedup": 2.1644159351936847,
+      "buchmann_lenstra": [
+        {
+          "runtime": "CPython",
+          "execution_mode": "dynamic",
+          "component_bits": 777,
+          "degree": 8,
+          "id": "T(8,2^32)",
+          "measurements_ns": [
+            [
+              627511,
+              804729,
+              891251,
+              2171230,
+              2556690
+            ],
+            [
+              660110,
+              820490,
+              889240,
+              2153040,
+              2550030
+            ],
+            [
+              636949,
+              811809,
+              877451,
+              2126630,
+              2555290
+            ],
+            [
+              655540,
+              842930,
+              889200,
+              2124540,
+              2554129
+            ],
+            [
+              644120,
+              803260,
+              891140,
+              2389870,
+              2674710
+            ],
+            [
+              655020,
+              796660,
+              882650,
+              2129340,
+              2583160
+            ],
+            [
+              660679,
+              817870,
+              875320,
+              2166420,
+              2560380
+            ]
+          ],
+          "median_ns": {
+            "composite_dedekind_data": 655020,
+            "reference_hnf": 811809,
+            "packed_hnf": 889200,
+            "construction": 2153040,
+            "checker": 2556690
+          }
+        },
+        {
+          "runtime": "Sage.js compiled",
+          "execution_mode": "native-capable",
+          "component_bits": 777,
+          "degree": 8,
+          "id": "T(8,2^32)",
+          "measurements_ns": [
+            [
+              6187008,
+              7970048,
+              2060544,
+              17277440,
+              16428800
+            ],
+            [
+              6174720,
+              7910400,
+              2021632,
+              11976448,
+              16268032
+            ],
+            [
+              6710272,
+              8638464,
+              2156288,
+              13321216,
+              16418816
+            ],
+            [
+              5909760,
+              10340864,
+              2999552,
+              12694784,
+              18293504
+            ],
+            [
+              5991936,
+              7843584,
+              2048000,
+              11980288,
+              16813568
+            ],
+            [
+              6930688,
+              8310784,
+              2125056,
+              13132544,
+              16510720
+            ],
+            [
+              5891840,
+              11222016,
+              2074880,
+              11550720,
+              15340544
+            ]
+          ],
+          "median_ns": {
+            "composite_dedekind_data": 6174720,
+            "reference_hnf": 8310784,
+            "packed_hnf": 2074880,
+            "construction": 12694784,
+            "checker": 16428800
+          }
+        }
+      ]
+    },
+    "precision_degree_12": {
+      "id": "hecke-precision-degree-12",
+      "warmups": 1,
+      "samples": 3,
+      "raw_samples_ms": [
+        11189.968585968018,
+        11191.348314285278,
+        11138.619184494019
+      ],
+      "median_ms": 11189.968585968018,
+      "mad_ms": 1.3797283172607422,
+      "stage_medians_ms": {
+        "composite-local-order": 8878.088448,
+        "discriminant-decomposition": 784.389888,
+        "global-certification": 941.225728,
+        "native-local-orders": 438.129152
+      },
+      "exact_verifier": true,
+      "canonical_basis_digest": "3e1e7c30ff5f7989dfd6efd53f5c968222468ba46911e75db2e7b059802c4c45",
+      "prior_a33_ms": 15454.448699951172,
+      "prior_a33_to_current_speedup": 1.3810984884560553,
+      "original_tail_ms": 114075.812,
+      "original_tail_to_current_speedup": 10.19447115723351
+    },
+    "vector010_round4_local": {
+      "schema": "sagejs.number-fields/round4-vector010-current-head-v1",
+      "warmups": 1,
+      "samples": 3,
+      "samples_ms": [
+        55893.73826980591,
+        56664.66665267944,
+        56418.92886161804
+      ],
+      "median_ms": 56418.92886161804,
+      "compiled_krylov": true,
+      "algorithm": "modified-round4-primary-power-basis",
+      "fallback_reason": null,
+      "local_index": "6739986666787659948666753771754907668409286105635143120275902562304",
+      "local_index_valuation": 222,
+      "input_discriminant_valuation": 544,
+      "output_discriminant_valuation": 100,
+      "ramification_degree": 16,
+      "residue_degree": 2,
+      "basis_denominator": "16384",
+      "metrics": {
+        "characteristic_polynomial_calls": 67,
+        "characteristic_polynomial_cache_hits": 1,
+        "input_coefficient_bits_total": 138033,
+        "max_input_coefficient_bits": 8097,
+        "max_denominator_bits": 15,
+        "characteristic_polynomial_inputs": [
+          {
+            "label": "progress-beta",
+            "coefficient_bits": 34,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 71,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 66,
+            "denominator_bits": 2
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 67,
+            "denominator_bits": 2
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 72,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2194,
+            "denominator_bits": 5
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2194,
+            "denominator_bits": 5
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 76,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2317,
+            "denominator_bits": 6
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2317,
+            "denominator_bits": 6
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 77,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2234,
+            "denominator_bits": 6
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2234,
+            "denominator_bits": 6
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 83,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2420,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2420,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 84,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2376,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2376,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 85,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2371,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2371,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 87,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2373,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2373,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 88,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2360,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2360,
+            "denominator_bits": 7
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 96,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 82,
+            "denominator_bits": 5
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 83,
+            "denominator_bits": 5
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 97,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2508,
+            "denominator_bits": 8
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2508,
+            "denominator_bits": 8
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 97,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2431,
+            "denominator_bits": 8
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2431,
+            "denominator_bits": 8
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 98,
+            "denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2370,
+            "denominator_bits": 8
+          },
+          {
+            "label": "residue-degree-composition",
+            "coefficient_bits": 2370,
+            "denominator_bits": 8
+          },
+          {
+            "label": "progress-beta",
+            "coefficient_bits": 8079,
+            "denominator_bits": 11
+          },
+          {
+            "label": "progress-reused-uniformizer",
+            "coefficient_bits": 2370,
+            "denominator_bits": 8
+          },
+          {
+            "label": "progress-beta",
+            "coefficient_bits": 8097,
+            "denominator_bits": 11
+          },
+          {
+            "label": "progress-uniformizer",
+            "coefficient_bits": 2490,
+            "denominator_bits": 11
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2615,
+            "denominator_bits": 11
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2647,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2647,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2615,
+            "denominator_bits": 11
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2773,
+            "denominator_bits": 13
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2773,
+            "denominator_bits": 13
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2716,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2793,
+            "denominator_bits": 14
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2793,
+            "denominator_bits": 14
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2622,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2813,
+            "denominator_bits": 14
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2807,
+            "denominator_bits": 14
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2628,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2929,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2929,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2653,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2867,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2879,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-beta",
+            "coefficient_bits": 2697,
+            "denominator_bits": 12
+          },
+          {
+            "label": "residue-gamma",
+            "coefficient_bits": 2875,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-root-error",
+            "coefficient_bits": 2875,
+            "denominator_bits": 15
+          },
+          {
+            "label": "residue-error-uniformizer",
+            "coefficient_bits": 2852,
+            "denominator_bits": 15
+          },
+          {
+            "label": "ramification-composition",
+            "coefficient_bits": 2848,
+            "denominator_bits": 15
+          }
+        ],
+        "characteristic_strategy_counts": {
+          "direct-exact": 15,
+          "modular-crt": 24
+        },
+        "characteristic_strategy_max_bound_bits": 6097,
+        "characteristic_strategy_decisions": [
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5773,
+            "estimated_crt_primes": 193,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5751,
+            "estimated_crt_primes": 192,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5804,
+            "estimated_crt_primes": 194,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1681,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5740,
+            "estimated_crt_primes": 192,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1681,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5831,
+            "estimated_crt_primes": 195,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1681,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5828,
+            "estimated_crt_primes": 195,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1681,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5845,
+            "estimated_crt_primes": 195,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1681,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5793,
+            "estimated_crt_primes": 194,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5835,
+            "estimated_crt_primes": 195,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5864,
+            "estimated_crt_primes": 196,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "direct-exact",
+            "degree": 32,
+            "hadamard_bound_bits": 1684,
+            "estimated_crt_primes": 57,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5970,
+            "estimated_crt_primes": 199,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5970,
+            "estimated_crt_primes": 199,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5970,
+            "estimated_crt_primes": 199,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6013,
+            "estimated_crt_primes": 201,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5971,
+            "estimated_crt_primes": 200,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5952,
+            "estimated_crt_primes": 199,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6009,
+            "estimated_crt_primes": 201,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6061,
+            "estimated_crt_primes": 203,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6004,
+            "estimated_crt_primes": 201,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6028,
+            "estimated_crt_primes": 201,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6003,
+            "estimated_crt_primes": 201,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6097,
+            "estimated_crt_primes": 204,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 5997,
+            "estimated_crt_primes": 200,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-beta"
+          },
+          {
+            "strategy": "modular-crt",
+            "degree": 32,
+            "hadamard_bound_bits": 6087,
+            "estimated_crt_primes": 203,
+            "crt_bound_bits_cutoff": 4096,
+            "label": "residue-root-error"
+          }
+        ],
+        "exact_field_quotient_calls": 17,
+        "exact_field_quotient_recoveries": 17,
+        "exact_field_quotient_inputs": [
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 1
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 13
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 14
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 13
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 14
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 13
+          },
+          {
+            "label": "residue-gamma-normalization",
+            "degree": 32,
+            "matrix_denominator_bits": 14
+          }
+        ],
+        "modular_characteristic_calls": 24,
+        "modular_characteristic_primes": 2901,
+        "modular_characteristic_max_bound_bits": 6097,
+        "modular_characteristic_max_modulus_bits": 3810,
+        "modular_characteristic_certifications": {
+          "cyclic-krylov": 24
+        }
+      },
+      "stage_names": [
+        "factor-mod-p",
+        "refine-primary-factors",
+        "dedekind-coefficient-ring",
+        "selector",
+        "assemble-first-layer-hnf",
+        "power-basis-ramification",
+        "power-basis-residue-refinement",
+        "power-basis-reuse-uniformizer",
+        "power-basis-ramification",
+        "power-basis-ramification-composition",
+        "assemble-power-basis-hnf"
+      ],
+      "boundary": "forced modified Round4 local order at p=2; public field construction and global merge excluded",
+      "exact": true,
+      "source_identical_root_single_run_seconds": 55.67103099822998,
+      "prior_durable_status": "timed out at both 5 s and 30 s diagnostic bounds"
+    },
+    "selector": {
+      "schema": "sagejs.benchmark/number-field-maximal-order-selector-v1",
+      "samples": 7,
+      "units": "microseconds",
+      "boundary": "fresh field through public certified maximal_order(trace=True), including selection and merge",
+      "arithmetic": [
+        {
+          "case": "quadratic-p2",
+          "algorithm": "auto",
+          "median_micros": 22278,
+          "timings": [
+            105081,
+            26250,
+            29007,
+            20922,
+            22278,
+            19878,
+            19137
+          ]
+        },
+        {
+          "case": "quadratic-p2",
+          "algorithm": "native",
+          "median_micros": 21212,
+          "timings": [
+            21212,
+            21608,
+            21784,
+            21209,
+            20712,
+            22469,
+            18241
+          ]
+        },
+        {
+          "case": "quadratic-p2",
+          "algorithm": "round2",
+          "median_micros": 171218,
+          "timings": [
+            5440039,
+            186408,
+            166721,
+            158935,
+            171218,
+            173547,
+            163764
+          ]
+        },
+        {
+          "case": "quadratic-p2",
+          "algorithm": "polygon",
+          "median_micros": 145437,
+          "timings": [
+            143373,
+            147069,
+            140612,
+            159824,
+            147032,
+            137286,
+            145437
+          ]
+        },
+        {
+          "case": "quadratic-p2",
+          "algorithm": "round4",
+          "median_micros": 167215,
+          "timings": [
+            370219,
+            168819,
+            167215,
+            167698,
+            150543,
+            146194,
+            165437
+          ]
+        },
+        {
+          "case": "quadratic-p2",
+          "algorithm": "om-maxmin",
+          "median_micros": 163078,
+          "timings": [
+            4337047,
+            165506,
+            163078,
+            247949,
+            149720,
+            150440,
+            149186
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "auto",
+          "median_micros": 18983,
+          "timings": [
+            20140,
+            18983,
+            20692,
+            19070,
+            18128,
+            18250,
+            17817
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "native",
+          "median_micros": 18006,
+          "timings": [
+            18001,
+            18033,
+            20795,
+            18196,
+            17611,
+            17793,
+            18006
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "round2",
+          "median_micros": 178060,
+          "timings": [
+            177496,
+            178060,
+            170967,
+            173939,
+            198343,
+            200831,
+            190391
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "polygon",
+          "median_micros": 145624,
+          "timings": [
+            145624,
+            150177,
+            146288,
+            139521,
+            151747,
+            138080,
+            136279
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "round4",
+          "median_micros": 142419,
+          "timings": [
+            143407,
+            141135,
+            142419,
+            139754,
+            137769,
+            146215,
+            148421
+          ]
+        },
+        {
+          "case": "cubic-p2",
+          "algorithm": "om-maxmin",
+          "median_micros": 251588,
+          "timings": [
+            269494,
+            273712,
+            256329,
+            237366,
+            251588,
+            238603,
+            237446
+          ]
+        }
+      ],
+      "synthetic_many_prime_selector": {
+        "degree": 64,
+        "local_valuation": 128,
+        "prime_count": 4,
+        "median_micros": 2853454,
+        "timings": [
+          2901842,
+          2851623,
+          2927829,
+          2853454,
+          2828259,
+          2870467,
+          2846968
+        ],
+        "current_public_schedule": {
+          "schema": "sagejs.number-fields.local-schedule.v1",
+          "mode": "sequential",
+          "workers": 1,
+          "job_count": 4,
+          "predicted_micros": 2117183500,
+          "conservative_peak_bytes": 121544,
+          "reason": "worker-capability-unavailable",
+          "threshold_evidence": "bench/number-field-local-parallel.cjs:v1"
+        },
+        "hypothetical_pointer_free_worker_schedule": {
+          "schema": "sagejs.number-fields.local-schedule.v1",
+          "mode": "sequential",
+          "workers": 1,
+          "job_count": 4,
+          "predicted_micros": 2117183500,
+          "conservative_peak_bytes": 121544,
+          "reason": "worker-capability-unavailable",
+          "threshold_evidence": "bench/number-field-local-parallel.cjs:v1"
+        },
+        "public_corpus_gate": {
+          "schema": "sagejs.number-fields.public-local-worker-decision.v1",
+          "selected": false,
+          "reason": "native-first-boundary",
+          "after_native_fallback": false,
+          "worker_capability": false,
+          "candidate_schedule": [
+            "sagejs.number-fields.local-schedule.v1",
+            "sequential",
+            1,
+            [
+              [
+                [
+                  -2,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                2,
+                0,
+                [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                623893258364488600
+              ],
+              [
+                [
+                  -2,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                3,
+                1,
+                [
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                4248066767292374500
+              ],
+              [
+                [
+                  -2,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                5,
+                2,
+                [
+                  3,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                7262943943925553000
+              ],
+              [
+                [
+                  -2,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                7,
+                3,
+                [
+                  5,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                9176286138784972000
+              ]
+            ],
+            2117183500,
+            121544,
+            "worker-capability-unavailable",
+            "bench/number-field-local-parallel.cjs:v1"
+          ],
+          "predicted_total_micros": 2117183500,
+          "predicted_critical_path_micros": 2117183500,
+          "predicted_savings_micros": 0,
+          "required_setup_margin_micros": 20000000,
+          "predicted_peak_rss_bytes": 905969664,
+          "memory_budget_bytes": 13440562176,
+          "memory_budget_source": "runtime-platform-capability",
+          "measured_vector001_median": {
+            "sequential_total_micros": 55214067,
+            "parallel_total_micros": 36545808,
+            "sequential_peak_rss_bytes": 596627456,
+            "parallel_peak_rss_bytes": 1427484672,
+            "fresh_samples": 3
+          },
+          "benchmark": "bench/number-field-maximal-order-parallel-worker.cjs:v1"
+        }
+      },
+      "interpretation": "Native remains the public auto choice. The Python local boundary stays sequential until a pointer-free arithmetic worker demonstrates the scheduler crossover."
+    },
+    "worker_vector001": {
+      "schema": "sagejs.benchmark/number-field-public-parallel-worker-v1",
+      "boundary": "fresh field through decomposition, pointer-free local workers, deterministic merge, and independent global certification",
+      "rss_scope": "whole Node process including Sage evaluator and worker threads, sampled every 10ms",
+      "id": "pari-round4-vector-001",
+      "native": {
+        "total_micros": 743815,
+        "discriminant": "691051969765063543658256000000000000",
+        "index": "43227060071940426696124826810860950344387053824334450388343805968384",
+        "stages": [
+          [
+            "discriminant-decomposition",
+            35055
+          ],
+          [
+            "native-local-orders",
+            272106
+          ],
+          [
+            "global-certification",
+            334697
+          ]
+        ],
+        "host_wall_micros": 1083602.695,
+        "process_baseline_rss_bytes": 220553216,
+        "process_peak_rss_bytes": 318296064,
+        "process_peak_rss_delta_bytes": 97742848
+      },
+      "sequential_local": {
+        "total_micros": 51330290,
+        "decomposition_micros": 35188,
+        "selection_micros": 8915605,
+        "worker_micros": 41566087,
+        "merge_micros": 426561,
+        "certification_micros": 309542,
+        "mode": "sequential",
+        "workers": 1,
+        "schedule_reason": "worker-capability-unavailable",
+        "prime_count": 7,
+        "discriminant": "691051969765063543658256000000000000",
+        "index": "43227060071940426696124826810860950344387053824334450388343805968384",
+        "certificate_index": "43227060071940426696124826810860950344387053824334450388343805968384",
+        "resources": [
+          "sagejs.number-fields.local-resources.v1",
+          3365,
+          27162,
+          25160,
+          6664,
+          37191,
+          1
+        ],
+        "host_wall_micros": 51813166.61,
+        "process_baseline_rss_bytes": 219295744,
+        "process_peak_rss_bytes": 602370048,
+        "process_peak_rss_delta_bytes": 383074304
+      },
+      "requested_parallel": {
+        "total_micros": 51639788,
+        "decomposition_micros": 36902,
+        "selection_micros": 9129168,
+        "worker_micros": 41663152,
+        "merge_micros": 424186,
+        "certification_micros": 310614,
+        "mode": "sequential",
+        "workers": 1,
+        "schedule_reason": "worker-capability-unavailable",
+        "prime_count": 7,
+        "discriminant": "691051969765063543658256000000000000",
+        "index": "43227060071940426696124826810860950344387053824334450388343805968384",
+        "certificate_index": "43227060071940426696124826810860950344387053824334450388343805968384",
+        "resources": [
+          "sagejs.number-fields.local-resources.v1",
+          3365,
+          27162,
+          25160,
+          6664,
+          37191,
+          1
+        ],
+        "host_wall_micros": 52129595.846,
+        "process_baseline_rss_bytes": 219279360,
+        "process_peak_rss_bytes": 608473088,
+        "process_peak_rss_delta_bytes": 389193728
+      },
+      "exact_equivalent": true,
+      "conclusion": "Requested parallel execution remained sequential (workers=1, worker-capability-unavailable)."
+    }
+  },
+  "derived": {
+    "hard_case_native_to_best_reference_ratios": [
+      7.979231146299898,
+      4.6649987860135775
+    ],
+    "hard_case_geometric_mean_ratio": 6.101073971917629,
+    "six_case_fused_public_speedups": [
+      {
+        "id": "motivating-degree-7",
+        "speedup": 1.2967537582879276
+      },
+      {
+        "id": "sage-essential-discriminant",
+        "speedup": 1.2574290384605828
+      },
+      {
+        "id": "lmfdb-3.1.431.1",
+        "speedup": 1.1180002859457658
+      },
+      {
+        "id": "lmfdb-5.1.17161.1",
+        "speedup": 1.253729948434906
+      },
+      {
+        "id": "pari-2510",
+        "speedup": 1.0773497782676942
+      },
+      {
+        "id": "pari-1710",
+        "speedup": 1.018348130892816
+      }
+    ]
+  },
+  "acceptance_gates": [
+    {
+      "phase": "P0",
+      "id": "P0.1",
+      "requirement": "One command reproduces the baseline table.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "The checked manifest profiler produced the seven-case table with retained samples."
+    },
+    {
+      "phase": "P0",
+      "id": "P0.2",
+      "requirement": "T(8,2^32) attributes factor discovery separately from local order computation.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "Public stages are retained; the isolated factor-discovery request timed out while the public lazy path completed."
+    },
+    {
+      "phase": "P0",
+      "id": "P0.3",
+      "requirement": "Report separate Hecke core and Oscar public/cold rows with shared-family labeling.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "Direct Hecke core is measured and family metadata is retained; Oscar public/cold was not rerun in this current-head receipt."
+    },
+    {
+      "phase": "P0",
+      "id": "P0.4",
+      "requirement": "Record installed Magma version and bounded T8 timeout.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Magma 2.18-5 is identified but was disabled in the checked profiler, so no bounded T8 Magma record was produced here."
+    },
+    {
+      "phase": "P0",
+      "id": "P0.5",
+      "requirement": "Wrong basis, index, or discriminant cannot enter benchmark output.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "All accepted checked timings passed the independent exact lattice verifier; invalid timings are excluded by the driver."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.1",
+      "requirement": "T8 does not invoke complete integer factorization before local work.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "The isolated complete factor-discovery boundary timed out, while warm public maximal_order completed in 111.0844612121582 ms using lazy composite work."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.2",
+      "requirement": "Frozen Hecke differential traces agree on splits, primes, local indices, and final HNF.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "The receipt records final exact cross-oracle agreement, but does not rerun the complete intermediate Hecke trace suite."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.3",
+      "requirement": "Adversarial composite components split correctly and deterministically.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "No dedicated adversarial split suite was rerun for this receipt."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.4",
+      "requirement": "Prime, semiprime, prime-power, and pseudoprime differential tests pass.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "No dedicated decomposition differential suite was rerun for this receipt."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.5",
+      "requirement": "Arbitrary-large-prime regression remains exact.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "Not selected in this receipt manifest."
+    },
+    {
+      "phase": "P1",
+      "id": "P1.6",
+      "requirement": "Every returned global order has independent-checker evidence.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "All checked public cases, T8, and precision12 passed nonsingularity, containment, closure, discriminant-index, and frozen-certificate checks."
+    },
+    {
+      "phase": "P2",
+      "id": "P2.1",
+      "requirement": "Ordinary native path has one canonical polynomial-to-basis host crossing.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "The direct native boundary is sealed polynomial plus hints to compact canonical HNF, with exact resource output."
+    },
+    {
+      "phase": "P2",
+      "id": "P2.2",
+      "requirement": "Dynamic/native/PARI/Sage/Hecke/Oscar/Magma agree on the standard corpus when available.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "The selected native, PARI, and Hecke cases agree exactly; not all systems and the complete standard corpus were rerun."
+    },
+    {
+      "phase": "P2",
+      "id": "P2.3",
+      "requirement": "No machine-word restriction on primes.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "The current receipt did not isolate an arbitrary-size-prime native input."
+    },
+    {
+      "phase": "P2",
+      "id": "P2.4",
+      "requirement": "Windows passes the path or capability-tested dynamic fallback.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "This Linux-only receipt does not establish Windows behavior."
+    },
+    {
+      "phase": "P2",
+      "id": "P2.5",
+      "requirement": "Six warm public timings improve by at least 4x before Round 4.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "The fused public-hook speedups are 1.018x–1.297x, all below 4x."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.1",
+      "requirement": "Every imported PARI Round-4 regression passes exactly.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "The source-identical vector010 local path is exact, and fixture completion landed later as 3ecf3eb8; this base does not itself contain the complete fixture set."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.2",
+      "requirement": "Random low-degree locals agree with Round 2, PARI, Hecke, and Magma when available.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "No randomized four-oracle suite was rerun."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.3",
+      "requirement": "T(8,2^32) completes within 25 ms on the baseline host.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Checked public median is 111.0844612121582 ms; compiled BL construction alone is 12.694784 ms and checker is 16.4288 ms."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.4",
+      "requirement": "#2510 and #1710 are within 2x the faster direct PARI/Hecke native boundary.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Ratios are 7.979231146299898x and 4.6649987860135775x."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.5",
+      "requirement": "Coefficient-height corpus keeps the poorly scaling Hecke fallback unselected.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "The selector probe covers p=2 microcases and a synthetic many-prime case, not the coefficient-height corpus."
+    },
+    {
+      "phase": "P3",
+      "id": "P3.6",
+      "requirement": "Sanitizer, leak, strict Python, architecture, and Windows checks pass.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "The build passed, but this receipt does not rerun that entire platform/check matrix."
+    },
+    {
+      "phase": "P4",
+      "id": "P4.1",
+      "requirement": "OM trace and local-index certificate are independently inspectable.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "OM is explicitly selectable; the detailed retained trace here is modified Round4 vector010, not a completed OM certificate trace."
+    },
+    {
+      "phase": "P4",
+      "id": "P4.2",
+      "requirement": "Round4, OM/MaxMin, PARI, Hecke/Oscar, and Magma agree on all overlapping standard cases.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "No full multi-algorithm, multi-oracle overlap matrix was rerun."
+    },
+    {
+      "phase": "P4",
+      "id": "P4.3",
+      "requirement": "Degree 96–160 and deep-index families meet the final stress parity gate.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "No passing stress-family artifact exists in this receipt; vector010 degree 32 still takes 56.419 s locally."
+    },
+    {
+      "phase": "P4",
+      "id": "P4.4",
+      "requirement": "Selector uses measured degree, local valuation, factor pattern, and output size, never names.",
+      "status": "pass",
+      "satisfied": true,
+      "evidence": "The selector trace exposes degree, valuation, prime count, predicted work and memory; public selection is native-first."
+    },
+    {
+      "phase": "P4",
+      "id": "P4.5",
+      "requirement": "Disabling OM leaves correct Round2/Round4 fallbacks.",
+      "status": "not_remeasured",
+      "satisfied": null,
+      "evidence": "Forced algorithms are selectable, but OM-removal fallback behavior was not tested in this receipt."
+    },
+    {
+      "phase": "P5",
+      "id": "P5.1",
+      "requirement": "Parallel results equal sequential results under randomized completion order.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "Vector001 native/sequential/requested-parallel results are exactly equivalent, but the requested path stayed sequential and did not exercise randomized completion."
+    },
+    {
+      "phase": "P5",
+      "id": "P5.2",
+      "requirement": "No native pointer or host object identity is transferred.",
+      "status": "not_established",
+      "satisfied": null,
+      "evidence": "The pointer-free worker benchmark exists, but worker capability was unavailable, so a live transfer was not exercised."
+    },
+    {
+      "phase": "P5",
+      "id": "P5.3",
+      "requirement": "Many-prime corpus speeds up without tiny-case regression.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Current and hypothetical schedules both select sequential workers=1; no current public speedup is realized."
+    },
+    {
+      "phase": "P5",
+      "id": "P5.4",
+      "requirement": "Final contracts pass on reference host and remain bounded on supported CI.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Multiple final performance gates fail and this is a single Linux-host receipt."
+    },
+    {
+      "phase": "final",
+      "id": "F.1",
+      "requirement": "For >=1 ms references, geometric-mean ratio <=1.25 and no standard case >2 absent a documented selector issue.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Among these cases #1710 has a >=1 ms best reference and its native ratio is 4.664999x, above both limits. The broader P3 #2510/#1710 geometric mean is 6.101074x."
+    },
+    {
+      "phase": "final",
+      "id": "F.2",
+      "requirement": "For <1 ms reference microcases, native <=0.25 ms and warm public <=2 ms.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "Warm-public medians exceed 2 ms for every eligible case, and #2510 also misses the native budget at 1.989901 ms versus a 0.249385 ms Hecke core."
+    },
+    {
+      "phase": "final",
+      "id": "F.3",
+      "requirement": "For >=1 s scalable stress references, Sage.js is no slower than the faster reference.",
+      "status": "not_established",
+      "satisfied": null,
+      "evidence": "No exact-equivalent scalable reference stress pair was completed in this receipt."
+    },
+    {
+      "phase": "final",
+      "id": "F.4",
+      "requirement": "Warm maximal_order is no slower than Sage wrapper over the complete standard corpus.",
+      "status": "fail",
+      "satisfied": false,
+      "evidence": "This receipt has no complete-corpus Sage wrapper comparison, and the available original microcase baselines are not uniformly beaten."
+    },
+    {
+      "phase": "final",
+      "id": "F.5",
+      "requirement": "Optimization preserves certification and supported-platform safety.",
+      "status": "partial",
+      "satisfied": null,
+      "evidence": "Certification is preserved for every measured result; supported-platform safety was not re-established by this Linux-only receipt."
+    }
+  ],
+  "acceptance_summary": {
+    "pass": 7,
+    "partial": 6,
+    "fail": 10,
+    "not_remeasured": 11,
+    "not_established": 2
+  },
+  "completion_definition": [
+    {
+      "id": "C.1",
+      "requirement": "Certified PARI-free public maximal_order for every supported integral simple field.",
+      "status": "partial",
+      "evidence": "Measured selected fields are certified and PARI-free; universal support is not established."
+    },
+    {
+      "id": "C.2",
+      "requirement": "No complete factorization when lazy certification suffices.",
+      "status": "pass",
+      "evidence": "T8 and precision12 public paths complete while isolated complete factor discovery times out."
+    },
+    {
+      "id": "C.3",
+      "requirement": "All standard, Round4, Hecke, stress, and randomized-generator corpora pass with bounded Magma records.",
+      "status": "fail",
+      "evidence": "The full matrix, completed fixture set, stress families, and Magma bounded records are absent from this base receipt."
+    },
+    {
+      "id": "C.4",
+      "requirement": "Dynamic, Round2, Round4, and OM agree on overlapping domains.",
+      "status": "partial",
+      "evidence": "Selected exact equivalences exist, but the complete overlap matrix was not rerun."
+    },
+    {
+      "id": "C.5",
+      "requirement": "Final performance contracts are met reproducibly.",
+      "status": "fail",
+      "evidence": "P2.5, P3.3, P3.4, P5.3 and final ratio/budget gates fail."
+    },
+    {
+      "id": "C.6",
+      "requirement": "Artifacts report three external implementation families and bounded failures/timeouts.",
+      "status": "partial",
+      "evidence": "Families are identified, but Oscar and bounded Magma runs were not rerun; explicit Sage.js factor-discovery timeouts are retained."
+    },
+    {
+      "id": "C.7",
+      "requirement": "Native boundaries are host-neutral, audited, leak-free and supported on all named platforms.",
+      "status": "not_established",
+      "evidence": "Only Linux x64 was built and measured here."
+    },
+    {
+      "id": "C.8",
+      "requirement": "Public documentation covers exactness, caching, diagnostics, and local/certification options.",
+      "status": "not_evaluated",
+      "evidence": "Documentation was outside this read-only performance lane."
+    },
+    {
+      "id": "C.9",
+      "requirement": "Each coherent phase is committed and pushed with evidence and architecture decisions.",
+      "status": "partial",
+      "evidence": "This receipt is durable; completion of every phase is not established by this lane."
+    }
+  ],
+  "remaining_bottlenecks": [
+    "Warm public overhead is 15.996–75.431 ms even with one fused analysis call; the direct fused C resource is only 21.704–6876.330 us.",
+    "Direct native #2510/#1710 kernels are 7.979x/4.665x slower than the faster PARI/Hecke reference; hard-case geometric mean is 6.102x.",
+    "T8 checked public median is 111.084 ms versus the 25 ms gate; BL construction/checker medians are 12.695/16.429 ms and the public trace still adds decomposition, native-local, and certification stages.",
+    "Precision12 remains 11.190 s; composite local work dominates at about 8.878 s.",
+    "Vector010 modified Round4 local work remains 56.419 s with 24 modular characteristic calls, 2901 CRT primes, and a 3810-bit maximum modulus.",
+    "The current public worker path is disabled by worker-capability-unavailable and native-first selection; requested parallel vector001 execution remains sequential.",
+    "OM p=2 source landed after this base, but auto-selection remains disabled, so it does not alter these public timings."
+  ],
+  "limitations": [
+    "Single Linux x64 host; no Windows, Linux arm64, or macOS arm64 validation in this receipt.",
+    "Magma was installed but disabled; Oscar public/cold and complete Sage wrapper comparisons were not rerun.",
+    "Host activity was shared. Exact-equivalent warmed medians and load averages are retained, but small cross-run differences are not attributed solely to code.",
+    "The stock fused-resource benchmark's dynamic-checker assumption did not match the production registry, so its timing was discarded; the exact direct C resource witness was used instead."
+  ],
+  "integrity": {
+    "algorithm": "sha256(canonical JSON with recursively sorted object keys, excluding integrity)",
+    "payload_sha256": "73982e4e3e02e4394b86224b85a246a85e7bf8ef2042e336a0368175add67a4e"
+  }
+}
