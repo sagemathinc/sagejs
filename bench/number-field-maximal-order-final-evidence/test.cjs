@@ -13,6 +13,7 @@ const PLATFORM_CLI = resolve(ROOT, "tools/number-field-maximal-order/platform-va
 const {
   BOUNDARY_CONTRACTS,
   finalizeEvidenceReport,
+  payloadDigest,
   terminalAccounting,
   verifyEvidenceIntegrity,
 } = require("./accounting.cjs");
@@ -38,6 +39,9 @@ const {
 const {
   readProcessTreeRssKilobytes,
 } = require("../../tools/number-field-maximal-order/process.cjs");
+const {
+  RELEVANT_SOURCES,
+} = require("./identity.cjs");
 const {
   REQUIRED_CHECKS,
   platformReceiptDigest,
@@ -114,11 +118,23 @@ function finalReport(records, expectedRecords = records, options = {}) {
     records,
     cases: [...new Set(records.map((record) => record.case_id))].map((id) => ({ id })),
     summary: {},
+    environment: { warmup_policy: 0, sample_policy: 3 },
     ...(options.raw || {}),
   }, {
     expectedRecords,
     identity: options.identity || {
-      source: { commit: "a".repeat(40), tree: "b".repeat(40), clean: true },
+      source: {
+        commit: "a".repeat(40),
+        tree: "b".repeat(40),
+        commit_tree: "b".repeat(40),
+        clean: true,
+        relevant_files: Object.fromEntries(RELEVANT_SOURCES.map((path) => [path, {
+            status: "ok",
+            sha256: "e".repeat(64),
+            tracked: true,
+            head_current: true,
+          }])),
+      },
       platform: {
         platform: "linux",
         architecture: "x64",
@@ -127,14 +143,30 @@ function finalReport(records, expectedRecords = records, options = {}) {
       native_artifacts: Object.fromEntries([
         "packages/flint/build/Release/sagejs_flint.node",
         "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+        "packages/flint/build/generated-ffi/manifest.json",
         "dist/tools/kernel.js",
         "dist/native-kernels/index.json",
-      ].map((path) => [path, { status: "ok", sha256: "d".repeat(64) }])),
+      ].map((path) => [path, {
+        status: "ok",
+        sha256: path === "dist/native-kernels/index.json"
+          ? "c".repeat(64)
+          : "d".repeat(64),
+        bytes: 1,
+      }])),
+      generated_ffi: { status: "ok", current: true },
       production_native: {
         status: "ok",
         complete: true,
         index: { status: "ok", sha256: "c".repeat(64) },
-        modules: {},
+        modules: {
+          "sagejs/number_fields/maximal_order.py": {
+            cache_key: "1".repeat(64),
+            source_hash: "2".repeat(64),
+            source_current: true,
+            wrapper: { status: "ok", sha256: "3".repeat(64) },
+            addon: { status: "ok", sha256: "4".repeat(64) },
+          },
+        },
       },
     },
     loadStart: { load_average_1m_5m_15m: [0, 0, 0] },
@@ -153,6 +185,7 @@ test("final selections are derived from the corrected 505-case corpus", () => {
   assert.equal(buildEvidenceManifest({ selection: "round4" }).cases.length, 477);
   assert.equal(buildEvidenceManifest({ selection: "hecke" }).cases.length, 6);
   assert.equal(buildEvidenceManifest({ selection: "equivalent" }).cases.length, 34);
+  assert.equal(buildEvidenceManifest({ selection: "quick" }).profiles.final.samples, 3);
   const addprimes = corpus.cases.find((entry) => entry.id === "addprimes-degree-7");
   assert.equal(addprimes.fieldDiscriminant, "-1654803061237150235374988302272");
   assert.equal(addprimes.equationOrderIndex, "558573");
@@ -321,7 +354,6 @@ test("warm public micro coverage excludes the separately governed hard-local cas
     "motivating-degree-7",
     "sage-essential-discriminant",
     "lmfdb-3.1.431.1",
-    "lmfdb-5.1.17161.1",
   ];
   const receipt = evaluateGates([finalReport(
     ids.map((caseId) => verifiedRecord(caseId, "sagejs", "warm-public", 1.5)),
@@ -332,17 +364,40 @@ test("warm public micro coverage excludes the separately governed hard-local cas
 });
 
 test("native micro eligibility comes from best references below one millisecond", () => {
+  const candidateIds = [
+    "motivating-degree-7",
+    "sage-essential-discriminant",
+    "lmfdb-3.1.431.1",
+    "pari-2510",
+    "pari-1710",
+  ];
+  const referenceTerminals = candidateIds.flatMap((caseId) => [
+    unavailableRecord(caseId, "pari", "nfbasis"),
+    unavailableRecord(caseId, "pari", "nfinit"),
+    unavailableRecord(caseId, "hecke", "core"),
+  ]);
   let receipt = evaluateGates([finalReport([
+    ...referenceTerminals.filter((record) => !(
+      record.case_id === "motivating-degree-7" &&
+      record.system === "pari" && record.boundary === "nfbasis"
+    ) && !(
+      record.case_id === "pari-2510" &&
+      record.system === "pari" && record.boundary === "nfbasis"
+    )),
     verifiedRecord("motivating-degree-7", "pari", "nfbasis", 0.2),
     verifiedRecord("motivating-degree-7", "sagejs", "native-kernel", 0.24),
     verifiedRecord("pari-2510", "pari", "nfbasis", 1.1),
     verifiedRecord("pari-2510", "sagejs", "native-kernel", 0.4),
   ])]);
   let native = receipt.gates.find((entry) => entry.id === "performance.native-micro");
-  assert.equal(native.status, "pass");
+  assert.equal(native.status, "pass", JSON.stringify(native.evidence));
   assert.deepEqual(native.evidence.eligible_ids, ["motivating-degree-7"]);
 
   receipt = evaluateGates([finalReport([
+    ...referenceTerminals.filter((record) => !(
+      record.case_id === "motivating-degree-7" &&
+      record.system === "pari" && record.boundary === "nfbasis"
+    )),
     verifiedRecord("motivating-degree-7", "pari", "nfbasis", 0.2),
     verifiedRecord("motivating-degree-7", "sagejs", "native-kernel", 0.26),
   ])]);
@@ -359,12 +414,39 @@ test("direct-reference ratio cannot pass from one eligible row", () => {
     (entry) => entry.id === "performance.direct-reference-ratio",
   );
   assert.equal(ratio.status, "partial");
-  assert.equal(ratio.evidence.minimum_case_count, 2);
+  assert(ratio.evidence.reference_missing.length > 0);
+});
+
+test("direct-reference ratio requires and accepts the full comparable matrix", () => {
+  const ids = loadCorpus().cases
+    .filter((entry) => entry.primeSupportCertified === true)
+    .map((entry) => entry.id);
+  const records = ids.flatMap((caseId) => [
+    verifiedRecord(caseId, "pari", "nfbasis", 2),
+    unavailableRecord(caseId, "pari", "nfinit"),
+    unavailableRecord(caseId, "hecke", "core"),
+    verifiedRecord(caseId, "sagejs", "native-kernel", 1),
+  ]);
+  const ratio = evaluateGates([finalReport(records)]).gates.find(
+    (entry) => entry.id === "performance.direct-reference-ratio",
+  );
+  assert.equal(ratio.status, "pass");
+  assert.equal(
+    ratio.evidence.expected_case_ids.length,
+    ids.length,
+    JSON.stringify(ratio.evidence),
+  );
+  assert.deepEqual(ratio.evidence.reference_missing, []);
+  assert.deepEqual(ratio.evidence.missing_case_ids, []);
 });
 
 test("oracle coverage accepts explicit optional unavailability but not omission", () => {
-  const caseId = "motivating-degree-7";
-  const records = [
+  const ids = [
+    "motivating-degree-7",
+    "sage-essential-discriminant",
+    "lmfdb-3.1.431.1",
+  ];
+  const records = ids.flatMap((caseId) => [
     verifiedRecord(caseId, "sagejs", "warm-public", 1),
     verifiedRecord(caseId, "sagejs-dynamic", "dynamic-public", 1),
     unavailableRecord(caseId, "pari", "nfbasis"),
@@ -374,13 +456,16 @@ test("oracle coverage accepts explicit optional unavailability but not omission"
     unavailableRecord(caseId, "oscar", "warm-public"),
     unavailableRecord(caseId, "oscar", "cold-application"),
     unavailableRecord(caseId, "magma", "warm-public"),
-  ];
+  ]);
   let oracle = evaluateGates([finalReport(records)]).gates.find(
     (entry) => entry.id === "correctness.oracle-coverage",
   );
   assert.equal(oracle.status, "pass");
 
-  oracle = evaluateGates([finalReport(records.slice(0, -1))]).gates.find(
+  const incomplete = records.filter((record) => !(
+    record.case_id === ids.at(-1) && record.system === "magma"
+  ));
+  oracle = evaluateGates([finalReport(incomplete)]).gates.find(
     (entry) => entry.id === "correctness.oracle-coverage",
   );
   assert.equal(oracle.status, "partial");
@@ -392,7 +477,6 @@ test("cold boundary coverage is representative and availability-aware", () => {
     "motivating-degree-7",
     "sage-essential-discriminant",
     "lmfdb-3.1.431.1",
-    "lmfdb-5.1.17161.1",
   ];
   const records = ids.flatMap((caseId) => [
     verifiedRecord(caseId, "sagejs", "cold-application", 20),
@@ -403,23 +487,41 @@ test("cold boundary coverage is representative and availability-aware", () => {
     (entry) => entry.id === "performance.cold-boundary-coverage",
   );
   assert.equal(cold.status, "pass");
+
+  const duplicate = evaluateGates([finalReport([...records, records[0]])]).gates.find(
+    (entry) => entry.id === "performance.cold-boundary-coverage",
+  );
+  assert.equal(duplicate.status, "fail");
 });
 
 test("algorithm overlap requires a complete declared supported set", () => {
   const caseId = "motivating-degree-7";
   const boundaries = ["dynamic-public", "round2-local", "round4-local", "om-local"];
-  let report = finalReport(
-    boundaries.map((boundary) => verifiedRecord(caseId, "sagejs", boundary, 1)),
-  );
+  let report = finalReport(boundaries.map((boundary) =>
+    verifiedRecord(caseId, "sagejs", boundary, 1),
+  ));
   let overlap = evaluateGates([report]).gates.find(
     (entry) => entry.id === "correctness.algorithm-overlap",
   );
   assert.equal(report.algorithm_overlap_support.evaluation_complete, true);
+  assert.equal(overlap.status, "partial");
+  assert(overlap.evidence.missing_evaluation_case_ids.length > 0);
+
+  const corpusIds = loadCorpus().cases.map((entry) => entry.id);
+  const completeRows = corpusIds.flatMap((id) => boundaries.map((boundary) =>
+    id === caseId
+      ? verifiedRecord(id, "sagejs", boundary, 1)
+      : unavailableRecord(id, "sagejs", boundary),
+  ));
+  report = finalReport(completeRows);
+  overlap = evaluateGates([report]).gates.find(
+    (entry) => entry.id === "correctness.algorithm-overlap",
+  );
   assert.equal(overlap.status, "pass");
 
-  report = finalReport(boundaries.slice(0, -1).map((boundary) =>
-    verifiedRecord(caseId, "sagejs", boundary, 1),
-  ));
+  report = finalReport(completeRows.filter((record) => !(
+    record.case_id === corpusIds.at(-1) && record.boundary === "om-local"
+  )));
   overlap = evaluateGates([report]).gates.find(
     (entry) => entry.id === "correctness.algorithm-overlap",
   );
@@ -448,6 +550,43 @@ test("performance gates reject single-sample timings and accept cache identity o
   receipt = evaluateGates([timedReport]);
   byId = new Map(receipt.gates.map((entry) => [entry.id, entry]));
   assert.equal(byId.get("api.cache-identity").status, "fail");
+
+  const inconsistentReport = finalReport([
+    verifiedRecord("motivating-degree-7", "sagejs", "warm-public", 1, {
+      fields: {
+        statistics: {
+          median_ms: 2,
+          mad_ms: 0,
+          minimum_ms: 1,
+          maximum_ms: 1,
+          sample_count: 3,
+        },
+      },
+    }),
+  ]);
+  receipt = evaluateGates([inconsistentReport]);
+  assert.equal(
+    receipt.gates.find((entry) => entry.id === "evidence.performance-samples").status,
+    "fail",
+  );
+});
+
+test("source and native identities reject stale measured artifacts", () => {
+  const report = finalReport([
+    verifiedRecord("motivating-degree-7", "sagejs", "warm-public", 1),
+  ]);
+  const module = report.identity.production_native.modules[
+    "sagejs/number_fields/maximal_order.py"
+  ];
+  module.source_current = false;
+  report.identity.source.relevant_files[
+    "src/lib/sagejs/number_fields/maximal_order.py"
+  ].head_current = false;
+  report.integrity.payload_sha256 = payloadDigest(report);
+  const byId = new Map(evaluateGates([report]).gates.map((entry) => [entry.id, entry]));
+  assert.equal(byId.get("evidence.source-currentness").status, "fail");
+  assert.equal(byId.get("evidence.native-artifact-identity").status, "fail");
+  assert.equal(byId.get("evidence.integrity").status, "pass");
 });
 
 test("OM selection requires an untraced choice paired with traced execution evidence", () => {
@@ -456,7 +595,10 @@ test("OM selection requires an untraced choice paired with traced execution evid
       algorithm_selection: {
         local_decisions: [{
           algorithm: "om-maxmin",
-          metrics: { auto_eligibility: { round2: { eligible: true } } },
+          metrics: {
+            auto_eligibility: { round2: { eligible: true } },
+            om_prefilter: { suppressed_alternatives: ["round2"] },
+          },
         }],
       },
       selected_algorithm: "om",
@@ -479,6 +621,22 @@ test("OM selection requires an untraced choice paired with traced execution evid
   assert.equal(
     receipt.gates.find((entry) => entry.id === "selection.om-automatic").status,
     "pass",
+  );
+
+  const undeclared = {
+    ...warm,
+    algorithm_selection: {
+      ...warm.algorithm_selection,
+      local_decisions: [{
+        algorithm: "om-maxmin",
+        metrics: { auto_eligibility: { round2: { eligible: true } } },
+      }],
+    },
+  };
+  const rejected = evaluateGates([finalReport([undeclared, traced, control])]);
+  assert.equal(
+    rejected.gates.find((entry) => entry.id === "selection.om-automatic").status,
+    "fail",
   );
 });
 
@@ -546,6 +704,7 @@ test("CLI validates and plans the full standard matrix without executing it", ()
   assert.equal(payload.expected_record_count, 489);
   assert.deepEqual(payload.systems, ["sagejs"]);
   assert.deepEqual(payload.boundaries, { sagejs: ["warm-public"] });
+  assert.equal(payload.samples, 3);
   assert.equal(planEvidenceRun({ selection: "stress" }).case_count, 16);
 
   const boundaryPlan = planEvidenceRun({

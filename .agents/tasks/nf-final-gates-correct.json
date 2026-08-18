@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-final-gates-correct",
+  "title": "Correct maximal-order final evidence gates",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the maximal-order final-evidence harness enforce the audited coverage, timing, overlap, OM, cold-boundary, oracle, source-currentness, and sampling semantics",
+  "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
+  "claims": [
+    "bench/number-field-maximal-order-final-evidence.cjs",
+    "bench/number-field-maximal-order-final-evidence/corpus.cjs",
+    "bench/number-field-maximal-order-final-evidence/gates.cjs",
+    "bench/number-field-maximal-order-final-evidence/identity.cjs",
+    "bench/number-field-maximal-order-final-evidence/runner.cjs",
+    "bench/number-field-maximal-order-final-evidence/test.cjs",
+    "test/number-field-maximal-order-final-evidence/test.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "focused synthetic final-evidence gate fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test bench/number-field-maximal-order-final-evidence/test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/number-field-maximal-order-final-evidence/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.88,
+      "started_at": "2026-08-18T13:41:29.965Z",
+      "commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
+      "workspace_fingerprint": "73b28b14d2db59ee7bb12a82b6655116c20b0d0f9d00906394d4bbe1590d47e9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The final-evidence evaluator now requires complete direct-reference, algorithm-overlap, oracle, and cold-boundary matrices; explicit OM suppressed-control evidence; current committed source/native identities; and internally consistent three-sample performance rows. Primary evidence defaults to three retained samples, while randomized and cold exactness retain their deliberate one-sample contracts.",
+    "risks": [
+      "The final real evidence collection must now include explicit unavailable/unsupported rows for every optional reference boundary instead of omitting tools or cases.",
+      "Heavy baselib/native suites were deliberately not run because this source-only lane was instructed not to compete with the active proof benchmark."
+    ],
+    "next_steps": [
+      "After integration and when the host is free, run pnpm test:baselib:strict and pnpm test:native from the final source identity.",
+      "Collect final primary, cold, oracle, overlap, and platform evidence under the strengthened terminal matrices."
+    ]
+  }
+}
