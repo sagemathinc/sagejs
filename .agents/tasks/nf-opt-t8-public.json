@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure and implement a generic packed decomposition/BL/proof dataflow that brings checked public T(8,2^32) toward the 25 ms gate while preserving independent verification and exact equivalence",
-  "base_commit": "4b5363d88a8677fe2b51714292e34236ee2831e1",
+  "base_commit": "ba819ea73d173b6db4c2938d58e8e5b17cbeddf8",
   "claims": [
     "src/lib/sagejs/number_fields/composite_field_analysis.py",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
@@ -17,7 +17,8 @@
   ],
   "dependencies": [
     "nf-opt-proof-path",
-    "nf-opt-bl-fusion"
+    "nf-opt-bl-fusion",
+    "nf-opt-public-2ms"
   ],
   "references": [
     "agents/number-field-maximal-order-optimization-plan.md"
