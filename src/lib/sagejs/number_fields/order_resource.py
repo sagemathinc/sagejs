@@ -274,6 +274,17 @@ def _native_order_and_proof_from_polynomial_resource_bound(
     try:
         for row, prime in enumerate(primes):
             flint.fmpz_matrix_set_entry(hints, row, 0, prime)
+        if authenticate_round2:
+            analysis = __import__(
+                "sagejs.number_fields.field_analysis_resource",
+                fromlist=["field_analysis_resource"],
+            )
+            return analysis.native_carried_round2_order_from_resources(
+                polynomial_resource,
+                hints,
+                coefficients_low_to_high=coefficients,
+                certified_primes=primes,
+            )
         resource = flint.number_field_order_from_polynomial_resource(
             polynomial_resource, hints
         )
@@ -286,23 +297,6 @@ def _native_order_and_proof_from_polynomial_resource_bound(
             if result.equation_discriminant == 0:
                 raise ValueError("native order result omitted its source discriminant")
             proof = None
-            if authenticate_round2 and result.complete:
-                analysis = __import__(
-                    "sagejs.number_fields.field_analysis_resource",
-                    fromlist=["field_analysis_resource"],
-                )
-                proof = analysis.native_round2_order_proof_from_resources(
-                    polynomial_resource,
-                    resource,
-                    hints,
-                    coefficients_low_to_high=coefficients,
-                    certified_primes=primes,
-                    basis_numerator=result.basis.numerator,
-                    basis_denominator=result.basis.denominator,
-                    index=result.index,
-                    equation_discriminant=result.equation_discriminant,
-                    order_discriminant=result.order_discriminant,
-                )
         finally:
             resource.close()
     finally:

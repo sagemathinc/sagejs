@@ -2778,6 +2778,296 @@ def _current_round2_proof_projection_matches(
         return False
 
 
+def _decode_current_carried_round2_order_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+    ordinary_replay: bool = False,
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Authenticate one proof-carrying result from its current native call.
+
+    The terminal fixed-point theorem is checked independently inside each
+    native construction worker before its slot is published.  This immediate
+    host boundary binds the exact nested order bytes and source tuple, then
+    checks canonical radical shape and full rank of every carried terminal
+    minor.  It never rebuilds an order table or replays enlargement.  External
+    payloads use the ordinary mathematical replay boundary instead.
+    """
+    coefficients = [int(value) for value in expected_polynomial]
+    primes = [int(value) for value in expected_primes]
+    degree = len(coefficients) - 1
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or len(primes) == 0
+        or len(set(primes)) != len(primes)
+        or any(prime < 2 for prime in primes)
+        or len(payload) < 72
+        or [_byte(payload, index) for index in range(8)]
+        != [83, 74, 78, 70, 81, 1, 0, 0]
+        or _unsigned(payload, 8, 8) != degree
+        or _unsigned(payload, 16, 8) != len(primes)
+        or _unsigned(payload, 48, 8) != 1
+        or _unsigned(payload, 56, 8) != 0
+        or _unsigned(payload, 64, 8) != 0
+    ):
+        raise ValueError("invalid current proof-carrying order header")
+    proof_count = _unsigned(payload, 24, 8)
+    order_length = _unsigned(payload, 32, 8)
+    entry_count = _unsigned(payload, 40, 8)
+    if (
+        order_length < 64
+        or order_length > len(payload) - 72
+        or entry_count > (len(payload) - 72 - order_length) // 4
+    ):
+        raise ValueError("inconsistent proof-carrying order shape")
+
+    order_payload = [_byte(payload, 72 + index) for index in range(order_length)]
+    order_module = __import__(
+        "sagejs.number_fields.order_resource", fromlist=["order_resource"]
+    )
+    order = order_module.decode_order_resource(order_payload)
+    if order.supplied_primes != len(primes):
+        raise ValueError("proof-carrying order lost its supplied-prime tuple")
+
+    offset = 72 + order_length
+    consumed = 0
+
+    def read() -> int:
+        nonlocal offset, consumed
+        value, offset = _current_round2_proof_integer(payload, offset)
+        consumed += 1
+        return value
+
+    try:
+        if [read() for _unused in range(degree + 1)] != coefficients:
+            raise ValueError("proof-carrying order polynomial does not match")
+        if [read() for _unused in range(len(primes))] != primes:
+            raise ValueError("proof-carrying order prime tuple does not match")
+        if not order.complete:
+            if proof_count != 0 or consumed != entry_count or offset != len(payload):
+                raise ValueError("incomplete order carried terminal proof claims")
+            return order, None
+        native_primes = [
+            prime for prime in primes if order.equation_discriminant % prime == 0
+        ]
+        if proof_count != len(native_primes) or proof_count != order.native_primes:
+            raise ValueError("proof-carrying order omitted a native prime")
+        square = degree * degree
+        carried_witnesses: list[
+            tuple[int, list[list[int]], int, list[list[int]], list[int], list[list[int]]]
+        ] = []
+        for expected_prime in native_primes:
+            prime = read()
+            local_denominator = read()
+            radical_dimension = read()
+            if (
+                prime != expected_prime
+                or local_denominator < 1
+                or radical_dimension < 0
+                or radical_dimension > degree
+            ):
+                raise ValueError("invalid carried terminal proof metadata")
+            local_numerator = [
+                [read() for _column in range(degree)] for _row in range(degree)
+            ]
+            radical = [
+                [read() for _column in range(degree)]
+                for _row in range(radical_dimension)
+            ]
+            if any(value < 0 or value >= prime for row in radical for value in row):
+                raise ValueError("carried terminal radical is not reduced")
+            canonical_radical, _pivots = _modular_rref(radical, prime)
+            if canonical_radical != radical:
+                raise ValueError("carried terminal radical is not canonical")
+            selectors = [read() for _unused in range(degree)]
+            if (
+                len(set(selectors)) != degree
+                or any(selector < 0 or selector >= square for selector in selectors)
+            ):
+                raise ValueError("carried terminal selectors are invalid")
+            minor = [
+                [read() for _column in range(degree)] for _row in range(degree)
+            ]
+            if any(value < 0 or value >= prime for row in minor for value in row):
+                raise ValueError("carried terminal minor is not reduced")
+            reduced_minor, _pivots = _modular_rref(minor, prime)
+            if len(reduced_minor) != degree:
+                raise ValueError("carried terminal multiplier minor is singular")
+            carried_witnesses.append(
+                (
+                    prime,
+                    local_numerator,
+                    local_denominator,
+                    radical,
+                    selectors,
+                    minor,
+                )
+            )
+        if consumed != entry_count or offset != len(payload):
+            raise ValueError("proof-carrying order has trailing evidence")
+    except IndexError as error:
+        raise ValueError("truncated proof-carrying order evidence") from error
+
+    if ordinary_replay:
+        _ordinary_validate_carried_round2_order(
+            order, coefficients, native_primes, carried_witnesses
+        )
+
+    proof = None
+    if order.complete:
+        rows = [list(row) for row in order.basis.numerator]
+        proof = AuthenticatedRound2OrderProof(
+            coefficients,
+            native_primes,
+            rows,
+            order.basis.denominator,
+            order.index,
+            order.equation_discriminant,
+            order.order_discriminant,
+            (
+                "ordinary-mathematical-proof-carrying-round2"
+                if ordinary_replay
+                else "current-generated-proof-carrying-round2"
+            ),
+        )
+        _seal_authenticated_round2_order_proof(proof)
+    return order, proof
+
+
+def _ordinary_validate_carried_round2_order(
+    order: Any,
+    polynomial: list[int],
+    native_primes: list[int],
+    carried_witnesses: list[
+        tuple[int, list[list[int]], int, list[list[int]], list[int], list[list[int]]]
+    ],
+) -> None:
+    """Independently replay the mathematical theorem for external bytes."""
+    arithmetic = __import__(
+        "sagejs.number_fields.buchmann_lenstra",
+        fromlist=["buchmann_lenstra"],
+    )
+    certification = __import__(
+        "sagejs.number_fields.maximal_order_certification",
+        fromlist=["maximal_order_certification"],
+    )
+    equation_discriminant = arithmetic.polynomial_discriminant(polynomial)
+    if any(not _packed_word_prime_is_proven(prime) for prime in native_primes):
+        raise ValueError("carried terminal proof has a nonprime support value")
+    final_numerator = [list(row) for row in order.basis.numerator]
+    final_denominator = int(order.basis.denominator)
+    final_determinant = abs(_determinant(final_numerator))
+    if (
+        equation_discriminant != order.equation_discriminant
+        or final_denominator < 1
+        or not _canonical_row_hnf(final_numerator)
+        or final_determinant == 0
+        or final_denominator**len(polynomial[:-1])
+        != order.index * final_determinant
+        or equation_discriminant != order.order_discriminant * order.index**2
+        or not certification.check_order_lattice(
+            polynomial, final_numerator, final_denominator
+        ).get("valid", False)
+    ):
+        raise ValueError("carried terminal proof has inconsistent order arithmetic")
+
+    common_denominator = 1
+    generators: list[list[int]] = []
+    local_bases: list[tuple[list[list[int]], int]] = []
+    for prime, numerator, denominator, radical, selectors, minor in carried_witnesses:
+        if not _packed_word_prime_is_proven(prime) or prime not in native_primes:
+            raise ValueError("carried terminal proof has an invalid prime")
+        prime_free = denominator
+        while prime_free % prime == 0:
+            prime_free //= prime
+        if (
+            prime_free != 1
+            or not _canonical_row_hnf(numerator)
+            or arithmetic._row_hnf(numerator) != numerator
+        ):
+            raise ValueError("carried terminal local basis is not canonical p-primary")
+        table, identity = _order_arithmetic(polynomial, numerator, denominator)
+        expected_radical = _p_radical_rows(table, identity, prime)
+        if radical != expected_radical:
+            raise ValueError("carried terminal radical does not match the local order")
+        lattice = _radical_lattice(radical, len(numerator), prime)
+        expected_minor = _selected_multiplier_rows(selectors, lattice, table, prime)
+        if minor != expected_minor or len(_modular_rref(minor, prime)[0]) != len(
+            numerator
+        ):
+            raise ValueError("carried terminal multiplier minor is not a fixed point")
+        if _gcd(common_denominator, denominator) != 1:
+            raise ValueError("carried terminal local denominators are not coprime")
+        common_denominator *= denominator
+        local_bases.append((numerator, denominator))
+
+    for numerator, denominator in local_bases:
+        scale = common_denominator // denominator
+        generators.extend([[scale * value for value in row] for row in numerator])
+    merged = (
+        arithmetic._row_hnf(generators)
+        if generators
+        else [
+            [1 if row == column else 0 for column in range(len(polynomial) - 1)]
+            for row in range(len(polynomial) - 1)
+        ]
+    )
+    content = common_denominator
+    for row in merged:
+        for value in row:
+            content = _gcd(content, value)
+    merged_denominator = common_denominator // content
+    merged_numerator = [[value // content for value in row] for row in merged]
+    if (
+        merged_denominator != final_denominator
+        or merged_numerator != final_numerator
+    ):
+        raise ValueError("carried terminal local orders do not merge to the result")
+
+
+def decode_carried_round2_order_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Decode external proof-carrying bytes with an ordinary exact replay."""
+    return _decode_current_carried_round2_order_resource(
+        payload,
+        expected_polynomial=expected_polynomial,
+        expected_primes=expected_primes,
+        ordinary_replay=True,
+    )
+
+
+def native_carried_round2_order_from_resources(
+    polynomial: Any,
+    prime_hints: Any,
+    *,
+    coefficients_low_to_high: list[int],
+    certified_primes: list[int],
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Construct and authenticate one proof-carrying order synchronously.
+
+    Fast projection authentication is intentionally inseparable from this
+    actual current generated call.  The returned native owner remains
+    unexposed and is closed immediately after its canonical bytes are bound.
+    """
+    resource = _field_analysis_flint_module().number_field_order_with_round2_proof_resource(
+        polynomial, prime_hints
+    )
+    try:
+        return _decode_current_carried_round2_order_resource(
+            resource.copy_bytes(),
+            expected_polynomial=coefficients_low_to_high,
+            expected_primes=certified_primes,
+        )
+    finally:
+        resource.close()
+
+
 def decode_field_analysis_resource(
     payload: Any,
     *,

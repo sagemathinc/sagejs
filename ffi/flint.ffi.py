@@ -9942,6 +9942,29 @@ def number_field_order_resource_unramified_primes(
 
 
 @flint.function(
+    dynamic="ffiNumberFieldOrderWithRound2ProofResource",
+    symbol="sagejs_number_field_order_with_round2_proof_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_number_field_analysis_resource_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("prime_hints", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid proof-carrying number-field order input",
+    ),
+    wasm=False,
+)
+def number_field_order_with_round2_proof_resource(
+    polynomial: FmpzPolynomial,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldAnalysisResource: ...
+
+
+@flint.function(
     dynamic="ffiNumberFieldRound2ProofResource",
     symbol="sagejs_number_field_round2_proof_resource",
     returns=int,

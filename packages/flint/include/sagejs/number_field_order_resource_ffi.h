@@ -354,12 +354,22 @@ static inline int sagejs_nf_order_pack(
     return 1;
 }
 
-static inline int sagejs_number_field_order_from_polynomial_resource(
+static inline int
+sagejs_number_field_order_from_polynomial_resource_with_terminal_proofs(
     sagejs_number_field_order_resource_t result,
+    sagejs_nf_order_terminal_proof **terminal_proofs_result,
+    uint64_t *terminal_proof_count_result,
     const sagejs_fmpz_polynomial_t polynomial,
     const sagejs_fmpz_matrix_t prime_hints)
 {
     sagejs_number_field_order_resource_reset(result);
+    if (terminal_proofs_result != NULL)
+        *terminal_proofs_result = NULL;
+    if (terminal_proof_count_result != NULL)
+        *terminal_proof_count_result = 0;
+    if ((terminal_proofs_result == NULL) !=
+        (terminal_proof_count_result == NULL))
+        return 0;
     const slong length = polynomial->sealed ?
         fmpz_poly_length(polynomial->value) : 0;
     const slong degree = length - 1;
@@ -377,6 +387,8 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
     fmpz_init(index);
     fmpz_init(order_discriminant);
     fmpz_init(fallback_prime);
+    sagejs_nf_order_terminal_proof *terminal_proofs = NULL;
+    uint64_t native_count = 0;
     fmpz_poly_discriminant(equation_discriminant, polynomial->value);
     if (fmpz_is_zero(equation_discriminant))
         goto invalid;
@@ -385,7 +397,6 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
         (uint64_t *) malloc((size_t) prime_count * sizeof(uint64_t));
     if (prime_count != 0 && word_primes == NULL)
         goto invalid;
-    uint64_t native_count = 0;
     uint64_t unramified_count = 0;
     uint32_t status = SAGEJS_NF_ORDER_COMPLETE;
     for (slong row = 0; row < prime_count; row++)
@@ -422,6 +433,9 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
     fmpz_mat_t numerator;
     fmpz_mat_init(numerator, degree, degree);
     sagejs_nf_order_identity_basis(numerator, denominator, degree);
+    if (terminal_proofs_result != NULL && native_count != 0)
+        terminal_proofs = (sagejs_nf_order_terminal_proof *) flint_calloc(
+            (size_t) native_count, sizeof(sagejs_nf_order_terminal_proof));
     if (status == SAGEJS_NF_ORDER_COMPLETE && native_count != 0)
     {
         sagejs_fmpz_matrix_t multiplication;
@@ -431,9 +445,9 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
             status = SAGEJS_NF_ORDER_FALLBACK_NATIVE_FAILURE;
         else
         {
-            if (!sagejs_number_field_order_maximal_at_primes(
+            if (!sagejs_number_field_order_maximal_at_primes_with_terminal_proofs(
                     rational_basis, multiplication,
-                    word_primes, native_count))
+                    word_primes, native_count, terminal_proofs))
                 status = SAGEJS_NF_ORDER_FALLBACK_NATIVE_FAILURE;
             else
             {
@@ -461,6 +475,19 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
         status, (uint64_t) prime_count, resolved,
         status == SAGEJS_NF_ORDER_COMPLETE ? native_count : 0,
         unramified_count);
+    if (packed && status == SAGEJS_NF_ORDER_COMPLETE &&
+        terminal_proofs_result != NULL)
+    {
+        *terminal_proofs_result = terminal_proofs;
+        *terminal_proof_count_result = native_count;
+        terminal_proofs = NULL;
+    }
+    if (terminal_proofs != NULL)
+    {
+        for (uint64_t proof = 0; proof < native_count; proof++)
+            sagejs_nf_order_terminal_proof_clear(terminal_proofs + proof);
+        flint_free(terminal_proofs);
+    }
     fmpz_mat_clear(numerator);
     free(word_primes);
     fmpz_clear(fallback_prime);
@@ -471,12 +498,29 @@ static inline int sagejs_number_field_order_from_polynomial_resource(
     return packed;
 
 invalid:
+    if (terminal_proofs != NULL)
+    {
+        /* `native_count` slots are zero-initialized before any worker runs. */
+        for (uint64_t proof = 0; proof < native_count; proof++)
+            sagejs_nf_order_terminal_proof_clear(terminal_proofs + proof);
+        flint_free(terminal_proofs);
+    }
     fmpz_clear(fallback_prime);
     fmpz_clear(order_discriminant);
     fmpz_clear(index);
     fmpz_clear(denominator);
     fmpz_clear(equation_discriminant);
     return 0;
+}
+
+static inline int sagejs_number_field_order_from_polynomial_resource(
+    sagejs_number_field_order_resource_t result,
+    const sagejs_fmpz_polynomial_t polynomial,
+    const sagejs_fmpz_matrix_t prime_hints)
+{
+    return
+        sagejs_number_field_order_from_polynomial_resource_with_terminal_proofs(
+            result, NULL, NULL, polynomial, prime_hints);
 }
 
 #endif
