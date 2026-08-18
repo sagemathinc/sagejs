@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-hard-locals",
+  "title": "PARI hard-local portfolio and selector",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile #2510 and #1710 per prime across every complete local algorithm, implement a generic input-derived local strategy/cost improvement outside Round4, OM, BL, and fused analysis files, and preserve forced-path exact certificate equivalence",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/local_polygons.py",
+    "src/lib/sagejs/number_fields/maximal_order.py",
+    "src/lib/sagejs/number_fields/local_algorithm_selector.py",
+    "test/number-field-hard-local-selector.cjs",
+    "bench/number-field-hard-local-portfolio.cjs",
+    "bench/results/number-field-hard-local-portfolio.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md",
+    "test/fixtures/number-field-round4.json"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing forced local algorithms and frozen canonical HNF certificates",
+      "PARI and Hecke direct timings from the durable performance receipt"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
