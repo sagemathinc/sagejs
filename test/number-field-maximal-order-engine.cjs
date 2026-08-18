@@ -85,7 +85,7 @@ test("vector429 terminal portfolio has the exact coprime index product", async (
   try {
     const result = await session.evaluate(
       [
-        "from sagejs.number_fields.maximal_order_engine import _portfolio_bases_contained, _portfolio_index_support_identity",
+        "from sagejs.number_fields.maximal_order_engine import _portfolio_bases_generate_final_lattice, _portfolio_index_support_identity",
         "native_valuations = [(2,332),(3,544),(5,132),(37,6),(59,8),(277,2),(311,2),(613,2),(719,2),(1319,2),(2894951,7),(6222169,7)]",
         "native_support = prod(prime for prime, valuation in native_valuations)",
         "native_index = prod(prime^valuation for prime, valuation in native_valuations)",
@@ -99,12 +99,15 @@ test("vector429 terminal portfolio has the exact coprime index product", async (
         "wrong_exponent[2] = ('buchmann-lenstra', bl_small, bl_small^3)",
         "overlap = list(components) + [('corrupt', 7*bl_small, 1)]",
         "final_basis = (6, ((1,0),(0,1)))",
-        "contained = _portfolio_bases_contained(final_basis, [(1, ((1,0),(0,1))), (2, ((1,0),(0,1)))])",
-        "not_contained = _portfolio_bases_contained(final_basis, [(12, ((1,0),(0,1)))])",
-        "[valid, calculated_index == expected_index, _portfolio_index_support_identity(wrong_exponent, expected_index), _portfolio_index_support_identity(overlap, expected_index), contained, not_contained]",
+        "generated = _portfolio_bases_generate_final_lattice(final_basis, [(6, ((1,0),(0,1)))])",
+        "not_generated = _portfolio_bases_generate_final_lattice(final_basis, [(1, ((1,0),(0,1))), (2, ((1,0),(0,1)))])",
+        "[valid, calculated_index == expected_index, _portfolio_index_support_identity(wrong_exponent, expected_index), _portfolio_index_support_identity(overlap, expected_index), generated, not_generated]",
       ].join("\n"),
     );
-    assert.equal(result.repr, "[True, True, False, False, True, False]");
+    assert.equal(
+      result.repr,
+      "[True, True, False, False, True, False]",
+    );
   } finally {
     await session.close();
   }
@@ -170,11 +173,11 @@ test("fused public certification crosses the native boundary once", async () => 
         "R.<x> = QQ[]",
         "import sagejs.number_fields.maximal_order_engine as maximal_order_engine",
         "analysis_calls = []",
-        "original_analysis = maximal_order_engine.field_analysis_resource.native_field_analysis",
-        "def counted_analysis(coefficients, scale, bound):",
+        "original_analysis = maximal_order_engine.field_analysis_resource._native_field_analysis_projection_from_polynomial_bound",
+        "def counted_analysis(polynomial, coefficients, scale, bound):",
         "    analysis_calls.append((tuple(coefficients), scale, bound))",
-        "    return original_analysis(coefficients, scale, bound)",
-        "maximal_order_engine.field_analysis_resource.native_field_analysis = counted_analysis",
+        "    return original_analysis(polynomial, coefficients, scale, bound)",
+        "maximal_order_engine.field_analysis_resource._native_field_analysis_projection_from_polynomial_bound = counted_analysis",
         "native_calls = []",
         "original_native_order = maximal_order_engine.native_order_from_polynomial",
         "def counted_native_order(coefficients, primes):",

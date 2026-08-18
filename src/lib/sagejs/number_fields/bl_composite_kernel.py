@@ -546,9 +546,8 @@ def packed_order_contains_vector_in_place(
 ) -> bool:
     """Check one rational vector against an upper row-HNF basis.
 
-    `workspace` receives `basis_denominator * numerator^-1`.  Exact backward
-    substitution simultaneously proves that the basis contains the equation
-    order.  The final divisibility checks then prove that
+    Sparse exact triangular solves first prove that the basis contains every
+    equation-order basis vector.  A final solve and divisibility check proves
     `vector / vector_denominator` belongs to the basis lattice.  This compact
     boundary is used by the independent composite-Dedekind replay; it never
     trusts a transformation emitted by the construction kernel.
@@ -570,39 +569,42 @@ def packed_order_contains_vector_in_place(
                 valid = False
             column += 1
         row += 1
-    reverse_row = 0
-    while valid and reverse_row < degree:
-        row = degree - reverse_row - 1
-        diagonal = numerator[row * degree + row]
-        if diagonal == 0:
-            valid = False
-        column = 0
-        while valid and column < degree:
+    # Prove equation-order containment by solving the sparse right-hand sides
+    # `z*N = d*e_j`.  Coordinates below `j` vanish, so starting each solve at
+    # its pivot avoids the zero half of every triangular system while proving
+    # exactly the same integrality as constructing `d*N^-1` densely.
+    identity_row = 0
+    while valid and identity_row < degree:
+        coordinate = identity_row
+        while valid and coordinate < degree:
             value = 0
-            if row == column:
+            if coordinate == identity_row:
                 value = basis_denominator
-            source = row + 1
-            while source < degree:
-                value -= (
-                    numerator[row * degree + source]
-                    * workspace[source * degree + column]
-                )
+            source = identity_row
+            while source < coordinate:
+                value -= workspace[source] * numerator[source * degree + coordinate]
                 source += 1
-            if value % diagonal != 0:
+            diagonal = numerator[coordinate * degree + coordinate]
+            if diagonal == 0 or value % diagonal != 0:
                 valid = False
             else:
-                workspace[row * degree + column] = value // diagonal
-            column += 1
-        reverse_row += 1
+                workspace[coordinate] = value // diagonal
+            coordinate += 1
+        identity_row += 1
     coordinate = 0
     while valid and coordinate < degree:
-        value = 0
+        value = basis_denominator * vector[coordinate]
         source = 0
-        while source < degree:
-            value += vector[source] * workspace[source * degree + coordinate]
+        while source < coordinate:
+            value -= workspace[source] * numerator[source * degree + coordinate]
             source += 1
-        if value % vector_denominator != 0:
+        diagonal = numerator[coordinate * degree + coordinate]
+        if diagonal == 0 or value % diagonal != 0:
             valid = False
+        else:
+            workspace[coordinate] = value // diagonal
+            if workspace[coordinate] % vector_denominator != 0:
+                valid = False
         coordinate += 1
     return valid
 
@@ -620,9 +622,9 @@ def packed_order_contains_vectors_in_place(
     """Check a batch of rational vectors against an upper row-HNF basis.
 
     `vectors` is a row-major `vector_count` by `degree` matrix whose rows have
-    the positive denominators in `vector_denominators`.  The scaled inverse is
-    constructed and checked once, proving equation-order containment before
-    every rational membership test.  A false result is mathematical rejection;
+    the positive denominators in `vector_denominators`.  Sparse triangular
+    solves first prove equation-order containment, then solve each rational
+    membership directly.  A false result is mathematical rejection;
     fixed-width overflow remains a capability failure handled by the wrapper.
     """
     square = degree * degree
@@ -643,30 +645,24 @@ def packed_order_contains_vectors_in_place(
                 valid = False
             column += 1
         row += 1
-    reverse_row = 0
-    while valid and reverse_row < degree:
-        row = degree - reverse_row - 1
-        diagonal = numerator[row * degree + row]
-        if diagonal == 0:
-            valid = False
-        column = 0
-        while valid and column < degree:
+    identity_row = 0
+    while valid and identity_row < degree:
+        coordinate = identity_row
+        while valid and coordinate < degree:
             value = 0
-            if row == column:
+            if coordinate == identity_row:
                 value = basis_denominator
-            source = row + 1
-            while source < degree:
-                value -= (
-                    numerator[row * degree + source]
-                    * workspace[source * degree + column]
-                )
+            source = identity_row
+            while source < coordinate:
+                value -= workspace[source] * numerator[source * degree + coordinate]
                 source += 1
-            if value % diagonal != 0:
+            diagonal = numerator[coordinate * degree + coordinate]
+            if diagonal == 0 or value % diagonal != 0:
                 valid = False
             else:
-                workspace[row * degree + column] = value // diagonal
-            column += 1
-        reverse_row += 1
+                workspace[coordinate] = value // diagonal
+            coordinate += 1
+        identity_row += 1
     vector_index = 0
     while valid and vector_index < vector_count:
         vector_denominator = vector_denominators[vector_index]
@@ -674,16 +670,79 @@ def packed_order_contains_vectors_in_place(
             valid = False
         coordinate = 0
         while valid and coordinate < degree:
-            value = 0
+            value = basis_denominator * vectors[vector_index * degree + coordinate]
             source = 0
-            while source < degree:
-                value += (
-                    vectors[vector_index * degree + source]
-                    * workspace[source * degree + coordinate]
-                )
+            while source < coordinate:
+                value -= workspace[source] * numerator[source * degree + coordinate]
                 source += 1
-            if value % vector_denominator != 0:
+            diagonal = numerator[coordinate * degree + coordinate]
+            if diagonal == 0 or value % diagonal != 0:
                 valid = False
+            else:
+                workspace[coordinate] = value // diagonal
+                if workspace[coordinate] % vector_denominator != 0:
+                    valid = False
+            coordinate += 1
+        vector_index += 1
+    return valid
+
+
+@native
+def packed_known_overorder_contains_vectors_in_place(
+    workspace: IntegerBuffer,
+    numerator: IntegerBuffer,
+    vectors: IntegerBuffer,
+    vector_denominators: IntegerBuffer,
+    basis_denominator: int,
+    degree: uint64,
+    vector_count: uint64,
+) -> bool:
+    """Check memberships when equation-order containment is already proved.
+
+    For the upper row-HNF numerator `B`, solve `z * B = d * v` directly from
+    left to right.  The rational vector `v/s` belongs to `B/d` exactly when
+    every coordinate of `z` is integral and divisible by `s`.  Callers may use
+    this faster boundary only after an independent proof that `B/d` contains
+    the equation order; copied or standalone order data must use
+    `packed_order_contains_vectors_in_place` instead.
+    """
+    square = degree * degree
+    valid = (
+        degree > 0
+        and vector_count > 0
+        and basis_denominator > 0
+        and len(workspace) == square
+        and len(numerator) == square
+        and len(vectors) == vector_count * degree
+        and len(vector_denominators) == vector_count
+    )
+    row = 0
+    while valid and row < degree:
+        column = 0
+        while column < row:
+            if numerator[row * degree + column] != 0:
+                valid = False
+            column += 1
+        row += 1
+    vector_index = 0
+    while valid and vector_index < vector_count:
+        vector_denominator = vector_denominators[vector_index]
+        if vector_denominator <= 0:
+            valid = False
+        coordinate = 0
+        while valid and coordinate < degree:
+            value = basis_denominator * vectors[vector_index * degree + coordinate]
+            source = 0
+            while source < coordinate:
+                value -= workspace[source] * numerator[source * degree + coordinate]
+                source += 1
+            diagonal = numerator[coordinate * degree + coordinate]
+            if diagonal == 0 or value % diagonal != 0:
+                valid = False
+            else:
+                workspace[coordinate] = value // diagonal
+                if workspace[coordinate] % vector_denominator != 0:
+                    valid = False
             coordinate += 1
         vector_index += 1
     return valid
@@ -906,6 +965,7 @@ def packed_composite_dedekind_basis_in_place(
 __all__ = [
     "packed_composite_dedekind_basis_in_place",
     "packed_composite_dedekind_enlargement_in_place",
+    "packed_known_overorder_contains_vectors_in_place",
     "packed_order_contains_vector_in_place",
     "packed_order_contains_vectors_in_place",
     "packed_order_table_in_place",

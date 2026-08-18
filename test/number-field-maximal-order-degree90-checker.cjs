@@ -56,6 +56,9 @@ test("batched BL membership agrees with its dynamic source and fails closed", as
     const source = String.raw`
 from sagejs.native import execution_mode, kernel_integer_buffer, kernel_integer_zeros
 from sagejs.number_fields import buchmann_lenstra as bl
+from sagejs.number_fields.bl_composite_kernel import (
+    packed_known_overorder_contains_vectors_in_place,
+)
 from sagejs.number_fields.maximal_order_contracts import DiscriminantComponent
 
 coefficients = [${t8.coefficients_low_to_high.join(",")}]
@@ -79,15 +82,27 @@ vectors = multiplication + [square]
 denominators = [modulus for _row in multiplication] + [modulus * modulus]
 packed = bl.packed_order_contains_vectors_in_place
 dynamic = getattr(packed, "__sagejs_native_source__", packed)
-workspace_words, _output_words = bl._packed_order_table_word_capacities(
-    coefficients, basis
+known_overorder = packed_known_overorder_contains_vectors_in_place
+known_overorder_dynamic = getattr(
+    known_overorder, "__sagejs_native_source__", known_overorder
+)
+workspace_words = bl._packed_direct_membership_word_capacity(basis, vectors)
+known_magnitude_bits = max(
+    [abs(basis.denominator).bit_length()]
+    + [abs(value).bit_length() for row in basis.numerator for value in row]
+    + [abs(value).bit_length() for row in vectors for value in row]
+)
+known_workspace_words = max(
+    16, (2 * known_magnitude_bits + 63) // 64 + 4 * basis.degree + 8
 )
 
-def call(function, rows, row_denominators, numerator=None):
+def call(function, rows, row_denominators, numerator=None, word_capacity=None):
     if numerator is None:
         numerator = basis.numerator
+    if word_capacity is None:
+        word_capacity = workspace_words
     return bool(function(
-        kernel_integer_zeros(function, basis.degree * basis.degree, workspace_words),
+        kernel_integer_zeros(function, basis.degree * basis.degree, word_capacity),
         kernel_integer_buffer(
             function, [value for row in numerator for value in row]
         ),
@@ -111,6 +126,25 @@ bad_square = [list(row) for row in vectors]
 bad_square[-1][0] += 1
 assert not call(packed, bad_square, denominators)
 assert not call(dynamic, bad_square, denominators)
+assert call(known_overorder, vectors, denominators, word_capacity=known_workspace_words)
+assert call(
+    known_overorder_dynamic,
+    vectors,
+    denominators,
+    word_capacity=known_workspace_words,
+)
+assert not call(
+    known_overorder,
+    bad_square,
+    denominators,
+    word_capacity=known_workspace_words,
+)
+assert not call(
+    known_overorder_dynamic,
+    bad_square,
+    denominators,
+    word_capacity=known_workspace_words,
+)
 
 bad_denominators = list(denominators)
 bad_denominators[-1] = 0
@@ -183,12 +217,15 @@ assert not projection.certified
 result.basis.numerator[0][1] = saved_basis_entry
 assert projection.certified
 
-print(execution_mode(packed))
+print(execution_mode(packed), execution_mode(known_overorder))
 None
 `;
     const result = await session.evaluate(source);
     assert.equal(result.stderr ?? "", "");
-    assert.match(result.stdout.trim(), /^(native-capable|compiled)$/);
+    assert.match(
+      result.stdout.trim(),
+      /^(native-capable|compiled) (native-capable|compiled)$/,
+    );
   } finally {
     await session.close();
   }

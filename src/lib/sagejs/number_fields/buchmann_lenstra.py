@@ -31,6 +31,7 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
+    packed_known_overorder_contains_vectors_in_place,
     packed_order_contains_vectors_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
@@ -750,6 +751,41 @@ def _packed_membership_word_capacity(
     return max(2, (maximum.bit_length() + 63) // 64 + 1)
 
 
+def _packed_direct_membership_word_capacity(
+    basis: OrderBasis, vectors: list[list[int]]
+) -> int:
+    """Bound direct triangular membership coordinates for a canonical HNF.
+
+    In an upper row HNF, `0 <= N[i,j] < N[j,j]` for `i < j`.  If `R` bounds
+    `d*v[j]`, forward substitution therefore bounds coordinate `j` by
+    `2^j*R`.  Its unreduced accumulator gains at most one diagonal factor.
+    Thus twice the input magnitude plus `degree` bits and two signed guard
+    words cover every intermediate without the cancellation-blind dense
+    inverse recurrence.
+    """
+    degree = basis.degree
+    numerator = basis.numerator
+    for column in range(degree):
+        diagonal = int(numerator[column][column])
+        if diagonal <= 0:
+            return _packed_membership_word_capacity(basis, vectors)
+        for row in range(column):
+            value = int(numerator[row][column])
+            if value < 0 or value >= diagonal:
+                return _packed_membership_word_capacity(basis, vectors)
+    maximum_bits = abs(int(basis.denominator)).bit_length()
+    for row in numerator:
+        for value in row:
+            maximum_bits = max(maximum_bits, abs(int(value)).bit_length())
+    for vector in vectors:
+        if len(vector) != degree:
+            raise ValueError("membership vector has the wrong degree")
+        for value in vector:
+            maximum_bits = max(maximum_bits, abs(int(value)).bit_length())
+    required_bits = 2 * maximum_bits + degree + 2
+    return max(16, (required_bits + 63) // 64 + 2)
+
+
 def _dedekind_generator_lattice_is_order(
     coefficients: list[int],
     modulus: int,
@@ -805,37 +841,96 @@ def _dedekind_generator_lattice_is_order(
     ):
         return False
     try:
-        workspace_words = _packed_membership_word_capacity(basis, vectors)
+        # Recompute the canonical generator lattice from its complete exact
+        # presentation.  The modular-HNF annihilator is `modulus`: every
+        # source row lies between `modulus*Z^n` and `Z^n`.  Equality with the
+        # claimed numerator independently proves equation-order containment
+        # and every shifted-generator membership at once.
+        generator_rows = []
+        for row in range(degree):
+            equation_row = [0 for _column in range(degree)]
+            equation_row[row] = modulus
+            generator_rows.append(equation_row)
+        generator_rows.extend(_multiplication_rows(generator, coefficients))
+        replay_numerator = _packed_row_hnf(
+            generator_rows,
+            elementary_divisor=modulus,
+        )
+        if basis.denominator != modulus or replay_numerator != basis.numerator:
+            return False
+        magnitude_bits = max(
+            [abs(int(basis.denominator)).bit_length()]
+            + [abs(int(value)).bit_length() for row in basis.numerator for value in row]
+            + [abs(int(value)).bit_length() for value in product]
+        )
+        word_capacity = max(
+            16,
+            (2 * magnitude_bits + 63) // 64 + 4 * degree + 8,
+        )
+        return bool(
+            packed_known_overorder_contains_vectors_in_place(
+                kernel_integer_zeros(
+                    packed_known_overorder_contains_vectors_in_place,
+                    degree * degree,
+                    word_capacity,
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    [value for row in basis.numerator for value in row],
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    product,
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    [modulus * modulus],
+                ),
+                basis.denominator,
+                degree,
+                1,
+            )
+        )
+    except OverflowError:
+        # The compact inverse proof remains a source-transparent exact
+        # fallback when either packed HNF or triangular membership exhausts
+        # its proven fixed-width capacity.
+        workspace_words = _packed_direct_membership_word_capacity(basis, vectors)
         workspace_bytes = degree * degree * workspace_words * 8
         if workspace_bytes > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
             return _dedekind_generator_lattice_is_order_reference(
                 coefficients, modulus, generator, basis
             )
-        return bool(
-            packed_order_contains_vectors_in_place(
-                kernel_integer_zeros(
-                    packed_order_contains_vectors_in_place,
-                    degree * degree,
-                    workspace_words,
-                ),
-                kernel_integer_buffer(
-                    packed_order_contains_vectors_in_place,
-                    [value for row in basis.numerator for value in row],
-                ),
-                kernel_integer_buffer(
-                    packed_order_contains_vectors_in_place,
-                    [value for vector in vectors for value in vector],
-                ),
-                kernel_integer_buffer(
-                    packed_order_contains_vectors_in_place,
-                    [modulus for _vector in multiplication] + [modulus * modulus],
-                ),
-                basis.denominator,
-                degree,
-                len(vectors),
+        try:
+            return bool(
+                packed_order_contains_vectors_in_place(
+                    kernel_integer_zeros(
+                        packed_order_contains_vectors_in_place,
+                        degree * degree,
+                        workspace_words,
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [value for row in basis.numerator for value in row],
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [value for vector in vectors for value in vector],
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [modulus for _vector in multiplication] + [modulus * modulus],
+                    ),
+                    basis.denominator,
+                    degree,
+                    len(vectors),
+                )
             )
-        )
-    except OverflowError:
+        except OverflowError:
+            return _dedekind_generator_lattice_is_order_reference(
+                coefficients, modulus, generator, basis
+            )
+    except (ArithmeticError, ValueError):
         return _dedekind_generator_lattice_is_order_reference(
             coefficients, modulus, generator, basis
         )

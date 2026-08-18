@@ -501,9 +501,16 @@ export function installPrecompiledTaskModuleLoader(
     Record<string, unknown> | undefined;
   const baselib = Reflect.get(globalThis, "__sagejs_baselib_modules__");
   const sourceDirectory = taskRuntimeSourceDirectory();
+  const taskSourcePaths: Record<string, string> = Object.create(null);
   for (const [name, record] of Object.entries(manifest.modules)) {
     validatedTaskModuleSource(sourceDirectory, name, record);
+    taskSourcePaths[record.filename] = join(sourceDirectory, record.source);
   }
+  Reflect.set(
+    globalThis,
+    "__sagejs_precompiled_task_source_paths__",
+    Object.freeze(taskSourcePaths),
+  );
   if (registry === null || typeof registry !== "object") {
     throw new Error("multiprocessing module registry is unavailable");
   }

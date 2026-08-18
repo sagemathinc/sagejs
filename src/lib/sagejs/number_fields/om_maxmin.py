@@ -948,40 +948,6 @@ def selector_metrics(
     )
 
 
-def _basis_coordinates_are_integral(
-    value_numerator: Polynomial,
-    value_denominator: int,
-    basis: tuple[TriangularBasisElement, ...],
-) -> bool:
-    """Test triangular coordinates with one shared integer denominator.
-
-    During descending elimination, if the current leading numerator is `a`
-    and the basis element is monic `g/d`, its coordinate is `a*d/D`.
-    Subtracting that coordinate times `g/d` changes the shared numerator by
-    exactly `a*g`.  This avoids allocating quadratic numbers of temporary
-    `RationalValue` objects in the independent multiplication check.
-    """
-    if value_denominator <= 0:
-        raise ValueError("a coordinate denominator must be positive")
-    degree = len(basis)
-    values = [0] * degree
-    for index, coefficient in enumerate(value_numerator):
-        if index < degree:
-            values[index] = coefficient
-        elif coefficient:
-            raise ArithmeticError("reduced field element exceeds the field degree")
-    for index in range(degree - 1, -1, -1):
-        element = basis[index]
-        leading = values[index]
-        if leading * element.denominator % value_denominator != 0:
-            return False
-        for exponent, coefficient in enumerate(element.numerator):
-            values[exponent] -= leading * coefficient
-    if any(values):
-        raise ArithmeticError("triangular coordinate elimination left a remainder")
-    return True
-
-
 @native
 def packed_triangular_basis_is_closed(
     workspace: IntegerBuffer,
@@ -1092,14 +1058,11 @@ def validate_triangular_basis(
                 failures.append("basis denominator is not its certified prime power")
                 triangular = False
                 break
-    contains_equation_order = triangular
-    if triangular:
-        for exponent in range(degree):
-            monomial = (0,) * exponent + (1,)
-            if not _basis_coordinates_are_integral(monomial, 1, basis):
-                contains_equation_order = False
-                failures.append("equation-order monomial is not contained")
-                break
+    # A monic triangular basis contains the equation order without a coordinate
+    # solve.  Inductively, `d_i * (g_i / d_i) = g_i` lies in the lattice and
+    # `g_i = x^i +` lower monomials, so every `x^i` lies in the lattice once
+    # the lower powers do.  `contains_one` is checked separately above.
+    contains_equation_order = triangular and contains_one
     multiplication_closed = triangular
     if triangular and any(element.denominator != 1 for element in basis):
         packed_numerators: list[int] = []

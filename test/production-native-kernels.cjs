@@ -169,6 +169,9 @@ test("the field-analysis checker is current and required-autoloadable", () => {
   const source = "src/lib/sagejs/number_fields/field_analysis_resource.py";
   const functionNames = [
     "packed_field_analysis_fixed_points_are_valid",
+    "packed_field_analysis_decode_word_bytes",
+    "packed_round2_order_proof_decode_word_bytes",
+    "packed_round2_order_proof_is_valid",
     "packed_field_analysis_decode_integers",
     "packed_field_analysis_authenticate_projection",
   ];

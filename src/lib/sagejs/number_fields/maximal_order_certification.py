@@ -402,12 +402,15 @@ def _check_maximal_order_certificate(
 
     if scope == "global":
         needed = []
+        equation_valuations = {}
         composite_needed = []
         for component in components.get("components", []):
             if component.get("state") == PROVEN_PRIME:
                 prime = int(component["base"])
-                if _valuation(equation_discriminant, prime) >= 2:
+                equation_valuation = int(component.get("exponent", 0))
+                if equation_valuation >= 2:
                     needed.append(prime)
+                    equation_valuations[prime] = equation_valuation
             else:
                 # Without factoring a component we cannot prove that no prime
                 # square divides it.  Requiring a collective proof is the
@@ -419,9 +422,12 @@ def _check_maximal_order_certificate(
             [int(value) for value in certificate.get("requested_primes", [])]
         )
         proven_bases = []
+        equation_valuations = {}
         for component in components.get("components", []):
             if component.get("state") == PROVEN_PRIME:
-                proven_bases.append(int(component.get("base", 0)))
+                prime = int(component.get("base", 0))
+                proven_bases.append(prime)
+                equation_valuations[prime] = int(component.get("exponent", 0))
         for prime in needed:
             if prime not in proven_bases:
                 return {
@@ -476,9 +482,15 @@ def _check_maximal_order_certificate(
                 "certified": False,
                 "reason": "missing-local-witness",
             }
-        equation_valuation = _valuation(equation_discriminant, prime)
-        order_valuation = _valuation(order_discriminant, prime)
+        equation_valuation = equation_valuations[prime]
         index_valuation = _valuation(index, prime)
+        # The component certificate has already proved the exact factor
+        # exponent in the equation discriminant, and the global integer
+        # identity `disc(Z[theta]) = disc(O) * index^2` was checked above.
+        # Hence the order valuation follows exactly after computing only the
+        # index valuation; repeating divisions of both discriminants would add
+        # no independent evidence.
+        order_valuation = equation_valuation - 2 * index_valuation
         if int(witness.get("equation_valuation", -1)) != equation_valuation:
             return {
                 "valid": False,

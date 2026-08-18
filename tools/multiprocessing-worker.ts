@@ -45,6 +45,15 @@ interface TaskMessage {
   args: EncodedValue[];
 }
 
+interface ModuleTaskMessage {
+  type: "module-task";
+  jobId: number;
+  id: number;
+  module: string;
+  name: string;
+  args: EncodedValue[];
+}
+
 const port = workerData.port as MessagePort;
 const state = new Int32Array(workerData.state as SharedArrayBuffer);
 const workerIndex = Number(workerData.workerIndex);
@@ -106,6 +115,7 @@ function encode(value: unknown): SagePacket {
 try {
   evaluator = createTaskEvaluator({
     mode: workerData.mode as SageLanguageMode,
+    precompiledNativeRuntime: workerData.precompiledNativeRuntime === true,
     onOutput(text) {
       port.postMessage({ type: "stdout", text });
       signal();
@@ -139,7 +149,7 @@ try {
   signal();
 }
 
-port.on("message", (message: TaskMessage | { type: "close" }) => {
+port.on("message", (message: TaskMessage | ModuleTaskMessage | { type: "close" }) => {
   if (message.type === "close") {
     evaluator?.close();
     Atomics.store(state, workerIndex + 1, 2);
@@ -152,20 +162,23 @@ port.on("message", (message: TaskMessage | { type: "close" }) => {
 
   try {
     if (!evaluator) throw new Error("multiprocessing worker did not initialize");
-    const result = evaluator.invoke(
-      {
-        ...message.callable,
-        bindings: message.callable.bindings
-          ? Object.fromEntries(
-              Object.entries(message.callable.bindings).map(([name, value]) => [
-                name,
-                decode(value),
-              ]),
-            )
-          : undefined,
-      },
-      message.args.map(decode),
-    );
+    const args = message.args.map(decode);
+    const result = message.type === "module-task"
+      ? evaluator.invokeModule(message.module, message.name, args)
+      : evaluator.invoke(
+        {
+          ...message.callable,
+          bindings: message.callable.bindings
+            ? Object.fromEntries(
+                Object.entries(message.callable.bindings).map(([name, value]) => [
+                  name,
+                  decode(value),
+                ]),
+              )
+            : undefined,
+        },
+        args,
+      );
     const value = encode(result);
     port.postMessage({
       type: "result",

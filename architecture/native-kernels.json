@@ -319,7 +319,8 @@
         "packed_rational_polynomial_multiply",
         "packed_rational_polynomial_equal",
         "packed_integral_number_field_multiply_reduce",
-        "packed_integral_number_field_power_basis"
+        "packed_integral_number_field_power_basis",
+        "packed_integral_number_field_exact_quotient"
       ],
       "semantic_domain": "production normalized QQ[x] arithmetic, canonical integral-monic number-field multiply-reduce, and exact power-basis orbit construction over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
@@ -418,7 +419,8 @@
       "source": "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
       "functions": [
         "word_prime_krylov_minimal_polynomial",
-        "integer_matrix_word_prime_minimal_polynomial_batch"
+        "integer_matrix_word_prime_minimal_polynomial_batch",
+        "integer_matrix_polynomial_annihilates_first_coordinate"
       ],
       "semantic_domain": "packed Krylov minimal-polynomial relations and exact persistent CRT batches for square integer regular-representation matrices over machine-word prime fields",
       "fallback": "same-source",
@@ -465,9 +467,10 @@
         "packed_composite_dedekind_basis_in_place",
         "packed_order_table_in_place",
         "packed_order_contains_vector_in_place",
-        "packed_order_contains_vectors_in_place"
+        "packed_order_contains_vectors_in_place",
+        "packed_known_overorder_contains_vectors_in_place"
       ],
-      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact batched rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, exact standalone rational-vector membership, and direct triangular membership after independently authenticated equation-order containment",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
@@ -505,6 +508,9 @@
       "source": "src/lib/sagejs/number_fields/field_analysis_resource.py",
       "functions": [
         "packed_field_analysis_fixed_points_are_valid",
+        "packed_field_analysis_decode_word_bytes",
+        "packed_round2_order_proof_decode_word_bytes",
+        "packed_round2_order_proof_is_valid",
         "packed_field_analysis_decode_integers",
         "packed_field_analysis_authenticate_projection"
       ],

@@ -63,9 +63,7 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
 static uint64_t sagejs_mpz_mod_uint64(
     const mpz_t value, uint64_t modulus)
 {
-#if GMP_NUMB_BITS < 64
-#error "Sage.js uint64 exact kernels require 64-bit GMP limbs"
-#endif
+#if GMP_NUMB_BITS >= 64
     const size_t count = mpz_size(value);
     const uint64_t magnitude_remainder = count == 0 ? UINT64_C(0) :
         (uint64_t) mpn_mod_1(
@@ -73,6 +71,20 @@ static uint64_t sagejs_mpz_mod_uint64(
     if (mpz_sgn(value) >= 0 || magnitude_remainder == 0)
         return magnitude_remainder;
     return modulus - magnitude_remainder;
+#else
+    mpz_t modulus_value;
+    mpz_t remainder;
+    size_t count = 0;
+    uint64_t result = 0;
+    mpz_init(modulus_value);
+    mpz_init(remainder);
+    set_mpz_uint64(modulus_value, modulus);
+    mpz_fdiv_r(remainder, value, modulus_value);
+    mpz_export(&result, &count, -1, sizeof(result), 0, 0, remainder);
+    mpz_clear(remainder);
+    mpz_clear(modulus_value);
+    return result;
+#endif
 }
 
 static uint64_t sagejs_int64_mod_uint64(

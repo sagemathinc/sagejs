@@ -11,6 +11,7 @@
     "sagejs.number_fields.maximal_order",
     "sagejs.number_fields.round4",
     "sagejs.number_fields.local_polygons",
+    "sagejs.number_fields.om_auto_selector",
     "sagejs.number_fields.om_maxmin",
     "sagejs.polynomial_algorithms.public_structural",
     "sagejs.kernels.polynomial.structural_flint"

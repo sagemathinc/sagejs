@@ -873,6 +873,12 @@ def factor_mod_prime(
     remaining = _mod_polynomial(polynomial, prime)
     if remaining == (0,) or remaining[-1] != 1:
         raise OMDomainError("bounded modular factorization requires monic input")
+    degree = polynomial_degree(remaining)
+    if degree > 0 and all(coefficient == 0 for coefficient in remaining[:-1]):
+        # `x^degree` has the single monic irreducible factor `x`, with the
+        # exact retained multiplicity.  This common deeply ramified shape is
+        # proved by the full coefficient scan and needs no squarefree/DDF pass.
+        return (ModularFactor((0, 1), degree),)
     factors: list[ModularFactor] = []
     work = [0]
     for squarefree, multiplicity in _squarefree_modular_parts(remaining, prime):

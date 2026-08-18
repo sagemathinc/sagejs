@@ -56,6 +56,8 @@ interface PendingJob {
   errors: Array<RemoteError | undefined>;
   received: number;
   total: number;
+  attestedModule?: string;
+  attestedName?: string;
 }
 
 export interface PoolJobResult {
@@ -296,6 +298,8 @@ class SynchronousWorkerPool {
     mode: SageLanguageMode,
     initializer?: unknown,
     initargs: unknown[] = [],
+    precompiledNativeRuntime = false,
+    deferInitialization = false,
   ) {
     this.state = new Int32Array(
       new SharedArrayBuffer((size + 1) * Int32Array.BYTES_PER_ELEMENT),
@@ -318,44 +322,47 @@ class SynchronousWorkerPool {
           workerIndex: index,
           initializer: initializerSpec,
           initargs: encodedInitargs,
+          precompiledNativeRuntime,
         },
         transferList: [channel.port2],
       });
       worker.unref();
       this.workers.push({ worker, port: channel.port1 });
     }
-    try {
-      const initialized = this.waitUntil(
-        () =>
-          this.workers.every(
-            (_, index) => Atomics.load(this.state, index + 1) !== 0,
-          ),
-        120_000,
-      );
-      if (!initialized) {
-        throw new Error(
-          "timed out while initializing multiprocessing workers",
+    if (!deferInitialization) {
+      try {
+        const initialized = this.waitUntil(
+          () =>
+            this.workers.every(
+              (_, index) => Atomics.load(this.state, index + 1) !== 0,
+            ),
+          120_000,
         );
+        if (!initialized) {
+          throw new Error(
+            "timed out while initializing multiprocessing workers",
+          );
+        }
+      } catch (error) {
+        this.abortInitialization();
+        throw error;
       }
-    } catch (error) {
-      this.abortInitialization();
-      throw error;
-    }
-    const failed = this.workers.findIndex(
-      (_, index) => Atomics.load(this.state, index + 1) < 0,
-    );
-    if (failed >= 0) {
-      const message = this.nextMessage(this.workers[failed].port);
-      const error = new MultiprocessingRemoteError(
-        message?.error ?? {
-          name: "Error",
-          message: `multiprocessing worker ${failed} failed to initialize`,
-        },
+      const failed = this.workers.findIndex(
+        (_, index) => Atomics.load(this.state, index + 1) < 0,
       );
-      this.abortInitialization();
-      throw error;
+      if (failed >= 0) {
+        const message = this.nextMessage(this.workers[failed].port);
+        const error = new MultiprocessingRemoteError(
+          message?.error ?? {
+            name: "Error",
+            message: `multiprocessing worker ${failed} failed to initialize`,
+          },
+        );
+        this.abortInitialization();
+        throw error;
+      }
+      this.drainNonResults();
     }
-    this.drainNonResults();
   }
 
   private nextMessage(port: MessagePort): any | undefined {
@@ -446,6 +453,32 @@ class SynchronousWorkerPool {
     return jobId;
   }
 
+  submitModuleCall(moduleName: string, functionName: string, args: unknown[]): number {
+    if (this.closed) throw new Error("Pool is not running");
+    const jobId = this.nextJobId++;
+    this.jobs.set(jobId, {
+      results: new Array<unknown>(1),
+      errors: new Array<RemoteError | undefined>(1),
+      received: 0,
+      total: 1,
+      attestedModule: moduleName,
+      attestedName: functionName,
+    });
+    const encodedArgs = args.map((argument) => encode(argument));
+    this.workers[0].port.postMessage(
+      {
+        type: "module-task",
+        jobId,
+        id: 0,
+        module: moduleName,
+        name: functionName,
+        args: encodedArgs,
+      },
+      encodedArgs.flatMap(packetBuffers),
+    );
+    return jobId;
+  }
+
   jobResult(jobId: number, timeoutMs?: number): PoolJobResult {
     const job = this.jobs.get(jobId);
     if (!job) throw new Error("unknown multiprocessing result");
@@ -463,6 +496,25 @@ class SynchronousWorkerPool {
     const error = job.errors.find((value) => value !== undefined);
     if (error) return { ready: true, ok: false, error };
     return { ready: true, ok: true, value: job.results };
+  }
+
+  attestedJobResult(
+    jobId: number,
+    moduleName: string,
+    functionName: string,
+    timeoutMs?: number,
+  ): PoolJobResult & { attested?: boolean } {
+    const job = this.jobs.get(jobId);
+    if (!job) throw new Error("unknown multiprocessing result");
+    if (
+      job.total !== 1 ||
+      job.attestedModule !== moduleName ||
+      job.attestedName !== functionName
+    ) throw new Error("multiprocessing result does not match the attested callable");
+    const result = this.jobResult(jobId, timeoutMs);
+    return result.ready && result.ok
+      ? { ...result, attested: true }
+      : result;
   }
 
   forgetJob(jobId: number): void {
@@ -527,6 +579,8 @@ export class NodeMultiprocessingAdapter {
     processes: number,
     initializer?: unknown,
     initargs: unknown[] = [],
+    precompiledNativeRuntime = false,
+    deferInitialization = false,
   ): number {
     if (!Number.isInteger(processes) || processes < 1) {
       throw new RangeError("number of worker processes must be at least 1");
@@ -535,7 +589,13 @@ export class NodeMultiprocessingAdapter {
     this.pools.set(
       id,
       new SynchronousWorkerPool(
-        processes, this.mode, initializer, initargs),
+        processes,
+        this.mode,
+        initializer,
+        initargs,
+        precompiledNativeRuntime,
+        deferInitialization,
+      ),
     );
     return id;
   }
@@ -562,10 +622,33 @@ export class NodeMultiprocessingAdapter {
     return pool.submitMap(callable, values, star);
   }
 
+  submitModuleCall(
+    id: number,
+    moduleName: string,
+    functionName: string,
+    args: unknown[],
+  ): number {
+    const pool = this.pools.get(id);
+    if (!pool) throw new Error("Pool is not running");
+    return pool.submitModuleCall(moduleName, functionName, args);
+  }
+
   jobResult(id: number, jobId: number, timeoutMs?: number): PoolJobResult {
     const pool = this.pools.get(id);
     if (!pool) throw new Error("Pool is not running");
     return pool.jobResult(jobId, timeoutMs);
+  }
+
+  attestedJobResult(
+    id: number,
+    jobId: number,
+    moduleName: string,
+    functionName: string,
+    timeoutMs?: number,
+  ): PoolJobResult & { attested?: boolean } {
+    const pool = this.pools.get(id);
+    if (!pool) throw new Error("Pool is not running");
+    return pool.attestedJobResult(jobId, moduleName, functionName, timeoutMs);
   }
 
   forgetJob(id: number, jobId: number): void {
