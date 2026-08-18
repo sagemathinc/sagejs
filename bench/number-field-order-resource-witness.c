@@ -11,11 +11,14 @@
 static void nf_profile_begin(const char *phase);
 static void nf_profile_end(const char *phase);
 static void nf_profile_iteration(long radical_dimension, long nullity);
+static void nf_profile_equations(long total_rows, long retained_rows);
 
 #define SAGEJS_NF_ORDER_PROFILE_BEGIN(phase) nf_profile_begin(phase)
 #define SAGEJS_NF_ORDER_PROFILE_END(phase) nf_profile_end(phase)
 #define SAGEJS_NF_ORDER_PROFILE_ITERATION(radical_dimension, nullity) \
     nf_profile_iteration(radical_dimension, nullity)
+#define SAGEJS_NF_ORDER_PROFILE_EQUATIONS(total_rows, retained_rows) \
+    nf_profile_equations(total_rows, retained_rows)
 #include "sagejs/number_field_order_resource_ffi.h"
 
 typedef struct
@@ -145,6 +148,8 @@ static uint64_t profile_iterations = 0;
 static uint64_t profile_enlargements = 0;
 static uint64_t profile_radical_dimension_sum = 0;
 static uint64_t profile_nullity_sum = 0;
+static uint64_t profile_equation_rows = 0;
+static uint64_t profile_retained_equation_rows = 0;
 
 static void *(*profile_original_alloc)(size_t) = NULL;
 static void *(*profile_original_calloc)(size_t, size_t) = NULL;
@@ -187,6 +192,12 @@ static void nf_profile_iteration(long radical_dimension, long nullity)
         profile_enlargements++;
         profile_nullity_sum += (uint64_t) nullity;
     }
+}
+
+static void nf_profile_equations(long total_rows, long retained_rows)
+{
+    profile_equation_rows += (uint64_t) total_rows;
+    profile_retained_equation_rows += (uint64_t) retained_rows;
 }
 
 static void nf_profile_allocation(size_t bytes)
@@ -421,6 +432,8 @@ static void run_profile(size_t case_index, uint64_t rounds)
     profile_enlargements = 0;
     profile_radical_dimension_sum = 0;
     profile_nullity_sum = 0;
+    profile_equation_rows = 0;
+    profile_retained_equation_rows = 0;
     nf_profile_install_allocator();
 
     for (uint64_t round = 0; round < rounds; round++)
@@ -538,13 +551,17 @@ static void run_profile(size_t case_index, uint64_t rounds)
     printf("}},\"iterationSummary\":{\"iterationsPerRound\":%.9f,"
            "\"enlargementsPerRound\":%.9f,"
            "\"meanRadicalDimension\":%.9f,"
-           "\"meanPositiveNullity\":%.9f}}\n",
+           "\"meanPositiveNullity\":%.9f,"
+           "\"equationRowsPerRound\":%.9f,"
+           "\"retainedEquationRowsPerRound\":%.9f}}\n",
         iterations / (double) rounds,
         enlargements / (double) rounds,
         iterations == 0.0 ? 0.0 :
             (double) profile_radical_dimension_sum / iterations,
         enlargements == 0.0 ? 0.0 :
-            (double) profile_nullity_sum / enlargements);
+            (double) profile_nullity_sum / enlargements,
+        (double) profile_equation_rows / (double) rounds,
+        (double) profile_retained_equation_rows / (double) rounds);
     sagejs_fmpz_matrix_clear(hints);
     sagejs_fmpz_polynomial_clear(polynomial);
 }
