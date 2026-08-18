@@ -411,6 +411,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "word-prime-krylov-production",
+      "source": "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
+      "functions": ["word_prime_krylov_minimal_polynomial"],
+      "semantic_domain": "packed Krylov minimal-polynomial relations for square regular-representation matrices over machine-word prime fields",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint"],
+      "benchmark": "bench:word-prime-krylov",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": ["packed_row_hnf_in_place"],
