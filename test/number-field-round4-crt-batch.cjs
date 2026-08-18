@@ -251,9 +251,21 @@ for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1]:
     for beta in [K(2), K.gen() + 2, K.gen()**(K.degree()-1) - K.gen() + 3]:
         rows, denominator, row_bounds = round4._integer_multiplication_matrix_data(K, beta)
         assert denominator == 1
-        characteristic, prime_count, modulus_bits, batch_calls, attempts, computed_primes = round4._batched_integer_field_element_characteristic_polynomial(rows)
+        certificate = {}
+        characteristic, prime_count, modulus_bits, batch_calls, attempts, computed_primes = round4._batched_integer_field_element_characteristic_polynomial(rows, certificate)
         direct = [coefficient._numerator for coefficient in round4._element_characteristic_polynomial(K, beta)]
         assert characteristic == direct
+        certificate['element'] = round4._packed_field_element_coordinates(K, beta)
+        certificate['matrix_denominator'] = denominator
+        round4._verify_round4_characteristic_certificate(K, certificate)
+        certificate['minimal_polynomial'][0] += 1
+        rejected = False
+        try:
+            round4._verify_round4_characteristic_certificate(K, certificate)
+        except round4.Round4InvariantError:
+            rejected = True
+        certificate['minimal_polynomial'][0] -= 1
+        assert rejected
         columns = []
         product = beta
         for column_index in range(K.degree()):

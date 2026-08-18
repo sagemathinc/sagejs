@@ -20,6 +20,14 @@ const sourcePath = join(
   "polynomial",
   "packed_rational.py",
 );
+const fieldAnalysisSourcePath = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "number_fields",
+  "field_analysis_resource.py",
+);
 
 function gcd(left, right) {
   let a = left < 0n ? -left : left;
@@ -80,13 +88,37 @@ function orbitOracle(matrix, denominator, degree) {
   return { numerators, denominators };
 }
 
+function canonicalElement(denominator, numerators) {
+  let content = denominator;
+  for (const value of numerators) content = gcd(content, value);
+  return [
+    denominator / content,
+    ...numerators.map((value) => value / content),
+  ];
+}
+
+function multiplyMatrixElement(matrix, matrixDenominator, element) {
+  const degree = element.length - 1;
+  const numerators = Array.from({ length: degree }, (_unused, row) => {
+    let value = 0n;
+    for (let column = 0; column < degree; column += 1) {
+      value += matrix[row * degree + column] * element[column + 1];
+    }
+    return value;
+  });
+  return canonicalElement(matrixDenominator * element[0], numerators);
+}
+
 test("packed integral number-field multiplication matches exact oracles", async () => {
   const cache = mkdtempSync(join(tmpdir(), "sagejs-packed-integral-nf-"));
   try {
     const compiled = await compile({ sourcePath, cacheRoot: cache });
+    await compile({ sourcePath: fieldAnalysisSourcePath, cacheRoot: cache });
     const module = require(compiled.modulePath);
     const multiply = module.packed_integral_number_field_multiply_reduce;
     const powerBasis = module.packed_integral_number_field_power_basis;
+    const exactQuotient =
+      module.packed_integral_number_field_exact_quotient;
     const declaration = compiled.ir.functions.find(
       (candidate) =>
         candidate.name === "packed_integral_number_field_multiply_reduce",
@@ -102,6 +134,11 @@ test("packed integral number-field multiplication matches exact oracles", async 
         candidate.name === "packed_integral_number_field_power_basis",
     );
     assert.equal(powerDeclaration.kernelKind, "integer");
+    const quotientDeclaration = compiled.ir.functions.find(
+      (candidate) =>
+        candidate.name === "packed_integral_number_field_exact_quotient",
+    );
+    assert.equal(quotientDeclaration.kernelKind, "integer");
 
     let state = 0x243f6a8885a308d3n;
     for (let degree = 1; degree <= 9; degree += 1) {
@@ -189,6 +226,67 @@ test("packed integral number-field multiplication matches exact oracles", async 
         );
         assert.deepEqual(dynamicNumerators, expectedOrbit.numerators);
         assert.deepEqual(dynamicDenominators, expectedOrbit.denominators);
+
+        const quotientMatrix = Array(degree * degree).fill(0n);
+        for (let row = 0; row < degree; row += 1) {
+          for (let column = 0; column <= row; column += 1) {
+            let value = next();
+            if (row === column && value === 0n) value = 1n;
+            quotientMatrix[row * degree + column] = value;
+          }
+        }
+        if (trial === 0 && degree > 1) {
+          for (let column = 0; column < degree; column += 1) {
+            const first = column;
+            const second = degree + column;
+            [quotientMatrix[first], quotientMatrix[second]] = [
+              quotientMatrix[second],
+              quotientMatrix[first],
+            ];
+          }
+        }
+        const expectedQuotient = canonicalElement(
+          BigInt(2 + (trial % 13)),
+          Array.from({ length: degree }, next),
+        );
+        const quotientMatrixDenominator = BigInt(5 ** (trial % 4));
+        const quotientDividend = multiplyMatrixElement(
+          quotientMatrix,
+          quotientMatrixDenominator,
+          expectedQuotient,
+        );
+        const quotientOutput = exactQuotient.createIntegerBuffer(
+          degree + 1,
+          512,
+        );
+        assert.equal(
+          exactQuotient(
+            quotientOutput,
+            exactQuotient.packIntegerBuffer(quotientMatrix),
+            exactQuotient.packIntegerBuffer([quotientMatrixDenominator]),
+            exactQuotient.packIntegerBuffer(quotientDividend),
+            exactQuotient.createIntegerBuffer(
+              degree * (degree + 1) + degree,
+              512,
+            ),
+            BigInt(degree),
+          ),
+          true,
+        );
+        assert.deepEqual(quotientOutput.toArray(), expectedQuotient);
+        const dynamicQuotient = Array(degree + 1).fill(0n);
+        assert.equal(
+          exactQuotient.javascript(
+            dynamicQuotient,
+            quotientMatrix,
+            [quotientMatrixDenominator],
+            quotientDividend,
+            Array(degree * (degree + 1) + degree).fill(0n),
+            BigInt(degree),
+          ),
+          true,
+        );
+        assert.deepEqual(dynamicQuotient, expectedQuotient);
       }
     }
 
@@ -199,6 +297,17 @@ test("packed integral number-field multiplication matches exact oracles", async 
         multiply.packIntegerBuffer([1n, 0n, 1n]),
         multiply.packIntegerBuffer([1n, 0n]),
         multiply.createIntegerBuffer(3, 8),
+        2n,
+      ),
+      false,
+    );
+    assert.equal(
+      exactQuotient(
+        exactQuotient.createIntegerBuffer(3, 8),
+        exactQuotient.packIntegerBuffer([1n, 2n, 2n, 4n]),
+        exactQuotient.packIntegerBuffer([1n]),
+        exactQuotient.packIntegerBuffer([1n, 3n, 6n]),
+        exactQuotient.createIntegerBuffer(8, 8),
         2n,
       ),
       false,
@@ -224,6 +333,11 @@ x = R.gen()
 records = 0
 for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1, x**6+x+1]:
     K = NumberField(polynomial, 'a')
+    identity = [[ZZ(1) if row == column else ZZ(0) for column in range(K.degree())] for row in range(K.degree())]
+    assert round4._verify_packed_round4_closure(K, identity, ZZ(1))
+    corrupted_lattice = [list(row) for row in identity]
+    corrupted_lattice[0][0] = ZZ(2)
+    assert round4._verify_packed_round4_closure(K, corrupted_lattice, ZZ(1)) is False
     for phi in [K.gen() + QQ(1)/3, K.gen()**2 + K.gen()/5 - QQ(2)/7]:
         actual = round4._power_basis_rows(K, phi)
         expected = []
@@ -236,6 +350,20 @@ for polynomial in [x**2+x+1, x**3-x+1, x**4+x+1, x**5-x+1, x**6+x+1]:
         assert actual == expected
         for scalar in [1, 2, 3**7, -11]:
             assert round4._divide_field_element_by_integer(K, phi, scalar) == phi / scalar
+        divisor = K.gen() + QQ(2)/5
+        dividend = phi**2 - K.gen()/11 + QQ(7)/13
+        quotient_metrics = {}
+        assert round4._exact_field_element_quotient(K, dividend, divisor, quotient_metrics) == dividend / divisor
+        quotient_certificate = quotient_metrics['exact_field_quotient_certificates'][0]
+        round4._verify_round4_quotient_certificate(K, quotient_certificate)
+        quotient_certificate['quotient'][1] += 1
+        rejected = False
+        try:
+            round4._verify_round4_quotient_certificate(K, quotient_certificate)
+        except round4.Round4InvariantError:
+            rejected = True
+        quotient_certificate['quotient'][1] -= 1
+        assert rejected
         records += 1
 assert is_compiled(packed_integral_number_field_power_basis)
 print(records)
@@ -260,6 +388,7 @@ from fractions import Fraction
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 from sagejs.kernels.polynomial.packed_rational import (
     packed_integral_number_field_multiply_reduce,
+    packed_integral_number_field_exact_quotient,
     packed_integral_number_field_power_basis,
 )
 
@@ -290,6 +419,12 @@ assert packed_integral_number_field_power_basis(
 )
 assert orbit_numerators == [1, 0, 2, 5]
 assert orbit_denominators == [1, 11]
+quotient = [0, 0, 0]
+assert packed_integral_number_field_exact_quotient(
+    quotient, [2, 1, 1, 1], [3], [15, 17, 13], [0] * 8, 2,
+)
+from fractions import Fraction
+assert [Fraction(value, quotient[0]) for value in quotient[1:]] == [Fraction(4, 5), Fraction(9, 5)]
 print('cpython-ok')
 `;
     const python = spawnSync("python3", ["-c", pythonProgram], {

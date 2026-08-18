@@ -44,6 +44,7 @@ from sagejs.kernels.matrix.word_prime_krylov import (
     word_prime_krylov_workspace_length,
 )
 from sagejs.kernels.polynomial.packed_rational import (
+    packed_integral_number_field_exact_quotient,
     packed_integral_number_field_power_basis,
 )
 from sagejs.native import (
@@ -200,6 +201,7 @@ class Round4LocalCertificate:
         basis_denominator: Any,
         closure_checked: bool,
         p_maximality_witness: str,
+        proof_envelope: dict[str, Any],
     ) -> None:
         self.prime = prime
         self.algorithm = algorithm
@@ -212,6 +214,7 @@ class Round4LocalCertificate:
         self.basis_denominator = basis_denominator
         self.closure_checked = closure_checked
         self.p_maximality_witness = p_maximality_witness
+        self.proof_envelope = proof_envelope
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -226,6 +229,7 @@ class Round4LocalCertificate:
             "basis_denominator": self.basis_denominator,
             "closure_checked": self.closure_checked,
             "p_maximality_witness": self.p_maximality_witness,
+            "proof_envelope": dict(self.proof_envelope),
         }
 
 
@@ -754,6 +758,24 @@ def _integer_multiplication_matrix_data(
     return rows, denominator, row_bounds
 
 
+def _packed_field_element_coordinates(field: Any, element: Any) -> list[Any]:
+    """Return positive common denominator and padded power-basis numerators."""
+    degree = field.degree()
+    coefficients = list(element.list())
+    coefficients += [sage.QQ(0) for _index in range(degree - len(coefficients))]
+    denominator = sage.ZZ(1)
+    for coefficient in coefficients:
+        denominator = _integer_lcm(denominator, coefficient._denominator)
+    numerators = [
+        coefficient._numerator * (denominator // coefficient._denominator)
+        for coefficient in coefficients
+    ]
+    content = denominator
+    for numerator in numerators:
+        content = _integer_gcd(content, numerator)
+    return [denominator // content] + [numerator // content for numerator in numerators]
+
+
 def _characteristic_coefficient_bounds(row_bounds: list[Any]) -> list[Any]:
     """Bound ascending characteristic coefficients by principal minors."""
     degree = len(row_bounds)
@@ -1099,6 +1121,7 @@ def _integer_polynomial_power(
 
 def _batched_integer_field_element_characteristic_polynomial(
     rows: list[list[Any]],
+    certificate: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int, int, int, int, int]:
     """Recover a field-element characteristic polynomial in prime batches.
 
@@ -1257,6 +1280,32 @@ def _batched_integer_field_element_characteristic_polynomial(
             centered,
             degree // minimal_degree,
         )
+        if certificate is not None:
+            witness_prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
+            witness_minimal = _word_prime_first_coordinate_minimal_polynomial(
+                rows,
+                witness_prime,
+            )
+            while len(witness_minimal) - 1 != minimal_degree:
+                witness_prime, candidate_prime = _next_reconstruction_prime(
+                    candidate_prime
+                )
+                witness_minimal = _word_prime_first_coordinate_minimal_polynomial(
+                    rows,
+                    witness_prime,
+                )
+            certificate.update(
+                {
+                    "kind": "exact-minimal-polynomial",
+                    "minimal_polynomial": list(centered),
+                    "coefficient_bounds": list(bounds),
+                    "crt_modulus": modulus,
+                    "witness_prime": witness_prime,
+                    "witness_modular_minimal": list(witness_minimal),
+                    "multiplicity": degree // minimal_degree,
+                    "characteristic_polynomial": list(characteristic),
+                }
+            )
         return (
             characteristic,
             prime_count,
@@ -1366,6 +1415,7 @@ def _modular_characteristic_polynomial(
     batch_calls = 0
     reconstruction_attempts = 0
     batch_prime_count = 0
+    exact_certificate: dict[str, Any] = {}
     if largest_bound_bits >= _ROUND4_CRT_BOUND_BITS and is_compiled(
         integer_matrix_word_prime_minimal_polynomial_batch
     ):
@@ -1376,7 +1426,10 @@ def _modular_characteristic_polynomial(
             batch_calls,
             reconstruction_attempts,
             batch_prime_count,
-        ) = _batched_integer_field_element_characteristic_polynomial(rows)
+        ) = _batched_integer_field_element_characteristic_polynomial(
+            rows,
+            exact_certificate,
+        )
         certification = "field-minimal-polynomial-crt"
     while integer_coefficients is None:
         prime, candidate_prime = _next_reconstruction_prime(candidate_prime)
@@ -1491,6 +1544,24 @@ def _modular_characteristic_polynomial(
         certification_counts[certification] = (
             certification_counts.get(certification, 0) + 1
         )
+        certificates = metrics.get("modular_characteristic_certificates")
+        if certificates is None:
+            certificates = []
+            metrics["modular_characteristic_certificates"] = certificates
+        packed_element = _packed_field_element_coordinates(field, element)
+        if exact_certificate:
+            recorded_certificate = dict(exact_certificate)
+            recorded_certificate["element"] = packed_element
+            recorded_certificate["matrix_denominator"] = denominator
+        else:
+            recorded_certificate = {
+                "kind": "direct-characteristic-replay",
+                "element": packed_element,
+                "matrix_denominator": denominator,
+                "coefficient_bounds": list(bounds),
+                "characteristic_polynomial": list(integer_coefficients),
+            }
+        certificates.append(recorded_certificate)
     return coefficients
 
 
@@ -2037,23 +2108,94 @@ def _exact_field_element_quotient(
         metrics["exact_field_quotient_calls"] = (
             metrics.get("exact_field_quotient_calls", 0) + 1
         )
-    multiplication = _nf_global("matrix")(sage.ZZ, integer_rows)
     coordinates = list(dividend.list())
     coordinates += [sage.QQ(0) for _index in range(degree - len(coordinates))]
-    right = _nf_global("vector")(
-        sage.QQ,
-        [sage.QQ(denominator) * coordinate for coordinate in coordinates],
-    )
-    try:
-        solution = multiplication.solve_right(right)
-    except (ArithmeticError, ValueError) as error:
-        raise Round4Unsupported(
-            "exact field-element multiplication system is not solvable"
-        ) from error
-    if multiplication * solution != right:
-        raise Round4InvariantError(
-            "exact field-element quotient failed multiplication recovery"
+    kernel = packed_integral_number_field_exact_quotient
+    # Fraction-free native elimination wins for small and moderate extensions.
+    # At larger degrees the mature FLINT-backed host solver has the lower
+    # cubic-arithmetic constant, while retaining the same multiply-back proof.
+    # This crossover is solely structural and never changes acceptance.
+    if is_compiled(kernel) and degree <= 16:
+        dividend_denominator = sage.ZZ(1)
+        for coordinate in coordinates:
+            dividend_denominator = _integer_lcm(
+                dividend_denominator,
+                coordinate._denominator,
+            )
+        dividend_numerators = [
+            coordinate._numerator * (dividend_denominator // coordinate._denominator)
+            for coordinate in coordinates
+        ]
+        # Every Bareiss entry and every Cramer numerator is a minor of the
+        # augmented matrix.  Hadamard bounds every such minor by the product
+        # of its selected row norms, hence by the product below because each
+        # nonzero integral row norm is at least one.  Only minors and the
+        # final denominator are stored in caller-owned buffers; larger
+        # multiply/subtract temporaries remain local exact integers.  This is
+        # a storage bound, never a correctness threshold.
+        minor_bound = sage.ZZ(1)
+        for row, dividend_numerator in zip(
+            integer_rows,
+            dividend_numerators,
+            strict=True,
+        ):
+            norm_square = sum(value * value for value in row)
+            norm_square += (denominator * dividend_numerator) ** 2
+            minor_bound *= max(sage.ZZ(1), _integer_sqrt_ceiling(norm_square))
+        storage_bound = minor_bound * dividend_denominator
+        word_capacity = max(
+            8,
+            (_positive_integer_bits(storage_bound) + 63) // 64 + 2,
         )
+        output = kernel_integer_zeros(kernel, degree + 1, word_capacity)
+        matrix = kernel_integer_buffer(
+            kernel,
+            [value for row in integer_rows for value in row],
+        )
+        packed_denominator = kernel_integer_buffer(kernel, [denominator])
+        packed_dividend = kernel_integer_buffer(
+            kernel,
+            [dividend_denominator, *dividend_numerators],
+        )
+        workspace = kernel_integer_zeros(
+            kernel,
+            degree * (degree + 1) + degree,
+            word_capacity,
+        )
+        completed = kernel(
+            output,
+            matrix,
+            packed_denominator,
+            packed_dividend,
+            workspace,
+            degree,
+        )
+        if not runtime.number(completed):
+            raise Round4InvariantError(
+                "compiled exact field quotient failed multiply-back certification"
+            )
+        packed_solution = integer_buffer_values(output)
+        solution = [
+            sage.QQ(packed_solution[index + 1]) / packed_solution[0]
+            for index in range(degree)
+        ]
+    else:
+        multiplication = _nf_global("matrix")(sage.ZZ, integer_rows)
+        right = _nf_global("vector")(
+            sage.QQ,
+            [sage.QQ(denominator) * coordinate for coordinate in coordinates],
+        )
+        try:
+            solution = multiplication.solve_right(right)
+        except (ArithmeticError, ValueError) as error:
+            raise Round4Unsupported(
+                "exact field-element multiplication system is not solvable"
+            ) from error
+        if multiplication * solution != right:
+            raise Round4InvariantError(
+                "exact field-element quotient failed multiplication recovery"
+            )
+    quotient = field._from_coefficients(list(solution))
     if metrics is not None:
         metrics["exact_field_quotient_recoveries"] = (
             metrics.get("exact_field_quotient_recoveries", 0) + 1
@@ -2069,7 +2211,19 @@ def _exact_field_element_quotient(
                 "matrix_denominator_bits": _positive_integer_bits(denominator),
             }
         )
-    return field._from_coefficients(list(solution))
+        certificates = metrics.get("exact_field_quotient_certificates")
+        if certificates is None:
+            certificates = []
+            metrics["exact_field_quotient_certificates"] = certificates
+        certificates.append(
+            {
+                "label": metric_label,
+                "dividend": _packed_field_element_coordinates(field, dividend),
+                "divisor": _packed_field_element_coordinates(field, divisor),
+                "quotient": _packed_field_element_coordinates(field, quotient),
+            }
+        )
+    return quotient
 
 
 def _round4_residue_refinement(
@@ -2928,6 +3082,7 @@ def modified_round4_local_order(
         order._discriminant_cache = runtime.normalize_integer(original_discriminant)
     else:
         original_discriminant = order.discriminant()
+    input_basis_numerator, input_basis_denominator = _basis_hnf_evidence(order)
     initial = order
     used_dedekind = False
     fallback_reason: str | None = None
@@ -3044,6 +3199,38 @@ def modified_round4_local_order(
             "the local index does not explain the discriminant change"
         )
     numerator, denominator = _basis_hnf_evidence(final)
+    proof_envelope: dict[str, Any] = {
+        "version": 1,
+        "input_basis_numerator": [list(row) for row in input_basis_numerator],
+        "input_basis_denominator": input_basis_denominator,
+        "output_basis_numerator": [list(row) for row in numerator],
+        "output_basis_denominator": denominator,
+        "input_discriminant": original_discriminant,
+        "output_discriminant": output_discriminant,
+        "local_index": local_index,
+        "algorithm": algorithm,
+        "characteristic_certificates": [],
+        "quotient_certificates": [],
+    }
+    for stage in reversed(plan.stages):
+        if stage.name != "assemble-power-basis-hnf":
+            continue
+        stage_metrics = stage.evidence.get("characteristic_polynomial_metrics", {})
+        proof_envelope["ford_letard"] = {
+            "ramification_degree": stage.evidence["ramification_degree"],
+            "residue_degree": stage.evidence["residue_degree"],
+            "local_index": stage.evidence["local_index"],
+            "input_discriminant": stage.evidence["input_discriminant"],
+            "output_discriminant": stage.evidence["output_discriminant"],
+            "p_maximality_verifier": stage.evidence["p_maximality_verifier"],
+        }
+        proof_envelope["characteristic_certificates"] = list(
+            stage_metrics.get("modular_characteristic_certificates", [])
+        )
+        proof_envelope["quotient_certificates"] = list(
+            stage_metrics.get("exact_field_quotient_certificates", [])
+        )
+        break
     certificate = Round4LocalCertificate(
         prime,
         algorithm,
@@ -3056,6 +3243,7 @@ def modified_round4_local_order(
         denominator,
         True,
         witness,
+        proof_envelope,
     )
     return Round4LocalResult(final, plan, certificate)
 
@@ -3204,25 +3392,312 @@ def modified_round4_hnf_contract(
     return round4_shared_local_result(result)
 
 
+def _canonical_upper_hnf(numerator: list[list[Any]]) -> bool:
+    degree = len(numerator)
+    if any(len(row) != degree for row in numerator):
+        return False
+    for row in range(degree):
+        diagonal = numerator[row][row]
+        if diagonal <= 0:
+            return False
+        for column in range(row):
+            if numerator[row][column] != 0:
+                return False
+        for column in range(row + 1, degree):
+            if (
+                numerator[row][column] < 0
+                or numerator[row][column] >= numerator[column][column]
+            ):
+                return False
+    return True
+
+
+def _verify_packed_round4_closure(
+    field: Any,
+    numerator: list[list[Any]],
+    denominator: Any,
+) -> bool | None:
+    """Check one HNF's full multiplication table in an isolated exact call."""
+    module = __import__(
+        "sagejs.number_fields.field_analysis_resource",
+        fromlist=["field_analysis_resource"],
+    )
+    kernel = module.packed_field_analysis_fixed_points_are_valid
+    if not is_compiled(kernel):
+        return None
+    degree = field.degree()
+    polynomial = []
+    for coefficient in field._defining_coefficients:
+        if coefficient._denominator != 1:
+            return False
+        polynomial.append(coefficient._numerator)
+    maximum_numerator = max(
+        sage.ZZ(1),
+        max(abs(value) for row in numerator for value in row),
+    )
+    defining_growth = sage.ZZ(1) + sum(abs(value) for value in polynomial[:-1])
+    factorial = sage.ZZ(1)
+    for factor in range(2, degree + 1):
+        factorial *= factor
+    inverse_bound = denominator * factorial * maximum_numerator ** max(0, degree - 1)
+    product_bound = (
+        degree
+        * degree
+        * maximum_numerator
+        * maximum_numerator
+        * defining_growth**degree
+    )
+    table_bound = max(
+        sage.ZZ(1),
+        degree * inverse_bound * product_bound,
+    )
+    word_capacity = max(
+        8,
+        (_positive_integer_bits(table_bound) + 63) // 64 + 2,
+    )
+    square = degree * degree
+    workspace_length = degree * square + 4 * square + 7 * degree
+    empty = kernel_integer_buffer(kernel, [])
+    return bool(
+        runtime.number(
+            kernel(
+                kernel_integer_zeros(kernel, workspace_length, word_capacity),
+                kernel_integer_buffer(kernel, polynomial),
+                kernel_integer_buffer(
+                    kernel,
+                    [value for row in numerator for value in row],
+                ),
+                denominator,
+                empty,
+                empty,
+                empty,
+                empty,
+                degree,
+                0,
+            )
+        )
+    )
+
+
+def _multiplication_matrix_from_packed_evidence(
+    field: Any,
+    packed: list[Any],
+) -> tuple[list[list[Any]], Any]:
+    """Build a regular representation directly from canonical coordinates."""
+    degree = field.degree()
+    if len(packed) != degree + 1 or packed[0] <= 0:
+        raise Round4InvariantError("a packed field-element proof has invalid shape")
+    content = packed[0]
+    for value in packed[1:]:
+        content = _integer_gcd(content, value)
+    if content != 1:
+        raise Round4InvariantError("a packed field-element proof is not canonical")
+    defining = []
+    for coefficient in field._defining_coefficients[:-1]:
+        if coefficient._denominator != 1:
+            raise Round4InvariantError("a packed field proof is not integral monic")
+        defining.append(coefficient._numerator)
+    column = list(packed[1:])
+    columns = []
+    for _column_index in range(degree):
+        columns.append(list(column))
+        leading = column[-1]
+        next_column = [-leading * defining[0]]
+        for index in range(1, degree):
+            next_column.append(column[index - 1] - leading * defining[index])
+        column = next_column
+    return (
+        [[columns[column][row] for column in range(degree)] for row in range(degree)],
+        packed[0],
+    )
+
+
+def _verify_round4_characteristic_certificate(
+    field: Any,
+    certificate: dict[str, Any],
+) -> None:
+    rows, denominator = _multiplication_matrix_from_packed_evidence(
+        field,
+        certificate["element"],
+    )
+    if denominator != certificate["matrix_denominator"]:
+        raise Round4InvariantError("a characteristic proof changed matrix scale")
+    if certificate["kind"] == "direct-characteristic-replay":
+        characteristic = list(_nf_global("matrix")(sage.ZZ, rows).charpoly().list())
+        if characteristic != certificate["characteristic_polynomial"]:
+            raise Round4InvariantError("a direct characteristic proof was corrupted")
+        return
+    if certificate["kind"] != "exact-minimal-polynomial":
+        raise Round4InvariantError("an unknown characteristic proof was supplied")
+    minimal = certificate["minimal_polynomial"]
+    minimal_degree = len(minimal) - 1
+    if minimal_degree <= 0 or field.degree() % minimal_degree != 0:
+        raise Round4InvariantError("a minimal-polynomial proof has invalid degree")
+    bounds = _minimal_polynomial_coefficient_bounds(rows, minimal_degree)
+    if bounds != certificate["coefficient_bounds"]:
+        raise Round4InvariantError("a minimal-polynomial bound was corrupted")
+    if any(abs(value) > bounds[index] for index, value in enumerate(minimal)):
+        raise Round4InvariantError("a minimal-polynomial coefficient exceeds its bound")
+    packed_matrix = kernel_integer_buffer(
+        integer_matrix_polynomial_annihilates_first_coordinate,
+        [value for row in rows for value in row],
+    )
+    if is_compiled(integer_matrix_polynomial_annihilates_first_coordinate):
+        annihilates = _native_annihilates_first_coordinate(
+            rows,
+            minimal,
+            packed_matrix,
+        )
+    else:
+        annihilates = _annihilates_first_coordinate(rows, minimal)
+    if not annihilates:
+        raise Round4InvariantError("a minimal-polynomial proof does not annihilate")
+    witness_prime = certificate["witness_prime"]
+    if not _nf_global("is_prime")(witness_prime):
+        raise Round4InvariantError("a minimal-polynomial witness is not prime")
+    witness = _word_prime_first_coordinate_minimal_polynomial(rows, witness_prime)
+    if witness != certificate["witness_modular_minimal"]:
+        raise Round4InvariantError("a modular minimal-degree witness was corrupted")
+    if len(witness) - 1 != minimal_degree:
+        raise Round4InvariantError("a modular witness has the wrong minimal degree")
+    multiplicity = certificate["multiplicity"]
+    if multiplicity != field.degree() // minimal_degree:
+        raise Round4InvariantError("a characteristic multiplicity was corrupted")
+    characteristic = _integer_polynomial_power(minimal, multiplicity)
+    if characteristic != certificate["characteristic_polynomial"]:
+        raise Round4InvariantError("a characteristic power proof was corrupted")
+    if certificate["crt_modulus"] <= 1:
+        raise Round4InvariantError("a CRT proof has invalid modulus")
+
+
+def _verify_round4_quotient_certificate(
+    field: Any,
+    certificate: dict[str, Any],
+) -> None:
+    dividend = certificate["dividend"]
+    divisor = certificate["divisor"]
+    quotient = certificate["quotient"]
+    rows, divisor_denominator = _multiplication_matrix_from_packed_evidence(
+        field,
+        divisor,
+    )
+    _multiplication_matrix_from_packed_evidence(field, dividend)
+    _multiplication_matrix_from_packed_evidence(field, quotient)
+    degree = field.degree()
+    for row in range(degree):
+        recovered = sum(
+            rows[row][column] * quotient[column + 1] for column in range(degree)
+        )
+        recovered *= dividend[0]
+        expected = divisor_denominator * dividend[row + 1] * quotient[0]
+        if recovered != expected:
+            raise Round4InvariantError("an exact quotient multiply-back was corrupted")
+
+
 def verify_round4_local_result(result: Round4LocalResult) -> bool:
-    """Independently check lattice, closure, index, and local fixed point."""
+    """Check the compact exact Round-4 proof without replaying construction."""
     maximal_order = _maximal_order_module()
     certificate = result.certificate
     order = result.order
-    maximal_order._nf_order_multiplication_table(order)
     numerator, denominator = _basis_hnf_evidence(order)
     if (
         numerator != certificate.basis_numerator
         or denominator != certificate.basis_denominator
     ):
         raise Round4InvariantError("the certificate basis does not match the order")
-    if _valuation(order.discriminant(), certificate.prime) != (
-        certificate.output_discriminant_valuation
+    envelope = certificate.proof_envelope
+    if envelope.get("version") != 1:
+        raise Round4InvariantError("the Round-4 proof envelope has unknown version")
+    if (
+        envelope["output_basis_numerator"] != numerator
+        or envelope["output_basis_denominator"] != denominator
+        or envelope["local_index"] != certificate.local_index
     ):
-        raise Round4InvariantError("the certificate discriminant valuation changed")
-    check = maximal_order.p_maximal_overorder_dynamic(order, certificate.prime)
-    if check._basis_rows != order._basis_rows:
-        raise Round4InvariantError("the certified order is not locally maximal")
+        raise Round4InvariantError("the Round-4 proof envelope changed its output")
+    input_numerator = envelope["input_basis_numerator"]
+    input_denominator = envelope["input_basis_denominator"]
+    if not _canonical_upper_hnf(input_numerator) or not _canonical_upper_hnf(numerator):
+        raise Round4InvariantError("the Round-4 proof basis is not canonical HNF")
+    degree = order.number_field().degree()
+    input_determinant = sage.ZZ(1)
+    output_determinant = sage.ZZ(1)
+    for index in range(degree):
+        input_determinant *= input_numerator[index][index]
+        output_determinant *= numerator[index][index]
+    index_numerator = input_determinant * denominator**degree
+    index_denominator = input_denominator**degree * output_determinant
+    local_index, remainder = divmod(index_numerator, index_denominator)
+    if remainder != 0 or local_index != certificate.local_index:
+        raise Round4InvariantError("the Round-4 lattice index proof failed")
+    equation_discriminant = result.plan.polynomial_discriminant
+    input_scaled = equation_discriminant * input_determinant * input_determinant
+    output_scaled = equation_discriminant * output_determinant * output_determinant
+    input_discriminant, input_remainder = divmod(
+        input_scaled,
+        input_denominator ** (2 * degree),
+    )
+    output_discriminant, output_remainder = divmod(
+        output_scaled,
+        denominator ** (2 * degree),
+    )
+    if input_remainder != 0 or output_remainder != 0:
+        raise Round4InvariantError("the Round-4 discriminant proof is nonintegral")
+    if (
+        input_discriminant != envelope["input_discriminant"]
+        or output_discriminant != envelope["output_discriminant"]
+        or output_discriminant != order.discriminant()
+        or _valuation(output_discriminant, certificate.prime)
+        != certificate.output_discriminant_valuation
+    ):
+        raise Round4InvariantError("the Round-4 discriminant proof changed")
+    if input_discriminant != output_discriminant * local_index * local_index:
+        raise Round4InvariantError("the Round-4 index does not explain discriminant")
+    field = order.number_field()
+    closure = _verify_packed_round4_closure(field, numerator, denominator)
+    if closure is False:
+        raise Round4InvariantError("the packed Round-4 lattice is not closed")
+    if closure is None:
+        maximal_order._nf_order_multiplication_table(order)
+    ford_letard = envelope.get("ford_letard")
+    compact_maximality = False
+    if certificate.algorithm == "modified-round4-primary-power-basis":
+        if ford_letard is None:
+            raise Round4InvariantError("the Ford--Letard proof event is missing")
+        compact_maximality = (
+            ford_letard["ramification_degree"] * ford_letard["residue_degree"] == degree
+            and ford_letard["local_index"] == local_index
+            and ford_letard["input_discriminant"] == equation_discriminant
+            and ford_letard["output_discriminant"] == output_discriminant
+            and ford_letard["p_maximality_verifier"]
+            == "ford-letard-ef-degree-certificate"
+        )
+    elif certificate.algorithm == "modified-round4-dedekind-discriminant-certified":
+        compact_maximality = certificate.output_discriminant_valuation <= 1
+    if not compact_maximality:
+        check = maximal_order.p_maximal_overorder_dynamic(order, certificate.prime)
+        if check._basis_rows != order._basis_rows:
+            raise Round4InvariantError("the certified order is not locally maximal")
+    characteristic_certificates = envelope["characteristic_certificates"]
+    quotient_certificates = envelope["quotient_certificates"]
+    for event in characteristic_certificates:
+        _verify_round4_characteristic_certificate(field, event)
+    for event in quotient_certificates:
+        _verify_round4_quotient_certificate(field, event)
+    if ford_letard is not None:
+        final_stage = [
+            stage
+            for stage in result.plan.stages
+            if stage.name == "assemble-power-basis-hnf"
+        ][-1]
+        metrics = final_stage.evidence["characteristic_polynomial_metrics"]
+        if len(characteristic_certificates) != metrics.get(
+            "modular_characteristic_calls", 0
+        ):
+            raise Round4InvariantError(
+                "the characteristic proof envelope is incomplete"
+            )
+        if len(quotient_certificates) != metrics.get("exact_field_quotient_calls", 0):
+            raise Round4InvariantError("the quotient proof envelope is incomplete")
     return True
 
 
