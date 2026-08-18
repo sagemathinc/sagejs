@@ -242,7 +242,7 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 56000,
+      "max_source_bytes": 65000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
@@ -265,6 +265,18 @@
       "depends_on": ["core-runtime", "arithmetic", "elliptic-curves"],
       "files": ["src/lib/sagejs_elliptic_descent.py"],
       "prefixes": []
+    },
+    {
+      "id": "elliptic-curves-analytic-rank",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": [
+        "core-runtime", "python-stdlib", "arithmetic", "elliptic-curves",
+        "numeric-compat"
+      ],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/elliptic_curves/"]
     },
     {
       "id": "modular-forms",

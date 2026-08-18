@@ -65,6 +65,8 @@
     "src/lib/sagejs_elliptic_advanced.py",
     "src/lib/sagejs_elliptic_descent.py",
     "src/lib/sagejs/__init__.py",
+    "src/lib/sagejs/elliptic_curves/__init__.py",
+    "src/lib/sagejs/elliptic_curves/analytic_rank.py",
     "src/lib/sagejs/javascript.py",
     "src/lib/sagejs/native.py",
     "src/lib/sagejs/plotting/__init__.py",

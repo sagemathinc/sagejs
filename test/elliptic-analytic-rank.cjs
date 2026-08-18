@@ -22,7 +22,7 @@ test("probable analytic rank and raw leading derivatives match independent oracl
         "for ainvs, rank, leading in fixtures:",
         "    E = EllipticCurve(ainvs)",
         "    got_rank, got_leading = E.analytic_rank(leading_coefficient=True, prec=64)",
-        "    observed.append((got_rank == rank, abs(float(got_leading)-leading) < 1e-10))",
+        "    observed.append((got_rank == rank, abs(got_leading-leading) < 1e-10))",
         "observed",
       ].join("\n"),
       { timeout: 120_000 },
@@ -148,6 +148,16 @@ test("analytic-rank API documents probability and rejects unsupported modes", as
     await assert.rejects(
       session.evaluate("EllipticCurve(GF(5), [0,0,1,-1,0]).analytic_rank()"),
       /only implemented over QQ/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        [
+          'M = __import__("sagejs.elliptic_curves.analytic_rank", fromlist=["probable_analytic_rank"])',
+          "E = EllipticCurve([0,1,1,-2,0])",
+          'M.probable_analytic_rank(E, E.root_number(), 64, 0, "native")',
+        ].join("\n"),
+      ),
+      /no central derivative separated stably from zero/,
     );
   } finally {
     await session.close();

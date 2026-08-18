@@ -30,7 +30,6 @@ from typing import Any
 
 from mpmath import mp
 
-
 # Positive nodes and weights for the 16-point Gauss--Legendre rule on [-1,1].
 # Keeping this small fixed rule in source avoids generating an eigenproblem at
 # runtime (and makes the reference quadrature identical in CPython and Sage.js).

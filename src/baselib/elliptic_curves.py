@@ -1179,14 +1179,16 @@ class EllipticCurveParent(sage.Parent):
         nonzero derivative `L^(r)(E,1)`, not its value divided by `r!`.
         """
         result = self._analytic_rank_result(algorithm, prec)
-        rank = int(result["rank"])
+        # Lazy strict-Python modules return runtime mappings.  Use `get`
+        # instead of a raw JavaScript property lookup across that boundary.
+        rank = int(result.get("rank"))
         if not leading_coefficient:
             return rank
         precision = 53 if prec is None else int(prec)
         real_field = runtime.reflect.get(runtime.global_object, "RealField")
         field = runtime.reflect.apply(real_field, runtime.undefined, [precision])
         derivative = runtime.reflect.apply(
-            field, runtime.undefined, [result["leading_derivative"]]
+            field, runtime.undefined, [result.get("leading_derivative")]
         )
         return runtime.math_tuple([rank, derivative])
 
@@ -1197,8 +1199,8 @@ class EllipticCurveParent(sage.Parent):
     ) -> int:
         """Return a GRH-conditional upper bound for the analytic rank.
 
-        This sinc-squared explicit-formula computation assumes the Generalized
-        Riemann Hypothesis.  The result may be strictly larger than the rank
+        This computation assumes the Generalized Riemann Hypothesis (GRH).  Its
+        sinc-squared explicit-formula result may be strictly larger than the rank
         and is not an unconditional certificate.
         """
         if self._base is not sage.QQ and self._base is not sage.ZZ:
@@ -1211,7 +1213,7 @@ class EllipticCurveParent(sage.Parent):
             None if Delta is None else float(Delta),
             bool(adaptive),
         )
-        return int(result["bound"])
+        return int(result.get("bound"))
 
     def quadratic_twist(self, value: Any) -> EllipticCurveParent:
         twist = sage.QQ(value)
