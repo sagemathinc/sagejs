@@ -21,9 +21,11 @@ const { verifyOracleResult } = require("../tools/number-field-maximal-order/veri
 
 test("the frozen manifest is exact, deterministic, and family-aware", () => {
   const manifest = loadManifest(MANIFEST);
-  assert.equal(manifest.cases.length, 11);
+  assert.equal(manifest.cases.length, 22);
   assert.equal(manifest.profiles.baseline.case_ids.length, 7);
-  assert.equal(manifest.corpus_metadata.case_count, 494);
+  assert.equal(manifest.profiles.stress.case_ids.length, 15);
+  assert.equal(new Set(manifest.profiles.stress.case_ids).size, 15);
+  assert.equal(manifest.corpus_metadata.case_count, 505);
   assert.deepEqual(validateManifest(manifest), []);
   assert.deepEqual(manifest.implementation_families["pari-sage"].members, ["pari", "sage"]);
   assert.deepEqual(manifest.implementation_families["hecke-oscar"].members, ["hecke", "oscar"]);
@@ -35,6 +37,11 @@ test("the frozen manifest is exact, deterministic, and family-aware", () => {
   const badGenerator = manifest.cases.find((entry) => entry.id === "pure-bad-generator-n8-c2pow32");
   assert.equal(badGenerator.expected.field_discriminant, "-2147483648");
   assert.equal(badGenerator.limits.magma.timeout_ms, 180000);
+  const scalableStress = manifest.cases.filter((entry) =>
+    entry.corpus_tags.includes("scalable-stress"),
+  );
+  assert.equal(scalableStress.length, 11);
+  assert(scalableStress.every((entry) => entry.profiles.includes("stress")));
 });
 
 test("canonical rational row HNF ignores unimodular basis changes", () => {
@@ -165,7 +172,7 @@ test("the CLI validates the checked manifest", () => {
     timeout: 10_000,
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /validated 11 maximal-order cases/);
+  assert.match(result.stdout, /validated 22 maximal-order cases/);
 });
 
 test("live GP adapter produces a verified bounded quick record when available", {

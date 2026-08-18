@@ -6,20 +6,20 @@ is the stable input and exact-result authority for maximal-order correctness,
 profiling, algorithm selection, and cross-system reports. Benchmark tools must
 consume it rather than maintaining another list of polynomials.
 
-The corpus contains 494 fields: 489 standard cases and 5 opt-in stress cases,
-with degrees from 2 through 96. Its sources are:
+The corpus contains 505 fields: 489 standard cases and 16 opt-in stress cases,
+with degrees from 2 through 160. Its sources are:
 
 | Source | Cases | Content |
 | --- | ---: | --- |
 | PARI Round-4 | 477 | All 430 polynomials in the main `v` vector, the named regressions, local-hint cases, the 16-element `R` family, and fixed-seed Tschirnhaus representatives |
 | Hecke | 6 | Direct absolute simple-field `maximal_order` tests: degrees 18 and 90, huge-coefficient degree 6, rational degrees 3 and 4 after integral normalization, and precision-sensitive degree 12 |
 | Existing Sage.js/Sage cases | 4 | The motivating degree-7 field, Sage's essential-discriminant cubic, and two LMFDB index-2 fields |
-| Generated hard families | 7 | Bad primitive generators of pure fields, including the catastrophic degree-8 case and scalable degree/height/depth representatives |
+| Generated hard families | 18 | Bad primitive generators of pure fields, including the catastrophic degree-8 case, degrees 112--160, depth parameters 512 and 2048, and explicit wild/many-prime scaled-generator families |
 
 The manifest content digest is
-`cf66e794684801d794410cd982dcac220f1fbb415ff04c9d6f65705153eadb2d`.
+`e6bf006b01c7cd47d6b0f7fc70db142d85b725ad8d45aeee38aa7775a55b3c07`.
 The JSON file's byte digest is
-`482102ff9748e1762e958712e43bd1887311344c29cebdc4cd81e1811b8acd72`.
+`695152efb47b614b15f08a140f7f65d11c32d997588c8ccd6f7962f2f025f52f`.
 
 ## Stable representation
 
@@ -49,14 +49,23 @@ the exact index, but 426 cases do not claim a fully certified prime support.
 This is useful input for lazy component splitting and must not be interpreted
 as a prime factorization.
 
-There are 493 canonical basis digests. The 488 ordinary-sized bases are inline.
-Five large stress bases retain only their digest:
+There are 504 canonical basis digests. The 488 ordinary-sized bases are inline.
+Sixteen large stress bases retain only their digest. In addition to the five
+original cases below, the scalable expansion stores all eleven new HNFs this
+way:
 
 - `regression-degree-72`;
 - `pure-bad-generator-n32-c2pow32`;
 - `pure-bad-generator-n32-c2pow128`;
 - `pure-bad-generator-n48-c1009`;
 - `pure-bad-generator-n96-c1009`.
+
+The expansion adds bad-generator degrees 112, 128, 144, and 160; fixed degree
+32 with `c=2^512` and `c=2^2048`; the wild-at-2 scaled degrees 16, 32, and 64;
+and many-prime scaled degrees 16 and 32. The many-prime degree-32 index has 11
+independently trial-proven prime components. The bad-generator residual
+cofactors deliberately remain `composite-unresolved`; no probable-prime result
+is promoted to a proof.
 
 The degree-4 large-prime quadratic compositum is the one explicit basis debt.
 GP 2.17.3 computes its field discriminant with supplied factors `[2,p,q]`, but
@@ -72,7 +81,10 @@ The generation run used GP 2.17.3, Sage 10.9.post1, Hecke 0.39.21 at commit
 Sage/PARI and Hecke/Oscar are each counted as one implementation family;
 Magma is a third black-box family.
 
-- GP supplied 493 exact HNF bases and all 494 field discriminants.
+- GP supplied 504 exact HNF bases and all 505 field discriminants. The eleven
+  scalable additions regenerated in 85 seconds under an explicit 180-second
+  aggregate bound. The checked generated fragment is about 2.6 MB; its largest
+  index has 295,949 decimal digits, and the highest-degree case is 160.
 - A single warmed Hecke process completed all six selected Hecke regressions
   and five PARI-vector representatives. Its bases were lattice-equivalent and
   its discriminants agreed. A later difficult vector case was bounded and
@@ -111,6 +123,9 @@ dependencies:
 
 - `build_pari_round4.py` extracts the public PARI `v` vector and normalizes GP
   bases;
+- `build_stress_families.py` regenerates the eleven scalable families from
+  exact resultant/transition formulas, deterministic trial division below
+  10,000, and bounded GP discriminant/HNF checks;
 - `hecke_oracle.jl` runs a persistent public-API Hecke oracle;
 - `sage_oracle.sage` runs the corresponding persistent Sage oracle.
 

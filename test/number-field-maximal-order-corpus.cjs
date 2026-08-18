@@ -33,6 +33,30 @@ function pow(base, exponent) {
   return answer;
 }
 
+function badGeneratorPolynomial(degree, c) {
+  let previousPrevious = [2n];
+  let previous = [-1n];
+  for (let step = 2; step <= degree; step += 1) {
+    const current = previous.map((value) => -value);
+    const shifted = [0n, ...previousPrevious.map((value) => c * value)];
+    while (current.length < shifted.length) current.push(0n);
+    for (let offset = 0; offset < shifted.length; offset += 1) {
+      current[offset] += shifted[offset];
+    }
+    previousPrevious = previous;
+    previous = current;
+  }
+  const coefficients = previous.map((value) => -2n * value);
+  coefficients[0] += 4n * pow(c, degree);
+  while (coefficients.length <= degree) coefficients.push(0n);
+  coefficients[degree] += degree % 2 === 0 ? 1n : -1n;
+  return coefficients.map(String);
+}
+
+function scaledGeneratorPolynomial(degree, scale) {
+  return [String(-2n * pow(scale, degree)), ...Array(degree - 1).fill("0"), "1"];
+}
+
 test("maximal-order corpus is a canonical self-consistent authority", () => {
   const manifest = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
   assert.equal(manifest.schemaVersion, 1);
@@ -195,6 +219,17 @@ test("maximal-order corpus is a canonical self-consistent authority", () => {
     "hecke-precision-degree-12",
     "pure-bad-generator-n8-c2pow32",
     "pure-bad-generator-n96-c1009",
+    "pure-bad-generator-n112-c1009",
+    "pure-bad-generator-n128-c1009",
+    "pure-bad-generator-n144-c1009",
+    "pure-bad-generator-n160-c1009",
+    "pure-bad-generator-n32-c2pow512",
+    "pure-bad-generator-n32-c2pow2048",
+    "scaled-generator-wild-p2-n16",
+    "scaled-generator-wild-p2-n32",
+    "scaled-generator-wild-p2-n64",
+    "scaled-generator-many-prime-n16",
+    "scaled-generator-many-prime-n32",
   ]) {
     assert(ids.has(required), `missing required case ${required}`);
   }
@@ -209,4 +244,43 @@ test("maximal-order corpus is a canonical self-consistent authority", () => {
       (outcome) => outcome.status === "unavailable",
     ),
   );
+
+  const scalable = manifest.cases.filter((entry) =>
+    entry.tags.includes("scalable-stress"),
+  );
+  assert.equal(scalable.length, 11);
+  for (const entry of scalable) {
+    assert.equal(entry.tier, "stress");
+    assert.equal(entry.construction.schemaVersion, 1);
+    assert.equal(entry.basis.state, "available");
+    assert.equal(entry.basis.storage, "digest-only");
+    const parameters = entry.construction.parameters;
+    if (entry.construction.kind === "pure-field-quadratic-generator") {
+      assert.deepEqual(
+        entry.polynomial.coefficients,
+        badGeneratorPolynomial(parameters.n, BigInt(parameters.c)),
+      );
+      assert.equal(entry.primeSupportCertified, false);
+    } else {
+      assert.equal(entry.construction.kind, "scaled-pure-field-generator");
+      const scale = BigInt(parameters.scale);
+      assert.deepEqual(
+        entry.polynomial.coefficients,
+        scaledGeneratorPolynomial(parameters.n, scale),
+      );
+      assert.equal(
+        BigInt(entry.equationOrderIndex),
+        pow(scale, parameters.n * (parameters.n - 1) / 2),
+      );
+      assert.equal(entry.primeSupportCertified, true);
+    }
+    assert(
+      manifest.expectedOracleOutcomes.some(
+        (outcome) => outcome.caseId === entry.id &&
+          outcome.oracle === "gp-nfbasis-2.17.3" &&
+          outcome.status === "ok",
+      ),
+      `missing bounded GP outcome for ${entry.id}`,
+    );
+  }
 });
