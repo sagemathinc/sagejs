@@ -279,6 +279,28 @@
       "prefixes": ["src/lib/sagejs/elliptic_curves/"]
     },
     {
+      "id": "hyperelliptic-curves",
+      "layer": 3,
+      "startup": "bootstrap",
+      "max_source_bytes": 40000,
+      "depends_on": ["core-runtime", "arithmetic"],
+      "files": ["src/baselib/hyperelliptic_curves.py"],
+      "prefixes": []
+    },
+    {
+      "id": "hyperelliptic-curves-algorithms",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 250000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra", "hyperelliptic-curves"
+      ],
+      "modules": ["sagejs.hyperelliptic_curves"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/hyperelliptic_curves/"]
+    },
+    {
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
