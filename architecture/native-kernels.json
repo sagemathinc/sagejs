@@ -463,9 +463,10 @@
         "packed_row_hnf_in_place",
         "packed_composite_dedekind_basis_in_place",
         "packed_order_table_in_place",
-        "packed_order_contains_vector_in_place"
+        "packed_order_contains_vector_in_place",
+        "packed_order_contains_vectors_in_place"
       ],
-      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact batched rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
