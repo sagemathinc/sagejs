@@ -53,7 +53,8 @@ static int bigint_to_integer(
     {
         napi_throw_range_error(
             env, NULL,
-            "integer must be nonnegative and fit the 128-bit rforest domain");
+            "integer must be nonnegative and fit the 128-bit genus-3 "
+            "Jacobian domain");
         return 0;
     }
     if (count == 0)
