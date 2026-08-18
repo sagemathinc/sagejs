@@ -52,6 +52,7 @@ const unit = [
 
 const integration = [
   "test/number-field-maximal-order-corpus.cjs",
+  "test/number-field-maximal-order-corpus-report-505.cjs",
   "test/number-field-maximal-order-contracts.cjs",
   "test/number-field-maximal-order-certification-perf.cjs",
   "test/number-field-maximal-order-engine.cjs",

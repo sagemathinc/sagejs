@@ -74,9 +74,24 @@ test("the 505-case report preserves complete bounded raw evidence", () => {
   assert.equal(report.identity.sagejs_commit, "0abc59da72b735bbb4d90a03f980e3ffafde7b09");
   assert.equal(report.identity.sagejs_tree, "d8afd700931b9a8cb4ddd89c8d2364e0407404fd");
   assert.equal(report.identity.tracked_worktree_status, "");
-  assert.equal(report.identity.corpus.manifest_digest, corpus.manifestDigest);
-  assert.equal(report.identity.corpus.byte_sha256, sha256(corpusBytes));
+  // The report is an immutable measurement of the pre-adjudication corpus.
+  // The current fixture intentionally differs because the addprimes oracle was
+  // corrected after this run; the historical invalid row remains preserved.
+  assert.equal(
+    report.identity.corpus.manifest_digest,
+    "e6bf006b01c7cd47d6b0f7fc70db142d85b725ad8d45aeee38aa7775a55b3c07",
+  );
   assert.equal(report.identity.corpus.byte_sha256, "695152efb47b614b15f08a140f7f65d11c32d997588c8ccd6f7962f2f025f52f");
+  assert.equal(
+    corpus.manifestDigest,
+    "8d2542159374a799aaf2d726498020a437bee407fab01325ec458f7ee47f46ea",
+  );
+  assert.equal(
+    sha256(corpusBytes),
+    "03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f",
+  );
+  assert.notEqual(report.identity.corpus.manifest_digest, corpus.manifestDigest);
+  assert.notEqual(report.identity.corpus.byte_sha256, sha256(corpusBytes));
   assert.equal(report.identity.flint_addon.sha256, "f6017e952166adfe0cb87b26e467902dbb607989908d434bdfb70562240cfb1d");
   assert.equal(report.identity.production_native_registry.sha256, "63020b64e01983bfa62dcc18b5859503044465ba0f8d4c5ceb560e9cb59ea380");
   assert.deepEqual(
