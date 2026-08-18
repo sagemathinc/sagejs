@@ -80,17 +80,17 @@
     }
   ],
   "handoff": {
-    "summary": "Commit 5a43cbff exposes eclib global root numbers and a portable C/FLINT-Arb completed central-Lambda derivative jet through ecRootNumber and ecCompletedCentralDerivatives. The jet returns consecutive actual derivatives with exact functional-equation parity, decimal arithmetic-ball diagnostics, a separate coefficient-tail bound, and explicit coefficient/resource status. Focused native tests cover canonical normalization, ranks 0/1/2, rational Q-isomorphic models, insufficient coefficients, and oversized conductors; the complete packages/flint test suite passes on Linux x64.",
+    "summary": "Commits 5a43cbff and 7d89428e expose eclib global root numbers and a portable C/FLINT-Arb completed central-Lambda derivative jet through ecRootNumber and ecCompletedCentralDerivatives. The jet returns consecutive actual derivatives with exact functional-equation parity, decimal arithmetic-ball diagnostics, explicit coefficient/resource status, and separate n>K and variable-K_j grid-omission bounds. The Molin K_j optimization reduces the motivating 64-bit kernel from 415072 to 49727 coefficient terms (4.065 ms warm median) and the 88-bit kernel from 745254 to 85031 terms (6.293 ms). Focused native tests cover the geometric bound, canonical normalization, ranks 0/1/2, rational Q-isomorphic models, insufficient coefficients, and oversized conductors.",
     "risks": [
-      "The Arb balls enclose arithmetic rounding only. The coefficient tail is reported separately, and the unproved trapezoid/grid discretization error means rigorous is deliberately false; the Python layer must use precision/grid stability checks and must sum independent error contributions.",
+      "The Arb balls enclose arithmetic rounding only. tailBound is the sum of coefficientTailBound and gridOmissionBound, while the unproved trapezoid/grid discretization error means rigorous is deliberately false; the Python layer must use precision/grid stability checks and add tailBound to the arithmetic radius.",
       "Windows x64, macOS arm64, and Linux arm64 runtime receipts remain pending. The implementation uses the existing C17/Node-API/FLINT build path and avoids POSIX-only APIs; the integration lane will validate Windows once the shared checkout is free.",
       "pnpm test:portable fails only because architecture/native-code inventory metrics for packages/flint/src/addon.c are stale after this lane's export additions. This lane was explicitly told not to edit architecture inventories.",
-      "The simple all-coefficients-at-every-grid-node implementation is O(KL). A future measured optimization may use node-dependent cutoffs if their omitted tails are included explicitly."
+      "K_j is planned from binary64 Molin parameters, matching PARI's practical construction but remaining part of the explicitly non-rigorous analytic discretization."
     ],
     "next_steps": [
       "Integration lane: classify the new native ABI/kernel and refresh architecture inventory metrics, then rerun pnpm test:portable and pnpm architecture:check.",
       "Integration lane: run the focused native test and build on Windows x64, macOS arm64, and Linux arm64 and record receipts.",
-      "Math lane: combine arithmetic radius and coefficient-tail bounds additively, retain the non-rigorous status, and perform completed-to-raw gamma convolution in ordinary Python.",
+      "Math lane: add the aggregate tailBound (not its diagnostic components again) to the arithmetic radius, retain the non-rigorous status, and perform completed-to-raw gamma convolution in ordinary Python.",
       "After integration, run the full pnpm test:native and pnpm test:sea suites; this lane's cold dependency rebuilds were interrupted to avoid delaying the committed handoff."
     ]
   }
