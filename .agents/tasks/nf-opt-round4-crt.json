@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-round4-crt",
+  "title": "Nf Opt Round4 Crt",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Batch modified Round-4 modular Krylov and CRT reconstruction with exact bounds and annihilation certificates, preserving dynamic fallback and vector010 exactness",
+  "base_commit": "93e6c22f168f13fc825b8173c4b52f3f5dc13a3b",
+  "claims": [
+    "src/lib/sagejs/number_fields/round4.py",
+    "src/lib/sagejs/kernels/matrix/word_prime_krylov.py",
+    "test/number-field-round4-crt-batch.cjs",
+    "bench/number-field-round4-crt-batch.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/number-field-maximal-order-optimization-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "direct exact regular-representation characteristic polynomial",
+      "frozen vector010 PARI/Sage-compatible maximal-order HNF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
