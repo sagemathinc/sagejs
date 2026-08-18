@@ -46,6 +46,11 @@ const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
 const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
+const NATIVE_KERNEL_PACK_ASSET =
+  "native-kernels/pack/sagejs_native_kernel_pack.node";
+const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
+const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
+const NATIVE_KERNEL_COMPILER_ABI_VERSION = 22;
 const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-flint",
   "@sagemath/sagejs-fflas",
@@ -178,11 +183,36 @@ export function loadPrecompiledNativeKernel(
     if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
       throw new Error(`invalid embedded native kernel key ${cacheKey}`);
     }
-    const addonKey =
-      `${NATIVE_KERNEL_ASSET_PREFIX}${cacheKey}/build/Release/` +
-      "sagejs_native_kernel.node";
-    if (!hasAsset(addonKey)) {
-      throw new Error(`native kernel addon is not embedded: ${addonKey}`);
+    if (
+      !hasAsset(NATIVE_KERNEL_PACK_ASSET) ||
+      !hasAsset(NATIVE_KERNEL_PACK_MANIFEST_ASSET)
+    ) {
+      throw new Error("production native mathematics pack is not embedded");
+    }
+    const packBytes = Buffer.from(getAsset(NATIVE_KERNEL_PACK_ASSET));
+    const manifest = JSON.parse(
+      assetText(NATIVE_KERNEL_PACK_MANIFEST_ASSET),
+    );
+    const kernel = Array.isArray(manifest?.kernels)
+      ? manifest.kernels.find(
+        (entry: unknown) =>
+          entry !== null &&
+          typeof entry === "object" &&
+          Reflect.get(entry, "cacheKey") === cacheKey,
+      )
+      : undefined;
+    if (
+      manifest?.schema !== "sagejs.native-pack/v1" ||
+      manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
+      manifest.nativeAbi !== NATIVE_KERNEL_COMPILER_ABI_VERSION ||
+      manifest.platform !== process.platform ||
+      manifest.architecture !== process.arch ||
+      manifest.nodeModulesAbi !== process.versions.modules ||
+      manifest.bytes !== packBytes.length ||
+      manifest.sha256 !== createHash("sha256").update(packBytes).digest("hex") ||
+      kernel === undefined
+    ) {
+      throw new Error("embedded production native mathematics pack is invalid");
     }
     if (!nativeTemporaryDirectory) {
       nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
@@ -193,15 +223,18 @@ export function loadPrecompiledNativeKernel(
       cacheKey,
     );
     const outputModule = join(outputDirectory, "index.cjs");
-    const outputAddon = join(
-      outputDirectory,
-      "build",
-      "Release",
-      "sagejs_native_kernel.node",
+    const outputPack = join(
+      nativeTemporaryDirectory,
+      "native-kernels",
+      "pack",
+      "sagejs_native_kernel_pack.node",
     );
-    mkdirSync(dirname(outputAddon), { recursive: true });
+    mkdirSync(outputDirectory, { recursive: true });
+    mkdirSync(dirname(outputPack), { recursive: true });
     writeFileSync(outputModule, Buffer.from(getAsset(key)), { mode: 0o700 });
-    writeFileSync(outputAddon, Buffer.from(getAsset(addonKey)), { mode: 0o700 });
+    if (!existsSync(outputPack)) {
+      writeFileSync(outputPack, packBytes, { mode: 0o700 });
+    }
     const loaded = createRequire(outputModule)(outputModule);
     nativeKernelModules.set(key, loaded);
     return loaded;

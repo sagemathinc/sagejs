@@ -269,6 +269,7 @@ function writeDiscoveryIndex(
   sourcePath,
   sourceHash,
   cacheKey,
+  moduleIdentity,
   sourceKey,
   compatibility,
 ) {
@@ -296,6 +297,7 @@ function writeDiscoveryIndex(
   } catch (_error) {}
   const record = {
     cacheKey,
+    moduleIdentity,
     sourceHash,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
@@ -824,6 +826,7 @@ async function compileKernel(options) {
     mpc: mpcVersion,
   };
   const cacheKey = sha256(JSON.stringify(identity));
+  const moduleIdentity = cacheKey.slice(0, 16);
   const outputPath = join(cacheRoot, cacheKey);
   const addonPath = join(
     outputPath,
@@ -835,7 +838,7 @@ async function compileKernel(options) {
   const manifestPath = join(outputPath, "manifest.json");
   const coreSourcePath = join(outputPath, "kernel_core.c");
   const coreHeaderPath = join(outputPath, "kernel_core.h");
-  const exceptionShims = generateExceptionShims(ir);
+  const exceptionShims = generateExceptionShims(ir, { moduleIdentity });
   const shimSourcePath = join(outputPath, "ffi_shims.cc");
   const shimHeaderPath = join(outputPath, "ffi_shims.h");
   if (
@@ -858,12 +861,14 @@ async function compileKernel(options) {
       sourcePath,
       sourceHash,
       cacheKey,
+      moduleIdentity,
       sourceKey,
       compatibility,
     );
     return {
       addonPath,
       cacheKey,
+      moduleIdentity,
       cached: true,
       ir,
       modulePath,
@@ -875,6 +880,8 @@ async function compileKernel(options) {
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
       foreignInputs,
+      exceptionShields: exceptionShims === null ? [] :
+        exceptionShims.functions.map((fn) => fn.call_plan.symbol),
     };
   }
 
@@ -888,7 +895,7 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
-  const artifacts = generateArtifacts(ir);
+  const artifacts = generateArtifacts(ir, { moduleIdentity });
   const cSource = artifacts.adapterSource;
   const { generatedCSourceMap } = require("./provenance.cjs");
   const cSourceMap = generatedCSourceMap(cSource);
@@ -923,6 +930,7 @@ async function compileKernel(options) {
     `${JSON.stringify(
       {
         cacheKey,
+        moduleIdentity,
         nativeAbi: NATIVE_ABI_VERSION,
         sourceHash,
         foreignDeclarations: compatibility.foreignDeclarations,
@@ -973,12 +981,14 @@ async function compileKernel(options) {
     sourcePath,
     sourceHash,
     cacheKey,
+    moduleIdentity,
     sourceKey,
     compatibility,
   );
   return {
     addonPath,
     cacheKey,
+    moduleIdentity,
     cached: false,
     ir,
     modulePath,
@@ -990,6 +1000,8 @@ async function compileKernel(options) {
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
     foreignInputs,
+    exceptionShields: exceptionShims === null ? [] :
+      exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };
 }
 

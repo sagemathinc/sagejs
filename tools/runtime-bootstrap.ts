@@ -46,7 +46,7 @@ export const PRECOMPILED_MODULE_FILENAME =
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
 // values together. Keeping the expected value in the runtime makes an old
 // cache fail closed even when its Python source has not changed.
-export const NATIVE_KERNEL_ABI_VERSION = 21;
+export const NATIVE_KERNEL_ABI_VERSION = 22;
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
@@ -475,10 +475,24 @@ export function runRuntimeBootstrap(
         (logicalSourceKey === undefined
           ? undefined
           : index?.logicalSources?.[logicalSourceKey]);
+      const pack = index?.schema === "sagejs.native-cache/v4" &&
+          Array.isArray(index?.packs)
+        ? index.packs.find(
+          (candidate: any) => candidate?.packKey === record?.packKey,
+        )
+        : undefined;
       if (
-        index?.schema !== "sagejs.native-cache/v3" ||
+        ![
+          "sagejs.native-cache/v3",
+          "sagejs.native-cache/v4",
+        ].includes(index?.schema) ||
         record?.sourceHash !== sourceHash ||
-        !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "")
+        !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "") ||
+        (index?.schema === "sagejs.native-cache/v4" &&
+          (index?.complete !== true ||
+            !/^[a-f0-9]{64}$/.test(record?.packKey ?? "") ||
+            !Array.isArray(pack?.kernels) ||
+            !pack.kernels.includes(record.cacheKey)))
       ) {
         continue;
       }

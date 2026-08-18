@@ -309,6 +309,17 @@ function collectJsonCacheAssets(directoryName) {
 function collectNativeKernelAssets() {
   const directory = join(root, "dist", "native-kernels");
   if (!existsSync(directory)) return {};
+  const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+  if (
+    index.schema !== "sagejs.native-cache/v4" ||
+    index.complete !== true ||
+    !Array.isArray(index.packs) ||
+    index.packs.length !== 1
+  ) {
+    throw new Error(
+      "SEA releases require one complete production native mathematics pack",
+    );
+  }
   const assets = {};
   const visit = (current, prefix = "") => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
@@ -320,13 +331,20 @@ function collectNativeKernelAssets() {
         entry.isFile() &&
         (relativeName === "index.json" ||
           relativeName.endsWith("/index.cjs") ||
-          relativeName.endsWith("/sagejs_native_kernel.node"))
+          relativeName === "pack/index.json" ||
+          relativeName === "pack/sagejs_native_kernel_pack.node")
       ) {
         assets[`native-kernels/${relativeName}`] = filename;
       }
     }
   };
   visit(directory);
+  if (
+    !("native-kernels/pack/index.json" in assets) ||
+    !("native-kernels/pack/sagejs_native_kernel_pack.node" in assets)
+  ) {
+    throw new Error("production native mathematics pack is incomplete");
+  }
   return assets;
 }
 

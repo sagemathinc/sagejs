@@ -8,6 +8,7 @@ const {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -23,6 +24,16 @@ const { NATIVE_ABI_VERSION } = require(
 const { NATIVE_KERNEL_ABI_VERSION } = require(
   "../dist/tools/runtime-bootstrap.js"
 );
+const {
+  NATIVE_PACK_ABI_VERSION,
+  PACK_FILENAME,
+} = require("../tools/native-kernel/production-pack.cjs");
+
+function copyPublishedPack(directory) {
+  cpSync(join(published, "pack"), join(directory, "pack"), {
+    recursive: true,
+  });
+}
 
 function runWithCache(cache, source, required = true) {
   return spawnSync(
@@ -95,8 +106,21 @@ test("all production native kernels are published and autoloadable", () => {
     "utf8",
   ));
   const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
-  assert.equal(index.schema, "sagejs.native-cache/v3");
+  assert.equal(index.schema, "sagejs.native-cache/v4");
+  assert.equal(index.complete, true);
+  assert.equal(index.packs.length, 1);
+  assert.equal(index.packs[0].packAbi, NATIVE_PACK_ABI_VERSION);
   assert.equal(NATIVE_KERNEL_ABI_VERSION, NATIVE_ABI_VERSION);
+  const packPath = join(published, "pack", PACK_FILENAME);
+  const packManifest = JSON.parse(readFileSync(
+    join(published, "pack", "index.json"),
+    "utf8",
+  ));
+  const pack = require(packPath);
+  assert.equal(pack.__sagejsPackAbi, NATIVE_PACK_ABI_VERSION);
+  assert.equal(pack.__sagejsPackIdentity, index.packs[0].packKey);
+  assert.equal(packManifest.packKey, index.packs[0].packKey);
+  assert.equal(packManifest.bytes, statSync(packPath).size);
   const production = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production"),
   );
@@ -108,16 +132,34 @@ test("all production native kernels are published and autoloadable", () => {
     assert.match(record?.sourceHash ?? "", /^[a-f0-9]{64}$/);
     assert.match(record?.cacheKey ?? "", /^[a-f0-9]{64}$/);
     assert.equal(record?.nativeAbi, NATIVE_ABI_VERSION);
+    assert.match(record?.moduleIdentity ?? "", /^[a-f0-9]{16}$/);
+    assert.equal(record?.packKey, index.packs[0].packKey);
     assert.ok(Array.isArray(record?.foreignDeclarations));
     assert.ok(existsSync(join(published, record.cacheKey, "index.cjs")));
-    assert.ok(existsSync(join(
+    assert.equal(existsSync(join(
       published,
       record.cacheKey,
       "build",
       "Release",
       "sagejs_native_kernel.node",
-    )));
+    )), false, "production publishing must not copy standalone addons");
     const wrapper = require(join(published, record.cacheKey, "index.cjs"));
+    const standalone = require(join(
+      root,
+      "packages",
+      "flint",
+      ".native",
+      "production-kernels",
+      record.cacheKey,
+      "build",
+      "Release",
+      "sagejs_native_kernel.node",
+    ));
+    assert.deepEqual(
+      Object.keys(pack[record.cacheKey]).sort(),
+      Object.keys(standalone).sort(),
+      `${kernel.id} packed and standalone exports differ`,
+    );
     assert.equal(wrapper.cacheKey, record.cacheKey);
     assert.equal(wrapper.sourceHash, record.sourceHash);
     assert.equal(wrapper.nativeAbi, record.nativeAbi);
@@ -162,6 +204,21 @@ test("all production native kernels are published and autoloadable", () => {
   assert.equal(
     result.stdout.trim(),
     production.map(() => "True").join("\n"),
+  );
+});
+
+test("the production pack eliminates repeated static dependency payloads", () => {
+  const report = JSON.parse(readFileSync(
+    join(published, "size-report.json"),
+    "utf8",
+  ));
+  assert.equal(report.schema, "sagejs.native-pack-size/v1");
+  assert.ok(report.kernels > 0);
+  assert.ok(report.standaloneBytes > report.packBytes);
+  assert.equal(report.savedBytes, report.standaloneBytes - report.packBytes);
+  assert.ok(
+    report.packToStandaloneRatio < 0.25,
+    `production native pack is unexpectedly large: ${JSON.stringify(report)}`,
   );
 });
 
@@ -222,6 +279,7 @@ test("stale FFI declaration metadata fails before a native wrapper loads", () =>
     const sourceDirectory = join(published, record.cacheKey);
     const targetDirectory = join(temporary, record.cacheKey);
     cpSync(sourceDirectory, targetDirectory, { recursive: true });
+    copyPublishedPack(temporary);
     const wrapperPath = join(targetDirectory, "index.cjs");
     const wrapperSource = readFileSync(wrapperPath, "utf8");
     assert.ok(wrapperSource.includes(currentIdentity));
@@ -262,6 +320,7 @@ test("stale compiler ABI metadata fails before a native wrapper loads", () => {
     const sourceDirectory = join(published, record.cacheKey);
     const targetDirectory = join(temporary, record.cacheKey);
     cpSync(sourceDirectory, targetDirectory, { recursive: true });
+    copyPublishedPack(temporary);
     const wrapperPath = join(targetDirectory, "index.cjs");
     const wrapperSource = readFileSync(wrapperPath, "utf8");
     const currentAbiSource = `nativeAbi: ${record.nativeAbi},`;

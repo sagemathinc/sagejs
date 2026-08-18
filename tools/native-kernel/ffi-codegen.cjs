@@ -57,9 +57,17 @@ function shieldParameter(argument) {
   );
 }
 
-function generateExceptionShims(ir) {
+function generateExceptionShims(ir, options = {}) {
   const functions = shieldedFunctions(ir);
   if (functions.length === 0) return null;
+  if (
+    options.moduleIdentity !== undefined &&
+    !/^[a-f0-9]{16}$/.test(options.moduleIdentity)
+  ) {
+    throw new TypeError(
+      `invalid exception-shim module identity ${options.moduleIdentity}`,
+    );
+  }
   const declarations = [];
   const definitions = [];
   for (const fn of functions) {
@@ -80,10 +88,17 @@ function generateExceptionShims(ir) {
       `}`,
     );
   }
+  const aliases = options.moduleIdentity === undefined
+    ? ""
+    : functions.map((fn) =>
+      `#define ${fn.call_plan.symbol} ` +
+        `${fn.call_plan.symbol}_m_${options.moduleIdentity}`
+    ).join("\n") + "\n\n";
   const header = `/* Generated C++ exception-to-status boundary. */\n` +
     `#ifndef SAGEJS_GENERATED_FFI_SHIMS_H\n` +
     `#define SAGEJS_GENERATED_FFI_SHIMS_H\n\n` +
     `${foreignHeaders(ir).map((name) => `#include <${name}>`).join("\n")}\n\n` +
+    aliases +
     `#ifdef __cplusplus\nextern "C" {\n#endif\n\n` +
     `${declarations.join("\n")}\n\n` +
     `#ifdef __cplusplus\n}\n#endif\n\n#endif\n`;

@@ -54,7 +54,7 @@ const {
   uint64COperator,
 } = require("./uint64-operations.cjs");
 
-const NATIVE_ABI_VERSION = 21;
+const NATIVE_ABI_VERSION = 22;
 const RESOURCE_FINALIZATION_CAPABILITY = Object.freeze({
   model: "node-api-basic-post-finalizer-v1",
   self_finalizing: true,
@@ -2638,7 +2638,18 @@ ${cleanup.join("\n")}
 }`;
 }
 
-function coreHeader(ir) {
+function generatedCoreSymbolAliases(ir, moduleIdentity) {
+  if (moduleIdentity === undefined) return "";
+  if (!/^[a-f0-9]{16}$/.test(moduleIdentity)) {
+    throw new TypeError(`invalid generated module identity ${moduleIdentity}`);
+  }
+  return ir.functions.map((fn) =>
+    `#define sagejs_kernel_${fn.name} ` +
+      `sagejs_kernel_m_${moduleIdentity}_${fn.name}`
+  ).join("\n");
+}
+
+function coreHeader(ir, options = {}) {
   const functions = ir.functions;
   const exact = exactFunctions(ir);
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
@@ -2695,6 +2706,8 @@ ${primeSources.length + primeFields.length > 0
       "#include <flint/ulong_extras.h>",
     ].join("\n") : ""}
 ${foreignHeaders(ir).map((header) => `#include <${header}>`).join("\n")}
+
+${generatedCoreSymbolAliases(ir, options.moduleIdentity)}
 
 #ifdef __cplusplus
 extern "C" {
@@ -2765,7 +2778,7 @@ ${functions.map((fn) => fn.kernelKind === "integer"
 `;
 }
 
-function generateHostCore(ir) {
+function generateHostCore(ir, options = {}) {
   const supported = new Set([
     "integer", "float64", "real-field", "complex-field",
     "prime-field-source", "prime-field-matrix",
@@ -2859,7 +2872,7 @@ ${pieces.join("\n\n")}
 `;
   return {
     source,
-    header: coreHeader(ir),
+    header: coreHeader(ir, options),
     audit: auditHostCore(source, {
       nativeDependencies: Array.from(new Set([
         "libc",
@@ -3077,7 +3090,16 @@ ${primeFields.length > 0 ? generatePrimeFieldNodeSupport() : ""}
 
 ${wrappers}
 
-static napi_value initialize(napi_env env, napi_value exports)
+#ifdef SAGEJS_NATIVE_PACK_INITIALIZER
+#define SAGEJS_NATIVE_INITIALIZER SAGEJS_NATIVE_PACK_INITIALIZER
+#define SAGEJS_NATIVE_INITIALIZER_LINKAGE
+#else
+#define SAGEJS_NATIVE_INITIALIZER initialize
+#define SAGEJS_NATIVE_INITIALIZER_LINKAGE static
+#endif
+
+SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(
+    napi_env env, napi_value exports)
 {
     napi_property_descriptor properties[] = {
 ${properties}
@@ -3089,7 +3111,9 @@ ${properties}
     return exports;
 }
 
+#ifndef SAGEJS_NATIVE_PACK_INITIALIZER
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
+#endif
 `;
 }
 
@@ -3097,8 +3121,8 @@ function generateC(ir) {
   return generateNodeAdapter(ir);
 }
 
-function generateArtifacts(ir) {
-  const core = generateHostCore(ir);
+function generateArtifacts(ir, options = {}) {
+  const core = generateHostCore(ir, options);
   return {
     adapterSource: generateNodeAdapter(ir),
     coreSource: core.source,

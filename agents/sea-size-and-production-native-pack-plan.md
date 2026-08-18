@@ -15,11 +15,34 @@ The immediate release design should contain:
 - the existing host addons until their API and ownership boundaries can be
   consolidated independently.
 
-One production pack is preferable to several packs today because all release
-targets build the same dependency family and a single static link provides the
-most deduplication. The pack manifest should nevertheless support multiple
-packs so a future dependency with an incompatible toolchain, allocator, or
-platform capability can be isolated without redesigning the loader.
+Official releases contain exactly one production mathematics pack with the
+same capability set on every supported platform. The manifest schema can
+describe multiple packs only as an architectural escape hatch; producing more
+than one requires an explicit reviewed exception for an incompatible
+toolchain, allocator, or ownership boundary. Missing platform support is not a
+reason to omit a component from one release: portability is part of admitting
+native mathematics into Sage.js.
+
+## Implementation status
+
+Implemented on 2026-08-18:
+
+- generated core and C++ shield symbols carry a content-addressed module
+  identity;
+- generated adapters support both standalone and pack initializers;
+- dynamic development caches retain standalone addons;
+- production publishing emits one pack and no per-source addons;
+- wrappers resolve their exact cache-key namespace from the pack first;
+- SEA construction rejects incomplete capability sets or pack counts other
+  than one;
+- the pack manifest records ABI, source, foreign-input, platform, byte-size,
+  and SHA-256 identities;
+- a machine-readable size report gates gross deduplication regressions.
+
+The implemented Linux x86-64 pack is 23,996,896 bytes versus 237,933,088
+bytes for the 24 standalone addons. The complete `sagejs` SEA is 368,007,630
+bytes, down from 581,884,366 bytes after the first two reductions and from the
+original 623,938,756-byte baseline.
 
 ## Measured baseline and validated savings
 
@@ -86,8 +109,11 @@ The pack is a release optimization, not a different mathematical backend.
    exports from unrelated sources are not flattened into one object.
 4. Owned resources are created, used, and finalized by the same generated
    adapter contract. Packing must not create a new cross-addon ownership path.
-5. Optional native dependencies fail closed. The manifest records exactly
-   which sources and dependency fingerprints are in each pack.
+5. Development builds may discover unavailable native dependencies and retain
+   correct dynamic fallbacks. Official releases fail closed unless every
+   declared production capability is present on every supported platform. The
+   manifest records exactly which sources and dependency fingerprints are in
+   the pack.
 6. Ordinary dynamic compilation continues to produce a standalone addon. A
    user cache does not need the production pack builder.
 7. Native Windows x64, macOS arm64, Linux x86-64, and Linux arm64 are release

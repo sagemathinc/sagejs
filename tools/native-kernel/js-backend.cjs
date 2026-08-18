@@ -1,5 +1,7 @@
 "use strict";
 
+const NATIVE_PACK_ABI_VERSION = 1;
+
 const {
   isTupleType,
   tupleElementTypes,
@@ -1145,10 +1147,32 @@ const nativeAddonRequired =
     process.env.SAGEJS_NATIVE_REQUIRED === "1");
 let nativeAddon = null;
 if (!nativeAddonDisabled) {
+  let packedAddonError = null;
   try {
-    nativeAddon = require("./build/Release/sagejs_native_kernel.node");
+    const pack = require("../pack/sagejs_native_kernel_pack.node");
+    if (pack.__sagejsPackAbi !== ${NATIVE_PACK_ABI_VERSION}) {
+      throw new Error("incompatible Sage.js production native pack ABI");
+    }
+    nativeAddon = pack[${jsString(options.cacheKey || "")}];
+    if (nativeAddon === null || typeof nativeAddon !== "object") {
+      throw new Error("production native pack is missing kernel namespace " +
+        ${jsString(options.cacheKey || "")});
+    }
   } catch (error) {
-    if (nativeAddonRequired) throw error;
+    packedAddonError = error;
+  }
+  if (nativeAddon === null) {
+    try {
+      nativeAddon = require("./build/Release/sagejs_native_kernel.node");
+    } catch (error) {
+      if (nativeAddonRequired) {
+        if (packedAddonError !== null &&
+            packedAddonError.code !== "MODULE_NOT_FOUND") {
+          throw packedAddonError;
+        }
+        throw error;
+      }
+    }
   }
 }
 
@@ -1919,5 +1943,6 @@ module.exports = {
 }
 
 module.exports = {
+  NATIVE_PACK_ABI_VERSION,
   generateJavaScript,
 };
