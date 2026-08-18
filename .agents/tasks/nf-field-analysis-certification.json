@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-field-analysis-certification",
+  "title": "Certify fused field-analysis local fixed points",
+  "lane": "integration",
+  "status": "active",
+  "owner": "nf_p2_kernel_perf",
+  "objective": "Add compact independently verified local fixed-point witnesses to the fused field-analysis candidate so complete word-prime results can become genuinely certified without rerunning generic Round2, with corruption and performance evidence",
+  "base_commit": "d8a1e086302a2b8cdeab398eb952ce96c5bf8620",
+  "claims": [
+    "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "test/number-field-analysis-resource.cjs",
+    "test/number-field-analysis-resource-python.cjs",
+    "bench/number-field-analysis-resource.cjs",
+    "bench/number-field-analysis-resource-witness.c",
+    "architecture/native-audit.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "independent ordinary-Python fixed-point checker",
+      "existing direct order resource and certified corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

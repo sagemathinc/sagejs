@@ -121,20 +121,34 @@ function integer(buffer, cursor) {
 
 function decode(hex) {
   const buffer = Buffer.from(hex, "hex");
-  assert.equal(buffer.subarray(0, 8).toString("hex"), "534a4e4641010000");
+  assert.equal(buffer.subarray(0, 8).toString("hex"), "534a4e4641020000");
   const degree = u64(buffer, 8);
   const componentCount = u64(buffer, 32);
   const count = u64(buffer, 56);
-  assert.equal(count, 5 + degree + 1 + 3 * componentCount + degree * degree);
-  assert.equal(u64(buffer, 64), 1);
-  assert.equal(u64(buffer, 72), 0);
+  const witnessCount = u64(buffer, 72);
+  assert.equal(u64(buffer, 64), 2);
   const cursor = { offset: 80 };
   const values = Array.from({ length: count }, () => integer(buffer, cursor));
   assert.equal(cursor.offset, buffer.length);
   const polynomialStart = 5;
   const polynomialEnd = polynomialStart + degree + 1;
   const componentStart = polynomialEnd;
-  const basisStart = componentStart + 3 * componentCount;
+  let witnessStart = componentStart + 3 * componentCount;
+  const witnesses = [];
+  for (let witness = 0; witness < witnessCount; witness++) {
+    const prime = values[witnessStart++];
+    const radicalDimension = Number(values[witnessStart++]);
+    const radical = Array.from({ length: radicalDimension }, () => {
+      const row = values.slice(witnessStart, witnessStart + degree);
+      witnessStart += degree;
+      return row;
+    });
+    const selectors = values.slice(witnessStart, witnessStart + degree);
+    witnessStart += degree;
+    witnesses.push({ prime, radical, selectors });
+  }
+  const basisStart = witnessStart;
+  assert.equal(basisStart + degree * degree, values.length);
   return {
     degree,
     status: u64(buffer, 16),
@@ -149,6 +163,7 @@ function decode(hex) {
     polynomial: values.slice(polynomialStart, polynomialEnd),
     components: Array.from({ length: componentCount }, (_, index) =>
       values.slice(componentStart + 3 * index, componentStart + 3 * index + 3)),
+    witnesses,
     numerator: Array.from({ length: degree }, (_, row) =>
       values.slice(basisStart + row * degree, basisStart + (row + 1) * degree)),
   };
@@ -157,7 +172,7 @@ function decode(hex) {
 try {
   if (sanitize && ["darwin", "win32"].includes(process.platform)) {
     process.stdout.write(`${JSON.stringify({
-      schema: "sagejs.number-field-analysis-resource/v1",
+      schema: "sagejs.number-field-analysis-resource/v2",
       capability: "sanitizers",
       supported: false,
       reason: process.platform === "darwin"
@@ -180,7 +195,7 @@ try {
   });
   assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
   const report = JSON.parse(executed.stdout);
-  assert.equal(report.schema, "sagejs.number-field-analysis-resource/v1");
+  assert.equal(report.schema, "sagejs.number-field-analysis-resource/v2");
 
   const sqrt5 = decode(report.sqrt5);
   assert.deepEqual(sqrt5, {
@@ -196,6 +211,7 @@ try {
     orderDiscriminant: 5n,
     polynomial: [-5n, 0n, 1n],
     components: [[2n, 2n, 0n], [5n, 1n, 0n]],
+    witnesses: [{ prime: 2n, radical: [], selectors: [0n, 1n] }],
     numerator: [[1n, 1n], [0n, 2n]],
   });
   const cubic = decode(report.cubic);
