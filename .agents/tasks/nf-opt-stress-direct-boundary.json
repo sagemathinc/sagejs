@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Provide an exact cold direct polynomial-to-HNF evidence boundary for all stress cases, including composite support, with focused tests",
-  "base_commit": "55551a59bc4f92396d6b82dd7a6c5ae26062fd6c",
+  "base_commit": "758e37a1954778b3cea012551ef4b76b060fd95a",
   "claims": [
     "tools/number-field-maximal-order/workers/sagejs.cjs",
     "tools/number-field-maximal-order/adapters.cjs",
