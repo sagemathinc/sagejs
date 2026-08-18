@@ -133,18 +133,56 @@
       "commit": "3ecf3eb81cc012f4cf3618230c2b1f14bbb3003e",
       "workspace_fingerprint": "1318a16b564397f7f759a946684d7ead769c875e1ce78d77e38ca3c5d55f7607",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.688,
+      "started_at": "2026-08-18T06:19:22.219Z",
+      "commit": "39813d711acbbb63c3b4c7b479a3f13e2b89964f",
+      "workspace_fingerprint": "89bd7c2ece887fee254fc2e1db6ba96e7c893c709d227a7b0031ca76401c535c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.004,
+      "started_at": "2026-08-18T06:19:23.637Z",
+      "commit": "39813d711acbbb63c3b4c7b479a3f13e2b89964f",
+      "workspace_fingerprint": "89bd7c2ece887fee254fc2e1db6ba96e7c893c709d227a7b0031ca76401c535c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.221,
+      "started_at": "2026-08-18T06:19:31.379Z",
+      "commit": "39813d711acbbb63c3b4c7b479a3f13e2b89964f",
+      "workspace_fingerprint": "89bd7c2ece887fee254fc2e1db6ba96e7c893c709d227a7b0031ca76401c535c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.783,
+      "started_at": "2026-08-18T06:19:54.336Z",
+      "commit": "39813d711acbbb63c3b4c7b479a3f13e2b89964f",
+      "workspace_fingerprint": "89bd7c2ece887fee254fc2e1db6ba96e7c893c709d227a7b0031ca76401c535c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Recorded exact macOS arm64, Linux arm64, Linux x64, and native Windows x64 production-kernel hashes and focused number-field results. All four frozen vector010 regressions pass, and no mathematical mismatch or certificate failure was observed.",
+    "summary": "Recorded exact macOS arm64, Linux arm64, Linux x64, and native Windows x64 production-kernel hashes and focused number-field results. All four frozen vector010 regressions pass, all previously failing harness tests pass after the test-only 00945940 repairs, and no mathematical mismatch or certificate failure was observed.",
     "risks": [
-      "The field-analysis differential test's strict temporary cache omits the independently production-registered BL HNF kernel and fails on every host.",
-      "Native Windows additionally exposes an extensionless bin/sagejs spawn defect in the BL test and an EPERM temporary-cache cleanup defect after the Krylov differential completes.",
+      "The original 3ecf3eb8 harness omitted the BL HNF artifact from its strict temporary cache; the focused rerun passes on every host after 00945940.",
+      "The original native-Windows harness directly spawned extensionless bin/sagejs and synchronously deleted a loaded addon; both focused reruns pass after 00945940.",
       "The native dependency release checksum endpoint returned HTTP 404 on every host, so current adapters and kernels were rebuilt against established complete host prefixes."
     ],
     "next_steps": [
-      "Make strict temporary native-cache tests include every production kernel reached by package import.",
-      "Launch bin/sagejs through Node in Windows-portable tests and make native-cache cleanup tolerate transient Windows file handles.",
       "Restore the immutable native dependency release checksum artifact."
     ]
   }

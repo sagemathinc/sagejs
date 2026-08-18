@@ -92,6 +92,40 @@ Windows has two additional harness-only failures:
 
 No mathematical mismatch or certificate failure was observed.
 
+## Harness closure at `00945940`
+
+Commit `00945940` changes only the three affected test harnesses. It was
+applied to the existing detached validation worktrees without rebuilding the
+`0abc59da` arithmetic sources or any native artifact. Only the tests that had
+failed in the original focused matrix were rerun.
+
+The repaired strict-cache differential command was:
+
+```text
+node --test \
+  --test-name-pattern=packed.*field-analysis.*differential \
+  test/number-field-analysis-resource-python.cjs
+```
+
+| Alias | Result | Focused test / runner duration |
+| --- | --- | ---: |
+| `m1` | pass | 48.976 / 49.058 s |
+| `bench-arm` | pass | 62.565 / 62.649 s |
+| `bench-1` | pass | 37.044 / 37.121 s |
+| `windows` | pass | 102.592 / 102.702 s |
+
+The two native-Windows-only reruns also pass:
+
+| Test | Result | Focused test / runner duration |
+| --- | --- | ---: |
+| `test/number-field-buchmann-lenstra-fast.cjs` | pass | 3.462 / 3.579 s |
+| `packed.*Krylov.*matches.*FLINT` in `test/word-prime-krylov.cjs` | pass | 3.814 / 3.992 s |
+
+Thus the strict-cache dependency closure, portable `bin/sagejs` launch, and
+Windows loaded-addon cleanup fixes close every harness failure from the
+original four-platform matrix. The final focused rerun status is green on all
+required platforms.
+
 ## Frozen vector010
 
 After advancing only the fixture/test layer to `3ecf3eb8`, each host ran:
