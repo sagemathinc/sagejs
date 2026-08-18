@@ -80,6 +80,61 @@ def _evaluate_residual(
     return answer
 
 
+def _residue_linear_solution(
+    values: list[ResidueElement],
+    target: ResidueElement,
+    prime: int,
+    modulus: Polynomial,
+) -> tuple[int, ...]:
+    """Solve a deterministic finite-field vector lift over the prime field."""
+    field_degree = polynomial_degree(modulus)
+    matrix = [
+        [
+            (values[column][row] if row < len(values[column]) else 0) % prime
+            for column in range(len(values))
+        ]
+        + [(target[row] if row < len(target) else 0) % prime]
+        for row in range(field_degree)
+    ]
+    pivots: list[int] = []
+    pivot_row = 0
+    for column in range(len(values)):
+        selected = next(
+            (
+                row
+                for row in range(pivot_row, field_degree)
+                if matrix[row][column] % prime
+            ),
+            None,
+        )
+        if selected is None:
+            continue
+        matrix[pivot_row], matrix[selected] = matrix[selected], matrix[pivot_row]
+        inverse = pow(matrix[pivot_row][column], prime - 2, prime)
+        matrix[pivot_row] = [value * inverse % prime for value in matrix[pivot_row]]
+        for row in range(field_degree):
+            if row == pivot_row or matrix[row][column] % prime == 0:
+                continue
+            multiplier = matrix[row][column]
+            matrix[row] = [
+                (left - multiplier * right) % prime
+                for left, right in zip(matrix[row], matrix[pivot_row], strict=True)
+            ]
+        pivots.append(column)
+        pivot_row += 1
+        if pivot_row == field_degree:
+            break
+    if any(
+        all(value % prime == 0 for value in row[:-1]) and row[-1] % prime
+        for row in matrix
+    ):
+        raise OMDomainError("the bounded finite-field lift has no solution")
+    solution = [0] * len(values)
+    for row, column in enumerate(pivots):
+        solution[column] = matrix[row][-1]
+    return tuple(solution)
+
+
 def _slope_component(
     polynomial: Polynomial,
     prime: int,
@@ -224,6 +279,30 @@ def _prime_field_modulus(factor: ResidualPolynomial) -> Polynomial:
     return normalize_polynomial(tuple(coefficient[0] for coefficient in factor))
 
 
+def next_residue_field(
+    prime: int,
+    level: OMLevel,
+) -> tuple[Polynomial, ResidueElement]:
+    """Return the bounded next residue field and its distinguished generator."""
+    factor = level.residual_factor
+    if len(factor) == 2:
+        modulus = level.residual_field_modulus
+        leading_inverse = _residue_inverse(factor[1], prime, modulus)
+        root = _residue_multiply(
+            _residue_subtract((0,), factor[0], prime, modulus),
+            leading_inverse,
+            prime,
+            modulus,
+        )
+        if root == (0,):
+            raise OMDomainError("the next residual generator must be nonzero")
+        return modulus, root
+    modulus = _prime_field_modulus(factor)
+    if polynomial_degree(modulus) != 2:
+        raise OMDomainError("the bounded next residue extension must be quadratic")
+    return modulus, (0, 1)
+
+
 def _component_side(
     polynomial: Polynomial,
     prime: int,
@@ -269,21 +348,40 @@ def order_three_residual_evidence(
     second_level: OMLevel,
     side: NewtonSide,
 ) -> HigherResidualEvidence:
-    """Compute a third-order residual over one quadratic prime-field extension."""
+    """Compute a third-order residual in the bounded recursive domain."""
     if first_level.order != 1 or second_level.order != 2:
         raise OMDomainError("order-three residuals require two active levels")
-    modulus = _prime_field_modulus(second_level.residual_factor)
-    if polynomial_degree(modulus) != 2:
-        raise OMDomainError("the bounded order-three residue extension is quadratic")
-    root: ResidueElement = (0, 1)
-    height = -second_level.slope.numerator
-    ramification = second_level.ramification_index
-    bezout = _bezout_height_coefficient(height, ramification)
-    key_value = maclane_integer_valuation(
-        higher_key, prime, (first_level, second_level)
+    return recursive_residual_evidence(
+        polynomial,
+        prime,
+        higher_key,
+        (first_level, second_level),
+        side,
     )
+
+
+def recursive_residual_evidence(
+    polynomial: Polynomial,
+    prime: int,
+    higher_key: Polynomial,
+    levels: tuple[OMLevel, ...],
+    side: NewtonSide,
+) -> HigherResidualEvidence:
+    """Compute a bounded higher residual by recursively evaluating components."""
+    if not levels:
+        raise OMDomainError("higher residual evidence requires a prior type")
+    if len(levels) == 1:
+        return order_two_residual_evidence(
+            polynomial, prime, higher_key, levels[0], side
+        )
+    last = levels[-1]
+    modulus, root = next_residue_field(prime, last)
+    height = -last.slope.numerator
+    ramification = last.ramification_index
+    bezout = _bezout_height_coefficient(height, ramification)
+    key_value = maclane_integer_valuation(higher_key, prime, levels)
     if key_value is None:
-        raise ArithmeticError("an order-three key has infinite prior value")
+        raise ArithmeticError("a recursive residual key has infinite prior value")
     expansion = phi_adic_expansion(polynomial, higher_key)
     coefficients: list[ResidueElement] = []
     active_exponents: list[int] = []
@@ -295,45 +393,33 @@ def order_three_residual_evidence(
         side.ramification_index,
     ):
         coefficient = expansion[exponent] if exponent < len(expansion) else (0,)
-        coefficient_value = maclane_integer_valuation(
-            coefficient, prime, (first_level, second_level)
-        )
+        coefficient_value = maclane_integer_valuation(coefficient, prime, levels)
         expected = side.ordinate_at(exponent)
         if expected.denominator != 1:
-            raise OMDomainError("an order-three side ordinate must be integral")
+            raise OMDomainError("a recursive residual ordinate must be integral")
         if coefficient_value is None:
             coefficients.append((0,))
             continue
         ordinate = coefficient_value + exponent * key_value
         if ordinate < expected.numerator:
-            raise OMDomainError("the requested point is below the order-three side")
+            raise OMDomainError("a component lies below its recursive residual side")
         if ordinate > expected.numerator:
             coefficients.append((0,))
             continue
-        component = _component_side(
+        component = _component_side(coefficient, prime, last, levels[:-1])
+        lower = recursive_residual_evidence(
             coefficient,
             prime,
-            second_level,
-            (first_level,),
-        )
-        second_residual = order_two_residual_evidence(
-            coefficient,
-            prime,
-            second_level.key_polynomial,
-            first_level,
+            last.key_polynomial,
+            levels[:-1],
             component,
         )
         component_left = component.left.abscissa
         twist_numerator = component_left - bezout * ordinate
         if twist_numerator % ramification:
-            raise ArithmeticError("an order-three residual twist is not integral")
+            raise ArithmeticError("a recursive residual twist is not integral")
         twist = twist_numerator // ramification
-        value = _evaluate_residual(
-            second_residual.polynomial,
-            root,
-            prime,
-            modulus,
-        )
+        value = _evaluate_residual(lower.polynomial, root, prime, modulus)
         root_power = _residue_power(root, abs(twist), prime, modulus)
         if twist < 0:
             root_power = _residue_inverse(root_power, prime, modulus)
@@ -354,10 +440,8 @@ def order_two_representative(
     first_level: OMLevel,
     second_level: OMLevel,
 ) -> Polynomial:
-    """Lift a bounded prime-field residual factor by mixed-radix search."""
+    """Lift a bounded residual factor through the first type's mixed radix."""
     factor = second_level.residual_factor
-    if any(len(coefficient) != 1 for coefficient in factor):
-        raise OMDomainError("the bounded representative requires prime-field data")
     degree = len(factor) - 1
     ramification = second_level.ramification_index
     height = -second_level.slope.numerator
@@ -381,20 +465,38 @@ def order_two_representative(
     first_ramification = first_level.ramification_index
     first_bezout = _bezout_height_coefficient(first_height, first_ramification)
     for index, residue_coefficient in enumerate(factor[:-1]):
-        target = residue_coefficient[0] % prime
-        if target == 0:
+        target = _residue_multiply(
+            residue_coefficient,
+            second_level.residual_polynomial[-1],
+            prime,
+            root_modulus,
+        )
+        if target == (0,):
             continue
         exponent = index * ramification
         ordinate = right_ordinate + (degree - index) * height
         target_value = ordinate - exponent * key_value
-        lifted: Polynomial | None = None
-        for monomial_degree in range(polynomial_degree(key)):
-            difference = target_value - monomial_degree
-            if difference < 0 or difference % first_ramification:
-                continue
-            prime_exponent = difference // first_ramification
-            for unit in range(1, prime):
-                candidate = (0,) * monomial_degree + (unit * prime**prime_exponent,)
+        candidates: list[Polynomial] = []
+        values: list[ResidueElement] = []
+        first_radix = first_level.ramification_index * first_level.residue_degree
+        for first_digit in range(first_radix):
+            first_power = polynomial_power(first_level.key_polynomial, first_digit)
+            for initial_digit in range(polynomial_degree(first_level.key_polynomial)):
+                mixed_monomial = polynomial_multiply(
+                    (0,) * initial_digit + (1,), first_power
+                )
+                monomial_value = maclane_integer_valuation(
+                    mixed_monomial, prime, (first_level,)
+                )
+                if monomial_value is None:
+                    continue
+                difference = target_value - monomial_value
+                if difference < 0 or difference % first_ramification:
+                    continue
+                prime_exponent = difference // first_ramification
+                candidate = tuple(
+                    prime**prime_exponent * value for value in mixed_monomial
+                )
                 component_left, residual = _slope_component(
                     candidate, prime, first_level
                 )
@@ -406,56 +508,22 @@ def order_two_representative(
                 root_power = _residue_power(root, abs(twist), prime, root_modulus)
                 if twist < 0:
                     root_power = _residue_inverse(root_power, prime, root_modulus)
-                value = _residue_multiply(value, root_power, prime, root_modulus)
-                if value == (target,):
-                    lifted = candidate
-                    break
-            if lifted is not None:
-                break
-        if lifted is None:
+                candidates.append(candidate)
+                values.append(_residue_multiply(value, root_power, prime, root_modulus))
+        solution = _residue_linear_solution(values, target, prime, root_modulus)
+        lifted: Polynomial = (0,)
+        for scalar, candidate in zip(solution, candidates, strict=True):
+            if scalar:
+                lifted = polynomial_add(
+                    lifted, tuple(scalar * value for value in candidate)
+                )
+        if lifted == (0,):
             raise OMDomainError("bounded mixed-radix coefficient lift failed")
         result = polynomial_add(
             result,
             polynomial_multiply(lifted, polynomial_power(key, exponent)),
         )
     return normalize_polynomial(result)
-
-
-def _order_three_coefficient_value(
-    polynomial: Polynomial,
-    ordinate: int,
-    prime: int,
-    first_level: OMLevel,
-    second_level: OMLevel,
-) -> ResidueElement:
-    modulus = _prime_field_modulus(second_level.residual_factor)
-    root: ResidueElement = (0, 1)
-    component = _component_side(
-        polynomial,
-        prime,
-        second_level,
-        (first_level,),
-    )
-    residual = order_two_residual_evidence(
-        polynomial,
-        prime,
-        second_level.key_polynomial,
-        first_level,
-        component,
-    )
-    bezout = _bezout_height_coefficient(
-        -second_level.slope.numerator,
-        second_level.ramification_index,
-    )
-    twist_numerator = component.left.abscissa - bezout * ordinate
-    if twist_numerator % second_level.ramification_index:
-        raise ArithmeticError("an order-three coefficient twist is not integral")
-    twist = twist_numerator // second_level.ramification_index
-    value = _evaluate_residual(residual.polynomial, root, prime, modulus)
-    root_power = _residue_power(root, abs(twist), prime, modulus)
-    if twist < 0:
-        root_power = _residue_inverse(root_power, prime, modulus)
-    return _residue_multiply(value, root_power, prime, modulus)
 
 
 def order_three_refinement(
@@ -467,55 +535,96 @@ def order_three_refinement(
     factor: ResidualPolynomial,
 ) -> Polynomial:
     """Refine a repeated linear third residual by a mixed-radix lift."""
-    modulus = _prime_field_modulus(second_level.residual_factor)
-    if len(factor) != 2:
-        raise OMDomainError("the bounded order-three refinement must be linear")
-    leading_inverse = _residue_inverse(factor[1], prime, modulus)
-    target = _residue_multiply(factor[0], leading_inverse, prime, modulus)
-    key_value = maclane_integer_valuation(key, prime, (first_level, second_level))
-    if key_value is None:
-        raise ArithmeticError("a refinement key has infinite prior value")
-    target_value = key_value + side.height
-    second_key = second_level.key_polynomial
-    second_radix = second_level.ramification_index * second_level.residue_degree
-    ramification_product = (
-        first_level.ramification_index * second_level.ramification_index
+    return recursive_linear_refinement(
+        prime,
+        (first_level, second_level),
+        key,
+        side,
+        factor,
     )
-    for second_digit in range(second_radix):
-        second_power = polynomial_power(second_key, second_digit)
-        for first_digit in range(polynomial_degree(second_key)):
-            mixed_monomial = polynomial_multiply(
-                (0,) * first_digit + (1,), second_power
+
+
+def recursive_linear_refinement(
+    prime: int,
+    levels: tuple[OMLevel, ...],
+    key: Polynomial,
+    side: NewtonSide,
+    factor: ResidualPolynomial,
+) -> Polynomial:
+    """Refine one repeated linear higher factor in the bounded mixed radix."""
+    if len(levels) < 2 or len(factor) != 2:
+        raise OMDomainError("recursive refinement requires a linear higher factor")
+    modulus, _root = next_residue_field(prime, levels[-1])
+    target = _residue_multiply(
+        factor[0],
+        _residue_inverse(factor[1], prime, modulus),
+        prime,
+        modulus,
+    )
+    key_value = maclane_integer_valuation(key, prime, levels)
+    if key_value is None:
+        raise ArithmeticError("a recursive refinement key has infinite prior value")
+    target_value = key_value + side.height
+    products: list[Polynomial] = [
+        (0,) * index + (1,)
+        for index in range(polynomial_degree(levels[0].key_polynomial))
+    ]
+    for level in levels:
+        expanded: list[Polynomial] = []
+        for digit in range(level.ramification_index * level.residue_degree):
+            power = polynomial_power(level.key_polynomial, digit)
+            for product in products:
+                expanded.append(polynomial_multiply(product, power))
+        products = expanded
+    ramification = 1
+    for level in levels:
+        ramification *= level.ramification_index
+    candidates: list[Polynomial] = []
+    values: list[ResidueElement] = []
+    last = levels[-1]
+    for product in products:
+        for prime_exponent in range(target_value // ramification + 2):
+            candidate = tuple(prime**prime_exponent * value for value in product)
+            if maclane_integer_valuation(candidate, prime, levels) != target_value:
+                continue
+            component = _component_side(candidate, prime, last, levels[:-1])
+            lower = recursive_residual_evidence(
+                candidate,
+                prime,
+                last.key_polynomial,
+                levels[:-1],
+                component,
             )
-            for prime_exponent in range(target_value // ramification_product + 2):
-                scale = prime**prime_exponent
-                for unit in range(1, prime):
-                    candidate = tuple(unit * scale * value for value in mixed_monomial)
-                    if (
-                        maclane_integer_valuation(
-                            candidate,
-                            prime,
-                            (first_level, second_level),
-                        )
-                        != target_value
-                    ):
-                        continue
-                    if (
-                        _order_three_coefficient_value(
-                            candidate,
-                            target_value,
-                            prime,
-                            first_level,
-                            second_level,
-                        )
-                        == target
-                    ):
-                        return normalize_polynomial(polynomial_add(key, candidate))
-    raise OMDomainError("bounded order-three mixed-radix refinement failed")
+            bezout = _bezout_height_coefficient(
+                -last.slope.numerator, last.ramification_index
+            )
+            twist_numerator = component.left.abscissa - bezout * target_value
+            if twist_numerator % last.ramification_index:
+                continue
+            twist = twist_numerator // last.ramification_index
+            value = _evaluate_residual(lower.polynomial, _root, prime, modulus)
+            root_power = _residue_power(_root, abs(twist), prime, modulus)
+            if twist < 0:
+                root_power = _residue_inverse(root_power, prime, modulus)
+            candidates.append(candidate)
+            values.append(_residue_multiply(value, root_power, prime, modulus))
+    solution = _residue_linear_solution(values, target, prime, modulus)
+    correction: Polynomial = (0,)
+    for scalar, candidate in zip(solution, candidates, strict=True):
+        if scalar:
+            correction = polynomial_add(
+                correction, tuple(scalar * value for value in candidate)
+            )
+    if correction == (0,):
+        raise OMDomainError("bounded recursive refinement made no progress")
+    return normalize_polynomial(polynomial_add(key, correction))
 
 
 __all__ = [
     "HigherResidualEvidence",
+    "next_residue_field",
+    "recursive_linear_refinement",
+    "recursive_residual_evidence",
     "order_three_refinement",
     "order_three_residual_evidence",
     "order_two_representative",
