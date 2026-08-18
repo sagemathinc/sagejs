@@ -27,6 +27,12 @@ ambiguity also falls back. An arithmetic inconsistency—no Weil lift, a false
 certificate, or disagreement between rforest and the exact backend—is an
 error, not a fallback.
 
+Interval results retain an explicit `omitted` row with no coefficients when
+the supplied rational model is nonintegral or singular at that prime. Public
+`local_lpolynomials` integration skips these rows, matching the existing
+good-reduction-only contract, while still completing later rows from the one
+rforest traversal.
+
 ## Native certificate boundary
 
 The single internal adapter `_native_order_certificates` may later marshal a

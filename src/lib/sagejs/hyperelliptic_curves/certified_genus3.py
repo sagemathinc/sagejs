@@ -270,6 +270,26 @@ def _fallback_result(
     }
 
 
+def _unavailable_reduction_result(
+    curve: Any, prime: int, reason: str, diagnostics: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """Return an omitted-row result when the supplied model cannot reduce."""
+    try:
+        _reduce_rational_curve(curve, prime)
+    except ArithmeticError as error:
+        return {
+            "status": "omitted",
+            "coefficients": None,
+            "certificate": None,
+            "diagnostics": {
+                **dict(diagnostics),
+                "fallback_reason": reason,
+                "reduction_error": str(error),
+            },
+        }
+    return None
+
+
 def _prime_field(curve: Any, prime: int) -> Any:
     field = curve.base_ring()
     if (
@@ -1069,22 +1089,26 @@ def rforest_genus3_local_factors(
             "residue_end",
             {"start": start, "stop": stop, "rows": 0, "available": False},
         )
-        return [
-            (
-                prime,
-                _fallback_result(
+        unavailable_rows: list[tuple[int, dict[str, Any]]] = []
+        for prime in range(start, stop + 1):
+            if not _is_prime(prime):
+                continue
+            diagnostics = {"detail": str(error)}
+            result = _unavailable_reduction_result(
+                curve, prime, "rforest_unavailable", diagnostics
+            )
+            if result is None:
+                result = _fallback_result(
                     curve,
                     prime,
                     None,
                     fallback,
                     "rforest_unavailable",
-                    {"detail": str(error)},
+                    diagnostics,
                     stage_observer,
-                ),
-            )
-            for prime in range(start, stop + 1)
-            if _is_prime(prime)
-        ]
+                )
+            unavailable_rows.append((prime, result))
+        return unavailable_rows
     _observe(
         stage_observer,
         "residue_end",
@@ -1094,15 +1118,20 @@ def rforest_genus3_local_factors(
     for row in batch["rows"]:
         prime = int(row["prime"])
         if not row["available"]:
-            result = _fallback_result(
-                curve,
-                prime,
-                None,
-                fallback,
-                "rforest_" + str(row["status"]),
-                {"rforest_row": row},
-                stage_observer,
+            reason = "rforest_" + str(row["status"])
+            result = _unavailable_reduction_result(
+                curve, prime, reason, {"rforest_row": row}
             )
+            if result is None:
+                result = _fallback_result(
+                    curve,
+                    prime,
+                    None,
+                    fallback,
+                    reason,
+                    {"rforest_row": row},
+                    stage_observer,
+                )
         else:
             result = complete_genus3_residues_with_jacobian(
                 curve,
