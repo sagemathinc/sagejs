@@ -33,8 +33,9 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm exec pyright src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "node --test test/number-field-buchmann-lenstra.cjs test/number-field-buchmann-lenstra-fallback.cjs test/number-field-buchmann-lenstra-precision.cjs",
+    "node bench/number-field-buchmann-lenstra-precision.cjs"
   ],
   "runs": [],
   "handoff": {
