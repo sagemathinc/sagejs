@@ -10,9 +10,9 @@ test("the maximal-order selector is deterministic and input-derived", async () =
     const result = await session.evaluate(
       [
         "from sagejs.number_fields.maximal_order_engine import inspect_maximal_order_selection",
-        "tiny = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='auto', cpu_count=8)",
-        "repeat = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='auto', cpu_count=8)",
-        "forced = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='om-maxmin', cpu_count=8)",
+        "tiny = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='auto', cpu_count=8, memory_budget_bytes=2^31)",
+        "repeat = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='auto', cpu_count=8, memory_budget_bytes=2^31)",
+        "forced = inspect_maximal_order_selection([-8, 0, 1], 32, [2], algorithm='om-maxmin', cpu_count=8, memory_budget_bytes=2^31)",
         "decision = tiny['local_decisions'][0]",
         "[tiny == repeat, tiny['primary'], decision['algorithm'], decision['metrics']['degree'], decision['metrics']['local_discriminant_valuation'], decision['metrics']['factor_degrees'], decision['metrics']['expected_output_bytes'] > 0, tiny['schedule'][1], tiny['schedule'][6], forced['local_decisions'][0]['algorithm'], forced['local_decisions'][0]['forced']]",
       ].join("\n"),

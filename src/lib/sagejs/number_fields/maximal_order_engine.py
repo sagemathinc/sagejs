@@ -541,12 +541,15 @@ def inspect_maximal_order_selection(
     algorithm: str = "auto",
     worker_capability: bool = False,
     cpu_count: int | None = None,
+    memory_budget_bytes: int | None = None,
 ) -> dict[str, Any]:
     """Return the deterministic public selector and scheduler evidence.
 
     `worker_capability=False` inspects the native-first public boundary.
     Passing `True` inspects the measured fallback crossover as if the native
     batch had been unavailable; it never changes mathematical decisions.
+    Supply `memory_budget_bytes` when the scheduler evidence itself must be
+    reproducible instead of reflecting live platform/container availability.
     """
     coefficients = [int(value) for value in polynomial_coefficients]
     if len(coefficients) < 2 or coefficients[-1] != 1:
@@ -573,6 +576,7 @@ def inspect_maximal_order_selection(
         jobs,
         after_native_fallback=bool(worker_capability),
         cpu_count=cpu_count,
+        memory_budget_bytes=memory_budget_bytes,
         worker_capability=worker_capability,
     )
     schedule = make_schedule(
