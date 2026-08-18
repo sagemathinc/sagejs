@@ -5,6 +5,7 @@
 #include <pthread.h>
 
 #ifdef SAGEJS_HAVE_SMALLJAC
+#include <ff_poly/polyparse.h>
 #include <smalljac.h>
 #endif
 
@@ -125,6 +126,70 @@ typedef unsigned long sagejs_smalljac_prime_t;
 typedef long sagejs_smalljac_coefficient_t;
 typedef long sagejs_smalljac_upstream_status_t;
 #endif
+
+typedef struct {
+    mpq_t coefficients[SMALLJAC_MAX_DEGREE + 1];
+} rational_polynomial;
+
+static void rational_polynomial_set_zero(void *polynomial, int index)
+{
+    rational_polynomial *value = polynomial;
+    mpq_set_ui(value->coefficients[index], 0, 1);
+}
+
+static int rational_polynomial_add(
+    void *polynomial, int index, mpq_t coefficient, void *argument)
+{
+    rational_polynomial *value = polynomial;
+    (void) argument;
+    mpq_add(
+        value->coefficients[index],
+        value->coefficients[index],
+        coefficient);
+    return 1;
+}
+
+static int rational_polynomial_is_zero(void *polynomial, int index)
+{
+    rational_polynomial *value = polynomial;
+    return mpq_sgn(value->coefficients[index]) == 0;
+}
+
+static int rational_polynomial_degree(char *expression, int maximum_degree)
+{
+    rational_polynomial polynomial;
+    int degree;
+    for (int index = 0; index <= SMALLJAC_MAX_DEGREE; index += 1)
+        mpq_init(polynomial.coefficients[index]);
+    degree = poly_parse(
+        &polynomial, maximum_degree, expression,
+        rational_polynomial_set_zero, rational_polynomial_add,
+        rational_polynomial_is_zero, NULL);
+    for (int index = 0; index <= SMALLJAC_MAX_DEGREE; index += 1)
+        mpq_clear(polynomial.coefficients[index]);
+    return degree;
+}
+
+/*
+ * The public smalljac handle hides the normalized model degree, but the
+ * public polynomial parser accepts the same expressions.  Determine the
+ * degree of 4*f+h^2 before requesting a group so an unsupported even-degree
+ * model never reaches smalljac's diagnostic path.
+ */
+static int hyperelliptic_model_degree(smalljac_curve_t curve)
+{
+    char *curve_text = smalljac_curve_str(curve);
+    char *comma = strchr(curve_text, ',');
+    int f_degree = rational_polynomial_degree(
+        curve_text, SMALLJAC_MAX_DEGREE);
+    int h_degree = comma == NULL
+        ? -1
+        : rational_polynomial_degree(
+            comma + 1, (SMALLJAC_MAX_DEGREE + 1) / 2);
+    if (f_degree < 0 || h_degree < -1)
+        return -1;
+    return f_degree > 2 * h_degree ? f_degree : 2 * h_degree;
+}
 
 typedef struct {
     sagejs_smalljac_lpoly_batch *batch;
@@ -416,6 +481,22 @@ int32_t sagejs_smalljac_group_batch_compute(
         if (result->genus != 2)
         {
             result->status = SAGEJS_SMALLJAC_STATUS_UNSUPPORTED_CURVE;
+            smalljac_curve_clear(curve);
+            sagejs_smalljac_unlock();
+            return result->status;
+        }
+        int model_degree = hyperelliptic_model_degree(curve);
+        if (model_degree < 0)
+        {
+            result->status = SAGEJS_SMALLJAC_STATUS_INTERNAL_ERROR;
+            smalljac_curve_clear(curve);
+            sagejs_smalljac_unlock();
+            return result->status;
+        }
+        if ((model_degree & 1) == 0)
+        {
+            result->status = SAGEJS_SMALLJAC_STATUS_UNSUPPORTED_CURVE;
+            result->upstream_status = SMALLJAC_UNSUPPORTED_CURVE;
             smalljac_curve_clear(curve);
             sagejs_smalljac_unlock();
             return result->status;
