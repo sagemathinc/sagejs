@@ -16,6 +16,7 @@ test("probable analytic rank and raw leading derivatives match independent oracl
         " ([0,1,1,-2,0], 2, 1.51863300057685),",
         " ([0,0,1,-7,6], 3, 10.3910994007158),",
         " ([1,-1,0,-79,289], 4, 214.652337501621),",
+        " ([0,0,1,-79,342], 5, 3634.28250646374201),",
         " ([2,3,1,4,50], 2, 14.7552475203803),",
         "]",
         "observed = []",
@@ -30,7 +31,7 @@ test("probable analytic rank and raw leading derivatives match independent oracl
     assert.equal(
       result.repr,
       "[(True, True), (True, True), (True, True), (True, True), " +
-        "(True, True), (True, True)]",
+        "(True, True), (True, True), (True, True)]",
     );
   } finally {
     await session.close();
