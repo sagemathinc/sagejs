@@ -108,6 +108,16 @@ function attachEmbeddedFfiManifest(
   });
 }
 
+function loadExtractedNativeAddon(
+  filename: string,
+): Record<PropertyKey, unknown> {
+  // Let Node construct the real CommonJS Module record for an extracted
+  // addon. Calling `process.dlopen` with a hand-written `{ exports: {} }`
+  // record works on Unix and in an ordinary Windows Node process, but can
+  // access-violate when the same addon is loaded from a Windows SEA.
+  return createRequire(filename)(filename) as Record<PropertyKey, unknown>;
+}
+
 function assetKeyForVirtualPath(filename: string): string | undefined {
   const normalized = normalize(filename);
   const prefix = `${VIRTUAL_ROOT}/`;
@@ -730,8 +740,7 @@ function loadEmbeddedFlint(): unknown {
     mode: 0o700,
   });
 
-  const nativeModule = { exports: {} };
-  process.dlopen(nativeModule, addonFilename);
+  const nativeExports = loadExtractedNativeAddon(addonFilename);
   if (!hasAsset(FLINT_FFI_ASSET)) {
     throw new Error(
       "This Sage.js executable is missing its generated FLINT FFI host adapter",
@@ -744,10 +753,9 @@ function loadEmbeddedFlint(): unknown {
   writeFileSync(ffiAddonFilename, Buffer.from(getAsset(FLINT_FFI_ASSET)), {
     mode: 0o700,
   });
-  const ffiModule = { exports: {} };
-  process.dlopen(ffiModule, ffiAddonFilename);
+  const ffiExports = loadExtractedNativeAddon(ffiAddonFilename);
   const combined = Object.create(null) as Record<PropertyKey, unknown>;
-  for (const source of [nativeModule.exports, ffiModule.exports]) {
+  for (const source of [nativeExports, ffiExports]) {
     for (const name of Reflect.ownKeys(source as object)) {
       combined[name] = Reflect.get(source as object, name);
     }
@@ -771,8 +779,7 @@ function loadEmbeddedGraph(): unknown {
   writeFileSync(addonFilename, Buffer.from(getAsset(GRAPH_ASSET)), {
     mode: 0o700,
   });
-  const nativeModule = { exports: {} };
-  process.dlopen(nativeModule, addonFilename);
+  const nativeExports = loadExtractedNativeAddon(addonFilename);
   if (!hasAsset(GRAPH_FFI_ASSET)) {
     throw new Error(
       "This Sage.js executable is missing its generated igraph FFI host adapter",
@@ -785,10 +792,9 @@ function loadEmbeddedGraph(): unknown {
   writeFileSync(ffiAddonFilename, Buffer.from(getAsset(GRAPH_FFI_ASSET)), {
     mode: 0o700,
   });
-  const ffiModule = { exports: {} };
-  process.dlopen(ffiModule, ffiAddonFilename);
+  const ffiExports = loadExtractedNativeAddon(ffiAddonFilename);
   const combined = Object.create(null) as Record<PropertyKey, unknown>;
-  for (const source of [nativeModule.exports, ffiModule.exports]) {
+  for (const source of [nativeExports, ffiExports]) {
     for (const name of Reflect.ownKeys(source as object)) {
       combined[name] = Reflect.get(source as object, name);
     }
@@ -815,14 +821,13 @@ function loadEmbeddedFflas(): unknown {
   writeFileSync(addonFilename, Buffer.from(getAsset(FFLAS_FFI_ASSET)), {
     mode: 0o700,
   });
-  const nativeModule = { exports: {} as Record<PropertyKey, unknown> };
-  process.dlopen(nativeModule, addonFilename);
+  const nativeExports = loadExtractedNativeAddon(addonFilename);
   attachEmbeddedFfiManifest(
-    nativeModule.exports,
+    nativeExports,
     FFLAS_FFI_MANIFEST_ASSET,
     "FFLAS",
   );
-  fflasModule = nativeModule.exports;
+  fflasModule = nativeExports;
   return fflasModule;
 }
 
@@ -840,9 +845,7 @@ function loadEmbeddedZeroMQ(): unknown {
     mode: 0o700,
   });
 
-  const nativeModule = { exports: {} };
-  process.dlopen(nativeModule, addonFilename);
-  const native = nativeModule.exports as {
+  const native = loadExtractedNativeAddon(addonFilename) as {
     Socket: new (type: number, options?: unknown) => any;
   };
 
