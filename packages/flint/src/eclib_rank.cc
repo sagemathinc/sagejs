@@ -14,6 +14,7 @@
 
 #include <eclib/descent.h>
 #include <eclib/gf.h>
+#include <eclib/curve.h>
 
 namespace {
 
@@ -190,6 +191,64 @@ napi_value long_array(napi_env env, const std::vector<long>& values)
 }
 
 }  // namespace
+
+extern "C" napi_value sagejs_ec_root_number(
+    napi_env env, napi_callback_info info)
+{
+  napi_value arguments[10];
+  size_t count = 10;
+  if (!check_napi(
+          env,
+          napi_get_cb_info(env, info, &count, arguments, nullptr, nullptr)))
+    return nullptr;
+  if (count != 10)
+  {
+    napi_throw_type_error(
+        env, nullptr,
+        "ecRootNumber expects five numerator/denominator BigInt pairs");
+    return nullptr;
+  }
+
+  try
+  {
+    std::vector<bigrational> coefficients;
+    coefficients.reserve(5);
+    for (size_t index = 0; index < 5; ++index)
+    {
+      ZZ numerator, denominator;
+      if (!bigint_to_zz(env, arguments[2 * index], numerator) ||
+          !bigint_to_zz(env, arguments[2 * index + 1], denominator))
+        return nullptr;
+      if (IsZero(denominator))
+      {
+        napi_throw_range_error(
+            env, nullptr, "elliptic coefficient denominator is zero");
+        return nullptr;
+      }
+      coefficients.emplace_back(numerator, denominator);
+    }
+
+    ZZ scaling;
+    Curvedata curve(coefficients, scaling);
+    CurveRed reduced(curve);
+    napi_value output;
+    if (!check_napi(
+            env,
+            napi_create_int32(env, reduced.GlobalRootNumber(), &output)))
+      return nullptr;
+    return output;
+  }
+  catch (const std::exception& error)
+  {
+    napi_throw_error(env, nullptr, error.what());
+    return nullptr;
+  }
+  catch (...)
+  {
+    napi_throw_error(env, nullptr, "eclib root-number computation failed");
+    return nullptr;
+  }
+}
 
 extern "C" napi_value sagejs_ec_rank_data(
     napi_env env, napi_callback_info info)

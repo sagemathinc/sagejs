@@ -14,6 +14,7 @@
         "src/cyclotomic_rref.c",
         "src/dirichlet.c",
         "src/eclib_rank.cc",
+        "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
         "src/matrix.c",

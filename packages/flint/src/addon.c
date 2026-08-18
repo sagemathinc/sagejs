@@ -36,6 +36,7 @@
 #include "algebraic.h"
 #include "dirichlet.h"
 #include "eclib_rank.h"
+#include "elliptic_lfunction.h"
 #include "extension_field.h"
 #include "floating.h"
 #include "matrix.h"
@@ -4301,6 +4302,11 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"ecScalarMulRational", NULL, elliptic_scalar_mul_rational,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecRankData", NULL, sagejs_ec_rank_data,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ecRootNumber", NULL, sagejs_ec_root_number,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ecCompletedCentralDerivatives", NULL,
+            sagejs_ec_completed_central_derivatives,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},
