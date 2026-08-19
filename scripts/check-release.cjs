@@ -62,6 +62,7 @@ const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
 const npmIndex = releaseWorkflow.indexOf(
   "- name: Publish the platform and public npm packages",
 );
+const availabilityIndex = releaseWorkflow.indexOf("wait_for_package()", npmIndex);
 const publishIndex = releaseWorkflow.indexOf(
   "- name: Publish the immutable GitHub release",
 );
@@ -71,8 +72,11 @@ assert.ok(
   "release creation must remain draft-first for immutable repositories",
 );
 assert.ok(
-  draftIndex < uploadIndex && uploadIndex < npmIndex && npmIndex < publishIndex,
-  "release workflow must upload and publish npm before making GitHub immutable",
+  draftIndex < uploadIndex &&
+    uploadIndex < npmIndex &&
+    npmIndex < availabilityIndex &&
+    availabilityIndex < publishIndex,
+  "release workflow must upload, publish npm, and await public availability before making GitHub immutable",
 );
 
 const tagIndex = process.argv.indexOf("--tag");

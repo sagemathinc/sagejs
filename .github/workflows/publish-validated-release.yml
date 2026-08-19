@@ -161,6 +161,35 @@ jobs:
           publish_package release/npm/sagejs-macos-arm64.tgz macos-arm64
           publish_package release/npm/sagejs.tgz latest
 
+          wait_for_package() {
+            local archive="$1"
+            local metadata name version encoded
+            metadata="$(tar -xOzf "$archive" package/package.json)"
+            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
+            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
+            encoded="$(node -e 'console.log(encodeURIComponent(process.argv[1]))' "$name")"
+            for attempt in {1..120}; do
+              if curl --fail --silent --output /dev/null \
+                "https://registry.npmjs.org/${encoded}/${version}"
+              then
+                echo "Public npm registry serves ${name}@${version}"
+                return
+              fi
+              if (( attempt % 4 == 0 )); then
+                echo "Waiting for npm scanning: ${name}@${version} (${attempt}/120)"
+              fi
+              sleep 15
+            done
+            echo "npm did not make ${name}@${version} public within 30 minutes" >&2
+            exit 1
+          }
+
+          wait_for_package release/npm/sagejs-linux-x64.tgz
+          wait_for_package release/npm/sagejs-linux-arm64.tgz
+          wait_for_package release/npm/sagejs-windows-x64.tgz
+          wait_for_package release/npm/sagejs-macos-arm64.tgz
+          wait_for_package release/npm/sagejs.tgz
+
       - name: Publish the immutable GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
