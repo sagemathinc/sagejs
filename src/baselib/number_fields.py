@@ -1813,7 +1813,7 @@ class NumberFieldOrder(sage.Parent):
     def ideal_from_dict(self, data: dict[str, Any]) -> NumberFieldIdeal:
         return _nf_ideal_arithmetic_module().ideal_from_dict(self, data)
 
-    def class_group(self) -> NumberFieldClassGroup:
+    def class_group(self) -> Any:
         return self._field.class_group()
 
     def class_number(self) -> int:
@@ -2252,9 +2252,12 @@ class NumberFieldParent(sage.Parent):
                     self, backend.class_group()
                 )
             else:
-                raise NotImplementedError(
-                    "general class groups need a number-field backend"
-                )
+                result = self.class_group_result()
+                if not result.complete:
+                    raise NotImplementedError(
+                        "the bounded class-group search did not certify completeness"
+                    )
+                self._class_group_cache = result.group
         return self._class_group_cache
 
     def class_number(self) -> int:
@@ -2262,7 +2265,12 @@ class NumberFieldParent(sage.Parent):
             return 1
         if self.degree() == 2:
             return self._quadratic_backend()[0].class_number()
-        raise NotImplementedError("general class numbers need a number-field backend")
+        result = self.class_group_result()
+        if result.complete:
+            return int(result.order())
+        raise NotImplementedError(
+            "the bounded class-group search did not certify a class number"
+        )
 
 
 def NumberField(

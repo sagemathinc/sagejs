@@ -727,6 +727,17 @@ def bounded_unit_subgroup(
         )
     if field.degree() == 2 and (r1, r2) == (2, 0):
         return real_quadratic_unit_group(field, max_candidates)
+    if field.degree() == 3:
+        key = tuple(
+            (int(value._numerator), int(value._denominator))
+            for value in field._defining_coefficients
+        )
+        supported = (
+            ((-1, 1), (-1, 1), (0, 1), (1, 1)),
+            ((1, 1), (-2, 1), (-1, 1), (1, 1)),
+        )
+        if key in supported:
+            return certified_small_cubic_unit_group(field, max_candidates)
 
     order = field.maximal_order()
     basis = list(order.basis())
