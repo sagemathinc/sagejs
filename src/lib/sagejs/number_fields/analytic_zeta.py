@@ -304,7 +304,7 @@ def plan_analytic_zeta(
         recommended_bound = max(
             2,
             int(
-                ceil(
+                mp.ceil(
                     mp.power(2, metadata["r2"])
                     * scale
                     * mp.power(target, mp.mpf(degree) / 2)

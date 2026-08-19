@@ -6562,7 +6562,24 @@ class _FlintRiemannZetaProvider:
     def _point(self, field: Any, value: Any) -> Any:
         if runtime.array.isArray(value) and len(value) == 2:
             return field(value[0], value[1])
-        return field(value)
+        try:
+            return field(value)
+        except Exception:
+            evaluator_factory = getattr(value, "_plot_complex_callable", None)
+            if evaluator_factory is None:
+                raise
+            evaluator = evaluator_factory([])
+            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+            real_part = runtime.reflect.get(evaluated, "real")
+            imaginary_part = runtime.reflect.get(evaluated, "imag")
+            if (
+                runtime.jstype(real_part) != "number"
+                or runtime.jstype(imaginary_part) != "number"
+                or not runtime.number.isFinite(real_part)
+                or not runtime.number.isFinite(imaginary_part)
+            ):
+                return _riemann_raise_nonfinite()
+            return field(real_part, imaginary_part)
 
     def jet(
         self,
@@ -6613,6 +6630,10 @@ class _FlintRiemannZetaProvider:
 _flint_riemann_zeta_provider = _FlintRiemannZetaProvider()
 
 
+def _riemann_raise_nonfinite() -> Any:
+    raise ValueError("Riemann-zeta point must be finite")
+
+
 def RiemannZeta(prec: Any = 53) -> Any:
     """Return an arbitrary-precision FLINT/Arb Riemann-zeta evaluator."""
 
@@ -6629,7 +6650,14 @@ def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
         "sagejs.number_fields.quadratic_characters",
         fromlist=["quadratic_characters"],
     )
-    return module.kronecker_character(discriminant, reduce_radicand=reduce)
+    group_factory = runtime.reflect.get(runtime.global_object, "DirichletGroup")
+    if group_factory is runtime.undefined:
+        raise RuntimeError("DirichletGroup is unavailable")
+    return module.kronecker_character(
+        discriminant,
+        reduce_radicand=reduce,
+        group_factory=group_factory,
+    )
 
 
 def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:

@@ -134,9 +134,34 @@ def exact_embedding_metadata(field: Any) -> ExactEmbeddingMetadata:
     the exact upper half-plane is retained, ordered lexicographically by exact
     real and then imaginary part.
     """
+    degree = int(field.degree())
+    archimedean_factory = getattr(field, "archimedean_data", None)
+    if callable(archimedean_factory):
+        data: Any = archimedean_factory()
+        signature = data.signature()
+        real_roots = tuple(
+            embedding.generator_image
+            for embedding in data.embeddings
+            if embedding.kind == "real"
+        )
+        upper_roots = tuple(
+            embedding.generator_image
+            for embedding in data.embeddings
+            if embedding.kind == "complex"
+        )
+        return {
+            "version": 1,
+            "degree": degree,
+            "r1": int(signature[0]),
+            "r2": int(signature[1]),
+            "real_roots": real_roots,
+            "complex_representatives": upper_roots,
+            "certificate": "exact archimedean root certificate",
+            "ordering": "real increasing, then upper-half-plane lexicographic (real,imag)",
+        }
+
     import sagejs as sage
 
-    degree = int(field.degree())
     polynomial = field.defining_polynomial()
     sage_module: Any = sage
     exact_complex_field = sage_module.QQbar

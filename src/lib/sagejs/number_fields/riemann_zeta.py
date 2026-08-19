@@ -13,7 +13,6 @@ defined.  No input close to one is ever snapped to the pole.
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
 from math import factorial
 from typing import Any
 
@@ -63,13 +62,44 @@ def _is_one(point: Any) -> bool:
     return point.real == 1 and point.imag == 0
 
 
+def _decimal_equals_integer(text: str, integer: int) -> bool:
+    """Compare a finite decimal string to an integer without rounding."""
+
+    value = text.strip().lower()
+    sign = 1
+    if value.startswith(("+", "-")):
+        if value[0] == "-":
+            sign = -1
+        value = value[1:]
+    parts = value.split("e")
+    if len(parts) > 2:
+        return False
+    mantissa = parts[0]
+    try:
+        exponent = int(parts[1]) if len(parts) == 2 else 0
+    except ValueError:
+        return False
+    if abs(exponent) > 100_000:
+        return integer == 0 and mantissa.replace(".", "").strip("0") == ""
+    pieces = mantissa.split(".")
+    if len(pieces) > 2:
+        return False
+    whole = pieces[0]
+    fraction = pieces[1] if len(pieces) == 2 else ""
+    digits = whole + fraction
+    if not digits or not digits.isdigit():
+        return False
+    numerator = sign * int(digits)
+    scale = len(fraction) - exponent
+    if scale <= 0:
+        return numerator * 10 ** (-scale) == integer
+    return numerator == integer * 10**scale
+
+
 def _is_exact_point(value: Any, real: int) -> bool:
     def equals_integer(scalar: Any, integer: int) -> bool:
         if isinstance(scalar, str):
-            try:
-                return Decimal(scalar) == Decimal(integer)
-            except InvalidOperation:
-                return False
+            return _decimal_equals_integer(scalar, integer)
         return scalar == integer
 
     if isinstance(value, (tuple, list)):

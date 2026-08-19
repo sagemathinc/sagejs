@@ -2116,6 +2116,7 @@ class NumberFieldParent(sage.Parent):
                 max_imaginary_part=max_imaginary_part,
                 algorithm=algorithm,
                 riemann=riemann_zeta(precision),
+                character_factory=_nf_global("kronecker_character"),
                 result_coercer=_nf_complex_result,
             )
         else:

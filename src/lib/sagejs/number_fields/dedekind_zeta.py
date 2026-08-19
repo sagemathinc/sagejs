@@ -14,8 +14,7 @@ reference.
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
-from math import comb, factorial
+from math import factorial
 from typing import Any, Callable
 
 from mpmath import mp
@@ -25,9 +24,17 @@ from .quadratic_characters import (
     kronecker_character,
     kronecker_symbol,
 )
-from .riemann_zeta import RiemannZetaEvaluator, ZetaPoleError
+from .riemann_zeta import (
+    RiemannZetaEvaluator,
+    ZetaPoleError,
+    _decimal_equals_integer,
+)
 
 __all__ = ["DedekindZetaFunction", "QuadraticDirichletLReference"]
+
+
+def _binomial(n: int, k: int) -> int:
+    return factorial(n) // (factorial(k) * factorial(n - k))
 
 
 def _precision(value: Any) -> int:
@@ -58,10 +65,7 @@ def _point(value: Any) -> Any:
 def _is_point(value: Any, real: int) -> bool:
     def equals_integer(scalar: Any, integer: int) -> bool:
         if isinstance(scalar, str):
-            try:
-                return Decimal(scalar) == Decimal(integer)
-            except InvalidOperation:
-                return False
+            return _decimal_equals_integer(scalar, integer)
         return scalar == integer
 
     if isinstance(value, (tuple, list)):
@@ -383,7 +387,7 @@ class DedekindZetaFunction:
                     derivative_order - index,
                     precision,
                 )
-                multiplicity = comb(derivative_order, index)
+                multiplicity = _binomial(derivative_order, index)
                 if multiplicity != 1:
                     term = term * multiplicity
                 result = term if result is None else result + term

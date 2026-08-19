@@ -14,7 +14,6 @@ group implementing `unit_gens()`, `_orders`, and `_from_logs()`.
 
 from __future__ import annotations
 
-from math import isqrt
 from typing import Any, Callable
 
 __all__ = [
@@ -25,6 +24,19 @@ __all__ = [
     "kronecker_symbol",
     "squarefree_part",
 ]
+
+
+def _isqrt(value: int) -> int:
+    if value < 0:
+        raise ValueError("integer square root requires a nonnegative integer")
+    if value < 2:
+        return value
+    previous = value
+    current = (previous + 1) // 2
+    while current < previous:
+        previous = current
+        current = (current + value // current) // 2
+    return previous
 
 
 def _integer(value: Any, name: str = "value") -> int:
@@ -90,7 +102,7 @@ def _is_squarefree_trial(value: int) -> bool:
     if value % 4 == 0:
         return False
     prime = 3
-    while prime <= isqrt(value):
+    while prime <= _isqrt(value):
         if value % (prime * prime) == 0:
             return False
         prime += 2
@@ -158,7 +170,7 @@ def squarefree_part(
     if factor_provider is None:
         prime = 2
         remaining = absolute
-        while prime <= isqrt(remaining):
+        while prime <= _isqrt(remaining):
             parity = 0
             while remaining % prime == 0:
                 remaining //= prime
