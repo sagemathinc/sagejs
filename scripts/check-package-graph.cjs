@@ -216,6 +216,18 @@ function validateManifest(manifest, root = ROOT) {
     ]) {
       if (!(Number(budget[key]) > 0)) throw new Error(`${name}.${key} must be positive`);
     }
+    for (const [platformArch, value] of Object.entries(
+      budget.normalized_median_ms_by_platform_arch ?? {},
+    )) {
+      if (!/^[a-z0-9]+-[a-z0-9_]+$/.test(platformArch)) {
+        throw new Error(`${name} has invalid platform-architecture key ${platformArch}`);
+      }
+      if (!(Number(value) > 0)) {
+        throw new Error(
+          `${name}.normalized_median_ms_by_platform_arch.${platformArch} must be positive`,
+        );
+      }
+    }
     if (!Number.isInteger(budget.samples) || budget.samples < 3 || budget.samples % 2 === 0) {
       throw new Error(`${name}.samples must be an odd integer of at least 3`);
     }

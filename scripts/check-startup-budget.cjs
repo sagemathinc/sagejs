@@ -10,12 +10,20 @@ const ROOT = resolve(__dirname, "..");
 const EXPECTED = "1267650600228229401496703205376";
 const PACKAGE_GRAPH = require("../architecture/package-graph.json");
 
-function startupDefaults(sea = false, empty = false) {
+function startupDefaults(
+  sea = false,
+  empty = false,
+  platform = process.platform,
+  arch = process.arch,
+) {
   const name = `${sea ? "sea-cli" : "development-cli"}${empty ? "-empty" : ""}`;
   const budget = PACKAGE_GRAPH.startup_budgets[name];
   if (!budget) throw new Error(`missing startup budget ${name}`);
+  const platformArch = `${platform}-${arch}`;
   return {
-    budgetMs: budget.normalized_median_ms,
+    budgetMs:
+      budget.normalized_median_ms_by_platform_arch?.[platformArch] ??
+      budget.normalized_median_ms,
     hardLimitMs: budget.hard_limit_ms,
     referenceNodeMs: budget.reference_node_ms,
     samples: budget.samples,
