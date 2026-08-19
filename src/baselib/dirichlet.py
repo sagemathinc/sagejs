@@ -655,7 +655,11 @@ class DirichletCharacter(sage.Element):
         algorithm: str = "flint",
     ) -> DirichletLFunction:
         """Return the FLINT/Arb analytic Dirichlet L-function."""
-        if algorithm not in ("flint", "arb", "pari"):
+        if algorithm == "pari":
+            raise NotImplementedError(
+                "algorithm='pari' is unavailable; use algorithm='flint'"
+            )
+        if algorithm not in ("flint", "arb"):
             raise ValueError("algorithm must be 'flint', 'arb', or 'pari'")
         return DirichletLFunction(self, _analytic_precision(prec))
 
@@ -780,6 +784,37 @@ class DirichletLFunction:
 
     def derivative(self, s: Any, D: Any = 1) -> Any:
         return self._value(s, D)
+
+    def values(
+        self,
+        points: Any,
+        derivative: Any = 0,
+        prec: Any = None,
+    ) -> list[Any]:
+        """Evaluate one derivative at a nonempty batch of complex points."""
+
+        if not runtime.array.isArray(points) or len(points) == 0:
+            raise ValueError("points must be a nonempty list")
+        derivative = runtime.normalize_integer(derivative)
+        if (
+            runtime.jstype(derivative) != "number"
+            or not runtime.number.isSafeInteger(derivative)
+            or derivative < 0
+        ):
+            raise ValueError("derivative order must be nonnegative")
+        precision = self._precision if prec is None else _analytic_precision(prec)
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            precision
+        )
+        native_points = [complex_field(point)._native for point in points]
+        native_values = runtime.flint_backend().dirichletLValues(
+            self._character._parent._native,
+            self._character._index,
+            native_points,
+            derivative,
+            precision,
+        )
+        return [complex_field._fromNative(value) for value in native_values]
 
     def character(self) -> DirichletCharacter:
         return self._character
