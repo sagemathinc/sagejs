@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-zeta-quadratic",
+  "title": "nf-zeta-quadratic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement complex Riemann zeta, Kronecker characters, and complete quadratic Dedekind zeta internals with tests.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/riemann_zeta.py",
+    "src/lib/sagejs/number_fields/dedekind_zeta.py",
+    "src/lib/sagejs/number_fields/quadratic_characters.py",
+    "test/number-field-zeta-reference.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT/Arb",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "python3 test/number-field-zeta-reference.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "python3 test/number-field-zeta-reference.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.301,
+      "started_at": "2026-08-19T03:25:50.751Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "a87e7d1eceb7182c093ee6d991498506e915260fb37eb65aa9e027de65c9a582",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.866,
+      "started_at": "2026-08-19T03:26:08.680Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "a87e7d1eceb7182c093ee6d991498506e915260fb37eb65aa9e027de65c9a582",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 test/number-field-zeta-reference.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.322,
+      "started_at": "2026-08-19T03:28:31.359Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "95c42bfe4ec86c604d52bd21583ea77ea9ca266c37a95bbe7805fc16a68b86eb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.334,
+      "started_at": "2026-08-19T03:28:52.395Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "95c42bfe4ec86c604d52bd21583ea77ea9ca266c37a95bbe7805fc16a68b86eb",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented ordinary-Python Project 1 internals: exact fundamental-discriminant/radicand policy, a Kronecker symbol and direct mixed-radix primitive character constructor with no character enumeration, arbitrary-precision Riemann-zeta/deflated-jet/xi reference policy with an injected FLINT provider contract, and a complete quadratic DedekindZetaFunction product route with precision-aware Dirichlet-L caches, Leibniz derivatives, residues, deflated Taylor coefficients, field-normalized completion/xi, functional-equation reflection at negative integers, scalar/batch evaluation, and tiled real/complex plotting protocols. Added a focused CPython suite covering both discriminant signs, poles and near-poles, derivatives, completion, functional equations, conjugation, batching, plotting, and the even-denominator Kronecker regression.",
+    "risks": [
+      "This lane intentionally does not modify shared baselib hooks, lazy-module registries, pyrightconfig, package manifests, or native architecture inventories; the internals are not public until integration wires them.",
+      "The mpmath completion path is a numerical midpoint reference. Production completion should use a native completed-factor provider when one is added, or a precision-preserving ComplexField coercer; it is not a rigorous Arb enclosure.",
+      "The lane-required broad pnpm test:native gate was not run because the integration coordinator requested avoiding concurrent broad native builds."
+    ],
+    "next_steps": [
+      "Integrate a Riemann provider around riemannZetaJet(nativeComplex,firstOrder,count,deflate,prec), riemannZetaValues(nativeComplex[],prec), and 2*riemannXiStandardValue(nativeComplex,prec); convert every returned native Complex into the requested ComplexField.",
+      "Add DirichletLFunction.values using dirichletLValues(group,index,nativeComplex[],derivative,prec). DedekindZetaFunction.values and both plot protocols will then use packed factor batches without scalar native crossings.",
+      "Add thin public hooks for arbitrary-complex builtins.zeta, kronecker_character, and NumberFieldParent.zeta_function; pass the native Riemann provider and a precision-preserving result coercer/completed provider. Register the three lazy modules for strict Pyright and production precompilation.",
+      "Wire Project 3 methods using zeta_coefficients, dirichlet_series, and euler_product providers, then run integrated native, docs, architecture, and four-platform gates."
+    ]
+  }
+}
