@@ -120,3 +120,41 @@ test(
     );
   },
 );
+
+test(
+  "Oscar/Hecke compact-stream adapter agrees with the reviewed digest",
+  {
+    skip:
+      process.env.SAGEJS_HECKE_BENCH !== "1" ||
+      !existsSync("/home/user/.juliaup/bin/julia") ||
+      !existsSync(
+        "/home/user/.local/share/sagejs-benchmarks/number-fields-julia/Project.toml",
+      ),
+    timeout: 120_000,
+  },
+  () => {
+    const executed = spawnSync(
+      process.execPath,
+      [
+        "bench/number-field-foundations/run.cjs",
+        "--allow-dirty",
+        "--systems",
+        "hecke",
+        "--samples",
+        "1",
+        "--warmups",
+        "0",
+        "--workloads",
+        "prime-stream-cubic-mixed-250",
+      ],
+      { cwd: root, encoding: "utf8", timeout: 120_000 },
+    );
+    assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
+    const report = JSON.parse(executed.stdout);
+    assert.equal(report.records[0].status, "ok");
+    assert.equal(
+      report.records[0].result_sha256,
+      "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776",
+    );
+  },
+);

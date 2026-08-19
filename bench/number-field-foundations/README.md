@@ -32,7 +32,7 @@ Sage/PARI workers on the same host with:
 
 ```sh
 node bench/number-field-foundations/run.cjs \
-  --systems sagejs,sage,magma --samples 5 --warmups 1 \
+  --systems sagejs,sage,magma,hecke --samples 5 --warmups 1 \
   --output bench/results/number-field-foundations-current.json
 ```
 
@@ -43,11 +43,27 @@ production-kernel gap.  The Magma adapter excludes process startup by running
 all warmups and samples in one Magma process per workload. Its sub-millisecond
 compact-stream and coefficient kernels use a recorded inner repetition count
 to overcome Magma 2.18's coarse timer; the report contains the per-operation
-average. Hecke/Oscar availability is recorded in the report; a missing
-proprietary executable or pinned Julia project is reported, not silently
-replaced by another implementation.
+average. The `hecke` adapter loads Oscar's pinned Hecke backend and measures
+the algebraic workloads it supports; unsupported arbitrary-complex zeta
+evaluation is reported explicitly. A missing proprietary executable or Julia
+project is reported, not silently replaced by another implementation.
 
 The runner rejects a timing unless every retained sample has the reviewed
 answer digest.  It records the exact Git revision, dirty-tree state, tool
 versions, persistent-process startup, warmup/sample policy, and raw samples.
 `--update` is only for deliberate oracle review.
+
+The measured Oscar/Hecke environment on the primary benchmark host is
+`/home/user/.local/share/sagejs-benchmarks/number-fields-julia`. It contains
+Julia 1.12.7, Oscar 1.8.1, Hecke 0.39.22, and JSON3 1.14.3. Create an equivalent
+environment with Julia's package manager before selecting the `hecke` adapter:
+
+```sh
+julia --project=/path/to/reference-environment -e \
+  'using Pkg; Pkg.add(["Oscar", "Hecke", "JSON3"]); Pkg.precompile()'
+node bench/number-field-foundations/run.cjs \
+  --julia-project /path/to/reference-environment --systems hecke
+```
+
+Set `SAGEJS_HECKE_BENCH=1` to include the digest-checked Oscar/Hecke adapter
+smoke test in `test/number-field-foundations-performance.cjs`.

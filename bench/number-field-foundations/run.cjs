@@ -19,12 +19,14 @@ const workers = join(__dirname, "workers");
 
 function options(argv) {
   const answer = {
-    systems: ["sagejs", "sage", "magma"],
+    systems: ["sagejs", "sage", "magma", "hecke"],
     samples: 3,
     warmups: 1,
     timeoutMs: 300_000,
     sage: "/home/user/sagelite/sage",
     magma: "/home/user/bin/magma",
+    julia: "/home/user/.juliaup/bin/julia",
+    juliaProject: "/home/user/.local/share/sagejs-benchmarks/number-fields-julia",
     update: false,
     allowDirty: false,
     output: null,
@@ -42,17 +44,21 @@ function options(argv) {
     else if (argument === "--timeout-ms") answer.timeoutMs = Number(argv[++index]);
     else if (argument === "--sage") answer.sage = argv[++index];
     else if (argument === "--magma") answer.magma = argv[++index];
+    else if (argument === "--julia") answer.julia = argv[++index];
+    else if (argument === "--julia-project") answer.juliaProject = argv[++index];
     else if (argument === "--output") answer.output = argv[++index];
     else if (argument === "--workloads") answer.workloads = argv[++index].split(",");
     else if (argument === "--help") {
       console.log(`Usage: node bench/number-field-foundations/run.cjs [options]
 
-  --systems sagejs,sage,magma   persistent systems to compare
+  --systems sagejs,sage,magma,hecke   persistent systems to compare
   --workloads ID,...      select workload ids
   --samples N             retained samples per workload (default 3)
   --warmups N             warmups per workload (default 1)
   --sage PATH             Sage executable
   --magma PATH            Magma executable
+  --julia PATH            Julia executable
+  --julia-project PATH    instantiated Oscar/Hecke environment
   --timeout-ms N          per-request timeout
   --output PATH           write the exact report JSON
   --include-slow          include multi-minute reference workloads
@@ -155,7 +161,18 @@ function adapter(system, config) {
       startupTimeoutMs: 30_000,
     });
   }
-  throw new Error(`unsupported system ${system}; use sagejs, sage, or magma`);
+  if (system === "hecke") {
+    return new PersistentLineProcess({
+      name: system,
+      command: config.julia,
+      args: [`--project=${config.juliaProject}`, join(workers, "hecke_worker.jl")],
+      cwd: root,
+      readyPrefix: "@@NFFP_READY@@",
+      resultPrefix: "@@NFFP_RESULT@@",
+      startupTimeoutMs: 180_000,
+    });
+  }
+  throw new Error(`unsupported system ${system}; use sagejs, sage, magma, or hecke`);
 }
 
 async function run() {
@@ -252,9 +269,12 @@ async function run() {
       sage_version: commandVersion(config.sage, ["--version"]),
       reference_availability: {
         magma: { command: config.magma, executable: existsSync(config.magma) },
-        julia: commandVersion("/home/user/.local/bin/julia", ["--version"]),
-        hecke_project: existsSync("/home/user/upstream/Hecke.jl"),
-        oscar_project: existsSync("/home/user/upstream/Oscar.jl"),
+        julia: commandVersion(config.julia, ["--version"]),
+        hecke_oscar_project: {
+          path: config.juliaProject,
+          project: existsSync(join(config.juliaProject, "Project.toml")),
+          manifest: existsSync(join(config.juliaProject, "Manifest.toml")),
+        },
       },
     },
     policy: {
