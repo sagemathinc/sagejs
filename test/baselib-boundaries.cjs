@@ -25,10 +25,14 @@ const topLevelModules = readdirSync(join(root, "src", "baselib"))
   .map((name) => `src/baselib/${name}`)
   .sort();
 const bootstrapBoundary = "src/baselib/sagejs_bootstrap.py";
+const compilerBootstrapBoundary = "src/baselib/compiler_bootstrap.py";
 
 assert.deepEqual(
   [...strictTopLevelBaselibModules].sort(),
-  topLevelModules.filter((path) => path !== bootstrapBoundary),
+  topLevelModules.filter(
+    (path) =>
+      path !== bootstrapBoundary && path !== compilerBootstrapBoundary,
+  ),
   "every top-level baselib module except the bootstrap boundary must be strict",
 );
 

@@ -110,7 +110,7 @@ def _is_squarefree_trial(value: int) -> bool:
 
 
 def _sage_factor_provider(value: int) -> list[tuple[Any, Any]] | None:
-    """Use Sage.js's mature factorizer when running in the math runtime."""
+    """Use Sage.js's mature factorizer in the mathematics environment."""
 
     try:
         import sagejs as sage
