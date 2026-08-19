@@ -9,6 +9,13 @@
       "expectedResultSha256": "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776"
     },
     {
+      "id": "coefficients-cubic-mixed-250",
+      "operation": "coefficients",
+      "field": "cubic-mixed",
+      "bound": 250,
+      "expectedResultSha256": "c8966894923fe5afe53bd4899ea931a27ebd3e4ff28475ae9be069ce6b272f5b"
+    },
+    {
       "id": "coefficients-cubic-mixed-1000",
       "operation": "coefficients",
       "field": "cubic-mixed",
