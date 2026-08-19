@@ -31,7 +31,9 @@ def normalized_splitting(field, bound):
 def one_sample(request, sample_index):
     ring = PolynomialRing(QQ, "x")
     polynomial = ring([int(value) for value in request["coefficients"]])
-    field = NumberField(polynomial, f"a{sample_index}", check=False)
+    # Sage generator names must be alphanumeric; warmup indices are negative.
+    sample_name = f"aw{abs(sample_index)}" if sample_index < 0 else f"a{sample_index}"
+    field = NumberField(polynomial, sample_name, check=False)
     operation = request["operation"]
     bound = int(request.get("bound", 0))
     points = request.get("points", [])
