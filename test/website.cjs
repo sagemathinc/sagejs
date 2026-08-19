@@ -204,13 +204,18 @@ test("benchmark catalog inventories existing suites and future research cases", 
   assert.match(performancePilot.warning, /not a release baseline/i);
 });
 
-test("dashboard covers the three questions and both install paths", () => {
+test("dashboard covers the three questions and all install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
   assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
   assert.match(html, /Early alpha · v0\.3\.0/);
   assert.match(html, /sagejs-windows-x64\.zip/);
+  assert.match(html, /GPL-3\.0/);
+  assert.match(html, /does not embed or invoke CPython/);
+  assert.match(html, /about 600–700 MiB/);
+  assert.match(html, /pnpm bootstrap/);
+  assert.match(html, /system GMP installation is not\s+required/);
   assert.match(html, /--install-jupyter-kernel/);
   for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks", "performance-results", "performance-bars", "performance-table-body", "performance-warning", "performance-command"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });

@@ -17,6 +17,9 @@
 > for computation, and the JavaScript ecosystem to make that mathematics
 > portable, interactive, and accessible everywhere.**
 
+Sage.js is a new implementation of Python and Sage semantics on JavaScript and
+Node. It does not embed or invoke the official CPython interpreter.
+
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
 [![Implementation dashboard](https://img.shields.io/badge/dashboard-capabilities%20%26%20roadmap-0d9488)](https://sagemathinc.github.io/sagejs/)
 
@@ -34,15 +37,29 @@ Apple Silicon macOS. On macOS and Linux, the checksum-verifying installer is:
 curl -fsSL https://sagejs.org/install.sh | sh
 ```
 
-It installs into `~/.local/bin` by default. Set `SAGEJS_INSTALL_DIR` to choose
-another directory or `SAGEJS_VERSION=0.3.0` to pin a release. The archives
+It installs into `~/.local/bin` by default and, when necessary, adds that
+directory to the current user's shell startup file. Restart the shell (or
+source the file named by the installer) after a first installation. When run
+as root it instead installs system-wide into `/usr/local/bin`; set
+`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.3.0` to
+pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
 compiler, package manager, or source checkout is needed on the target machine.
 
+Current downloads are roughly 92–143 MiB and the two installed executables use
+about 600–700 MiB together. Embedded Python/Sage modules execute directly from
+the SEA; they are not copied into a permanent installation tree. Native addons
+are extracted on demand under the operating system's temporary directory in a
+`sagejs-sea-*` directory (about 44 MiB for the core mathematics addons and
+under roughly 80 MiB when all current optional addons are needed) and removed
+when the process exits normally.
+
 After extracting manually, run `./sagejs` on macOS/Linux or `sagejs.exe` on
 Windows. Each archive has a neighboring `.sha256` file. Linux releases are
-built on Ubuntu 24.04. Windows executables are intended for ordinary Windows
+built on Ubuntu 24.04; a minimal Debian/Ubuntu image needs `curl`, `xz-utils`,
+and `libatomic1` for the one-command installer and official Node-based
+executable. Windows executables are intended for ordinary Windows
 10/11 x64 systems; Authenticode provisioning is still in progress, so the
 0.3.0 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
@@ -73,6 +90,12 @@ non-Node prerequisites are installed by:
 ```sh
 sudo apt-get install build-essential cmake git python3 m4 xz-utils
 ```
+
+For a conservative cold-build budget, allow 15–30 minutes on Linux or Apple
+Silicon macOS and 30–60 minutes on Windows, and roughly 6–8 GB of working disk.
+Published native dependency bundles usually make subsequent builds much
+faster. These figures include the checkout, package store, build trees, and
+standalone executables; the finished standalone installation is much smaller.
 
 A system GMP installation is **not** required. By default, bootstrap downloads
 a content-addressed static dependency bundle for the current supported target,
@@ -292,13 +315,13 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs
+npm install --global @sagemath/sagejs@0.3.0
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global @sagemath/sagejs
+pnpm add --global --allow-build=zeromq @sagemath/sagejs@0.3.0
 ```
 
 The public package keeps the Sage.js library and embedding APIs, while its
@@ -359,11 +382,18 @@ const { createSage } = require("@sagemath/sagejs/kernel");
 const sage = await createSage();
 sage.on("stdout", (text) => process.stdout.write(text));
 
-const result = await sage.evaluate("factor(2^127 - 1)");
+const result = await sage.evaluate("sum([n^2 for n in [1..100]])");
 console.log(result.repr);
 
 await sage.close();
 ```
+
+The 0.3.0 npm embedding API includes the compiler, Sage/Python runtime, and
+pure-JavaScript libraries. The installed `sagejs` command uses the full native
+mathematics executable, but this first alpha does not yet expose its bundled
+native addons through `createSage()`; native-backed embedding is planned for a
+follow-up release. With pnpm 11, add `--allow-build=zeromq` to the install
+command so pnpm can install the Jupyter transport dependency.
 
 Each session runs in an isolated worker. Definitions persist between
 evaluations, while interruption, timeouts, and reset reliably replace the

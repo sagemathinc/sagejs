@@ -2,7 +2,6 @@
 set -eu
 
 repository="sagemathinc/sagejs"
-install_directory="${SAGEJS_INSTALL_DIR:-${HOME}/.local/bin}"
 requested_version="${SAGEJS_VERSION:-latest}"
 
 fail() {
@@ -11,6 +10,18 @@ fail() {
 }
 
 command -v curl >/dev/null 2>&1 || fail "curl is required"
+
+install_directory_was_default=0
+if [ -n "${SAGEJS_INSTALL_DIR:-}" ]; then
+  install_directory=$SAGEJS_INSTALL_DIR
+elif [ "$(id -u)" -eq 0 ]; then
+  install_directory=/usr/local/bin
+  install_directory_was_default=1
+else
+  [ -n "${HOME:-}" ] || fail "HOME is not set; set SAGEJS_INSTALL_DIR explicitly"
+  install_directory="$HOME/.local/bin"
+  install_directory_was_default=1
+fi
 
 if [ -n "${SAGEJS_INSTALL_PLATFORM:-}" ]; then
   platform="$SAGEJS_INSTALL_PLATFORM"
@@ -26,7 +37,11 @@ else
 fi
 
 case "$platform" in
-  linux-x64|linux-arm64) archive="sagejs-$platform.tar.xz" ;;
+  linux-x64|linux-arm64)
+    command -v tar >/dev/null 2>&1 || fail "tar is required"
+    command -v xz >/dev/null 2>&1 || fail "xz is required (the Debian/Ubuntu package is xz-utils)"
+    archive="sagejs-$platform.tar.xz"
+    ;;
   macos-arm64) archive="sagejs-$platform.zip" ;;
   *) fail "unsupported platform override $platform" ;;
 esac
@@ -79,17 +94,58 @@ esac
 distribution="$temporary_directory/sagejs-$platform"
 [ -x "$distribution/sagejs" ] || fail "archive does not contain sagejs"
 [ -x "$distribution/sagepython" ] || fail "archive does not contain sagepython"
-mkdir -p "$install_directory"
+if ! installed_version=$("$distribution/sagejs" --version 2>&1); then
+  case "$installed_version" in
+    *libatomic.so.1*)
+      fail "the Linux runtime needs libatomic.so.1; on Debian/Ubuntu run: sudo apt-get install libatomic1"
+      ;;
+    *) fail "the downloaded sagejs executable could not run: $installed_version" ;;
+  esac
+fi
+if [ ! -d "$install_directory" ]; then
+  install -d -m 755 "$install_directory"
+fi
 for executable in sagejs sagepython; do
   temporary_target="$install_directory/.$executable.tmp.$$"
   install -m 755 "$distribution/$executable" "$temporary_target"
   mv -f "$temporary_target" "$install_directory/$executable"
 done
 
-installed_version=$($install_directory/sagejs --version)
 echo "Installed $installed_version in $install_directory"
 case ":${PATH}:" in
   *:"$install_directory":*) ;;
-  *) echo "Add $install_directory to PATH to run sagejs." ;;
+  *)
+    if [ "$install_directory_was_default" -eq 1 ] &&
+       [ "$(id -u)" -ne 0 ] &&
+       [ "$install_directory" = "$HOME/.local/bin" ]; then
+      shell_name=${SHELL##*/}
+      case "$shell_name" in
+        bash) profile="$HOME/.bashrc" ;;
+        zsh) profile="$HOME/.zshrc" ;;
+        fish) profile="$HOME/.config/fish/config.fish" ;;
+        *) profile="$HOME/.profile" ;;
+      esac
+      mkdir -p "$(dirname "$profile")"
+      touch "$profile"
+      if [ "$shell_name" = fish ]; then
+        # shellcheck disable=SC2016
+        path_line='fish_add_path "$HOME/.local/bin"'
+      else
+        # shellcheck disable=SC2016
+        path_line='export PATH="$HOME/.local/bin:$PATH"'
+      fi
+      if ! grep -Fqx "$path_line" "$profile"; then
+        {
+          echo
+          echo "# Added by the Sage.js installer"
+          echo "$path_line"
+        } >> "$profile"
+      fi
+      echo "Added $install_directory to PATH in $profile."
+      echo "Restart your shell or run: . $profile"
+    else
+      echo "Add $install_directory to PATH to run sagejs."
+    fi
+    ;;
 esac
 echo "To use Jupyter, run: sagejs --install-jupyter-kernel"
