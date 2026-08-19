@@ -1095,7 +1095,16 @@ def splitting_records(
     *,
     include_lattices: bool = False,
 ) -> Iterator[dict[str, Any]]:
-    """Stream compact splitting records for primes in `[start, stop)`."""
+    """Stream compact splitting records for primes in `[start, stop)`.
+
+    The default coefficient path needs only the exact `(e,f)` data.  At every
+    prime not dividing the equation-order index, Dedekind--Kummer obtains that
+    data directly from one modular factorization; constructing and
+    independently replaying all HNF prime-ideal lattices would throw away the
+    main advantage of the compact stream.  Index-dividing primes retain the
+    complete certified finite-algebra decomposition.  Requests for lattices
+    likewise use the complete public decomposition at every prime.
+    """
     lower = max(2, int(runtime.integer_bigint(start)))
     upper = int(runtime.integer_bigint(stop))
     if upper < lower:
@@ -1106,11 +1115,45 @@ def splitting_records(
         raise ValueError(
             "a single splitting-record interval is limited to length 1000000"
         )
-    for candidate in range(lower, upper):
-        if sage.is_prime(candidate):
+    if not order.is_maximal():
+        raise ValueError("splitting records require a certified maximal order")
+
+    field = order.number_field()
+    polynomial = _maximal.integral_equation_polynomial(field)
+    equation_discriminant = abs(int(polynomial.discriminant()))
+    order_discriminant = abs(int(order.discriminant()))
+    if order_discriminant == 0 or equation_discriminant % order_discriminant:
+        raise ArithmeticError("equation and maximal-order discriminants disagree")
+    index_squared = equation_discriminant // order_discriminant
+
+    for prime_value in _nf_global("prime_range")(lower, upper):
+        candidate = int(prime_value)
+        if include_lattices or index_squared % candidate == 0:
             yield factor_rational_prime(order, candidate).splitting_record(
                 include_lattices
             )
+            continue
+
+        residue_ring = _nf_global("PolynomialRing")(
+            _nf_global("GF")(candidate),
+            polynomial._parent.variable_name(),
+        )
+        modular_factors = residue_ring(polynomial).factor()
+        factors = [
+            {
+                "e": int(multiplicity),
+                "f": int(factor.degree()),
+            }
+            for factor, multiplicity in modular_factors
+        ]
+        factors.sort(key=lambda factor: (factor["f"], factor["e"]))
+        if sum(factor["e"] * factor["f"] for factor in factors) != order.degree():
+            raise ArithmeticError("compact splitting data has the wrong local degree")
+        yield {
+            "version": 1,
+            "prime": candidate,
+            "factors": factors,
+        }
 
 
 def _encode_rows(rows: list[list[Any]]) -> list[list[list[int]]]:

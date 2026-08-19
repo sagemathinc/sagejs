@@ -282,6 +282,7 @@ const integration = [
   "test/number-field-analytic-zeta-reference.cjs",
   "test/number-field-foundations.cjs",
   "test/number-field-foundations-oracle.cjs",
+  "test/number-field-foundations-performance.cjs",
   "test/number-field-global-arithmetic.cjs",
   "test/number-field-ideal-serialization.cjs",
   "test/number-field-zeta-public.cjs",

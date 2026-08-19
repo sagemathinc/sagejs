@@ -1,0 +1,52 @@
+{
+  "schema": "sagejs.number-fields/foundations-compact-path-baseline-v1",
+  "source": {
+    "revision": "9409f1cc35cce3fcae03af4d059d631868c2b10f",
+    "branch": "ell-lseries",
+    "clean": true
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "node": "v26.7.0"
+  },
+  "policy": {
+    "process": "one warmed persistent Sage.js process",
+    "field": "x^3-x-1",
+    "timed_boundary": "preconstructed maximal order through compact stream or exact coefficient result",
+    "samples": 1,
+    "note": "This pre-optimization witness was captured before the digest-verifying runner existed; every result retained its count, local-degree sum, or coefficient checksum. Competitive claims use the post-change multi-sample report."
+  },
+  "records": [
+    {
+      "operation": "prime-stream",
+      "bound": 100,
+      "prime_count": 25,
+      "local_degree_sum": 75,
+      "timing_ms": 8176.908016204834
+    },
+    {
+      "operation": "prime-stream",
+      "bound": 250,
+      "prime_count": 53,
+      "local_degree_sum": 159,
+      "timing_ms": 20273.95987510681
+    },
+    {
+      "operation": "coefficients",
+      "bound": 100,
+      "coefficient_count": 100,
+      "coefficient_sum": 35,
+      "timing_ms": 8065.840482711792
+    },
+    {
+      "operation": "coefficients",
+      "bound": 250,
+      "coefficient_count": 250,
+      "coefficient_sum": 90,
+      "timing_ms": 20822.356462478638
+    }
+  ]
+}
