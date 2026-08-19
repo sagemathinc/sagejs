@@ -190,6 +190,11 @@ class ClassGroupCertificate:
 
     def verify(self, max_elements: int = 100_000) -> bool:
         if self.arithmetic_certificate is not None:
+            if (
+                type(self.arithmetic_certificate)
+                is not MinkowskiClassNumberOneCertificate
+            ):
+                return False
             if not self.arithmetic_certificate.verify():
                 return False
         expected = 1

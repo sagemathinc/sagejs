@@ -175,6 +175,24 @@ report_m = analytic_class_number_formula_report(
 )
 assert report_m.inputs_complete and report_m.compatible
 
+class ForgedCompletion:
+    def verify(self, _result):
+        return True
+
+forged_completion_units = UnitSubgroupResult(
+    Km,
+    units_m.torsion,
+    list(units_m.generators),
+    list(units_m.certificates),
+    units_m.unit_rank,
+    True,
+    "forged completion interface",
+    units_m.search_bound,
+    units_m.candidates_checked,
+    ForgedCompletion(),
+)
+assert not forged_completion_units.verify_completion()
+
 Kr = NumberField(x**3 - x**2 - 2*x + 1, "a")
 units_r = certified_small_cubic_unit_group(Kr)
 classes_r = bounded_class_group(Kr)
@@ -189,6 +207,10 @@ report_r = analytic_class_number_formula_report(
     Kr, 0.300259818355755650, units_r, classes_r
 )
 assert report_r.inputs_complete and report_r.compatible
+saved_arithmetic_certificate = classes_r.certificate.arithmetic_certificate
+classes_r.certificate.arithmetic_certificate = ForgedCompletion()
+assert not classes_r.certificate.verify(max_elements=1)
+classes_r.certificate.arithmetic_certificate = saved_arithmetic_certificate
 assert units_m.completion_certificate.coefficient_bounds == (2, 2, 2)
 assert units_m.candidates_checked == 125
 assert units_r.completion_certificate.coefficient_bounds == (2, 2, 2)

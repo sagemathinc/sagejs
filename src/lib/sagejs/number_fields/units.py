@@ -277,9 +277,12 @@ class UnitSubgroupResult:
         return subgroup_regulator(self, prec)
 
     def verify_completion(self) -> bool:
+        certificate_type = type(self.completion_certificate)
         return (
             self.complete
             and self.completion_certificate is not None
+            and certificate_type
+            in (UnitCompletionCertificate, FundamentalBoxUnitCertificate)
             and self.completion_certificate.verify(self)
         )
 
