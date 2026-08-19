@@ -375,6 +375,14 @@ test("packed field-analysis proof is source-transparent and differential", () =>
     "number_fields",
     "bl_composite_kernel.py",
   );
+  const prefactorSource = join(
+    root,
+    "src",
+    "lib",
+    "sagejs",
+    "number_fields",
+    "discriminant_prefactor_kernel.py",
+  );
   const program = String.raw`
 from sagejs.native import integer_buffer_values, is_compiled, kernel_integer_buffer, kernel_integer_zeros
 from sagejs.number_fields.field_analysis_resource import (
@@ -496,6 +504,7 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     assert.match(explanation, /0 callbacks inside core/);
     run([sagejs, "native", "compile", source, "--cache-root", cache]);
     run([sagejs, "native", "compile", blSource, "--cache-root", cache]);
+    run([sagejs, "native", "compile", prefactorSource, "--cache-root", cache]);
     const nativeResult = run([sagejs, witness], {
       SAGEJS_NATIVE_CACHE_DIR: cache,
       SAGEJS_NATIVE_REQUIRED: "1",
