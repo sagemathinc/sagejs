@@ -31,7 +31,7 @@ contains ready-to-run archives for Linux x64, Linux arm64, Windows x64, and
 Apple Silicon macOS. On macOS and Linux, the checksum-verifying installer is:
 
 ```sh
-curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh
+curl -fsSL https://sagejs.org/install.sh | sh
 ```
 
 It installs into `~/.local/bin` by default. Set `SAGEJS_INSTALL_DIR` to choose

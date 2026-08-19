@@ -11,6 +11,10 @@ const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json
 const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
 const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
+const pagesWorkflow = fs.readFileSync(
+  path.join(root, ".github/workflows/pages.yml"),
+  "utf8",
+);
 const stdlibCoverage = JSON.parse(
   fs.readFileSync(path.join(website, "coverage/python-stdlib.json"), "utf8"),
 );
@@ -203,7 +207,8 @@ test("benchmark catalog inventories existing suites and future research cases", 
 test("dashboard covers the three questions and both install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
-  assert.match(html, /releases\/latest\/download\/install\.sh/);
+  assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
+  assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
   assert.match(html, /Early alpha · v0\.3\.0/);
   assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /--install-jupyter-kernel/);
