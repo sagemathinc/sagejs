@@ -111,6 +111,8 @@ assert.equal(
 
 const performance = String.raw`
 from time import perf_counter
+from sagejs.kernels.matrix.dense_binary_m4ri import m4ri_dense_matrix_set_block
+from sagejs.native import execution_mode
 
 
 def minimum_time(function, repetitions=5):
@@ -152,16 +154,24 @@ for prime in [2, 97]:
         ],
     )
     assert actual_block == block
-    print(prime, row_seconds, column_seconds, block_seconds)
+    block_mode = execution_mode(m4ri_dense_matrix_set_block) if prime == 2 else "packed"
+    print(prime, row_seconds, column_seconds, block_seconds, block_mode)
 `;
 
 for (const line of runSage(performance).split("\n")) {
-  const [prime, row, column, block] = line.split(/\s+/).map(Number);
+  const [primeText, rowText, columnText, blockText, blockMode] =
+    line.split(/\s+/);
+  const [prime, row, column, block] =
+    [primeText, rowText, columnText, blockText].map(Number);
   // These deliberately loose ceilings catch a return to one host crossing per
   // entry without making shared CI load part of the API contract.
   assert.ok(row < 0.01, `GF(${prime}) set_row took ${row}s`);
   assert.ok(column < 0.01, `GF(${prime}) set_column took ${column}s`);
-  assert.ok(block < 0.02, `GF(${prime}) set_block took ${block}s`);
+  // The portable release pack intentionally excludes M4RI until its native
+  // dependency is supported on Windows. Its exact dynamic fallback performs
+  // the same checked mutation but cannot meet the compiled bulk-kernel gate.
+  const blockLimit = prime === 2 && blockMode === "dynamic" ? 0.2 : 0.02;
+  assert.ok(block < blockLimit, `GF(${prime}) set_block took ${block}s`);
 }
 
 console.log("dense prime batch-mutation tests passed");

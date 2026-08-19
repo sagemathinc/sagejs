@@ -40,7 +40,9 @@ test(
     assert.equal(sample.certified, true);
     assert.equal(sample.calls.authenticated_field_analysis, 1);
     assert.equal(sample.calls.native_field_analysis_projection, 1);
-    assert.equal(sample.calls.order_materialization, 3);
+    // The fused authenticated projection now materializes the accepted order
+    // once instead of reconstructing it at each certification boundary.
+    assert.equal(sample.calls.order_materialization, 1);
     assert.equal(sample.calls.global_certification, 1);
     assert.equal(sample.trace.enabled, false);
     assert.equal(report.trace_control, null);

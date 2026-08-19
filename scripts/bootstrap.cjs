@@ -201,6 +201,11 @@ function bootstrapBuildPlan() {
     },
     {
       phase: "production",
+      command: "pnpm",
+      arguments: ["run", "python:precompile:run"],
+    },
+    {
+      phase: "production",
       command: "node",
       arguments: ["scripts/build-production-native-kernels.cjs"],
     },
@@ -242,7 +247,7 @@ function main(inputArguments = process.argv.slice(2)) {
   );
   executeBuildPhase(buildPlan, "native");
 
-  step(6, "Publishing production native kernels");
+  step(6, "Precompiling Python modules and publishing production kernels");
   executeBuildPhase(buildPlan, "production");
 
   if (!withoutSea) {

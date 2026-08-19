@@ -232,6 +232,16 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(validationCommandsForFiles(["test/graphics.cjs"]), [
     ["pnpm", "test:integration"],
   ]);
+  assert.deepEqual(
+    validationCommandsForFiles([
+      "scripts/precompiled-python-packages.json",
+      "src/lib/sagejs/number_fields/local_parallel_worker.py",
+    ]),
+    [
+      ["pnpm", "build"],
+      ["pnpm", "python:precompile:run"],
+    ],
+  );
 });
 
 test("task contracts enforce source-transparent compiler policy", () => {
