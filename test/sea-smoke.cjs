@@ -3,6 +3,8 @@
 const assert = require("node:assert/strict");
 const {
   chmodSync,
+  copyFileSync,
+  mkdirSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -16,13 +18,13 @@ const { testJavaScriptSea } = require("./helpers/javascript-sea.cjs");
 
 const root = join(__dirname, "..");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
-const pythonExecutable = join(
+const builtPythonExecutable = join(
   root,
   "build",
   "sea",
   `sagepython${executableSuffix}`,
 );
-const mathExecutable = join(
+const builtMathExecutable = join(
   root,
   "build",
   "sea",
@@ -31,6 +33,15 @@ const mathExecutable = join(
 const pythonOnly = process.argv.includes("--python-only");
 const densePrimeOnly = process.argv.includes("--dense-prime-only");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
+const relocatedDirectory = join(temporaryDirectory, "relocated");
+mkdirSync(relocatedDirectory);
+const pythonExecutable = join(
+  relocatedDirectory,
+  `sagepython${executableSuffix}`,
+);
+const mathExecutable = join(relocatedDirectory, `sagejs${executableSuffix}`);
+copyFileSync(builtPythonExecutable, pythonExecutable);
+if (!pythonOnly) copyFileSync(builtMathExecutable, mathExecutable);
 
 function run(executable, filename, extraArguments = []) {
   const result = spawnSync(executable, [...extraArguments, filename], {

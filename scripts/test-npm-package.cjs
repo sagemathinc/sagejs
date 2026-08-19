@@ -15,6 +15,12 @@ const nativeArchive = resolve(
 );
 const temporaryRoot = mkdtempSync(join(tmpdir(), "sagejs-npm-test-"));
 try {
+  const rootContents = execFileSync("tar", ["-tzf", rootArchive], {
+    encoding: "utf8",
+  });
+  assert.doesNotMatch(rootContents, /\.sagejs-native-kernels\//);
+  assert.doesNotMatch(rootContents, /package\/dist\/native-kernels\//);
+
   const manifest = {
     private: true,
     dependencies: {

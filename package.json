@@ -82,7 +82,9 @@
     "install.sh",
     "index.cjs",
     "!**/__pycache__",
-    "!**/*.py[cod]"
+    "!**/*.py[cod]",
+    "!src/**/.sagejs-native-kernels",
+    "!dist/native-kernels"
   ],
   "engines": {
     "node": ">=22.22.2"

@@ -16,6 +16,8 @@ const ROOT = existsSync(join(TOOL_PARENT, "src"))
   ? TOOL_PARENT
   : join(TOOL_PARENT, "..");
 const LIBRARY_DIRECTORY = join(ROOT, "src", "lib");
+const EMBEDDED_STANDALONE_LIBRARY =
+  globalThis.__sagejs_embedded_standalone_library__;
 
 function sourceFilenameForModule(name) {
   const base = join(LIBRARY_DIRECTORY, ...name.split("."));
@@ -116,11 +118,12 @@ function baselibLazyModules(filename) {
 }
 
 const BUILTINS_STANDALONE_MODULES = Object.freeze(
-  baselibLazyModules("builtins.py"),
+  EMBEDDED_STANDALONE_LIBRARY?.builtins ??
+    baselibLazyModules("builtins.py"),
 );
 
 const MATRIX_STANDALONE_MODULES = Object.freeze(
-  baselibLazyModules("matrix.py"),
+  EMBEDDED_STANDALONE_LIBRARY?.matrix ?? baselibLazyModules("matrix.py"),
 );
 
 const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
@@ -144,7 +147,8 @@ const BASELIB_STANDALONE_MODULES = Object.freeze([
 // hashes; this avoids reparsing the same library graph for every explicit
 // standalone compilation without maintaining a second module list by hand.
 const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze(
-  moduleClosure(BASELIB_STANDALONE_MODULES),
+  EMBEDDED_STANDALONE_LIBRARY?.cache ??
+    moduleClosure(BASELIB_STANDALONE_MODULES),
 );
 
 function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {

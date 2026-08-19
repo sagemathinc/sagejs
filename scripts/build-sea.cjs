@@ -17,6 +17,11 @@ const { createHash } = require("crypto");
 const { execFileSync, spawnSync } = require("child_process");
 const { tmpdir } = require("os");
 const { dirname, join, relative } = require("path");
+const {
+  BASELIB_STANDALONE_CACHE_MODULES,
+  BUILTINS_STANDALONE_MODULES,
+  MATRIX_STANDALONE_MODULES,
+} = require("../tools/standalone-library.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -68,6 +73,14 @@ const productionPackAddon = join(
   "pack",
   "sagejs_native_kernel_pack.node",
 );
+
+const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
+  {
+    builtins: BUILTINS_STANDALONE_MODULES,
+    matrix: MATRIX_STANDALONE_MODULES,
+    cache: BASELIB_STANDALONE_CACHE_MODULES,
+  },
+)};`;
 
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
@@ -563,6 +576,7 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
+  banner: { js: embeddedStandaloneLibraryBanner },
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
@@ -575,6 +589,7 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
+  banner: { js: embeddedStandaloneLibraryBanner },
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
@@ -587,6 +602,7 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
+  banner: { js: embeddedStandaloneLibraryBanner },
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
