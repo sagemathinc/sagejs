@@ -2,20 +2,51 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
 
 const root = join(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
+const combineSource = process.env.SAGEJS_GLOBAL_ARITHMETIC_COMBINED === "1";
+const sagejs = combineSource
+  ? join(root, "build", "sea", process.platform === "win32" ? "sagejs.exe" : "sagejs")
+  : join(root, "bin", "sagejs");
+
+function combinedSource(source) {
+  const directory = join(root, "src", "lib", "sagejs", "number_fields");
+  const embeddings = readFileSync(join(directory, "embeddings.py"), "utf8");
+  const units = readFileSync(join(directory, "units.py"), "utf8")
+    .replace("from __future__ import annotations\n", "")
+    .replace(/from sagejs\.number_fields\.embeddings import \([\s\S]*?\)\n\n/, "");
+  const classGroups = readFileSync(join(directory, "class_groups.py"), "utf8")
+    .replace("from __future__ import annotations\n", "")
+    .replace(/from sagejs\.number_fields\.embeddings import \([\s\S]*?\)\n/, "")
+    .replace("from sagejs.number_fields.units import UnitSubgroupResult\n", "");
+  const body = source
+    .replace(/from sagejs\.number_fields\.embeddings import[^\n]*\n/, "")
+    .replace(/from sagejs\.number_fields\.units import[^\n]*\n/, "")
+    .replace(/from sagejs\.number_fields\.class_groups import[^\n]*\n/, "");
+  return `${embeddings}\n${units}\n${classGroups}\n${body}`;
+}
 
 function run(source) {
-  const result = spawnSync(sagejs, ["--python", "-"], {
-    cwd: root,
-    encoding: "utf8",
-    input: source,
-  });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return result.stdout.trim();
+  const directory = combineSource
+    ? mkdtempSync(join(tmpdir(), "sagejs-global-arithmetic-"))
+    : null;
+  try {
+    const filename = directory === null ? "-" : join(directory, "test.py");
+    if (directory !== null) writeFileSync(filename, combinedSource(source));
+    const result = spawnSync(sagejs, ["--python", filename], {
+      cwd: root,
+      encoding: "utf8",
+      input: directory === null ? source : undefined,
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return result.stdout.trim();
+  } finally {
+    if (directory !== null) rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 test("global arithmetic internals preserve exact and incomplete proof states", () => {
