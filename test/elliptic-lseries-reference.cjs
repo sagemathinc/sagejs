@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const referenceTimeout = 120_000;
 
 test("split-Mellin reference values agree with raw and completed oracles", async () => {
@@ -112,7 +113,7 @@ test("512-bit GL64 reference retains accuracy beyond the old GL16 floor", () => 
     "assert result200['quadrature_rule_order'] == 64",
     "print('ok')",
   ].join("\n");
-  const python = spawnSync("python3", ["-c", source], {
+  const python = spawnSync(pythonExecutable(), ["-c", source], {
     encoding: "utf8",
     timeout: referenceTimeout,
   });
@@ -171,17 +172,25 @@ test("dispatcher retries native coefficients and preserves per-point errors", as
         "          'raw_conversion_magnitude':'4', 'known_error_target_met':True}",
         "        return {'status':'ok','known_error_target_met':True,'precision_bits':precision,",
         "          'work_precision_bits':precision+40,'cutoff':3,'required_cutoff':3,",
-        "          'grid_points':12,'coefficient_terms':20,'values':[value]} ",
+        "          'grid_points':12,'coefficient_terms':20,'values':[value for _ in points]} ",
         "E = MockCurve()",
         'R = M.lseries_values(E, [["1","1"]], 1, 53, algorithm="native")',
+        "E2 = MockCurve()",
+        "limits = M.ReferenceLseriesLimits(maximum_batch_points=2)",
+        'P = [["1",str(k)] for k in range(1,6)]',
+        'B = M.lseries_values(E2, P, 1, 53, algorithm="native", limits=limits)',
         "[R['algorithm'] == 'native', R['coefficient_prefix_extensions'] == 1,",
-        " E.calls == 3, R['point_diagnostics'][0]['raw_accuracy_bits'] == 105,",
+        " E.calls == 4, R['point_diagnostics'][0]['raw_accuracy_bits'] == 105,",
         " R['analytic_error_bound'] != '0',",
-        " R['conversion_amplification_bound'] == '4.0', R['refinement_stable']]",
+        " R['conversion_amplification_bound'] == '4.0', R['refinement_stable'],",
+        " len(B['values']) == 5, E2.calls == 12, len(B['refinement_runs']) == 3]",
       ].join("\n"),
       { timeout: 30_000 },
     );
-    assert.equal(result.repr, "[True, True, True, True, True, True, True]");
+    assert.equal(
+      result.repr,
+      "[True, True, True, True, True, True, True, True, True, True]",
+    );
   } finally {
     await session.close();
   }

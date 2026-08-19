@@ -33,10 +33,12 @@ from mpmath import mp
 
 __all__ = [
     "CoefficientPrefix",
+    "DirectLseriesPlan",
     "ReferenceLseriesLimits",
     "ReferenceLseriesNumericalIndeterminacyError",
     "ReferenceLseriesResourceError",
     "lseries_values",
+    "plan_direct_lseries",
     "plan_reference_lseries",
     "reference_incomplete_gamma_value",
     "reference_lseries_value",
@@ -97,6 +99,7 @@ class ReferenceLseriesLimits:
         maximum_coefficients: int = 5_000_000,
         maximum_grid_points: int = 100_000,
         maximum_coefficient_terms: int = 100_000_000,
+        maximum_batch_points: int = 10_000,
     ) -> None:
         self.maximum_precision_bits = maximum_precision_bits
         self.maximum_points = maximum_points
@@ -105,6 +108,19 @@ class ReferenceLseriesLimits:
         self.maximum_coefficients = maximum_coefficients
         self.maximum_grid_points = maximum_grid_points
         self.maximum_coefficient_terms = maximum_coefficient_terms
+        self.maximum_batch_points = maximum_batch_points
+
+
+class DirectLseriesPlan(TypedDict):
+    """A proved absolute-convergence plan for one point with `Re(s)>2`."""
+
+    precision_bits: int
+    work_precision_bits: int
+    cutoff: int
+    real_part: str
+    tail_bound: str
+    tail_bound_log: str
+    rigorous_tail: bool
 
 
 class CoefficientPrefix:
@@ -207,6 +223,7 @@ class ReferenceLseriesBatchResult(TypedDict):
     refinement_difference: str
     refinement_tolerance: str
     refinement_runs: list[Any]
+    conjugation_reconstructed: int
     refinement_stable: bool
     rigorous: bool
     analytic_error_status: str
@@ -259,6 +276,7 @@ def _internal_refinement_limits(
         maximum_coefficients=limits.maximum_coefficients,
         maximum_grid_points=limits.maximum_grid_points,
         maximum_coefficient_terms=limits.maximum_coefficient_terms,
+        maximum_batch_points=limits.maximum_batch_points,
     )
 
 
@@ -300,6 +318,95 @@ def _decimal_digits(bits: int) -> int:
 
 def _number_string(value: Any, bits: int) -> str:
     return str(mp.nstr(value, n=_decimal_digits(bits), strip_zeros=False))
+
+
+def _negated_decimal_string(value: str) -> str:
+    """Negate one finite decimal string without reparsing its precision."""
+    if value.startswith("-"):
+        return value[1:]
+    if mp.mpf(value) == 0:
+        return value
+    return "-" + value
+
+
+def _direct_tail_log(real_part: Any, cutoff: int) -> Any:
+    """Return `log(sum(n^(1-sigma), n>K))` via the integral bound."""
+    exponent = real_part - 2
+    return -exponent * mp.log(cutoff) - mp.log(exponent)
+
+
+def plan_direct_lseries(
+    point: Any,
+    precision_bits: int = 53,
+    *,
+    maximum_coefficients: int = 5_000_000,
+) -> DirectLseriesPlan | None:
+    """Plan direct Dirichlet-series evaluation using `|a_n| <= n`.
+
+    For `sigma=Re(s)>2`,
+
+    `sum_{n>K} |a_n*n^(-s)| <= K^(2-sigma)/(sigma-2)`.
+
+    `None` means that this deliberately conservative bound cannot meet the
+    requested target within the supplied coefficient limit.  The caller may
+    then use the functional-equation/Mellin route.
+    """
+    precision_bits = int(precision_bits)
+    if precision_bits < 16:
+        raise ValueError("precision must be at least 16 bits")
+    if maximum_coefficients < 1:
+        raise ValueError("maximum_coefficients must be positive")
+    old_precision = mp.prec
+    mp.prec = max(96, precision_bits + 48)
+    try:
+        prepared = _coerce_point(point)
+        real_part = prepared.real
+        if real_part <= 2:
+            return None
+        # The explicit coefficient tail is placed well below the public
+        # target so that arithmetic refinement, rather than truncation, is the
+        # limiting numerical check.
+        tail_bits = precision_bits + 20
+        exponent = real_part - 2
+        logarithmic_cutoff = (tail_bits * mp.log(2) - mp.log(exponent)) / exponent
+        if logarithmic_cutoff > mp.log(maximum_coefficients):
+            return None
+        cutoff = max(1, int(mp.ceil(mp.exp(logarithmic_cutoff))))
+        while cutoff <= maximum_coefficients and _direct_tail_log(
+            real_part, cutoff
+        ) > -tail_bits * mp.log(2):
+            cutoff += 1
+        if cutoff > maximum_coefficients:
+            return None
+        tail_log = _direct_tail_log(real_part, cutoff)
+        return {
+            "precision_bits": precision_bits,
+            "work_precision_bits": precision_bits + 32,
+            "cutoff": cutoff,
+            "real_part": _number_string(real_part, precision_bits),
+            "tail_bound": _number_string(mp.exp(tail_log), precision_bits),
+            "tail_bound_log": _number_string(tail_log, precision_bits),
+            "rigorous_tail": True,
+        }
+    finally:
+        mp.prec = old_precision
+
+
+def _direct_series_sum(
+    coefficients: list[int], point: Any, cutoff: int, work_precision_bits: int
+) -> Any:
+    """Evaluate a finite Dirichlet prefix at explicit working precision."""
+    old_precision = mp.prec
+    mp.prec = work_precision_bits
+    try:
+        total = mp.mpc(0)
+        for index in range(1, cutoff + 1):
+            coefficient = coefficients[index]
+            if coefficient != 0:
+                total += coefficient * mp.exp(-point * mp.log(index))
+        return +total
+    finally:
+        mp.prec = old_precision
 
 
 def _bound_string(logarithm: float) -> str:
@@ -934,6 +1041,7 @@ def reference_lseries_values(
             "refinement_difference": _number_string(difference, precision_bits),
             "refinement_tolerance": _number_string(tolerance, precision_bits),
             "refinement_runs": refinement_runs,
+            "conjugation_reconstructed": 0,
             "refinement_stable": stable,
             "rigorous": False,
             "analytic_error_status": "coefficient_grid_and_upper_omission_only",
@@ -975,6 +1083,274 @@ def _normalized_point_pairs(points: list[Any], precision_bits: int) -> list[list
         ]
         for point in points
     ]
+
+
+def _direct_lseries_values(
+    curve: Any,
+    points: list[Any],
+    conductor: int,
+    precision_bits: int,
+    prefix: CoefficientPrefix,
+    limits: ReferenceLseriesLimits,
+    algorithm: str,
+) -> ReferenceLseriesBatchResult:
+    """Evaluate a batch in the absolutely convergent half-plane."""
+    first_plans: list[DirectLseriesPlan] = []
+    final_plans: list[DirectLseriesPlan] = []
+    for point in points:
+        first = plan_direct_lseries(
+            point,
+            precision_bits,
+            maximum_coefficients=limits.maximum_coefficients,
+        )
+        final = plan_direct_lseries(
+            point,
+            precision_bits + 32,
+            maximum_coefficients=limits.maximum_coefficients,
+        )
+        if first is None or final is None:
+            raise ReferenceLseriesResourceError(
+                "direct L-series convergence exceeds the coefficient limit",
+                {
+                    "point": [str(point.real), str(point.imag)],
+                    "precision_bits": precision_bits,
+                    "maximum_coefficients": limits.maximum_coefficients,
+                },
+            )
+        first_plans.append(first)
+        final_plans.append(final)
+
+    maximum_cutoff = max(plan["cutoff"] for plan in final_plans)
+    coefficients = prefix.through(maximum_cutoff)
+    first_raw = []
+    first_completed = []
+    final_raw = []
+    final_completed = []
+    final_native_entries: list[Any] = []
+    native_provider = (
+        None
+        if algorithm == "reference"
+        else getattr(curve, "_lseries_direct_values_native", None)
+    )
+    native_used = False
+    if native_provider is not None:
+        normalized = _normalized_point_pairs(points, precision_bits + 64)
+        try:
+            first_native = native_provider(
+                coefficients,
+                normalized,
+                [plan["cutoff"] for plan in first_plans],
+                precision_bits,
+            )
+            final_native = native_provider(
+                coefficients,
+                normalized,
+                [plan["cutoff"] for plan in final_plans],
+                precision_bits + 32,
+            )
+            first_native_entries = list(
+                _mapping_value(first_native, "values", default=[])
+            )
+            final_native_entries = list(
+                _mapping_value(final_native, "values", default=[])
+            )
+            if len(first_native_entries) != len(points) or len(
+                final_native_entries
+            ) != len(points):
+                raise ReferenceLseriesNumericalIndeterminacyError(
+                    "the native direct evaluator returned the wrong point count",
+                    {
+                        "expected": len(points),
+                        "first": len(first_native_entries),
+                        "final": len(final_native_entries),
+                    },
+                )
+            for first_entry, final_entry in zip(
+                first_native_entries, final_native_entries, strict=True
+            ):
+                first_raw.append(
+                    mp.mpc(first_entry["raw_real"], first_entry["raw_imag"])
+                )
+                first_completed.append(
+                    mp.mpc(
+                        first_entry["completed_real"],
+                        first_entry["completed_imag"],
+                    )
+                )
+                final_raw.append(
+                    mp.mpc(final_entry["raw_real"], final_entry["raw_imag"])
+                )
+                final_completed.append(
+                    mp.mpc(
+                        final_entry["completed_real"],
+                        final_entry["completed_imag"],
+                    )
+                )
+            native_used = True
+        except (AttributeError, NotImplementedError):
+            native_used = False
+    if not native_used:
+        if algorithm == "native":
+            raise NotImplementedError(
+                "the native direct elliptic L-series evaluator is unavailable"
+            )
+        a_value = 2 * mp.pi / mp.sqrt(mp.mpf(conductor))
+        for point, first, final in zip(points, first_plans, final_plans, strict=True):
+            raw0 = _direct_series_sum(
+                coefficients,
+                point,
+                first["cutoff"],
+                first["work_precision_bits"],
+            )
+            raw1 = _direct_series_sum(
+                coefficients,
+                point,
+                final["cutoff"],
+                final["work_precision_bits"],
+            )
+            first_raw.append(raw0)
+            final_raw.append(raw1)
+            first_completed.append(
+                mp.power(1 / a_value, point) * mp.gamma(point) * raw0
+            )
+            final_completed.append(
+                mp.power(1 / a_value, point) * mp.gamma(point) * raw1
+            )
+
+    difference = _maximum_refinement_difference(
+        first_raw, first_completed, final_raw, final_completed
+    )
+    tolerance = _refinement_tolerance(final_raw, final_completed, precision_bits)
+    stable = _refinement_is_stable(
+        first_raw,
+        first_completed,
+        final_raw,
+        final_completed,
+        precision_bits,
+    )
+    if native_used:
+        relative_target = mp.power(2, -precision_bits + 6)
+        for entry, raw, completed in zip(
+            final_native_entries, final_raw, final_completed, strict=True
+        ):
+            radii = (
+                (mp.mpf(entry["raw_real_radius"]), raw.real),
+                (mp.mpf(entry["raw_imag_radius"]), raw.imag),
+                (mp.mpf(entry["completed_real_radius"]), completed.real),
+                (mp.mpf(entry["completed_imag_radius"]), completed.imag),
+            )
+            if not all(
+                radius <= relative_target * max(1, abs(midpoint))
+                for radius, midpoint in radii
+            ):
+                stable = False
+            if int(entry["raw_accuracy_bits"]) < precision_bits - 8:
+                stable = False
+            if int(entry["completed_accuracy_bits"]) < precision_bits - 8:
+                stable = False
+    if not stable:
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "direct L-series refinements did not determine the requested precision",
+            {
+                "difference": _number_string(difference, precision_bits),
+                "tolerance": _number_string(tolerance, precision_bits),
+                "cutoffs": [plan["cutoff"] for plan in final_plans],
+                "rigorous": False,
+            },
+        )
+
+    values: list[ReferenceLseriesPointResult] = []
+    diagnostics: list[dict[str, Any]] = []
+    for index, (point, raw, completed, plan) in enumerate(
+        zip(points, final_raw, final_completed, final_plans, strict=True)
+    ):
+        native_entry = final_native_entries[index] if native_used else None
+        values.append(
+            {
+                "s_real": _number_string(point.real, precision_bits + 32),
+                "s_imag": _number_string(point.imag, precision_bits + 32),
+                "raw_real": _number_string(raw.real, precision_bits),
+                "raw_imag": _number_string(raw.imag, precision_bits),
+                "completed_real": _number_string(completed.real, precision_bits),
+                "completed_imag": _number_string(completed.imag, precision_bits),
+            }
+        )
+        diagnostics.append(
+            {
+                "route": "direct",
+                "cutoff": plan["cutoff"],
+                "coefficient_tail_bound": plan["tail_bound"],
+                "node_omission_bound": "0",
+                "upper_integral_bound": "0",
+                "analytic_error_bound": plan["tail_bound"],
+                "known_error_target_met": True,
+                "conversion_amplification_bound": "1",
+                "raw_real_radius": "0"
+                if native_entry is None
+                else str(native_entry["raw_real_radius"]),
+                "raw_imag_radius": "0"
+                if native_entry is None
+                else str(native_entry["raw_imag_radius"]),
+                "raw_accuracy_bits": precision_bits
+                if native_entry is None
+                else int(native_entry["raw_accuracy_bits"]),
+                "completed_real_radius": "0"
+                if native_entry is None
+                else str(native_entry["completed_real_radius"]),
+                "completed_imag_radius": "0"
+                if native_entry is None
+                else str(native_entry["completed_imag_radius"]),
+                "completed_accuracy_bits": precision_bits
+                if native_entry is None
+                else int(native_entry["completed_accuracy_bits"]),
+                "rigorous": False,
+            }
+        )
+    maximum_tail = max(mp.mpf(plan["tail_bound"]) for plan in final_plans)
+    maximum_tail_string = _number_string(maximum_tail, precision_bits)
+    return {
+        "algorithm": "direct",
+        "status": "ok",
+        "precision_bits": precision_bits,
+        "work_precision_bits": precision_bits + 64,
+        "cutoff": maximum_cutoff,
+        "required_cutoff": maximum_cutoff,
+        "quadrature_degree": 0,
+        "quadrature_rule_order": 0,
+        "grid_points": 0,
+        "coefficient_terms": sum(plan["cutoff"] for plan in final_plans),
+        "coefficient_backend": prefix.backend,
+        "coefficient_prefix_extensions": prefix.extensions,
+        "coefficient_horner": "Acb direct Dirichlet series"
+        if native_used
+        else "mpmath direct Dirichlet series",
+        "coefficient_roundoff_status": "estimated_by_independent_precision",
+        "values": values,
+        "point_diagnostics": diagnostics,
+        "coefficient_tail_bound": maximum_tail_string,
+        "node_omission_bound": "0",
+        "upper_integral_bound": "0",
+        "analytic_error_bound": maximum_tail_string,
+        "raw_analytic_error_bound": maximum_tail_string,
+        "conversion_amplification_bound": "1",
+        "refinement_difference": _number_string(difference, precision_bits),
+        "refinement_tolerance": _number_string(tolerance, precision_bits),
+        "refinement_runs": [
+            {
+                "precision_bits": precision_bits,
+                "cutoffs": [plan["cutoff"] for plan in first_plans],
+            },
+            {
+                "precision_bits": precision_bits + 32,
+                "cutoffs": [plan["cutoff"] for plan in final_plans],
+            },
+        ],
+        "conjugation_reconstructed": 0,
+        "refinement_stable": True,
+        "rigorous": False,
+        "analytic_error_status": "proved_direct_coefficient_tail_only",
+        "quadrature_error_status": "not_applicable",
+    }
 
 
 def _native_point_results(
@@ -1204,59 +1580,138 @@ def _maximum_diagnostic_bound(diagnostics: list[dict[str, Any]], field: str) -> 
     return str(mp.nstr(maximum, n=30))
 
 
-def _call_native_with_retry(
+def _native_required_cutoff(
+    curve: Any,
+    normalized_points: list[list[str]],
+    precision_bits: int,
+    limits: ReferenceLseriesLimits,
+) -> tuple[Any, int]:
+    """Ask the early-return native planner before generating coefficients."""
+    native = curve._lseries_values_native([0, 1], normalized_points, precision_bits)
+    status = str(_mapping_value(native, "status", default="ok"))
+    if status not in ("ok", "insufficient_coefficients"):
+        raise ReferenceLseriesResourceError(
+            "the native L-series evaluator rejected its work plan", native
+        )
+    required = int(
+        _mapping_value(native, "requiredCutoff", "required_cutoff", default=1)
+    )
+    if required < 1 or required > limits.maximum_coefficients:
+        raise ReferenceLseriesResourceError(
+            "L-series coefficient cutoff exceeds the resource limit",
+            {"required_cutoff": required, "limit": limits.maximum_coefficients},
+        )
+    return native, required
+
+
+def _call_native_ready(
+    curve: Any,
+    normalized_points: list[list[str]],
+    precision_bits: int,
+    coefficients: list[int],
+) -> tuple[Any, list[ReferenceLseriesPointResult], list[dict[str, Any]]]:
+    """Run a previously planned native request with one shared prefix."""
+    native = curve._lseries_values_native(
+        coefficients, normalized_points, precision_bits
+    )
+    status = str(_mapping_value(native, "status", default="ok"))
+    if status != "ok":
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "the planned native L-series cutoff was not accepted",
+            native,
+        )
+    if not bool(
+        _mapping_value(
+            native,
+            "knownErrorTargetMet",
+            "known_error_target_met",
+            default=True,
+        )
+    ):
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "the native L-series analytic error target was not met", native
+        )
+    raw_values = _mapping_value(native, "values", default=[])
+    values, diagnostics = _native_point_results(normalized_points, list(raw_values))
+    return native, values, diagnostics
+
+
+def _call_native_nested_refinement(
     curve: Any,
     normalized_points: list[list[str]],
     precision_bits: int,
     prefix: CoefficientPrefix,
     limits: ReferenceLseriesLimits,
-) -> tuple[Any, list[ReferenceLseriesPointResult], list[dict[str, Any]]]:
-    """Call the optional native boundary and honor its exact cutoff retry."""
-    coefficients = prefix.through(max(1, len(prefix.values) - 1))
-    for _attempt in range(3):
-        native = curve._lseries_values_native(
-            coefficients, normalized_points, precision_bits
-        )
-        status = str(_mapping_value(native, "status", default="ok"))
-        if status == "ok":
-            if not bool(
-                _mapping_value(
-                    native,
-                    "knownErrorTargetMet",
-                    "known_error_target_met",
-                    default=True,
-                )
-            ):
-                raise ReferenceLseriesNumericalIndeterminacyError(
-                    "the native L-series analytic error target was not met", native
-                )
-            raw_values = _mapping_value(native, "values", default=[])
-            values, diagnostics = _native_point_results(
-                normalized_points, list(raw_values)
-            )
-            return native, values, diagnostics
-        if status != "insufficient_coefficients":
-            raise ReferenceLseriesResourceError(
-                "the native L-series evaluator rejected its work plan", native
-            )
-        required = int(
-            _mapping_value(native, "requiredCutoff", "required_cutoff", default=0)
-        )
-        if required <= len(coefficients) - 1:
-            raise ReferenceLseriesNumericalIndeterminacyError(
-                "the native L-series evaluator repeated an invalid cutoff request",
-                native,
-            )
-        if required > limits.maximum_coefficients:
-            raise ReferenceLseriesResourceError(
-                "L-series coefficient cutoff exceeds the resource limit",
-                {"required_cutoff": required, "limit": limits.maximum_coefficients},
-            )
-        coefficients = prefix.through(required)
-    raise ReferenceLseriesNumericalIndeterminacyError(
-        "the native L-series evaluator did not settle its coefficient request",
-        {"precision_bits": precision_bits},
+) -> tuple[
+    Any,
+    list[ReferenceLseriesPointResult],
+    list[dict[str, Any]],
+    list[ReferenceLseriesPointResult],
+    list[dict[str, Any]],
+]:
+    """Plan and run one nested coarse/fine native grid."""
+    refinement_bits = 32
+    planned = curve._lseries_values_native(
+        [0, 1], normalized_points, precision_bits, refinement_bits
     )
+    status = str(_mapping_value(planned, "status", default="ok"))
+    if status not in ("ok", "insufficient_coefficients"):
+        raise ReferenceLseriesResourceError(
+            "the nested native L-series planner rejected its request", planned
+        )
+    required = int(
+        _mapping_value(planned, "requiredCutoff", "required_cutoff", default=0)
+    )
+    if required < 1 or required > limits.maximum_coefficients:
+        raise ReferenceLseriesResourceError(
+            "L-series coefficient cutoff exceeds the resource limit",
+            {"required_cutoff": required, "limit": limits.maximum_coefficients},
+        )
+    coefficients = prefix.through(required)
+    native = curve._lseries_values_native(
+        coefficients, normalized_points, precision_bits, refinement_bits
+    )
+    if str(_mapping_value(native, "status", default="ok")) != "ok":
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "the nested native L-series cutoff was not accepted", native
+        )
+    if not bool(
+        _mapping_value(
+            native,
+            "knownErrorTargetMet",
+            "known_error_target_met",
+            default=True,
+        )
+    ):
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "the nested native L-series analytic error target was not met", native
+        )
+    final_entries = list(_mapping_value(native, "values", default=[]))
+    coarse_entries = list(
+        _mapping_value(native, "coarseValues", "coarse_values", default=[])
+    )
+    if len(coarse_entries) != len(normalized_points):
+        raise NotImplementedError("the native nested-refinement result is unavailable")
+    final_values, final_diagnostics = _native_point_results(
+        normalized_points, final_entries
+    )
+    coarse_values, coarse_diagnostics = _native_point_results(
+        normalized_points, coarse_entries
+    )
+    # Known coefficient/local-grid/outer omissions are those of the shared
+    # stronger fine plan.  Coarse arithmetic radii and accuracy remain its own.
+    shared_fields = (
+        "coefficient_tail_bound",
+        "node_omission_bound",
+        "upper_integral_bound",
+        "analytic_error_bound",
+        "known_error_target_met",
+        "conversion_amplification_bound",
+    )
+    for coarse, final in zip(coarse_diagnostics, final_diagnostics, strict=True):
+        for field in shared_fields:
+            coarse[field] = final[field]
+    return native, coarse_values, coarse_diagnostics, final_values, final_diagnostics
 
 
 def _native_batch_result(
@@ -1396,6 +1851,7 @@ def _native_batch_result(
         "refinement_difference": _number_string(difference, precision_bits),
         "refinement_tolerance": _number_string(tolerance, precision_bits),
         "refinement_runs": runs,
+        "conjugation_reconstructed": 0,
         "refinement_stable": True,
         "rigorous": False,
         "analytic_error_status": str(
@@ -1410,7 +1866,7 @@ def _native_batch_result(
     }
 
 
-def lseries_values(
+def _mellin_lseries_values(
     curve: Any,
     points: list[Any] | tuple[Any, ...],
     root_number: int,
@@ -1455,40 +1911,73 @@ def lseries_values(
         normalized = _normalized_point_pairs(prepared_points, precision_bits + 32)
         if algorithm in ("auto", "native"):
             try:
-                first_native, first_values, first_point_diagnostics = (
-                    _call_native_with_retry(
-                        curve,
-                        normalized,
-                        precision_bits,
-                        prefix,
-                        effective_limits,
-                    )
-                )
-                refined_precision = precision_bits + 32
-                final_native, final_values, final_point_diagnostics = (
-                    _call_native_with_retry(
-                        curve,
-                        normalized,
-                        refined_precision,
-                        prefix,
-                        _internal_refinement_limits(effective_limits, precision_bits),
-                    )
-                )
-                return _native_batch_result(
-                    first_native,
+                (
+                    native,
                     first_values,
                     first_point_diagnostics,
-                    final_native,
+                    final_values,
+                    final_point_diagnostics,
+                ) = _call_native_nested_refinement(
+                    curve,
+                    normalized,
+                    precision_bits,
+                    prefix,
+                    effective_limits,
+                )
+                result = _native_batch_result(
+                    native,
+                    first_values,
+                    first_point_diagnostics,
+                    native,
                     final_values,
                     final_point_diagnostics,
                     precision_bits,
                     prefix,
                 )
-            except (AttributeError, NotImplementedError):
-                if algorithm == "native":
-                    raise NotImplementedError(
-                        "the native elliptic L-series evaluator is unavailable"
-                    ) from None
+                result["quadrature_error_status"] = "estimated_by_nested_refinement"
+                return result
+            except (AttributeError, NotImplementedError, TypeError):
+                # Older optional backends may expose the original five-argument
+                # call but not the nested-refinement extension.  Keep that
+                # mathematically independent two-pass path as a capability
+                # fallback and as a useful differential oracle.
+                try:
+                    refined_precision = precision_bits + 32
+                    _first_plan, first_required = _native_required_cutoff(
+                        curve, normalized, precision_bits, effective_limits
+                    )
+                    _final_plan, final_required = _native_required_cutoff(
+                        curve,
+                        normalized,
+                        refined_precision,
+                        _internal_refinement_limits(effective_limits, precision_bits),
+                    )
+                    coefficients = prefix.through(max(first_required, final_required))
+                    first_native, first_values, first_point_diagnostics = (
+                        _call_native_ready(
+                            curve, normalized, precision_bits, coefficients
+                        )
+                    )
+                    final_native, final_values, final_point_diagnostics = (
+                        _call_native_ready(
+                            curve, normalized, refined_precision, coefficients
+                        )
+                    )
+                    return _native_batch_result(
+                        first_native,
+                        first_values,
+                        first_point_diagnostics,
+                        final_native,
+                        final_values,
+                        final_point_diagnostics,
+                        precision_bits,
+                        prefix,
+                    )
+                except (AttributeError, NotImplementedError):
+                    if algorithm == "native":
+                        raise NotImplementedError(
+                            "the native elliptic L-series evaluator is unavailable"
+                        ) from None
         return reference_lseries_values(
             curve,
             normalized,
@@ -1498,6 +1987,249 @@ def lseries_values(
             refine=True,
             limits=effective_limits,
         )
+    finally:
+        mp.prec = old_precision
+
+
+def _maximum_bound_from_batches(
+    batches: list[ReferenceLseriesBatchResult], field: str
+) -> str:
+    return str(max(mp.mpf(batch[field]) for batch in batches))
+
+
+def _merge_lseries_batches(
+    batches: list[ReferenceLseriesBatchResult],
+    placements: list[list[int]],
+    point_count: int,
+    precision_bits: int,
+    prefix: CoefficientPrefix,
+) -> ReferenceLseriesBatchResult:
+    """Merge independently planned route groups without changing point order."""
+    if len(batches) == 1 and placements[0] == list(range(point_count)):
+        return batches[0]
+    values: list[Any] = [None for _index in range(point_count)]
+    diagnostics: list[Any] = [None for _index in range(point_count)]
+    for batch, indices in zip(batches, placements, strict=True):
+        for local, original in enumerate(indices):
+            values[original] = batch["values"][local]
+            point_diagnostic = dict(batch["point_diagnostics"][local])
+            point_diagnostic["route"] = batch["algorithm"]
+            diagnostics[original] = point_diagnostic
+    if any(value is None for value in values):
+        raise ReferenceLseriesNumericalIndeterminacyError(
+            "an L-series route group did not return every requested point",
+            {"point_count": point_count, "placements": placements},
+        )
+    algorithms = sorted({batch["algorithm"] for batch in batches})
+    refinement_difference = max(
+        mp.mpf(batch["refinement_difference"]) for batch in batches
+    )
+    refinement_tolerance = min(
+        mp.mpf(batch["refinement_tolerance"]) for batch in batches
+    )
+    return {
+        "algorithm": algorithms[0] if len(algorithms) == 1 else "mixed",
+        "status": "ok",
+        "precision_bits": precision_bits,
+        "work_precision_bits": max(batch["work_precision_bits"] for batch in batches),
+        "cutoff": max(batch["cutoff"] for batch in batches),
+        "required_cutoff": max(batch["required_cutoff"] for batch in batches),
+        "quadrature_degree": max(batch["quadrature_degree"] for batch in batches),
+        "quadrature_rule_order": max(
+            batch["quadrature_rule_order"] for batch in batches
+        ),
+        "grid_points": sum(batch["grid_points"] for batch in batches),
+        "coefficient_terms": sum(batch["coefficient_terms"] for batch in batches),
+        "coefficient_backend": prefix.backend,
+        "coefficient_prefix_extensions": prefix.extensions,
+        "coefficient_horner": "+".join(
+            sorted({batch["coefficient_horner"] for batch in batches})
+        ),
+        "coefficient_roundoff_status": "+".join(
+            sorted({batch["coefficient_roundoff_status"] for batch in batches})
+        ),
+        "values": values,
+        "point_diagnostics": diagnostics,
+        "coefficient_tail_bound": _maximum_bound_from_batches(
+            batches, "coefficient_tail_bound"
+        ),
+        "node_omission_bound": _maximum_bound_from_batches(
+            batches, "node_omission_bound"
+        ),
+        "upper_integral_bound": _maximum_bound_from_batches(
+            batches, "upper_integral_bound"
+        ),
+        "analytic_error_bound": _maximum_bound_from_batches(
+            batches, "analytic_error_bound"
+        ),
+        "raw_analytic_error_bound": _maximum_bound_from_batches(
+            batches, "raw_analytic_error_bound"
+        ),
+        "conversion_amplification_bound": _maximum_bound_from_batches(
+            batches, "conversion_amplification_bound"
+        ),
+        "refinement_difference": str(refinement_difference),
+        "refinement_tolerance": str(refinement_tolerance),
+        "refinement_runs": [
+            {"algorithm": batch["algorithm"], "runs": batch["refinement_runs"]}
+            for batch in batches
+        ],
+        "conjugation_reconstructed": 0,
+        "refinement_stable": all(batch["refinement_stable"] for batch in batches),
+        "rigorous": False,
+        "analytic_error_status": "+".join(
+            sorted({batch["analytic_error_status"] for batch in batches})
+        ),
+        "quadrature_error_status": "+".join(
+            sorted({batch["quadrature_error_status"] for batch in batches})
+        ),
+    }
+
+
+def _route_bucket(point: Any) -> tuple[int, int]:
+    """Keep an exceptional point from enlarging every ordinary Mellin grid."""
+    return (
+        int(abs(float(point.imag)) // 10.0),
+        int(abs(float(point.real - 1)) // 2.0),
+    )
+
+
+def lseries_values(
+    curve: Any,
+    points: list[Any] | tuple[Any, ...],
+    root_number: int,
+    precision_bits: int = 53,
+    *,
+    algorithm: str = "auto",
+    coefficient_prefix: CoefficientPrefix | None = None,
+    limits: ReferenceLseriesLimits | None = None,
+) -> ReferenceLseriesBatchResult:
+    """Evaluate, deduplicate, route, and regroup an arbitrary moderate batch."""
+    if algorithm not in ("auto", "native", "reference"):
+        raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+    if root_number not in (-1, 1):
+        raise ValueError("root number must be +1 or -1")
+    precision_bits = int(precision_bits)
+    effective_limits = _effective_limits(limits)
+    if precision_bits < 32:
+        raise ValueError("precision must be at least 32 bits")
+    prepared = _coerce_points(points)
+    prefix = (
+        CoefficientPrefix(curve) if coefficient_prefix is None else coefficient_prefix
+    )
+
+    # Exact decimal pairs give deterministic deduplication without relying on
+    # mpmath object identity.  The expansion below restores duplicates and the
+    # caller's original order.
+    old_precision = mp.prec
+    mp.prec = max(96, precision_bits + 48)
+    try:
+        original_normalized = _normalized_point_pairs(prepared, precision_bits + 40)
+        canonical_points = [
+            mp.mpc(point.real, -point.imag) if point.imag < 0 else point
+            for point in prepared
+        ]
+        normalized = _normalized_point_pairs(canonical_points, precision_bits + 40)
+        unique_points: list[Any] = []
+        key_to_unique: dict[str, int] = {}
+        expansion: list[int] = []
+        conjugated: list[bool] = []
+        for original, point, pair in zip(
+            prepared, canonical_points, normalized, strict=True
+        ):
+            key = pair[0] + "|" + pair[1]
+            unique_index = key_to_unique.get(key)
+            if unique_index is None:
+                unique_index = len(unique_points)
+                key_to_unique[key] = unique_index
+                unique_points.append(point)
+            expansion.append(unique_index)
+            conjugated.append(original.imag < 0)
+
+        direct_indices: list[int] = []
+        mellin_buckets: dict[tuple[int, int], list[int]] = {}
+        for index, point in enumerate(unique_points):
+            direct_plan = None
+            direct_plan = plan_direct_lseries(
+                point,
+                precision_bits + 32,
+                maximum_coefficients=effective_limits.maximum_coefficients,
+            )
+            if direct_plan is not None:
+                direct_indices.append(index)
+            else:
+                bucket = _route_bucket(point)
+                mellin_buckets.setdefault(bucket, []).append(index)
+
+        batches: list[ReferenceLseriesBatchResult] = []
+        placements: list[list[int]] = []
+        # The ordinary native object protocol intentionally remains bounded;
+        # larger public requests are transparent sequences of these chunks.
+        native_chunk_size = min(10_000, max(1, effective_limits.maximum_batch_points))
+        chunk_size = 64 if algorithm == "reference" else native_chunk_size
+        if direct_indices:
+            for start in range(0, len(direct_indices), chunk_size):
+                chunk = direct_indices[start : start + chunk_size]
+                batches.append(
+                    _direct_lseries_values(
+                        curve,
+                        [unique_points[index] for index in chunk],
+                        int(curve.conductor()),
+                        precision_bits,
+                        prefix,
+                        effective_limits,
+                        algorithm,
+                    )
+                )
+                placements.append(chunk)
+
+        for indices in mellin_buckets.values():
+            for start in range(0, len(indices), chunk_size):
+                chunk = indices[start : start + chunk_size]
+                batches.append(
+                    _mellin_lseries_values(
+                        curve,
+                        [unique_points[index] for index in chunk],
+                        root_number,
+                        precision_bits,
+                        algorithm=algorithm,
+                        coefficient_prefix=prefix,
+                        limits=effective_limits,
+                    )
+                )
+                placements.append(chunk)
+        unique_result = _merge_lseries_batches(
+            batches,
+            placements,
+            len(unique_points),
+            precision_bits,
+            prefix,
+        )
+        if expansion == list(range(len(unique_points))) and not any(conjugated):
+            return unique_result
+        expanded_values = []
+        expanded_diagnostics = []
+        for original_pair, index, use_conjugate in zip(
+            original_normalized, expansion, conjugated, strict=True
+        ):
+            value = dict(unique_result["values"][index])
+            value["s_real"] = original_pair[0]
+            value["s_imag"] = original_pair[1]
+            if use_conjugate:
+                value["raw_imag"] = _negated_decimal_string(str(value["raw_imag"]))
+                value["completed_imag"] = _negated_decimal_string(
+                    str(value["completed_imag"])
+                )
+            expanded_values.append(value)
+            diagnostic = dict(unique_result["point_diagnostics"][index])
+            diagnostic["conjugation_reconstructed"] = use_conjugate
+            expanded_diagnostics.append(diagnostic)
+        unique_result["values"] = expanded_values
+        unique_result["point_diagnostics"] = expanded_diagnostics
+        unique_result["conjugation_reconstructed"] = sum(
+            1 for value in conjugated if value
+        )
+        return unique_result
     finally:
         mp.prec = old_precision
 

@@ -94,6 +94,151 @@ test("native complex L-value matches the pinned Sage/PARI oracle", () => {
   assert.ok(Number(result.rawConversionMagnitude) > 0);
 });
 
+test("nested refinement reuses one fine grid and returns its coarse witness", () => {
+  const points = [["1", "1"]];
+  const planned = flint.ecLseriesValues(
+    430250329n,
+    1,
+    new Int32Array([0, 1]),
+    points,
+    53,
+    32,
+  );
+  assert.equal(planned.status, "insufficient_coefficients");
+  assert.equal(planned.refinementBits, 32);
+  const coefficients = flint.ecAnlistIntegral(
+    1n,
+    2n,
+    3n,
+    4n,
+    999n,
+    430250329n,
+    BigInt(planned.requiredCutoff),
+  );
+  const nested = flint.ecLseriesValues(
+    430250329n,
+    1,
+    coefficients,
+    points,
+    53,
+    32,
+  );
+  const independentFine = flint.ecLseriesValues(
+    430250329n,
+    1,
+    coefficients,
+    points,
+    85,
+  );
+  assert.equal(nested.status, "ok");
+  assert.equal(nested.coarseValues.length, 1);
+  assert.equal(nested.finePrecisionBits, 85);
+  close(
+    nested.values[0].raw.realMidpoint,
+    Number(independentFine.values[0].raw.realMidpoint),
+    2e-24,
+  );
+  close(
+    nested.values[0].raw.imagMidpoint,
+    Number(independentFine.values[0].raw.imagMidpoint),
+    2e-24,
+  );
+  assert.notEqual(
+    nested.coarseValues[0].raw.realMidpoint,
+    nested.values[0].raw.realMidpoint,
+  );
+});
+
+test("plan-only and packed plot modes support one prepared grid above 10000 points", () => {
+  const points = Array.from({ length: 10001 }, () => ["1", "0"]);
+  assert.throws(
+    () => flint.ecLseriesValues(11n, 1, [0, 1], points, 32),
+    /at most 10000 entries/,
+  );
+  const plan = flint.ecLseriesValues(11n, 1, null, points, 32, 8, 1);
+  assert.equal(plan.status, "plan");
+  assert.equal(plan.pointCount, points.length);
+  assert.ok(plan.requiredCutoff > 1);
+  const coefficients = flint.ecAnlistIntegral(
+    0n,
+    -1n,
+    1n,
+    -10n,
+    -20n,
+    11n,
+    BigInt(plan.requiredCutoff),
+  );
+  const packed = flint.ecLseriesValues(
+    11n,
+    1,
+    coefficients,
+    points,
+    32,
+    8,
+    2,
+  );
+  assert.equal(packed.status, "ok");
+  assert.equal(packed.pointCount, points.length);
+  assert.equal(packed.packedStride, 5);
+  assert.ok(packed.packedValues instanceof Float64Array);
+  assert.equal(packed.packedValues.length, 5 * points.length);
+  close(packed.packedValues[0], 0.2538418608559107, 2e-8);
+  close(packed.packedValues[1], 0, 2e-8);
+  assert.ok(packed.packedValues[4] >= 0);
+  assert.equal(packed.packedValues[0], packed.packedValues[5]);
+});
+
+test("nested and independent fine grids agree across a moderate point corpus", () => {
+  const points = [
+    ["0.25", "-20"],
+    ["0.5", "3"],
+    ["1", "0"],
+    ["1", "17"],
+    ["1.5", "-3"],
+    ["1.75", "8"],
+    ["3", "1"],
+    ["4", "-2"],
+  ];
+  const plan = flint.ecLseriesValues(37n, -1, [0, 1], points, 53, 32);
+  const coefficients = flint.ecAnlistIntegral(
+    0n,
+    0n,
+    1n,
+    -1n,
+    0n,
+    37n,
+    BigInt(plan.requiredCutoff),
+  );
+  const nested = flint.ecLseriesValues(
+    37n,
+    -1,
+    coefficients,
+    points,
+    53,
+    32,
+  );
+  const independent = flint.ecLseriesValues(
+    37n,
+    -1,
+    coefficients,
+    points,
+    85,
+  );
+  assert.equal(nested.knownErrorTargetMet, true);
+  for (let index = 0; index < points.length; index += 1) {
+    close(
+      nested.values[index].raw.realMidpoint,
+      Number(independent.values[index].raw.realMidpoint),
+      2e-22,
+    );
+    close(
+      nested.values[index].raw.imagMidpoint,
+      Number(independent.values[index].raw.imagMidpoint),
+      2e-22,
+    );
+  }
+});
+
 test("general order zero shares the central-jet normalization", () => {
   const { coefficients, result } = evaluateIntegralCurve(
     [0n, -1n, 1n, -10n, -20n],
@@ -217,5 +362,52 @@ test("native L-value planner rejects unsupported domains before coefficient work
   assert.throws(
     () => flint.ecLseriesValues(37n, -1, [0, 1], [["10", "0"]], 53),
     /moderate-domain limits|resource limits/,
+  );
+});
+
+test("direct Acb prefixes evaluate far-right batches", () => {
+  const coefficients = flint.ecAnlistIntegral(
+    1n,
+    2n,
+    3n,
+    4n,
+    999n,
+    430250329n,
+    1000n,
+  );
+  const result = flint.ecLseriesDirectValues(
+    430250329n,
+    coefficients,
+    [
+      ["10", "1"],
+      ["10", "-1"],
+    ],
+    [1000, 1000],
+    80,
+  );
+  assert.equal(result.status, "ok");
+  assert.equal(result.algorithm, "direct");
+  assert.equal(result.coefficientTerms, 2000);
+  close(result.values[0].raw.realMidpoint, 1.0007510301635383, 2e-16);
+  close(result.values[0].raw.imagMidpoint, -0.0006232463759930876, 2e-16);
+  assert.equal(
+    result.values[0].raw.realMidpoint,
+    result.values[1].raw.realMidpoint,
+  );
+  close(
+    result.values[0].raw.imagMidpoint,
+    -Number(result.values[1].raw.imagMidpoint),
+    1e-24,
+  );
+  assert.throws(
+    () =>
+      flint.ecLseriesDirectValues(
+        430250329n,
+        coefficients,
+        [["10", "1"]],
+        [1001],
+        53,
+      ),
+    /contain every requested prefix/,
   );
 });

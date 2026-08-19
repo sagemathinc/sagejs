@@ -17,7 +17,7 @@ assert.match(flint.gmpVersion(), /^6\./);
 assert.equal(flint.smalljacVersion(), "smalljac version 4.1.3");
 assert.equal(flint.ecApIntegral(0n, 0n, 1n, -1n, 0n, 5n), -2);
 assert.deepEqual(
-  flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 12n),
+  Array.from(flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 12n)),
   [0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6],
 );
 const secp256k1Prime = 2n ** 256n - 2n ** 32n - 977n;
