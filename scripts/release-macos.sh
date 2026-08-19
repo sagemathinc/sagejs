@@ -142,8 +142,9 @@ if [[ $SKIP_NOTARIZE -eq 0 ]]; then
     "${NOTARY_AUTH[@]}" --wait --progress
   xcrun stapler staple "$PACKAGE"
   xcrun stapler validate "$PACKAGE"
-  spctl --assess --type execute --verbose=4 "$DIST/sagejs"
-  spctl --assess --type execute --verbose=4 "$DIST/sagepython"
+  # `spctl --type execute` assesses app bundles and rejects standalone CLI
+  # executables as "valid code but does not seem to be an app". The binaries
+  # are verified with `codesign` above and included in Apple's accepted ZIP.
   spctl --assess --type install --verbose=4 "$PACKAGE"
 else
   echo "Skipping notarization by request"
