@@ -185,8 +185,9 @@ fallback.
 
 `J.points()` (also available as `J.list()` and iteration over `J`) enumerates
 all reduced Mumford pairs. For every degree `0 <= d <= g`, it tries every
-monic degree-`d` polynomial `u` and every polynomial `v` of degree below `d`,
-retaining exactly the pairs for which `u | v^2+h*v-f`.
+monic degree-`d` polynomial `u` and calls `J.lift_u(u, all=True)`. The lifting
+algorithm factors `u`, solves the completed-square congruence in each residue field,
+Hensel-lifts repeated factors, and combines the roots by polynomial CRT.
 
 Enumeration has two useful correctness properties:
 
@@ -194,21 +195,22 @@ Enumeration has two useful correctness properties:
 - the number found must equal the independently computed Frobenius order.
 
 It is nevertheless an exhaustive algorithm. Before allocating, it checks both
-the known Jacobian order and the candidate bound
+the known Jacobian order and the monic-`u` candidate bound
 
 ```text
-1 + q^2 + q^4 + ... + q^(2g).
+1 + q + q^2 + ... + q^g.
 ```
 
-The defaults are at most 50,000 returned elements and 5,000,000 candidate
-pairs. Exceeding either bound raises `JacobianResourceLimitError`. The complete
-list is cached after a successful enumeration.
+The defaults are at most 50,000 returned elements and 5,000,000 monic
+polynomials. Exceeding either bound raises `JacobianResourceLimitError`. The
+complete list is cached after a successful enumeration.
 
-`random_element()` normally samples curve points and adds their divisor
-classes. `elements_from_points()` provides a deterministic sample containing
-both individual point classes and partial sums. If the base field offers no
-usable random-point path, random selection may fall back to bounded complete
-enumeration.
+`random_element(fast=True)` samples `2*g+1` curve points and adds their divisor
+classes. This is fast but need not cover the entire Jacobian.
+`random_element(fast=False)` instead chooses `v`, factors
+`v^2+h*v-f`, and selects a valid divisor `u`; every reduced Mumford divisor has
+nonzero probability. The group-structure algorithm uses the fast sampler
+first and the covering sampler before declaring resource exhaustion.
 
 ## Finite abelian group structure
 
@@ -218,23 +220,30 @@ enumeration.
 (m1, ..., mr),  with m1 | ... | mr and product(mi) = #J(F_q).
 ```
 
-There are currently two algorithms:
+The available algorithms are:
 
 - `algorithm="smalljac"`, or `"auto"` when supported, uses smalljac's packed
   invariant-factor backend for odd-degree genus-2 curves over supported odd
   prime fields. Sage.js verifies the divisibility chain and product against
   the local polynomial, then checks that the reported exponent annihilates
   sampled Jacobian elements.
+- `algorithm="basis"` samples exact Jacobian elements, splits them into Sylow
+  components, and applies Sutherland's recursive vector-discrete-log and
+  primary-basis algorithms. It stops only when the certified sampled subgroup
+  has the full independently known Jacobian order.
 - `algorithm="exhaustive"` enumerates the entire group. For each prime power
   dividing the group order, it counts kernels of multiplication by successive
   powers of that prime. Those kernel sizes determine the elementary divisors,
   which are combined into invariant factors.
 
-The generic algorithm checks that the invariants divide successively, multiply
-to the exact order, and have rank at most `2*g`. A caller may supply a checked
-factorization to avoid bounded trial division.
+`"auto"` also applies exact cheap deductions before sampling. In particular,
+a finite abelian group of squarefree order is cyclic, and an element of exact
+order `#J(F_q)` proves cyclicity immediately. The generic algorithm checks
+that the invariants divide successively, multiply to the exact order, and have
+rank at most `2*g`. A caller may supply a checked factorization to avoid
+bounded trial division.
 
-For bounded groups, `J.abelian_group()` goes further and returns a certified
+`J.abelian_group()` goes further and returns a certified
 abstract group together with an explicit isomorphism:
 
 ```python
@@ -243,17 +252,59 @@ G.invariants()                 # for example, (6, 6)
 G.gens()                       # coordinate generators
 phi.images()                   # their reduced Mumford divisors
 phi(G.gen(0) + 2*G.gen(1))    # forward map
-phi.preimage(D)                # certified inverse coordinate lookup
+phi.preimage(D)                # bounded exact vector discrete logarithm
 phi.verify()
 ```
 
-This initial implementation is deliberately bounded and exhaustive. It finds
-divisors of the advertised orders, proves that their direct product has the
-full independently known Jacobian order, and constructs the complete inverse
-coordinate table. It is excellent for small research and oracle groups; it is
-not presented as a scalable general discrete-log algorithm. On exhaustion,
-`JacobianResourceLimitError` carries `known_structure` and any
-`partial_generators` already certified.
+The forward map never needs a complete element table. Its generators are the
+certified primary basis. Inverse coordinates use the same bounded vector-DLP
+algorithm; groups of order at most 512 retain a complete table as an
+independent small-case oracle. Generic discrete logarithms can still be hard,
+so operation, baby-step, and memory limits are explicit. On exhaustion,
+`JacobianResourceLimitError` carries the known/partial structure, partial
+generators, generated subgroup order, sample counts, and operation diagnostics.
+
+Group certificates are versioned, integer-safe, bound to the exact curve
+model, and independently recheck orders and basis independence:
+
+```python
+certificate = J.group_structure_certificate(seed=1)
+assert J.verify_group_structure_certificate(certificate)
+```
+
+Supplying `seed` makes sampling and benchmark transcripts reproducible. It is
+not part of the proof: successful output is verified exactly, and an unlucky
+sample sequence can only cause a resource exception.
+
+The two motivating genus-3 examples no longer enumerate millions of raw
+Mumford pairs:
+
+```sage
+sage: R.<z> = PolynomialRing(GF(13))
+sage: J = HyperellipticCurve(z^7 + 2*z + 1).jacobian()
+sage: J.order()
+2160
+sage: J.group_structure(seed=1)
+(2160,)
+sage: G, phi = J.abelian_group(seed=1)
+sage: G.invariants()
+(2160,)
+sage: phi.preimage(phi(777*G.gen(0)))
+(777,)
+
+sage: R.<z> = PolynomialRing(GF(19))
+sage: J = HyperellipticCurve(z^7 + 2*z + 1).jacobian()
+sage: J.order()
+6490
+sage: J.group_structure()
+(6490,)
+sage: J.group_structure_diagnostics()["algorithm"]
+'squarefree-order'
+```
+
+The order 6,490 is squarefree, so the structure-only answer requires no
+sampling. Constructing `J.abelian_group()` still samples and verifies a divisor
+of exact order 6,490 because an explicit map needs an actual generator.
 
 Reduced divisors and element-order proofs also have exact, versioned data
 representations:
@@ -269,7 +320,12 @@ assert J.verify_order_certificate(certificate)
 The payload records the prime, exact curve model, and ascending coefficients
 of `(u,v)`, so it cannot accidentally be loaded into a different Jacobian.
 Certificate verification uses the ordinary Python group law independently of
-the native certificate search.
+the native certificate search. A group certificate additionally records the
+Sutherland basis/group-law versions, the scalar backend used during search,
+exact sample and generic-group resource counters, and the completed order of
+every primary component. Timing measurements are deliberately excluded from
+the proof payload, so seeded certificates remain suitable for JSONL and
+SQLite research datasets.
 
 ## Efficiency and native acceleration
 
@@ -277,20 +333,25 @@ The public group law is correctness-first:
 
 | Operation | Current method | Intended scale |
 | --- | --- | --- |
-| Addition/doubling | ordinary-Python generalized Cantor arithmetic | individual computations and correctness oracles |
+| Addition/doubling | ordinary-Python generalized Cantor arithmetic; one-crossing packed genus-3 sums for samplers | individual computations and correctness oracles |
 | Scalar multiplication | packed native genus-3 kernel when supported; ordinary Python fallback | exact scalars, with native inputs bounded to 128 bits |
 | Element order | native factor-and-strip when supported; independently readable Python fallback | an annihilating multiple and its factorization |
 | Jacobian order | evaluation/resultant from cached Frobenius data | inexpensive after local Frobenius computation |
 | Genus-2 structure | native smalljac when supported | production path in its declared domain |
-| Complete enumeration | roughly `O(q^(2g))` candidate pairs | tiny finite fields only |
-| Generic structure | full enumeration plus prime-power kernel counts | small groups only |
+| Complete enumeration | `1+q+...+q^g` monic `u` values plus exact lifts | small finite groups and correctness oracles |
+| Generic structure | sampled Sylow bases and bounded vector DLP | groups whose order is factored and primary DLPs fit the declared budget |
 
 At fixed genus, each Cantor operation involves only low-degree polynomials, but
-the current public path still creates generic Python polynomial objects and
-runs generic extended-gcd operations. It is not competitive with a dedicated
-packed C implementation for millions of group operations. Complete enumeration
-becomes impractical particularly quickly in genus 3 because its raw candidate
-space is dominated by `q^6`.
+the ordinary fallback still creates generic Python polynomial objects and runs
+generic extended-gcd operations. Supported genus-3 scalar multiplication and
+factor-and-strip element orders use the existing packed native kernel.
+Profiling also showed that adding the `2*g+1` point divisors used by each fast
+sample was a repeated high-volume language crossing, so those divisors are
+now packed and summed in one bounded native call. A profile of the remaining
+basis construction found only tens to hundreds of generic group operations;
+another handwritten vector-DLP boundary would not dominate end-to-end time.
+Native work remains batched and capability-gated if larger noncyclic profiles
+justify it later.
 
 ### Native genus-3 certification kernel
 
@@ -302,6 +363,7 @@ packed degree-7 models and packed reduced divisors over odd prime fields with
 - validates the generalized Mumford relation;
 - maps `v` to `2*v+h` on the completed-square model;
 - performs Cantor arithmetic with FLINT `nmod_poly` values;
+- sums a packed divisor batch with one Node/native crossing;
 - multiplies by bounded integers up to the rforest genus-3 order domain;
 - tests explicit candidate orders;
 - searches an arithmetic progression of candidate orders with a bounded
@@ -331,6 +393,17 @@ one billion possible orders was searched in about 0.36 seconds using roughly
 performance guarantees; the important distinction is that the progression
 search scales with its square root.
 
+The reproducible seeded public-structure benchmark on the same shared host
+computed the `GF(13)` order-2,160 structure in 0.091 seconds after the order
+was known, using two samples and 36 accounted generic operations. The
+order-6,490 `GF(19)` basis took 0.048 seconds. Their certified explicit maps
+took 1.082 and 1.635 seconds respectively. The noncyclic generalized genus-2
+group `(2,2,8)` is intentionally also recorded: its ordinary-Python basis took
+3.465 seconds and map construction 8.103 seconds, identifying primary-basis
+arithmetic as the next optimization target rather than hiding it behind the
+easy cyclic cases. See the machine-readable receipt in
+[`bench/results`](../bench/results/hyperelliptic-jacobian-group-structure-linux-x64-2026-08-19.json).
+
 ## Validation
 
 The group law is tested independently of the local-factor pipeline:
@@ -356,6 +429,9 @@ The principal implementation files are:
   for bounded element-order and invariant-factor algorithms;
 - [`genus3_jacobian.c`](../packages/flint/src/hyperelliptic/genus3_jacobian.c)
   for the packed certification kernel;
-- [`hyperelliptic-jacobian.cjs`](../test/hyperelliptic-jacobian.cjs) and
+- [`hyperelliptic-jacobian.cjs`](../test/hyperelliptic-jacobian.cjs),
+  [`hyperelliptic-jacobian-group-structure.cjs`](../test/hyperelliptic-jacobian-group-structure.cjs),
+  [`genus3-jacobian-sum.cjs`](../packages/flint/test/hyperelliptic/genus3-jacobian-sum.cjs),
+  and
   [`hyperelliptic-genus3-jacobian-search-differential.cjs`](../test/hyperelliptic-genus3-jacobian-search-differential.cjs)
-  for public and independent-native regression tests.
+  for public, structure/certificate, and independent-native regression tests.

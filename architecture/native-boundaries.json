@@ -16,7 +16,7 @@
     "classified-native-file": 95,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 309,
+    "napi-export": 310,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -5997,6 +5997,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "genus3JacobianSearchProgression",
       "symbol": "sagejs_g3j_search_progression_value",
+      "disposition": "retain-host-adapter",
+      "family": "hyperelliptic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSum",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianSum",
+      "symbol": "sagejs_g3j_sum_value",
       "disposition": "retain-host-adapter",
       "family": "hyperelliptic"
     },

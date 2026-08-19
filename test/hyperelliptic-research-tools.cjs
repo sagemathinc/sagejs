@@ -102,11 +102,15 @@ for A in G.gens():
     assert phi(5*A) == 5*phi(A)
 for D in J.points():
     assert phi(phi.preimage(D)) == D
+Jlimited = HyperellipticJacobian(ResearchTestCurve(
+    x**5 + x + 1,
+    frobenius=T**4 + 10*T**2 + 25,
+))
 try:
-    J.abelian_group(max_elements=20)
+    Jlimited.abelian_group(max_random_elements=1, seed=1)
     assert False
 except JacobianResourceLimitError as error:
-    assert error.known_structure == (6, 6)
+    assert error.diagnostics["samples"] <= 1
 True`,
       { timeout: 120_000 },
     );

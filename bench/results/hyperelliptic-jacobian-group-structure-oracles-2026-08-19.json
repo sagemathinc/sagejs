@@ -1,0 +1,51 @@
+{
+  "schema": "sagejs.hyperelliptic-jacobian-group-structure-oracles.v1",
+  "generated_at_utc": "2026-08-19",
+  "sources": [
+    {
+      "name": "SageMath",
+      "version": "10.9.post30",
+      "script": "bench/hyperelliptic/group-structure-oracles.sage"
+    },
+    {
+      "name": "Magma",
+      "version": "2.18-5",
+      "script": "bench/hyperelliptic/group-structure-oracles.m"
+    }
+  ],
+  "cases": [
+    {
+      "id": "g3-p13-cyclic",
+      "prime": "13",
+      "genus": 3,
+      "f_coefficients_ascending": ["1", "2", "0", "0", "0", "0", "0", "1"],
+      "h_coefficients_ascending": ["0"],
+      "jacobian_order": "2160",
+      "invariant_factors": ["2160"],
+      "sage_agrees": true,
+      "magma_agrees": true
+    },
+    {
+      "id": "g3-p19-squarefree-cyclic",
+      "prime": "19",
+      "genus": 3,
+      "f_coefficients_ascending": ["1", "2", "0", "0", "0", "0", "0", "1"],
+      "h_coefficients_ascending": ["0"],
+      "jacobian_order": "6490",
+      "invariant_factors": ["6490"],
+      "sage_agrees": true,
+      "magma_agrees": true
+    },
+    {
+      "id": "g2-p5-generalized-rank3",
+      "prime": "5",
+      "genus": 2,
+      "f_coefficients_ascending": ["1", "1", "0", "0", "0", "1"],
+      "h_coefficients_ascending": ["1", "0", "1"],
+      "jacobian_order": "32",
+      "invariant_factors": ["2", "2", "8"],
+      "sage_agrees": true,
+      "magma_agrees": true
+    }
+  ]
+}

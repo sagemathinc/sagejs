@@ -273,6 +273,7 @@ const integration = [
   "test/hyperelliptic-genus3-certified.cjs",
   "test/hyperelliptic-genus3-jacobian-search-differential.cjs",
   "test/hyperelliptic-jacobian.cjs",
+  "test/hyperelliptic-jacobian-group-structure.cjs",
   "test/hyperelliptic-local-data.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",

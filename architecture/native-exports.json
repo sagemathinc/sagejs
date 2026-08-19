@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 24,
+    "retain-host-adapter": 25,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -4401,7 +4401,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
-        "line": 246,
+        "line": 263,
         "lines": 36,
         "sha256": "4075f13e5713332c56677cdc53a12b827bde69442816355684ad9ede31e9c0d7",
         "calls": [
@@ -4440,7 +4440,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
-        "line": 283,
+        "line": 300,
         "lines": 55,
         "sha256": "9fc71f7ab7c8814877919964d3685a254b73f3be58c6755aec9f8d580886a864",
         "calls": [
@@ -4489,7 +4489,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
-        "line": 339,
+        "line": 435,
         "lines": 93,
         "sha256": "47b820ed8a5210015ad7d0d63ee8f2cd595e21a7a80862df8f1537acd5f58d23",
         "calls": [
@@ -4528,6 +4528,61 @@
         "standalone smalljac and rforest bridges"
       ],
       "consumers": [],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSum",
+      "package": "@sagemath/sagejs-flint",
+      "export": "genus3JacobianSum",
+      "callback": "sagejs_g3j_sum_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
+        "line": 356,
+        "lines": 78,
+        "sha256": "d43d765ce9475e18eccbed31f55f98b835fbc51715b2d475dfe22e6e5c9ffc15",
+        "calls": [
+          "bigint_to_uint64",
+          "calloc",
+          "cancellation_pointer",
+          "check_napi",
+          "free",
+          "memset",
+          "napi_create_int32",
+          "napi_create_object",
+          "napi_create_string_utf8",
+          "napi_get_cb_info",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "packed_divisor_from_words",
+          "packed_divisor_value",
+          "sagejs_g3j_status_name",
+          "sagejs_g3j_sum",
+          "set_property",
+          "set_uint64",
+          "typed_u64",
+          "typed_u64_with_length"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/hyperelliptic/genus3-jacobian-sum.cjs"
+      ],
       "declared_ffi": null
     },
     {

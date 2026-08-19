@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <node_api.h>
@@ -115,15 +116,14 @@ static napi_value integer_to_bigint(
     return result;
 }
 
-static int typed_u64(
+static int typed_u64_with_length(
     napi_env env,
     napi_value value,
-    size_t expected,
-    const uint64_t **data)
+    const uint64_t **data,
+    size_t *length)
 {
     bool is_array;
     napi_typedarray_type type;
-    size_t length;
     napi_value buffer;
     size_t offset;
     if (!check_napi(env, napi_is_typedarray(env, value, &is_array)))
@@ -131,9 +131,26 @@ static int typed_u64(
     if (!is_array || !check_napi(
             env,
             napi_get_typedarray_info(
-                env, value, &type, &length, (void **) data, &buffer, &offset)))
+                env, value, &type, length, (void **) data, &buffer, &offset)))
         return 0;
-    if (type != napi_biguint64_array || length != expected)
+    if (type != napi_biguint64_array)
+    {
+        napi_throw_type_error(env, NULL, "expected a packed BigUint64Array");
+        return 0;
+    }
+    return 1;
+}
+
+static int typed_u64(
+    napi_env env,
+    napi_value value,
+    size_t expected,
+    const uint64_t **data)
+{
+    size_t length;
+    if (!typed_u64_with_length(env, value, data, &length))
+        return 0;
+    if (length != expected)
     {
         napi_throw_type_error(env, NULL, "invalid packed BigUint64Array length");
         return 0;
@@ -333,6 +350,85 @@ napi_value sagejs_g3j_scalar_multiply_value(
             env, diagnostics, "scalarBits", native_diagnostics.scalar_bits) ||
         !set_property(env, result, "diagnostics", diagnostics))
         return NULL;
+    return result;
+}
+
+napi_value sagejs_g3j_sum_value(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[6];
+    size_t argc = 6;
+    const uint64_t *f, *h, *packed;
+    size_t packed_length = 0;
+    uint64_t prime, max_operations;
+    sagejs_g3j_divisor *divisors = NULL, product;
+    uint64_t divisor_count;
+    sagejs_g3j_diagnostics native_diagnostics;
+    const _Atomic uint32_t *cancel = NULL;
+    napi_value result = NULL, diagnostics, value;
+    int32_t status = SAGEJS_G3J_INVALID_ARGUMENT;
+    if (!check_napi(
+            env, napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 6)
+    {
+        napi_throw_type_error(env, NULL, "expected 6 arguments");
+        return NULL;
+    }
+    if (!bigint_to_uint64(env, args[0], &prime) ||
+        !typed_u64(env, args[1], 8, &f) ||
+        !typed_u64(env, args[2], 4, &h) ||
+        !typed_u64_with_length(env, args[3], &packed, &packed_length) ||
+        packed_length % 8 != 0 ||
+        !bigint_to_uint64(env, args[4], &max_operations) ||
+        !cancellation_pointer(env, args[5], &cancel))
+    {
+        if (packed_length % 8 != 0)
+            napi_throw_type_error(
+                env, NULL, "packed divisor batch length must be divisible by 8");
+        return NULL;
+    }
+    divisor_count = (uint64_t) (packed_length / 8);
+    if (divisor_count > SIZE_MAX / sizeof(*divisors))
+    {
+        napi_throw_range_error(env, NULL, "packed divisor batch is too large");
+        return NULL;
+    }
+    if (divisor_count > 0)
+    {
+        divisors = calloc((size_t) divisor_count, sizeof(*divisors));
+        if (divisors == NULL)
+        {
+            napi_throw_error(env, NULL, "packed divisor allocation failed");
+            return NULL;
+        }
+        for (uint64_t index = 0; index < divisor_count; index += 1)
+            if (!packed_divisor_from_words(
+                    env, packed + 8 * index, divisors + index))
+                goto done;
+    }
+    memset(&product, 0, sizeof(product));
+    status = sagejs_g3j_sum(
+        prime, f, h, divisors, divisor_count, max_operations, cancel,
+        &product, &native_diagnostics);
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_int32(env, status, &value)) ||
+        !set_property(env, result, "status", value) ||
+        !check_napi(
+            env,
+            napi_create_string_utf8(
+                env, sagejs_g3j_status_name(status), NAPI_AUTO_LENGTH,
+                &value)) ||
+        !set_property(env, result, "statusName", value) ||
+        !set_property(env, result, "divisor", packed_divisor_value(env, &product)) ||
+        !check_napi(env, napi_create_object(env, &diagnostics)) ||
+        !set_uint64(
+            env, diagnostics, "groupOperations",
+            native_diagnostics.group_operations) ||
+        !set_property(env, result, "diagnostics", diagnostics))
+        result = NULL;
+done:
+    free(divisors);
     return result;
 }
 

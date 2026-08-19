@@ -224,7 +224,7 @@ try:
 except JacobianResourceLimitError:
     pass
 try:
-    J.points(max_candidates=90)
+    J.points(max_candidates=12)
     assert False
 except JacobianResourceLimitError:
     pass
