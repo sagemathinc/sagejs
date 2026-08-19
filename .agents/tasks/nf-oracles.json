@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-oracles",
+  "title": "nf-oracles",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create the offline cross-system oracle corpus, regeneration harnesses, structural checker, and benchmark workloads for all phases.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "test/fixtures/number-field-foundations/",
+    "test/number-field-foundations-oracle.cjs",
+    "upstream-tests/sage/number-field-foundations/",
+    "bench/number-field-foundations/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/algebraic-number-field-computational-foundations-plan.md",
+    "SageMath 10.9.post1 number-field, PARI L-function, and unit/class-group APIs",
+    "PARI 2.17.1",
+    "Magma 2.18-5 independent exact oracle",
+    "Dedekind's nonmonogenic cubic field x^3-x^2-2*x-8"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma",
+      "Hecke/Oscar"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
