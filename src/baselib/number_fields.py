@@ -12,6 +12,8 @@ import sagejs.runtime as runtime
 
 _nf_maximal_order_module_cache = runtime.undefined
 _nf_maximal_order_engine_module_cache = runtime.undefined
+_nf_prime_ideals_module_cache = runtime.undefined
+_nf_ideal_arithmetic_module_cache = runtime.undefined
 
 
 def _untyped(value: Any) -> Any:
@@ -43,6 +45,26 @@ def _nf_maximal_order_engine_module() -> Any:
             fromlist=["maximal_order_engine"],
         )
     return _nf_maximal_order_engine_module_cache
+
+
+def _nf_prime_ideals_module() -> Any:
+    global _nf_prime_ideals_module_cache
+    if _nf_prime_ideals_module_cache is runtime.undefined:
+        _nf_prime_ideals_module_cache = __import__(
+            "sagejs.number_fields.prime_ideals",
+            fromlist=["prime_ideals"],
+        )
+    return _nf_prime_ideals_module_cache
+
+
+def _nf_ideal_arithmetic_module() -> Any:
+    global _nf_ideal_arithmetic_module_cache
+    if _nf_ideal_arithmetic_module_cache is runtime.undefined:
+        _nf_ideal_arithmetic_module_cache = __import__(
+            "sagejs.number_fields.ideal_arithmetic",
+            fromlist=["ideal_arithmetic"],
+        )
+    return _nf_ideal_arithmetic_module_cache
 
 
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
@@ -1016,6 +1038,24 @@ class NumberFieldElement(sage.Element):
 
     absolute_trace = trace
 
+    def multiplication_matrix(self) -> Any:
+        degree = self._parent.degree()
+        columns = []
+        for basis_element in self._parent._power_basis():
+            columns.append(_nf_coordinates(self * basis_element, degree))
+        rows = [
+            [columns[column][row] for column in range(degree)] for row in range(degree)
+        ]
+        return _nf_global("matrix")(sage.QQ, rows)
+
+    def norm(self) -> Any:
+        return self.multiplication_matrix().determinant()
+
+    absolute_norm = norm
+
+    def valuation(self, prime_ideal: Any) -> int:
+        return _nf_ideal_arithmetic_module().element_valuation(self, prime_ideal)
+
     def is_integral(self) -> bool:
         return _nf_is_integral(self._parent, self)
 
@@ -1314,6 +1354,12 @@ class NumberFieldIdeal:
         row = _nf_coordinates(element, self._field.degree())
         return _nf_row_in_lattice(row, self._basis_rows)
 
+    def contains_ideal(self, other: NumberFieldIdeal) -> bool:
+        return _nf_ideal_arithmetic_module().ideal_contains(self, other)
+
+    def divides(self, other: NumberFieldIdeal) -> bool:
+        return _nf_ideal_arithmetic_module().ideal_divides(self, other)
+
     def is_zero(self) -> bool:
         return len(self._basis_rows) == 0
 
@@ -1392,10 +1438,15 @@ class NumberFieldIdeal:
     def __rmul__(self, scalar: Any) -> NumberFieldIdeal:
         return self * scalar
 
+    def __truediv__(self, other: Any) -> NumberFieldIdeal:
+        if isinstance(other, NumberFieldIdeal):
+            return self.quotient(other)
+        return self * self._field(other).inverse()
+
     def __pow__(self, exponent: Any) -> NumberFieldIdeal:
         power = runtime.integer_bigint(exponent)
         if power < 0:
-            raise NotImplementedError("negative ideal powers require ideal inversion")
+            return _nf_ideal_arithmetic_module().ideal_power(self, power)
         answer = self._order.ideal(1)
         base = self
         while power:
@@ -1405,6 +1456,33 @@ class NumberFieldIdeal:
             if power:
                 base = base * base
         return answer
+
+    def inverse(self) -> NumberFieldIdeal:
+        return _nf_ideal_arithmetic_module().ideal_inverse(self)
+
+    def __invert__(self) -> NumberFieldIdeal:
+        return self.inverse()
+
+    def colon(self, other: NumberFieldIdeal) -> NumberFieldIdeal:
+        return _nf_ideal_arithmetic_module().colon_ideal(self, other)
+
+    def quotient(self, other: NumberFieldIdeal) -> NumberFieldIdeal:
+        return _nf_ideal_arithmetic_module().ideal_quotient(self, other)
+
+    def valuation(self, prime_ideal: Any) -> int:
+        return _nf_ideal_arithmetic_module().ideal_valuation(self, prime_ideal)
+
+    def factor(self) -> Any:
+        return _nf_ideal_arithmetic_module().factor_integral_ideal(self)
+
+    def denominator(self) -> Any:
+        return _nf_ideal_arithmetic_module().integrality_denominator(self)
+
+    def numerator(self) -> NumberFieldIdeal:
+        return _nf_ideal_arithmetic_module().numerator_ideal(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        return _nf_ideal_arithmetic_module().serialize_ideal(self)
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -1665,6 +1743,24 @@ class NumberFieldOrder(sage.Parent):
                 rows.append(_nf_coordinates(generator * basis_element, self.degree()))
         return NumberFieldIdeal(self, rows)
 
+    def factor_rational_prime(
+        self,
+        prime: Any,
+        algorithm: str = "auto",
+    ) -> Any:
+        return _nf_prime_ideals_module().factor_rational_prime(
+            self, prime, algorithm=algorithm
+        )
+
+    def primes_above(self, prime: Any) -> "tuple[Any, ...]":
+        return _nf_prime_ideals_module().primes_above(self, prime)
+
+    def splitting_records(self, start: Any, stop: Any) -> Any:
+        return _nf_prime_ideals_module().splitting_records(self, start, stop)
+
+    def ideal_from_dict(self, data: dict[str, Any]) -> NumberFieldIdeal:
+        return _nf_ideal_arithmetic_module().ideal_from_dict(self, data)
+
     def class_group(self) -> NumberFieldClassGroup:
         return self._field.class_group()
 
@@ -1886,6 +1982,16 @@ class NumberFieldParent(sage.Parent):
 
     def ideal(self, *generators: Any) -> NumberFieldIdeal:
         return self.maximal_order().ideal(*generators)
+
+    def factor_rational_prime(
+        self,
+        prime: Any,
+        algorithm: str = "auto",
+    ) -> Any:
+        return self.maximal_order().factor_rational_prime(prime, algorithm)
+
+    def primes_above(self, prime: Any) -> "tuple[Any, ...]":
+        return self.maximal_order().primes_above(prime)
 
     def integral_basis(self) -> list[NumberFieldElement]:
         return self.maximal_order().basis()
