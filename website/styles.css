@@ -71,6 +71,10 @@ h2 { margin-bottom: 20px; font-family: Georgia, "Times New Roman", serif; font-s
 .snapshot-date { margin: 18px 0 0; color: #9fb3c8; font-size: 0.77rem; }
 
 .install-section { padding-block: 85px; color: white; background: var(--navy-deep); }
+.install-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 20px; }
+.install-title-row h2 { margin-bottom: 0; }
+.alpha-badge { border: 1px solid #f0c86a; border-radius: 999px; padding: 6px 11px; color: #ffe7a7; background: rgba(232,168,56,.14); font-size: .72rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.alpha-note { max-width: 780px; margin: 18px 0 0; color: #d9e2ec; }
 .install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 35px; }
 .install-card { min-width: 0; padding: 28px; border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius); background: rgba(255,255,255,.055); }
 .install-heading { display: flex; gap: 14px; align-items: center; }
@@ -82,6 +86,7 @@ h2 { margin-bottom: 20px; font-family: Georgia, "Times New Roman", serif; font-s
 .copy { border: 0; border-left: 1px solid rgba(255,255,255,.15); padding-inline: 15px; color: #71e0d2; background: transparent; cursor: pointer; font-weight: 750; }
 .copy:hover { background: rgba(255,255,255,.08); }
 .fine-print { margin-bottom: 0; font-size: .76rem; }
+.fine-print a { color: #71e0d2; }
 .jupyter-note { margin: 24px 0 0; color: #bcccdc; }
 .jupyter-note code { color: #71e0d2; }
 

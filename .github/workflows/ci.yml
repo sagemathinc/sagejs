@@ -82,12 +82,14 @@ jobs:
         run: pnpm test:startup:run
 
       - name: Validate parallel project contracts
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: pnpm parallel:check -- --all
 
       - name: Run strict baselib checks
         run: pnpm test:baselib:strict
 
       - name: Run compiler compatibility diagnostics
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         id: compiler
         run: |
           set +e
@@ -102,6 +104,7 @@ jobs:
           echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Run unit, host integration, and native tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           pnpm test:unit
           pnpm test:integration
@@ -111,6 +114,7 @@ jobs:
           pnpm test:release
 
       - name: Verify generated reference and imported Sage examples
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           pnpm docs:verify
           git diff --exit-code -- \
@@ -121,6 +125,7 @@ jobs:
           pnpm test:upstream:run
 
       - name: Run Sage tutorial compatibility diagnostics
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         id: tutorial
         run: |
           set +e
@@ -143,7 +148,7 @@ jobs:
         run: pnpm test:jupyter:sea
 
       - name: Record non-blocking compatibility status
-        if: always()
+        if: ${{ always() && !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           ## Compatibility diagnostics
@@ -158,6 +163,12 @@ jobs:
           while those existing failures are triaged; bootstrap, strict baselib,
           unit, host integration, native, and SEA tests are blocking.
           EOF
+
+      - name: Validate tagged release metadata and installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pnpm test:release -- --tag "$GITHUB_REF_NAME"
+          pnpm test:installer
 
       - name: Package the Linux x64 SEA distribution
         run: |
@@ -257,6 +268,7 @@ jobs:
         run: pnpm test:baselib:strict
 
       - name: Run unit, host integration, and native tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           pnpm test:unit
           pnpm test:integration
@@ -399,13 +411,16 @@ jobs:
         run: pnpm test:startup:run
 
       - name: Run portable tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: pnpm test:portable
 
       - name: Run host integration tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         timeout-minutes: 30
         run: pnpm test:integration
 
       - name: Run native addon tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: pnpm test:native
 
       - name: Build and relocation-test both Windows SEA executables
@@ -439,11 +454,29 @@ jobs:
         run: pwsh -File scripts/sign-windows.ps1 -VerifyOnly
 
       - name: Authenticode-sign tagged Windows executables with a PFX
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE != 'azure'
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'pfx'
         env:
           SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64 }}
           SAGEJS_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PASSWORD }}
         run: pnpm release:windows:sign
+
+      - name: Record the Windows signing policy
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          SIGNING_MODE: ${{ vars.SAGEJS_WINDOWS_SIGNING_MODE }}
+        run: |
+          $mode = $env:SIGNING_MODE
+          if ([string]::IsNullOrWhiteSpace($mode)) {
+            $mode = "unsigned"
+          }
+          if ($mode -notin @("azure", "pfx", "unsigned")) {
+            throw "Unsupported SAGEJS_WINDOWS_SIGNING_MODE: $mode"
+          }
+          if ($mode -eq "unsigned") {
+            Write-Warning "Publishing unsigned Windows executables for this early-alpha release."
+          }
+          "## Windows signing`n`nMode: **$mode**" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Package the Windows x64 SEA distribution
         shell: pwsh
@@ -544,6 +577,7 @@ jobs:
         run: pnpm test:startup:run
 
       - name: Run portable, host integration, and native tests
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           pnpm test:portable
           pnpm test:integration
@@ -634,6 +668,9 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check out the tagged release metadata
+        uses: actions/checkout@v7
+
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
@@ -654,10 +691,14 @@ jobs:
       - name: Create or update the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --verify-tag --generate-notes
+            gh release create "$TAG" \
+              --verify-tag \
+              --title "Sage.js ${TAG#v} — early alpha" \
+              --notes-file RELEASE_NOTES.md
           mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
           [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
           gh release upload "$TAG" "${assets[@]}" --clobber

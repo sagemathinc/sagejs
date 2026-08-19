@@ -59,25 +59,35 @@
       <section class="install-section" id="install" aria-labelledby="install-title">
         <div class="wrap">
           <p class="eyebrow light">Start using Sage.js</p>
-          <h2 id="install-title">One command, or one npm package.</h2>
+          <div class="install-title-row">
+            <h2 id="install-title">One command, or one npm package.</h2>
+            <span class="alpha-badge">Early alpha · v0.3.0</span>
+          </div>
+          <p class="alpha-note">
+            Sage.js is research software at a very early stage. Expect missing
+            functionality and rough edges, and please report what you discover.
+          </p>
           <div class="install-grid">
             <article class="install-card">
-              <div class="install-heading"><span class="number">01</span><h3>Native installer</h3></div>
-              <p>Downloads the release for your platform and verifies its SHA-256 checksum.</p>
+              <div class="install-heading"><span class="number">01</span><h3>macOS or Linux</h3></div>
+              <p>Downloads the native release for your platform and verifies its SHA-256 checksum.</p>
               <div class="command-row">
                 <code>curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh</code>
                 <button class="copy" data-copy="curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh" type="button">Copy</button>
               </div>
-              <p class="fine-print">Native preview v0.1.1 · Linux x64/arm64, Windows x64, macOS arm64</p>
+              <p class="fine-print">v0.3.0 early alpha · Linux x64/arm64 · signed and notarized macOS arm64</p>
             </article>
             <article class="install-card">
-              <div class="install-heading"><span class="number">02</span><h3>npm</h3></div>
-              <p>Installs the Sage.js command line and JavaScript embedding package.</p>
+              <div class="install-heading"><span class="number">02</span><h3>npm, including Windows</h3></div>
+              <p>Installs the Sage.js command line and JavaScript embedding package for your platform.</p>
               <div class="command-row">
                 <code>npm install -g @sagemath/sagejs</code>
                 <button class="copy" data-copy="npm install -g @sagemath/sagejs" type="button">Copy</button>
               </div>
-              <p class="fine-print">npm preview v0.1.0 · the unified v0.2 release is next</p>
+              <p class="fine-print">
+                v0.3.0 early alpha · Windows x64, Linux x64/arm64, macOS arm64 ·
+                <a href="https://github.com/sagemathinc/sagejs/releases/latest/download/sagejs-windows-x64.zip">standalone Windows ZIP</a>
+              </p>
             </article>
           </div>
           <p class="jupyter-note"><code>sagejs --install-jupyter-kernel</code> adds Sage.js to JupyterLab, CoCalc, or another Jupyter environment.</p>

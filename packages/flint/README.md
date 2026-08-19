@@ -355,4 +355,5 @@ Those are low-level stages for an already initialized compiler. Use the
 composite `pnpm --dir packages/flint build` for ordinary source builds.
 
 This package is private while the API and prebuilt-binary distribution layout
-are being established. It is not part of the Sage.js 0.2.0 npm package.
+are being established. Its native functionality is bundled into the public
+Sage.js distribution rather than published as a standalone npm package.

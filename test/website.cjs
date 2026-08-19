@@ -204,6 +204,8 @@ test("dashboard covers the three questions and both install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /releases\/latest\/download\/install\.sh/);
+  assert.match(html, /Early alpha · v0\.3\.0/);
+  assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /--install-jupyter-kernel/);
   for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks", "performance-results", "performance-bars", "performance-table-body", "performance-warning", "performance-command"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });

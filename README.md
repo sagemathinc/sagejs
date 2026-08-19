@@ -1,5 +1,9 @@
 # Sage.js
 
+> **Early alpha:** Sage.js 0.3.0 is the first release intended for outside
+> experimentation. Expect missing functionality, incompatible changes, and
+> rough edges.
+
 > **Sage.js is open, portable, high-performance software for exploring
 > research mathematics, discovering patterns, testing conjectures, developing
 > algorithms, and producing reproducible computational evidence for formal
@@ -31,15 +35,16 @@ curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/instal
 ```
 
 It installs into `~/.local/bin` by default. Set `SAGEJS_INSTALL_DIR` to choose
-another directory or `SAGEJS_VERSION=0.2.0` to pin a release. The archives
+another directory or `SAGEJS_VERSION=0.3.0` to pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
 compiler, package manager, or source checkout is needed on the target machine.
 
 After extracting manually, run `./sagejs` on macOS/Linux or `sagejs.exe` on
 Windows. Each archive has a neighboring `.sha256` file. Linux releases are
-built on Ubuntu 24.04. Windows executables are Authenticode-signed and intended
-for ordinary Windows 10/11 x64 systems. macOS executables use the hardened
+built on Ubuntu 24.04. Windows executables are intended for ordinary Windows
+10/11 x64 systems; Authenticode provisioning is still in progress, so the
+0.3.0 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
 submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
@@ -178,13 +183,15 @@ budgets are defined in
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
 Linux x64, Linux arm64, Windows x64, and Apple Silicon macOS. They require no
 Node.js, compiler, or package manager on the target machine. Release CI refuses
-to publish unsigned Windows or macOS binaries. A maintainer with Apple
+to publish unsigned macOS binaries and explicitly records whether Windows
+binaries were signed or released under the temporary early-alpha unsigned
+policy. A maintainer with Apple
 credentials can reproduce the signed, notarized macOS artifacts locally with:
 
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.2.0
+pnpm release:macos -- --publish v0.3.0
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
@@ -192,8 +199,9 @@ tooling: `SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
 `SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates a signed,
 notarized ZIP and a signed, notarized, stapled installer under `build/release`.
 [`RELEASING.md`](RELEASING.md) documents Apple, Windows, npm, and tag secrets
-and the complete release checklist. GitHub does not publish unsigned desktop
-artifacts or ask users to bypass platform security.
+and the complete release checklist. macOS users are never asked to bypass
+platform security; Windows users may encounter a SmartScreen warning until
+Authenticode provisioning is complete.
 
 The main contributor-facing directories are:
 
@@ -222,9 +230,9 @@ system, package distribution, and collection of high-level algorithms.
 SageMath is the semantic specification by default; an eventual compatibility
 target is to run substantial upstream Sage test suites unchanged.
 
-Version 0.1 is intentionally much smaller. It revives and modernizes the
-self-hosting language compiler formerly developed as JPython and PyLang. It
-is now beginning to acquire an optional native mathematical library layer.
+Version 0.3 remains intentionally early alpha. It revives and modernizes the
+self-hosting language compiler formerly developed as JPython and PyLang while
+adding a substantial native mathematical library layer.
 
 ## Mission
 
