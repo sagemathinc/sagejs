@@ -588,8 +588,49 @@ jobs:
           SAGEJS_BUILD_JOBS: "6"
         run: pnpm test:sea
 
-      - name: Import Apple release credentials
+      - name: Upload validated macOS executables for signing
         if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-macos-arm64-unsigned
+          path: |
+            build/sea/sagejs
+            build/sea/sagepython
+          if-no-files-found: error
+          retention-days: 14
+
+  macos-sign:
+    name: Sign and notarize macOS arm64 release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: macos-arm64
+    runs-on: blacksmith-2vcpu-macos-15
+    timeout-minutes: 45
+    environment: sagejs-signing
+
+    steps:
+      - name: Check out the tagged release metadata
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+
+      - name: Download the validated macOS executables
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-macos-arm64-unsigned
+          path: build/sea
+
+      - name: Restore executable permissions
+        run: chmod 755 build/sea/sagejs build/sea/sagepython
+
+      - name: Import Apple release credentials
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.SAGEJS_APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_APPLE_CERTIFICATE_PASSWORD }}
@@ -626,7 +667,6 @@ jobs:
             --issuer "$APPLE_NOTARY_ISSUER_ID"
 
       - name: Sign, notarize, and package macOS arm64
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           SAGEJS_MACOS_SIGN_ID: ${{ secrets.SAGEJS_MACOS_SIGN_ID }}
           SAGEJS_MACOS_INSTALLER_ID: ${{ secrets.SAGEJS_MACOS_INSTALLER_ID }}
@@ -634,14 +674,12 @@ jobs:
         run: pnpm release:macos -- --skip-build
 
       - name: Package macOS arm64 for npm
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           pnpm package:native-npm macos-arm64 \
             build/release/sagejs-macos-arm64/sagejs \
             build/release/sagejs-macos-arm64/sagepython
 
       - name: Upload signed macOS arm64 artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64
@@ -661,8 +699,9 @@ jobs:
       - linux-x64
       - linux-arm64
       - windows-x64
-      - macos-arm64
+      - macos-sign
     runs-on: ubuntu-24.04
+    environment: sagejs-release
     permissions:
       contents: write
       id-token: write
