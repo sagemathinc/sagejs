@@ -728,17 +728,24 @@ jobs:
           path: release
           merge-multiple: true
 
-      - name: Create or update the GitHub release
+      - name: Create or update the draft GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || \
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" == "true" ]] || {
+              echo "Release $TAG already exists and is not a mutable draft" >&2
+              exit 1
+            }
+          else
             gh release create "$TAG" \
+              --draft \
               --verify-tag \
               --title "Sage.js ${TAG#v} — early alpha" \
               --notes-file RELEASE_NOTES.md
+          fi
           mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
           [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
           gh release upload "$TAG" "${assets[@]}" --clobber
@@ -755,13 +762,36 @@ jobs:
             echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
             exit 1
           }
-          pnpm publish release/npm/sagejs-linux-x64.tgz \
-            --access public --tag linux-x64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-linux-arm64.tgz \
-            --access public --tag linux-arm64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-windows-x64.tgz \
-            --access public --tag windows-x64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-macos-arm64.tgz \
-            --access public --tag macos-arm64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs.tgz \
-            --access public --tag latest --ignore-scripts --no-git-checks
+
+          publish_package() {
+            local archive="$1"
+            local tag="$2"
+            local metadata name version published
+            metadata="$(tar -xOzf "$archive" package/package.json)"
+            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
+            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
+            if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
+              [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
+                echo "Unexpected published version for ${name}@${version}: $published" >&2
+                exit 1
+              }
+              echo "${name}@${version} is already published; refreshing dist-tag ${tag}"
+              npm dist-tag add "${name}@${version}" "$tag"
+            else
+              pnpm publish "$archive" \
+                --access public --tag "$tag" --ignore-scripts --no-git-checks
+            fi
+          }
+
+          publish_package release/npm/sagejs-linux-x64.tgz linux-x64
+          publish_package release/npm/sagejs-linux-arm64.tgz linux-arm64
+          publish_package release/npm/sagejs-windows-x64.tgz windows-x64
+          publish_package release/npm/sagejs-macos-arm64.tgz macos-arm64
+          publish_package release/npm/sagejs.tgz latest
+
+      - name: Publish the immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false --latest
