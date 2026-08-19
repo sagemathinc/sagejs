@@ -310,7 +310,7 @@ test("number-field foundations corpus has a stable schema and digest", () => {
     xi: "s*(s-1)*Lambda_K(s)",
     regulatorRankZero: "1",
   });
-  assert.equal(corpus.fields.length, 23);
+  assert.equal(corpus.fields.length, 24);
   assert.deepEqual(
     [...new Set(corpus.fields.map((field) => field.degree))].sort((a, b) => a - b),
     [1, 2, 3, 4, 5, 6],
@@ -319,6 +319,7 @@ test("number-field foundations corpus has a stable schema and digest", () => {
   assert.ok(corpus.fields.some((field) => field.tags.includes("nonmaximal-equation-order")));
   assert.ok(corpus.fields.some((field) => field.tags.includes("nonmonogenic-field")));
   assert.ok(corpus.fields.some((field) => field.tags.includes("large-class-number")));
+  assert.ok(corpus.fields.some((field) => field.tags.includes("large-fundamental-unit")));
   assert.ok(corpus.fields.some((field) => field.globalInvariants.unitRank === 3));
   for (const character of corpus.kroneckerCharacters) {
     const discriminant = BigInt(character.discriminant);
@@ -389,7 +390,7 @@ test("independent Magma snapshot agrees with exact Sage/PARI records", () => {
   );
   assert.equal(independent.schema, "sagejs.number-fields/independent-oracles-v1");
   assert.equal(independent.source.system, "Magma");
-  assert.equal(independent.fields.length, 22);
+  assert.equal(independent.fields.length, 23);
   const byId = new Map(corpus.fields.map((field) => [field.id, field]));
   for (const record of independent.fields) {
     const expected = byId.get(record.id);

@@ -78,9 +78,14 @@ CASES = [
     ("real-d12", x**2 - 3, ["quadratic", "real"]),
     ("real-d13", x**2 - x - 3, ["quadratic", "real"]),
     (
-        "real-d61-large-unit",
+        "real-d61-index-2",
         x**2 - 61,
-        ["quadratic", "real", "large-fundamental-unit", "index-prime-2"],
+        ["quadratic", "real", "nonmaximal-equation-order", "index-prime-2"],
+    ),
+    (
+        "real-d184-large-unit",
+        x**2 - 46,
+        ["quadratic", "real", "large-fundamental-unit"],
     ),
     ("cubic-real", x**3 - x**2 - 2 * x + 1, ["cubic", "totally-real", "real-cyclotomic-subfield"]),
     ("cubic-mixed", x**3 - x - 1, ["cubic", "mixed", "isomorphism-pair-a"]),
