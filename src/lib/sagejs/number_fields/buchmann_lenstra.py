@@ -31,11 +31,13 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
-    packed_order_contains_vector_in_place,
     packed_known_overorder_contains_vectors_in_place,
     packed_order_contains_vectors_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
+)
+from sagejs.number_fields.bl_composite_kernel import (
+    packed_order_contains_vector_in_place as packed_order_contains_vector_in_place,
 )
 
 try:
