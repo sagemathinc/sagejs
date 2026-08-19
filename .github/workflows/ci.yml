@@ -662,16 +662,16 @@ jobs:
             -k "$keychain_password" "$keychain"
           security list-keychains -d user -s "$keychain"
           security default-keychain -d user -s "$keychain"
-          xcrun notarytool store-credentials sagejs-ci-notary \
-            --key "$api_key" \
-            --key-id "$APPLE_NOTARY_KEY_ID" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID"
+          {
+            echo "SAGEJS_MACOS_NOTARY_KEY=$api_key"
+            echo "SAGEJS_MACOS_NOTARY_KEY_ID=$APPLE_NOTARY_KEY_ID"
+            echo "SAGEJS_MACOS_NOTARY_ISSUER_ID=$APPLE_NOTARY_ISSUER_ID"
+          } >> "$GITHUB_ENV"
 
       - name: Sign, notarize, and package macOS arm64
         env:
           SAGEJS_MACOS_SIGN_ID: ${{ secrets.SAGEJS_MACOS_SIGN_ID }}
           SAGEJS_MACOS_INSTALLER_ID: ${{ secrets.SAGEJS_MACOS_INSTALLER_ID }}
-          SAGEJS_MACOS_NOTARY_PROFILE: sagejs-ci-notary
         run: pnpm release:macos -- --skip-build
 
       - name: Package macOS arm64 for npm

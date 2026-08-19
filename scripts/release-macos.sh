@@ -20,6 +20,9 @@ TEAM_ID="${SAGEJS_APPLE_TEAM_ID:-BVF94G2MB4}"
 APP_IDENTITY="${SAGEJS_MACOS_SIGN_ID:-Developer ID Application: William STEIN (${TEAM_ID})}"
 INSTALLER_IDENTITY="${SAGEJS_MACOS_INSTALLER_ID:-Developer ID Installer: William STEIN (${TEAM_ID})}"
 NOTARY_PROFILE="${SAGEJS_MACOS_NOTARY_PROFILE:-notary-profile}"
+NOTARY_KEY="${SAGEJS_MACOS_NOTARY_KEY:-}"
+NOTARY_KEY_ID="${SAGEJS_MACOS_NOTARY_KEY_ID:-}"
+NOTARY_ISSUER_ID="${SAGEJS_MACOS_NOTARY_ISSUER_ID:-}"
 ENTITLEMENTS="${SAGEJS_MACOS_ENTITLEMENTS:-$ROOT/scripts/macos-entitlements.plist}"
 SKIP_NOTARIZE=0
 SKIP_BUILD=0
@@ -46,6 +49,9 @@ Configuration:
   SAGEJS_MACOS_SIGN_ID
   SAGEJS_MACOS_INSTALLER_ID
   SAGEJS_MACOS_NOTARY_PROFILE
+  SAGEJS_MACOS_NOTARY_KEY
+  SAGEJS_MACOS_NOTARY_KEY_ID
+  SAGEJS_MACOS_NOTARY_ISSUER_ID
   SAGEJS_MACOS_ENTITLEMENTS
 EOF
       exit 0
@@ -110,12 +116,29 @@ productsign --sign "$INSTALLER_IDENTITY" "$UNSIGNED_PKG" "$PACKAGE"
 pkgutil --check-signature "$PACKAGE"
 
 if [[ $SKIP_NOTARIZE -eq 0 ]]; then
-  echo "Notarizing downloadable ZIP using Keychain profile $NOTARY_PROFILE"
+  NOTARY_AUTH=()
+  if [[ -n "$NOTARY_KEY" || -n "$NOTARY_KEY_ID" || -n "$NOTARY_ISSUER_ID" ]]; then
+    for value in NOTARY_KEY NOTARY_KEY_ID NOTARY_ISSUER_ID; do
+      [[ -n "${!value}" ]] || {
+        echo "Direct notarization requires SAGEJS_MACOS_$value" >&2
+        exit 2
+      }
+    done
+    NOTARY_AUTH=(
+      --key "$NOTARY_KEY"
+      --key-id "$NOTARY_KEY_ID"
+      --issuer "$NOTARY_ISSUER_ID"
+    )
+    echo "Notarizing downloadable ZIP using an App Store Connect API key"
+  else
+    NOTARY_AUTH=(--keychain-profile "$NOTARY_PROFILE")
+    echo "Notarizing downloadable ZIP using Keychain profile $NOTARY_PROFILE"
+  fi
   xcrun notarytool submit "$ARCHIVE" \
-    --keychain-profile "$NOTARY_PROFILE" --wait --progress
-  echo "Notarizing installer package using Keychain profile $NOTARY_PROFILE"
+    "${NOTARY_AUTH[@]}" --wait --progress
+  echo "Notarizing installer package"
   xcrun notarytool submit "$PACKAGE" \
-    --keychain-profile "$NOTARY_PROFILE" --wait --progress
+    "${NOTARY_AUTH[@]}" --wait --progress
   xcrun stapler staple "$PACKAGE"
   xcrun stapler validate "$PACKAGE"
   spctl --assess --type execute --verbose=4 "$DIST/sagejs"
