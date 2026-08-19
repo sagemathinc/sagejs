@@ -757,7 +757,7 @@ class GeneralDedekindZetaFunction:
     def value(self, value: Any, prec: Any = None, algorithm: str = "auto") -> Any:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
-        result = self._engine.value(value, **self._options(precision))
+        result = self._engine.value(_point(value), **self._options(precision))
         self._last_diagnostics = {
             "algorithm": "inverse-mellin-meijer-g",
             "precision_bits": precision,
@@ -776,7 +776,9 @@ class GeneralDedekindZetaFunction:
     ) -> list[Any]:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
-        result = self._engine.values_result(points, **self._options(precision))
+        result = self._engine.values_result(
+            [_point(point) for point in points], **self._options(precision)
+        )
         self._last_diagnostics = dict(result)
         return [self._coerce(item, precision) for item in result["values"]]
 
@@ -790,7 +792,7 @@ class GeneralDedekindZetaFunction:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
         result = self._engine.derivative(
-            value,
+            _point(value),
             int(D),
             **self._options(precision),
         )
@@ -802,7 +804,7 @@ class GeneralDedekindZetaFunction:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
         return self._coerce(
-            self._engine.completed_value(value, **self._options(precision)),
+            self._engine.completed_value(_point(value), **self._options(precision)),
             precision,
         )
 
@@ -810,14 +812,14 @@ class GeneralDedekindZetaFunction:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
         return self._coerce(
-            self._engine.xi(value, **self._options(precision)), precision
+            self._engine.xi(_point(value), **self._options(precision)), precision
         )
 
     def residue(self, value: Any = 1, prec: Any = None, algorithm: str = "auto") -> Any:
         self._validate_algorithm(algorithm)
         precision = self._precision if prec is None else _precision(prec)
         return self._coerce(
-            self._engine.residue(value, **self._options(precision)), precision
+            self._engine.residue(_point(value), **self._options(precision)), precision
         )
 
     def euler_factor(self, prime: Any) -> Any:

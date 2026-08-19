@@ -22,3 +22,28 @@ The manifest is deliberately implementation-neutral so each project can add a
 small adapter without changing its cases or silently selecting easier answers.
 Reference-system comparisons must also use persistent processes; do not
 compare a warm Sage.js call with a cold Sage/PARI or Magma startup.
+
+## Measured comparison
+
+`measurements.json` freezes digest-checked public workloads for compact prime
+streams, exact zeta coefficients, quadratic zeta batches, general analytic
+zeta, and certified global arithmetic.  Run the persistent Sage.js and
+Sage/PARI workers on the same host with:
+
+```sh
+node bench/number-field-foundations/run.cjs \
+  --systems sagejs,sage --samples 5 --warmups 1 \
+  --output bench/results/number-field-foundations-current.json
+```
+
+The general analytic-zeta workload is intentionally excluded from the default
+profile because the readable Sage.js Meijer-G reference currently takes
+minutes.  Use `--include-slow` or select it explicitly to quantify that known
+production-kernel gap.  Magma and Hecke/Oscar availability is recorded in the
+report; a missing proprietary executable or pinned Julia project is reported,
+not silently replaced by another implementation.
+
+The runner rejects a timing unless every retained sample has the reviewed
+answer digest.  It records the exact Git revision, dirty-tree state, tool
+versions, persistent-process startup, warmup/sample policy, and raw samples.
+`--update` is only for deliberate oracle review.
