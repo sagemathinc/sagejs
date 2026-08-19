@@ -1,0 +1,469 @@
+{
+  "schema": "sagejs.number-fields/foundations-performance-report-v1",
+  "generated_at": "2026-08-19T18:09:44.131Z",
+  "source": {
+    "revision": "dbb189c91d51db2dff18ac37e1225381ab7c33cf",
+    "clean": true
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.17.0-1022-gcp",
+    "cpus": [
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13",
+      "AMD EPYC 7B13"
+    ],
+    "memory_bytes": 67418701824,
+    "node": "v26.7.0",
+    "sage_command": "/home/user/sagelite/sage",
+    "sage_version": {
+      "status": "ok",
+      "version": "SageMath version 10.9.post30, Release Date: 2026-07-14",
+      "exit_code": 0
+    },
+    "reference_availability": {
+      "magma": {
+        "command": "/home/user/bin/magma",
+        "executable": true
+      },
+      "julia": {
+        "status": "ok",
+        "version": "julia version 1.12.7",
+        "exit_code": 0
+      },
+      "hecke_oscar_project": {
+        "path": "/home/user/.local/share/sagejs-benchmarks/number-fields-julia",
+        "project": true,
+        "manifest": true
+      }
+    }
+  },
+  "policy": {
+    "samples": 5,
+    "warmups": 1,
+    "adapter_processes_persistent": true,
+    "system_startup_excluded_from_sample_timings": true,
+    "magma_process_scope": "one process per workload request containing all warmups and samples"
+  },
+  "records": [
+    {
+      "workload": "prime-stream-cubic-mixed-250",
+      "operation": "prime-stream",
+      "system": "sagejs",
+      "status": "ok",
+      "version": "Sage.js persistent kernel",
+      "startup_ms": 318.366345,
+      "request_wall_ms": 987.202603,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        48.76565933227539,
+        38.37895393371582,
+        42.53196716308594,
+        40.18068313598633,
+        38.3913516998291
+      ],
+      "median_ms": 40.18068313598633,
+      "minimum_ms": 38.37895393371582,
+      "maximum_ms": 48.76565933227539,
+      "result_sha256": "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776"
+    },
+    {
+      "workload": "prime-stream-cubic-mixed-250",
+      "operation": "prime-stream",
+      "system": "sage",
+      "status": "ok",
+      "version": "SageMath version 10.9.post1, Release Date: 2026-05-04",
+      "startup_ms": 1046.517452,
+      "request_wall_ms": 326.083224,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        42.363069,
+        41.89327,
+        42.740559,
+        42.337379,
+        41.829359
+      ],
+      "median_ms": 42.337379,
+      "minimum_ms": 41.829359,
+      "maximum_ms": 42.740559,
+      "result_sha256": "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776"
+    },
+    {
+      "workload": "prime-stream-cubic-mixed-250",
+      "operation": "prime-stream",
+      "system": "magma",
+      "status": "ok",
+      "version": "Magma V2.18.5",
+      "startup_ms": 268.059215,
+      "request_wall_ms": 4281.584156,
+      "timing_repetitions": 100,
+      "samples_ms": [
+        7,
+        6.7,
+        6.7,
+        6.8,
+        6.8
+      ],
+      "median_ms": 6.8,
+      "minimum_ms": 6.7,
+      "maximum_ms": 7,
+      "result_sha256": "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776"
+    },
+    {
+      "workload": "prime-stream-cubic-mixed-250",
+      "operation": "prime-stream",
+      "system": "hecke",
+      "status": "ok",
+      "version": "Julia 1.12.7, Oscar 1.8.1, Hecke 0.39.22",
+      "startup_ms": 26683.053908,
+      "request_wall_ms": 14169.072774,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        0.95664,
+        1.03171,
+        0.90598,
+        0.95102,
+        0.90616
+      ],
+      "median_ms": 0.95102,
+      "minimum_ms": 0.90598,
+      "maximum_ms": 1.03171,
+      "result_sha256": "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-250",
+      "operation": "coefficients",
+      "system": "sagejs",
+      "status": "ok",
+      "version": "Sage.js persistent kernel",
+      "startup_ms": 318.366345,
+      "request_wall_ms": 1065.720311,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        59.9827766418457,
+        54.354190826416016,
+        53.6351203918457,
+        54.05282974243164,
+        50.29773712158203
+      ],
+      "median_ms": 54.05282974243164,
+      "minimum_ms": 50.29773712158203,
+      "maximum_ms": 59.9827766418457,
+      "result_sha256": "c8966894923fe5afe53bd4899ea931a27ebd3e4ff28475ae9be069ce6b272f5b"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-250",
+      "operation": "coefficients",
+      "system": "sage",
+      "status": "ok",
+      "version": "SageMath version 10.9.post1, Release Date: 2026-05-04",
+      "startup_ms": 1046.517452,
+      "request_wall_ms": 2.42018,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        0.219,
+        0.19007,
+        0.18088,
+        0.17821,
+        0.19018
+      ],
+      "median_ms": 0.19007,
+      "minimum_ms": 0.17821,
+      "maximum_ms": 0.219,
+      "result_sha256": "c8966894923fe5afe53bd4899ea931a27ebd3e4ff28475ae9be069ce6b272f5b"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-250",
+      "operation": "coefficients",
+      "system": "magma",
+      "status": "ok",
+      "version": "Magma V2.18.5",
+      "startup_ms": 268.059215,
+      "request_wall_ms": 711.030068,
+      "timing_repetitions": 10,
+      "samples_ms": [
+        8,
+        9,
+        8,
+        9,
+        9
+      ],
+      "median_ms": 9,
+      "minimum_ms": 8,
+      "maximum_ms": 9,
+      "result_sha256": "c8966894923fe5afe53bd4899ea931a27ebd3e4ff28475ae9be069ce6b272f5b"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-250",
+      "operation": "coefficients",
+      "system": "hecke",
+      "status": "ok",
+      "version": "Julia 1.12.7, Oscar 1.8.1, Hecke 0.39.22",
+      "startup_ms": 26683.053908,
+      "request_wall_ms": 928.052563,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        1.2719,
+        1.06241,
+        0.980049,
+        1.01614,
+        732.424118
+      ],
+      "median_ms": 1.06241,
+      "minimum_ms": 0.980049,
+      "maximum_ms": 732.424118,
+      "result_sha256": "c8966894923fe5afe53bd4899ea931a27ebd3e4ff28475ae9be069ce6b272f5b"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-1000",
+      "operation": "coefficients",
+      "system": "sagejs",
+      "status": "ok",
+      "version": "Sage.js persistent kernel",
+      "startup_ms": 318.366345,
+      "request_wall_ms": 986.792752,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        128.05986404418945,
+        123.73757362365723,
+        123.17943572998047,
+        119.37928199768066,
+        116.22476577758789
+      ],
+      "median_ms": 123.17943572998047,
+      "minimum_ms": 116.22476577758789,
+      "maximum_ms": 128.05986404418945,
+      "result_sha256": "d7e9d445ea422ab6917b6bb38bc8aa2fcadb8aec7f7a0848ba26752b1a1e4ec0"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-1000",
+      "operation": "coefficients",
+      "system": "sage",
+      "status": "ok",
+      "version": "SageMath version 10.9.post1, Release Date: 2026-05-04",
+      "startup_ms": 1046.517452,
+      "request_wall_ms": 4.95373,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        0.712271,
+        0.58882,
+        0.53722,
+        0.520969,
+        0.45354
+      ],
+      "median_ms": 0.53722,
+      "minimum_ms": 0.45354,
+      "maximum_ms": 0.712271,
+      "result_sha256": "d7e9d445ea422ab6917b6bb38bc8aa2fcadb8aec7f7a0848ba26752b1a1e4ec0"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-1000",
+      "operation": "coefficients",
+      "system": "magma",
+      "status": "ok",
+      "version": "Magma V2.18.5",
+      "startup_ms": 268.059215,
+      "request_wall_ms": 1172.91012,
+      "timing_repetitions": 10,
+      "samples_ms": [
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "median_ms": 16,
+      "minimum_ms": 16,
+      "maximum_ms": 16,
+      "result_sha256": "d7e9d445ea422ab6917b6bb38bc8aa2fcadb8aec7f7a0848ba26752b1a1e4ec0"
+    },
+    {
+      "workload": "coefficients-cubic-mixed-1000",
+      "operation": "coefficients",
+      "system": "hecke",
+      "status": "ok",
+      "version": "Julia 1.12.7, Oscar 1.8.1, Hecke 0.39.22",
+      "startup_ms": 26683.053908,
+      "request_wall_ms": 22.65802,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        3.65769,
+        3.53437,
+        3.37519,
+        3.5513,
+        3.07176
+      ],
+      "median_ms": 3.53437,
+      "minimum_ms": 3.07176,
+      "maximum_ms": 3.65769,
+      "result_sha256": "d7e9d445ea422ab6917b6bb38bc8aa2fcadb8aec7f7a0848ba26752b1a1e4ec0"
+    },
+    {
+      "workload": "quadratic-zeta-d23-batch-16",
+      "operation": "quadratic-zeta-batch",
+      "system": "sagejs",
+      "status": "ok",
+      "version": "Sage.js persistent kernel",
+      "startup_ms": 318.366345,
+      "request_wall_ms": 328.114264,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        17.629623413085938,
+        17.436742782592773,
+        17.099618911743164,
+        17.48061180114746,
+        17.297744750976562
+      ],
+      "median_ms": 17.436742782592773,
+      "minimum_ms": 17.099618911743164,
+      "maximum_ms": 17.629623413085938,
+      "result_sha256": "880d5acf512c57fc03339989d35f66ac95361e62498b61cf26209899e921d5ef"
+    },
+    {
+      "workload": "quadratic-zeta-d23-batch-16",
+      "operation": "quadratic-zeta-batch",
+      "system": "sage",
+      "status": "ok",
+      "version": "SageMath version 10.9.post1, Release Date: 2026-05-04",
+      "startup_ms": 1046.517452,
+      "request_wall_ms": 90.172158,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        12.86158,
+        12.82833,
+        12.72413,
+        12.83503,
+        12.863169
+      ],
+      "median_ms": 12.83503,
+      "minimum_ms": 12.72413,
+      "maximum_ms": 12.863169,
+      "result_sha256": "880d5acf512c57fc03339989d35f66ac95361e62498b61cf26209899e921d5ef"
+    },
+    {
+      "workload": "quadratic-zeta-d23-batch-16",
+      "operation": "quadratic-zeta-batch",
+      "system": "magma",
+      "status": "ok",
+      "version": "Magma V2.18.5",
+      "startup_ms": 268.059215,
+      "request_wall_ms": 10131.909564,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        1560,
+        1530,
+        1530,
+        1580,
+        1570
+      ],
+      "median_ms": 1560,
+      "minimum_ms": 1530,
+      "maximum_ms": 1580,
+      "result_sha256": "880d5acf512c57fc03339989d35f66ac95361e62498b61cf26209899e921d5ef"
+    },
+    {
+      "workload": "quadratic-zeta-d23-batch-16",
+      "system": "hecke",
+      "status": "unsupported",
+      "reason": "Oscar/Hecke does not expose the required arbitrary-complex Dedekind-zeta evaluator"
+    },
+    {
+      "workload": "global-arithmetic-cubic-mixed",
+      "operation": "global-arithmetic",
+      "system": "sagejs",
+      "status": "ok",
+      "version": "Sage.js persistent kernel",
+      "startup_ms": 318.366345,
+      "request_wall_ms": 14977.033811,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        2415.56715965271,
+        2361.710548400879,
+        2324.238061904907,
+        2587.188243865967,
+        2417.309284210205
+      ],
+      "median_ms": 2415.56715965271,
+      "minimum_ms": 2324.238061904907,
+      "maximum_ms": 2587.188243865967,
+      "result_sha256": "c353609860887704f1fe71650aa85512a0a74d79db9dc20110a6f81283a955b1"
+    },
+    {
+      "workload": "global-arithmetic-cubic-mixed",
+      "operation": "global-arithmetic",
+      "system": "sage",
+      "status": "ok",
+      "version": "SageMath version 10.9.post1, Release Date: 2026-05-04",
+      "startup_ms": 1046.517452,
+      "request_wall_ms": 16.337809,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        1.781019,
+        1.54896,
+        1.496609,
+        1.489769,
+        1.467811
+      ],
+      "median_ms": 1.496609,
+      "minimum_ms": 1.467811,
+      "maximum_ms": 1.781019,
+      "result_sha256": "c353609860887704f1fe71650aa85512a0a74d79db9dc20110a6f81283a955b1"
+    },
+    {
+      "workload": "global-arithmetic-cubic-mixed",
+      "operation": "global-arithmetic",
+      "system": "magma",
+      "status": "ok",
+      "version": "Magma V2.18.5",
+      "startup_ms": 268.059215,
+      "request_wall_ms": 278.749225,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        10,
+        10,
+        20,
+        20,
+        10
+      ],
+      "median_ms": 10,
+      "minimum_ms": 10,
+      "maximum_ms": 20,
+      "result_sha256": "c353609860887704f1fe71650aa85512a0a74d79db9dc20110a6f81283a955b1"
+    },
+    {
+      "workload": "global-arithmetic-cubic-mixed",
+      "operation": "global-arithmetic",
+      "system": "hecke",
+      "status": "ok",
+      "version": "Julia 1.12.7, Oscar 1.8.1, Hecke 0.39.22",
+      "startup_ms": 26683.053908,
+      "request_wall_ms": 43967.858808,
+      "timing_repetitions": 1,
+      "samples_ms": [
+        34.38908,
+        421.174343,
+        23.80109,
+        22.80794,
+        1929.593276
+      ],
+      "median_ms": 34.38908,
+      "minimum_ms": 22.80794,
+      "maximum_ms": 1929.593276,
+      "result_sha256": "c353609860887704f1fe71650aa85512a0a74d79db9dc20110a6f81283a955b1"
+    }
+  ]
+}
