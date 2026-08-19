@@ -94,7 +94,7 @@ def _machine_pair(value: Any) -> list[float]:
         real = real()
     if callable(imaginary):
         imaginary = imaginary()
-    return [float(real), float(imaginary)]
+    return [float(str(real)), float(str(imaginary))]
 
 
 class QuadraticDirichletLReference:
@@ -140,7 +140,11 @@ class QuadraticDirichletLReference:
                         * character_sum
                     )
                 return factorial(order) * coefficient / modulus
-            return mp.diff(lambda s: mp.dirichlet(s, self._values), center, order)
+
+            def evaluate(point: Any) -> Any:
+                return mp.dirichlet(point, self._values)
+
+            return mp.diff(evaluate, center, order)
 
     def __call__(self, value: Any) -> Any:
         return self.value(value)
@@ -531,7 +535,8 @@ class DedekindZetaFunction:
 
         import sagejs as sage
 
-        return sage.plot(self, *range_args, **options)
+        sage_module: Any = sage
+        return sage_module.plot(self, *range_args, **options)
 
     def _plot_real_batch(
         self,
@@ -619,19 +624,314 @@ class DedekindZetaFunction:
         }
 
     def coefficients(self, bound: Any) -> Any:
-        raise NotImplementedError(
-            "exact Dedekind-zeta coefficients require the splitting provider"
+        from sagejs.number_fields.zeta_coefficients import zeta_coefficients
+
+        order = self._number_field.maximal_order()
+        return zeta_coefficients(
+            int(bound),
+            degree=2,
+            splitting_provider=order.splitting_records,
         )
 
     def euler_factor(self, prime: Any) -> Any:
-        raise NotImplementedError(
-            "Euler factors require certified prime-ideal decomposition"
+        from sagejs.number_fields.zeta_coefficients import local_zeta_factor_data
+
+        order = self._number_field.maximal_order()
+        decomposition = order.factor_rational_prime(prime)
+        return local_zeta_factor_data(
+            decomposition.splitting_record(),
+            degree=2,
         )
 
     def euler_product(self, value: Any, prime_bound: Any, prec: Any = None) -> Any:
-        raise NotImplementedError(
-            "Euler products require certified prime splitting data"
+        from sagejs.number_fields.euler_products import euler_product
+
+        precision = self._precision if prec is None else _precision(prec)
+        order = self._number_field.maximal_order()
+        result = euler_product(
+            value,
+            int(prime_bound),
+            degree=2,
+            splitting_provider=order.splitting_records,
+            prec=precision,
         )
+        return self._coerce(
+            mp.mpc(result["value_real"], result["value_imag"]), precision
+        )
+
+    def __repr__(self) -> str:
+        return "Dedekind zeta function of " + str(self._number_field)
+
+    __str__ = __repr__
+
+
+class GeneralDedekindZetaFunction:
+    """Coefficient-driven Dedekind zeta function for a general number field.
+
+    The continuation route is the readable inverse-Mellin Meijer-G engine.
+    It is an arbitrary-precision numerical approximation with explicit
+    refinement diagnostics, not a rigorous enclosure.
+    """
+
+    def __init__(
+        self,
+        number_field: Any,
+        *,
+        precision: Any = 53,
+        max_imaginary_part: Any = 0,
+        result_coercer: Callable[[Any, int], Any] | None = None,
+        limits: Any = None,
+    ) -> None:
+        from sagejs.number_fields.analytic_zeta import ReferenceAnalyticZeta
+        from sagejs.number_fields.general_zeta import (
+            AnalyticZetaLimits,
+            make_zeta_metadata,
+        )
+
+        self._number_field = number_field
+        self._precision = _precision(precision)
+        self._max_imaginary_part = max_imaginary_part
+        self._result_coercer = result_coercer
+        self._order = number_field.maximal_order()
+        self._coefficient_cache: list[int] = []
+        self._last_diagnostics: dict[str, Any] = {}
+        self._limits = AnalyticZetaLimits() if limits is None else limits
+        self._metadata = make_zeta_metadata(number_field)
+        self._engine = ReferenceAnalyticZeta(
+            self._metadata,
+            self,
+            precision_bits=self._precision,
+            limits=self._limits,
+        )
+
+    def number_field(self) -> Any:
+        return self._number_field
+
+    def precision(self) -> int:
+        return self._precision
+
+    prec = precision
+
+    def algorithm(self) -> str:
+        return "afe"
+
+    @staticmethod
+    def _validate_algorithm(algorithm: str) -> None:
+        if algorithm == "pari":
+            raise NotImplementedError(
+                "algorithm='pari' is unavailable; use 'auto' or 'afe'"
+            )
+        if algorithm not in ("auto", "afe", "reference"):
+            raise ValueError("algorithm must be 'auto', 'afe', or 'reference'")
+
+    def _coerce(self, value: Any, precision: int) -> Any:
+        return (
+            value
+            if self._result_coercer is None
+            else self._result_coercer(value, precision)
+        )
+
+    def coefficients(self, bound: Any) -> list[int]:
+        from sagejs.number_fields.zeta_coefficients import zeta_coefficients
+
+        requested = int(bound)
+        if requested > len(self._coefficient_cache):
+            self._coefficient_cache = zeta_coefficients(
+                requested,
+                degree=int(self._number_field.degree()),
+                splitting_provider=self._order.splitting_records,
+            )
+        return list(self._coefficient_cache[:requested])
+
+    def _options(self, precision: int) -> dict[str, Any]:
+        return {
+            "precision_bits": precision,
+            "coefficient_bound": 128,
+            "quadrature_nodes": 64,
+        }
+
+    def value(self, value: Any, prec: Any = None, algorithm: str = "auto") -> Any:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        result = self._engine.value(value, **self._options(precision))
+        self._last_diagnostics = {
+            "algorithm": "inverse-mellin-meijer-g",
+            "precision_bits": precision,
+            "rigorous": False,
+        }
+        return self._coerce(result, precision)
+
+    def __call__(self, value: Any) -> Any:
+        return self.value(value)
+
+    def values(
+        self,
+        points: list[Any] | tuple[Any, ...],
+        prec: Any = None,
+        algorithm: str = "auto",
+    ) -> list[Any]:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        result = self._engine.values_result(points, **self._options(precision))
+        self._last_diagnostics = dict(result)
+        return [self._coerce(item, precision) for item in result["values"]]
+
+    def derivative(
+        self,
+        value: Any,
+        D: Any = 1,
+        prec: Any = None,
+        algorithm: str = "auto",
+    ) -> Any:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        result = self._engine.derivative(
+            value,
+            int(D),
+            **self._options(precision),
+        )
+        return self._coerce(result, precision)
+
+    def completed_value(
+        self, value: Any, prec: Any = None, algorithm: str = "auto"
+    ) -> Any:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        return self._coerce(
+            self._engine.completed_value(value, **self._options(precision)),
+            precision,
+        )
+
+    def xi(self, value: Any, prec: Any = None, algorithm: str = "auto") -> Any:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        return self._coerce(
+            self._engine.xi(value, **self._options(precision)), precision
+        )
+
+    def residue(self, value: Any = 1, prec: Any = None, algorithm: str = "auto") -> Any:
+        self._validate_algorithm(algorithm)
+        precision = self._precision if prec is None else _precision(prec)
+        return self._coerce(
+            self._engine.residue(value, **self._options(precision)), precision
+        )
+
+    def euler_factor(self, prime: Any) -> Any:
+        from sagejs.number_fields.zeta_coefficients import local_zeta_factor_data
+
+        decomposition = self._order.factor_rational_prime(prime)
+        return local_zeta_factor_data(
+            decomposition.splitting_record(),
+            degree=int(self._number_field.degree()),
+        )
+
+    def dirichlet_series(
+        self,
+        value: Any,
+        coefficient_bound: Any,
+        prec: Any = None,
+        rigorous: bool = False,
+    ) -> Any:
+        from sagejs.number_fields.euler_products import dirichlet_series
+
+        precision = self._precision if prec is None else _precision(prec)
+        result = dirichlet_series(
+            value,
+            int(coefficient_bound),
+            degree=int(self._number_field.degree()),
+            coefficients=self.coefficients(coefficient_bound),
+            prec=precision,
+            rigorous=rigorous,
+        )
+        self._last_diagnostics = dict(result)
+        return self._coerce(
+            mp.mpc(result["value_real"], result["value_imag"]), precision
+        )
+
+    def euler_product(
+        self,
+        value: Any,
+        prime_bound: Any,
+        prec: Any = None,
+        rigorous: bool = False,
+    ) -> Any:
+        from sagejs.number_fields.euler_products import euler_product
+
+        precision = self._precision if prec is None else _precision(prec)
+        result = euler_product(
+            value,
+            int(prime_bound),
+            degree=int(self._number_field.degree()),
+            splitting_provider=self._order.splitting_records,
+            prec=precision,
+            rigorous=rigorous,
+        )
+        self._last_diagnostics = dict(result)
+        return self._coerce(
+            mp.mpc(result["value_real"], result["value_imag"]), precision
+        )
+
+    def last_diagnostics(self) -> dict[str, Any]:
+        return dict(self._last_diagnostics)
+
+    def plot(self, *range_args: Any, **options: Any) -> Any:
+        import sagejs as sage
+
+        sage_module: Any = sage
+        return sage_module.plot(self, *range_args, **options)
+
+    def _plot_real_batch(
+        self,
+        points: list[float],
+        precision: int,
+        adaptive: bool = True,
+    ) -> dict[str, Any]:
+        return self._plot_complex_batch(
+            [[float(point), 0.0] for point in points],
+            precision,
+            {"adaptive": bool(adaptive)},
+        )
+
+    def _plot_complex_batch(
+        self,
+        points: list[list[float]],
+        precision: int,
+        region: Any = None,
+    ) -> dict[str, Any]:
+        target = int(precision)
+        normalized = [(str(float(point[0])), str(float(point[1]))) for point in points]
+        fine_precision = target + 8
+        coarse_pairs: list[list[float]] = []
+        fine_pairs: list[list[float]] = []
+        errors: list[float] = []
+        tile_limit = self._limits.maximum_batch_points
+        for start in range(0, len(normalized), tile_limit):
+            tile = normalized[start : start + tile_limit]
+            coarse_values = self.values(tile, prec=target)
+            fine_values = self.values(tile, prec=fine_precision)
+            for coarse, fine in zip(coarse_values, fine_values, strict=True):
+                coarse_pair = _machine_pair(coarse)
+                fine_pair = _machine_pair(fine)
+                coarse_pairs.append(coarse_pair)
+                fine_pairs.append(fine_pair)
+                errors.append(
+                    (
+                        (fine_pair[0] - coarse_pair[0]) ** 2
+                        + (fine_pair[1] - coarse_pair[1]) ** 2
+                    )
+                    ** 0.5
+                )
+        return {
+            "coarse": coarse_pairs,
+            "fine": fine_pairs,
+            "errors": errors,
+            "diagnostics": {
+                "point_count": len(normalized),
+                "tile_count": (len(normalized) + tile_limit - 1) // tile_limit,
+                "rigorous": False,
+                "algorithm": "inverse-Mellin Meijer-G AFE",
+            },
+        }
 
     def __repr__(self) -> str:
         return "Dedekind zeta function of " + str(self._number_field)

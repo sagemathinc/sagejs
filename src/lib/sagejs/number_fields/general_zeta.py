@@ -138,7 +138,8 @@ def exact_embedding_metadata(field: Any) -> ExactEmbeddingMetadata:
 
     degree = int(field.degree())
     polynomial = field.defining_polynomial()
-    exact_complex_field = getattr(sage, "QQbar")
+    sage_module: Any = sage
+    exact_complex_field = sage_module.QQbar
     roots = list(polynomial.roots(exact_complex_field, multiplicities=False))
     if len(roots) != degree:
         raise ArithmeticError("the defining polynomial did not have degree-many roots")

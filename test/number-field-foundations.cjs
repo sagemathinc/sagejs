@@ -20,7 +20,7 @@ test("certified prime ideals and fractional ideal arithmetic are public", async 
             "P.residue_class_degree(), P.norm()) for P,e in D]\n" +
             "P = D[0][0]\n" +
             "I = O.ideal(11)\n" +
-            "[data, D.verify(), D.value() == I, " +
+            "[data, D.verify()['certified'], D.value() == I, " +
             "P * P.inverse() == O.ideal(1), " +
             "I.valuation(P), (I.factor()).value() == I, " +
             "K.gen().norm() == -5]",
@@ -33,4 +33,3 @@ test("certified prime ideals and fractional ideal arithmetic are public", async 
     await session.close();
   }
 });
-

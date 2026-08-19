@@ -15,7 +15,6 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 
-
 _nf = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 NumberFieldIdeal = _nf.NumberFieldIdeal
 _nf_coordinates = _nf._nf_coordinates

@@ -19,7 +19,6 @@ from typing import Any, Iterator
 import sagejs as sage
 import sagejs.runtime as runtime
 
-
 _nf = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 _maximal = __import__("sagejs.number_fields.maximal_order", fromlist=["maximal_order"])
 _om = __import__("sagejs.number_fields.om_types", fromlist=["om_types"])

@@ -221,7 +221,8 @@ def kronecker_character_logs(
 def _default_group_factory(modulus: int) -> Any:
     import sagejs as sage
 
-    return sage.DirichletGroup(modulus)
+    sage_module: Any = sage
+    return sage_module.DirichletGroup(modulus)
 
 
 def kronecker_character(

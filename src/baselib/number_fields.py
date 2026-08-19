@@ -67,6 +67,58 @@ def _nf_ideal_arithmetic_module() -> Any:
     return _nf_ideal_arithmetic_module_cache
 
 
+def _nf_lazy_import(cache_name: str, module_name: str) -> Any:
+    cache = runtime.reflect.get(runtime.global_object, cache_name)
+    if cache is runtime.undefined:
+        loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+        if loader is runtime.undefined:
+            raise RuntimeError("the number-field module loader is unavailable")
+        cache = runtime.reflect.apply(loader, runtime.undefined, [module_name])
+        runtime.reflect.set(runtime.global_object, cache_name, cache)
+    return cache
+
+
+def _nf_dedekind_zeta_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_dedekind_zeta_module__",
+        "sagejs.number_fields.dedekind_zeta",
+    )
+
+
+def _nf_embeddings_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_embeddings_module__",
+        "sagejs.number_fields.embeddings",
+    )
+
+
+def _nf_units_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_units_module__",
+        "sagejs.number_fields.units",
+    )
+
+
+def _nf_class_groups_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_class_groups_module__",
+        "sagejs.number_fields.class_groups",
+    )
+
+
+def _nf_complex_result(value: Any, precision: int) -> Any:
+    field = _nf_global("ComplexField")(precision)
+    if hasattr(value, "_native"):
+        return field(value)
+    real = getattr(value, "real", 0)
+    imaginary = getattr(value, "imag", 0)
+    if callable(real):
+        real = real()
+    if callable(imaginary):
+        imaginary = imaginary()
+    return field(str(real), str(imaginary))
+
+
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
     if runtime.is_exact_integer(tree):
         return field(tree)
@@ -1782,6 +1834,26 @@ class NumberFieldOrder(sage.Parent):
     toString = __repr__
 
 
+class _NumberFieldNumericalPlace:
+    def __init__(self, embedding: Any, precision: int) -> None:
+        self._embedding = embedding
+        self._precision = precision
+
+    def __call__(self, value: Any) -> Any:
+        return self._embedding.approximate(value, self._precision)
+
+    def __repr__(self) -> str:
+        return (
+            "Numerical "
+            + str(self._embedding)
+            + " at "
+            + str(self._precision)
+            + " bits"
+        )
+
+    __str__ = __repr__
+
+
 @runtime.callable_instance_class
 class NumberFieldParent(sage.Parent):
     """A simple exact number field represented as `QQ[a]/(f)`."""
@@ -1819,6 +1891,10 @@ class NumberFieldParent(sage.Parent):
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
+        self._zeta_function_cache = runtime.map()
+        self._archimedean_data_cache = runtime.undefined
+        self._unit_group_cache = runtime.undefined
+        self._global_class_group_cache = runtime.undefined
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 
@@ -1996,6 +2072,66 @@ class NumberFieldParent(sage.Parent):
     def integral_basis(self) -> list[NumberFieldElement]:
         return self.maximal_order().basis()
 
+    def signature(self) -> "tuple[int, int]":
+        return self.archimedean_data().signature()
+
+    def archimedean_data(self) -> Any:
+        if self._archimedean_data_cache is runtime.undefined:
+            self._archimedean_data_cache = _nf_embeddings_module().archimedean_data(
+                self
+            )
+        return self._archimedean_data_cache
+
+    def embeddings(self, codomain: Any = None) -> "tuple[Any, ...]":
+        return runtime.math_tuple(list(self.archimedean_data().embeddings))
+
+    def places(self, prec: Any = 53) -> "tuple[Any, ...]":
+        precision = int(prec)
+        return runtime.math_tuple(
+            [
+                _NumberFieldNumericalPlace(embedding, precision)
+                for embedding in self.archimedean_data().embeddings
+            ]
+        )
+
+    def zeta_function(
+        self,
+        prec: Any = 53,
+        max_imaginary_part: Any = 0,
+        algorithm: str = "auto",
+    ) -> Any:
+        precision = int(prec)
+        if algorithm == "pari":
+            raise NotImplementedError("algorithm='pari' is unavailable in Sage.js")
+        key = str(precision) + ":" + str(max_imaginary_part) + ":" + algorithm
+        cached = self._zeta_function_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        module = _nf_dedekind_zeta_module()
+        if self.degree() == 2:
+            riemann_zeta = _nf_global("RiemannZeta")
+            value = module.DedekindZetaFunction(
+                self,
+                precision=precision,
+                max_imaginary_part=max_imaginary_part,
+                algorithm=algorithm,
+                riemann=riemann_zeta(precision),
+                result_coercer=_nf_complex_result,
+            )
+        else:
+            if algorithm not in ("auto", "afe", "reference"):
+                raise ValueError(
+                    "general zeta algorithm must be 'auto', 'afe', or 'reference'"
+                )
+            value = module.GeneralDedekindZetaFunction(
+                self,
+                precision=precision,
+                max_imaginary_part=max_imaginary_part,
+                result_coercer=_nf_complex_result,
+            )
+        self._zeta_function_cache.set(key, value)
+        return value
+
     def galois_group(self) -> NumberFieldGaloisGroup:
         """Return the native Galois group for a field of degree at most four."""
         data = _galois_group_data(
@@ -2005,11 +2141,60 @@ class NumberFieldParent(sage.Parent):
         return NumberFieldGaloisGroup(self, data[0], data[1], data[2], data[3])
 
     def units(self) -> "tuple[Any, ...]":
-        if not self._is_tutorial_cubic():
-            raise NotImplementedError("general unit groups need a number-field backend")
-        generator = self.gen()
-        unit = self(-3) * generator**2 - self(13) * generator - self(13)
-        return runtime.math_tuple([unit])
+        if self._is_tutorial_cubic():
+            generator = self.gen()
+            unit = self(-3) * generator**2 - self(13) * generator - self(13)
+            return runtime.math_tuple([unit])
+        result = self.unit_group()
+        if not result.complete:
+            raise NotImplementedError(result.reason)
+        return runtime.math_tuple(list(result.generators))
+
+    def roots_of_unity(self) -> Any:
+        return _nf_units_module().roots_of_unity(self)
+
+    def number_of_roots_of_unity(self) -> int:
+        result = self.roots_of_unity()
+        if not result.complete:
+            raise NotImplementedError(result.reason)
+        return int(result.order)
+
+    def unit_group(self, coefficient_bound: Any = 4) -> Any:
+        if self._unit_group_cache is runtime.undefined:
+            signature = self.signature()
+            if self.degree() == 2 and signature == (2, 0):
+                result = _nf_units_module().real_quadratic_unit_group(self)
+            else:
+                result = _nf_units_module().bounded_unit_subgroup(
+                    self, coefficient_bound=int(coefficient_bound)
+                )
+            self._unit_group_cache = result
+        return self._unit_group_cache
+
+    def regulator(self, prec: Any = 53) -> Any:
+        result = self.unit_group()
+        if not result.complete:
+            raise NotImplementedError(result.reason)
+        return result.regulator(int(prec))
+
+    def class_group_result(self) -> Any:
+        if self._global_class_group_cache is runtime.undefined:
+            self._global_class_group_cache = (
+                _nf_class_groups_module().bounded_class_group(self)
+            )
+        return self._global_class_group_cache
+
+    def analytic_class_number_formula(self, prec: Any = 53) -> Any:
+        zeta = self.zeta_function(prec=prec)
+        units = self.unit_group()
+        classes = self.class_group_result()
+        return _nf_class_groups_module().analytic_class_number_formula_report(
+            self,
+            zeta.residue(1, prec=prec),
+            units,
+            classes,
+            prec=int(prec),
+        )
 
     def discriminant(self) -> Any:
         return self.maximal_order().discriminant()

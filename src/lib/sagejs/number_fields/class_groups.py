@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Any
 
 import sagejs.runtime as runtime
-
 from sagejs.number_fields.embeddings import (
     certified_minkowski_class_bound,
     exact_signature,

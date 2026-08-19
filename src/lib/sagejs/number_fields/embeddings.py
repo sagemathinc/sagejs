@@ -53,8 +53,10 @@ def _element_coefficients(element: Any) -> list[Any]:
     # and exposes those exact coordinates through indexed access.
     try:
         return [element[0], element[1]]
-    except (IndexError, TypeError):
-        raise TypeError("a number-field element must expose power-basis coordinates")
+    except (IndexError, TypeError) as error:
+        raise TypeError(
+            "a number-field element must expose power-basis coordinates"
+        ) from error
 
 
 class ArchimedeanEmbedding:

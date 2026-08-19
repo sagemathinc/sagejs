@@ -180,8 +180,8 @@ def _factor_pair(value: Any) -> tuple[int, int]:
         e_value = value.get("e", value.get("ramification_index"))
         f_value = value.get("f", value.get("residue_degree"))
     elif hasattr(value, "ramification_index") and hasattr(value, "residue_degree"):
-        e_value = getattr(value, "ramification_index")
-        f_value = getattr(value, "residue_degree")
+        e_value = value.ramification_index
+        f_value = value.residue_degree
         if callable(e_value):
             e_value = e_value()
         if callable(f_value):

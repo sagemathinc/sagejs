@@ -745,6 +745,33 @@ class DirichletCharacter(sage.Element):
     toString = __repr__
 
 
+def _dirichlet_raise_nonfinite() -> None:
+    raise ValueError("Dirichlet L-function point must be finite")
+
+
+def _dirichlet_complex_argument(field: Any, value: Any) -> Any:
+    """Coerce exact, numeric, or constant symbolic complex values."""
+
+    try:
+        return field(value)
+    except Exception:
+        evaluator_factory = getattr(value, "_plot_complex_callable", None)
+        if evaluator_factory is None:
+            raise
+        evaluator = evaluator_factory([])
+        evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+        real_part = runtime.reflect.get(evaluated, "real")
+        imaginary_part = runtime.reflect.get(evaluated, "imag")
+        if (
+            runtime.jstype(real_part) != "number"
+            or runtime.jstype(imaginary_part) != "number"
+            or not runtime.number.isFinite(real_part)
+            or not runtime.number.isFinite(imaginary_part)
+        ):
+            _dirichlet_raise_nonfinite()
+        return field(real_part, imaginary_part)
+
+
 @runtime.callable_instance_class
 class DirichletLFunction:
     """An arbitrary-precision Dirichlet L-function backed by FLINT/Arb."""
@@ -768,7 +795,7 @@ class DirichletLFunction:
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
             self._precision
         )
-        argument = complex_field(s)
+        argument = _dirichlet_complex_argument(complex_field, s)
         return complex_field._fromNative(
             runtime.flint_backend().dirichletLValue(
                 self._character._parent._native,
@@ -806,7 +833,13 @@ class DirichletLFunction:
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
             precision
         )
-        native_points = [complex_field(point)._native for point in points]
+        native_points = []
+        for point in points:
+            if runtime.array.isArray(point) and len(point) == 2:
+                coerced = complex_field(point[0], point[1])
+            else:
+                coerced = _dirichlet_complex_argument(complex_field, point)
+            native_points.append(coerced._native)
         native_values = runtime.flint_backend().dirichletLValues(
             self._character._parent._native,
             self._character._index,

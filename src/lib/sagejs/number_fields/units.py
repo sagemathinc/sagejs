@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Any
 
 import sagejs as sage
-
 from sagejs.number_fields.embeddings import (
     archimedean_data,
     exact_norm_is_unit,

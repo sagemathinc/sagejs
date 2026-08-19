@@ -6512,17 +6512,12 @@ _ZETA_BERNOULLI = [
 ]
 
 
-def zeta(value: Any) -> Any:
-    """Numerically evaluate the Riemann zeta function at an integer > 1."""
+def _zeta_integer_greater_than_one(value: Any) -> Any:
     if not runtime.is_exact_integer(value):
-        raise NotImplementedError(
-            "zeta() is currently implemented for integer arguments"
-        )
+        raise TypeError("the Euler--Maclaurin shortcut requires an integer")
     s = runtime.number(value)
     if s <= 1:
-        raise NotImplementedError(
-            "zeta() is currently implemented for integers greater than 1"
-        )
+        raise ValueError("the Euler--Maclaurin shortcut requires an integer > 1")
 
     cutoff = 16
     answer = 0.0
@@ -6545,6 +6540,112 @@ def zeta(value: Any) -> Any:
             * runtime.math.pow(cutoff, -(s + 2 * index + 1))
         )
     return answer
+
+
+_riemann_zeta_module_cache = runtime.undefined
+
+
+def _riemann_zeta_module() -> Any:
+    global _riemann_zeta_module_cache
+    if _riemann_zeta_module_cache is runtime.undefined:
+        _riemann_zeta_module_cache = _builtins_default_import(
+            "sagejs.number_fields.riemann_zeta",
+            fromlist=["riemann_zeta"],
+        )
+    return _riemann_zeta_module_cache
+
+
+class _FlintRiemannZetaProvider:
+    def _field(self, precision: Any) -> Any:
+        return runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
+
+    def _point(self, field: Any, value: Any) -> Any:
+        if runtime.array.isArray(value) and len(value) == 2:
+            return field(value[0], value[1])
+        return field(value)
+
+    def jet(
+        self,
+        value: Any,
+        first_order: Any,
+        count: Any,
+        deflate: Any,
+        precision: Any,
+    ) -> list[Any]:
+        field = self._field(precision)
+        point = self._point(field, value)
+        native_values = runtime.flint_backend().riemannZetaJet(
+            point._native,
+            first_order,
+            count,
+            deflate,
+            precision,
+        )
+        return [field._fromNative(item) for item in native_values]
+
+    def values(
+        self,
+        points: Any,
+        derivative: Any,
+        precision: Any,
+    ) -> list[Any]:
+        if derivative != 0:
+            return [
+                self.jet(point, derivative, 1, False, precision)[0] for point in points
+            ]
+        field = self._field(precision)
+        native_points = [self._point(field, point)._native for point in points]
+        native_values = runtime.flint_backend().riemannZetaValues(
+            native_points, precision
+        )
+        return [field._fromNative(item) for item in native_values]
+
+    def xi(self, value: Any, precision: Any) -> Any:
+        field = self._field(precision)
+        standard = field._fromNative(
+            runtime.flint_backend().riemannXiStandardValue(
+                self._point(field, value)._native, precision
+            )
+        )
+        return standard * 2
+
+
+_flint_riemann_zeta_provider = _FlintRiemannZetaProvider()
+
+
+def RiemannZeta(prec: Any = 53) -> Any:
+    """Return an arbitrary-precision FLINT/Arb Riemann-zeta evaluator."""
+
+    return _riemann_zeta_module().RiemannZetaEvaluator(
+        prec,
+        provider=_flint_riemann_zeta_provider,
+    )
+
+
+def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
+    """Return the primitive real character associated to a discriminant."""
+
+    module = _builtins_default_import(
+        "sagejs.number_fields.quadratic_characters",
+        fromlist=["quadratic_characters"],
+    )
+    return module.kronecker_character(discriminant, reduce_radicand=reduce)
+
+
+def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:
+    """Numerically evaluate the Riemann zeta function or one derivative."""
+
+    if (
+        prec is None
+        and runtime.is_exact_integer(value)
+        and runtime.integer_bigint(value) > 1
+        and runtime.integer_bigint(derivative) == 0
+    ):
+        return _zeta_integer_greater_than_one(value)
+    precision = 53 if prec is None else prec
+    if prec is None and hasattr(value, "precision"):
+        precision = value.precision()
+    return RiemannZeta(precision).value(value, derivative=derivative)
 
 
 def _sage_random_word() -> _Int:

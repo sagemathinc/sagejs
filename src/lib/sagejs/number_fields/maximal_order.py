@@ -95,7 +95,7 @@ def _nf_order_multiplication_table(order: Any) -> list[list[list[Any]]]:
     """Return the integral multiplication table in the order basis."""
     field = order.number_field()
     degree = field.degree()
-    if field._equation_order_cache is order:
+    if getattr(field, "_equation_order_cache", None) is order:
         polynomial = integral_equation_polynomial(field)
         coefficients = polynomial.list()
         powers = []
