@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5118,
-      "bytes": 166893,
+      "lines": 5111,
+      "bytes": 166839,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,118-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,111-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -46,8 +46,8 @@
     },
     {
       "path": "packages/flint/src/dirichlet.c",
-      "lines": 1003,
-      "bytes": 28888,
+      "lines": 1270,
+      "bytes": 36655,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [

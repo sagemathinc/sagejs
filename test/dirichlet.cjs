@@ -211,3 +211,20 @@ test("generalized Bernoulli numbers agree exactly with Sage", async () => {
     await session.close();
   }
 });
+
+test("Kronecker symbols vanish for a shared factor of two", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "[kronecker(-8, 4), kronecker(-20, 4), " +
+            "kronecker(5, 8), kronecker(-3, 8)]",
+        )
+      ).repr,
+      "[0, 0, -1, -1]",
+    );
+  } finally {
+    await session.close();
+  }
+});

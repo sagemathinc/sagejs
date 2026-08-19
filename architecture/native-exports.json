@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 19,
+    "retain-host-adapter": 23,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -109,7 +109,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3279,
+        "line": 3260,
         "lines": 18,
         "sha256": "14321bdd4cbe2dac73da67890e6021d179fa25ffc74e6e097a1daab841aa3213",
         "calls": [
@@ -147,7 +147,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4457,
+        "line": 4438,
         "lines": 16,
         "sha256": "409bad240e5f70fbd1c23111062903d0600dfd04efb76c1756539062fb7e87f3",
         "calls": [
@@ -1242,7 +1242,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 923,
+        "line": 1190,
         "lines": 81,
         "sha256": "124d1b4382c55bedfeccfc0ce4d01a97a4555afed056d5e8efe642cf72d746d0",
         "calls": [
@@ -1781,6 +1781,54 @@
       "consumers": [
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletLValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletLValues",
+      "callback": "sagejs_dirichlet_l_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1105,
+        "lines": 59,
+        "sha256": "ca810ce8c1b413ae296974844a7b3860c32ed12e244545bc8c2646d39d6a76b2",
+        "calls": [
+          "_acb_vec_clear",
+          "_acb_vec_init",
+          "acb_dirichlet_l_jet",
+          "acb_mul_fmpz",
+          "acb_set",
+          "complex_array_from_acb",
+          "dirichlet_char_clear",
+          "fmpz_clear",
+          "fmpz_fac_ui",
+          "fmpz_init",
+          "get_precision",
+          "initialized_character",
+          "napi_throw_range_error",
+          "number_to_ulong",
+          "require_arguments",
+          "require_complex_array",
+          "unwrap_group"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
       ],
       "declared_ffi": null
     },
@@ -2378,7 +2426,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3298,
+        "line": 3279,
         "lines": 73,
         "sha256": "c581fb3e7f4996c5cb208086a99615c519cd54a83338181f5679eddcaacc8ab0",
         "calls": [
@@ -2436,7 +2484,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3264,
+        "line": 3245,
         "lines": 4,
         "sha256": "0b795ed955bf2a0e66db7f59375bb1f0d7b2ebcb8f774f5920692f5a348707be",
         "calls": [
@@ -2470,7 +2518,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3269,
+        "line": 3250,
         "lines": 4,
         "sha256": "7e505d85d392f22a06cd8fd5d11cef818b488ce0236a7ded5f9938034011dd39",
         "calls": [
@@ -4311,7 +4359,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3213,
+        "line": 3194,
         "lines": 28,
         "sha256": "dab527d177e239b7f5483b93d5b0dc62c90ee30f493bf485d14202358e9a7573",
         "calls": [
@@ -4446,7 +4494,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4437,
+        "line": 4418,
         "lines": 5,
         "sha256": "b93b2564514c055d247081ec8990b737afb2b6177ca20e04cb736051d3ccedae",
         "calls": [
@@ -4514,7 +4562,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3194,
+        "line": 3175,
         "lines": 18,
         "sha256": "412f4142bec919fd791f8399cc5ef100d4d949d79efa50400dabcf88eceec761",
         "calls": [
@@ -6241,7 +6289,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4431,
+        "line": 4412,
         "lines": 5,
         "sha256": "410eec0af09e0df2e0c095f9e5e525ee8743bb8218e0d58678424fc62bb40f63",
         "calls": [
@@ -6273,7 +6321,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4425,
+        "line": 4406,
         "lines": 5,
         "sha256": "c3d6c929e1876b3e4a0e45cf51f9ebacbf17d2153b156f70e7a8b1b2155bf1d6",
         "calls": [
@@ -7253,7 +7301,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4403,
+        "line": 4384,
         "lines": 10,
         "sha256": "e06ff2d4c4953a7b949b3ee2d15670b367fad62213b8a11252009c245399ad89",
         "calls": [
@@ -8890,7 +8938,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3063,
+        "line": 3044,
         "lines": 130,
         "sha256": "3348b7e82a37d65068b06e219fd388fde9f77b3ca61d983d5df948086c22f622",
         "calls": [
@@ -9546,7 +9594,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3274,
+        "line": 3255,
         "lines": 4,
         "sha256": "5cbe49af6cbdf98e6f071a2d3b8cb33d44499407221a7431dd9ffc3791596e9d",
         "calls": [
@@ -9578,7 +9626,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3517,
+        "line": 3498,
         "lines": 115,
         "sha256": "8a480900935cf1708a8c03416eea753271ec4d1231c856a621dd6cab60104f56",
         "calls": [
@@ -9632,7 +9680,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3496,
+        "line": 3477,
         "lines": 20,
         "sha256": "c3e8f559e18bdebcb00a81d8376d0868899dd67c5fd31b6660b24ac319df8b46",
         "calls": [
@@ -9669,7 +9717,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3633,
+        "line": 3614,
         "lines": 49,
         "sha256": "b2aab653e9648b386786ffe3b3d5d6968007281d0a2e60b39b4fad401c19cf48",
         "calls": [
@@ -9713,7 +9761,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3683,
+        "line": 3664,
         "lines": 44,
         "sha256": "6795ad175fc7972d892557f0e5617a157c451a66b9e04a0e5425b0a0bdd7cc99",
         "calls": [
@@ -9757,7 +9805,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3449,
+        "line": 3430,
         "lines": 46,
         "sha256": "85c6d5a53bbc6c28253f77d487763a2c3c7dc7b524f7ae67d0f73b850228925b",
         "calls": [
@@ -11290,6 +11338,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11598,7 +11647,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4334,
+        "line": 4315,
         "lines": 57,
         "sha256": "fafc148f40ec1c88440f20a802db96207ca1c22d7619550e9c750940b3233dee",
         "calls": [
@@ -11646,7 +11695,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4259,
+        "line": 4240,
         "lines": 74,
         "sha256": "498698d66f37a1f227c95bbf14d24545b34efca6ea8188b7af4a050c12da853d",
         "calls": [
@@ -11683,6 +11732,135 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiStandardValue",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannXiStandardValue",
+      "callback": "sagejs_riemann_xi_standard_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1165,
+        "lines": 24,
+        "sha256": "439bd29f64ef930262117adec4da33a76eac2335ed97fd3c9832cf23a01b89f0",
+        "calls": [
+          "acb_clear",
+          "acb_dirichlet_xi",
+          "acb_from_complex",
+          "acb_init",
+          "complex_from_acb",
+          "get_precision",
+          "require_arguments",
+          "sagejs_native_unwrap_complex"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannZetaJet",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannZetaJet",
+      "callback": "sagejs_riemann_zeta_jet",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 923,
+        "lines": 87,
+        "sha256": "d58fbee9dd21a8d4823c857b06131f67c5ed3ad057069315e9768be0f0ef9838",
+        "calls": [
+          "_acb_vec_clear",
+          "_acb_vec_init",
+          "acb_clear",
+          "acb_dirichlet_zeta_jet",
+          "acb_from_complex",
+          "acb_init",
+          "acb_mul_fmpz",
+          "check_napi",
+          "complex_from_acb",
+          "fmpz_clear",
+          "fmpz_fac_ui",
+          "fmpz_init",
+          "get_precision",
+          "napi_create_array_with_length",
+          "napi_get_value_bool",
+          "napi_set_element",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "napi_typeof",
+          "number_to_ulong",
+          "require_arguments",
+          "sagejs_native_unwrap_complex"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannZetaValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannZetaValues",
+      "callback": "sagejs_riemann_zeta_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1084,
+        "lines": 20,
+        "sha256": "53876dc9a8cc26a230a9080bc7ed1cfa0667f724021e38bd0669c6ed883d2100",
+        "calls": [
+          "_acb_vec_clear",
+          "acb_dirichlet_zeta",
+          "complex_array_from_acb",
+          "get_precision",
+          "require_arguments",
+          "require_complex_array"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:smalljacCapabilities",
       "package": "@sagemath/sagejs-flint",
       "export": "smalljacCapabilities",
@@ -11692,7 +11870,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4093,
+        "line": 4074,
         "lines": 64,
         "sha256": "a41e51b344b4a5ff45a7db414533f373fcaf9f0f2f117edc283d62d7798f5b2b",
         "calls": [
@@ -11737,7 +11915,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3985,
+        "line": 3966,
         "lines": 76,
         "sha256": "35eba215326210b3fd9c80afee726cbc4728b01d0b9360c370ce69e8138d0a4e",
         "calls": [
@@ -11780,7 +11958,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3924,
+        "line": 3905,
         "lines": 60,
         "sha256": "5d02ecbb95d6365c3e56e9c7d8f617ece19dd0d9a01c8cad39c39629b9b3276b",
         "calls": [
@@ -11823,7 +12001,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4443,
+        "line": 4424,
         "lines": 13,
         "sha256": "ed65b49ad723a350bcb65f2608181df0fd803d87df7d5b9a800780734d134c3b",
         "calls": [
@@ -11856,7 +12034,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4392,
+        "line": 4373,
         "lines": 10,
         "sha256": "89079d7fea4034f172606828b79afe145f22ce4bfbc1f5ba276982f83ec56de1",
         "calls": [
