@@ -49,9 +49,65 @@
     "peak_rss_bytes": 748965888,
     "exact_stream_digest": "3728105193022836152423678822391807418"
   },
+  "cross_platform_validation": {
+    "completed_at_utc": "2026-08-19T07:07:01Z",
+    "exact_commit": "047e9ed137a910df8d5693183ac5d8d934584499",
+    "production_candidate_pack": {
+      "result": {
+        "compiled": true,
+        "criterion_checks": 12000,
+        "scan_checks": 42
+      },
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ]
+    },
+    "same_source_batch_probe": {
+      "sha256": "70de97f22e700e399bd66b8776f31419a282d4e5a34ca3ec40e839d25c313e19",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "records": [
+        {
+          "prime": 5,
+          "residues": [3, 4, 2],
+          "combinations": 1800,
+          "candidate_count": 28
+        },
+        {
+          "prime": 101,
+          "residues": [12, 56, 85],
+          "combinations": 2010,
+          "candidate_count": 50
+        },
+        {
+          "prime": 1009,
+          "residues": [0, 0, 0],
+          "combinations": 8897,
+          "candidate_count": 223
+        }
+      ]
+    },
+    "native_jacobian_boundary": {
+      "result": "warnings-as-errors compilation passed",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ]
+    }
+  },
   "notes": [
     "The four stages ran sequentially in one process, so later RSS includes retained benchmark diagnostics from earlier stages.",
     "The public stage consumed local_data with cache_size=0 and its exact digest agrees with the independent certification stage.",
-    "This is a measured selector receipt for the automatic interval endpoint 100000, not an extrapolation from raw rforest timing."
+    "This is a measured selector receipt for the automatic interval endpoint 100000, not an extrapolation from raw rforest timing.",
+    "The complete public stream was measured on the host above. Cross-platform validation separately compiled the exact production candidate pack and changed Jacobian boundary, then ran the same-source candidate differential suite on each supported native target."
   ]
 }
