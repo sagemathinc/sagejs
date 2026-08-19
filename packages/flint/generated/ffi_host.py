@@ -114,6 +114,8 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_format as _ffi_fmpq_polynomial_format,
     fmpq_polynomial_from_byte_region as _ffi_fmpq_polynomial_from_byte_region,
     fmpz_vector_from_byte_region as _ffi_fmpz_vector_from_byte_region,
+    fmpz_perfect_power_data as _ffi_fmpz_perfect_power_data,
+    fmpz_is_probabprime as _ffi_fmpz_is_probabprime,
     fmpq_vector_from_byte_region as _ffi_fmpq_vector_from_byte_region,
     fmpz_vector_length as _ffi_fmpz_vector_length,
     fmpq_vector_length as _ffi_fmpq_vector_length,
@@ -245,6 +247,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_det as _ffi_fmpz_mat_det,
     fmpz_mat_charpoly as _ffi_fmpz_mat_charpoly,
     fmpz_mat_hnf as _ffi_fmpz_mat_hnf,
+    fmpz_mat_hnf_modular_eldiv as _ffi_fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
     fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
     fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
@@ -398,6 +401,7 @@ from sagejs.ffi.flint import (
     number_field_order_resource_resolved_primes as _ffi_number_field_order_resource_resolved_primes,
     number_field_order_resource_native_primes as _ffi_number_field_order_resource_native_primes,
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
+    number_field_order_with_round2_proof_resource as _ffi_number_field_order_with_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
@@ -1228,6 +1232,24 @@ def ffiFmpzVectorFromByteRegion(
     return _ffi_fmpz_vector_from_byte_region(
         source,
         length,
+    )
+
+
+@native
+def ffiFmpzPerfectPowerData(
+    number: Integer,
+) -> FmpzVector:
+    return _ffi_fmpz_perfect_power_data(
+        number,
+    )
+
+
+@native
+def ffiFmpzIsProbabprime(
+    number: Integer,
+) -> Integer:
+    return _ffi_fmpz_is_probabprime(
+        number,
     )
 
 
@@ -2681,6 +2703,25 @@ def ffiFmpzMatHnf(
         source,
         rows,
         columns,
+    )
+
+
+@native
+def ffiFmpzMatHnfModularEldiv(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    elementary_divisor: IntegerBuffer,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_hnf_modular_eldiv(
+        output,
+        source,
+        rows,
+        columns,
+        elementary_divisor,
+        one,
     )
 
 
@@ -4736,6 +4777,17 @@ def ffiNumberFieldOrderResourceUnramifiedPrimes(
 ) -> uint64:
     return _ffi_number_field_order_resource_unramified_primes(
         resource,
+    )
+
+
+@native
+def ffiNumberFieldOrderWithRound2ProofResource(
+    polynomial: FmpzPolynomial,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldAnalysisResource:
+    return _ffi_number_field_order_with_round2_proof_resource(
+        polynomial,
+        prime_hints,
     )
 
 

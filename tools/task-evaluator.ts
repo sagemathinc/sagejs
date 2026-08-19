@@ -9,6 +9,7 @@ import {
   readTaskRuntimeSource,
   runtimeRequire,
 } from "./resources";
+import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { importPath, libraryPath } from "./utils";
 
 interface CallableSpec {
@@ -22,6 +23,7 @@ interface CallableSpec {
 
 export interface TaskEvaluator {
   invoke(callable: CallableSpec, args: unknown[]): unknown;
+  invokeModule(moduleName: string, functionName: string, args: unknown[]): unknown;
   reconstruct(callable: CallableSpec): (...args: unknown[]) => unknown;
   close(): void;
 }
@@ -37,14 +39,14 @@ export interface TaskEvaluator {
 export function createTaskEvaluator({
   mode,
   onOutput,
+  precompiledNativeRuntime = false,
 }: {
   mode: SageLanguageMode;
   onOutput(text: string): void;
+  precompiledNativeRuntime?: boolean;
 }): TaskEvaluator {
   global.require = runtimeRequire as NodeJS.Require;
-  // The lightweight task runtime does not pass through runRuntimeBootstrap,
-  // so install the same collision-proof intrinsic that full Sage.js sessions
-  // expose.  Strict baselib modules use this name instead of the public
+  // Strict baselib modules use this collision-proof name instead of the public
   // ``require`` binding, which user code is allowed to shadow.
   global.__sagejs_runtime_require__ = runtimeRequire;
   global.__sagejs_graph_database_bytes__ = () =>
@@ -52,10 +54,30 @@ export function createTaskEvaluator({
   const uninstallNodeHost = installNodeHost(globalThis, mode);
   global.__sagejs_output_write__ = (text: unknown) => onOutput(String(text));
   global.__sagejs_sage_mode__ = mode === "sage";
-  runInThisContext(
-    readTaskRuntimeSource(join(libraryPath, "task-runtime.js")),
-    { filename: "<multiprocessing-baselib>" },
-  );
+  if (precompiledNativeRuntime) {
+    // This separate, explicitly selected realm installs the production native
+    // resolver but still has no parser/compiler fallback. Its only public
+    // entry is the named precompiled-module call below.
+    const unavailableCompiler = {
+      get_compiler_version(): string {
+        throw new Error("the multiprocessing task runtime has no compiler");
+      },
+    } as Parameters<typeof runRuntimeBootstrap>[0];
+    const unavailableFrontend = {} as Parameters<typeof runRuntimeBootstrap>[2];
+    runRuntimeBootstrap(
+      unavailableCompiler,
+      mode,
+      unavailableFrontend,
+      unavailableFrontend,
+      [],
+      false,
+    );
+  } else {
+    runInThisContext(
+      readTaskRuntimeSource(join(libraryPath, "task-runtime.js")),
+      { filename: "<multiprocessing-baselib>" },
+    );
+  }
   installPrecompiledTaskModuleLoader();
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__multiprocessing__"; show_js = false;');
@@ -207,6 +229,24 @@ export function createTaskEvaluator({
         throw new TypeError("multiprocessing task target is not callable");
       }
       callableCache.set(cacheKey, value as (...args: unknown[]) => unknown);
+      return Reflect.apply(value, undefined, args);
+    },
+
+    invokeModule(moduleName, functionName, args): unknown {
+      if (
+        !/^[_\p{ID_Start}][\u200c\u200d_\p{ID_Continue}.]*$/u.test(moduleName) ||
+        !/^[_\p{ID_Start}][\u200c\u200d_\p{ID_Continue}]*$/u.test(functionName)
+      ) throw new TypeError("invalid precompiled multiprocessing callable identity");
+      ensureCallableModule({ module: moduleName, source: "" });
+      const registry = Reflect.get(globalThis, "ρσ_modules") as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      const value = registry?.[moduleName]?.[functionName];
+      if (typeof value !== "function") {
+        throw new TypeError(
+          `precompiled multiprocessing callable ${moduleName}.${functionName} is unavailable`,
+        );
+      }
       return Reflect.apply(value, undefined, args);
     },
 

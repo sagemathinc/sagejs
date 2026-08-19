@@ -363,6 +363,8 @@ def _basis_index(basis: OrderBasis) -> int:
 def _merge_bases(bases: list[OrderBasis]) -> OrderBasis:
     if not bases:
         raise ValueError("at least one order basis is required")
+    if len(bases) == 1:
+        return bases[0]
     degree = bases[0].degree
     denominator = 1
     for basis in bases:
@@ -428,7 +430,7 @@ def _merge_bases(bases: list[OrderBasis]) -> OrderBasis:
         generators.extend(
             [[int(value) * scale for value in row] for row in basis.numerator]
         )
-    numerator = bl._packed_row_hnf(generators)
+    numerator = bl._packed_row_hnf(generators, denominator)
     return OrderBasis(numerator, denominator, canonical=True)
 
 

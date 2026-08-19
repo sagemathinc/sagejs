@@ -34,6 +34,38 @@
 #define SAGEJS_NF_ORDER_PROFILE_EQUATIONS(total_rows, retained_rows) \
     ((void) 0)
 #endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN(phase) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_BATCH_END
+#define SAGEJS_NF_ORDER_PROFILE_BATCH_END(phase) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN
+#define SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN(index) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_LOCAL_END
+#define SAGEJS_NF_ORDER_PROFILE_LOCAL_END(index) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_BEGIN
+#define SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_BEGIN(index) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_END
+#define SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_END(index) ((void) 0)
+#endif
+#ifndef SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL
+#define SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL(prime) 0
+#endif
+#if FLINT_USES_PTHREAD && \
+    !defined(SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE)
+#define SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(thread, entry, argument) \
+    pthread_create((thread), NULL, (entry), (argument))
+#endif
+#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL
+#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index) 0
+#endif
+#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY
+#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY(index) ((void) 0)
+#endif
 
 /*
  * Zassenhaus Round 2 over an integral multiplication table.
@@ -474,7 +506,8 @@ static inline void sagejs_nf_multiplier_workspace_clear(
 static inline slong sagejs_nf_multiplier_kernel_mod_p2(
     nmod_mat_t kernel, const ulong *table_squared,
     const nmod_mat_t radical, slong radical_dimension,
-    slong degree, ulong prime, sagejs_nf_multiplier_workspace *workspace)
+    slong degree, ulong prime, sagejs_nf_multiplier_workspace *workspace,
+    slong *retained_source_rows, slong *retained_count_out)
 {
     const ulong modulus = prime * prime;
     const ulong modulus_inverse = n_preinvert_limb(modulus);
@@ -653,9 +686,12 @@ static inline slong sagejs_nf_multiplier_kernel_mod_p2(
             for (slong column = 0; column < degree; column++)
                 nmod_mat_entry(equations, retained_rows, column) =
                     nmod_mat_entry(equations, source_row, column);
+        if (retained_source_rows != NULL)
+            retained_source_rows[retained_rows] = source_row;
         equation_hash_slots[slot] = retained_rows;
         retained_rows++;
     }
+    if (retained_count_out != NULL) *retained_count_out = retained_rows;
     SAGEJS_NF_ORDER_PROFILE_EQUATIONS(equation_rows, retained_rows);
     nmod_mat_t retained_equations;
     nmod_mat_window_init(
@@ -679,7 +715,7 @@ static inline slong sagejs_nf_multiplier_kernel(
     if (table_squared != NULL)
         return sagejs_nf_multiplier_kernel_mod_p2(
             kernel, table_squared, radical, radical_dimension,
-            degree, prime, workspace);
+            degree, prime, workspace, NULL, NULL);
 #endif
     return sagejs_nf_multiplier_kernel_exact(
         kernel, multiplication, radical, radical_dimension,
@@ -2466,11 +2502,412 @@ fail:
     return 0;
 }
 
-static inline int sagejs_number_field_order_maximal_at_primes_sequential(
+static inline void sagejs_nf_order_clear_multiplication(
+    fmpz_mat_t *multiplication, slong degree)
+{
+    if (multiplication == NULL) return;
+    for (slong index = 0; index < degree; index++)
+        fmpz_mat_clear(multiplication[index]);
+    flint_free(multiplication);
+}
+
+/* Rebuild the exact multiplication state of a canonical HNF basis directly
+ * from the immutable power-basis table.  The optimized p-adic state is only a
+ * congruence representation, so a terminal proof never interprets it as an
+ * exact table. */
+static inline int sagejs_nf_order_hnf_multiplication(
+    fmpz_mat_t **result, fmpz **identity_result,
+    const sagejs_fmpz_matrix_t source, const fmpz_mat_t numerator,
+    const fmpz_t denominator)
+{
+    const slong degree = fmpz_mat_nrows(numerator);
+    if (degree < 1 || degree > WORD_MAX / degree ||
+        degree != fmpz_mat_ncols(numerator) ||
+        fmpz_mat_nrows(source->value) != degree * degree ||
+        fmpz_mat_ncols(source->value) != degree || fmpz_sgn(denominator) <= 0)
+        return 0;
+    fmpq_mat_t change, inverse, transpose, inverse_transpose;
+    fmpq_mat_t combined, temporary;
+    fmpq_t scalar, product;
+    fmpq_mat_init(change, degree, degree);
+    fmpq_mat_init(inverse, degree, degree);
+    fmpq_mat_init(transpose, degree, degree);
+    fmpq_mat_init(inverse_transpose, degree, degree);
+    fmpq_mat_init(combined, degree, degree);
+    fmpq_mat_init(temporary, degree, degree);
+    fmpq_init(scalar);
+    fmpq_init(product);
+    for (slong row = 0; row < degree; row++)
+        for (slong column = 0; column < degree; column++)
+        {
+            fmpz_set(fmpq_numref(fmpq_mat_entry(change, row, column)),
+                fmpz_mat_entry(numerator, row, column));
+            fmpz_set(fmpq_denref(fmpq_mat_entry(change, row, column)),
+                denominator);
+            fmpq_canonicalise(fmpq_mat_entry(change, row, column));
+        }
+    if (!fmpq_mat_inv(inverse, change)) goto fail;
+    fmpq_mat_transpose(transpose, change);
+    fmpq_mat_transpose(inverse_transpose, inverse);
+
+    fmpz_mat_t *multiplication = (fmpz_mat_t *) flint_malloc(
+        (size_t) degree * sizeof(fmpz_mat_t));
+    for (slong basis = 0; basis < degree; basis++)
+    {
+        fmpz_mat_init(multiplication[basis], degree, degree);
+        fmpq_mat_zero(combined);
+        for (slong old_basis = 0; old_basis < degree; old_basis++)
+            for (slong row = 0; row < degree; row++)
+                for (slong column = 0; column < degree; column++)
+                {
+                    fmpq_set_fmpz(product, fmpz_mat_entry(source->value,
+                        old_basis * degree + column, row));
+                    fmpq_mul(product, product,
+                        fmpq_mat_entry(change, basis, old_basis));
+                    fmpq_add(fmpq_mat_entry(combined, row, column),
+                        fmpq_mat_entry(combined, row, column), product);
+                }
+        fmpq_mat_mul(temporary, combined, transpose);
+        fmpq_mat_mul(combined, inverse_transpose, temporary);
+        for (slong row = 0; row < degree; row++)
+            for (slong column = 0; column < degree; column++)
+            {
+                const fmpq *entry = fmpq_mat_entry(combined, row, column);
+                if (!fmpz_is_one(fmpq_denref(entry)))
+                {
+                    for (slong prior = 0; prior <= basis; prior++)
+                        fmpz_mat_clear(multiplication[prior]);
+                    flint_free(multiplication);
+                    goto fail;
+                }
+                fmpz_set(fmpz_mat_entry(multiplication[basis], row, column),
+                    fmpq_numref(entry));
+            }
+    }
+    fmpz *identity = _fmpz_vec_init(degree);
+    for (slong column = 0; column < degree; column++)
+    {
+        fmpq_set(scalar, fmpq_mat_entry(inverse, 0, column));
+        if (!fmpz_is_one(fmpq_denref(scalar)))
+        {
+            _fmpz_vec_clear(identity, degree);
+            sagejs_nf_order_clear_multiplication(multiplication, degree);
+            goto fail;
+        }
+        fmpz_set(identity + column, fmpq_numref(scalar));
+    }
+    *result = multiplication;
+    *identity_result = identity;
+    fmpq_clear(product); fmpq_clear(scalar);
+    fmpq_mat_clear(temporary); fmpq_mat_clear(combined);
+    fmpq_mat_clear(inverse_transpose); fmpq_mat_clear(transpose);
+    fmpq_mat_clear(inverse); fmpq_mat_clear(change);
+    return 1;
+
+fail:
+    fmpq_clear(product); fmpq_clear(scalar);
+    fmpq_mat_clear(temporary); fmpq_mat_clear(combined);
+    fmpq_mat_clear(inverse_transpose); fmpq_mat_clear(transpose);
+    fmpq_mat_clear(inverse); fmpq_mat_clear(change);
+    return 0;
+}
+
+/* Build the complete multiplier-equation matrix for an independently
+ * recomputed terminal fixed-point check.  This deliberately remains separate
+ * from the optimized Round-2 kernel that decided whether to enlarge. */
+static inline int sagejs_nf_analysis_multiplier_equations(
+    nmod_mat_t equations, const fmpz_mat_t *multiplication,
+    const nmod_mat_t radical, slong radical_dimension,
+    slong degree, ulong prime)
+{
+    fmpz_mat_t lattice, inverse;
+    fmpz_t denominator, sum, coordinate_value;
+    fmpz_mat_init(lattice, degree, degree);
+    fmpz_mat_init(inverse, degree, degree);
+    fmpz_init(denominator);
+    fmpz_init(sum);
+    fmpz_init(coordinate_value);
+    sagejs_nf_build_lattice(
+        lattice, radical, radical_dimension, degree, prime);
+    if (!fmpz_mat_inv(inverse, denominator, lattice)) goto fail;
+    fmpz *product = _fmpz_vec_init(degree);
+    for (slong ideal_row = 0; ideal_row < degree; ideal_row++)
+        for (slong basis = 0; basis < degree; basis++)
+        {
+            for (slong coordinate = 0; coordinate < degree; coordinate++)
+            {
+                fmpz_zero(product + coordinate);
+                for (slong source_index = 0; source_index < degree;
+                     source_index++)
+                    fmpz_addmul(product + coordinate,
+                        fmpz_mat_entry(lattice, ideal_row, source_index),
+                        fmpz_mat_entry(
+                            multiplication[basis], coordinate, source_index));
+            }
+            for (slong coordinate = 0; coordinate < degree; coordinate++)
+            {
+                fmpz_zero(sum);
+                for (slong source_index = 0; source_index < degree;
+                     source_index++)
+                    fmpz_addmul(sum, product + source_index,
+                        fmpz_mat_entry(inverse, source_index, coordinate));
+                if (!fmpz_divisible(sum, denominator))
+                {
+                    _fmpz_vec_clear(product, degree);
+                    goto fail;
+                }
+                fmpz_divexact(coordinate_value, sum, denominator);
+                nmod_mat_entry(equations,
+                    ideal_row * degree + coordinate, basis) =
+                    fmpz_fdiv_ui(coordinate_value, prime);
+            }
+        }
+    _fmpz_vec_clear(product, degree);
+    fmpz_clear(coordinate_value); fmpz_clear(sum); fmpz_clear(denominator);
+    fmpz_mat_clear(inverse); fmpz_mat_clear(lattice);
+    return 1;
+
+fail:
+    fmpz_clear(coordinate_value); fmpz_clear(sum); fmpz_clear(denominator);
+    fmpz_mat_clear(inverse); fmpz_mat_clear(lattice);
+    return 0;
+}
+
+/* Select the lexicographically earliest independent equation rows. */
+static inline int sagejs_nf_analysis_select_row_prefix(
+    slong *selectors, const nmod_mat_t equations,
+    slong row_count, slong degree, ulong prime)
+{
+    ulong *basis = (ulong *) flint_calloc(
+        (size_t) degree * (size_t) degree, sizeof(ulong));
+    slong *pivots = (slong *) flint_malloc((size_t) degree * sizeof(slong));
+    ulong *candidate = (ulong *) flint_malloc((size_t) degree * sizeof(ulong));
+    const ulong inverse = n_preinvert_limb(prime);
+    slong rank = 0;
+    for (slong row = 0; row < row_count && rank < degree; row++)
+    {
+        for (slong column = 0; column < degree; column++)
+            candidate[column] = nmod_mat_entry(equations, row, column);
+        for (slong known = 0; known < rank; known++)
+        {
+            const ulong scalar = candidate[pivots[known]];
+            if (scalar == 0) continue;
+            for (slong column = pivots[known]; column < degree; column++)
+            {
+                const ulong term = sagejs_nf_mulmod(
+                    scalar, basis[known * degree + column], prime, inverse);
+                candidate[column] = n_submod(candidate[column], term, prime);
+            }
+        }
+        slong pivot = 0;
+        while (pivot < degree && candidate[pivot] == 0) pivot++;
+        if (pivot == degree) continue;
+        const ulong reciprocal = n_invmod(candidate[pivot], prime);
+        for (slong column = pivot; column < degree; column++)
+            basis[rank * degree + column] = sagejs_nf_mulmod(
+                candidate[column], reciprocal, prime, inverse);
+        pivots[rank] = pivot;
+        selectors[rank] = row;
+        rank++;
+    }
+    flint_free(candidate);
+    flint_free(pivots);
+    flint_free(basis);
+    return rank == degree;
+}
+
+static inline int sagejs_nf_analysis_select_rows(
+    slong *selectors, const nmod_mat_t equations, slong degree, ulong prime)
+{
+    return sagejs_nf_analysis_select_row_prefix(
+        selectors, equations, degree * degree, degree, prime);
+}
+
+typedef struct
+{
+    int initialized;
+    ulong prime;
+    fmpz_mat_t local_numerator;
+    fmpz_t local_denominator;
+    slong radical_dimension;
+    nmod_mat_t radical;
+    slong *selectors;
+    nmod_mat_t minor;
+} sagejs_nf_order_terminal_proof;
+
+static inline void sagejs_nf_order_terminal_proof_clear(
+    sagejs_nf_order_terminal_proof *proof)
+{
+    if (proof == NULL || !proof->initialized) return;
+    nmod_mat_clear(proof->minor);
+    flint_free(proof->selectors);
+    nmod_mat_clear(proof->radical);
+    fmpz_clear(proof->local_denominator);
+    fmpz_mat_clear(proof->local_numerator);
+    memset(proof, 0, sizeof(*proof));
+}
+
+/* Independently rebuild the terminal radical and a full-rank equation minor
+ * from a certified multiplication tensor modulo p^2.  This deliberately uses
+ * a fresh generic nmod radical, fresh multiplier workspace, and a separate
+ * lexicographic row-selection pass; it does not trust the enlargement loop's
+ * terminal nullity or retained rows. */
+static inline int sagejs_nf_order_capture_terminal_mod_p2(
+    sagejs_nf_order_terminal_proof *proof,
+    const ulong *table_squared, const fmpz *identity,
+    slong degree, ulong prime)
+{
+    if (table_squared == NULL || prime > UWORD_MAX / prime) return 0;
+    const size_t table_size =
+        (size_t) degree * (size_t) degree * (size_t) degree;
+    ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
+    for (size_t entry = 0; entry < table_size; entry++)
+        table[entry] = table_squared[entry] % prime;
+    sagejs_nf_p_radical(proof->radical, &proof->radical_dimension,
+        table, identity, degree, prime, n_preinvert_limb(prime));
+    flint_free(table);
+
+    sagejs_nf_multiplier_workspace workspace;
+    sagejs_nf_multiplier_workspace_init(&workspace, degree, prime);
+    nmod_mat_t kernel;
+    nmod_mat_init(kernel, degree, degree, prime);
+    const size_t equation_rows = (size_t) degree * (size_t) degree;
+    slong *retained_sources = (slong *) flint_malloc(
+        equation_rows * sizeof(slong));
+    slong retained_count = 0;
+    const slong nullity = sagejs_nf_multiplier_kernel_mod_p2(
+        kernel, table_squared, proof->radical, proof->radical_dimension,
+        degree, prime, &workspace, retained_sources, &retained_count);
+    slong *compressed_selectors = (slong *) flint_malloc(
+        (size_t) degree * sizeof(slong));
+    const int valid = nullity == 0 &&
+        sagejs_nf_analysis_select_row_prefix(compressed_selectors,
+            workspace.equations, retained_count, degree, prime);
+    if (valid)
+        for (slong row = 0; row < degree; row++)
+        {
+            const slong compressed = compressed_selectors[row];
+            proof->selectors[row] = retained_sources[compressed];
+            for (slong column = 0; column < degree; column++)
+                nmod_mat_entry(proof->minor, row, column) =
+                    nmod_mat_entry(
+                        workspace.equations, compressed, column);
+        }
+    flint_free(compressed_selectors);
+    flint_free(retained_sources);
+    nmod_mat_clear(kernel);
+    sagejs_nf_multiplier_workspace_clear(&workspace);
+    return valid;
+}
+
+/* Independently rederive the terminal radical and full-rank multiplier minor
+ * from the stable exact local multiplication state.  This is one terminal
+ * check, never an enlargement replay. */
+static inline int sagejs_nf_order_capture_terminal_proof(
+    sagejs_nf_order_terminal_proof *proof,
+    const sagejs_fmpz_matrix_t source,
+    const fmpz_mat_t *multiplication, const fmpz *identity,
+    const fmpz_mat_t local_numerator, const fmpz_t local_denominator,
+    slong degree, ulong prime,
+    const sagejs_nf_binary_tensor_workspace *binary)
+{
+    (void) source;
+    if (proof == NULL || proof->initialized) return 0;
+    memset(proof, 0, sizeof(*proof));
+    proof->prime = prime;
+    fmpz_mat_init_set(proof->local_numerator, local_numerator);
+    fmpz_init_set(proof->local_denominator, local_denominator);
+    nmod_mat_init(proof->radical, degree, degree, prime);
+    proof->selectors = (slong *) flint_malloc(
+        (size_t) degree * sizeof(slong));
+    nmod_mat_init(proof->minor, degree, degree, prime);
+    proof->initialized = 1;
+    if (SAGEJS_NF_ORDER_TERMINAL_PROOF_TEST_FAIL(prime)) goto fail;
+
+    if (degree < 1 || (size_t) degree > SIZE_MAX / (size_t) degree ||
+        (size_t) degree * (size_t) degree > SIZE_MAX / (size_t) degree)
+        goto fail;
+    const size_t table_size =
+        (size_t) degree * (size_t) degree * (size_t) degree;
+    if (table_size > SIZE_MAX / sizeof(ulong)) goto fail;
+    const ulong *certified_table_squared = NULL;
+    ulong *binary_table_squared = NULL;
+    if (binary != NULL && prime == 2)
+    {
+        binary_table_squared = (ulong *) flint_malloc(
+            table_size * sizeof(ulong));
+        for (slong left = 0; left < degree; left++)
+            for (slong right = 0; right < degree; right++)
+            {
+                const size_t product =
+                    (size_t) left * (size_t) degree + (size_t) right;
+                for (slong output = 0; output < degree; output++)
+                    binary_table_squared[product * (size_t) degree +
+                            (size_t) output] =
+                        ((binary->table_low[product] >> output) & UWORD(1)) |
+                        (((binary->table_high[product] >> output) & UWORD(1))
+                            << 1);
+            }
+        certified_table_squared = binary_table_squared;
+    }
+    else if (binary != NULL)
+        certified_table_squared = binary->word_table_squared;
+    if (certified_table_squared != NULL)
+    {
+        const int valid = sagejs_nf_order_capture_terminal_mod_p2(
+            proof, certified_table_squared, identity, degree, prime);
+        flint_free(binary_table_squared);
+        binary_table_squared = NULL;
+        if (!valid) goto fail;
+        return 1;
+    }
+
+    /* Non-p-adic workers keep their exact multiplication state live. */
+    const fmpz_mat_t *stable_multiplication = multiplication;
+    const fmpz *stable_identity = identity;
+    ulong *table = (ulong *) flint_malloc(table_size * sizeof(ulong));
+    for (slong left = 0; left < degree; left++)
+        for (slong right = 0; right < degree; right++)
+            for (slong output = 0; output < degree; output++)
+                table[(left * degree + right) * degree + output] =
+                    fmpz_fdiv_ui(
+                        fmpz_mat_entry(
+                            stable_multiplication[left], output, right),
+                        prime);
+    sagejs_nf_p_radical(proof->radical, &proof->radical_dimension,
+        table, stable_identity, degree, prime, n_preinvert_limb(prime));
+    flint_free(table);
+
+    nmod_mat_t equations;
+    nmod_mat_init(equations, degree * degree, degree, prime);
+    const int valid = sagejs_nf_analysis_multiplier_equations(equations,
+            stable_multiplication, proof->radical, proof->radical_dimension,
+            degree, prime) &&
+        sagejs_nf_analysis_select_rows(
+            proof->selectors, equations, degree, prime);
+    if (valid)
+        for (slong row = 0; row < degree; row++)
+            for (slong column = 0; column < degree; column++)
+                nmod_mat_entry(proof->minor, row, column) =
+                    nmod_mat_entry(
+                        equations, proof->selectors[row], column);
+    nmod_mat_clear(equations);
+    if (!valid) goto fail;
+    return 1;
+
+fail:
+    flint_free(binary_table_squared);
+    sagejs_nf_order_terminal_proof_clear(proof);
+    return 0;
+}
+
+static inline int
+sagejs_number_field_order_maximal_at_primes_sequential_with_terminal_proofs(
     sagejs_fmpq_matrix_t result,
     const sagejs_fmpz_matrix_t source,
     const uint64_t *prime_inputs,
-    uint64_t prime_count)
+    uint64_t prime_count,
+    sagejs_nf_order_terminal_proof *terminal_proofs)
 {
     const slong rows = fmpz_mat_nrows(source->value);
     const slong degree = fmpz_mat_ncols(source->value);
@@ -2650,7 +3087,25 @@ binary_restart:
                 break;
             }
             if (nullity == 0)
+            {
+                if (terminal_proofs != NULL)
+                {
+                    SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_BEGIN(prime);
+                    if (!binary_initialized)
+                        sagejs_nf_change_basis_sync_fmpz_multiplication(
+                            &change_workspace, multiplication, degree);
+                    if (!sagejs_nf_order_capture_terminal_proof(
+                            terminal_proofs + prime_index,
+                            source,
+                            multiplication, identity,
+                            basis_numerator, basis_denominator,
+                            degree, prime,
+                            binary_initialized ? &binary_workspace : NULL))
+                        success = 0;
+                    SAGEJS_NF_ORDER_PROFILE_TERMINAL_PROOF_END(prime);
+                }
                 break;
+            }
             if (binary_initialized && binary_workspace.precision < 4)
             {
                 sagejs_nf_binary_tensor_workspace_clear(&binary_workspace);
@@ -2722,6 +3177,17 @@ binary_restart:
     return success;
 }
 
+static inline int sagejs_number_field_order_maximal_at_primes_sequential(
+    sagejs_fmpq_matrix_t result,
+    const sagejs_fmpz_matrix_t source,
+    const uint64_t *prime_inputs,
+    uint64_t prime_count)
+{
+    return
+        sagejs_number_field_order_maximal_at_primes_sequential_with_terminal_proofs(
+            result, source, prime_inputs, prime_count, NULL);
+}
+
 static inline int sagejs_nf_order_unpack_fmpq_basis(
     fmpz_mat_t numerator, fmpz_t denominator,
     const sagejs_fmpq_matrix_t rational)
@@ -2780,7 +3246,12 @@ static inline int sagejs_nf_order_normalize_fmpq_basis(
     return 1;
 }
 
-/* The sum of independently computed local overorders is the row lattice of
+/* Preconditions: every A_i/d_i is a full-rank overorder of the same equation
+ * order Z^n (in the shared immutable power basis), and the positive d_i are
+ * pairwise coprime.  No row correspondence or prior HNF normalization is
+ * required.
+ *
+ * The sum of independently computed local overorders is the row lattice of
  * all their basis rows.  For pairwise-coprime local denominators d_i, scale
  * every numerator A_i to the common denominator D = product(d_i), stack the
  * rows (D/d_i) A_i, and take one exact row HNF.  This generator construction
@@ -2841,7 +3312,17 @@ static inline int sagejs_nf_order_merge_coprime_bases(
         }
     if (success)
     {
+#if defined(SAGEJS_NF_ORDER_FORCE_GENERIC_HNF)
         fmpz_mat_hnf(hermite, generators);
+#else
+        fmpz_mat_set(hermite, generators);
+        /* Every local overorder contains the equation order, so after scaling
+         * to denominator D the generator lattice contains D*Z^n.  Therefore
+         * the largest elementary divisor of this full-rank row lattice
+         * divides D, exactly the certified precondition of FLINT's modular
+         * elementary-divisor HNF algorithm. */
+        fmpz_mat_hnf_modular_eldiv(hermite, denominator);
+#endif
         slong output_row = 0;
         for (slong row = 0; row < generator_rows; row++)
         {
@@ -2892,6 +3373,7 @@ typedef struct
     sagejs_fmpq_matrix_struct *locals;
     const sagejs_fmpz_matrix_struct *source;
     const uint64_t *primes;
+    sagejs_nf_order_terminal_proof *terminal_proofs;
     int *success;
 } sagejs_nf_independent_prime_work;
 
@@ -2900,9 +3382,6 @@ static inline void sagejs_nf_order_independent_prime_worker(
 {
     sagejs_nf_independent_prime_work *work =
         (sagejs_nf_independent_prime_work *) argument;
-#ifndef SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL
-#define SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index) 0
-#endif
     if (SAGEJS_NF_ORDER_INDEPENDENT_TEST_FAIL(index))
     {
         work->success[index] = 0;
@@ -2911,10 +3390,15 @@ static inline void sagejs_nf_order_independent_prime_worker(
     /* Publish success only after the local result is fully initialized.  The
      * caller zeroes every slot and clears precisely the successfully
      * published resources, including after a sibling worker fails. */
+    SAGEJS_NF_ORDER_INDEPENDENT_TEST_DELAY(index);
+    SAGEJS_NF_ORDER_PROFILE_LOCAL_BEGIN(index);
     work->success[index] =
-        sagejs_number_field_order_maximal_at_primes_sequential(
+        sagejs_number_field_order_maximal_at_primes_sequential_with_terminal_proofs(
             work->locals + index, work->source,
-            work->primes + index, 1);
+            work->primes + index, 1,
+            work->terminal_proofs == NULL ? NULL :
+                work->terminal_proofs + index);
+    SAGEJS_NF_ORDER_PROFILE_LOCAL_END(index);
 }
 
 typedef struct
@@ -2934,10 +3418,62 @@ static inline void sagejs_nf_order_run_independent_prime_lane(
 }
 
 #if FLINT_USES_PTHREAD
-static inline void *sagejs_nf_order_independent_prime_thread(void *argument)
+static inline void *sagejs_nf_order_independent_static_thread(void *argument)
 {
     sagejs_nf_order_run_independent_prime_lane(
         (sagejs_nf_independent_prime_lane *) argument);
+    /* FLINT caches temporary exact matrices per thread.  These pthread lanes
+     * are owned and joined here, so release their thread-local allocator state
+     * before the thread exits rather than leaving it to process teardown. */
+    flint_cleanup();
+    return NULL;
+}
+
+typedef struct
+{
+    sagejs_nf_independent_prime_work *work;
+    slong item_count;
+    slong next_index;
+    int fatal;
+    pthread_mutex_t mutex;
+} sagejs_nf_independent_prime_queue;
+
+static inline void sagejs_nf_order_run_independent_prime_queue(
+    sagejs_nf_independent_prime_queue *queue)
+{
+    /* Claim indices monotonically, but never encode worker assignment into
+     * the result: each job owns its caller-order slot.  A failed job closes
+     * the queue to new claims; already claimed jobs publish or fail before
+     * the caller joins every worker and transactionally clears all published
+     * slots. */
+    for (;;)
+    {
+        slong index = -1;
+        if (pthread_mutex_lock(&queue->mutex) != 0) return;
+        if (!queue->fatal && queue->next_index < queue->item_count)
+            index = queue->next_index++;
+        (void) pthread_mutex_unlock(&queue->mutex);
+        if (index < 0) return;
+        sagejs_nf_order_independent_prime_worker(index, queue->work);
+        if (!queue->work->success[index])
+        {
+            if (pthread_mutex_lock(&queue->mutex) == 0)
+            {
+                queue->fatal = 1;
+                (void) pthread_mutex_unlock(&queue->mutex);
+            }
+            return;
+        }
+    }
+}
+
+static inline void *sagejs_nf_order_independent_queue_thread(void *argument)
+{
+    sagejs_nf_order_run_independent_prime_queue(
+        (sagejs_nf_independent_prime_queue *) argument);
+    /* This lane is owned and joined here, so release FLINT's thread-local
+     * allocator state before returning to the caller. */
+    flint_cleanup();
     return NULL;
 }
 #endif
@@ -2969,6 +3505,9 @@ static inline slong sagejs_nf_order_independent_worker_bound(
 #if !FLINT_USES_PTHREAD
     workers = 1;
 #endif
+#if defined(SAGEJS_NF_ORDER_FORCE_ONE_INDEPENDENT_WORKER)
+    workers = 1;
+#endif
     return (slong) workers;
 }
 
@@ -2976,6 +3515,34 @@ static inline void sagejs_nf_order_run_independent_primes(
     sagejs_nf_independent_prime_work *work,
     slong item_count, slong worker_count)
 {
+#if FLINT_USES_PTHREAD && \
+    !defined(SAGEJS_NF_ORDER_FORCE_STATIC_INDEPENDENT_SCHEDULE)
+    if (worker_count > 1)
+    {
+        sagejs_nf_independent_prime_queue queue;
+        queue.work = work;
+        queue.item_count = item_count;
+        queue.next_index = 0;
+        queue.fatal = 0;
+        if (pthread_mutex_init(&queue.mutex, NULL) == 0)
+        {
+            pthread_t workers[4] = {0, 0, 0, 0};
+            int started[4] = {0, 0, 0, 0};
+            for (slong worker = 1; worker < worker_count; worker++)
+                if (SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(
+                        workers + worker - 1,
+                        sagejs_nf_order_independent_queue_thread,
+                        &queue) == 0)
+                    started[worker - 1] = 1;
+            sagejs_nf_order_run_independent_prime_queue(&queue);
+            for (slong worker = 1; worker < worker_count; worker++)
+                if (started[worker - 1])
+                    (void) pthread_join(workers[worker - 1], NULL);
+            (void) pthread_mutex_destroy(&queue.mutex);
+            return;
+        }
+    }
+#endif
     sagejs_nf_independent_prime_lane lanes[5];
     for (slong lane = 0; lane < worker_count; lane++)
     {
@@ -2985,11 +3552,12 @@ static inline void sagejs_nf_order_run_independent_primes(
         lanes[lane].item_count = item_count;
     }
 #if FLINT_USES_PTHREAD
-    pthread_t workers[4];
+    pthread_t workers[4] = {0, 0, 0, 0};
     int started[4] = {0, 0, 0, 0};
     for (slong lane = 1; lane < worker_count; lane++)
-        if (pthread_create(workers + lane - 1, NULL,
-                sagejs_nf_order_independent_prime_thread,
+        if (SAGEJS_NF_ORDER_INDEPENDENT_PTHREAD_CREATE(
+                workers + lane - 1,
+                sagejs_nf_order_independent_static_thread,
                 lanes + lane) == 0)
             started[lane - 1] = 1;
         else
@@ -3004,11 +3572,12 @@ static inline void sagejs_nf_order_run_independent_primes(
 #endif
 }
 
-static inline int sagejs_number_field_order_maximal_at_primes(
+static inline int sagejs_number_field_order_maximal_at_primes_with_terminal_proofs(
     sagejs_fmpq_matrix_t result,
     const sagejs_fmpz_matrix_t source,
     const uint64_t *prime_inputs,
-    uint64_t prime_count)
+    uint64_t prime_count,
+    sagejs_nf_order_terminal_proof *terminal_proofs)
 {
     const slong rows = fmpz_mat_nrows(source->value);
     const slong degree = fmpz_mat_ncols(source->value);
@@ -3023,7 +3592,7 @@ static inline int sagejs_number_field_order_maximal_at_primes(
             prime_inputs[index] <= (uint64_t) UWORD_MAX &&
             n_is_prime((ulong) prime_inputs[index]);
     if (independent_inputs_valid && prime_count <= 64 &&
-        degree > 64 && degree <= 96 &&
+        degree >= 64 && degree <= 96 &&
         rows == degree * degree)
     {
         sagejs_fmpq_matrix_struct *locals =
@@ -3034,12 +3603,14 @@ static inline int sagejs_number_field_order_maximal_at_primes(
         int *local_success =
             (int *) flint_calloc((size_t) prime_count, sizeof(int));
         sagejs_nf_independent_prime_work work = {
-            locals, source, prime_inputs, local_success
+            locals, source, prime_inputs, terminal_proofs, local_success
         };
         const slong worker_count =
             sagejs_nf_order_independent_worker_bound(degree, prime_count);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-local");
         sagejs_nf_order_run_independent_primes(
             &work, (slong) prime_count, worker_count);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-local");
         uint64_t completed = prime_count;
         int success = 1;
         for (uint64_t index = 0; index < prime_count; index++)
@@ -3058,6 +3629,7 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 (size_t) completed * sizeof(fmpz_mat_struct));
         fmpz *local_denominators = _fmpz_vec_init((slong) completed);
         uint64_t initialized_numerators = 0;
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-unpack");
         for (uint64_t index = 0; index < completed && success; index++)
         {
             fmpz_mat_init(local_numerators + index, degree, degree);
@@ -3066,13 +3638,19 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 local_numerators + index,
                 local_denominators + index, locals + index);
         }
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-unpack");
         if (success)
+        {
+            SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-merge");
             success = sagejs_nf_order_merge_coprime_bases(
                 accumulated, accumulated_denominator,
                 local_numerators, local_denominators,
                 completed, degree);
+            SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-merge");
+        }
         if (success)
         {
+            SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-publish");
             success = sagejs_fmpq_matrix_init(
                 result, (uint64_t) degree, (uint64_t) degree);
             if (success)
@@ -3090,7 +3668,9 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                     }
                 sagejs_fmpq_matrix_recompute_allocated_bytes(result);
             }
+            SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-publish");
         }
+        SAGEJS_NF_ORDER_PROFILE_BATCH_BEGIN("independent-cleanup");
         for (uint64_t index = 0; index < initialized_numerators; index++)
             fmpz_mat_clear(local_numerators + index);
         _fmpz_vec_clear(local_denominators, (slong) completed);
@@ -3102,11 +3682,29 @@ static inline int sagejs_number_field_order_maximal_at_primes(
                 sagejs_fmpq_matrix_clear(locals + index);
         flint_free(local_success);
         flint_free(locals);
+        SAGEJS_NF_ORDER_PROFILE_BATCH_END("independent-cleanup");
         return success;
     }
 #endif
-    return sagejs_number_field_order_maximal_at_primes_sequential(
-        result, source, prime_inputs, prime_count);
+    /* Multiple sequential local enlargements do not retain separate local
+     * terminal bases.  Proof-carrying mode therefore supports either one
+     * prime or the independent-prime construction above; ordinary order
+     * construction keeps its established sequential fallback. */
+    if (terminal_proofs != NULL && prime_count > 1)
+        return 0;
+    return
+        sagejs_number_field_order_maximal_at_primes_sequential_with_terminal_proofs(
+            result, source, prime_inputs, prime_count, terminal_proofs);
+}
+
+static inline int sagejs_number_field_order_maximal_at_primes(
+    sagejs_fmpq_matrix_t result,
+    const sagejs_fmpz_matrix_t source,
+    const uint64_t *prime_inputs,
+    uint64_t prime_count)
+{
+    return sagejs_number_field_order_maximal_at_primes_with_terminal_proofs(
+        result, source, prime_inputs, prime_count, NULL);
 }
 
 static inline int sagejs_number_field_order_pmaximal(

@@ -628,6 +628,13 @@ export class NodeHostAdapter {
               (args[2] as unknown[] | undefined) ?? [],
             ),
           };
+        case "multiprocessingCreatePrecompiledPool":
+          return {
+            ok: true,
+            value: this.multiprocessing.createPool(
+              Number(args[0]), undefined, [], true, true,
+            ),
+          };
         case "multiprocessingWorkerModuleAvailable":
           return {
             ok: true,
@@ -686,6 +693,16 @@ export class NodeHostAdapter {
               Boolean(args[3]),
             ),
           };
+        case "multiprocessingSubmitModuleCall":
+          return {
+            ok: true,
+            value: this.multiprocessing.submitModuleCall(
+              Number(args[0]),
+              String(args[1]),
+              String(args[2]),
+              args[3] as unknown[],
+            ),
+          };
         case "multiprocessingJobResult":
           return {
             ok: true,
@@ -695,6 +712,19 @@ export class NodeHostAdapter {
               args[2] === null || args[2] === undefined
                 ? undefined
                 : Number(args[2]),
+            ),
+          };
+        case "multiprocessingAttestedJobResult":
+          return {
+            ok: true,
+            value: this.multiprocessing.attestedJobResult(
+              Number(args[0]),
+              Number(args[1]),
+              String(args[2]),
+              String(args[3]),
+              args[4] === null || args[4] === undefined
+                ? undefined
+                : Number(args[4]),
             ),
           };
         case "multiprocessingForgetJob":

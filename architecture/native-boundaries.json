@@ -13,8 +13,8 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 94,
-    "declared-ffi": 408,
+    "classified-native-file": 95,
+    "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 304,
     "runtime-intrinsic": 137,
@@ -1858,6 +1858,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_is_probabprime",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_is_probabprime",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzIsProbabprime",
+      "symbol": "sagejs_fmpz_probabprime_result",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_mat_charpoly",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1888,6 +1899,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatHnf",
       "symbol": "sagejs_flint_fmpz_mat_hnf",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_hnf_modular_eldiv",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_hnf_modular_eldiv",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatHnfModularEldiv",
+      "symbol": "sagejs_flint_fmpz_mat_hnf_modular_eldiv",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2779,6 +2801,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzModPolynomialXgcdResultRightCoefficient",
       "symbol": "sagejs_fmpz_mod_polynomial_xgcd_result_right_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_perfect_power_data",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_perfect_power_data",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPerfectPowerData",
+      "symbol": "sagejs_fmpz_perfect_power_data",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4550,6 +4583,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNumberFieldOrderResourceUnramifiedPrimes",
       "symbol": "sagejs_number_field_order_resource_unramified_primes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_order_with_round2_proof_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_order_with_round2_proof_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldOrderWithRound2ProofResource",
+      "symbol": "sagejs_number_field_order_with_round2_proof_resource",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -8017,6 +8061,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/number-field-round2-proof-resource-witness.c",
+      "kind": "classified-native-file",
+      "path": "bench/number-field-round2-proof-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:bench/rforest/portable_trace_harness.c",

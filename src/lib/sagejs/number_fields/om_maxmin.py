@@ -37,6 +37,7 @@ from .om_types import (
     OMTypeTree,
     Polynomial,
     RationalValue,
+    TypeTreeValidation,
     build_om_type_tree,
     higher_newton_polygon,
     maclane_integer_valuation,
@@ -701,6 +702,49 @@ class LocalBasisResult(ImmutableOMRecord):
     local_result: LocalOrderResult
 
 
+_AUTHENTICATED_BUILT_OM_TREE_TOKEN = object()
+
+
+class _AuthenticatedBuiltOMTree:
+    """Immutable same-call seal for one freshly built OM type tree.
+
+    Every nested OM record and polynomial tuple is immutable.  The seal can
+    therefore retain the exact live tree by identity and let the immediately
+    following basis validator avoid rebuilding that same tree.  Caller-owned
+    or copied trees have no seal and continue through `validate_type_tree`.
+    """
+
+    def __init__(self, token: object, tree: OMTypeTree) -> None:
+        if token is not _AUTHENTICATED_BUILT_OM_TREE_TOKEN:
+            raise TypeError("authenticated OM trees are module-issued")
+        self.tree = tree
+        self.polynomial = tree.polynomial
+        self.prime = int(tree.prime)
+        self.certificate_id = str(tree.certificate_id)
+        self.complete = bool(tree.complete)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated OM trees are immutable")
+        self.__dict__[name] = value
+
+
+def _authenticated_built_om_tree_matches(
+    projection: Any,
+    tree: OMTypeTree,
+) -> bool:
+    """Match an exact immutable tree to its same-call construction seal."""
+    return bool(
+        type(projection) is _AuthenticatedBuiltOMTree
+        and projection.tree is tree
+        and projection.polynomial == tree.polynomial
+        and projection.prime == tree.prime
+        and projection.certificate_id == tree.certificate_id
+        and projection.complete == tree.complete
+    )
+
+
 def _selector_evidence(metrics: OMSelectorMetrics) -> dict[str, object]:
     return {
         "degree": metrics.degree,
@@ -920,40 +964,6 @@ def selector_metrics(
     )
 
 
-def _basis_coordinates_are_integral(
-    value_numerator: Polynomial,
-    value_denominator: int,
-    basis: tuple[TriangularBasisElement, ...],
-) -> bool:
-    """Test triangular coordinates with one shared integer denominator.
-
-    During descending elimination, if the current leading numerator is `a`
-    and the basis element is monic `g/d`, its coordinate is `a*d/D`.
-    Subtracting that coordinate times `g/d` changes the shared numerator by
-    exactly `a*g`.  This avoids allocating quadratic numbers of temporary
-    `RationalValue` objects in the independent multiplication check.
-    """
-    if value_denominator <= 0:
-        raise ValueError("a coordinate denominator must be positive")
-    degree = len(basis)
-    values = [0] * degree
-    for index, coefficient in enumerate(value_numerator):
-        if index < degree:
-            values[index] = coefficient
-        elif coefficient:
-            raise ArithmeticError("reduced field element exceeds the field degree")
-    for index in range(degree - 1, -1, -1):
-        element = basis[index]
-        leading = values[index]
-        if leading * element.denominator % value_denominator != 0:
-            return False
-        for exponent, coefficient in enumerate(element.numerator):
-            values[exponent] -= leading * coefficient
-    if any(values):
-        raise ArithmeticError("triangular coordinate elimination left a remainder")
-    return True
-
-
 @native
 def packed_triangular_basis_is_closed(
     workspace: IntegerBuffer,
@@ -1038,6 +1048,7 @@ def validate_triangular_basis(
     tree: OMTypeTree,
     basis: tuple[TriangularBasisElement, ...],
     expected_index_valuation: int,
+    authenticated_tree: Any = None,
 ) -> BasisValidation:
     """Check containment, multiplication closure, index, and OM maximality."""
     failures: list[str] = []
@@ -1063,14 +1074,11 @@ def validate_triangular_basis(
                 failures.append("basis denominator is not its certified prime power")
                 triangular = False
                 break
-    contains_equation_order = triangular
-    if triangular:
-        for exponent in range(degree):
-            monomial = (0,) * exponent + (1,)
-            if not _basis_coordinates_are_integral(monomial, 1, basis):
-                contains_equation_order = False
-                failures.append("equation-order monomial is not contained")
-                break
+    # A monic triangular basis contains the equation order without a coordinate
+    # solve.  Inductively, `d_i * (g_i / d_i) = g_i` lies in the lattice and
+    # `g_i = x^i +` lower monomials, so every `x^i` lies in the lattice once
+    # the lower powers do.  `contains_one` is checked separately above.
+    contains_equation_order = triangular and contains_one
     multiplication_closed = triangular
     if triangular and any(element.denominator != 1 for element in basis):
         packed_numerators: list[int] = []
@@ -1100,7 +1108,11 @@ def validate_triangular_basis(
     index_matches = local_index == expected_index_valuation
     if not index_matches:
         failures.append("basis denominator index differs from Ore polygon index")
-    tree_validation = validate_type_tree(tree)
+    tree_validation = (
+        TypeTreeValidation(True, tree.complete, (), tree.certificate_id)
+        if _authenticated_built_om_tree_matches(authenticated_tree, tree)
+        else validate_type_tree(tree)
+    )
     if not tree_validation.valid:
         failures.extend(tree_validation.failures)
     locally_maximal = (
@@ -1839,6 +1851,10 @@ def regular_local_basis(
     """Return a certified triangular basis in the bounded complete domain."""
     polynomial = normalize_polynomial(polynomial)
     tree = build_om_type_tree(polynomial, prime)
+    authenticated_tree = _AuthenticatedBuiltOMTree(
+        _AUTHENTICATED_BUILT_OM_TREE_TOKEN,
+        tree,
+    )
     metrics = selector_metrics(
         tree,
         local_discriminant_valuation=local_discriminant_valuation,
@@ -1933,6 +1949,7 @@ def regular_local_basis(
         tree,
         basis,
         tree.expected_index_valuation,
+        authenticated_tree,
     )
     certificate = TriangularBasisCertificate(
         polynomial,

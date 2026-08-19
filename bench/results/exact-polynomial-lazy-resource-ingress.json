@@ -1,0 +1,44 @@
+{
+  "schema": "sagejs.benchmark/exact-polynomial-lazy-resource-ingress-v1",
+  "sample_count": 9,
+  "coefficient_count": 65,
+  "maximum_coefficient_bits": 678,
+  "alternating_signs": true,
+  "materialization_ns": [
+    2030848,
+    759296,
+    816896,
+    758528,
+    580352,
+    451328,
+    421888,
+    1021952,
+    511232
+  ],
+  "serialization_ns": [
+    518656,
+    347136,
+    321280,
+    562688,
+    333568,
+    505088,
+    307456,
+    435200,
+    359680
+  ],
+  "packed_byte_count": 3663,
+  "exact_resource_equality": true,
+  "statistics": {
+    "materialization_median_ns": 758528,
+    "serialization_median_ns": 359680
+  },
+  "identity": {
+    "polynomial_source_sha256": "09275e6a9f0cd3c8186bc0468144eb6b06719f21ef139b98518c2f1eb27c7d3c",
+    "node": "v26.7.0"
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13"
+  }
+}

@@ -22,15 +22,21 @@ from sagejs.native import (
     native,
     uint64,
 )
-from sagejs.number_fields.maximal_order_certification import _scaled_integral_inverse
+from sagejs.number_fields.maximal_order_certification import (
+    _scaled_integral_inverse,
+    check_order_lattice,
+)
 
-try:
-    _flint_module: Any | None = __import__("sagejs.ffi.flint", fromlist=["flint"])
-except ModuleNotFoundError:
-    # The proof checker remains ordinary CPython source.  CPython does not
-    # provide the Sage.js runtime used by the generated FLINT adapter, while
-    # every native-resource entry point below is Sage.js-only.
-    _flint_module = None
+_flint_module: Any = None
+
+
+def _field_analysis_flint_module() -> Any:
+    """Load the generated host adapter only at the explicit native boundary."""
+    global _flint_module
+    if _flint_module is None:
+        _flint_module = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    return _flint_module
+
 
 ANALYSIS_COMPLETE_CANDIDATE = 0
 ANALYSIS_FALLBACK_UNRESOLVED = 1
@@ -39,6 +45,9 @@ ANALYSIS_FALLBACK_NATIVE_FAILURE = 3
 
 AUTHENTICATED_FIELD_ANALYSIS_PROOF_SCHEMA = (
     "sagejs.number-fields/authenticated-field-analysis-proof-v1"
+)
+AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA = (
+    "sagejs.number-fields/authenticated-round2-order-proof-v1"
 )
 
 COMPONENT_PROVEN_WORD_PRIME = 0
@@ -56,6 +65,15 @@ def _new_projection_workspace_cache() -> dict[
 
 
 _projection_workspace_cache = _new_projection_workspace_cache()
+
+
+def _new_round2_proof_workspace_cache() -> dict[
+    tuple[int, int, int, int], tuple[Any, ...]
+]:
+    return {}
+
+
+_round2_proof_workspace_cache = _new_round2_proof_workspace_cache()
 
 
 def _byte(payload: Any, index: int) -> int:
@@ -111,6 +129,102 @@ def _determinant(rows: list[list[int]]) -> int:
             matrix[row][column] = 0
         previous = pivot
     return sign * matrix[-1][-1]
+
+
+def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
+    old_remainder, remainder = left, right
+    old_left, left_coefficient = 1, 0
+    old_right, right_coefficient = 0, 1
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = (
+            remainder,
+            old_remainder - quotient * remainder,
+        )
+        old_left, left_coefficient = (
+            left_coefficient,
+            old_left - quotient * left_coefficient,
+        )
+        old_right, right_coefficient = (
+            right_coefficient,
+            old_right - quotient * right_coefficient,
+        )
+    if old_remainder < 0:
+        return -old_remainder, -old_left, -old_right
+    return old_remainder, old_left, old_right
+
+
+def _ordinary_row_hnf(rows: list[list[int]]) -> list[list[int]]:
+    """Return the canonical row HNF of full-rank integer generators."""
+    if not rows:
+        return []
+    columns = len(rows[0])
+    matrix = [list(row) for row in rows]
+    if any(len(row) != columns for row in matrix):
+        raise ValueError("lattice rows must have a common length")
+    pivot_row = 0
+    for column in range(columns):
+        candidate = pivot_row
+        while candidate < len(matrix) and matrix[candidate][column] == 0:
+            candidate += 1
+        if candidate == len(matrix):
+            continue
+        matrix[pivot_row], matrix[candidate] = matrix[candidate], matrix[pivot_row]
+        for row_index in range(pivot_row + 1, len(matrix)):
+            if matrix[row_index][column] == 0:
+                continue
+            upper = list(matrix[pivot_row])
+            lower = list(matrix[row_index])
+            common, left_coefficient, right_coefficient = _extended_gcd(
+                upper[column], lower[column]
+            )
+            upper_scale = upper[column] // common
+            lower_scale = lower[column] // common
+            matrix[pivot_row] = [
+                left_coefficient * upper[index] + right_coefficient * lower[index]
+                for index in range(columns)
+            ]
+            matrix[row_index] = [
+                -lower_scale * upper[index] + upper_scale * lower[index]
+                for index in range(columns)
+            ]
+        if matrix[pivot_row][column] < 0:
+            matrix[pivot_row] = [-value for value in matrix[pivot_row]]
+        pivot = matrix[pivot_row][column]
+        for row_index in range(pivot_row):
+            quotient = matrix[row_index][column] // pivot
+            matrix[row_index] = [
+                matrix[row_index][index] - quotient * matrix[pivot_row][index]
+                for index in range(columns)
+            ]
+        pivot_row += 1
+        if pivot_row == len(matrix):
+            break
+    answer = [row for row in matrix if any(value != 0 for value in row)]
+    if len(answer) < columns:
+        raise ArithmeticError("lattice generators do not have full rank")
+    return answer[:columns]
+
+
+def _ordinary_polynomial_discriminant(coefficients: list[int]) -> int:
+    degree = len(coefficients) - 1
+    derivative = [
+        exponent * coefficients[exponent] for exponent in range(1, degree + 1)
+    ]
+    size = 2 * degree - 1
+    polynomial_high = list(reversed(coefficients))
+    derivative_high = list(reversed(derivative))
+    sylvester: list[list[int]] = []
+    for shift in range(degree - 1):
+        sylvester.append(
+            [0] * shift + polynomial_high + [0] * (size - shift - len(polynomial_high))
+        )
+    for shift in range(degree):
+        sylvester.append(
+            [0] * shift + derivative_high + [0] * (size - shift - len(derivative_high))
+        )
+    answer = _determinant(sylvester)
+    return -answer if degree * (degree - 1) // 2 % 2 else answer
 
 
 def _miller_rabin_witness(number: int, base: int) -> bool:
@@ -380,6 +494,54 @@ def packed_field_analysis_decode_word_bytes(
     if encoded_count != entry_count:
         return False
     offset = 80
+    for output_index in range(entry_count):
+        if offset + 4 > len(payload):
+            return False
+        header = 0
+        header_factor = 1
+        for byte_index in range(4):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            header += byte * header_factor
+            header_factor *= 256
+        negative = header >= 2147483648
+        length = header
+        if negative:
+            length -= 2147483648
+        offset += 4
+        if length > len(payload) - offset or (negative and length == 0):
+            return False
+        value = 0
+        multiplier = 1
+        for byte_index in range(length):
+            byte = payload[offset + byte_index]
+            if byte > 255:
+                return False
+            value += byte * multiplier
+            multiplier *= 256
+        if length != 0 and payload[offset + length - 1] == 0:
+            return False
+        if negative:
+            value = -value
+        output[output_index] = value
+        offset += length
+    return offset == len(payload)
+
+
+@native
+def packed_round2_order_proof_decode_word_bytes(
+    payload: UInt64Buffer,
+    output: IntegerBuffer,
+    entry_count: uint64,
+) -> bool:
+    """Decode the compact Round-2 proof's canonical integer stream."""
+    if len(payload) < 48 or len(output) != entry_count:
+        return False
+    encoded_count = _packed_unsigned_words(payload, 24, 8)
+    if encoded_count != entry_count:
+        return False
+    offset = 48
     for output_index in range(entry_count):
         if offset + 4 > len(payload):
             return False
@@ -1055,6 +1217,211 @@ def packed_field_analysis_fixed_points_are_valid(
 
 
 @native
+def packed_round2_order_proof_is_valid(
+    payload: UInt64Buffer,
+    decoded: IntegerBuffer,
+    polynomial: IntegerBuffer,
+    numerator: IntegerBuffer,
+    primes: IntegerBuffer,
+    radical_dimensions: IntegerBuffer,
+    radicals: IntegerBuffer,
+    selectors: IntegerBuffer,
+    workspace: IntegerBuffer,
+    expected_polynomial: IntegerBuffer,
+    expected_numerator: IntegerBuffer,
+    expected_primes: IntegerBuffer,
+    expected_denominator: int,
+    expected_index: int,
+    expected_equation_discriminant: int,
+    expected_order_discriminant: int,
+    degree: uint64,
+    witness_count: uint64,
+    entry_count: uint64,
+) -> bool:
+    """Authenticate one source-bound terminal Round-2 proof in one crossing.
+
+    The proof producer only assembles terminal radical RREF rows and multiplier
+    selectors from a completed native order.  This source-transparent body is
+    the independent authority: it binds the complete source/order/prime tuple,
+    proves the word primes, recomputes the polynomial discriminant and order
+    multiplication table, and checks every supplied fixed point exactly.
+    """
+    square = degree * degree
+    if (
+        degree == 0
+        or len(payload) < 48
+        or len(decoded) != entry_count
+        or len(polynomial) != degree + 1
+        or len(numerator) != square
+        or len(primes) != witness_count
+        or len(radical_dimensions) != witness_count
+        or len(radicals) != witness_count * square
+        or len(selectors) != witness_count * degree
+        or len(expected_polynomial) != degree + 1
+        or len(expected_numerator) != square
+        or len(expected_primes) != witness_count
+    ):
+        return False
+    if (
+        payload[0] != 83
+        or payload[1] != 74
+        or payload[2] != 78
+        or payload[3] != 70
+        or payload[4] != 80
+        or payload[5] != 1
+        or payload[6] != 0
+        or payload[7] != 0
+        or _packed_unsigned_words(payload, 8, 8) != degree
+        or _packed_unsigned_words(payload, 16, 8) != witness_count
+        or _packed_unsigned_words(payload, 24, 8) != entry_count
+        or _packed_unsigned_words(payload, 32, 8) != 1
+        or _packed_unsigned_words(payload, 40, 8) != 0
+        or not packed_round2_order_proof_decode_word_bytes(
+            payload, decoded, entry_count
+        )
+    ):
+        return False
+
+    minimum_entries = 4 + degree + 1 + witness_count * (2 + degree) + square
+    if entry_count < minimum_entries:
+        return False
+    denominator = decoded[0]
+    index = decoded[1]
+    equation_discriminant = decoded[2]
+    order_discriminant = decoded[3]
+    if (
+        denominator != expected_denominator
+        or index != expected_index
+        or equation_discriminant != expected_equation_discriminant
+        or order_discriminant != expected_order_discriminant
+        or denominator < 1
+        or index < 1
+        or equation_discriminant == 0
+    ):
+        return False
+
+    polynomial_start = 4
+    coefficient = 0
+    while coefficient <= degree:
+        value = decoded[polynomial_start + coefficient]
+        polynomial[coefficient] = value
+        if value != expected_polynomial[coefficient]:
+            return False
+        coefficient += 1
+    if polynomial[degree] != 1:
+        return False
+
+    witness_cursor = polynomial_start + degree + 1
+    witness = 0
+    while witness < witness_count:
+        if witness_cursor + 2 > entry_count:
+            return False
+        prime = decoded[witness_cursor]
+        dimension = decoded[witness_cursor + 1]
+        if (
+            prime != expected_primes[witness]
+            or not _packed_word_prime_is_proven(prime)
+            or equation_discriminant % prime != 0
+            or dimension < 0
+            or dimension > degree
+        ):
+            return False
+        previous = 0
+        while previous < witness:
+            if primes[previous] == prime:
+                return False
+            previous += 1
+        primes[witness] = prime
+        radical_dimensions[witness] = dimension
+        witness_cursor += 2
+        radical_entry = 0
+        while radical_entry < square:
+            radicals[witness * square + radical_entry] = 0
+            radical_entry += 1
+        supplied_entries = dimension * degree
+        if supplied_entries > entry_count - witness_cursor:
+            return False
+        radical_entry = 0
+        while radical_entry < supplied_entries:
+            radical_value = decoded[witness_cursor + radical_entry]
+            if radical_value < 0 or radical_value >= prime:
+                return False
+            radicals[witness * square + radical_entry] = radical_value
+            radical_entry += 1
+        witness_cursor += supplied_entries
+        if degree > entry_count - witness_cursor:
+            return False
+        selector = 0
+        while selector < degree:
+            selected = decoded[witness_cursor + selector]
+            if selected < 0 or selected >= square:
+                return False
+            prior_selector = 0
+            while prior_selector < selector:
+                if decoded[witness_cursor + prior_selector] == selected:
+                    return False
+                prior_selector += 1
+            selectors[witness * degree + selector] = selected
+            selector += 1
+        witness_cursor += degree
+        witness += 1
+
+    basis_start = witness_cursor
+    if basis_start + square != entry_count:
+        return False
+    content = denominator
+    determinant = 1
+    row = 0
+    while row < degree:
+        diagonal = decoded[basis_start + row * degree + row]
+        if diagonal <= 0:
+            return False
+        determinant *= diagonal
+        column = 0
+        while column < degree:
+            basis_value = decoded[basis_start + row * degree + column]
+            if basis_value != expected_numerator[row * degree + column]:
+                return False
+            if column < row and basis_value != 0:
+                return False
+            if column > row:
+                later_diagonal = decoded[basis_start + column * degree + column]
+                if basis_value < 0 or basis_value >= later_diagonal:
+                    return False
+            numerator[row * degree + column] = basis_value
+            content = _packed_gcd(content, basis_value)
+            column += 1
+        row += 1
+    if content != 1:
+        return False
+    denominator_power = 1
+    power = 0
+    while power < degree:
+        denominator_power *= denominator
+        power += 1
+    if determinant == 0 or denominator_power % determinant != 0:
+        return False
+    if (
+        denominator_power // determinant != index
+        or order_discriminant * index * index != equation_discriminant
+    ):
+        return False
+    return packed_field_analysis_fixed_points_are_valid(
+        workspace,
+        polynomial,
+        numerator,
+        denominator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        equation_discriminant,
+        degree,
+        witness_count,
+    )
+
+
+@native
 def packed_field_analysis_authenticate_projection(
     payload: UInt64Buffer,
     decoded: IntegerBuffer,
@@ -1333,20 +1700,9 @@ def _order_arithmetic(
     polynomial: list[int], numerator: list[list[int]], denominator: int
 ) -> tuple[list[list[list[int]]], list[int]]:
     degree = len(numerator)
-    scaled_inverse = [[0 for _column in range(degree)] for _row in range(degree)]
-    for row in range(degree - 1, -1, -1):
-        diagonal = numerator[row][row]
-        if diagonal == 0:
-            raise ValueError("fixed-point order basis is singular")
-        for column in range(degree):
-            value = denominator if row == column else 0
-            for source in range(row + 1, degree):
-                value -= numerator[row][source] * scaled_inverse[source][column]
-            if value % diagonal != 0:
-                raise ValueError(
-                    "fixed-point order does not contain the equation order"
-                )
-            scaled_inverse[row][column] = value // diagonal
+    scaled_inverse = _scaled_integral_inverse(numerator, denominator)
+    if scaled_inverse is None:
+        raise ValueError("fixed-point order does not contain the equation order")
     identity = list(scaled_inverse[0])
     denominator_squared = denominator * denominator
     table: list[list[list[int]]] = []
@@ -1654,6 +2010,107 @@ class FixedPointWitness(_ImmutableCertificatePart):
             "radical_rows": [list(row) for row in self.radical_rows],
             "selectors": list(self.selectors),
         }
+
+
+class AuthenticatedRound2OrderProof(_ImmutableCertificatePart):
+    """Immutable authentication of a completed order at exact word primes."""
+
+    def __init__(
+        self,
+        polynomial: list[int],
+        certified_primes: list[int],
+        basis_numerator: list[list[int]],
+        basis_denominator: int,
+        index: int,
+        equation_discriminant: int,
+        order_discriminant: int,
+        verification_tier: str = "packed-mathematical-replay",
+    ) -> None:
+        self.polynomial = tuple(int(value) for value in polynomial)
+        self.certified_primes = tuple(int(value) for value in certified_primes)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in basis_numerator
+        )
+        self.basis_denominator = int(basis_denominator)
+        self.index = int(index)
+        self.equation_discriminant = int(equation_discriminant)
+        self.order_discriminant = int(order_discriminant)
+        self.verification_tier = str(verification_tier)
+        self._freeze_certificate()
+
+    @property
+    def proof_schema(self) -> str:
+        return AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA
+
+    @property
+    def certified(self) -> bool:
+        return self.__dict__.get("_authentication_snapshot") == (
+            AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA,
+            self.polynomial,
+            self.certified_primes,
+            self.basis_numerator,
+            self.basis_denominator,
+            self.index,
+            self.equation_discriminant,
+            self.order_discriminant,
+            self.verification_tier,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.proof_schema,
+            "certified": self.certified,
+            "polynomial": list(self.polynomial),
+            "certified_primes": list(self.certified_primes),
+            "basis_numerator": [list(row) for row in self.basis_numerator],
+            "basis_denominator": self.basis_denominator,
+            "index": self.index,
+            "equation_discriminant": self.equation_discriminant,
+            "order_discriminant": self.order_discriminant,
+            "verification_tier": self.verification_tier,
+        }
+
+
+def _seal_authenticated_round2_order_proof(
+    result: AuthenticatedRound2OrderProof,
+) -> None:
+    result.__dict__["_authentication_snapshot"] = (
+        AUTHENTICATED_ROUND2_ORDER_PROOF_SCHEMA,
+        result.polynomial,
+        result.certified_primes,
+        result.basis_numerator,
+        result.basis_denominator,
+        result.index,
+        result.equation_discriminant,
+        result.order_discriminant,
+        result.verification_tier,
+    )
+
+
+def authenticated_round2_order_proof_matches(
+    result: Any,
+    *,
+    polynomial: list[int],
+    certified_primes: list[int],
+    basis_numerator: list[list[int]],
+    basis_denominator: int,
+    index: int,
+    equation_discriminant: int,
+    order_discriminant: int,
+) -> bool:
+    """Bind a module-authenticated proof to the complete caller-owned order."""
+    return (
+        type(result) is AuthenticatedRound2OrderProof
+        and result.certified is True
+        and result.polynomial == tuple(int(value) for value in polynomial)
+        and result.certified_primes == tuple(int(value) for value in certified_primes)
+        and result.basis_numerator
+        == tuple(tuple(int(value) for value in row) for row in basis_numerator)
+        and result.basis_denominator == int(basis_denominator)
+        and result.index == int(index)
+        and result.equation_discriminant == int(equation_discriminant)
+        and result.order_discriminant == int(order_discriminant)
+    )
 
 
 class NativeFieldAnalysisResult(_ImmutableCertificatePart):
@@ -2167,6 +2624,455 @@ def _validate_analysis(result: NativeFieldAnalysisResult) -> None:
         )
 
 
+def decode_round2_order_proof_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+    expected_basis_numerator: list[list[int]],
+    expected_basis_denominator: int,
+    expected_index: int,
+    expected_equation_discriminant: int,
+    expected_order_discriminant: int,
+) -> AuthenticatedRound2OrderProof:
+    """Authenticate a compact terminal proof against the complete live order.
+
+    Witnesses remain in packed scratch storage and never become host objects.
+    Only caller-owned immutable source, prime, and canonical basis values are
+    retained after the one source-transparent proof check.
+    """
+    coefficients = [int(value) for value in expected_polynomial]
+    certified_primes = [int(value) for value in expected_primes]
+    rows = [[int(value) for value in row] for row in expected_basis_numerator]
+    degree = len(coefficients) - 1
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or len(rows) != degree
+        or any(len(row) != degree for row in rows)
+        or len(payload) < 48
+        or [_byte(payload, index) for index in range(8)]
+        != [83, 74, 78, 70, 80, 1, 0, 0]
+    ):
+        raise ValueError("invalid Round-2 proof source or resource header")
+    header_degree = _unsigned(payload, 8, 8)
+    witness_count = _unsigned(payload, 16, 8)
+    entry_count = _unsigned(payload, 24, 8)
+    version = _unsigned(payload, 32, 8)
+    reserved = _unsigned(payload, 40, 8)
+    if (
+        header_degree != degree
+        or witness_count != len(certified_primes)
+        or witness_count == 0
+        or version != 1
+        or reserved != 0
+        or entry_count < 4 + degree + 1 + witness_count * (2 + degree) + degree * degree
+        or entry_count > (len(payload) - 48) // 4
+    ):
+        raise ValueError("inconsistent Round-2 proof resource shape")
+
+    kernel = packed_round2_order_proof_is_valid
+    denominator = int(expected_basis_denominator)
+    index = int(expected_index)
+    equation_discriminant = int(expected_equation_discriminant)
+    order_discriminant = int(expected_order_discriminant)
+    maximum_numerator = max(
+        1,
+        max(abs(value) for row in rows for value in row),
+    )
+    defining_growth = 1 + sum(abs(value) for value in coefficients[:-1])
+    factorial = 1
+    for factor in range(2, degree + 1):
+        factorial *= factor
+    inverse_bound = denominator * factorial * maximum_numerator ** max(0, degree - 1)
+    product_bound = (
+        degree
+        * degree
+        * maximum_numerator
+        * maximum_numerator
+        * defining_growth**degree
+    )
+    table_bound = max(1, degree * inverse_bound * product_bound)
+    word_capacity = max(8, (table_bound.bit_length() + 63) // 64 + 2)
+    shape = (degree, witness_count, entry_count, word_capacity)
+    buffers = _round2_proof_workspace_cache.get(shape)
+    if buffers is None:
+        square = degree * degree
+        workspace_length = (
+            degree * square + 4 * square + 7 * degree + (2 * degree - 1) ** 2
+        )
+        buffers = (
+            kernel_integer_zeros(kernel, entry_count, word_capacity),
+            kernel_integer_zeros(kernel, degree + 1, word_capacity),
+            kernel_integer_zeros(kernel, square, word_capacity),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count, 64),
+            kernel_integer_zeros(kernel, witness_count * square, 64),
+            kernel_integer_zeros(kernel, witness_count * degree, 64),
+            kernel_integer_zeros(kernel, workspace_length, word_capacity),
+        )
+        _round2_proof_workspace_cache[shape] = buffers
+    (
+        decoded,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+    ) = buffers
+    flat_numerator = [value for row in rows for value in row]
+    if not kernel(
+        kernel_uint64_buffer(kernel, payload),
+        decoded,
+        polynomial,
+        numerator,
+        primes,
+        radical_dimensions,
+        radicals,
+        selectors,
+        workspace,
+        kernel_integer_buffer(kernel, coefficients),
+        kernel_integer_buffer(kernel, flat_numerator),
+        kernel_integer_buffer(kernel, certified_primes),
+        denominator,
+        index,
+        equation_discriminant,
+        order_discriminant,
+        degree,
+        witness_count,
+        entry_count,
+    ):
+        raise ValueError("Round-2 order proof failed independent authentication")
+    result = AuthenticatedRound2OrderProof(
+        coefficients,
+        certified_primes,
+        rows,
+        denominator,
+        index,
+        equation_discriminant,
+        order_discriminant,
+    )
+    _seal_authenticated_round2_order_proof(result)
+    return result
+
+
+def _current_round2_proof_integer(payload: Any, offset: int) -> tuple[int, int]:
+    """Read one canonical signed integer from a current generated result."""
+    if offset + 4 > len(payload):
+        raise ValueError("truncated current Round-2 proof integer")
+    header = _unsigned(payload, offset, 4)
+    length = header & 0x7FFFFFFF
+    negative = header >= 0x80000000
+    offset += 4
+    if (
+        length > len(payload) - offset
+        or (negative and length == 0)
+        or (length != 0 and _byte(payload, offset + length - 1) == 0)
+    ):
+        raise ValueError("noncanonical current Round-2 proof integer")
+    value = _unsigned(payload, offset, length)
+    return (-value if negative else value), offset + length
+
+
+def _decode_current_carried_round2_order_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+    ordinary_replay: bool = False,
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Authenticate one proof-carrying result from its current native call.
+
+    The terminal fixed-point theorem is checked independently inside each
+    native construction worker before its slot is published.  This immediate
+    host boundary binds the exact nested order bytes and source tuple.  The
+    full terminal witness stream was produced only after the native workers'
+    independent fixed-point checks; decoding it again would materialize
+    `O(r n^2)` arbitrary-precision integers without adding a current-call
+    theorem.  External payloads use the ordinary mathematical replay boundary
+    and decode every witness instead.
+    """
+    coefficients = [int(value) for value in expected_polynomial]
+    primes = [int(value) for value in expected_primes]
+    degree = len(coefficients) - 1
+    if (
+        degree < 1
+        or coefficients[-1] != 1
+        or len(primes) == 0
+        or len(set(primes)) != len(primes)
+        or any(prime < 2 for prime in primes)
+        or len(payload) < 72
+        or [_byte(payload, index) for index in range(8)]
+        != [83, 74, 78, 70, 81, 1, 0, 0]
+        or _unsigned(payload, 8, 8) != degree
+        or _unsigned(payload, 16, 8) != len(primes)
+        or _unsigned(payload, 48, 8) != 1
+        or _unsigned(payload, 56, 8) != 0
+        or _unsigned(payload, 64, 8) != 0
+    ):
+        raise ValueError("invalid current proof-carrying order header")
+    proof_count = _unsigned(payload, 24, 8)
+    order_length = _unsigned(payload, 32, 8)
+    entry_count = _unsigned(payload, 40, 8)
+    if (
+        order_length < 64
+        or order_length > len(payload) - 72
+        or entry_count > (len(payload) - 72 - order_length) // 4
+    ):
+        raise ValueError("inconsistent proof-carrying order shape")
+
+    order_payload = [_byte(payload, 72 + index) for index in range(order_length)]
+    order_module = __import__(
+        "sagejs.number_fields.order_resource", fromlist=["order_resource"]
+    )
+    order = order_module.decode_order_resource(order_payload)
+    if order.supplied_primes != len(primes):
+        raise ValueError("proof-carrying order lost its supplied-prime tuple")
+
+    offset = 72 + order_length
+    consumed = 0
+
+    def read() -> int:
+        nonlocal offset, consumed
+        value, offset = _current_round2_proof_integer(payload, offset)
+        consumed += 1
+        return value
+
+    try:
+        if [read() for _unused in range(degree + 1)] != coefficients:
+            raise ValueError("proof-carrying order polynomial does not match")
+        if [read() for _unused in range(len(primes))] != primes:
+            raise ValueError("proof-carrying order prime tuple does not match")
+        if not order.complete:
+            if proof_count != 0 or consumed != entry_count or offset != len(payload):
+                raise ValueError("incomplete order carried terminal proof claims")
+            return order, None
+        native_primes = [
+            prime for prime in primes if order.equation_discriminant % prime == 0
+        ]
+        if proof_count != len(native_primes) or proof_count != order.native_primes:
+            raise ValueError("proof-carrying order omitted a native prime")
+        square = degree * degree
+        if not ordinary_replay:
+            # The resource is still owned by the exact generated call in
+            # `native_carried_round2_order_from_resources`.  Bind its compact
+            # source/order prefix and leave the full local witness stream for
+            # the external ordinary-replay decoder.  Every carried witness has
+            # three metadata entries, an n-by-n local basis, n selectors, and
+            # an n-by-n minor (plus a variable canonical radical).
+            minimum_entries = (
+                degree + 1 + len(primes) + proof_count * (3 + 2 * square + degree)
+            )
+            if entry_count < minimum_entries:
+                raise ValueError("proof-carrying order omitted terminal evidence")
+            rows = [list(row) for row in order.basis.numerator]
+            proof = AuthenticatedRound2OrderProof(
+                coefficients,
+                native_primes,
+                rows,
+                order.basis.denominator,
+                order.index,
+                order.equation_discriminant,
+                order.order_discriminant,
+                "current-generated-proof-carrying-round2",
+            )
+            _seal_authenticated_round2_order_proof(proof)
+            return order, proof
+        carried_witnesses: list[
+            tuple[
+                int, list[list[int]], int, list[list[int]], list[int], list[list[int]]
+            ]
+        ] = []
+        for expected_prime in native_primes:
+            prime = read()
+            local_denominator = read()
+            radical_dimension = read()
+            if (
+                prime != expected_prime
+                or local_denominator < 1
+                or radical_dimension < 0
+                or radical_dimension > degree
+            ):
+                raise ValueError("invalid carried terminal proof metadata")
+            local_numerator = [
+                [read() for _column in range(degree)] for _row in range(degree)
+            ]
+            radical = [
+                [read() for _column in range(degree)]
+                for _row in range(radical_dimension)
+            ]
+            if any(value < 0 or value >= prime for row in radical for value in row):
+                raise ValueError("carried terminal radical is not reduced")
+            canonical_radical, _pivots = _modular_rref(radical, prime)
+            if canonical_radical != radical:
+                raise ValueError("carried terminal radical is not canonical")
+            selectors = [read() for _unused in range(degree)]
+            if len(set(selectors)) != degree or any(
+                selector < 0 or selector >= square for selector in selectors
+            ):
+                raise ValueError("carried terminal selectors are invalid")
+            minor = [[read() for _column in range(degree)] for _row in range(degree)]
+            if any(value < 0 or value >= prime for row in minor for value in row):
+                raise ValueError("carried terminal minor is not reduced")
+            reduced_minor, _pivots = _modular_rref(minor, prime)
+            if len(reduced_minor) != degree:
+                raise ValueError("carried terminal multiplier minor is singular")
+            carried_witnesses.append(
+                (
+                    prime,
+                    local_numerator,
+                    local_denominator,
+                    radical,
+                    selectors,
+                    minor,
+                )
+            )
+        if consumed != entry_count or offset != len(payload):
+            raise ValueError("proof-carrying order has trailing evidence")
+    except IndexError as error:
+        raise ValueError("truncated proof-carrying order evidence") from error
+
+    _ordinary_validate_carried_round2_order(
+        order, coefficients, native_primes, carried_witnesses
+    )
+
+    proof = None
+    if order.complete:
+        rows = [list(row) for row in order.basis.numerator]
+        proof = AuthenticatedRound2OrderProof(
+            coefficients,
+            native_primes,
+            rows,
+            order.basis.denominator,
+            order.index,
+            order.equation_discriminant,
+            order.order_discriminant,
+            "ordinary-mathematical-proof-carrying-round2",
+        )
+        _seal_authenticated_round2_order_proof(proof)
+    return order, proof
+
+
+def _ordinary_validate_carried_round2_order(
+    order: Any,
+    polynomial: list[int],
+    native_primes: list[int],
+    carried_witnesses: list[
+        tuple[int, list[list[int]], int, list[list[int]], list[int], list[list[int]]]
+    ],
+) -> None:
+    """Independently replay the mathematical theorem for external bytes."""
+    equation_discriminant = _ordinary_polynomial_discriminant(polynomial)
+    if any(not _packed_word_prime_is_proven(prime) for prime in native_primes):
+        raise ValueError("carried terminal proof has a nonprime support value")
+    final_numerator = [list(row) for row in order.basis.numerator]
+    final_denominator = int(order.basis.denominator)
+    final_determinant = abs(_determinant(final_numerator))
+    if (
+        equation_discriminant != order.equation_discriminant
+        or final_denominator < 1
+        or not _canonical_row_hnf(final_numerator)
+        or final_determinant == 0
+        or final_denominator ** len(polynomial[:-1]) != order.index * final_determinant
+        or equation_discriminant != order.order_discriminant * order.index**2
+        or not check_order_lattice(polynomial, final_numerator, final_denominator).get(
+            "valid", False
+        )
+    ):
+        raise ValueError("carried terminal proof has inconsistent order arithmetic")
+
+    common_denominator = 1
+    generators: list[list[int]] = []
+    local_bases: list[tuple[list[list[int]], int]] = []
+    for prime, numerator, denominator, radical, selectors, minor in carried_witnesses:
+        if not _packed_word_prime_is_proven(prime) or prime not in native_primes:
+            raise ValueError("carried terminal proof has an invalid prime")
+        prime_free = denominator
+        while prime_free % prime == 0:
+            prime_free //= prime
+        if prime_free != 1:
+            raise ValueError("carried terminal local denominator is not p-primary")
+        table, identity = _order_arithmetic(polynomial, numerator, denominator)
+        expected_radical = _p_radical_rows(table, identity, prime)
+        if radical != expected_radical:
+            raise ValueError("carried terminal radical does not match the local order")
+        lattice = _radical_lattice(radical, len(numerator), prime)
+        expected_minor = _selected_multiplier_rows(selectors, lattice, table, prime)
+        if minor != expected_minor or len(_modular_rref(minor, prime)[0]) != len(
+            numerator
+        ):
+            raise ValueError("carried terminal multiplier minor is not a fixed point")
+        if _gcd(common_denominator, denominator) != 1:
+            raise ValueError("carried terminal local denominators are not coprime")
+        common_denominator *= denominator
+        local_bases.append((numerator, denominator))
+
+    for numerator, denominator in local_bases:
+        scale = common_denominator // denominator
+        generators.extend([[scale * value for value in row] for row in numerator])
+    merged = (
+        _ordinary_row_hnf(generators)
+        if generators
+        else [
+            [1 if row == column else 0 for column in range(len(polynomial) - 1)]
+            for row in range(len(polynomial) - 1)
+        ]
+    )
+    content = common_denominator
+    for row in merged:
+        for value in row:
+            content = _gcd(content, value)
+    merged_denominator = common_denominator // content
+    merged_numerator = [[value // content for value in row] for row in merged]
+    if merged_denominator != final_denominator or merged_numerator != final_numerator:
+        raise ValueError("carried terminal local orders do not merge to the result")
+
+
+def decode_carried_round2_order_resource(
+    payload: Any,
+    *,
+    expected_polynomial: list[int],
+    expected_primes: list[int],
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Decode external proof-carrying bytes with an ordinary exact replay."""
+    return _decode_current_carried_round2_order_resource(
+        payload,
+        expected_polynomial=expected_polynomial,
+        expected_primes=expected_primes,
+        ordinary_replay=True,
+    )
+
+
+def native_carried_round2_order_from_resources(
+    polynomial: Any,
+    prime_hints: Any,
+    *,
+    coefficients_low_to_high: list[int],
+    certified_primes: list[int],
+) -> tuple[Any, AuthenticatedRound2OrderProof | None]:
+    """Construct and authenticate one proof-carrying order synchronously.
+
+    Fast projection authentication is intentionally inseparable from this
+    actual current generated call.  The returned native owner remains
+    unexposed and is closed immediately after its canonical bytes are bound.
+    """
+    resource = (
+        _field_analysis_flint_module().number_field_order_with_round2_proof_resource(
+            polynomial, prime_hints
+        )
+    )
+    try:
+        return _decode_current_carried_round2_order_resource(
+            resource.copy_bytes(),
+            expected_polynomial=coefficients_low_to_high,
+            expected_primes=certified_primes,
+        )
+    finally:
+        resource.close()
+
+
 def decode_field_analysis_resource(
     payload: Any,
     *,
@@ -2463,9 +3369,7 @@ def _native_field_analysis_projection_from_polynomial_bound(
     trial_bound: int,
 ) -> AuthenticatedFieldAnalysisProjection:
     """Authenticate a caller-validated immutable polynomial binding."""
-    if _flint_module is None:
-        raise RuntimeError("the native FLINT field-analysis adapter is unavailable")
-    resource = _flint_module.number_field_analyze_resource(
+    resource = _field_analysis_flint_module().number_field_analyze_resource(
         polynomial, scale, trial_bound
     )
     try:

@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-discriminant-perfect-power",
+  "title": "Exact discriminant perfect-power extraction",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Accelerate maximal-exponent perfect-power extraction for large discriminant components with one source-transparent arbitrary-integer call, exact host validation, positive and negative semantics, portable fallback, differential oracles, and degree-90 phase evidence",
+  "base_commit": "ce10fcabaefbeb7c78752be6c207255e356789e5",
+  "claims": [
+    "bench/results/number-field-discriminant-perfect-power-2026-08-18.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "Prime-exponent extraction theorem for maximal integer perfect powers"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "discriminant_components.perfect_power_data readable oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Rejected performance experiment. The one-call source-transparent extractor preserves maximal-exponent semantics for positive and negative inputs, validates exact identities and primitive returned bases, agrees across CPython/dynamic/compiled paths, rejects corruption, and preserves exact degree-90 components and certificate replay. It is nevertheless slower than the readable bigint implementation. The sole bounded sample measured the perfect-power phase at 1.716365s compiled versus 1.348780s readable (0.785835x), full decomposition at 6.887716s versus 6.624623s (0.961803x), and the representative 15,186-bit call at 562.951ms versus 424.450ms (0.753973x). This backend is rejected and must not be production-selected.",
+    "risks": [
+      "The source-level binary-power and Newton loops duplicate operations already optimized by the host bigint implementation and regress the measured target.",
+      "The compiler-compatible source was removed after its exact negative receipt was committed; shipping or selecting it would slow degree-90 decomposition."
+    ],
+    "next_steps": [
+      "Retain the benchmark receipt, bound to its historical source commit, as negative evidence.",
+      "Investigate a mature GMP/FLINT exact root primitive or reduce repeated classification calls before attempting another perfect-power acceleration."
+    ]
+  }
+}

@@ -324,7 +324,7 @@ function buildEvidenceManifest({
   systemBoundaries = SYSTEM_BOUNDARIES,
   timeoutMs,
   warmups = 0,
-  samples = 1,
+  samples = 3,
 } = {}) {
   const corpus = loadCorpus(corpusPath);
   const selectedEntries = selectCases(corpus, selection, caseIds);

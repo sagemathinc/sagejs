@@ -280,9 +280,24 @@ export function runRuntimeBootstrap(
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
+    for (const marker of ["/src/lib/", "/__sagejs_task_modules__/"]) {
+      const index = normalized.lastIndexOf(marker);
+      if (index >= 0) return normalized.slice(index + marker.length);
+    }
     const marker = "/sagejs/kernels/";
     const index = normalized.lastIndexOf(marker);
     return index < 0 ? undefined : normalized.slice(index + 1);
+  };
+  const nativeSourcePath = (filename: string): string => {
+    const taskSources = Reflect.get(
+      globalThis,
+      "__sagejs_precompiled_task_source_paths__",
+    );
+    const mapped = taskSources !== null && typeof taskSources === "object" &&
+        Object.hasOwn(taskSources, filename)
+      ? Reflect.get(taskSources, filename)
+      : undefined;
+    return resolve(typeof mapped === "string" && mapped ? mapped : filename);
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
@@ -439,7 +454,7 @@ export function runRuntimeBootstrap(
     ) {
       return null;
     }
-    const sourcePath = resolve(filename);
+    const sourcePath = nativeSourcePath(filename);
     const sourceHash = nativeSourceHash(sourcePath);
     if (sourceHash === undefined) return null;
     const registered = nativeModules.get(sourcePath);

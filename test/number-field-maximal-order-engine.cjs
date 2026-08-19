@@ -7,6 +7,12 @@ const test = require("node:test");
 const { createSage } = require("../dist/tools/kernel.js");
 
 const root = join(__dirname, "..");
+const vector429 = JSON.parse(
+  readFileSync(
+    join(root, "test", "fixtures", "number-field-maximal-order-corpus.json"),
+    "utf8",
+  ),
+).cases.find((item) => item.id === "pari-round4-vector-429");
 
 test("the public maximal-order path is lazy, certified, and cache-safe", async () => {
   const source = readFileSync(
@@ -43,6 +49,65 @@ test("the public maximal-order path is lazy, certified, and cache-safe", async (
       ].join("\n"),
     );
     assert.equal(result.repr, "[False, True, True, False, True, False, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("an unverified pending certificate cannot claim maximality or poison the cache", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R.<x> = QQ[]",
+        "K.<a> = NumberField(x^3 + x^2 - 2*x + 8)",
+        "candidate = K.equation_order()",
+        "K._maximal_order_cache = candidate",
+        "calls = []",
+        "def bad_factory():",
+        "    calls.append(1)",
+        "    return {'certified': False}",
+        "candidate._install_pending_maximal_order_certificate(bad_factory)",
+        "claimed = candidate.is_maximal()",
+        "certificate = candidate.maximality_certificate()",
+        "replacement = K.maximal_order()",
+        "[claimed, certificate, len(calls), replacement is candidate, replacement.is_maximal(), K._maximal_order_cache is replacement]",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "[False, None, 1, False, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("vector429 terminal portfolio has the exact coprime index product", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "from sagejs.number_fields.maximal_order_engine import _portfolio_bases_generate_final_lattice, _portfolio_index_support_identity",
+        "native_valuations = [(2,332),(3,544),(5,132),(37,6),(59,8),(277,2),(311,2),(613,2),(719,2),(1319,2),(2894951,7),(6222169,7)]",
+        "native_support = prod(prime for prime, valuation in native_valuations)",
+        "native_index = prod(prime^valuation for prime, valuation in native_valuations)",
+        "bl_small = 10224446569281277451",
+        "bl_large = int('1449330466148683297547360066891875755036912215166589393452373341432081631270240094815912791977967309408360673750308565037529000754506376855418675756346221573174400261466849563448707655579063969157972480021487427576785723609956290648121953996137400436856635882929492687971610415458536489673867267')",
+        "components = [('native', native_support, native_index), ('om-maxmin', 7, 7^480), ('buchmann-lenstra', bl_small, bl_small^4), ('buchmann-lenstra', bl_large, bl_large^2)]",
+        `expected_index = int(${JSON.stringify(vector429.equationOrderIndex)})`,
+        "calculated_index = prod(component[2] for component in components)",
+        "valid = _portfolio_index_support_identity(components, expected_index)",
+        "wrong_exponent = list(components)",
+        "wrong_exponent[2] = ('buchmann-lenstra', bl_small, bl_small^3)",
+        "overlap = list(components) + [('corrupt', 7*bl_small, 1)]",
+        "final_basis = (6, ((1,0),(0,1)))",
+        "generated = _portfolio_bases_generate_final_lattice(final_basis, [(6, ((1,0),(0,1)))])",
+        "not_generated = _portfolio_bases_generate_final_lattice(final_basis, [(1, ((1,0),(0,1))), (2, ((1,0),(0,1)))])",
+        "[valid, calculated_index == expected_index, _portfolio_index_support_identity(wrong_exponent, expected_index), _portfolio_index_support_identity(overlap, expected_index), generated, not_generated]",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "[True, True, False, False, True, False]",
+    );
   } finally {
     await session.close();
   }

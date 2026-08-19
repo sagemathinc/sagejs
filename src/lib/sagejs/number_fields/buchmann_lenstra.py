@@ -31,7 +31,8 @@ from sagejs.native import (
 )
 from sagejs.number_fields.bl_composite_kernel import (
     packed_composite_dedekind_basis_in_place,
-    packed_order_contains_vector_in_place,
+    packed_known_overorder_contains_vectors_in_place,
+    packed_order_contains_vectors_in_place,
     packed_order_table_in_place,
     packed_row_hnf_in_place,
 )
@@ -334,21 +335,76 @@ def _row_hnf(rows: list[list[int]]) -> list[list[int]]:
     return answer[:columns]
 
 
-def _packed_row_hnf(rows: list[list[int]]) -> list[list[int]]:
+def _flint_modular_row_hnf(
+    rows: list[list[int]], elementary_divisor: int
+) -> list[list[int]] | None:
+    """Use FLINT modular HNF when a lattice annihilator is proved."""
+    if _rt is None or elementary_divisor < 1 or not rows:
+        return None
+    columns = len(rows[0])
+    try:
+        module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["flint_dense_integer_matrix_hnf_modular_eldiv"],
+        )
+        kernel = module.flint_dense_integer_matrix_hnf_modular_eldiv
+
+        flat = [int(value) for row in rows for value in row]
+        source = kernel_integer_buffer(kernel, flat)
+        output = kernel_integer_zeros(
+            kernel,
+            len(flat),
+            max(2, (elementary_divisor.bit_length() + 63) // 64 + 2),
+        )
+        divisor = kernel_integer_buffer(kernel, [elementary_divisor])
+        if not kernel(
+            output,
+            source,
+            divisor,
+            len(rows),
+            columns,
+            1,
+        ):
+            return None
+        values = integer_buffer_values(output)
+        answer = [
+            [int(values[row * columns + column]) for column in range(columns)]
+            for row in range(len(rows))
+            if any(
+                int(values[row * columns + column]) != 0 for column in range(columns)
+            )
+        ]
+        if len(answer) != columns:
+            raise ArithmeticError("modular HNF did not return a full-rank lattice")
+        return answer
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+
+def _packed_row_hnf(
+    rows: list[list[int]], elementary_divisor: int | None = None
+) -> list[list[int]]:
     """Run the same row-HNF algorithm through one packed integer kernel."""
     if not rows:
         return []
     columns = len(rows[0])
     if any(len(row) != columns for row in rows):
         raise ValueError("lattice rows must have a common length")
+    if elementary_divisor is not None:
+        modular = _flint_modular_row_hnf(rows, elementary_divisor)
+        if modular is not None:
+            return modular
     flat = [value for row in rows for value in row]
     maximum_bits = max((abs(value).bit_length() for value in flat), default=0)
-    # Extended-gcd combinations may temporarily exceed an input entry.  Four
-    # limbs per column is a conservative exact bound for these small dense
-    # lattices and keeps overflow fail-closed in the packed ABI.
+    # Extended-gcd elimination can add a constant number of limbs at each
+    # pivot. Capacity is per entry, so grow it linearly with the column count.
+    # The bounded ABI raises on any larger coefficient swell and the readable
+    # row-HNF below remains the exact fallback; reserving quadratically many
+    # limbs per entry would allocate tens of gigabytes before that guard can
+    # run on high-degree local-order merges.
     word_capacity = max(
         16,
-        (maximum_bits + 63) // 64 + 16 * columns * columns,
+        (maximum_bits + 63) // 64 + 8 * columns,
     )
     source = kernel_integer_buffer(packed_row_hnf_in_place, flat)
     output = kernel_integer_zeros(packed_row_hnf_in_place, len(flat), word_capacity)
@@ -652,62 +708,229 @@ def _dedekind_generator_lattice_is_order_reference(
     return True
 
 
+def _packed_membership_word_capacity(
+    basis: OrderBasis, vectors: list[list[int]]
+) -> int:
+    """Prove a fixed word bound for batched upper-HNF membership.
+
+    For the upper-triangular numerator `N` and denominator `d`, backward
+    substitution constructs `X = d*N^-1`.  The nonnegative recurrence below
+    inductively bounds every entry of `X`, including every intermediate sum.
+    Taking absolute dot products with the actual certificate vectors then
+    bounds every membership accumulator.  The extra word covers signed
+    fixed-width arithmetic.
+    """
+    degree = basis.degree
+    numerator = basis.numerator
+    denominator = basis.denominator
+    inverse_bounds = [[0 for _column in range(degree)] for _row in range(degree)]
+    for reverse_row in range(degree):
+        row = degree - reverse_row - 1
+        diagonal = abs(numerator[row][row])
+        if diagonal == 0:
+            raise ArithmeticError("singular order basis")
+        for column in range(degree):
+            value = denominator if row == column else 0
+            for source in range(row + 1, degree):
+                value += abs(numerator[row][source]) * inverse_bounds[source][column]
+            if value:
+                inverse_bounds[row][column] = (value + diagonal - 1) // diagonal
+
+    maximum = max(
+        (value for row in inverse_bounds for value in row),
+        default=0,
+    )
+    for vector in vectors:
+        if len(vector) != degree:
+            raise ValueError("membership vector has the wrong degree")
+        for column in range(degree):
+            value = 0
+            for source in range(degree):
+                value += abs(vector[source]) * inverse_bounds[source][column]
+            maximum = max(maximum, value)
+    return max(2, (maximum.bit_length() + 63) // 64 + 1)
+
+
+def _packed_direct_membership_word_capacity(
+    basis: OrderBasis, vectors: list[list[int]]
+) -> int:
+    """Bound direct triangular membership coordinates for a canonical HNF.
+
+    In an upper row HNF, `0 <= N[i,j] < N[j,j]` for `i < j`.  If `R` bounds
+    `d*v[j]`, forward substitution therefore bounds coordinate `j` by
+    `2^j*R`.  Its unreduced accumulator gains at most one diagonal factor.
+    Thus twice the input magnitude plus `degree` bits and two signed guard
+    words cover every intermediate without the cancellation-blind dense
+    inverse recurrence.
+    """
+    degree = basis.degree
+    numerator = basis.numerator
+    for column in range(degree):
+        diagonal = int(numerator[column][column])
+        if diagonal <= 0:
+            return _packed_membership_word_capacity(basis, vectors)
+        for row in range(column):
+            value = int(numerator[row][column])
+            if value < 0 or value >= diagonal:
+                return _packed_membership_word_capacity(basis, vectors)
+    maximum_bits = abs(int(basis.denominator)).bit_length()
+    for row in numerator:
+        for value in row:
+            maximum_bits = max(maximum_bits, abs(int(value)).bit_length())
+    for vector in vectors:
+        if len(vector) != degree:
+            raise ValueError("membership vector has the wrong degree")
+        for value in vector:
+            maximum_bits = max(maximum_bits, abs(int(value)).bit_length())
+    required_bits = 2 * maximum_bits + degree + 2
+    return max(16, (required_bits + 63) // 64 + 2)
+
+
 def _dedekind_generator_lattice_is_order(
     coefficients: list[int],
     modulus: int,
+    obstruction: list[int],
     generator: list[int],
     basis: OrderBasis,
 ) -> bool:
-    """Replay one Dedekind generator lattice through independent kernels.
+    """Replay one Dedekind generator lattice through one packed batch proof.
 
-    The multiplication-table kernel proves that the candidate is a ring
-    containing `Z[a]` without materializing any structure constants.  The
-    separate vector-membership kernel proves that `generator(a)/modulus` is
-    in that ring.  Thus the candidate contains the generator lattice; the
-    independently checked monic-quotient index identifies them exactly.
+    The batch membership kernel proves that the candidate contains `Z[a]`
+    and the first `degree(obstruction)` shifted rows of
+    `generator(a) Z[a] / modulus`.  These rows generate all the shifts: the
+    independently checked monic identity
+
+    `obstruction * generator = defining_polynomial (mod modulus)`
+
+    recursively expresses every later shift in terms of them plus an integral
+    vector.  The independently checked monic-quotient index therefore
+    identifies the candidate with
+    `L = Z[a] + (generator(a)/modulus) Z[a]`.  As `L` is a `Z[a]`-module, it is
+    a ring if and only if the one additional vector
+    `generator(a)^2 / modulus^2` belongs to it; the last batch row proves
+    exactly that.  No degree-cubed multiplication table is constructed or
+    checked.
 
     Fixed-width overflow is only a capability failure and falls back to the
     readable shifted-generator and generator-square proof above.
     """
     degree = basis.degree
-    if modulus <= 1 or len(coefficients) != degree + 1:
+    if (
+        modulus <= 1
+        or len(coefficients) != degree + 1
+        or not obstruction
+        or not generator
+        or obstruction[-1] != 1
+        or generator[-1] != 1
+        or len(obstruction) + len(generator) != degree + 2
+        or _trim_mod(_multiply(obstruction, generator), modulus)
+        != _trim_mod(coefficients, modulus)
+    ):
         return False
-    padded_generator = list(generator)
-    while len(padded_generator) < degree:
-        padded_generator.append(0)
-    if len(padded_generator) != degree:
+    shift_count = len(obstruction) - 1
+    multiplication = [
+        [0 for _column in range(shift)]
+        + list(generator)
+        + [0 for _column in range(degree - shift - len(generator))]
+        for shift in range(shift_count)
+    ]
+    product = _reduce_power_polynomial(_multiply(generator, generator), coefficients)
+    vectors = multiplication + [product]
+    if len(vectors) != shift_count + 1 or any(
+        len(vector) != degree for vector in vectors
+    ):
         return False
     try:
-        if not _packed_order_is_closed(coefficients, basis):
-            return False
-        workspace_words, _output_words = _packed_order_table_word_capacities(
-            coefficients, basis
+        # Recompute the canonical generator lattice from its complete exact
+        # presentation.  The modular-HNF annihilator is `modulus`: every
+        # source row lies between `modulus*Z^n` and `Z^n`.  Equality with the
+        # claimed numerator independently proves equation-order containment
+        # and every shifted-generator membership at once.
+        generator_rows = []
+        for row in range(degree):
+            equation_row = [0 for _column in range(degree)]
+            equation_row[row] = modulus
+            generator_rows.append(equation_row)
+        generator_rows.extend(_multiplication_rows(generator, coefficients))
+        replay_numerator = _packed_row_hnf(
+            generator_rows,
+            elementary_divisor=modulus,
         )
+        if basis.denominator != modulus or replay_numerator != basis.numerator:
+            return False
+        magnitude_bits = max(
+            [abs(int(basis.denominator)).bit_length()]
+            + [abs(int(value)).bit_length() for row in basis.numerator for value in row]
+            + [abs(int(value)).bit_length() for value in product]
+        )
+        word_capacity = max(
+            16,
+            (2 * magnitude_bits + 63) // 64 + 4 * degree + 8,
+        )
+        return bool(
+            packed_known_overorder_contains_vectors_in_place(
+                kernel_integer_zeros(
+                    packed_known_overorder_contains_vectors_in_place,
+                    degree * degree,
+                    word_capacity,
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    [value for row in basis.numerator for value in row],
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    product,
+                ),
+                kernel_integer_buffer(
+                    packed_known_overorder_contains_vectors_in_place,
+                    [modulus * modulus],
+                ),
+                basis.denominator,
+                degree,
+                1,
+            )
+        )
+    except OverflowError:
+        # The compact inverse proof remains a source-transparent exact
+        # fallback when either packed HNF or triangular membership exhausts
+        # its proven fixed-width capacity.
+        workspace_words = _packed_direct_membership_word_capacity(basis, vectors)
         workspace_bytes = degree * degree * workspace_words * 8
         if workspace_bytes > _PACKED_ORDER_TABLE_WORKSPACE_BYTES:
             return _dedekind_generator_lattice_is_order_reference(
                 coefficients, modulus, generator, basis
             )
-        return bool(
-            packed_order_contains_vector_in_place(
-                kernel_integer_zeros(
-                    packed_order_contains_vector_in_place,
-                    degree * degree,
-                    workspace_words,
-                ),
-                kernel_integer_buffer(
-                    packed_order_contains_vector_in_place,
-                    [value for row in basis.numerator for value in row],
-                ),
-                kernel_integer_buffer(
-                    packed_order_contains_vector_in_place, padded_generator
-                ),
-                basis.denominator,
-                modulus,
-                degree,
+        try:
+            return bool(
+                packed_order_contains_vectors_in_place(
+                    kernel_integer_zeros(
+                        packed_order_contains_vectors_in_place,
+                        degree * degree,
+                        workspace_words,
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [value for row in basis.numerator for value in row],
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [value for vector in vectors for value in vector],
+                    ),
+                    kernel_integer_buffer(
+                        packed_order_contains_vectors_in_place,
+                        [modulus for _vector in multiplication] + [modulus * modulus],
+                    ),
+                    basis.denominator,
+                    degree,
+                    len(vectors),
+                )
             )
-        )
-    except OverflowError:
+        except OverflowError:
+            return _dedekind_generator_lattice_is_order_reference(
+                coefficients, modulus, generator, basis
+            )
+    except (ArithmeticError, ValueError):
         return _dedekind_generator_lattice_is_order_reference(
             coefficients, modulus, generator, basis
         )
@@ -814,6 +1037,148 @@ class BuchmannLenstraResult:
             evidence=self.evidence,
             message=self.message,
         )
+
+
+AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA = (
+    "sagejs.number-fields/authenticated-buchmann-lenstra-projection-v1"
+)
+_AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN = object()
+
+
+def _freeze_authentication_value(value: Any) -> Any:
+    """Return an exact immutable snapshot of one JSON-safe value."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_authentication_value(item) for item in value)
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("authentication snapshot keys must be strings")
+        return tuple(
+            (key, _freeze_authentication_value(value[key])) for key in sorted(value)
+        )
+    raise TypeError("authentication snapshots require JSON-safe values")
+
+
+def _buchmann_lenstra_result_snapshot(result: BuchmannLenstraResult) -> Any:
+    """Snapshot every mutable field of one live BL result."""
+    return _freeze_authentication_value(result.to_dict())
+
+
+class AuthenticatedBuchmannLenstraProjection:
+    """Immutable live seal for one independently accepted BL result.
+
+    Instances are issued only by `authenticate_buchmann_lenstra_result` after
+    a full replay.  The projection retains a private reference to that live
+    result and compares its exact nested snapshot whenever `certified` is
+    queried, so later mutation of its component, basis, evidence, index, or
+    discriminant fails closed without replaying the expensive proof.
+    """
+
+    def __init__(
+        self,
+        token: object,
+        polynomial: list[int],
+        result: BuchmannLenstraResult,
+        equation_discriminant: int,
+    ) -> None:
+        if token is not _AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN:
+            raise TypeError("authenticated BL projections are module-issued")
+        if result.basis is None or result.discriminant is None:
+            raise ValueError("an authenticated BL result requires an order basis")
+        component_evidence = result.component.evidence
+        source_component = component_evidence.get(
+            "source_component", result.component.value
+        )
+        self.polynomial = tuple(int(value) for value in polynomial)
+        self.state = str(result.state)
+        self.support = int(result.component.value)
+        self.source_component_value = int(source_component)
+        if self.support <= 1 or self.source_component_value <= 1:
+            raise ValueError("authenticated BL supports must exceed one")
+        self.component_state = str(result.component.state)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in result.basis.numerator
+        )
+        self.basis_denominator = int(result.basis.denominator)
+        self.index = int(result.index)
+        self.equation_discriminant = int(equation_discriminant)
+        self.order_discriminant = int(result.discriminant)
+        self.evidence_stage = result.evidence.get("stage")
+        self.evidence_certificate = result.evidence.get("certificate")
+        self.locally_maximal = result.evidence.get("locally_maximal")
+        self.evidence_schema = tuple(sorted(str(key) for key in result.evidence))
+        self.__dict__["_source_result"] = result
+        self.__dict__["_source_snapshot"] = _buchmann_lenstra_result_snapshot(result)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated BL projections are immutable")
+        self.__dict__[name] = value
+
+    @property
+    def proof_schema(self) -> str:
+        return AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA
+
+    @property
+    def certified(self) -> bool:
+        try:
+            source = self.__dict__.get("_source_result")
+            if type(source) is not BuchmannLenstraResult:
+                return False
+            return (
+                self.state == "complete"
+                and self.locally_maximal is True
+                and self.__dict__.get("_authentication_snapshot")
+                == _authenticated_buchmann_lenstra_projection_snapshot(self)
+                and self.__dict__.get("_source_snapshot")
+                == _buchmann_lenstra_result_snapshot(source)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA,
+            "certified": self.certified,
+            "polynomial": list(self.polynomial),
+            "state": self.state,
+            "support": self.support,
+            "source_component_value": self.source_component_value,
+            "component_state": self.component_state,
+            "basis_numerator": [list(row) for row in self.basis_numerator],
+            "basis_denominator": self.basis_denominator,
+            "index": self.index,
+            "equation_discriminant": self.equation_discriminant,
+            "order_discriminant": self.order_discriminant,
+            "evidence_stage": self.evidence_stage,
+            "evidence_certificate": self.evidence_certificate,
+            "locally_maximal": self.locally_maximal,
+            "evidence_schema": list(self.evidence_schema),
+        }
+
+
+def _authenticated_buchmann_lenstra_projection_snapshot(
+    projection: AuthenticatedBuchmannLenstraProjection,
+) -> tuple[Any, ...]:
+    return (
+        AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA,
+        projection.polynomial,
+        projection.state,
+        projection.support,
+        projection.source_component_value,
+        projection.component_state,
+        projection.basis_numerator,
+        projection.basis_denominator,
+        projection.index,
+        projection.equation_discriminant,
+        projection.order_discriminant,
+        projection.evidence_stage,
+        projection.evidence_certificate,
+        projection.locally_maximal,
+        projection.evidence_schema,
+    )
 
 
 def buchmann_lenstra_overorder(
@@ -1018,7 +1383,7 @@ def _check_composite_dedekind_overorder_certificate(
     if result.index != expected_index:
         return False
     if not _dedekind_generator_lattice_is_order(
-        coefficients, modulus, generator, result.basis
+        coefficients, modulus, obstruction, generator, result.basis
     ):
         return False
 
@@ -1117,6 +1482,104 @@ def check_buchmann_lenstra_result(
             )
         return remaining == 1 and result.evidence.get("locally_maximal") is True
     return remaining != 1 and result.evidence.get("locally_maximal") is False
+
+
+def authenticate_buchmann_lenstra_result(
+    polynomial_coefficients: list[int],
+    result: BuchmannLenstraResult,
+    *,
+    equation_discriminant: int | None = None,
+) -> AuthenticatedBuchmannLenstraProjection | None:
+    """Issue an immutable live seal after one successful complete replay.
+
+    Returning `None` is fail-closed: callers must never treat an ordinary
+    mutable `BuchmannLenstraResult` as authenticated.  Subsequent consumers
+    can bind exact public basis/index/support fields through
+    `authenticated_buchmann_lenstra_projection_matches` without repeating
+    the arithmetic replay.
+    """
+    if type(result) is not BuchmannLenstraResult:
+        return None
+    try:
+        coefficients = [int(value) for value in polynomial_coefficients]
+        if (
+            result.state != "complete"
+            or result.basis is None
+            or result.discriminant is None
+        ):
+            return None
+        equation_disc = (
+            polynomial_discriminant(coefficients)
+            if equation_discriminant is None
+            else int(equation_discriminant)
+        )
+        if not check_buchmann_lenstra_result(
+            coefficients,
+            result,
+            equation_discriminant=equation_disc,
+        ):
+            return None
+        projection = AuthenticatedBuchmannLenstraProjection(
+            _AUTHENTICATED_BUCHMANN_LENSTRA_TOKEN,
+            coefficients,
+            result,
+            equation_disc,
+        )
+        projection.__dict__["_authentication_snapshot"] = (
+            _authenticated_buchmann_lenstra_projection_snapshot(projection)
+        )
+        return projection if projection.certified else None
+    except (ArithmeticError, AttributeError, TypeError, ValueError):
+        return None
+
+
+def authenticated_buchmann_lenstra_projection_matches(
+    projection: Any,
+    *,
+    polynomial: list[int],
+    support: int,
+    source_component_value: int,
+    component_state: str | None = None,
+    basis_numerator: list[list[int]] | None = None,
+    basis_denominator: int | None = None,
+    index: int | None = None,
+    equation_discriminant: int | None = None,
+    order_discriminant: int | None = None,
+) -> bool:
+    """Bind a live accepted BL proof to exact public certificate fields."""
+    if (
+        type(projection) is not AuthenticatedBuchmannLenstraProjection
+        or not projection.certified
+    ):
+        return False
+    try:
+        if tuple(int(value) for value in polynomial) != projection.polynomial:
+            return False
+        if int(support) != projection.support:
+            return False
+        if int(source_component_value) != projection.source_component_value:
+            return False
+        checks = (
+            (component_state, projection.component_state),
+            (
+                None
+                if basis_numerator is None
+                else tuple(
+                    tuple(int(value) for value in row) for row in basis_numerator
+                ),
+                projection.basis_numerator,
+            ),
+            (basis_denominator, projection.basis_denominator),
+            (index, projection.index),
+            (equation_discriminant, projection.equation_discriminant),
+            (order_discriminant, projection.order_discriminant),
+        )
+        for supplied, expected in checks:
+            if supplied is not None and supplied != expected:
+                return False
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 def _fraction_add(left: tuple[int, int], right: tuple[int, int]) -> tuple[int, int]:
@@ -2691,7 +3154,11 @@ def check_buchmann_lenstra_general_result(
 
 
 __all__ = [
+    "AUTHENTICATED_BUCHMANN_LENSTRA_SCHEMA",
+    "AuthenticatedBuchmannLenstraProjection",
     "BuchmannLenstraResult",
+    "authenticate_buchmann_lenstra_result",
+    "authenticated_buchmann_lenstra_projection_matches",
     "buchmann_lenstra_general_overorder",
     "buchmann_lenstra_multiplier_cycle",
     "buchmann_lenstra_overorder",

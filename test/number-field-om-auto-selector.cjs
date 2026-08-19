@@ -44,10 +44,9 @@ from sagejs.number_fields.om_auto_selector import (
     select_om_local_basis,
 )
 from sagejs.number_fields.om_maxmin import (
-    _basis_coordinates_are_integral,
     regular_local_basis,
 )
-from sagejs.number_fields.maximal_order_engine import _auto_om_local_order
+from sagejs.number_fields.maximal_order_engine import _auto_om_local_order_with_proof
 
 fixture = json.load(open(${JSON.stringify(
   join(root, "test/fixtures/number-field-maximal-order-corpus.json"),
@@ -62,6 +61,23 @@ prime = 7
 valuation = 1008
 degrees = (1,)
 multiplicities = (64,)
+
+def basis_coordinates_are_integral(value_numerator, value_denominator, basis):
+    degree = len(basis)
+    values = [0] * degree
+    for index, coefficient in enumerate(value_numerator):
+        if index < degree:
+            values[index] = coefficient
+        elif coefficient:
+            return False
+    for index in range(degree - 1, -1, -1):
+        element = basis[index]
+        leading = values[index]
+        if leading * element.denominator % value_denominator != 0:
+            return False
+        for exponent, coefficient in enumerate(element.numerator):
+            values[exponent] -= leading * coefficient
+    return not any(values)
 
 selected = select_om_local_basis(
     polynomial,
@@ -98,7 +114,7 @@ external_rows = [
     for row in case["basis"]["numerator"]
 ]
 external_contained = all(
-    _basis_coordinates_are_integral(
+    basis_coordinates_are_integral(
         tuple(row),
         primary_denominator,
         selected.result.certificate.basis,
@@ -108,7 +124,7 @@ external_contained = all(
 
 corrupt_rows = [list(row) for row in external_rows]
 corrupt_rows[0][0] = (corrupt_rows[0][0] + 1) % primary_denominator
-corruption_rejected = not _basis_coordinates_are_integral(
+corruption_rejected = not basis_coordinates_are_integral(
     tuple(corrupt_rows[0]),
     primary_denominator,
     selected.result.certificate.basis,
@@ -158,7 +174,7 @@ unmeasured_small_characteristics = {
 }
 engine_unmeasured_small_characteristics = {}
 for small_prime in (2, 3, 5):
-    engine_order, engine_evidence = _auto_om_local_order(
+    engine_order, engine_evidence, engine_proof = _auto_om_local_order_with_proof(
         K,
         list(polynomial),
         1,
@@ -168,6 +184,7 @@ for small_prime in (2, 3, 5):
     engine_unmeasured_small_characteristics[small_prime] = {
         "returned_order": engine_order is not None,
         "evidence": engine_evidence,
+        "returned_proof": engine_proof is not None,
     }
 immutable = False
 try:
@@ -275,4 +292,66 @@ print(json.dumps(decision.as_dict(), sort_keys=True))
   assert.equal(output.native_capable, true);
   assert.equal(output.eligible, true);
   assert.equal(output.predicted_work["om-maxmin"] * 4 < output.predicted_work.best_competitor, true);
+});
+
+test("the precompiled OM worker issues an exact current-call proof", () => {
+  const script = String.raw`
+import json
+import time
+from sagejs.number_fields.local_parallel import make_local_job
+from sagejs.number_fields.local_parallel_worker import (
+    authenticated_om_worker_proof_matches,
+    finish_public_om_candidate_job,
+    start_public_om_candidate_job,
+)
+polynomial = tuple(int(value) for value in ${JSON.stringify(
+    vector429.polynomial.coefficients,
+  )})
+job = make_local_job(
+    polynomial, 7, 0, (0, 1), 1008, 3355000, 450000000,
+    algorithm="om-maxmin",
+)
+started = time.perf_counter_ns()
+handle = start_public_om_candidate_job(job)
+if handle is None:
+    raise AssertionError("the exact precompiled OM worker is unavailable")
+issued = finish_public_om_candidate_job(handle, timeout=15)
+if issued is None:
+    raise AssertionError("the exact precompiled OM worker did not issue a proof")
+candidate, proof = issued
+rows = [list(row) for row in candidate[3]]
+matched = authenticated_om_worker_proof_matches(
+    proof,
+    job=job,
+    basis_numerator=rows,
+    basis_denominator=candidate[4],
+    index=candidate[5],
+)
+rows[0][0] += 1
+corruption_rejected = not authenticated_om_worker_proof_matches(
+    proof,
+    job=job,
+    basis_numerator=rows,
+    basis_denominator=candidate[4],
+    index=candidate[5],
+)
+print(json.dumps({
+    "elapsed_us": (time.perf_counter_ns() - started) // 1000,
+    "matched": matched,
+    "corruption_rejected": corruption_rejected,
+    "index": str(candidate[5]),
+    "certificate_id": proof.certificate_id,
+}))
+`;
+  const output = runPython(
+    process.execPath,
+    [join(root, "bin/sagejs")],
+    script,
+    30_000,
+  );
+  assert.equal(output.matched, true);
+  assert.equal(output.corruption_rejected, true);
+  assert.equal(output.index, (7n ** 480n).toString());
+  assert.match(output.certificate_id, /^om2-[a-f0-9]{16}$/);
+  assert.ok(output.elapsed_us < 10_000_000);
 });

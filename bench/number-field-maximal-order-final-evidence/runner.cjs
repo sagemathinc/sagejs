@@ -91,7 +91,7 @@ async function runPrimaryEvidence(options = {}) {
     corpusPath: options.corpusPath,
     timeoutMs: options.timeoutMs,
     warmups: options.warmups ?? 0,
-    samples: options.samples ?? 1,
+    samples: options.samples ?? 3,
     systemBoundaries: evidenceSystemBoundaries(options),
   });
   const systems = normalizeSystems(manifest, options.systems);
@@ -148,6 +148,7 @@ async function runRandomizedGeneratorEvidence(options = {}) {
     notes: [
       "The authenticated schedule retains its seed, parents, translations, and generated polynomial digests.",
       "Every generated result is independently checked; no transformed basis is trusted in advance.",
+      "Randomized-generator evidence is an exactness schedule, not a performance claim; stable performance rows use at least three retained samples.",
     ],
   });
 }
@@ -396,7 +397,7 @@ function planEvidenceRun(options = {}) {
     corpusPath: options.corpusPath,
     timeoutMs: options.timeoutMs,
     warmups: options.warmups ?? 0,
-    samples: options.samples ?? 1,
+    samples: options.samples ?? 3,
     systemBoundaries: evidenceSystemBoundaries(options),
   });
   const systems = normalizeSystems(manifest, options.systems);

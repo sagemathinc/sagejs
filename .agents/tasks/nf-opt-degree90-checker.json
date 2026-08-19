@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-opt-degree90-checker",
+  "title": "Degree-90 BL checker proof",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Reduce the exact degree-90 composite BL replay below 3.5 seconds with a theorem-backed packed batch membership proof while retaining dynamic fallback and corruption rejection",
+  "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
+  "claims": [
+    "src/lib/sagejs/number_fields/buchmann_lenstra.py",
+    "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+    "test/number-field-maximal-order-degree90-checker.cjs",
+    "bench/number-field-maximal-order-degree90-checker.cjs",
+    "bench/results/number-field-maximal-order-degree90-checker-2026-08-18.json",
+    "bench/results/number-field-maximal-order-degree90-checker-2026-08-18.md"
+  ],
+  "dependencies": [
+    "nf-opt-degree90-table"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "independent-certificate",
+      "Sage-Hecke-frozen-lattice"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The exact 1277-bit degree-90 BL child now completes in 1.968191232 seconds with zero same-input warmups: 1.044193536 seconds construction and 0.923997696 seconds proof. One scaled inverse, five monic-obstruction generator shifts, and one generator-square membership replace the cubic table replay. Ordinary Python retains the full exact fallback. A module-issued immutable projection permits exact no-replay portfolio binding while invalidating on nested live-result mutation.",
+    "risks": [
+      "The Linux x64 cold module import was 2.850772224 seconds, separate from arithmetic; fresh-process wall was 5.470165574 seconds even though the arithmetic child is below the five-second gate.",
+      "Linux arm64, macOS arm64, and native Windows x64 remain integration CI requirements.",
+      "The broad pnpm test:native suite is delegated to the integration lane."
+    ],
+    "next_steps": [
+      "Integrate the exact raw and readable receipt follow-up.",
+      "Bind vector429 and degree90 coprime portfolio inputs through authenticated_buchmann_lenstra_projection_matches using both local support and source component.",
+      "Run final registered focused and broad native validation from the clean integration head."
+    ]
+  }
+}

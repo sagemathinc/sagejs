@@ -6,12 +6,12 @@ const {
 } = require("../../tools/number-field-maximal-order/platform-validation.cjs");
 const { loadCorpus } = require("./corpus.cjs");
 const { recordKey, verifyEvidenceIntegrity } = require("./accounting.cjs");
+const { RELEVANT_SOURCES } = require("./identity.cjs");
 
 const WARM_PUBLIC_MICRO_CASES = Object.freeze([
   "motivating-degree-7",
   "sage-essential-discriminant",
   "lmfdb-3.1.431.1",
-  "lmfdb-5.1.17161.1",
 ]);
 
 const DIRECT_NATIVE_CASES = Object.freeze([
@@ -27,6 +27,11 @@ const ALGORITHM_OVERLAP_BOUNDARIES = Object.freeze([
   "round2-local",
   "round4-local",
   "om-local",
+]);
+const DIRECT_REFERENCE_BOUNDARIES = Object.freeze([
+  { system: "pari", boundary: "nfbasis" },
+  { system: "pari", boundary: "nfinit" },
+  { system: "hecke", boundary: "core" },
 ]);
 const ORACLE_BOUNDARIES = Object.freeze([
   { id: "sagejs-production", system: "sagejs", boundary: "warm-public", optional: false },
@@ -65,11 +70,22 @@ function accepted(record) {
 }
 
 function performanceAccepted(record, minimumSamples = 3) {
-  return accepted(record) &&
-    record.statistics.sample_count >= minimumSamples &&
-    Array.isArray(record.samples) &&
-    record.samples.length >= minimumSamples &&
-    record.samples.every((sample) => Number.isFinite(Number(sample.timing_ms)));
+  if (!accepted(record) || !Array.isArray(record.samples)) return false;
+  const count = record.statistics.sample_count;
+  if (!Number.isSafeInteger(count) || count < minimumSamples || record.samples.length !== count) {
+    return false;
+  }
+  const timings = record.samples.map((sample) => Number(sample.timing_ms));
+  if (timings.some((timing) => !Number.isFinite(timing) || timing < 0)) return false;
+  const sorted = [...timings].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+  const tolerance = Math.max(1e-9, Math.abs(median) * 1e-12);
+  return Math.abs(record.statistics.median_ms - median) <= tolerance &&
+    Math.abs(record.statistics.minimum_ms - sorted[0]) <= tolerance &&
+    Math.abs(record.statistics.maximum_ms - sorted.at(-1)) <= tolerance;
 }
 
 function gate(id, status, requirement, evidence, detail = null) {
@@ -119,12 +135,12 @@ function uniqueRecords(reports, predicate) {
 function comparisonRows(reports, sagejsBoundary, caseFilter = () => true) {
   const sagejs = uniqueRecords(reports, (record) =>
     record.system === "sagejs" && record.boundary === sagejsBoundary && caseFilter(record.case_id),
-  ).records.filter(performanceAccepted);
+  ).records.filter((record) => performanceAccepted(record));
   const references = uniqueRecords(reports, (record) =>
     caseFilter(record.case_id) &&
     ((record.system === "pari" && ["nfbasis", "nfinit"].includes(record.boundary)) ||
       (record.system === "hecke" && record.boundary === "core")),
-  ).records.filter(performanceAccepted);
+  ).records.filter((record) => performanceAccepted(record));
   const byCase = new Map();
   for (const record of sagejs) {
     byCase.set(record.case_id, {
@@ -153,7 +169,7 @@ function bestReferenceRows(reports, caseFilter = () => true) {
     caseFilter(record.case_id) &&
     ((record.system === "pari" && ["nfbasis", "nfinit"].includes(record.boundary)) ||
       (record.system === "hecke" && record.boundary === "core")),
-  ).records.filter(performanceAccepted);
+  ).records.filter((record) => performanceAccepted(record));
   const byCase = new Map();
   for (const record of references) {
     const previous = byCase.get(record.case_id);
@@ -172,9 +188,51 @@ function rowsFor(reports, system, boundary) {
   );
 }
 
+function terminalMatrixCoverage(reports, expectedCaseIds, definitions) {
+  const entries = definitions.flatMap((definition) =>
+    expectedCaseIds.map((caseId) => {
+      const rows = rowsFor(reports, definition.system, definition.boundary)
+        .filter(({ record }) => record.case_id === caseId);
+      return {
+        ...definition,
+        case_id: caseId,
+        count: rows.length,
+        record: rows.length === 1 ? rows[0].record : null,
+      };
+    }),
+  );
+  return {
+    entries,
+    missing: entries.filter((entry) => entry.count === 0).map((entry) => ({
+      case_id: entry.case_id,
+      system: entry.system,
+      boundary: entry.boundary,
+    })),
+    duplicates: entries.filter((entry) => entry.count > 1).map((entry) => ({
+      case_id: entry.case_id,
+      system: entry.system,
+      boundary: entry.boundary,
+      count: entry.count,
+    })),
+  };
+}
+
 function geometricMean(values) {
   if (!values.length) return null;
   return Math.exp(values.reduce((sum, value) => sum + Math.log(value), 0) / values.length);
+}
+
+function normalizedSuppressedAlternatives(decision) {
+  const raw = [
+    ...(decision?.metrics?.om_prefilter?.suppressed_alternatives || []),
+    ...(decision?.metrics?.suppressed_alternatives || []),
+    ...(decision?.suppressed || []),
+  ];
+  return [...new Set(raw.map((entry) =>
+    typeof entry === "string" ? entry : entry?.algorithm,
+  ).map((name) => name === "round2-local" ? "round2" :
+    name === "round4-local" ? "round4" : name,
+  ).filter((name) => ["round2", "round4"].includes(name)))];
 }
 
 function evaluateGates(reports, options = {}) {
@@ -246,13 +304,18 @@ function evaluateGates(reports, options = {}) {
   const sourceIdentities = [...new Set(primaryReports.map((report) => JSON.stringify({
     commit: report.identity?.source?.commit || null,
     tree: report.identity?.source?.tree || null,
+    commit_tree: report.identity?.source?.commit_tree || null,
   })))].map((value) => JSON.parse(value));
-  const missingSourceIdentity = sourceIdentities.some((identity) => !identity.commit || !identity.tree);
+  const missingSourceIdentity = sourceIdentities.some((identity) =>
+    !/^[0-9a-f]{40}$/.test(identity.commit || "") ||
+    !/^[0-9a-f]{40}$/.test(identity.tree || "") ||
+    identity.commit_tree !== identity.tree
+  );
   gates.push(gate(
     "evidence.source-identity",
     primaryReports.length === 0 ? "not-measured" :
       missingSourceIdentity || sourceIdentities.length !== 1 ? "fail" : "pass",
-    "All same-host primary comparisons use one exact Sage.js commit and tree.",
+    "All same-host primary comparisons use one exact Sage.js commit and its authenticated tree.",
     { identities: sourceIdentities },
   ));
 
@@ -267,6 +330,34 @@ function evaluateGates(reports, options = {}) {
     primaryReports.length === 0 ? "not-measured" : dirtyPrimary.length ? "fail" : "pass",
     "Every primary measurement is taken from the exact clean committed source tree.",
     { dirty_reports: dirtyPrimary },
+  ));
+
+  const staleRelevantSources = primaryReports.flatMap((report, reportIndex) =>
+    Object.entries(report.identity?.source?.relevant_files || {}).flatMap(([path, identity]) =>
+      identity.status === "ok" && identity.tracked === true && identity.head_current === true &&
+      /^[0-9a-f]{64}$/.test(identity.sha256 || "")
+        ? []
+        : [{ report_index: reportIndex, path, identity }],
+    ),
+  );
+  const missingRelevantSourceInventory = primaryReports.flatMap((report, reportIndex) =>
+    RELEVANT_SOURCES.filter(
+      (path) => !Object.hasOwn(report.identity?.source?.relevant_files || {}, path),
+    ).map((path) => ({
+      report_index: reportIndex,
+      reason: "missing-relevant-source",
+      path,
+    })),
+  );
+  gates.push(gate(
+    "evidence.source-currentness",
+    primaryReports.length === 0 ? "not-measured" :
+      staleRelevantSources.length || missingRelevantSourceInventory.length ? "fail" : "pass",
+    "Every maximal-order source input is tracked, content-identified, and byte-current with the measured commit.",
+    {
+      stale_sources: staleRelevantSources,
+      missing_inventories: missingRelevantSourceInventory,
+    },
   ));
 
   const sampledBoundaries = new Set([
@@ -296,11 +387,27 @@ function evaluateGates(reports, options = {}) {
       key: recordKey(record),
       sample_count: record.statistics?.sample_count ?? 0,
     }));
+  const samplePolicyFailures = primaryReports.flatMap((report, reportIndex) => {
+    if (report.evidence_contract?.selection === "randomized") return [];
+    const policy = report.environment?.sample_policy;
+    return Number.isSafeInteger(policy) && policy >= 3
+      ? []
+      : [{ report_index: reportIndex, sample_policy: policy ?? null }];
+  });
   gates.push(gate(
     "evidence.performance-samples",
-    sampledRecords.length === 0 ? "not-measured" : undersampledRecords.length ? "fail" : "pass",
-    "Every accepted non-randomized performance row retains at least three finite raw samples.",
-    { observed: sampledRecords.length, failures: undersampledRecords },
+    sampledRecords.length === 0 && primaryReports.length === 0 ? "not-measured" :
+      undersampledRecords.length || samplePolicyFailures.length ? "fail" : "pass",
+    "Every accepted non-randomized performance row retains one internally consistent set of at least three finite raw samples.",
+    {
+      observed: sampledRecords.length,
+      failures: undersampledRecords,
+      policy_failures: samplePolicyFailures,
+      report_policies: primaryReports.map((report, report_index) => ({
+        report_index,
+        sample_policy: report.environment?.sample_policy ?? null,
+      })),
+    },
   ));
 
   const memoryFailures = sampledRecords.flatMap(({ report, reportIndex, record }) => {
@@ -346,6 +453,7 @@ function evaluateGates(reports, options = {}) {
   const requiredNativeArtifacts = [
     "packages/flint/build/Release/sagejs_flint.node",
     "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
+    "packages/flint/build/generated-ffi/manifest.json",
     "dist/tools/kernel.js",
     "dist/native-kernels/index.json",
   ];
@@ -355,20 +463,38 @@ function evaluateGates(reports, options = {}) {
         !/^[0-9a-f]{64}$/.test(report.identity?.native_artifacts?.[path]?.sha256 || ""),
     );
     const production = report.identity?.production_native;
-    if (production?.complete === true && production?.index?.status === "ok" && !missing.length) {
+    const productionModules = Object.entries(production?.modules || {});
+    const staleProductionModules = productionModules.flatMap(([logicalSource, module]) =>
+      module.source_current === true &&
+      /^[0-9a-f]{64}$/.test(module.cache_key || "") &&
+      /^[0-9a-f]{64}$/.test(module.source_hash || "") &&
+      module.wrapper?.status === "ok" && /^[0-9a-f]{64}$/.test(module.wrapper?.sha256 || "") &&
+      module.addon?.status === "ok" && /^[0-9a-f]{64}$/.test(module.addon?.sha256 || "")
+        ? []
+        : [{ logical_source: logicalSource, module }],
+    );
+    const indexHashMatches = production?.index?.sha256 ===
+      report.identity?.native_artifacts?.["dist/native-kernels/index.json"]?.sha256;
+    const generatedFfi = report.identity?.generated_ffi;
+    if (production?.complete === true && production?.index?.status === "ok" &&
+        productionModules.length > 0 && staleProductionModules.length === 0 &&
+        indexHashMatches && generatedFfi?.current === true && !missing.length) {
       return [];
     }
     return [{
       report_index: reportIndex,
       missing_artifacts: missing,
       production_native: production || null,
+      stale_production_modules: staleProductionModules,
+      production_index_hash_matches: indexHashMatches,
+      generated_ffi: generatedFfi || null,
     }];
   });
   gates.push(gate(
     "evidence.native-artifact-identity",
     sagejsReports.length === 0 ? "not-measured" :
       missingNativeArtifacts.length ? "fail" : "pass",
-    "Every Sage.js primary report hashes both FLINT addons, the runtime bundle, the actual production index, and every current wrapper/addon module.",
+    "Every Sage.js primary report proves the generated FFI and production-native modules are current, then hashes both FLINT addons, their manifest, the runtime bundle, the production index, and every wrapper/addon module.",
     {
       sagejs_report_count: sagejsReports.length,
       required_artifacts: requiredNativeArtifacts,
@@ -449,19 +575,27 @@ function evaluateGates(reports, options = {}) {
   const sagejsPublicByCase = new Map(
     publicRows.filter(accepted).map((record) => [record.case_id, record]),
   );
+  const oracleCaseIds = WARM_PUBLIC_MICRO_CASES;
   const oracleCoverage = ORACLE_BOUNDARIES.map((definition) => {
-    const rows = rowsFor(reports, definition.system, definition.boundary);
-    const explicitlyUnavailable = rows.length > 0 && rows.every(({ record }) =>
+    const matrix = terminalMatrixCoverage(reports, oracleCaseIds, [definition]);
+    const rows = matrix.entries.filter((entry) => entry.count === 1);
+    const explicitlyUnavailable = rows.length === oracleCaseIds.length && rows.every(({ record }) =>
       ["unavailable", "unsupported"].includes(record.status),
     );
     const acceptedRows = rows.filter(({ record }) => accepted(record));
     const failures = [];
-    if (!rows.length) {
-      failures.push("missing-terminal-evidence");
-    } else if (explicitlyUnavailable) {
+    if (matrix.missing.length) failures.push("missing-terminal-evidence");
+    if (matrix.duplicates.length) failures.push("duplicate-terminal-evidence");
+    if (explicitlyUnavailable) {
       if (!definition.optional) failures.push("required-path-unavailable");
-    } else if (!acceptedRows.length) {
-      failures.push("available-without-accepted-exact-row");
+    } else {
+      const rejected = rows.filter(({ record }) =>
+        !accepted(record) && !["unavailable", "unsupported"].includes(record.status),
+      );
+      if (rejected.length) failures.push("available-without-accepted-exact-row");
+      if (!definition.optional && acceptedRows.length !== oracleCaseIds.length) {
+        failures.push("required-path-incomplete");
+      }
     }
     const comparisons = acceptedRows.flatMap(({ record }) => {
       if (definition.id === "sagejs-production") return [];
@@ -483,22 +617,25 @@ function evaluateGates(reports, options = {}) {
     }
     return {
       ...definition,
+      expected_case_ids: oracleCaseIds,
       terminal_rows: rows.length,
       accepted_rows: acceptedRows.length,
       availability: explicitlyUnavailable ? "explicitly-unavailable" :
         rows.length ? "available" : "not-declared",
       comparisons,
+      missing: matrix.missing,
+      duplicates: matrix.duplicates,
       failures,
     };
   });
   const oracleFailures = oracleCoverage.filter((entry) => entry.failures.length);
   gates.push(gate(
     "correctness.oracle-coverage",
-    oracleCoverage.every((entry) => entry.terminal_rows === 0) ? "not-measured" :
-      oracleFailures.some((entry) => entry.failures.some((reason) =>
+    oracleFailures.some((entry) => entry.failures.some((reason) =>
         reason !== "missing-terminal-evidence")) ? "fail" :
+      oracleCoverage.every((entry) => entry.terminal_rows === 0) ? "not-measured" :
         oracleFailures.length ? "partial" : "pass",
-    "Production and dynamic Sage.js plus each named external oracle have exact overlap evidence or an explicit availability terminal state.",
+    "Production and dynamic Sage.js plus every named external oracle cover the complete representative case matrix with exact overlap evidence or an explicit optional-tool availability state.",
     { definitions: oracleCoverage, failures: oracleFailures.map((entry) => entry.id) },
   ));
 
@@ -507,26 +644,31 @@ function evaluateGates(reports, options = {}) {
     { system: "sage", optional: true },
     { system: "oscar", optional: true },
   ].map((definition) => {
-    const rows = rowsFor(reports, definition.system, "cold-application")
-      .filter(({ record }) => COLD_BOUNDARY_CASES.includes(record.case_id));
-    const byCase = new Map(rows.map(({ record }) => [record.case_id, record]));
+    const matrix = terminalMatrixCoverage(reports, COLD_BOUNDARY_CASES, [{
+      ...definition,
+      boundary: "cold-application",
+    }]);
+    const rows = matrix.entries.filter((entry) => entry.count === 1);
     const explicitlyUnavailable = rows.length === COLD_BOUNDARY_CASES.length &&
       rows.every(({ record }) => ["unavailable", "unsupported"].includes(record.status));
-    const missing = COLD_BOUNDARY_CASES.filter((caseId) => !byCase.has(caseId));
-    const failures = COLD_BOUNDARY_CASES.flatMap((caseId) => {
-      const record = byCase.get(caseId);
-      if (!record || ["unavailable", "unsupported"].includes(record.status)) return [];
+    const failures = rows.flatMap(({ case_id: caseId, record }) => {
+      if (["unavailable", "unsupported"].includes(record.status)) return [];
       return accepted(record) ? [] : [{ case_id: caseId, status: record.status }];
     });
     if (!definition.optional && explicitlyUnavailable) {
       failures.push({ case_id: null, status: "required-path-unavailable" });
     }
+    if (!definition.optional && rows.some(({ record }) =>
+      ["unavailable", "unsupported"].includes(record.status))) {
+      failures.push({ case_id: null, status: "required-path-incomplete" });
+    }
     return {
       ...definition,
       expected_case_ids: COLD_BOUNDARY_CASES,
-      observed: byCase.size,
+      observed: rows.length,
       explicitly_unavailable: explicitlyUnavailable,
-      missing,
+      missing: matrix.missing.map((entry) => entry.case_id),
+      duplicates: matrix.duplicates,
       failures,
     };
   });
@@ -538,12 +680,22 @@ function evaluateGates(reports, options = {}) {
     system: entry.system,
     ...failure,
   })));
+  const coldDuplicates = coldCoverage.flatMap((entry) => entry.duplicates.map((duplicate) => ({
+    system: entry.system,
+    ...duplicate,
+  })));
   gates.push(gate(
     "performance.cold-boundary-coverage",
-    coldCoverage.every((entry) => entry.observed === 0) ? "not-measured" :
-      coldFailures.length ? "fail" : coldMissing.length ? "partial" : "pass",
+    coldFailures.length || coldDuplicates.length ? "fail" :
+      coldCoverage.every((entry) => entry.observed === 0) ? "not-measured" :
+        coldMissing.length ? "partial" : "pass",
     "Fresh-process cold boundaries cover the representative public microcases for Sage.js, Sage, and Oscar, with explicit optional-tool unavailability.",
-    { systems: coldCoverage, missing: coldMissing, failures: coldFailures },
+    {
+      systems: coldCoverage,
+      missing: coldMissing,
+      duplicates: coldDuplicates,
+      failures: coldFailures,
+    },
   ));
 
   const cacheRows = primaryReports.flatMap((report) => report.cache_identity_api?.records || []);
@@ -588,6 +740,20 @@ function evaluateGates(reports, options = {}) {
     record.system === "sagejs" && record.boundary === "native-kernel" &&
     DIRECT_NATIVE_CASES.includes(record.case_id),
   ).records.map((record) => [record.case_id, record]));
+  const nativeMicroReferenceCoverage = terminalMatrixCoverage(
+    primaryReports,
+    DIRECT_NATIVE_CASES,
+    DIRECT_REFERENCE_BOUNDARIES,
+  );
+  const nativeMicroReferenceFailures = nativeMicroReferenceCoverage.entries.flatMap((entry) => {
+    if (!entry.record || ["unavailable", "unsupported"].includes(entry.record.status)) return [];
+    return performanceAccepted(entry.record) ? [] : [{
+      case_id: entry.case_id,
+      system: entry.system,
+      boundary: entry.boundary,
+      status: entry.record.status,
+    }];
+  });
   const directReferences = bestReferenceRows(
     primaryReports,
     (caseId) => DIRECT_NATIVE_CASES.includes(caseId),
@@ -610,9 +776,15 @@ function evaluateGates(reports, options = {}) {
     }));
   gates.push(gate(
     "performance.native-micro",
-    directReferences.size === 0 ? "not-measured" :
-      eligibleNativeIds.length === 0 || missingNativeMicro.length ? "partial" :
-        slowNativeMicro.length ? "fail" : "pass",
+    nativeMicroReferenceCoverage.entries.every((entry) => entry.count === 0)
+      ? "not-measured"
+      : nativeMicroReferenceCoverage.duplicates.length ||
+          nativeMicroReferenceFailures.length || slowNativeMicro.length
+        ? "fail"
+        : nativeMicroReferenceCoverage.missing.length || directReferences.size === 0 ||
+            missingNativeMicro.length
+          ? "partial"
+          : "pass",
     "Each direct native microkernel whose best same-host direct reference is below 1 ms is at most 0.25 ms.",
     {
       reference_rows: [...directReferences].map(([caseId, record]) => ({
@@ -625,6 +797,13 @@ function evaluateGates(reports, options = {}) {
       eligible_ids: eligibleNativeIds,
       observed: nativeMicro.length,
       missing: missingNativeMicro,
+      reference_coverage: {
+        expected_case_ids: DIRECT_NATIVE_CASES,
+        boundaries: DIRECT_REFERENCE_BOUNDARIES,
+        missing: nativeMicroReferenceCoverage.missing,
+        duplicates: nativeMicroReferenceCoverage.duplicates,
+        failures: nativeMicroReferenceFailures,
+      },
       failures: slowNativeMicro,
     },
     directReferences.size === 0
@@ -644,11 +823,30 @@ function evaluateGates(reports, options = {}) {
     },
   ));
 
-  const directRatios = comparisonRows(primaryReports, "native-kernel");
   const directSupported = new Set(
     corpus.cases
       .filter((entry) => entry.primeSupportCertified === true)
       .map((entry) => entry.id),
+  );
+  const directSupportedIds = [...directSupported].sort();
+  const directReferenceCoverage = terminalMatrixCoverage(
+    primaryReports,
+    directSupportedIds,
+    DIRECT_REFERENCE_BOUNDARIES,
+  );
+  const directReferenceFailures = directReferenceCoverage.entries.flatMap((entry) => {
+    if (!entry.record || ["unavailable", "unsupported"].includes(entry.record.status)) return [];
+    return performanceAccepted(entry.record) ? [] : [{
+      case_id: entry.case_id,
+      system: entry.system,
+      boundary: entry.boundary,
+      status: entry.record.status,
+    }];
+  });
+  const directRatios = comparisonRows(
+    primaryReports,
+    "native-kernel",
+    (caseId) => directSupported.has(caseId),
   );
   const ratioReferences = bestReferenceRows(
     primaryReports,
@@ -663,18 +861,40 @@ function evaluateGates(reports, options = {}) {
   );
   const observedRatioIds = new Set(eligibleRatios.map((row) => row.case_id));
   const missingRatios = expectedRatioIds.filter((caseId) => !observedRatioIds.has(caseId));
+  const directNativeRows = new Map(uniqueRecords(primaryReports, (record) =>
+    record.system === "sagejs" && record.boundary === "native-kernel" &&
+    expectedRatioIds.includes(record.case_id),
+  ).records.map((record) => [record.case_id, record]));
+  const rejectedDirectRatios = expectedRatioIds.flatMap((caseId) => {
+    const record = directNativeRows.get(caseId);
+    return record && !performanceAccepted(record)
+      ? [{ case_id: caseId, status: record.status }]
+      : [];
+  });
   const directGm = geometricMean(eligibleRatios.map((row) => row.ratio));
   const overTwo = eligibleRatios.filter((row) => row.ratio > 2);
   gates.push(gate(
     "performance.direct-reference-ratio",
-    expectedRatioIds.length === 0 ? "not-measured" :
-      expectedRatioIds.length < 2 || missingRatios.length ? "partial" :
-        directGm <= 1.25 && overTwo.length === 0 ? "pass" : "fail",
+    directReferenceCoverage.entries.every((entry) => entry.count === 0)
+      ? "not-measured"
+      : directReferenceCoverage.duplicates.length || directReferenceFailures.length ||
+          rejectedDirectRatios.length || overTwo.length ||
+          (directGm !== null && directGm > 1.25)
+        ? "fail"
+        : directReferenceCoverage.missing.length || expectedRatioIds.length === 0 ||
+            missingRatios.length
+          ? "partial"
+          : "pass",
     "For references at least 1 ms, direct Sage.js geometric-mean ratio is at most 1.25 and no unexplained case exceeds 2.",
     {
-      minimum_case_count: 2,
+      expected_reference_case_ids: directSupportedIds,
+      reference_boundaries: DIRECT_REFERENCE_BOUNDARIES,
+      reference_missing: directReferenceCoverage.missing,
+      reference_duplicates: directReferenceCoverage.duplicates,
+      reference_failures: directReferenceFailures,
       expected_case_ids: expectedRatioIds,
       missing_case_ids: missingRatios,
+      rejected_native_rows: rejectedDirectRatios,
       case_count: eligibleRatios.length,
       geometric_mean: directGm,
       over_two: overTwo,
@@ -737,10 +957,10 @@ function evaluateGates(reports, options = {}) {
 
   const sageRows = uniqueRecords(primaryReports, (record) =>
     record.system === "sage" && record.boundary === "warm-public",
-  ).records.filter(performanceAccepted);
+  ).records.filter((record) => performanceAccepted(record));
   const sageByCase = new Map(sageRows.map((record) => [record.case_id, record]));
   const publicComparisons = publicRows
-    .filter(performanceAccepted)
+    .filter((record) => performanceAccepted(record))
     .filter((record) => sageByCase.has(record.case_id))
     .map((record) => ({
       case_id: record.case_id,
@@ -775,9 +995,24 @@ function evaluateGates(reports, options = {}) {
   const completeDeclarations = supportDeclarations.filter(
     (declaration) => declaration.evaluation_complete === true,
   );
+  const expectedOverlapCaseIds = [...standardIds, ...stressIds].sort();
+  const evaluatedCounts = new Map(expectedOverlapCaseIds.map((caseId) => [caseId, 0]));
+  for (const declaration of completeDeclarations) {
+    for (const caseId of declaration.evaluated_case_ids || []) {
+      if (evaluatedCounts.has(caseId)) {
+        evaluatedCounts.set(caseId, evaluatedCounts.get(caseId) + 1);
+      }
+    }
+  }
+  const missingOverlapEvaluation = expectedOverlapCaseIds.filter(
+    (caseId) => evaluatedCounts.get(caseId) === 0,
+  );
+  const duplicateOverlapEvaluation = expectedOverlapCaseIds.filter(
+    (caseId) => evaluatedCounts.get(caseId) > 1,
+  ).map((caseId) => ({ case_id: caseId, declaration_count: evaluatedCounts.get(caseId) }));
   const declaredSupported = [...new Set(completeDeclarations.flatMap(
     (declaration) => declaration.supported_case_ids || [],
-  ))].sort();
+  ))].filter((caseId) => evaluatedCounts.has(caseId)).sort();
   const overlapFailures = declaredSupported.flatMap((caseId) => {
     const rows = overlapByCase.get(caseId);
     if (!rows) return [{ case_id: caseId, reason: "missing-all-boundaries" }];
@@ -801,12 +1036,17 @@ function evaluateGates(reports, options = {}) {
   gates.push(gate(
     "correctness.algorithm-overlap",
     supportDeclarations.length === 0 ? "not-measured" :
-      completeDeclarations.length === 0 || declaredSupported.length === 0 ? "partial" :
-        overlapFailures.length ? "fail" : "pass",
-    "Dynamic, Round 2, Round 4, and OM return the same canonical lattice wherever all are supported.",
+      duplicateOverlapEvaluation.length || overlapFailures.length ? "fail" :
+        completeDeclarations.length === 0 || missingOverlapEvaluation.length ||
+          declaredSupported.length === 0 ? "partial" : "pass",
+    "Every corrected corpus case has a complete four-boundary support evaluation, and Dynamic, Round 2, Round 4, and OM return the same canonical lattice wherever all are supported.",
     {
       boundaries: ALGORITHM_OVERLAP_BOUNDARIES,
       declarations: supportDeclarations,
+      expected_case_count: expectedOverlapCaseIds.length,
+      expected_case_ids: expectedOverlapCaseIds,
+      missing_evaluation_case_ids: missingOverlapEvaluation,
+      duplicate_evaluations: duplicateOverlapEvaluation,
       declared_supported_case_ids: declaredSupported,
       overlap_case_count: declaredSupported.length,
       failures: overlapFailures,
@@ -832,13 +1072,16 @@ function evaluateGates(reports, options = {}) {
     const omDecisions = record.algorithm_selection?.local_decisions?.filter(
       (decision) => decision.algorithm === "om-maxmin",
     ) || [];
+    const explicitlySuppressed = [...new Set(omDecisions.flatMap(
+      normalizedSuppressedAlternatives,
+    ))];
     const controls = uniqueRecords(primaryReports, (candidate) =>
       candidate.case_id === record.case_id &&
       candidate.system.startsWith("sagejs") &&
       Object.hasOwn(alternativeBoundary, candidate.boundary),
     ).records.filter((candidate) => {
       const algorithm = alternativeBoundary[candidate.boundary];
-      return omDecisions.some((decision) =>
+      return explicitlySuppressed.includes(algorithm) && omDecisions.some((decision) =>
         decision.metrics?.auto_eligibility?.[algorithm]?.eligible === true,
       );
     }).map((control) => ({
@@ -857,13 +1100,19 @@ function evaluateGates(reports, options = {}) {
     const winningControls = controls.filter((control) =>
       control.complete && control.exact_lattice_equal && control.ratio < 1,
     );
+    const pairedCompleteControls = controls.filter((control) =>
+      control.complete && control.exact_lattice_equal,
+    );
     return {
       case_id: record.case_id,
       auto_median_ms: record.statistics.median_ms,
       traced_om_execution: diagnostic?.executed_algorithms?.includes("om-maxmin") === true,
+      explicitly_suppressed_alternatives: explicitlySuppressed,
       controls,
+      paired_complete_controls: pairedCompleteControls,
       winning_controls: winningControls,
       valid: diagnostic?.executed_algorithms?.includes("om-maxmin") === true &&
+        explicitlySuppressed.length > 0 && pairedCompleteControls.length > 0 &&
         winningControls.length > 0,
     };
   });
@@ -871,7 +1120,7 @@ function evaluateGates(reports, options = {}) {
   gates.push(gate(
     "selection.om-automatic",
     omSelections.length ? "pass" : omSelectionCandidates.length ? "fail" : "not-measured",
-    "OM is automatically selected, traced, and faster end to end than a paired complete exact fallback that its selector suppressed.",
+    "OM is automatically selected, traced, and faster end to end than an explicitly suppressed, separately forced, complete exact fallback.",
     {
       selected_case_ids: omSelections.map((record) => record.case_id),
       candidates: omSelectionCandidates,
@@ -883,10 +1132,10 @@ function evaluateGates(reports, options = {}) {
   const sequential = uniqueRecords(primaryReports, (record) => record.boundary === "sequential-public").records;
   const parallel = uniqueRecords(primaryReports, (record) => record.boundary === "parallel-public").records;
   const sequentialByCase = new Map(
-    sequential.filter(performanceAccepted).map((record) => [record.case_id, record]),
+    sequential.filter((record) => performanceAccepted(record)).map((record) => [record.case_id, record]),
   );
   const parallelRows = parallel
-    .filter(performanceAccepted)
+    .filter((record) => performanceAccepted(record))
     .filter((record) => sequentialByCase.has(record.case_id));
   const parallelComparisons = parallelRows.map((record) => ({
     case_id: record.case_id,

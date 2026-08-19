@@ -246,4 +246,55 @@ static inline int sagejs_fmpq_vector_dot(
     return 1;
 }
 
+/* Return a maximal perfect-power decomposition as two owned exact integers.
+ * FLINT does not promise that one extraction returns a primitive root, so
+ * iterate until its mature primitive reports that the current root is not a
+ * power.  The ordinary Python policy independently checks the identity and
+ * terminal primitiveness before accepting this as decomposition evidence. */
+static inline int sagejs_fmpz_perfect_power_data(
+    sagejs_fmpz_vector_t result, const fmpz_t number)
+{
+    fmpz_t current, root, exponent;
+    int power = 0;
+    int valid = 0;
+    const int sign = fmpz_sgn(number);
+    if (!sagejs_fmpz_matrix_init(result->storage, 2, 1))
+        return 0;
+    fmpz_init_set(current, number);
+    fmpz_init(root);
+    fmpz_init_set_ui(exponent, 1);
+    if (!fmpz_is_zero(current) && !fmpz_is_pm1(current))
+    {
+        while ((power = fmpz_is_perfect_power(root, current)) != 0)
+        {
+            if (power < 2 || fmpz_cmpabs(root, current) >= 0)
+                goto cleanup;
+            fmpz_set(current, root);
+            fmpz_mul_ui(exponent, exponent, (ulong) power);
+        }
+    }
+    if (sign > 0)
+        fmpz_abs(current, current);
+    if (sign < 0 && (fmpz_sgn(current) >= 0 || !fmpz_is_odd(exponent)))
+        goto cleanup;
+    if (!sagejs_fmpz_vector_set_entry(result, 0, current) ||
+        !sagejs_fmpz_vector_set_entry(result, 1, exponent))
+        goto cleanup;
+    valid = 1;
+cleanup:
+    fmpz_clear(exponent);
+    fmpz_clear(root);
+    fmpz_clear(current);
+    if (!valid)
+        sagejs_fmpz_vector_clear(result);
+    return valid;
+}
+
+static inline int sagejs_fmpz_probabprime_result(
+    fmpz_t result, const fmpz_t number)
+{
+    fmpz_set_si(result, fmpz_is_probabprime(number));
+    return 1;
+}
+
 #endif

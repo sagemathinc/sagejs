@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-round2-proof-resource",
+  "title": "Nf Round2 Proof Resource",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Emit and independently validate an immutable compact proof resource for completed native Round-2 orders at supplied proved word primes without rerunning Round-2",
+  "base_commit": "b7a797c2717223e7be01c9ad944a8b89e77cab68",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
+    "architecture/native-code.json",
+    "architecture/native-audit.json",
+    "architecture/native-boundaries.json",
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
+    "test/number-field-analysis-resource-python.cjs",
+    "test/number-field-order-resource-python.cjs",
+    "test/number-field-round2-proof-resource-native.cjs",
+    "bench/number-field-round2-proof-resource.cjs",
+    "bench/number-field-round2-proof-resource-witness.c"
+  ],
+  "dependencies": ["nf-opt-vector429-public"],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and dynamic Sage.js same-source differential",
+      "Native generated kernel differential with exact corruption rejection"
+    ],
+    "exceptions": [
+      "Use the already-audited FLINT-backed field-analysis resource adapter for construction-carried terminal fixed-point verification because the generated source-transparent O(n^4) checker measured 18.185s and a standalone 12-prime verifier measured 3.776s; retain the ordinary checker as the external dynamic mathematical oracle"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Native Round-2 construction now carries deterministic per-prime terminal witnesses published only after a distinct fixed-point pass. P-adic workers reuse certified modulo-p-squared state; external bytes receive a complete ordinary exact replay, while the immediate generated-call projection binds only its exact source/order prefix. The obsolete standalone verifier FFI/API was removed. The sole optimized vector429 native12 sample measured 2.399 seconds total versus the 5-second target, with a 0.237-second native proof delta and 0.299-second projection.",
+    "risks": [
+      "Full architecture:check reaches the integration-owned number-field-algorithms lazy-package budget failure at 1,020,588 bytes versus 1,000,000; this lane reduces field_analysis_resource.py by 1,490 bytes from its checkpoint and does not own the package budget.",
+      "parallel:check rejects the explicitly approved order_resource.py claim because the shared integration lane scope omits that file; shared lane policy remains integration-owned."
+    ],
+    "next_steps": [
+      "Integration should select native_carried_round2_order_from_resources only around the actual current generated call and retain decode_carried_round2_order_resource for all copied/external payloads.",
+      "Integration owns the maximal-order engine/registry hook and the package-budget/lane-scope ratchets."
+    ]
+  }
+}

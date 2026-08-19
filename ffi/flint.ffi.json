@@ -6843,6 +6843,144 @@
       }
     },
     {
+      "id": "fmpz_perfect_power_data",
+      "python_name": "fmpz_perfect_power_data",
+      "signature": {
+        "parameters": [
+          {
+            "name": "number",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzVector",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPerfectPowerData"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_perfect_power_data",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_vector_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "number",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "FLINT perfect-power extraction failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpz_is_probabprime",
+      "python_name": "fmpz_is_probabprime",
+      "signature": {
+        "parameters": [
+          {
+            "name": "number",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzIsProbabprime"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_probabprime_result",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "number",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "FLINT probable-prime screening failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "fmpq_vector_from_byte_region",
       "python_name": "fmpq_vector_from_byte_region",
       "signature": {
@@ -17371,6 +17509,144 @@
       "errors": {
         "exception": "ValueError",
         "message": "FLINT integer Hermite form failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpz_mat_hnf_modular_eldiv",
+      "python_name": "fmpz_mat_hnf_modular_eldiv",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "elementary_divisor",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatHnfModularEldiv"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpz_mat_hnf_modular_eldiv",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "elementary_divisor",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "elementary_divisor",
+              "rows": "one",
+              "columns": "one",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT modular integer Hermite form failed"
       },
       "exceptions": {
         "policy": "none",
@@ -32725,6 +33001,88 @@
       "errors": {
         "exception": null,
         "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "number_field_order_with_round2_proof_resource",
+      "python_name": "number_field_order_with_round2_proof_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "prime_hints",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NumberFieldAnalysisResource",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNumberFieldOrderWithRound2ProofResource"
+      },
+      "native": {
+        "symbol": "sagejs_number_field_order_with_round2_proof_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_number_field_analysis_resource_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "prime_hints",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid proof-carrying number-field order input"
       },
       "exceptions": {
         "policy": "none",

@@ -208,6 +208,7 @@
         "flint_dense_integer_matrix_charpoly",
         "flint_dense_integer_matrix_rank",
         "flint_dense_integer_matrix_hnf",
+        "flint_dense_integer_matrix_hnf_modular_eldiv",
         "flint_dense_integer_matrix_hnf_transform",
         "flint_dense_integer_matrix_snf_transform",
         "flint_dense_integer_matrix_right_kernel",
@@ -464,13 +465,26 @@
         "packed_row_hnf_in_place",
         "packed_composite_dedekind_basis_in_place",
         "packed_order_table_in_place",
-        "packed_order_contains_vector_in_place"
+        "packed_order_contains_vector_in_place",
+        "packed_order_contains_vectors_in_place",
+        "packed_known_overorder_contains_vectors_in_place"
       ],
-      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, and exact rational-vector membership for certified Buchmann--Lenstra construction and compact replay",
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, exact standalone rational-vector membership, and direct triangular membership after independently authenticated equation-order containment",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
       "benchmark": "bench:number-field-buchmann-lenstra-fast",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-discriminant-prefactor-production",
+      "source": "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
+      "functions": ["packed_composite_polynomial_split_hint_in_place"],
+      "semantic_domain": "split-aware exact polynomial Euclidean traversal over composite discriminant supports, publishing only host-revalidated proper divisors",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-discriminant-prefactorization",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
@@ -493,6 +507,9 @@
       "source": "src/lib/sagejs/number_fields/field_analysis_resource.py",
       "functions": [
         "packed_field_analysis_fixed_points_are_valid",
+        "packed_field_analysis_decode_word_bytes",
+        "packed_round2_order_proof_decode_word_bytes",
+        "packed_round2_order_proof_is_valid",
         "packed_field_analysis_decode_integers",
         "packed_field_analysis_authenticate_projection"
       ],

@@ -5,6 +5,34 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createSage } = require("../dist/tools/kernel.js");
 
+test("fused field analysis declines estimated high-degree resource cost", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "import sagejs.number_fields.maximal_order_engine as engine",
+        "micro = engine._default_field_analysis_applicability([-5, 0, 1])",
+        "t8 = engine._default_field_analysis_applicability([2**257 + 1, -2**128, 0, 0, 0, 0, 0, 0, 1])",
+        "high = engine._default_field_analysis_applicability([(-1 if index % 2 else 1) * (2**169 + index) for index in range(64)] + [1])",
+        "saved = engine.field_analysis_resource._native_field_analysis_projection_from_polynomial_bound",
+        "calls = []",
+        "def forbidden(*args):",
+        "    calls.append(args)",
+        "    raise AssertionError('ineligible analysis constructed a native resource')",
+        "engine.field_analysis_resource._native_field_analysis_projection_from_polynomial_bound = forbidden",
+        "try:",
+        "    declined = engine._authenticated_default_field_analysis(None, [1 for index in range(64)] + [1], 1)",
+        "finally:",
+        "    engine.field_analysis_resource._native_field_analysis_projection_from_polynomial_bound = saved",
+        "[micro['selected'], t8['selected'], high['selected'], high['estimated_bytes'] > high['memory_budget_bytes'], declined is None, len(calls)]",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "[True, True, False, True, True, 0]");
+  } finally {
+    await session.close();
+  }
+});
+
 test(
   "authenticated field analysis preserves the canonical public result",
   { timeout: 120_000 },

@@ -4,10 +4,10 @@
   "id": "nf-opt-round2-degree90",
   "title": "Degree-90 packed Round-2 tail",
   "lane": "distribution",
-  "status": "active",
+  "status": "review",
   "owner": "user",
-  "objective": "Extend the exact proof-carrying packed Round-2 terminal state safely through degree 90, profile the degree-90 public tail, and reduce its native batch below five seconds when attainable while preserving exact generic equality and lifecycle safety",
-  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
+  "objective": "Replace fixed modulo assignment for independent local Round-2 solves with a deterministic dynamic pthread work queue while preserving caller-order exact merge, transactional failure cleanup, forced-static equality, and non-pthread sequential behavior",
+  "base_commit": "ac4dd69212845436cf4161f3633b386fa63a1485",
   "claims": [
     "packages/flint/include/sagejs/number_field_order_ffi.h",
     "packages/flint/test/number_field_order_ffi.c",
@@ -23,7 +23,7 @@
     "fallback": "tested-capability",
     "oracles": [
       "forced generic FLINT order payload equality",
-      "randomized degree >64 differential controls"
+      "randomized degree >=64 differential controls"
     ],
     "exceptions": [
       "Extends the existing FLINT host adapter and packed fmpz representation primitive; no mathematical algorithm is selected by function name and exact generic FLINT remains the tested capability fallback."
@@ -42,8 +42,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Independent immutable-source p-maximal solves now use a mutex-protected monotone pthread work queue while retaining fixed caller-order result slots and exact ordered HNF merge. A fatal local result closes the queue to new claims, all claimed work joins, and the caller clears every published slot. Thread creation failure reduces concurrency without losing work; mutex initialization failure uses the retained static scheduler; non-pthread Windows remains sequential. The quiet degree90 batch improved from 4.051s static to 3.923s dynamic with an identical canonical lattice.",
+    "risks": [
+      "The fresh degree90 public path still exceeded 120 seconds after the native tail was reduced to 4.55 seconds. The censored diagnostic emitted no stage marker, so the remaining downstream merge/materialization/certification stage must be isolated with an externally bounded marker-emitting probe.",
+      "Native Windows FLINT intentionally uses the exact one-lane fallback because FLINT_USES_PTHREAD is false; it has correctness coverage but not the pthread performance capability.",
+      "Current performance receipts are Linux x64. Linux arm64, macOS arm64, and native Windows x64 remain integration CI requirements."
+    ],
+    "next_steps": [
+      "Review and integrate the dynamic-queue commit range from the agent/nf-opt-round2-degree90 branch.",
+      "Profile the degree90 public path with an external process-group timeout and streaming stage markers to locate the downstream >120-second residual without repeating native work.",
+      "Rerun the registered sanitizer witness after integration so the newly enabled forced-static sanitizer half is included, then exercise the non-pthread fallback on native Windows CI."
+    ]
   }
 }

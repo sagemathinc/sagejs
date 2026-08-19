@@ -2030,6 +2030,38 @@ def fmpz_vector_from_byte_region(
 
 
 @flint.function(
+    dynamic="ffiFmpzPerfectPowerData",
+    symbol="sagejs_fmpz_perfect_power_data",
+    returns=int,
+    abi=[out("result", sagejs_fmpz_vector_t), in_("number", fmpz_t)],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="FLINT perfect-power extraction failed",
+    ),
+    wasm=True,
+)
+def fmpz_perfect_power_data(number: Integer) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzIsProbabprime",
+    symbol="sagejs_fmpz_probabprime_result",
+    returns=int,
+    abi=[out("result", fmpz_t), in_("number", fmpz_t)],
+    effects=Effects(pure=True, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="FLINT probable-prime screening failed",
+    ),
+    wasm=True,
+)
+def fmpz_is_probabprime(number: Integer) -> Integer: ...
+
+
+@flint.function(
     dynamic="ffiFmpqVectorFromByteRegion",
     symbol="sagejs_fmpq_vector_from_byte_region",
     returns=int,
@@ -4819,6 +4851,71 @@ def fmpz_mat_hnf(
     source: IntegerBuffer,
     rows: uint64,
     columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatHnfModularEldiv",
+    symbol="sagejs_flint_fmpz_mat_hnf_modular_eldiv",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "elementary_divisor",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="elementary_divisor",
+                rows="one",
+                columns="one",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT modular integer Hermite form failed",
+    ),
+    wasm=True,
+)
+def fmpz_mat_hnf_modular_eldiv(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    elementary_divisor: IntegerBuffer,
+    one: Min[uint64, 1],
 ) -> bool: ...
 
 
@@ -9939,6 +10036,29 @@ def number_field_order_resource_native_primes(
 def number_field_order_resource_unramified_primes(
     resource: NumberFieldOrderResource,
 ) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldOrderWithRound2ProofResource",
+    symbol="sagejs_number_field_order_with_round2_proof_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_number_field_analysis_resource_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("prime_hints", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid proof-carrying number-field order input",
+    ),
+    wasm=False,
+)
+def number_field_order_with_round2_proof_resource(
+    polynomial: FmpzPolynomial,
+    prime_hints: FmpzMatrix,
+) -> NumberFieldAnalysisResource: ...
 
 
 @flint.function(

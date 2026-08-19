@@ -1233,6 +1233,22 @@ static inline int sagejs_flint_fmpz_mat_hnf(
     return 1;
 }
 
+static inline int sagejs_flint_fmpz_mat_hnf_modular_eldiv(
+    fmpz_mat_t output, const fmpz_mat_t source,
+    const fmpz_mat_t elementary_divisor)
+{
+    if (fmpz_mat_nrows(output) != fmpz_mat_nrows(source) ||
+        fmpz_mat_ncols(output) != fmpz_mat_ncols(source) ||
+        fmpz_mat_nrows(elementary_divisor) != 1 ||
+        fmpz_mat_ncols(elementary_divisor) != 1 ||
+        fmpz_sgn(fmpz_mat_entry(elementary_divisor, 0, 0)) <= 0)
+        return 0;
+    fmpz_mat_set(output, source);
+    fmpz_mat_hnf_modular_eldiv(
+        output, fmpz_mat_entry(elementary_divisor, 0, 0));
+    return 1;
+}
+
 static inline int sagejs_flint_fmpz_mat_hnf_transform(
     fmpz_mat_t output, fmpz_mat_t transform, const fmpz_mat_t source)
 {

@@ -195,6 +195,37 @@ test("async pool results support callbacks, errors, and timeouts", async (t) => 
   );
 });
 
+test("current-call results require an exact precompiled module target", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import _precompiled_module_pool",
+      "from sagejs.number_fields.local_parallel import make_local_job",
+      "module = 'sagejs.number_fields.local_parallel_worker'",
+      "job = make_local_job([1, 0, 1], 3, 0, [0, 1], 0, 1, 1)",
+      "workers = _precompiled_module_pool(1)",
+      "answer = workers._apply_precompiled_async(",
+      "    module, 'execute_public_om_candidate_job', (job,)",
+      ")",
+      "try:",
+      "    answer._get_attested_module_result(module, 'wrong_name', 2)",
+      "except RuntimeError as error:",
+      "    print('rejected', 'attested callable' in str(error))",
+      "value = answer._get_attested_module_result(",
+      "    module, 'execute_public_om_candidate_job', 2",
+      ")",
+      "print(value[0], value[2])",
+      "workers.close()",
+      "workers.join()",
+    ].join("\n"),
+  );
+  assert.equal(
+    result.stdout.trim(),
+    "rejected True\nsagejs.number-fields.om-worker-candidate.v1 fatal",
+  );
+});
+
 test("pool initializers and shutdown preserve pending result semantics", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

@@ -14,6 +14,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_charpoly,
     fmpz_mat_det,
     fmpz_mat_hnf,
+    fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform,
     fmpz_mat_mul,
     fmpz_mat_rank,
@@ -84,6 +85,26 @@ def flint_dense_integer_matrix_hnf(
     columns: uint64,
 ) -> bool:
     return fmpz_mat_hnf(output, source, rows, columns)
+
+
+@native
+def flint_dense_integer_matrix_hnf_modular_eldiv(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    elementary_divisor: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    one: uint64,
+) -> bool:
+    """Use FLINT modular HNF with a proved elementary-divisor multiple."""
+    return fmpz_mat_hnf_modular_eldiv(
+        output,
+        source,
+        rows,
+        columns,
+        elementary_divisor,
+        one,
+    )
 
 
 @native

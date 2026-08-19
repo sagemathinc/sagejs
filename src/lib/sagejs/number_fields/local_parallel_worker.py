@@ -30,6 +30,173 @@ PUBLIC_PARALLEL_BENCHMARK = "bench/number-field-maximal-order-parallel-worker.cj
 PUBLIC_PARALLEL_SETUP_MARGIN_MICROS = 20_000_000
 PUBLIC_PARALLEL_PARENT_RSS_BYTES = 640 * 1024 * 1024
 PUBLIC_PARALLEL_WORKER_RSS_BYTES = 224 * 1024 * 1024
+PUBLIC_OM_CANDIDATE_SCHEMA = "sagejs.number-fields.om-worker-candidate.v1"
+PUBLIC_OM_OVERLAP_PARENT_BYTES = 640 * 1024 * 1024
+AUTHENTICATED_OM_WORKER_PROOF_SCHEMA = (
+    "sagejs.number-fields.authenticated-om-worker-proof.v1"
+)
+_OM_WORKER_MODULE = "sagejs.number_fields.local_parallel_worker"
+_OM_WORKER_FUNCTION = "execute_public_om_candidate_job"
+_OM_WORKER_PROOF_TOKEN = object()
+
+
+class AuthenticatedOMWorkerProof:
+    """Immutable current-call proof issued for one exact precompiled OM job."""
+
+    def __init__(self, token: Any, job: JobPayload, candidate: tuple[Any, ...]) -> None:
+        if token is not _OM_WORKER_PROOF_TOKEN:
+            raise TypeError("authenticated OM worker proofs are module-issued")
+        self.job = validate_om_candidate_job(job)
+        self.basis_numerator = tuple(
+            tuple(int(value) for value in row) for row in candidate[3]
+        )
+        self.basis_denominator = int(candidate[4])
+        self.index = int(candidate[5])
+        self.certificate_id = str(candidate[6])
+        self.__dict__["_authentication_snapshot"] = self._snapshot()
+
+    def _snapshot(self) -> tuple[Any, ...]:
+        return (
+            AUTHENTICATED_OM_WORKER_PROOF_SCHEMA,
+            self.job,
+            self.basis_numerator,
+            self.basis_denominator,
+            self.index,
+            self.certificate_id,
+        )
+
+    @property
+    def certified(self) -> bool:
+        return self.__dict__.get("_authentication_snapshot") == self._snapshot()
+
+
+def validate_om_candidate_job(job: Any) -> JobPayload:
+    """Validate the exact OM shape accepted by the attested worker boundary."""
+    from sagejs.number_fields.local_parallel import validate_local_job
+
+    canonical = validate_local_job(job)
+    if canonical[6] != "om-maxmin":
+        raise ValueError("an attested OM worker needs an OM job")
+    return canonical
+
+
+def authenticated_om_worker_proof_matches(
+    proof: Any,
+    *,
+    job: JobPayload,
+    basis_numerator: list[list[int]],
+    basis_denominator: int,
+    index: int,
+) -> bool:
+    """Bind one live current-call proof to exact parent-owned order fields."""
+    try:
+        return bool(
+            type(proof) is AuthenticatedOMWorkerProof
+            and proof.certified
+            and proof.job == validate_om_candidate_job(job)
+            and proof.basis_numerator
+            == tuple(tuple(int(value) for value in row) for row in basis_numerator)
+            and proof.basis_denominator == int(basis_denominator)
+            and proof.index == int(index)
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
+class _PublicOMWorkerHandle:
+    def __init__(self, pool: Any, result: Any, job: JobPayload) -> None:
+        self.pool = pool
+        self.result = result
+        self.job = job
+        self.consumed = False
+
+
+def start_public_om_candidate_job(job: JobPayload) -> Any | None:
+    """Start one exact allowlisted OM job and return its private live handle."""
+    canonical = validate_om_candidate_job(job)
+    if not public_worker_capability():
+        return None
+    multiprocessing = __import__(
+        "multiprocessing",
+        fromlist=["_precompiled_module_pool", "worker_memory_budget_bytes"],
+    )
+    budget = multiprocessing.worker_memory_budget_bytes()
+    predicted_peak = PUBLIC_OM_OVERLAP_PARENT_BYTES + int(canonical[5])
+    if budget is None or predicted_peak > int(budget):
+        return None
+    pool = multiprocessing._precompiled_module_pool(processes=1)
+    submit = getattr(pool, "_apply_precompiled_async", None)
+    if submit is None:
+        pool.terminate()
+        pool.join()
+        return None
+    try:
+        result = submit(_OM_WORKER_MODULE, _OM_WORKER_FUNCTION, (canonical,))
+        return _PublicOMWorkerHandle(pool, result, canonical)
+    except Exception:
+        pool.terminate()
+        pool.join()
+        raise
+
+
+def finish_public_om_candidate_job(
+    handle: Any,
+    *,
+    timeout: float | None = None,
+) -> tuple[tuple[Any, ...], AuthenticatedOMWorkerProof] | None:
+    """Join an OM job and issue a proof only for its attested exact result."""
+    if type(handle) is not _PublicOMWorkerHandle or handle.consumed:
+        return None
+    handle.consumed = True
+    try:
+        candidate = handle.result._get_attested_module_result(
+            _OM_WORKER_MODULE, _OM_WORKER_FUNCTION, timeout
+        )
+        if (
+            not isinstance(candidate, tuple)
+            or len(candidate) != 7
+            or candidate[0] != PUBLIC_OM_CANDIDATE_SCHEMA
+            or candidate[1] != handle.job
+            or candidate[2] != "ok"
+            or not isinstance(candidate[3], tuple)
+            or not candidate[3]
+            or isinstance(candidate[4], bool)
+            or not isinstance(candidate[4], int)
+            or int(candidate[4]) < 1
+            or isinstance(candidate[5], bool)
+            or not isinstance(candidate[5], int)
+            or int(candidate[5]) < 1
+            or not isinstance(candidate[6], str)
+            or not candidate[6]
+        ):
+            return None
+        degree = len(handle.job[1]) - 1
+        if len(candidate[3]) != degree or any(
+            not isinstance(row, tuple)
+            or len(row) != degree
+            or any(
+                isinstance(value, bool) or not isinstance(value, int) for value in row
+            )
+            for row in candidate[3]
+        ):
+            return None
+        proof = AuthenticatedOMWorkerProof(
+            _OM_WORKER_PROOF_TOKEN, handle.job, candidate
+        )
+        if not proof.certified:
+            return None
+        return candidate, proof
+    finally:
+        handle.pool.close()
+        handle.pool.join()
+
+
+def cancel_public_om_candidate_job(handle: Any) -> None:
+    """Terminate one unfinished OM job without accepting partial evidence."""
+    if type(handle) is _PublicOMWorkerHandle and not handle.consumed:
+        handle.consumed = True
+        handle.pool.terminate()
+        handle.pool.join()
 
 
 def public_worker_capability() -> bool:
@@ -290,6 +457,78 @@ def execute_public_local_job(job: JobPayload) -> ResultPayload:
         )
 
 
+def execute_public_om_candidate_job(job: JobPayload) -> tuple[Any, ...]:
+    """Construct one OM candidate without rebuilding a public number field.
+
+    This narrow worker boundary is intentionally only a candidate producer.
+    The parent must independently authenticate the returned local order before
+    it can contribute a maximality witness or enter the public field cache.
+    """
+    from sagejs.number_fields.local_parallel import (
+        local_job_component,
+        validate_local_job,
+    )
+
+    canonical_job = validate_local_job(job)
+    if canonical_job[6] != "om-maxmin":
+        return (
+            PUBLIC_OM_CANDIDATE_SCHEMA,
+            canonical_job,
+            "fatal",
+            (),
+            1,
+            1,
+            "an OM worker needs an OM job",
+        )
+    coefficients = tuple(int(value) for value in canonical_job[1])
+    component = local_job_component(canonical_job)
+    prime = int(component.base)
+    try:
+        from sagejs.number_fields.local_polygons import factor_mod_prime
+        from sagejs.number_fields.om_auto_selector import select_om_local_basis
+
+        factors = factor_mod_prime(list(coefficients), prime)
+        selection = select_om_local_basis(
+            coefficients,
+            prime,
+            local_discriminant_valuation=int(canonical_job[2][4]),
+            factor_degrees=tuple(int(item["degree"]) for item in factors),
+            factor_multiplicities=tuple(int(item["multiplicity"]) for item in factors),
+        )
+        result = selection.result
+        if not selection.selected or result is None or result.order_basis is None:
+            return (
+                PUBLIC_OM_CANDIDATE_SCHEMA,
+                canonical_job,
+                "fallback",
+                (),
+                1,
+                1,
+                str(selection.reason),
+            )
+        basis = result.order_basis
+        local_index = int(result.local_result.index)
+        return (
+            PUBLIC_OM_CANDIDATE_SCHEMA,
+            canonical_job,
+            "ok",
+            tuple(tuple(int(value) for value in row) for row in basis.numerator),
+            int(basis.denominator),
+            local_index,
+            str(result.type_tree.certificate_id),
+        )
+    except Exception as error:
+        return (
+            PUBLIC_OM_CANDIDATE_SCHEMA,
+            canonical_job,
+            "fatal",
+            (),
+            1,
+            1,
+            type(error).__name__ + ": " + str(error),
+        )
+
+
 def run_public_local_jobs(
     jobs: list[JobPayload] | tuple[JobPayload, ...],
     *,
@@ -329,13 +568,22 @@ def run_public_local_jobs(
 
 
 __all__ = [
+    "AUTHENTICATED_OM_WORKER_PROOF_SCHEMA",
+    "AuthenticatedOMWorkerProof",
     "PUBLIC_DECISION_SCHEMA",
     "PUBLIC_PARALLEL_BENCHMARK",
     "PUBLIC_PARALLEL_PARENT_RSS_BYTES",
     "PUBLIC_PARALLEL_SETUP_MARGIN_MICROS",
     "PUBLIC_PARALLEL_WORKER_RSS_BYTES",
+    "PUBLIC_OM_CANDIDATE_SCHEMA",
+    "PUBLIC_OM_OVERLAP_PARENT_BYTES",
+    "authenticated_om_worker_proof_matches",
+    "cancel_public_om_candidate_job",
+    "execute_public_om_candidate_job",
     "execute_public_local_job",
+    "finish_public_om_candidate_job",
     "public_worker_capability",
     "public_worker_decision",
     "run_public_local_jobs",
+    "start_public_om_candidate_job",
 ]

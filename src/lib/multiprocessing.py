@@ -165,6 +165,45 @@ class ApplyResult:
             return self._value
         raise self._value
 
+    def _get_attested_module_result(self, module_name, function_name, timeout=None):
+        """Consume a result issued by one exact precompiled module callable."""
+        if self._resolved:
+            raise ValueError("an attested multiprocessing result is already consumed")
+        if timeout is None:
+            timeout_ms = None
+        else:
+            timeout_ms = max(0, int(float(timeout) * 1000))
+        result = _host_call(
+            "multiprocessingAttestedJobResult",
+            self._pool._pool_id,
+            self._job_id,
+            str(module_name),
+            str(function_name),
+            timeout_ms,
+        )
+        if not _property(result, "ready", False):
+            raise TimeoutError()
+        if not _property(result, "ok", False):
+            error = _property(result, "error")
+            raise _remote_exception(
+                _property(error, "name", "RuntimeError"),
+                _property(error, "message", "multiprocessing worker failed"),
+            )
+        if not _property(result, "attested", False):
+            raise RuntimeError("multiprocessing result lacks current-call attestation")
+        values = list(_property(result, "value", []))
+        if len(values) != 1:
+            raise RuntimeError("attested multiprocessing call returned the wrong arity")
+        value = values[0]
+        _host_call("multiprocessingForgetJob", self._pool._pool_id, self._job_id)
+        pool = self._pool
+        self._pool = None
+        self._resolved = True
+        self._success = True
+        self._value = value
+        pool._discard_result(self)
+        return value
+
 
 AsyncResult = ApplyResult
 
@@ -301,6 +340,20 @@ class Pool:
         self._async_results.append(result)
         return result
 
+    def _apply_precompiled_async(self, module_name, function_name, args=()):
+        """Submit one allowlisted module callable for current-call authentication."""
+        self._check_running()
+        job_id = _host_call(
+            "multiprocessingSubmitModuleCall",
+            self._pool_id,
+            str(module_name),
+            str(function_name),
+            list(args),
+        )
+        result = ApplyResult(self, job_id, single=True)
+        self._async_results.append(result)
+        return result
+
     def _discard_result(self, result):
         if result in self._async_results:
             self._async_results.remove(result)
@@ -403,6 +456,18 @@ class Pool:
     def __exit__(self, exc_type, exc_value, traceback):
         self.terminate()
         return False
+
+
+def _precompiled_module_pool(processes=1):
+    """Create the private compiler-free pool used by attested native jobs."""
+    pool = Pool.__new__(Pool)
+    pool._processes = int(processes)
+    if pool._processes < 1:
+        raise ValueError("Number of processes must be at least 1")
+    pool._pool_id = _host_call("multiprocessingCreatePrecompiledPool", pool._processes)
+    pool._async_results = []
+    pool._state = "RUN"
+    return pool
 
 
 def get_start_method(allow_none=False):

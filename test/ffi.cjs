@@ -231,7 +231,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_evaluate", "fmpq_polynomial_serialize",
       "fmpq_polynomial_format",
       "fmpq_polynomial_from_byte_region",
-      "fmpz_vector_from_byte_region", "fmpq_vector_from_byte_region",
+      "fmpz_vector_from_byte_region", "fmpz_perfect_power_data",
+      "fmpz_is_probabprime", "fmpq_vector_from_byte_region",
       "fmpz_vector_length", "fmpq_vector_length",
       "fmpz_vector_entry", "fmpq_vector_entry_numerator",
       "fmpq_vector_entry_denominator",
@@ -299,7 +300,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "dirichlet_group_init", "dirichlet_group_size",
       "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
       "fmpz_mat_rank", "fmpz_mat_mul", "fmpz_mat_det",
-      "fmpz_mat_charpoly", "fmpz_mat_hnf", "fmpz_mat_hnf_transform",
+      "fmpz_mat_charpoly", "fmpz_mat_hnf", "fmpz_mat_hnf_modular_eldiv",
+      "fmpz_mat_hnf_transform",
       "fmpz_mat_snf_transform", "fmpz_mat_right_kernel",
       "fmpq_mat_rank", "fmpq_mat_mul", "fmpq_mat_rref",
       "fmpq_mat_inv", "fmpq_mat_solve", "fmpq_mat_det",
@@ -372,6 +374,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "number_field_order_resource_resolved_primes",
       "number_field_order_resource_native_primes",
       "number_field_order_resource_unramified_primes",
+      "number_field_order_with_round2_proof_resource",
       "number_field_analyze_resource",
     ],
   );
@@ -451,7 +454,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /408 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /412 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -501,7 +504,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 10,
-      flint: 365,
+      flint: 369,
       igraph: 2,
       m4ri: 26,
     }[declaration.library.id]);
@@ -557,7 +560,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 366],
+    ["../packages/flint", 370],
     ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
@@ -735,7 +738,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 408);
+  assert.equal(current.counts["declared-ffi"], 412);
   assert.equal(current.counts["declared-ffi-resource"], 29);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

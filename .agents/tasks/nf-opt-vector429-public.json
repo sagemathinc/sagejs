@@ -2,23 +2,36 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "nf-opt-vector429-public",
-  "title": "Generated FFI transitive-header currentness",
-  "lane": "integration",
+  "title": "Vector429 public OM crossover",
+  "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Make generated FFI addon cache identities invalidate when a repository-local transitive ABI header changes",
-  "base_commit": "ac3f18ebfb96e0fce4747000813fa151f1c1b1f0",
+  "objective": "Prove a fresh exact vector429 public maximal-order run selects OM at p=7, packed Round-2 at p=2/3/5, and completes below 5 seconds while beating the paired p=7 Round-2 fallback",
+  "base_commit": "74e1ef75ea5fc6ef5ac5ab68407924c9448a599b",
   "claims": [
-    "tools/native-kernel/compiler.cjs",
-    "test/ffi.cjs"
+    "src/baselib/polynomial.py",
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
+    "bench/exact-polynomial-lazy-resource-ingress.cjs",
+    "bench/number-field-vector429-public.cjs",
+    "test/exact-polynomial-bulk-construction.cjs",
+    "test/number-field-analysis-public-hook.cjs",
+    "test/number-field-maximal-order-engine.cjs",
+    "test/number-field-order-resource-python.cjs",
+    "test/number-field-vector429-public.cjs",
+    "bench/results/exact-polynomial-lazy-resource-ingress.json",
+    "bench/results/number-field-vector429-public.json",
+    "bench/results/number-field-vector429-public.md"
   ],
   "dependencies": [],
   "references": [],
   "architecture": {
-    "strategy": "compiler-infrastructure",
-    "fallback": "not-applicable",
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
     "oracles": [
-      "A temporary cyclic repository-header graph whose transitive leaf alone changes"
+      "Frozen PARI vector429 canonical HNF and discriminant",
+      "Independent Sage.js maximality certificate and paired complete Round-2 control"
     ],
     "exceptions": []
   },
@@ -29,14 +42,17 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm architecture:check",
-    "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Source-only portfolio checkpoint: high-degree fused-analysis applicability gate, construction-carried native proof hook, packed coprime merge/containment, immutable OM and BL evidence binding, exact terminal support/index theorem, and unverified pending-certificate semantics. This checkpoint makes no end-to-end vector429 public performance claim.",
+    "risks": [
+      "The measured sequential carried-native, OM p7, BL, and merge envelope still needs an end-to-end bounded sample and may require a modest OM/setup saving or measured low-setup overlap to close five seconds."
+    ],
+    "next_steps": [
+      "After the remaining OM/decomposition source work and central manifests land, rebuild once and run bounded fresh untraced/traced public samples plus the suppressed-p7 comparator."
+    ]
   }
 }

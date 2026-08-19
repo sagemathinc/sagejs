@@ -15,6 +15,23 @@ from __future__ import annotations
 
 from typing import Any
 
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
+from sagejs.number_fields.discriminant_flint_primitives import (
+    large_primality_hint,
+    perfect_power_hint,
+)
+from sagejs.number_fields.discriminant_prefactor_kernel import (
+    PREFACTOR_NO_SPLIT,
+    PREFACTOR_SPLIT,
+    PREFACTOR_UNRESOLVED,
+    packed_composite_polynomial_split_hint_in_place,
+)
+
 PROVEN_PRIME = "proven-prime"
 PROBABLE_PRIME = "probable-prime-awaiting-proof"
 COMPOSITE = "composite"
@@ -81,7 +98,7 @@ def _integer_nth_root(value: int, exponent: int) -> int:
     return current
 
 
-def perfect_power_data(value: int) -> tuple[int, int]:
+def _readable_perfect_power_data(value: int) -> tuple[int, int]:
     """Return `(base, exponent)` with maximal exponent and exact witness.
 
     Non-powers return `(value, 1)`.  For negative inputs only odd exponents
@@ -110,6 +127,12 @@ def perfect_power_data(value: int) -> tuple[int, int]:
             base = root
             total_exponent *= exponent
     return (-base if number < 0 else base), total_exponent
+
+
+def perfect_power_data(value: int) -> tuple[int, int]:
+    """Return maximal exact perfect-power data with a readable fallback."""
+    hint = perfect_power_hint(value, _readable_perfect_power_data)
+    return _readable_perfect_power_data(value) if hint is None else hint
 
 
 def _small_primes(bound: int) -> list[int]:
@@ -170,6 +193,10 @@ def primality_status(number: int) -> tuple[str, dict[str, Any]]:
             return PROVEN_PRIME, {"kind": "trial-prime", "prime": value}
         if value % prime == 0:
             return COMPOSITE, {"kind": "factor", "factor": prime}
+    if value >= 1 << 64:
+        hint = large_primality_hint(value, _miller_rabin_witness, _PROBABLE_BASES)
+        if hint is not None:
+            return hint
     bases = _MR64_BASES if value < 1 << 64 else _PROBABLE_BASES
     for base in bases:
         if _miller_rabin_witness(value, base):
@@ -1037,6 +1064,84 @@ def polynomial_gcd_mod_composite(
     return {"status": "gcd", "polynomial": _strip_polynomial(gcd_polynomial, q)}
 
 
+def _packed_polynomial_split_hint(
+    left: list[int],
+    right: list[int],
+    modulus: int,
+    kernel: Any = packed_composite_polynomial_split_hint_in_place,
+) -> dict[str, Any] | None:
+    """Return a packed exact split outcome, or `None` for readable fallback.
+
+    The Euclidean traversal never increases polynomial degree, so three
+    `capacity = max(len(left), len(right))` records hold the two active
+    polynomials and their remainder.  Every stored coefficient is reduced
+    modulo `q`; the largest transient is one product of two residues.  Thus
+    two modulus bit lengths plus two guard words are an exact signed-storage
+    bound independent of Euclidean iteration count.
+
+    Only a proper divisor is exported as mathematical evidence.  The host
+    rechecks `1 < divisor < q` and exact divisibility before the caller may
+    split a component.  Malformed status, bounded-buffer overflow, or any
+    unavailable compiled boundary returns `None` and uses the readable oracle.
+    """
+    q = abs(int(modulus))
+    if q < 2 or not left or not right:
+        return None
+    capacity = max(len(left), len(right))
+    modulus_bits = q.bit_length()
+    word_capacity = max(4, (2 * modulus_bits + 63) // 64 + 2)
+    control = kernel_integer_zeros(kernel, 2, word_capacity)
+    workspace = kernel_integer_zeros(kernel, 3 * capacity, word_capacity)
+    packed_left = kernel_integer_buffer(kernel, left)
+    packed_right = kernel_integer_buffer(kernel, right)
+    try:
+        valid = kernel(
+            control,
+            workspace,
+            packed_left,
+            packed_right,
+            q,
+            len(left),
+            len(right),
+            capacity,
+        )
+    except (ArithmeticError, OverflowError, TypeError, ValueError):
+        return None
+    if not valid:
+        return None
+    values = integer_buffer_values(control)
+    status = int(values[0])
+    divisor = int(values[1])
+    if status == PREFACTOR_SPLIT:
+        if divisor <= 1 or divisor >= q or q % divisor != 0:
+            return None
+        return {
+            "status": "split",
+            "divisor": divisor,
+            "reason": "packed-composite-euclidean-split",
+        }
+    if status == PREFACTOR_NO_SPLIT and divisor == 0:
+        return {"status": "gcd"}
+    if status == PREFACTOR_UNRESOLVED and divisor == 0:
+        return {"status": "unresolved"}
+    return None
+
+
+def _prefactorization_gcd_outcome(
+    left: list[int], right: list[int], modulus: int
+) -> dict[str, Any]:
+    """Select the packed split-only traversal only where it amortizes setup."""
+    q = abs(int(modulus))
+    workload = max(len(left), len(right)) * max(1, q.bit_length())
+    if workload >= 4096 and is_compiled(
+        packed_composite_polynomial_split_hint_in_place
+    ):
+        packed = _packed_polynomial_split_hint(left, right, q)
+        if packed is not None:
+            return packed
+    return polynomial_gcd_mod_composite(left, right, q)
+
+
 def _support_split(number: int, divisor: int) -> tuple[int, int]:
     """Split `number` into the part supported on `divisor` and its complement."""
     remaining = abs(int(number))
@@ -1286,7 +1391,7 @@ def prefactorization_hints(
         if component.state == PROVEN_PRIME:
             final.append(component)
             continue
-        result = polynomial_gcd_mod_composite(polynomial, derivative, component.base)
+        result = _prefactorization_gcd_outcome(polynomial, derivative, component.base)
         if result["status"] == "split":
             divisor = int(result["divisor"])
             branches = split_component(component, divisor)

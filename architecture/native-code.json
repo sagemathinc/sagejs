@@ -134,21 +134,28 @@
       "category": "mathematical-algorithm",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle."
+      "rationale": "Host-neutral Zassenhaus Round-2 p-maximal-order kernel over FLINT storage, paired with an ordinary-Python fallback and differential oracle. Independent coprime-prime jobs use a bounded monotone pthread queue with fixed caller-order output slots; forced-static, pthread-failure, and non-pthread sequential paths remain exact lifecycle oracles. Its optional proof-carrying mode performs a distinct terminal radical and multiplier-minor derivation inside each independent local worker before publishing that worker's immutable slot: p-adic workers rerun the theorem from their certified modulo-p-squared tensor with fresh workspaces and generic row selection, while non-p-adic workers use their live exact table. It does not replay enlargement."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_resource_ffi.h",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; arbitrary-size unsupported local work is returned intact to the strict fallback."
+      "rationale": "Direct sealed fmpz-polynomial to canonical HNF order resource. It owns compact transfer and lifecycle adaptation while reusing the audited Round-2 mathematical kernel; optional terminal-proof slots are transferred only for a complete construction, and arbitrary-size unsupported local work is returned intact to the strict fallback."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It computes the equation discriminant, bounded exact component hints, and partial canonical HNF evidence while retaining unresolved and arbitrary-size residuals for independent strict checking."
+      "rationale": "One-crossing immutable field-analysis resource over FLINT storage. It packs a proof-carrying construction result that binds the nested canonical order, sealed polynomial, full caller-prime tuple, local canonical bases, and independently rederived terminal radicals and full-rank multiplier minors. This representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, while a FLINT resource producer took 2.356s for three primes; the later full 12-prime standalone verifier still cost 3.776s and was removed from the production FFI. Construction-carried verification measured 2.399s total on vector429, including a 0.237s native proof delta and 0.299s current projection. The ordinary source remains the external mathematical oracle, immediate generated-call authentication is prefix-only and source-bound, and Windows retains an exact sequential fallback."
+    },
+    {
+      "path": "bench/number-field-round2-proof-resource-witness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Focused test-only witness for deterministic construction-carried terminal-proof equivalence across bounded parallel, forced-one-worker, and pthread-creation fallback paths, plus injected terminal-check failure and sanitizer lifecycle coverage; it is never linked into Sage.js."
     },
     {
       "path": "packages/flint/test/number_field_order_resource_ffi.c",
@@ -169,7 +176,7 @@
       "category": "external-library-bridge",
       "review_status": "accepted",
       "lane": "integration",
-      "rationale": "Host-neutral generated owned-resource ABI over one-column FLINT integer and rational matrices, providing distinct exact-vector type tags, variable-size entry ownership, canonical byte streams, structural arithmetic, dot products, and deterministic lifecycle accounting."
+      "rationale": "Host-neutral generated owned-resource ABI over one-column FLINT integer and rational matrices, providing distinct exact-vector type tags, variable-size entry ownership, canonical byte streams, structural arithmetic, dot products, and deterministic lifecycle accounting. Its perfect-power adapter repeatedly applies FLINT's mature extraction primitive into a two-entry owned vector; ordinary Python independently checks the exact identity and terminal primitive root before using that result."
     },
     {
       "path": "packages/flint/include/sagejs/ffi_algorithms.h",

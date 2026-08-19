@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.benchmark/number-field-vector429-public-v1",
+  "generated_at": "2026-08-18T21:00:00.269Z",
+  "case_id": "pari-round4-vector-429",
+  "degree": 64,
+  "sample_count": 3,
+  "target_us": 5000000,
+  "samples": [
+    {
+      "elapsed_us": 4731130,
+      "peak_rss_bytes": 747888640,
+      "basis_sha256": "8cd3e728367becb8f7c511e8bcdf1137439fa27ff5bb876df0a001a6c4e7328c",
+      "trace_sha256": "39bdd96b813d701eda0335017bb26fbd97dc697d9ef69eeb81afdc31df8a26a2",
+      "stage_us": {
+        "discriminant_decomposition": 412915,
+        "composite_local_order": 480743,
+        "native_local_orders": 2459493,
+        "om_auto_local_order": 4117777,
+        "global_certification": 233904
+      }
+    },
+    {
+      "elapsed_us": 4780264,
+      "peak_rss_bytes": 739692544,
+      "basis_sha256": "8cd3e728367becb8f7c511e8bcdf1137439fa27ff5bb876df0a001a6c4e7328c",
+      "trace_sha256": "dc7a36f6e73451747e0f4a512a1981d8e4f163dc65f60e16f4f10f7423f28ffb",
+      "stage_us": {
+        "discriminant_decomposition": 418679,
+        "composite_local_order": 469543,
+        "native_local_orders": 2497085,
+        "om_auto_local_order": 4155843,
+        "global_certification": 234428
+      }
+    },
+    {
+      "elapsed_us": 4730427,
+      "peak_rss_bytes": 763424768,
+      "basis_sha256": "8cd3e728367becb8f7c511e8bcdf1137439fa27ff5bb876df0a001a6c4e7328c",
+      "trace_sha256": "0d596fed9c52d86c21237159baad24076df05ccf1b8b972c4e87c67ba924ce63",
+      "stage_us": {
+        "discriminant_decomposition": 422009,
+        "composite_local_order": 514410,
+        "native_local_orders": 2436859,
+        "om_auto_local_order": 4120217,
+        "global_certification": 225308
+      }
+    }
+  ],
+  "statistics": {
+    "min_us": 4730427,
+    "median_us": 4731130,
+    "max_us": 4780264,
+    "median_under_target": true,
+    "all_under_target": true
+  },
+  "exact": {
+    "authenticated_projection_sha256": "8cd3e728367becb8f7c511e8bcdf1137439fa27ff5bb876df0a001a6c4e7328c",
+    "canonical_fixture_sha256": "118f5b4ab9fbe4e9e8a7a95842e542a5588ea94eadf9c65d44833130583123c9",
+    "corpus_sha256": "03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f",
+    "equation_order_index_sha256": "7400316a2e4a20d6486a7ea8366fdca064a12b3a8bda6ee560370b7d3d5152b8",
+    "field_discriminant_sha256": "a5465e6e6e73afc7b303fa554c028d35852b18fb859ca257f58743dffc4d04b8",
+    "certified": true,
+    "native_authenticated_round2_proof": true,
+    "om_current_call_attested": true,
+    "global_state": "authenticated-local-portfolio"
+  },
+  "suppressed_p7_round2_control": {
+    "timed_out": true,
+    "timeout_ms": 15000,
+    "peak_rss_bytes": 381136896
+  },
+  "post_validation_verification": {
+    "generated_at": "2026-08-18T21:35:57.765Z",
+    "sample_count": 3,
+    "samples_us": [4733276, 4718116, 4686681],
+    "peak_rss_bytes": [738459648, 743682048, 746217472],
+    "min_us": 4686681,
+    "median_us": 4718116,
+    "max_us": 4733276,
+    "median_under_target": true,
+    "all_under_target": true,
+    "authenticated_projection_sha256": "8cd3e728367becb8f7c511e8bcdf1137439fa27ff5bb876df0a001a6c4e7328c",
+    "certified": true
+  },
+  "final_validated_source_sha256": {
+    "maximal_order_engine": "e027c8407751104043123f3566716c92d40e3c1d6fe5e111961b8111d77b40c6",
+    "bl_composite_kernel": "0b30352bfb1210c03851b238d7a1520f77a512321956d22bd7ac4bc25e63e750",
+    "buchmann_lenstra": "9769e193ab062a5872b63a7067a4759dd2896ebc26cb05f86ab709ea08d2a2cf",
+    "local_parallel_worker": "bbaad7dc8d475dc16b364c7554d9001a49ca69afcef41d50c937fcecacb1bef9",
+    "multiprocessing_host": "c20776c92cd9217003ec3aa97047719a9cac214304a47c7abf80ca3ab6ce540d",
+    "exact_native_runtime": "c9bcd40418e2b41419c7482916a6a8d8df4267dab7cd1da0ade25133c9777187",
+    "native_kernel_index": "c69614d5d97f4e1c22fe9363e8f2ce90640b017c407a02f899613328a04b061b",
+    "task_runtime_manifest": "1d242f4a6cf13863faa7a83aabe2003295edb11114b9077d61c1d1b308ff2476"
+  },
+  "runtime": {
+    "node": "v26.7.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "release": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "sagejs.benchmark/number-field-round2-independent-primes-v1",
+  "date": "2026-08-18",
+  "platform": "linux-x64",
+  "implementation": {
+    "degreeRange": [64, 96],
+    "merge": "scaled shared-basis generators followed by FLINT modular elementary-divisor row HNF",
+    "mergeProof": "each local overorder contains the equation order, so at common denominator D the generator lattice contains D*Z^n and its largest elementary divisor divides D",
+    "workerBudgetBytes": 536870912,
+    "maximumWorkers": 5,
+    "nonPthreadFallback": "exact sequential independent-prime solves"
+  },
+  "vector429": {
+    "degree": 64,
+    "primes": [2, 3, 5],
+    "quietProductionNativeMicros": 1846863,
+    "canonicalSha256": "a708a4a6ff595fa0a1e4ed4f8a8b266b47829f4685270aae72ba4ae385a0dfdd",
+    "forcedCompoundedSequentialEqual": true,
+    "closure": {
+      "valid": true,
+      "reason": "checked"
+    },
+    "denominator": "2479491129600000",
+    "index": "57538919248459494451321550834212915698200263356262647436516740156348317792090901476387135832397125016662781818006487950064239305306967311168567851972032807407657713372850940646164903439012681538355344281470613815517277535898654507283161760265954607674660169193874819219934947436716011910535833380385995142233335063904256000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "timingNote": "one quiet fresh high-level native_order_from_polynomial call after the generated adapter rebuild; overlapping diagnostic samples were discarded"
+  },
+  "degree90": {
+    "degree": 90,
+    "primeCount": 18,
+    "directRound2Micros": 4548697,
+    "localCriticalPathMicros": 4528713,
+    "modularMergeMicros": 14476,
+    "unpackMicros": 3627,
+    "publishMicros": 1393,
+    "cleanupMicros": 427,
+    "genericMergeMicros": 3214790,
+    "canonicalSha256": "2c5dade462e02facdccd5a8fa41fdcbb1791ddbe16bf2fc002d41ffc3a9920a3",
+    "forcedGenericHnfEqual": true,
+    "dynamicScheduling": {
+      "processGroup": 487170,
+      "dynamicRound2Micros": 3922759,
+      "staticRound2Micros": 4050572,
+      "dynamicLocalCriticalMicros": 3906130,
+      "staticLocalCriticalMicros": 4029060,
+      "speedup": 1.032583,
+      "canonicalEqual": true,
+      "dynamicReconstructedLanes": [
+        {"initialSlot": 0, "primes": [151, 281, 479156551], "jobWallMicros": 1927858},
+        {"initialSlot": 1, "primes": [449, 4373, 7, 31], "jobWallMicros": 2828357},
+        {"initialSlot": 2, "primes": [233, 7901, 1620217, 1597], "jobWallMicros": 3232615},
+        {"initialSlot": 3, "primes": [683, 3037, 11, 2683361], "jobWallMicros": 3905893},
+        {"initialSlot": 4, "primes": [1093, 129113, 953], "jobWallMicros": 2199591}
+      ],
+      "staticModuloLanes": [
+        {"lane": 0, "primes": [151, 3037, 7, 31], "jobWallMicros": 2909345},
+        {"lane": 1, "primes": [449, 4373, 1620217, 1597], "jobWallMicros": 3405733},
+        {"lane": 2, "primes": [233, 7901, 11, 2683361], "jobWallMicros": 4028836},
+        {"lane": 3, "primes": [683, 281, 953], "jobWallMicros": 2456436},
+        {"lane": 4, "primes": [1093, 129113, 479156551], "jobWallMicros": 1795418}
+      ],
+      "note": "one quiet dynamic/static pair; dynamic lanes are reconstructed from the mutex FIFO claim rule and measured per-job wall durations"
+    },
+    "public": {
+      "status": "timeout",
+      "boundSeconds": 120,
+      "observation": "censored after the bound with no stage record because the diagnostic emitted only on completion",
+      "inference": "the separately bounded 4.55-second native batch rules out the former native Round-2 tail; the residual is downstream, but this run cannot distinguish merge, materialization, or certification"
+    },
+    "status": "native direct batch below five seconds and full-18 generic-HNF oracle exact; public path still exceeds 120 seconds downstream"
+  }
+}

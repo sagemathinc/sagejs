@@ -42,6 +42,8 @@
     "src/lib/sagejs/number_fields/composite_field_analysis.py",
     "src/lib/sagejs/number_fields/composite_local_merge.py",
     "src/lib/sagejs/number_fields/discriminant_components.py",
+    "src/lib/sagejs/number_fields/discriminant_flint_primitives.py",
+    "src/lib/sagejs/number_fields/discriminant_prefactor_kernel.py",
     "src/lib/sagejs/number_fields/field_analysis_resource.py",
     "src/lib/sagejs/number_fields/maximal_order_contracts.py",
     "src/lib/sagejs/number_fields/maximal_order_certification.py",
