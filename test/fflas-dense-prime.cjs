@@ -127,10 +127,10 @@ except ValueError:
     pass
 print('fflas public semantics ok')
 `, { SAGEJS_NATIVE_TRACE: "1" });
-  assert.match(output, /Matrix\.multiply GF\(97\) 40x40 -> declared-fflas-isolated/);
-  assert.match(output, /Matrix\.rref GF\(97\) 40x44 -> declared-fflas-isolated/);
-  assert.match(output, /Matrix\.rank GF\(97\) 64x68 -> declared-fflas-isolated/);
-  assert.match(output, /Matrix\.right_kernel GF\(97\) 40x44 -> declared-fflas-isolated/);
+  assert.match(output, /Matrix\.multiply GF\(97\) 40x40 -> declared-fflas-adapter/);
+  assert.match(output, /Matrix\.rref GF\(97\) 40x44 -> declared-fflas-adapter/);
+  assert.match(output, /Matrix\.rank GF\(97\) 64x68 -> declared-fflas-adapter/);
+  assert.match(output, /Matrix\.right_kernel GF\(97\) 40x44 -> declared-fflas-adapter/);
   assert.match(output, /Matrix\.multiply GF\(97\) 8x8 -> declared-flint-isolated/);
   assert.match(output, /Matrix\.rank GF\(97\) 8x8 -> declared-flint-isolated/);
   assert.match(output, /Matrix\.right_kernel GF\(97\) 8x8 -> declared-flint-isolated/);
@@ -204,7 +204,7 @@ print('fflas dynamic adapter semantics ok')
   assert.match(output, /fflas dynamic adapter semantics ok/);
 });
 
-test("clean native and SEA build paths establish optional FFLAS first", () => {
+test("clean native builds retain optional FFLAS outside the portable release pack", () => {
   const commands = bootstrapBuildPlan().map(({ command, arguments: args }) =>
     `${command} ${args.join(" ")}`
   );
@@ -219,11 +219,13 @@ test("clean native and SEA build paths establish optional FFLAS first", () => {
   ]);
 
   const buildSource = readFileSync(join(root, "scripts", "build.cjs"), "utf8");
-  assert.match(buildSource, /generatedFlintAdapter\) && existsSync\(generatedFflasAdapter/);
+  assert.match(buildSource, /"--reconcile-installed"/);
+  assert.match(buildSource, /if \(existsSync\(generatedFlintAdapter\)\)/);
+  assert.doesNotMatch(buildSource, /generatedFflasAdapter/);
 
   const sea = readFileSync(join(root, "scripts", "build-sea.cjs"), "utf8");
-  assert.match(sea, /native\/sagejs_fflas_ffi\.node/);
-  assert.match(sea, /native\/sagejs_fflas_ffi_manifest\.json/);
+  assert.doesNotMatch(sea, /native\/sagejs_fflas_ffi\.node/);
+  assert.doesNotMatch(sea, /native\/sagejs_fflas_ffi_manifest\.json/);
   const resources = readFileSync(join(root, "tools", "resources.ts"), "utf8");
   assert.match(resources, /name === "@sagemath\/sagejs-fflas"/);
   assert.match(resources, /FFLAS_FFI_MANIFEST_ASSET/);
@@ -238,5 +240,6 @@ test("clean native and SEA build paths establish optional FFLAS first", () => {
 
   const scripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
   assert.doesNotMatch(scripts["build:sea:python"], /packages\/fflas/);
-  assert.match(scripts["build:sea:math"], /packages\/flint build.*packages\/fflas build.*packages\/graph build.*pnpm run build/);
+  assert.match(scripts["build:sea:math"], /packages\/flint build.*packages\/graph build.*pnpm run build/);
+  assert.doesNotMatch(scripts["build:sea:math"], /packages\/(?:fflas|m4ri)/);
 });
