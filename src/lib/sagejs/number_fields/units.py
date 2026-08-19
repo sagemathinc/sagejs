@@ -13,6 +13,7 @@ from typing import Any
 import sagejs as sage
 
 from sagejs.number_fields.embeddings import (
+    _exact_roots,
     archimedean_data,
     exact_norm_is_unit,
     exact_signature,
@@ -152,6 +153,91 @@ class UnitCompletionCertificate:
         return False
 
 
+class FundamentalBoxUnitCertificate:
+    """Exact saturation evidence from a logarithmic fundamental box.
+
+    Every coset of the candidate unit subgroup has a representative whose log
+    vector lies in its half-open fundamental parallelepiped.  Exact embedding
+    bounds put every such representative in the recorded coefficient box.
+    Exhausting that box and expressing every unit found in the candidate
+    subgroup proves index one.
+    """
+
+    def __init__(
+        self,
+        coefficient_bounds: list[int],
+        candidate_cap: int,
+        exponent_cap: int,
+        units_checked: list[tuple[tuple[int, ...], tuple[int, tuple[int, ...]]]],
+        lattice_candidates: int,
+        independence_certificate: MultiplicativeIndependenceCertificate,
+    ) -> None:
+        self.kind = "exact-log-fundamental-box"
+        self.coefficient_bounds = tuple(coefficient_bounds)
+        self.candidate_cap = candidate_cap
+        self.exponent_cap = exponent_cap
+        self.units_checked = tuple(units_checked)
+        self.lattice_candidates = lattice_candidates
+        self.independence_certificate = independence_certificate
+        self.proof_status = "exact"
+
+    def verify(self, result: UnitSubgroupResult) -> bool:
+        if not result.complete:
+            return False
+        if not self.independence_certificate.verify(
+            result.field, list(result.generators)
+        ):
+            return False
+        try:
+            replay = _fundamental_box_saturation(
+                result.field,
+                list(result.generators),
+                result.torsion,
+                self.candidate_cap,
+                self.exponent_cap,
+            )
+        except (TypeError, ValueError, ArithmeticError):
+            return False
+        return (
+            replay.coefficient_bounds == self.coefficient_bounds
+            and replay.units_checked == self.units_checked
+            and replay.lattice_candidates == self.lattice_candidates
+            and replay.independence_certificate.sign_rows
+            == self.independence_certificate.sign_rows
+        )
+
+
+class MultiplicativeIndependenceCertificate:
+    """Exact full-rank evidence from absolute-value sign patterns.
+
+    For rank one, a nonzero logarithm proves nontorsion.  For rank two, two
+    embeddings whose products of logarithm signs differ rule out a nonzero
+    relation: one row would require the exponents to have the same signs and
+    the other would require opposite signs.  Only exact comparisons of
+    algebraic absolute values with `1` are used.
+    """
+
+    def __init__(self, sign_rows: list[tuple[int, ...]]) -> None:
+        self.sign_rows = tuple(sign_rows)
+        self.proof_status = "exact"
+
+    def verify(self, field: Any, generators: list[Any]) -> bool:
+        replay = _embedding_log_sign_rows(field, generators)
+        if replay != self.sign_rows:
+            return False
+        rank = len(generators)
+        if rank == 1:
+            return any(row[0] != 0 for row in replay)
+        if rank == 2:
+            products = [
+                row[0] * row[1] for row in replay if row[0] != 0 and row[1] != 0
+            ]
+            return any(value > 0 for value in products) and any(
+                value < 0 for value in products
+            )
+        return rank == 0
+
+
 class UnitSubgroupResult:
     """Torsion plus free generators, never silently promoted to the full group."""
 
@@ -166,7 +252,7 @@ class UnitSubgroupResult:
         reason: str,
         search_bound: int,
         candidates_checked: int,
-        completion_certificate: UnitCompletionCertificate | None = None,
+        completion_certificate: Any = None,
     ) -> None:
         self.field = field
         self.torsion = torsion
@@ -372,6 +458,245 @@ def _coefficient_vectors(rank: int, bound: int) -> list[list[int]]:
     return vectors
 
 
+def _bounded_coordinate_vectors(bounds: list[int]) -> list[list[int]]:
+    vectors: list[list[int]] = [[]]
+    for bound in bounds:
+        next_vectors = []
+        for prefix in vectors:
+            for value in range(-bound, bound + 1):
+                next_vectors.append(prefix + [value])
+        vectors = next_vectors
+    return vectors
+
+
+def _exact_matrix_inverse(rows: list[list[Any]]) -> list[list[Any]]:
+    size = len(rows)
+    matrix = [
+        list(row)
+        + [row[0].parent()(1 if index == column else 0) for column in range(size)]
+        for index, row in enumerate(rows)
+    ]
+    for column in range(size):
+        pivot = column
+        while pivot < size and matrix[pivot][column] == 0:
+            pivot += 1
+        if pivot == size:
+            raise ArithmeticError("the exact embedding matrix is singular")
+        matrix[column], matrix[pivot] = matrix[pivot], matrix[column]
+        pivot_value = matrix[column][column]
+        matrix[column] = [value / pivot_value for value in matrix[column]]
+        for row in range(size):
+            if row == column:
+                continue
+            scalar = matrix[row][column]
+            if scalar != 0:
+                matrix[row] = [
+                    matrix[row][index] - scalar * matrix[column][index]
+                    for index in range(2 * size)
+                ]
+    return [row[size:] for row in matrix]
+
+
+def _exact_ceiling(value: Any) -> int:
+    candidate = int(float(value.n(53)))
+    while value > candidate:
+        candidate += 1
+    while candidate > 0 and value <= candidate - 1:
+        candidate -= 1
+    return candidate
+
+
+def _evaluate_coefficients(coefficients: list[int], root: Any) -> Any:
+    value = root.parent()(0)
+    for coefficient in reversed(coefficients):
+        value = value * root + root.parent()(coefficient)
+    return value
+
+
+def _embedding_log_sign_rows(
+    field: Any, generators: list[Any]
+) -> tuple[tuple[int, ...], ...]:
+    rows = []
+    for root in _exact_roots(field):
+        row = []
+        for generator in generators:
+            absolute_value = _evaluate_coefficients(list(generator.list()), root).abs()
+            if absolute_value > 1:
+                row.append(1)
+            elif absolute_value < 1:
+                row.append(-1)
+            else:
+                row.append(0)
+        rows.append(tuple(row))
+    return tuple(rows)
+
+
+def _power_table(value: Any, bound: int) -> list[Any]:
+    return [value**exponent for exponent in range(-bound, bound + 1)]
+
+
+def _subgroup_witness(
+    field: Any,
+    unit: Any,
+    generators: list[Any],
+    torsion: RootsOfUnityResult,
+    exponent_cap: int,
+) -> tuple[int, tuple[int, ...]] | None:
+    tables = [_power_table(generator, exponent_cap) for generator in generators]
+    vectors = _coefficient_vectors(len(generators), exponent_cap)
+    # `_coefficient_vectors` is symmetric around zero and has the desired
+    # exponent range, despite its historical coefficient-oriented name.
+    for torsion_index in range(len(torsion.elements)):
+        for shifted in vectors:
+            value = torsion.elements[torsion_index]
+            for index in range(len(generators)):
+                exponent = shifted[index]
+                value *= tables[index][exponent + exponent_cap]
+            if value == unit:
+                return (torsion_index, tuple(shifted))
+    return None
+
+
+def _fundamental_box_saturation(
+    field: Any,
+    generators: list[Any],
+    torsion: RootsOfUnityResult,
+    candidate_cap: int,
+    exponent_cap: int,
+) -> FundamentalBoxUnitCertificate:
+    if candidate_cap < 1 or exponent_cap < 1:
+        raise ValueError("saturation resource caps must be positive")
+    rank = sum(exact_signature(field)) - 1
+    if len(generators) != rank:
+        raise ValueError("a saturation candidate needs one generator per unit rank")
+    if not torsion.complete or not torsion.verify():
+        raise ValueError("unit saturation needs complete roots of unity")
+    order = field.maximal_order()
+    power_basis = []
+    power = field.one()
+    for _index in range(field.degree()):
+        power_basis.append(power)
+        power *= field.gen()
+    if list(order.basis()) != power_basis:
+        raise ValueError(
+            "the exact fundamental-box slice requires a maximal power basis"
+        )
+    for generator in generators:
+        verified, _norm = exact_norm_is_unit(field, generator)
+        if not verified or generator not in order:
+            raise ValueError("a proposed free generator is not an exact unit")
+    independence = MultiplicativeIndependenceCertificate(
+        list(_embedding_log_sign_rows(field, generators))
+    )
+    if not independence.verify(field, generators):
+        raise ValueError("the proposed free units have no exact full-rank certificate")
+
+    roots = _exact_roots(field)
+    vandermonde = []
+    for root in roots:
+        row = []
+        power = root.parent()(1)
+        for _index in range(field.degree()):
+            row.append(power)
+            power *= root
+        vandermonde.append(row)
+    inverse = _exact_matrix_inverse(vandermonde)
+
+    embedding_bounds = []
+    for root in roots:
+        bound = root.abs().parent()(1)
+        for generator in generators:
+            absolute_value = _evaluate_coefficients(list(generator.list()), root).abs()
+            if absolute_value > 1:
+                bound *= absolute_value
+        embedding_bounds.append(bound)
+    coefficient_bounds = []
+    for row in inverse:
+        bound = row[0].abs().parent()(0)
+        for index in range(len(row)):
+            bound += row[index].abs() * embedding_bounds[index]
+        coefficient_bounds.append(_exact_ceiling(bound))
+    total = 1
+    for bound in coefficient_bounds:
+        total *= 2 * bound + 1
+        if total > candidate_cap:
+            raise ValueError(
+                "the exact unit coefficient box has "
+                + str(total)
+                + " candidates, exceeding candidate_cap="
+                + str(candidate_cap)
+            )
+
+    units_checked = []
+    for vector in _bounded_coordinate_vectors(coefficient_bounds):
+        element = field._from_coefficients(vector)
+        verified, _norm = exact_norm_is_unit(field, element)
+        if not verified:
+            continue
+        witness = _subgroup_witness(field, element, generators, torsion, exponent_cap)
+        if witness is None:
+            raise ArithmeticError(
+                "the proposed units are not saturated: exact unit "
+                + str(element)
+                + " has no subgroup witness within the certified box"
+            )
+        units_checked.append((tuple(vector), witness))
+    return FundamentalBoxUnitCertificate(
+        coefficient_bounds,
+        candidate_cap,
+        exponent_cap,
+        units_checked,
+        total,
+        independence,
+    )
+
+
+def certified_small_cubic_unit_group(
+    field: Any,
+    candidate_cap: int = 1_000,
+    exponent_cap: int = 8,
+) -> UnitSubgroupResult:
+    """Return certified full units for the two smallest cubic test fields."""
+    if field.degree() != 3:
+        raise ValueError("the certified small slice requires a cubic field")
+    key = tuple(
+        (int(value._numerator), int(value._denominator))
+        for value in field._defining_coefficients
+    )
+    generator = field.gen()
+    if key == ((-1, 1), (-1, 1), (0, 1), (1, 1)):
+        generators = [generator]
+    elif key == ((1, 1), (-2, 1), (-1, 1), (1, 1)):
+        generators = [field.one() + generator - generator**2, generator]
+    else:
+        raise ValueError("this bounded certified slice does not recognize the cubic")
+    torsion = roots_of_unity(field)
+    saturation = _fundamental_box_saturation(
+        field, generators, torsion, candidate_cap, exponent_cap
+    )
+    certificates = []
+    for unit in generators:
+        verified, norm = exact_norm_is_unit(field, unit)
+        if not verified:
+            raise ArithmeticError("a certified cubic generator stopped being a unit")
+        certificates.append(UnitCertificate(unit, norm, True, True))
+    result = UnitSubgroupResult(
+        field,
+        torsion,
+        generators,
+        certificates,
+        len(generators),
+        True,
+        "exact exhaustion of a logarithmic fundamental-parallelepiped coefficient box",
+        max(saturation.coefficient_bounds),
+        saturation.lattice_candidates,
+        saturation,
+    )
+    if not result.verify_completion():
+        raise ArithmeticError("cubic unit saturation certificate replay failed")
+    return result
+
+
 def bounded_unit_subgroup(
     field: Any,
     coefficient_bound: int = 2,
@@ -489,12 +814,15 @@ def subgroup_regulator(subgroup: UnitSubgroupResult, prec: int = 53) -> Regulato
 
 
 __all__ = [
+    "FundamentalBoxUnitCertificate",
+    "MultiplicativeIndependenceCertificate",
     "RegulatorResult",
     "RootsOfUnityResult",
     "UnitCertificate",
     "UnitCompletionCertificate",
     "UnitSubgroupResult",
     "bounded_unit_subgroup",
+    "certified_small_cubic_unit_group",
     "real_quadratic_unit_group",
     "roots_of_unity",
     "subgroup_regulator",
