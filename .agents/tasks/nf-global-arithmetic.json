@@ -70,15 +70,16 @@
     }
   ],
   "handoff": {
-    "summary": "Adds exact all-degree signatures and deterministic embedding order, certified roots-of-unity slices, replay-certified full real-quadratic units, explicit incomplete higher-rank unit searches, exact QQ and imaginary-quadratic class groups, and a proof-status-aware binary64 class-number-formula report.",
+    "summary": "Adds exact all-degree signatures and deterministic embedding order; certified roots of unity; replay-certified full real-quadratic units; complete exact bounded unit and class-group slices for x^3-x-1 and x^3-x^2-2*x+1; exact QQ and imaginary-quadratic class groups; and proof-status-aware binary64 regulators and class-number-formula reports. Cubic unit saturation combines exact embedding sign independence with exhaustive 125-element fundamental-box enumeration. Cubic class number one combines Minkowski bound 2 with independently replayed prime decomposition and an explicit principal identity-ideal witness.",
     "risks": [
       "QQbar numerical approximation currently discards Arb radii, so embeddings and regulators are explicitly non-rigorous binary64 approximations.",
-      "Nonquadratic unit saturation and class groups remain incomplete until prime-ideal factorization, ideal inversion/reduction, principality witnesses, LLL/enumeration, and enclosure transports land.",
+      "Nonquadratic completeness is intentionally limited to two recognized cubic power-basis fields and explicit resource caps; all other general bounded searches remain incomplete.",
       "Imaginary-quadratic class groups have exact reduced-form enumeration evidence but do not claim general ideal-product principal-element witnesses."
     ],
     "next_steps": [
       "Integration should add thin lazy public NumberField methods and strict/precompile manifests.",
-      "After the prime-ideal lane lands, add Minkowski prime generation, exact principality witnesses, and a complete bounded nonquadratic class-group slice.",
+      "Run the focused combined runtime test against the current integrated prime-ideal runtime; the available frozen SEA predates that module, so this gate is deferred to integration.",
+      "Extend the exact Minkowski relation path beyond the empty-prime-list class-number-one case with bounded principality witnesses.",
       "Add Arb enclosure transport before advertising rigorous embedding matrices or regulators above binary64."
     ]
   }

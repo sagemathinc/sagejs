@@ -9,9 +9,16 @@ const test = require("node:test");
 
 const root = join(__dirname, "..");
 const combineSource = process.env.SAGEJS_GLOBAL_ARITHMETIC_COMBINED === "1";
-const sagejs = combineSource
-  ? join(root, "build", "sea", process.platform === "win32" ? "sagejs.exe" : "sagejs")
-  : join(root, "bin", "sagejs");
+const sagejs =
+  process.env.SAGEJS_TEST_EXECUTABLE ||
+  (combineSource
+    ? join(
+        root,
+        "build",
+        "sea",
+        process.platform === "win32" ? "sagejs.exe" : "sagejs",
+      )
+    : join(root, "bin", "sagejs"));
 
 function combinedSource(source) {
   const directory = join(root, "src", "lib", "sagejs", "number_fields");
@@ -52,8 +59,8 @@ function run(source) {
 test("global arithmetic internals preserve exact and incomplete proof states", () => {
   const output = run(String.raw`
 from sagejs.number_fields.embeddings import archimedean_data, exact_signature
-from sagejs.number_fields.units import RootsOfUnityResult, UnitCertificate, UnitCompletionCertificate, UnitSubgroupResult, bounded_unit_subgroup, real_quadratic_unit_group, roots_of_unity
-from sagejs.number_fields.class_groups import analytic_class_number_formula_report, bounded_class_group
+from sagejs.number_fields.units import RootsOfUnityResult, UnitCertificate, UnitCompletionCertificate, UnitSubgroupResult, bounded_unit_subgroup, certified_small_cubic_unit_group, real_quadratic_unit_group, roots_of_unity
+from sagejs.number_fields.class_groups import analytic_class_number_formula_report, bounded_class_group, certified_small_cubic_class_group
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -150,6 +157,67 @@ try:
     raise AssertionError("an incomplete search supplied a regulator")
 except ValueError:
     pass
+
+Km = NumberField(x**3 - x - 1, "a")
+units_m = certified_small_cubic_unit_group(Km)
+classes_m = certified_small_cubic_class_group(Km)
+assert units_m.complete and units_m.unit_rank == 1
+assert units_m.verify_completion()
+assert units_m.certificates[0].verify(Km)
+assert 0.2811 < units_m.regulator().value < 0.2813
+assert classes_m.complete and classes_m.order() == 1
+assert classes_m.minkowski_bound == 2
+assert classes_m.certificate.verify(max_elements=1)
+assert classes_m.has_principal_element_witnesses
+assert classes_m.certificate.principal_ideal_witnesses[0].verify(Km)
+report_m = analytic_class_number_formula_report(
+    Km, 0.368409320715826821, units_m, classes_m
+)
+assert report_m.inputs_complete and report_m.compatible
+
+Kr = NumberField(x**3 - x**2 - 2*x + 1, "a")
+units_r = certified_small_cubic_unit_group(Kr)
+classes_r = bounded_class_group(Kr)
+assert units_r.complete and units_r.unit_rank == 2
+assert units_r.verify_completion()
+assert all(certificate.verify(Kr) for certificate in units_r.certificates)
+assert 0.5253 < units_r.regulator().value < 0.5256
+assert classes_r.complete and classes_r.order() == 1
+assert classes_r.certificate.verify(max_elements=1)
+assert classes_r.has_principal_element_witnesses
+report_r = analytic_class_number_formula_report(
+    Kr, 0.300259818355755650, units_r, classes_r
+)
+assert report_r.inputs_complete and report_r.compatible
+assert units_m.completion_certificate.coefficient_bounds == (2, 2, 2)
+assert units_m.candidates_checked == 125
+assert units_r.completion_certificate.coefficient_bounds == (2, 2, 2)
+assert units_r.candidates_checked == 125
+try:
+    certified_small_cubic_unit_group(Km, candidate_cap=124)
+    raise AssertionError("a truncated unit box silently claimed saturation")
+except ValueError:
+    pass
+try:
+    certified_small_cubic_class_group(Km, max_minkowski_bound=1)
+    raise AssertionError("a truncated Minkowski search silently claimed completeness")
+except ValueError:
+    pass
+
+forged_cubic_unit = units_m.generators[0]**2
+forged_cubic_units = UnitSubgroupResult(
+    Km,
+    units_m.torsion,
+    [forged_cubic_unit],
+    [UnitCertificate(forged_cubic_unit, 1, True, True)],
+    1,
+    True,
+    "forged index-two unit subgroup",
+    units_m.search_bound,
+    units_m.candidates_checked,
+    units_m.completion_certificate,
+)
+assert not forged_cubic_units.verify_completion()
 
 print("number-field-global-arithmetic-ok")
 `);
