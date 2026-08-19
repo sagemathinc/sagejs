@@ -162,6 +162,83 @@ test("native Dirichlet L-functions include actual derivatives", () => {
   }
 });
 
+test("native Riemann zeta jets, xi, and batches preserve precision", () => {
+  const real = (value, precision = 160) =>
+    flint.complexFromReals(
+      flint.realFromString(String(value), precision),
+      flint.realFromBigInt(0n, precision),
+    );
+  const argument = real(2);
+  const jet = flint.riemannZetaJet(argument, 0, 2, false, 160);
+  assert.equal(jet.length, 2);
+  assert.equal(flint.complexPrecision(jet[0]), 160);
+  assert.ok(
+    Math.abs(flint.complexRealDouble(jet[0]) - Math.PI ** 2 / 6) <
+      1e-15,
+  );
+  assert.ok(
+    Math.abs(flint.complexRealDouble(jet[1]) + 0.9375482543158438) <
+      1e-15,
+  );
+
+  const deflated = flint.riemannZetaJet(real(1), 0, 1, true, 160)[0];
+  assert.ok(
+    Math.abs(flint.complexRealDouble(deflated) - 0.5772156649015329) <
+      1e-15,
+  );
+  const xi = flint.riemannXiStandardValue(real(0.5), 160);
+  assert.ok(
+    Math.abs(flint.complexRealDouble(xi) - 0.4971207781883141) <
+      1e-15,
+  );
+
+  const points = [real(2), real(3), real(-2)];
+  const values = flint.riemannZetaValues(points, 160);
+  assert.equal(values.length, points.length);
+  assert.ok(
+    Math.abs(flint.complexRealDouble(values[0]) - Math.PI ** 2 / 6) <
+      1e-15,
+  );
+  assert.ok(
+    Math.abs(flint.complexRealDouble(values[1]) - 1.2020569031595942) <
+      1e-15,
+  );
+  assert.equal(flint.complexRealDouble(values[2]), 0);
+  assert.throws(
+    () => flint.riemannZetaValues([], 53),
+    /between 1 and 100000/,
+  );
+});
+
+test("native batched Dirichlet L-values reuse one character", () => {
+  const group = flint.dirichletGroup(5n);
+  const points = [2n, 3n, 4n].map((value) =>
+    flint.complexFromReals(
+      flint.realFromBigInt(value, 100),
+      flint.realFromBigInt(0n, 100),
+    ),
+  );
+  const values = flint.dirichletLValues(group, 1n, points, 0, 100);
+  assert.equal(values.length, points.length);
+  for (let index = 0; index < points.length; index++) {
+    const scalar = flint.dirichletLValue(
+      group,
+      1n,
+      points[index],
+      0,
+      100,
+    );
+    assert.equal(
+      flint.complexRealDouble(values[index]),
+      flint.complexRealDouble(scalar),
+    );
+    assert.equal(
+      flint.complexImagDouble(values[index]),
+      flint.complexImagDouble(scalar),
+    );
+  }
+});
+
 test("native generalized Bernoulli numbers are exact", () => {
   const group = flint.dirichletGroup(5n);
   assert.deepEqual(

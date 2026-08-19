@@ -23,6 +23,57 @@ function parentKind(value: unknown): string | undefined {
   return kind(Reflect.get(Object(value), "_parent"));
 }
 
+function exactScalarKey(value: unknown): string {
+  const numerator = Reflect.get(Object(value), "_numerator");
+  const denominator = Reflect.get(Object(value), "_denominator");
+  if (numerator !== undefined && denominator !== undefined) {
+    return `${String(numerator)}/${String(denominator)}`;
+  }
+  return String(value);
+}
+
+function exactRows(value: unknown): unknown[][] {
+  if (!Array.isArray(value)) {
+    throw new SageSerializationError("number-field lattice rows are not an array");
+  }
+  return value.map((row) => {
+    if (!Array.isArray(row)) {
+      throw new SageSerializationError("a number-field lattice row is not an array");
+    }
+    return Array.from(row);
+  });
+}
+
+function sameExactRows(left: unknown, right: unknown): boolean {
+  let leftRows: unknown[][];
+  let rightRows: unknown[][];
+  try {
+    leftRows = exactRows(left);
+    rightRows = exactRows(right);
+  } catch {
+    return false;
+  }
+  return leftRows.length === rightRows.length && leftRows.every((row, index) =>
+    row.length === rightRows[index].length && row.every((entry, column) =>
+      exactScalarKey(entry) === exactScalarKey(rightRows[index][column])
+    )
+  );
+}
+
+function isNumberFieldIdeal(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  const order = Reflect.get(Object(value), "_order");
+  return kind(order) === "NumberFieldOrder" &&
+    Array.isArray(Reflect.get(Object(value), "_basis_rows"));
+}
+
+function isNumberFieldPrimeIdeal(value: unknown): boolean {
+  return isNumberFieldIdeal(value) &&
+    Reflect.has(Object(value), "_rational_prime") &&
+    Reflect.has(Object(value), "_ramification_index") &&
+    Reflect.has(Object(value), "_residue_degree");
+}
+
 function encodeParent(value: unknown, context: EncodeContext): WireValue {
   switch (kind(value)) {
     case "NumberField":
@@ -41,6 +92,13 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         kind: "CyclotomicField",
         order: Reflect.get(Object(value), "_order"),
       });
+    case "NumberFieldOrder":
+      return context.encode({
+        kind: "NumberFieldOrder",
+        field: Reflect.get(Object(value), "_field"),
+        basis: exactRows(Reflect.get(Object(value), "_basis_rows")),
+        maximal: Boolean(callMethod(value, "is_maximal")),
+      });
     default:
       throw new SageSerializationError("unsupported number-field parent");
   }
@@ -52,6 +110,28 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
     case "NumberField": return callGlobal("NumberField", [data.polynomial, data.name]);
     case "QuadraticField": return callGlobal("QuadraticField", [data.discriminant]);
     case "CyclotomicField": return callGlobal("CyclotomicField", [data.order]);
+    case "NumberFieldOrder": {
+      if (typeof data.maximal !== "boolean") {
+        throw new SageSerializationError(
+          "serialized number-field order maximality flag is invalid",
+        );
+      }
+      const basis = exactRows(data.basis);
+      const field = data.field;
+      const order = data.maximal === true
+        ? callMethod(field, "maximal_order")
+        : callMethod(
+          field,
+          "order",
+          basis.map((row) => callMethod(field, "_from_coefficients", [row])),
+        );
+      if (!sameExactRows(Reflect.get(Object(order), "_basis_rows"), basis)) {
+        throw new SageSerializationError(
+          "decoded number-field order does not have the serialized exact lattice",
+        );
+      }
+      return order;
+    }
     default:
       throw new SageSerializationError(
         `unsupported number-field parent ${String(data.kind)}`,
@@ -104,23 +184,117 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
 }
 
 function encodeIdeal(value: unknown, context: EncodeContext): WireValue {
-  return context.encode({
-    parent: Reflect.get(Object(value), "_parent"),
-    generator: Reflect.get(Object(value), "_generator"),
-  });
+  if (kind(value) === "GaussianPrimeIdeal") {
+    return context.encode({
+      kind: "GaussianPrimeIdeal",
+      parent: Reflect.get(Object(value), "_parent"),
+      generator: Reflect.get(Object(value), "_generator"),
+    });
+  }
+  if (!isNumberFieldIdeal(value)) {
+    throw new SageSerializationError("unsupported number-field ideal");
+  }
+  const payload: Record<string, unknown> = {
+    kind: isNumberFieldPrimeIdeal(value)
+      ? "NumberFieldPrimeIdeal"
+      : "NumberFieldIdeal",
+    order: Reflect.get(Object(value), "_order"),
+    basis: exactRows(Reflect.get(Object(value), "_basis_rows")),
+  };
+  if (isNumberFieldPrimeIdeal(value)) {
+    payload.prime = Reflect.get(Object(value), "_rational_prime");
+    payload.ramificationIndex = Reflect.get(
+      Object(value),
+      "_ramification_index",
+    );
+    payload.residueDegree = Reflect.get(Object(value), "_residue_degree");
+  }
+  return context.encode(payload);
+}
+
+/*
+ * `ideal.to_dict()` intentionally carries live instance tokens and therefore
+ * cannot be its own durable SagePack payload: a decoded field is necessarily
+ * a new live instance.  The codec instead records the exact field/order as a
+ * graph parent.  Every ideal referring to that record receives the same
+ * decoded order object, while an unrelated isomorphic field is never used as
+ * an implicit transport target.
+ */
+
+function decodeNumberFieldIdeal(data: Record<string, unknown>): unknown {
+  const order = data.order;
+  const basis = exactRows(data.basis);
+  const field = callMethod(order, "number_field");
+  const generators = basis.map((row) =>
+    callMethod(field, "_from_coefficients", [row])
+  );
+  const ideal = callMethod(order, "ideal", generators);
+  if (!sameExactRows(Reflect.get(Object(ideal), "_basis_rows"), basis)) {
+    throw new SageSerializationError(
+      "decoded number-field ideal does not have the serialized exact lattice",
+    );
+  }
+  return ideal;
+}
+
+function decodeNumberFieldPrimeIdeal(data: Record<string, unknown>): unknown {
+  const order = data.order;
+  const basis = exactRows(data.basis);
+  const decomposition = callMethod(order, "factor_rational_prime", [data.prime]);
+  const factors = Reflect.get(Object(decomposition), "_factors");
+  if (!Array.isArray(factors)) {
+    throw new SageSerializationError(
+      "certified prime decomposition returned no factor list",
+    );
+  }
+  for (const pair of factors) {
+    if (!Array.isArray(pair) || pair.length !== 2) continue;
+    const primeIdeal = pair[0];
+    if (
+      sameExactRows(Reflect.get(Object(primeIdeal), "_basis_rows"), basis) &&
+      Number(Reflect.get(Object(primeIdeal), "_rational_prime")) ===
+        Number(data.prime) &&
+      Number(Reflect.get(Object(primeIdeal), "_ramification_index")) ===
+        Number(data.ramificationIndex) &&
+      Number(Reflect.get(Object(primeIdeal), "_residue_degree")) ===
+        Number(data.residueDegree)
+    ) {
+      // Return the independently authenticated object, including its certified
+      // residue presentation.  Serialized metadata never constructs a prime.
+      return primeIdeal;
+    }
+  }
+  throw new SageSerializationError(
+    "serialized prime-ideal lattice or local metadata failed authentication",
+  );
 }
 
 function decodeIdeal(payload: WireValue, context: DecodeContext): unknown {
   const data = context.decode(payload) as Record<string, unknown>;
-  return callMethod(data.parent, "_from_serialized_prime_ideal", [data.generator]);
+  if (
+    data.kind === "GaussianPrimeIdeal" ||
+    (data.kind === undefined && data.parent !== undefined)
+  ) {
+    return callMethod(data.parent, "_from_serialized_prime_ideal", [data.generator]);
+  }
+  if (data.kind === "NumberFieldIdeal") return decodeNumberFieldIdeal(data);
+  if (data.kind === "NumberFieldPrimeIdeal") {
+    return decodeNumberFieldPrimeIdeal(data);
+  }
+  throw new SageSerializationError(
+    `unsupported number-field ideal ${String(data.kind)}`,
+  );
 }
 
 export const numberFieldParentCodec: SageCodec = {
   type: "sage.number_fields.parent",
   version: 1,
-  test: (value) => ["NumberField", "QuadraticField", "CyclotomicField"].includes(
-    kind(value) ?? "",
-  ),
+  test: (value) => [
+    "NumberField",
+    "QuadraticField",
+    "CyclotomicField",
+    "NumberFieldOrder",
+  ].includes(kind(value) ?? ""),
   encode: encodeParent,
   decode: decodeParent,
 };
@@ -138,7 +312,8 @@ export const numberFieldElementCodec: SageCodec = {
 export const numberFieldIdealCodec: SageCodec = {
   type: "sage.number_fields.ideal",
   version: 1,
-  test: (value) => kind(value) === "GaussianPrimeIdeal",
+  test: (value) => kind(value) === "GaussianPrimeIdeal" ||
+    isNumberFieldIdeal(value),
   encode: encodeIdeal,
   decode: decodeIdeal,
 };

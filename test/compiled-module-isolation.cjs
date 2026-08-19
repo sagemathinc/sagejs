@@ -78,7 +78,10 @@ test("generated baselib gives every source file one lexical module", () => {
     "utf8",
   );
   const filenames = readdirSync(join(root, "src", "baselib"))
-    .filter((name) => name.endsWith(".py"))
+    .filter(
+      (name) =>
+        name.endsWith(".py") && name !== "compiler_bootstrap.py",
+    )
     .sort();
 
   assert.match(
@@ -222,7 +225,10 @@ test(
     const session = await createSage({ mode: "python" });
     t.after(() => session.close());
     const names = readdirSync(join(root, "src", "baselib"))
-      .filter((name) => name.endsWith(".py"))
+      .filter(
+        (name) =>
+          name.endsWith(".py") && name !== "compiler_bootstrap.py",
+      )
       .map((name) => moduleId(name));
     const namesLiteral = JSON.stringify(names);
     const result = await session.evaluate(

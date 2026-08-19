@@ -504,3 +504,23 @@ test("quadratic ideal lattice composition satisfies the full group laws", async 
     await session.close();
   }
 });
+
+test("exact algebraic roots have a certified stable order", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "roots = (x*(x-QQ(1)/2^2000)).roots(QQbar, multiplicities=False)",
+            "[len(roots), roots[0] == 0, roots[1] > 0]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[2, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

@@ -178,15 +178,16 @@ test("Dirichlet L-functions agree with Sage values and derivatives", async () =>
       (
         await session.evaluate(
           "G = DirichletGroup(5)\n" +
-            "chi = G.0\n" +
+          "chi = G.0\n" +
             "L = chi.lfunction()\n" +
             "[L(2), L.derivative(2), L.derivative(2, 2), " +
-            "L.precision()]",
+            "L.precision(), L.values([2, 2, 2 + I])[0] == L(2), " +
+            "L.values([2, 2])[0] == L.values([2, 2])[1]]",
         )
       ).repr,
       "[0.958716122716883 + 0.145565876785090*I, " +
         "0.0505097931323040 - 0.0628837125364825*I, " +
-        "-0.0591413218047955 + 0.00611865758282376*I, 53]",
+        "-0.0591413218047955 + 0.00611865758282376*I, 53, True, True]",
     );
   } finally {
     await session.close();
@@ -206,6 +207,23 @@ test("generalized Bernoulli numbers agree exactly with Sage", async () => {
       ).repr,
       "[0, -1/5*I - 3/5, 0, 6/5*I + 12/5, 0, " +
         "-86/5*I - 148/5, 0, 2366/5*I + 3892/5]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Kronecker symbols vanish for a shared factor of two", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "[kronecker(-8, 4), kronecker(-20, 4), " +
+            "kronecker(5, 8), kronecker(-3, 8)]",
+        )
+      ).repr,
+      "[0, 0, -1, -1]",
     );
   } finally {
     await session.close();

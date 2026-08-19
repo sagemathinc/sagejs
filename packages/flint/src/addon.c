@@ -3022,30 +3022,11 @@ static int compare_qqbar_values(
     qqbar_srcptr left,
     qqbar_srcptr right)
 {
-    double left_real = arf_get_d(
-        arb_midref(acb_realref(QQBAR_ENCLOSURE(left))),
-        ARF_RND_NEAR);
-    double right_real = arf_get_d(
-        arb_midref(acb_realref(QQBAR_ENCLOSURE(right))),
-        ARF_RND_NEAR);
-    double left_imag;
-    double right_imag;
+    int comparison = qqbar_cmp_re(left, right);
 
-    if (left_real < right_real)
-        return -1;
-    if (left_real > right_real)
-        return 1;
-    left_imag = arf_get_d(
-        arb_midref(acb_imagref(QQBAR_ENCLOSURE(left))),
-        ARF_RND_NEAR);
-    right_imag = arf_get_d(
-        arb_midref(acb_imagref(QQBAR_ENCLOSURE(right))),
-        ARF_RND_NEAR);
-    if (left_imag < right_imag)
-        return -1;
-    if (left_imag > right_imag)
-        return 1;
-    return 0;
+    if (comparison != 0)
+        return comparison;
+    return qqbar_cmp_im(left, right);
 }
 
 static int compare_exact_roots(
@@ -4593,6 +4574,18 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"dirichletLValue", NULL,
             sagejs_dirichlet_l_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"riemannZetaJet", NULL,
+            sagejs_riemann_zeta_jet,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"riemannZetaValues", NULL,
+            sagejs_riemann_zeta_values,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"riemannXiStandardValue", NULL,
+            sagejs_riemann_xi_standard_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletLValues", NULL,
+            sagejs_dirichlet_l_values,
             NULL, NULL, NULL, napi_default, NULL},
         {"dirichletBernoulli", NULL,
             sagejs_dirichlet_bernoulli,

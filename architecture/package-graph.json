@@ -78,7 +78,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 635000,
+      "max_source_bytes": 650000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -177,6 +177,87 @@
       "modules": ["sagejs.number_fields"],
       "files": [],
       "prefixes": ["src/lib/sagejs/number_fields/"]
+    },
+    {
+      "id": "number-field-prime-arithmetic",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "python-stdlib",
+        "number-field-algorithms"
+      ],
+      "modules": [
+        "sagejs.number_fields.ideal_arithmetic",
+        "sagejs.number_fields.prime_ideals"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/ideal_arithmetic.py",
+        "src/lib/sagejs/number_fields/prime_ideals.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "number-field-zeta-functions",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 140000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "numeric-compat",
+        "python-stdlib",
+        "number-field-algorithms",
+        "number-field-prime-arithmetic"
+      ],
+      "modules": [
+        "sagejs.number_fields.analytic_zeta",
+        "sagejs.number_fields.dedekind_zeta",
+        "sagejs.number_fields.euler_products",
+        "sagejs.number_fields.general_zeta",
+        "sagejs.number_fields.quadratic_characters",
+        "sagejs.number_fields.riemann_zeta",
+        "sagejs.number_fields.zeta_coefficients"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/analytic_zeta.py",
+        "src/lib/sagejs/number_fields/dedekind_zeta.py",
+        "src/lib/sagejs/number_fields/euler_products.py",
+        "src/lib/sagejs/number_fields/general_zeta.py",
+        "src/lib/sagejs/number_fields/quadratic_characters.py",
+        "src/lib/sagejs/number_fields/riemann_zeta.py",
+        "src/lib/sagejs/number_fields/zeta_coefficients.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "number-field-global-arithmetic",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "python-stdlib",
+        "number-field-algorithms",
+        "number-field-prime-arithmetic"
+      ],
+      "modules": [
+        "sagejs.number_fields.class_groups",
+        "sagejs.number_fields.embeddings",
+        "sagejs.number_fields.units"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/class_groups.py",
+        "src/lib/sagejs/number_fields/embeddings.py",
+        "src/lib/sagejs/number_fields/units.py"
+      ],
+      "prefixes": []
     },
     {
       "id": "polynomial-algorithms",
@@ -311,7 +392,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 255000,
+      "max_source_bytes": 260000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",

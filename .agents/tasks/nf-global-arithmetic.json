@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-global-arithmetic",
+  "title": "nf-global-arithmetic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact embeddings/signatures, roots of unity, bounded certified units, regulators, class groups, and class-number formula internals.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/embeddings.py",
+    "src/lib/sagejs/number_fields/units.py",
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "test/number-field-global-arithmetic.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma",
+      "existing imaginary quadratic implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "env SAGEJS_GLOBAL_ARITHMETIC_COMBINED=1 node --test test/number-field-global-arithmetic.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.502,
+      "started_at": "2026-08-19T03:25:51.188Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "faddda554d29acc4bd128bf651db5ad2062c9898117ee8ce6f9bb3193758468f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.461,
+      "started_at": "2026-08-19T03:29:13.718Z",
+      "commit": "4ddc5f3adadf3af24ae68ac356cac0b4ae52b294",
+      "workspace_fingerprint": "4b296ce991d0d3e61ef8eb7e0c14bb9e1532e4d0b004794bb3b4c0abbcda1287",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_GLOBAL_ARITHMETIC_COMBINED=1 node --test test/number-field-global-arithmetic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.963,
+      "started_at": "2026-08-19T03:29:43.772Z",
+      "commit": "4ddc5f3adadf3af24ae68ac356cac0b4ae52b294",
+      "workspace_fingerprint": "4b296ce991d0d3e61ef8eb7e0c14bb9e1532e4d0b004794bb3b4c0abbcda1287",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds exact all-degree signatures and deterministic embedding order; certified roots of unity; replay-certified full real-quadratic units; complete exact bounded unit and class-group slices for x^3-x-1 and x^3-x^2-2*x+1; exact QQ and imaginary-quadratic class groups; and proof-status-aware binary64 regulators and class-number-formula reports. Cubic unit saturation combines exact embedding sign independence with exhaustive 125-element fundamental-box enumeration. Cubic class number one combines Minkowski bound 2 with independently replayed prime decomposition and an explicit principal identity-ideal witness.",
+    "risks": [
+      "QQbar numerical approximation currently discards Arb radii, so embeddings and regulators are explicitly non-rigorous binary64 approximations.",
+      "Nonquadratic completeness is intentionally limited to two recognized cubic power-basis fields and explicit resource caps; all other general bounded searches remain incomplete.",
+      "Imaginary-quadratic class groups have exact reduced-form enumeration evidence but do not claim general ideal-product principal-element witnesses."
+    ],
+    "next_steps": [
+      "Integration should add thin lazy public NumberField methods and strict/precompile manifests.",
+      "Run the focused combined runtime test against the current integrated prime-ideal runtime; the available frozen SEA predates that module, so this gate is deferred to integration.",
+      "Extend the exact Minkowski relation path beyond the empty-prime-list class-number-one case with bounded principality witnesses.",
+      "Add Arb enclosure transport before advertising rigorous embedding matrices or regulators above binary64."
+    ]
+  }
+}

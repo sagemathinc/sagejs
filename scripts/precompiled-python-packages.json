@@ -3,7 +3,19 @@
     "conway_polynomials",
     "mpmath",
     "sage.databases.conway",
-    "sagejs.elliptic_curves.lseries"
+    "sagejs.elliptic_curves.lseries",
+    "sagejs.number_fields.analytic_zeta",
+    "sagejs.number_fields.class_groups",
+    "sagejs.number_fields.dedekind_zeta",
+    "sagejs.number_fields.embeddings",
+    "sagejs.number_fields.euler_products",
+    "sagejs.number_fields.general_zeta",
+    "sagejs.number_fields.ideal_arithmetic",
+    "sagejs.number_fields.prime_ideals",
+    "sagejs.number_fields.quadratic_characters",
+    "sagejs.number_fields.riemann_zeta",
+    "sagejs.number_fields.units",
+    "sagejs.number_fields.zeta_coefficients"
   ],
   "taskRuntimeImports": [
     "sagejs.number_fields.local_parallel_worker",

@@ -432,6 +432,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:dirichletLValues",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:dirichletRootNumber",
       "family": "dirichlet",
       "decision": "migrate-to-declared-ffi"
@@ -1596,6 +1601,21 @@
       "id": "napi:@sagemath/sagejs-flint:realToString",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiStandardValue",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannZetaJet",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannZetaValues",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:smalljacCapabilities",

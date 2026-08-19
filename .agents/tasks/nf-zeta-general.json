@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-zeta-general",
+  "title": "nf-zeta-general",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement signature metadata and a general arbitrary-complex Dedekind-zeta reference evaluator with honest error diagnostics.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/general_zeta.py",
+    "src/lib/sagejs/number_fields/analytic_zeta.py",
+    "test/number-field-analytic-zeta-reference.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython",
+      "JavaScript",
+      "Sage/PARI",
+      "Magma",
+      "quadratic product route"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-analytic-zeta-reference.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.98,
+      "started_at": "2026-08-19T03:30:25.387Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "a9a6b4c44e07eb3b6f09ad0c095f92e74495d6cece152750a7f5799167a2e19c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-analytic-zeta-reference.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.768,
+      "started_at": "2026-08-19T03:31:22.632Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "df5968c6259ec4f9a4f2a8e9ed59e40b50e74234484152578801a4d1973f3292",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added exact QQbar signature/embedding metadata, the frozen general-zeta coefficient-provider and resource contracts, and a readable arbitrary-precision inverse-Mellin/Meijer-G evaluator for xi_K, Lambda_K, raw zeta values, residues, low derivatives, functional-equation reflection, and batches. The module docstring is the derivation memo. Independent prefix/range/mesh refinements and every proof-status diagnostic are explicit; unstable scalar requests fail instead of returning plausible values. Focused CPython tests cover QQ, an exact signature certificate, a nonabelian mixed-signature cubic against Sage/PARI values and derivatives, functional equation, batching, preflight-before-provider, and rejection of an underresolved totally complex quartic.",
+    "risks": [
+      "This is deliberately a mpmath reference, not the production Acb kernel; Meijer-G evaluation is too slow for plots and large batches.",
+      "Coefficient and quadrature tails are refinement-tested but not proved, so every result remains a numerical approximation with rigorous=false.",
+      "Raw derivatives at exact nonpositive gamma singularities still require a reciprocal-gamma jet; values and trivial-zero orders are supported.",
+      "The batch route shares coefficient generation but not Meijer-G kernel preparation."
+    ],
+    "next_steps": [
+      "Integration should add thin NumberField.signature()/embedding metadata and DedekindZetaFunction routing hooks outside this lane's claims.",
+      "Adapt Project 3's zeta_coefficients(bound, degree=..., splitting_provider=...) function behind an object exposing coefficients(bound), preserving [a_1,...,a_B] indexing.",
+      "Use the native audit's packed Acb design for a production kernel while preserving separate arithmetic-radius and analytic-remainder diagnostics.",
+      "Run declared broad strict/native and four-platform gates only after integration; root explicitly deferred broad builds during this lane."
+    ]
+  }
+}

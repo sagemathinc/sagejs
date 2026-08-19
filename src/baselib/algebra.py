@@ -207,6 +207,21 @@ class RationalField(Field):
             in ["RDF", "RealField"]
         )
 
+    def zeta_function(
+        self,
+        prec: Any = 53,
+        max_imaginary_part: Any = 0,
+        algorithm: str = "auto",
+    ) -> Any:
+        if algorithm == "pari":
+            raise NotImplementedError("algorithm='pari' is unavailable in Sage.js")
+        if algorithm not in ("auto", "flint", "arb"):
+            raise ValueError("Riemann zeta algorithm must be 'auto' or 'flint'")
+        constructor = runtime.reflect.get(runtime.global_object, "RiemannZeta")
+        if constructor is runtime.undefined:
+            raise RuntimeError("the Riemann zeta evaluator is unavailable")
+        return constructor(prec)
+
 
 ZZ = IntegerRing("Integer Ring")
 ZZ._kind = "ZZ"
