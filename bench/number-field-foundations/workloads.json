@@ -1,0 +1,134 @@
+{
+  "schema": "sagejs.number-fields/foundations-benchmarks-v1",
+  "corpusSha256": "ef172f99342088196888154c940baa895643b88f5ce17e2c3396f9672adc25e0",
+  "phases": [
+    {
+      "id": "phase-1-quadratic-zeta",
+      "description": "Riemann and quadratic zeta scalar, second-jet, residue, completion, and batch witnesses",
+      "fields": [
+        "qq",
+        "imaginary-d23",
+        "real-d61-index-2"
+      ],
+      "data": [
+        "analytic"
+      ],
+      "benchmarkModes": [
+        "cold-scalar",
+        "warm-scalar",
+        "warm-jet-2",
+        "warm-batch",
+        "cached-batch"
+      ],
+      "expectedResultSha256": "74c9122e6b0b3b63906401cf6da0ab3c4f4a036b801b7cf50d24133209d3d025"
+    },
+    {
+      "id": "phase-2-prime-decomposition",
+      "description": "Good, index-dividing, tame, and wild rational-prime decompositions",
+      "fields": [
+        "imaginary-index-5",
+        "real-d61-index-2",
+        "cubic-dedekind-nonmonogenic",
+        "quartic-complex",
+        "sextic-mixed"
+      ],
+      "data": [
+        "primeDecompositions"
+      ],
+      "primes": [
+        2,
+        3,
+        5,
+        7,
+        13,
+        61,
+        1009,
+        65537
+      ],
+      "benchmarkModes": [
+        "producer-cold",
+        "producer-warm",
+        "certificate-check",
+        "cached",
+        "prime-stream"
+      ],
+      "expectedResultSha256": "9bbaa8f032b62956bcac9e9155a17d3553ce30c9c56c03a3788bb72f7ca2b38d"
+    },
+    {
+      "id": "phase-3-zeta-coefficients",
+      "description": "Exact a_1 through a_64 and compact local splitting inputs",
+      "fields": [
+        "imaginary-d20",
+        "cubic-real",
+        "quartic-mixed",
+        "quintic-mixed",
+        "sextic-mixed"
+      ],
+      "data": [
+        "zetaCoefficients",
+        "primeDecompositions"
+      ],
+      "coefficientBound": 64,
+      "benchmarkModes": [
+        "cold",
+        "warm",
+        "cached",
+        "streamed-local-data"
+      ],
+      "expectedResultSha256": "7dd7eff6f6964345d560889b0411b0a4207bb8db157fac57031cb3c973e703f4"
+    },
+    {
+      "id": "phase-4-general-zeta",
+      "description": "General analytic values and jets across all signatures and degrees 3 through 6",
+      "fields": [
+        "cubic-real",
+        "cubic-mixed",
+        "quartic-real",
+        "quartic-mixed",
+        "quartic-complex",
+        "quintic-mixed",
+        "sextic-mixed"
+      ],
+      "data": [
+        "analytic",
+        "signature",
+        "fieldDiscriminant",
+        "zetaCoefficients"
+      ],
+      "benchmarkModes": [
+        "cold-scalar",
+        "warm-scalar",
+        "reflection",
+        "warm-batch",
+        "cached-coefficients"
+      ],
+      "expectedResultSha256": "1ac1474d183f6e4560f5cf41511bdcf9e927ef770e86911bda2055bec603ab8d"
+    },
+    {
+      "id": "phase-5-global-arithmetic",
+      "description": "Unit ranks 0 through 3, large units, noncyclic class groups, regulators, and residue checks",
+      "fields": [
+        "imaginary-d84",
+        "imaginary-d10007",
+        "real-d61-index-2",
+        "real-d184-large-unit",
+        "cubic-mixed",
+        "quartic-real",
+        "sextic-mixed"
+      ],
+      "data": [
+        "globalInvariants",
+        "signature",
+        "fieldDiscriminant",
+        "residueAtOne"
+      ],
+      "benchmarkModes": [
+        "producer",
+        "certificate-check",
+        "cached",
+        "analytic-class-number-formula"
+      ],
+      "expectedResultSha256": "e55e121ede4c29d5c955dfd3883a8b3532fe1a4f173e16774c5817961b80eb0a"
+    }
+  ]
+}

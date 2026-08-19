@@ -6375,6 +6375,8 @@ def kronecker(left: Any, right: Any) -> Any:
     while b % runtime.bigint(2) == 0:
         b //= runtime.bigint(2)
         twos += 1
+    if twos and a % runtime.bigint(2) == 0:
+        return 0
     if twos % 2 == 1:
         residue = a % runtime.bigint(8)
         if residue == 0 or residue == 2 or residue == 4 or residue == 6:

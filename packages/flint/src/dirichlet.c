@@ -920,6 +920,273 @@ napi_value sagejs_dirichlet_l_value(
     return answer;
 }
 
+napi_value sagejs_riemann_zeta_jet(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[5];
+    napi_value answer;
+    sagejs_complex *input_value;
+    mpfr_prec_t precision;
+    ulong first_order;
+    ulong count;
+    ulong total;
+    bool deflate;
+    napi_valuetype deflate_type;
+    acb_t input;
+    acb_ptr jet;
+    fmpz_t factorial;
+    ulong index;
+
+    if (!require_arguments(env, info, 5, args))
+        return NULL;
+    input_value = sagejs_native_unwrap_complex(env, args[0]);
+    if (input_value == NULL ||
+        !number_to_ulong(env, args[1], &first_order) ||
+        !number_to_ulong(env, args[2], &count) ||
+        !get_precision(env, args[4], &precision))
+        return NULL;
+    if (!check_napi(env, napi_typeof(env, args[3], &deflate_type)))
+        return NULL;
+    if (deflate_type != napi_boolean)
+    {
+        napi_throw_type_error(env, NULL, "deflate must be a boolean");
+        return NULL;
+    }
+    if (!check_napi(env, napi_get_value_bool(env, args[3], &deflate)))
+        return NULL;
+    if (count == 0 || first_order > 4096 || count > 4096 ||
+        first_order > UWORD_MAX - count)
+    {
+        napi_throw_range_error(env, NULL,
+            "Riemann zeta jet orders exceed resource limits");
+        return NULL;
+    }
+    total = first_order + count;
+    if (total > (ulong) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "Riemann zeta jet is too large");
+        return NULL;
+    }
+
+    acb_init(input);
+    acb_from_complex(input, input_value, precision);
+    jet = _acb_vec_init((slong) total);
+    acb_dirichlet_zeta_jet(
+        jet, input, deflate ? 1 : 0, (slong) total, precision);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) count, &answer)))
+    {
+        _acb_vec_clear(jet, (slong) total);
+        acb_clear(input);
+        return NULL;
+    }
+    fmpz_init(factorial);
+    for (index = 0; index < count; index++)
+    {
+        ulong order = first_order + index;
+        napi_value value;
+
+        if (order != 0)
+        {
+            fmpz_fac_ui(factorial, order);
+            acb_mul_fmpz(jet + order, jet + order, factorial, precision);
+        }
+        value = complex_from_acb(env, jet + order, precision);
+        if (value == NULL || !check_napi(env,
+            napi_set_element(env, answer, (uint32_t) index, value)))
+        {
+            fmpz_clear(factorial);
+            _acb_vec_clear(jet, (slong) total);
+            acb_clear(input);
+            return NULL;
+        }
+    }
+    fmpz_clear(factorial);
+    _acb_vec_clear(jet, (slong) total);
+    acb_clear(input);
+    return answer;
+}
+
+static int require_complex_array(
+    napi_env env,
+    napi_value value,
+    acb_ptr *points,
+    uint32_t *length,
+    mpfr_prec_t precision)
+{
+    bool is_array;
+    uint32_t count;
+    uint32_t index;
+    acb_ptr result;
+
+    if (!check_napi(env, napi_is_array(env, value, &is_array)))
+        return 0;
+    if (!is_array || !check_napi(env,
+        napi_get_array_length(env, value, &count)))
+    {
+        if (!is_array)
+            napi_throw_type_error(env, NULL, "points must be an array");
+        return 0;
+    }
+    if (count == 0 || count > 100000)
+    {
+        napi_throw_range_error(env, NULL,
+            "points must contain between 1 and 100000 entries");
+        return 0;
+    }
+    result = _acb_vec_init((slong) count);
+    for (index = 0; index < count; index++)
+    {
+        napi_value item;
+        sagejs_complex *input;
+
+        if (!check_napi(env, napi_get_element(env, value, index, &item)))
+        {
+            _acb_vec_clear(result, (slong) count);
+            return 0;
+        }
+        input = sagejs_native_unwrap_complex(env, item);
+        if (input == NULL)
+        {
+            _acb_vec_clear(result, (slong) count);
+            return 0;
+        }
+        acb_from_complex(result + index, input, precision);
+    }
+    *points = result;
+    *length = count;
+    return 1;
+}
+
+static napi_value complex_array_from_acb(
+    napi_env env,
+    acb_srcptr values,
+    uint32_t count,
+    mpfr_prec_t precision)
+{
+    napi_value result;
+    uint32_t index;
+
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) count, &result)))
+        return NULL;
+    for (index = 0; index < count; index++)
+    {
+        napi_value item = complex_from_acb(env, values + index, precision);
+        if (item == NULL || !check_napi(env,
+            napi_set_element(env, result, index, item)))
+            return NULL;
+    }
+    return result;
+}
+
+napi_value sagejs_riemann_zeta_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    mpfr_prec_t precision;
+    acb_ptr points;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !get_precision(env, args[1], &precision) ||
+        !require_complex_array(env, args[0], &points, &count, precision))
+        return NULL;
+    for (index = 0; index < count; index++)
+        acb_dirichlet_zeta(points + index, points + index, precision);
+    answer = complex_array_from_acb(env, points, count, precision);
+    _acb_vec_clear(points, (slong) count);
+    return answer;
+}
+
+napi_value sagejs_dirichlet_l_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[5];
+    sagejs_dirichlet_group_value *wrapped;
+    dirichlet_char_t character;
+    mpfr_prec_t precision;
+    ulong derivative;
+    acb_ptr points;
+    acb_ptr jet;
+    fmpz_t factorial;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 5, args) ||
+        (wrapped = unwrap_group(env, args[0])) == NULL ||
+        !initialized_character(env, character, wrapped, args[1]))
+        return NULL;
+    if (!number_to_ulong(env, args[3], &derivative))
+    {
+        dirichlet_char_clear(character);
+        return NULL;
+    }
+    if (derivative > 4096)
+    {
+        napi_throw_range_error(env, NULL,
+            "Dirichlet L-function derivative is too large");
+        dirichlet_char_clear(character);
+        return NULL;
+    }
+    if (!get_precision(env, args[4], &precision) ||
+        !require_complex_array(env, args[2], &points, &count, precision))
+    {
+        dirichlet_char_clear(character);
+        return NULL;
+    }
+    jet = _acb_vec_init((slong) derivative + 1);
+    fmpz_init(factorial);
+    if (derivative != 0)
+        fmpz_fac_ui(factorial, derivative);
+    for (index = 0; index < count; index++)
+    {
+        acb_dirichlet_l_jet(
+            jet, points + index, wrapped->value,
+            character, 0, (slong) derivative + 1, precision);
+        if (derivative != 0)
+            acb_mul_fmpz(
+                jet + derivative, jet + derivative,
+                factorial, precision);
+        acb_set(points + index, jet + derivative);
+    }
+    answer = complex_array_from_acb(env, points, count, precision);
+    fmpz_clear(factorial);
+    _acb_vec_clear(jet, (slong) derivative + 1);
+    _acb_vec_clear(points, (slong) count);
+    dirichlet_char_clear(character);
+    return answer;
+}
+
+napi_value sagejs_riemann_xi_standard_value(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_complex *input_value;
+    mpfr_prec_t precision;
+    acb_t input;
+    acb_t result;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    input_value = sagejs_native_unwrap_complex(env, args[0]);
+    if (input_value == NULL || !get_precision(env, args[1], &precision))
+        return NULL;
+    acb_init(input);
+    acb_init(result);
+    acb_from_complex(input, input_value, precision);
+    acb_dirichlet_xi(result, input, precision);
+    answer = complex_from_acb(env, result, precision);
+    acb_clear(result);
+    acb_clear(input);
+    return answer;
+}
+
 napi_value sagejs_dirichlet_bernoulli(
     napi_env env, napi_callback_info info)
 {

@@ -35,6 +35,14 @@ napi_value sagejs_dirichlet_root_number(
     napi_env env, napi_callback_info info);
 napi_value sagejs_dirichlet_l_value(
     napi_env env, napi_callback_info info);
+napi_value sagejs_riemann_zeta_jet(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_riemann_zeta_values(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_riemann_xi_standard_value(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_l_values(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_dirichlet_bernoulli(
     napi_env env, napi_callback_info info);
 

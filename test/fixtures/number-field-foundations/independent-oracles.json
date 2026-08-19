@@ -1,0 +1,1126 @@
+{
+  "schema": "sagejs.number-fields/independent-oracles-v1",
+  "source": {
+    "system": "Magma",
+    "version": "2.18.5",
+    "executableDefault": "/home/user/bin/magma",
+    "generator": "upstream-tests/sage/number-field-foundations/regenerate-magma.cjs",
+    "processModel": "one persistent process for the full corpus"
+  },
+  "scope": "Exact invariants and prime decompositions at 2, 3, and 5; analytic values remain Sage/PARI sourced.",
+  "heckeOscar": {
+    "status": "not-provisioned",
+    "note": "The regeneration host was probed; Julia and hence Hecke/Oscar were not available. They are not runtime or test dependencies."
+  },
+  "fields": [
+    {
+      "id": "imaginary-d3",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-3",
+      "classNumber": "1",
+      "rootsOfUnity": "6",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d4",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-4",
+      "classNumber": "1",
+      "rootsOfUnity": "4",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d7",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-7",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d20",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-20",
+      "classNumber": "2",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d23",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-23",
+      "classNumber": "3",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d84",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-84",
+      "classNumber": "4",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-d10007",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-10007",
+      "classNumber": "77",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "imaginary-index-5",
+      "degree": 2,
+      "signature": [
+        0,
+        1
+      ],
+      "fieldDiscriminant": "-39",
+      "classNumber": "4",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d5",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "5",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d8",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "8",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d12",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "12",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d13",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "13",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d61-index-2",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "61",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d184-large-unit",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "184",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cubic-real",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "fieldDiscriminant": "49",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "8"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "27"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "125"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cubic-mixed",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "fieldDiscriminant": "-23",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "8"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "27"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cubic-mixed-shift",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "fieldDiscriminant": "-23",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "8"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "27"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cubic-dedekind-nonmonogenic",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "fieldDiscriminant": "-503",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "27"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartic-real",
+      "degree": 4,
+      "signature": [
+        4,
+        0
+      ],
+      "fieldDiscriminant": "725",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 4,
+              "norm": "16"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 4,
+              "norm": "81"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 2,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartic-mixed",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "fieldDiscriminant": "-400",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 2,
+              "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 4,
+              "norm": "81"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 2,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartic-complex",
+      "degree": 4,
+      "signature": [
+        0,
+        2
+      ],
+      "fieldDiscriminant": "256",
+      "classNumber": "1",
+      "rootsOfUnity": "8",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 4,
+              "f": 1,
+              "norm": "2"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            },
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "9"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            },
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "25"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quintic-mixed",
+      "degree": 5,
+      "signature": [
+        1,
+        2
+      ],
+      "fieldDiscriminant": "2869",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 2,
+              "norm": "4"
+            },
+            {
+              "e": 1,
+              "f": 3,
+              "norm": "8"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 5,
+              "norm": "243"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 5,
+              "norm": "3125"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sextic-mixed",
+      "degree": 6,
+      "signature": [
+        2,
+        2
+      ],
+      "fieldDiscriminant": "49781",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 1,
+              "f": 6,
+              "norm": "64"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 6,
+              "norm": "729"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 5,
+              "norm": "3125"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
