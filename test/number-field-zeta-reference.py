@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# DISABLED: CPython/mpmath numerical oracle, not a compiler conformance fixture
 """CPython differential tests for quadratic Dedekind-zeta internals."""
 
 from __future__ import annotations
