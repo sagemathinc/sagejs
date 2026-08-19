@@ -79,6 +79,33 @@ int main(void)
     _Atomic uint32_t cancel = 0;
     int32_t status;
 
+    {
+        sagejs_g3j_divisor summands[2];
+        summands[0] = point;
+        summands[1] = point;
+        if (sagejs_g3j_sum(
+                5, f5, zero_h, summands, 2, 2, NULL,
+                &output, &diagnostics) != SAGEJS_G3J_OK ||
+            !divisor_equal(&output, &twice5) ||
+            diagnostics.group_operations != 2)
+            return fail("packed divisor batch sum");
+        if (sagejs_g3j_sum(
+                5, f5, zero_h, NULL, 0, 0, NULL,
+                &output, &diagnostics) != SAGEJS_G3J_OK ||
+            !divisor_equal(&output, &identity))
+            return fail("empty packed divisor sum");
+        if (sagejs_g3j_sum(
+                5, f5, zero_h, summands, 2, 1, NULL,
+                &output, &diagnostics) != SAGEJS_G3J_RESOURCE_LIMIT)
+            return fail("packed divisor sum operation budget");
+        cancel = 1;
+        if (sagejs_g3j_sum(
+                5, f5, zero_h, summands, 2, 2, &cancel,
+                &output, &diagnostics) != SAGEJS_G3J_CANCELLED)
+            return fail("packed divisor sum cancellation");
+        cancel = 0;
+    }
+
     if (sagejs_g3j_validate(5, f5, zero_h, &point) != SAGEJS_G3J_OK)
         return fail("valid point divisor rejected");
     if (sagejs_g3j_scalar_multiply(

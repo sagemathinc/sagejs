@@ -7,7 +7,10 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.group_structure import (
+    GroupOperationBudget,
     JacobianResourceLimitError,
+    basis_from_generators,
+    coordinates_in_basis,
     factor_integer_bounded,
     validate_factorization,
 )
@@ -209,12 +212,25 @@ class JacobianAbelianMap:
         domain: FiniteAbelianGroup,
         codomain: Any,
         generators: Any,
-        inverse_coordinates: dict[Any, tuple[Any, ...]],
+        inverse_coordinates: dict[Any, tuple[Any, ...]] | None = None,
+        *,
+        factorization: Any = None,
+        certificate: Any = None,
+        max_group_operations: int = 10_000_000,
+        max_baby_steps: int = 1_000_000,
+        max_memory_bytes: int = 256 * 1024 * 1024,
     ) -> None:
         self._domain = domain
         self._codomain = codomain
         self._generators = tuple(generators)
-        self._inverse_coordinates = dict(inverse_coordinates)
+        self._inverse_coordinates = (
+            {} if inverse_coordinates is None else dict(inverse_coordinates)
+        )
+        self._factorization = tuple(factorization or ())
+        self._certificate = certificate
+        self._max_group_operations = max_group_operations
+        self._max_baby_steps = max_baby_steps
+        self._max_memory_bytes = max_memory_bytes
 
     def __repr__(self) -> str:
         return "Certified abelian-group map into " + str(self._codomain)
@@ -241,7 +257,20 @@ class JacobianAbelianMap:
         divisor = self._codomain(divisor)
         coordinates = self._inverse_coordinates.get(divisor)
         if coordinates is None:
-            raise ValueError("the divisor is not in the certified coordinate table")
+            budget = GroupOperationBudget(
+                self._max_group_operations,
+                self._max_baby_steps,
+                self._max_memory_bytes,
+                "auto",
+            )
+            coordinates = coordinates_in_basis(
+                divisor,
+                self._generators,
+                self._domain.invariants(),
+                self._factorization,
+                budget,
+            )
+            self._inverse_coordinates[divisor] = coordinates
         return self._domain(coordinates)
 
     inverse = preimage
@@ -254,27 +283,36 @@ class JacobianAbelianMap:
         ):
             if not (order * generator).is_zero():
                 return False
-        if len(self._inverse_coordinates) != self._domain.order():
-            return False
         for divisor, coordinates in self._inverse_coordinates.items():
             if self(self._domain(coordinates)) != divisor:
                 return False
+        if self._certificate is not None:
+            if not self._codomain.verify_group_structure_certificate(
+                self._certificate,
+                max_group_operations=self._max_group_operations,
+                max_baby_steps=self._max_baby_steps,
+                max_memory_bytes=self._max_memory_bytes,
+            ):
+                return False
+        else:
+            budget = GroupOperationBudget(
+                self._max_group_operations,
+                self._max_baby_steps,
+                self._max_memory_bytes,
+                "reference",
+            )
+            _basis, orders = basis_from_generators(
+                self._generators,
+                self._domain.invariants(),
+                self._factorization,
+                budget,
+            )
+            product = 1
+            for order in orders:
+                product *= order
+            if product != self._domain.order():
+                return False
         return True
-
-
-def _extend_coordinates(
-    subgroup: dict[Any, tuple[Any, ...]], generator: Any, order: Any
-) -> dict[Any, tuple[Any, ...]] | None:
-    answer: dict[Any, tuple[Any, ...]] = {}
-    multiple = generator.parent().zero()
-    for coordinate in range(int(order)):
-        for divisor, old_coordinates in subgroup.items():
-            value = divisor + multiple
-            if value in answer:
-                return None
-            answer[value] = old_coordinates + (sage.ZZ(coordinate),)
-        multiple += generator
-    return answer
 
 
 def certified_abelian_group(
@@ -286,8 +324,13 @@ def certified_abelian_group(
     max_candidates: int = 5_000_000,
     max_generator_tests: int = 100_000,
     max_trial_divisions: int = 1_000_000,
+    max_random_elements: int = 594,
+    max_group_operations: int = 10_000_000,
+    max_baby_steps: int = 1_000_000,
+    max_memory_bytes: int = 256 * 1024 * 1024,
+    seed: Any = None,
 ) -> tuple[FiniteAbelianGroup, JacobianAbelianMap]:
-    """Construct generators and both maps by bounded exhaustive certification."""
+    """Construct a sampled exact basis and bounded explicit coordinate maps."""
     invariant_values = tuple(sage.ZZ(value) for value in invariants if value != 1)
     group = FiniteAbelianGroup(invariant_values)
     known_order = jacobian.order()
@@ -298,58 +341,57 @@ def certified_abelian_group(
         if factorization is None
         else validate_factorization(known_order, factorization)
     )
-    elements = jacobian.points(max_elements, max_candidates)
-    orders: dict[Any, Any] = {}
-    by_order: dict[Any, list[Any]] = {}
-    for element in elements:
-        order = element.order(
-            multiple=known_order,
-            factorization=factors,
-            algorithm="reference",
-        )
-        orders[element] = order
-        by_order.setdefault(order, []).append(element)
-
-    tests = [0]
-
-    def search(
-        index: int,
-        generators: tuple[Any, ...],
-        subgroup: dict[Any, tuple[Any, ...]],
-    ) -> tuple[tuple[Any, ...], dict[Any, tuple[Any, ...]]] | None:
-        if index == len(invariant_values):
-            if len(subgroup) == known_order:
-                return generators, subgroup
-            return None
-        target_order = invariant_values[index]
-        for candidate in by_order.get(target_order, []):
-            tests[0] += 1
-            if tests[0] > max_generator_tests:
-                error = JacobianResourceLimitError(
-                    "generator search exceeds max_generator_tests="
-                    + str(max_generator_tests)
+    result = jacobian._generic_group_basis(
+        factors,
+        max_random_elements=max_random_elements,
+        max_group_operations=max_group_operations,
+        max_baby_steps=max_baby_steps,
+        max_memory_bytes=max_memory_bytes,
+        seed=seed,
+        scalar_algorithm="auto",
+    )
+    if tuple(result["invariants"]) != invariant_values:
+        raise ArithmeticError("the certified basis disagrees with the structure")
+    generators = tuple(result["generators"])
+    certificate = jacobian._group_certificate_from_basis(result)
+    coordinate_table: dict[Any, tuple[Any, ...]] = {
+        jacobian.zero(): tuple(sage.ZZ(0) for _value in invariant_values)
+    }
+    # Retain the old complete table only for genuinely tiny groups. It remains
+    # an excellent independent oracle, while larger inverse queries use the
+    # bounded vector-DLP implementation lazily.
+    if known_order <= min(max_elements, 512):
+        try:
+            elements = jacobian.points(max_elements, max_candidates)
+            budget = GroupOperationBudget(
+                max_group_operations,
+                max_baby_steps,
+                max_memory_bytes,
+                "auto",
+            )
+            for element in elements:
+                coordinate_table[element] = coordinates_in_basis(
+                    element,
+                    generators,
+                    invariant_values,
+                    factors,
+                    budget,
                 )
-                error.known_structure = invariant_values
-                error.partial_generators = generators
-                raise error
-            extended = _extend_coordinates(subgroup, candidate, target_order)
-            if extended is None:
-                continue
-            result = search(index + 1, generators + (candidate,), extended)
-            if result is not None:
-                return result
-        return None
-
-    found = search(0, (), {jacobian.zero(): ()})
-    if found is None:
-        error = JacobianResourceLimitError(
-            "no certified generator tuple was found within the bounded enumeration"
-        )
-        error.known_structure = invariant_values
-        error.partial_generators = ()
-        raise error
-    generators, coordinate_table = found
-    homomorphism = JacobianAbelianMap(group, jacobian, generators, coordinate_table)
+        except JacobianResourceLimitError:
+            coordinate_table = {
+                jacobian.zero(): tuple(sage.ZZ(0) for _value in invariant_values)
+            }
+    homomorphism = JacobianAbelianMap(
+        group,
+        jacobian,
+        generators,
+        coordinate_table,
+        factorization=factors,
+        certificate=certificate,
+        max_group_operations=max_group_operations,
+        max_baby_steps=max_baby_steps,
+        max_memory_bytes=max_memory_bytes,
+    )
     if not homomorphism.verify():
         raise ArithmeticError("the certified abelian-group map failed verification")
     return group, homomorphism

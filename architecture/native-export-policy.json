@@ -747,6 +747,11 @@
       "decision": "retain-host-adapter"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:genus3JacobianSum",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:gmpVersion",
       "family": "metadata",
       "decision": "retain-host-adapter"

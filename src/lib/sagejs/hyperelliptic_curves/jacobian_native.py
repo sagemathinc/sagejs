@@ -187,6 +187,76 @@ def native_scalar_multiply(
     return answer, diagnostics
 
 
+def native_sum(
+    elements: Any,
+    *,
+    max_group_operations: Any = None,
+) -> tuple[Any, dict[str, int]] | None:
+    """Add a bounded packed genus-3 batch in one native call."""
+    values = list(elements)
+    if not values:
+        return None
+    jacobian = values[0].parent()
+    if any(value.parent() is not jacobian for value in values):
+        raise ValueError("every native sum element must have the same parent")
+    native = _backend_capability()
+    prime = _prime(jacobian)
+    if native is None or prime is None:
+        return None
+    backend, _scalar_function, capability = native
+    if runtime.integer_bigint(prime) > runtime.integer_bigint(
+        runtime.reflect.get(capability, "primeUpperBound")
+    ):
+        return None
+    sum_function = runtime.reflect.get(backend, "genus3JacobianSum")
+    if sum_function is runtime.undefined:
+        return None
+    operation_limit = (
+        max(1, len(values))
+        if max_group_operations is None
+        else _exact_integer(max_group_operations, "max_group_operations")
+    )
+    if operation_limit < 0:
+        raise ValueError("max_group_operations must be nonnegative")
+    packed_values = []
+    for value in values:
+        packed = _pack_divisor(value, prime)
+        for index in range(len(packed)):
+            packed_values.append(runtime.integer_bigint(packed[index]))
+    result = runtime.reflect.apply(
+        sum_function,
+        backend,
+        [
+            runtime.bigint(prime),
+            _pack_polynomial(jacobian.f(), 8, prime),
+            _pack_polynomial(jacobian.h(), 4, prime),
+            runtime.uint64_buffer(packed_values),
+            runtime.bigint(operation_limit),
+            runtime.undefined,
+        ],
+    )
+    status_name = str(runtime.reflect.get(result, "statusName"))
+    diagnostics_value = runtime.reflect.get(result, "diagnostics")
+    diagnostics = {
+        "groupOperations": int(
+            runtime.integer_bigint(
+                runtime.reflect.get(diagnostics_value, "groupOperations")
+            )
+        )
+    }
+    if status_name in ("resource_limit", "cancelled"):
+        raise RuntimeError(
+            "native genus-3 sum stopped with status " + repr(status_name)
+        )
+    if status_name != "ok":
+        raise ArithmeticError(
+            "native genus-3 sum failed with status " + repr(status_name)
+        )
+    return _unpack_divisor(
+        jacobian, runtime.reflect.get(result, "divisor")
+    ), diagnostics
+
+
 def native_element_order(
     divisor: Any,
     multiple: Any,

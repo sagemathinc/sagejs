@@ -2,7 +2,25 @@
 
 ## Status
 
-Planning document only. No implementation is part of this document.
+Implemented on the `higher-genus` branch on 2026-08-19. All eight phases are
+covered:
+
+- squarefree/cyclic deductions, checked factorization, and cached witnesses;
+- fast point-sum and full-support covering samplers;
+- Sutherland primary-basis construction and bounded recursive vector DLP;
+- certified generators, explicit forward/inverse maps, and replayable
+  versioned JSON certificates;
+- monic-`u` enumeration with exact factor/Hensel/CRT lifting;
+- a profiled one-crossing native genus-3 batch-sum primitive, retaining the
+  ordinary-Python fallback.
+
+The deterministic SageMath/Magma oracle scripts, focused randomized/exhaustive
+tests, and machine-readable benchmark receipt live under `bench/hyperelliptic`,
+`bench/results`, and `test/hyperelliptic-jacobian-group-structure.cjs`.
+The seeded Linux x86-64 receipt records 0.091 seconds for the order-2,160
+`GF(13)` structure and 0.048 seconds for the order-6,490 `GF(19)` basis after
+the exact group orders are known. Four-platform native receipts are recorded
+in the implementing commit and continuous-integration handoff.
 
 ## Purpose
 
