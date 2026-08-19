@@ -264,6 +264,8 @@ const integration = [
   "test/elliptic-curves.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
   "test/hyperelliptic-genus3-certified-oracle.cjs",
+  "test/hyperelliptic-genus3-certified.cjs",
+  "test/hyperelliptic-genus3-jacobian-search-differential.cjs",
   "test/hyperelliptic-jacobian.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",

@@ -6,15 +6,19 @@
   "lane": "hyperelliptic-curves",
   "status": "active",
   "owner": "user",
-  "objective": "Provide deterministic exact genus-3 oracle fixtures, stage-separated performance benchmarks through 10^6, and a pragmatic independent-backend audit for certified completion",
-  "base_commit": "d63d107ef21cc222d67dddf94ff1b0ad9c4ed996",
+  "objective": "Provide deterministic exact genus-3 oracle fixtures, native-search differential coverage, stage-separated performance benchmarks through 10^6, and a pragmatic independent-backend audit for certified completion",
+  "base_commit": "e55588114ebd46d313cba2cdc619b5aea10ba994",
   "claims": [
     "bench/rforest/benchmark-genus3-certified.cjs",
     "bench/rforest/GENUS3-CERTIFIED.md",
     "test/hyperelliptic-genus3-certified-oracle.cjs",
+    "test/hyperelliptic-genus3-jacobian-search-differential.cjs",
     "test/data/hyperelliptic-rforest/genus3-certified-oracle.json"
   ],
-  "dependencies": [],
+  "dependencies": [
+    "g3-candidate-enumerator",
+    "genus3-group-kernel"
+  ],
   "references": [
     "https://pari.math.u-bordeaux.fr/dochtml/html-stable/Arithmetic_functions.html",
     "https://www.math.uwaterloo.ca/~snavas/MagmaHandbook/text/1422"
@@ -40,9 +44,31 @@
     "pnpm test:baselib:strict",
     "pnpm test:native",
     "node --test test/hyperelliptic-genus3-certified-oracle.cjs",
+    "node --test test/hyperelliptic-genus3-jacobian-search-differential.cjs",
     "node bench/rforest/benchmark-genus3-certified.cjs --stages raw --limits 10000"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.412,
+      "started_at": "2026-08-18T18:11:21.245Z",
+      "commit": "ac61abbd4d3f4264a3b7b7add02cc2e41c9502b4",
+      "workspace_fingerprint": "d7060fa7f6148a3a70d44b5a45cd6bbc42f3939ebeae918a70579fafa060d93e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.093,
+      "started_at": "2026-08-18T18:11:33.200Z",
+      "commit": "ac61abbd4d3f4264a3b7b7add02cc2e41c9502b4",
+      "workspace_fingerprint": "d7060fa7f6148a3a70d44b5a45cd6bbc42f3939ebeae918a70579fafa060d93e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

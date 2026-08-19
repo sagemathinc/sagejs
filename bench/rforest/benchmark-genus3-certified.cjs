@@ -51,7 +51,7 @@ function parseArguments(argv) {
     } else if (argument === "--stages") {
       answer.stages = new Set(argv[++index].split(","));
     } else if (argument === "--quick") {
-      answer.limits = [10_000];
+      answer.limits = [101];
       answer.repeat = 1;
     } else if (argument === "--allow-incomplete") {
       answer.allowIncomplete = true;
@@ -155,51 +155,58 @@ function candidateProgram(limit) {
 
 function certificationProgram(limit) {
   return [
-    "from sagejs.hyperelliptic_curves.rforest import certified_genus3_local_rows",
-    `certified=certified_genus3_local_rows(C,2,${limit})`,
+    "import time",
+    "from sagejs.hyperelliptic_curves.certified_genus3 import rforest_genus3_local_factors",
+    "stage_starts={}",
+    "stage_ms={'residue':0,'candidate':0,'primary':0,'twist':0,'fallback':0}",
+    "def observe(event,details):",
+    "    stage=event.rsplit('_',1)[0]",
+    "    if event.endswith('_start'):",
+    "        stage_starts[stage]=time.perf_counter()",
+    "    elif event.endswith('_end') and stage in stage_starts:",
+    "        stage_ms[stage]+=1000*(time.perf_counter()-stage_starts.pop(stage))",
+    "certified_rows=0",
     "cert_digest=0",
-    "cert_counts={'unique':0,'indeterminate':0,'resource_limit':0,'inconsistent':0,'fallback':0}",
+    "cert_counts={'unique':0,'fallback':0,'omitted':0}",
     "cert_primary_samples=0",
     "cert_primary_ops=0",
     "cert_twist_samples=0",
     "cert_twist_ops=0",
-    "cert_primary_ms=0",
-    "cert_twist_ms=0",
-    "for row in certified:",
-    "    completion=row.get('completion',row)",
-    "    status=completion.get('status',row.get('status','unknown'))",
+    `for prime,completion in rforest_genus3_local_factors(C,2,${limit},stage_observer=observe):`,
+    "    certified_rows+=1",
+    "    status=completion['status']",
     "    if status in cert_counts:",
     "        cert_counts[status]+=1",
-    "    if row.get('fallback_used',completion.get('fallback_used',False)):",
-    "        cert_counts['fallback']+=1",
-    "    cert_primary_samples+=int(row.get('primary_samples',completion.get('primary_samples',0)))",
-    "    cert_primary_ops+=int(row.get('primary_ops',completion.get('primary_ops',0)))",
-    "    cert_twist_samples+=int(row.get('twist_samples',completion.get('twist_samples',0)))",
-    "    cert_twist_ops+=int(row.get('twist_ops',completion.get('twist_ops',0)))",
-    "    timings=row.get('timings',completion.get('timings',{}))",
-    "    cert_primary_ms+=timings.get('primary_ms',0)",
-    "    cert_twist_ms+=timings.get('twist_ms',0)",
-    "    factor=completion.get('lpolynomial',row.get('lpolynomial'))",
+    "    certificate=completion.get('certificate') or {}",
+    "    primary=certificate.get('jacobian',{})",
+    "    twist=certificate.get('twist',{})",
+    "    cert_primary_samples+=int(primary.get('certificate_count',0))",
+    "    cert_primary_ops+=int(primary.get('scalar_multiplications',0))",
+    "    cert_twist_samples+=int(twist.get('certificate_count',0))",
+    "    cert_twist_ops+=int(twist.get('scalar_multiplications',0))",
+    "    factor=completion.get('coefficients')",
     "    if factor is not None:",
-    "        cert_digest=digest_step(cert_digest,row['prime'])",
+    "        cert_digest=digest_step(cert_digest,prime)",
     "        for coefficient in factor:",
     "            cert_digest=digest_step(cert_digest,coefficient)",
-    "{'rows':len(certified),'status_counts':cert_counts,'primary_samples':cert_primary_samples,'primary_ops':cert_primary_ops,'twist_samples':cert_twist_samples,'twist_ops':cert_twist_ops,'reported_primary_ms':cert_primary_ms,'reported_twist_ms':cert_twist_ms,'exact_stream_digest':cert_digest}",
+    "{'rows':certified_rows,'status_counts':cert_counts,'primary_samples':cert_primary_samples,'primary_ops':cert_primary_ops,'twist_samples':cert_twist_samples,'twist_ops':cert_twist_ops,'stage_ms':stage_ms,'exact_stream_digest':cert_digest}",
   ].join("\n");
 }
 
 function publicProgram(limit) {
+  const algorithm = limit <= 10_000 ? "auto" : "rforest";
   return [
     "C_public=HyperellipticCurve(x^7+x+1)",
+    `public_algorithm='${algorithm}'`,
     "public_rows=0",
     "public_digest=0",
-    `for chunk in C_public.local_lpolynomial_chunks(2,${limit},algorithm='rforest'):` ,
+    `for chunk in C_public.local_lpolynomial_chunks(2,${limit},algorithm=public_algorithm):`,
     "    for prime,factor in chunk:",
     "        public_rows+=1",
     "        public_digest=digest_step(public_digest,prime)",
     "        for coefficient in factor.list():",
     "            public_digest=digest_step(public_digest,coefficient)",
-    "{'rows':public_rows,'exact_stream_digest':public_digest}",
+    "{'algorithm':public_algorithm,'rows':public_rows,'exact_stream_digest':public_digest}",
   ].join("\n");
 }
 

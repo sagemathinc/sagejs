@@ -31,6 +31,11 @@ Rational = tuple[int, int]
 Candidate = tuple[int, int, int]
 
 
+def genus3_candidate_kernel_available() -> bool:
+    """Return whether exact Weil lifting has its production native kernel."""
+    return is_compiled(scan_genus3_weil_candidates)
+
+
 def _host_buffer_length(value: int) -> int:
     """Return a native host size while keeping CPython imports ordinary."""
     if _runtime is None:

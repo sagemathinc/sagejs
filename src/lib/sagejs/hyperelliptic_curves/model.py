@@ -395,6 +395,47 @@ class HyperellipticCurve_generic(sage.Parent):
             self, start, stop, algorithm, chunk_size
         )
 
+    def local_data(
+        self,
+        start: Any,
+        stop: Any,
+        *,
+        algorithm: str = "auto",
+        chunk_size: Any = 4096,
+        extension_degrees: Any = 0,
+        cache_size: Any = 0,
+        include_certificates: bool = False,
+        progress: Any = None,
+        cancel: Any = None,
+    ) -> Any:
+        """Return a lazy, bounded stream of exact local research records.
+
+        The interval is closed and every prime has a record, including an
+        explicit `omitted` record when this model cannot be reduced.  A
+        positive `cache_size` retains at most that many stream-produced local
+        factors in the curve cache; the default does not grow the cache.
+        """
+        if _is_finite_field(self._base):
+            raise TypeError("local_data is defined for curves over QQ")
+        if self._base is not sage.QQ and getattr(self._base, "_kind", None) != "QQ":
+            raise TypeError("local_data requires a curve over QQ")
+        module = __import__(
+            "sagejs.hyperelliptic_curves.local_data",
+            fromlist=["LocalDataStream"],
+        )
+        return module.LocalDataStream(
+            self,
+            start,
+            stop,
+            algorithm=algorithm,
+            chunk_size=chunk_size,
+            extension_degrees=extension_degrees,
+            cache_size=cache_size,
+            include_certificates=include_certificates,
+            progress=progress,
+            cancel=cancel,
+        )
+
     def cardinality(
         self,
         extension_degree: Any = 1,

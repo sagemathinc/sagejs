@@ -997,12 +997,24 @@ def _rational_smalljac_supported(curve: Any, start: int, stop: int) -> bool:
     )
 
 
+def _rational_rforest_supported(curve: Any, start: int, stop: int) -> bool:
+    if curve.genus() != 3:
+        return False
+    certified = __import__(
+        "sagejs.hyperelliptic_curves.certified_genus3",
+        fromlist=["rforest_genus3_auto_supported"],
+    )
+    return bool(certified.rforest_genus3_auto_supported(curve, start, stop))
+
+
 def _select_rational_algorithm(
     curve: Any, algorithm: str, start: int, stop: int
 ) -> str:
     if algorithm == "auto":
         if _rational_smalljac_supported(curve, start, stop):
             return "smalljac"
+        if _rational_rforest_supported(curve, start, stop):
+            return "rforest"
         return "exhaustive"
     if algorithm == "smalljac":
         if _smalljac_capabilities() is None:
@@ -1020,6 +1032,12 @@ def _select_rational_algorithm(
         if runtime.integer_bigint(stop) > _smalljac_prime_bound():
             raise OverflowError("the prime interval exceeds the smalljac range")
         return "smalljac"
+    if algorithm == "rforest":
+        if curve.genus() != 3:
+            raise NotImplementedError(
+                "certified rforest local polynomials are only supported in genus 3"
+            )
+        return "rforest"
     if algorithm == "exhaustive" or algorithm in _LPOLYNOMIAL_BACKENDS:
         return algorithm
     raise ValueError("unknown hyperelliptic L-polynomial algorithm " + repr(algorithm))
@@ -1048,8 +1066,9 @@ def _store_local_coefficients(
 def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
     """Compute one good local factor over `QQ`.
 
-    `auto` uses the native genus-2 smalljac stream at supported odd primes and
-    otherwise retains the exact exhaustive reduction/counting implementation.
+    `auto` uses the native genus-2 smalljac stream and the measured certified
+    odd-degree genus-3 rforest pipeline where their complete capability checks
+    pass. Other inputs retain exact exhaustive reduction and counting.
     """
     prime = _checked_prime(prime)
     selected = _select_rational_algorithm(curve, algorithm, prime, prime)
@@ -1067,6 +1086,13 @@ def rational_local_lpolynomial(curve: Any, prime: Any, algorithm: str = "auto") 
         coefficients = rows[0][1]
         if coefficients is None:
             raise ArithmeticError("the curve has bad reduction at " + str(prime))
+    elif selected == "rforest":
+        certified = __import__(
+            "sagejs.hyperelliptic_curves.certified_genus3",
+            fromlist=["rforest_genus3_local_factor"],
+        )
+        result = certified.rforest_genus3_local_factor(curve, prime)
+        coefficients = list(result["coefficients"])
     else:
         reduced_curve = _rational_reduction(curve, prime)
         coefficients = reduced_curve._lpolynomial_coefficients(selected)
@@ -1119,6 +1145,27 @@ def rational_local_lpolynomial_chunks(
         else:
             yield [runtime.math_tuple([sage.ZZ(2), factor_at_two])]
         start = 3
+    if selected == "rforest":
+        certified = __import__(
+            "sagejs.hyperelliptic_curves.certified_genus3",
+            fromlist=["rforest_genus3_local_factors"],
+        )
+        chunk = []
+        for prime, result in certified.rforest_genus3_local_factors(curve, start, stop):
+            if result["status"] == "omitted":
+                continue
+            coefficients = list(result["coefficients"])
+            _store_local_coefficients(curve, prime, selected, coefficients)
+            chunk.append(
+                runtime.math_tuple([sage.ZZ(prime), lpolynomial(coefficients)])
+            )
+            if len(chunk) == chunk_size:
+                yield chunk
+                chunk = []
+        if len(chunk) != 0:
+            yield chunk
+        return
+
     if selected != "smalljac":
         chunk = []
         for prime in range(start, stop + 1):

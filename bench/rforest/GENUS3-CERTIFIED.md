@@ -34,6 +34,29 @@ This corpus is an oracle sample, not a claim that 20 points prove the whole
 implementation. The full stream also has to match across the supported
 platforms, and unresolved rows must use the exact fallback.
 
+The handwritten Jacobian search kernel has a second, independent differential
+gate:
+
+```sh
+node --test test/hyperelliptic-genus3-jacobian-search-differential.cjs
+```
+
+That test constructs canonical Mumford divisors with the ordinary Python
+Cantor law, including zero, inverse, doubling, same-input addition,
+non-coprime `u` cases, deterministic scalar combinations, and a completed-
+square generalized model. It compares native element-order certificates with
+the ordinary law, exercises not-found/resource/cancellation/invalid-input
+statuses, and repeats searches in independent Node workers to detect shared
+mutable state. The fixtures are generated deterministically at test time and
+do not depend on PARI, Magma, or network access.
+
+The direct addon probe also passes on Linux x86-64, Linux aarch64, macOS
+arm64, and native Windows x86-64. Every platform returned order 94 with
+factorization `2*47` over `F_3`, order 764 with factorization `2^2*191` for
+the generalized `F_11` model, and identical resource-limit and cancellation
+statuses. This probe caught and fixed a Node-API BigInt size-query error that
+the C-only kernel test could not expose.
+
 ## Stage benchmark
 
 Run the complete acceptance workload with:
@@ -42,8 +65,8 @@ Run the complete acceptance workload with:
 node bench/rforest/benchmark-genus3-certified.cjs
 ```
 
-The defaults are one sample each through `10^4`, `10^5`, and `10^6`. Useful
-development subsets are:
+The defaults are one sample each through `10^4`, `10^5`, and `10^6`. The
+`--quick` smoke test stops at 101; useful development subsets are:
 
 ```sh
 node bench/rforest/benchmark-genus3-certified.cjs --quick
@@ -60,12 +83,13 @@ The JSON result keeps the following stages separate:
 2. `candidates` includes the checked Python boundary and exact Weil-candidate
    enumeration. It records row count, total/max candidates, and a deterministic
    digest of the candidate-count stream.
-3. `certification` calls `certified_genus3_local_rows`, records primary and
+3. `certification` calls `rforest_genus3_local_factors`, records primary and
    twist sample/operation counts, sums any stage timing instrumentation, and
    digests every uniquely completed polynomial.
 4. `public` constructs a fresh curve and consumes
-   `local_lpolynomial_chunks(..., algorithm='rforest')`, including exact
-   per-row fallback and public polynomial construction.
+   `local_lpolynomial_chunks(...)`, including exact per-row fallback and
+   public polynomial construction. It uses `algorithm='auto'` through the
+   measured endpoint 10000 and explicit `algorithm='rforest'` above it.
 
 Missing certification or public APIs make the benchmark fail. The
 `--allow-incomplete` switch exists only so an implementation lane can measure
@@ -96,6 +120,48 @@ new completion work must accelerate it before a full acceptance receipt can
 exist. The raw times also show why the limit must remain an explicit benchmark
 dimension instead of extrapolating from a 100-prime smoke test.
 
+After integrating the native candidate and Jacobian kernels, an intermediate
+exact implementation took 6.18 s through 101. Most of that time was redundant
+ordinary-Python work: it eagerly constructed 24 sample divisors and repeated
+the exact-order proof already performed by the native factor-and-strip
+routine. The production path now constructs one deterministic divisor first,
+expands the sample only if multiple candidate orders survive, verifies the
+native prime factorization and its product independently, and accepts the
+kernel's exact `e*D=0` and `(e/q)*D!=0` checks. Injected certificate providers
+still receive the full ordinary-Python group-law recheck.
+
+On the same Linux x86-64 host, the optimized exact public stream took 0.901 s
+through 101 and 2.534 s through 1009. Through 10000 it returned 1225 factors
+in 34.030 s; four singular supplied-model rows were omitted, one row used the
+exact fallback, and the other 1224 were uniquely certified. The exact stream
+digest was `109634041913073816655618606802201078531`. The separately measured
+certification pass took 33.817 s, with 4.033 s in candidate lifting and 7.587
+s in primary native certificate search. Raw rforest took 314.132 ms. The
+public benchmark recorded `algorithm='auto'`, so this is a selector receipt,
+not merely an explicit-backend timing. Streaming completed rows instead of
+retaining their Jacobian certificates reduced peak RSS for this run from about
+660 MB to 478 MB.
+
+That complete through-10000 receipt defines the deliberately bounded interval
+`auto` envelope. With all three native capabilities present, `auto` selects
+the certified path for odd-degree genus-3 one-off primes throughout the
+checked native range and for intervals ending at 10000 or below. It fails
+closed to the exact reference backend for even-degree models, missing native
+capabilities, characteristic-two singleton requests, and larger intervals.
+Explicit `algorithm='rforest'` remains available beyond the measured
+interval envelope. The larger default benchmark dimensions remain useful for
+deciding when that envelope can be expanded; results are measured rather than
+extrapolated.
+
+The replacement native exact enumerator was separately measured by
+`pnpm bench:hyperelliptic-genus3-candidates` on the same development host. Its
+one-row wall times were 2.7 ms, 2.2 ms, 5.9 ms, 27 ms, and 166 ms at
+`p=101`, `1009`, `10007`, `100003`, and `1000003`, respectively. Those
+numbers isolate candidate lifting; they do not include the rforest traversal,
+primary/twist Jacobian witnesses, exact fallback, or public polynomial
+construction. They therefore remove candidate enumeration as the obvious
+scaling blocker without serving as an end-to-end acceptance result.
+
 ## One-off oracle measurements
 
 On the Linux x86-64 development host, a cold `frobenius_polynomial()` call for
@@ -111,6 +177,15 @@ Each repetition constructed a fresh finite-field curve so Sage's polynomial
 cache could not turn later samples into lookup timings. A separate run at
 `p=100003` and `p=1000003` exhausted PARI's configured 1 GiB stack. These are
 host/toolchain observations, not complexity claims.
+
+On the same host, after warming module initialization with one unrelated
+factor, Sage.js's explicit certified `rforest` backend took 179 ms at `p=11`,
+986 ms at `p=1009`, 782 ms at `p=10007`, 1.50 s at `p=100003`, and 6.03 s at
+`p=1000003`. Thus PARI remains decisively better for very small one-off
+primes, while the certified Sage.js path overtakes this installed PARI by
+`p=10007` and continues through the two examples where PARI exhausted its
+configured stack. These measurements do not alter the separate dense-stream
+`auto` gate.
 
 Magma 2.18-5 produced all `p <= 101` oracle rows, but its first
 `LPolynomial` computation for the odd sparse curve at `p=1009` was manually

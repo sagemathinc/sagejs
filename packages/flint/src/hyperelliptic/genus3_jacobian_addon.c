@@ -47,7 +47,7 @@ static int bigint_to_integer(
     memset(output, 0, sizeof(*output));
     if (!check_napi(
             env,
-            napi_get_value_bigint_words(env, value, &sign, &count, NULL)))
+            napi_get_value_bigint_words(env, value, NULL, &count, NULL)))
         return 0;
     if (sign || count > 2)
     {
