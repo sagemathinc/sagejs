@@ -38,9 +38,9 @@ This normalization has no extra factor of one half, so `xi(0) = xi(1) = 1`.
 RZ = RiemannZeta(80)
 s = ComplexField(80)("0.5", "14")
 value = RZ(s)
-conjugate_error = RZ(s.conjugate()) - value.conjugate()
-assert abs(float(conjugate_error.real())) < 1e-18
-assert abs(float(conjugate_error.imag())) < 1e-18
+conjugate_value = RZ(ComplexField(80)("0.5", "-14"))
+assert abs(float(conjugate_value.real() - value.real())) < 1e-18
+assert abs(float(conjugate_value.imag() + value.imag())) < 1e-18
 
 functional_error = RZ.xi(s) - RZ.xi(1-s)
 assert abs(float(functional_error.real())) < 1e-18
@@ -178,14 +178,14 @@ colon and quotient ideals, element and ideal valuations, and reconstructing
 factorization.
 
 ```sage test
-I = O.ideal(11)
-assert I * I.inverse() == O.ideal(1)
+ideal11 = O.ideal(11)
+assert ideal11 * ideal11.inverse() == O.ideal(1)
 assert P * (~P) == O.ideal(1)
-assert I.valuation(P) == 1
+assert ideal11.valuation(P) == 1
 assert P.valuation(P.uniformizer()) == 1
 
-factorization = I.factor()
-assert factorization.value() == I
+factorization = ideal11.factor()
+assert factorization.value() == ideal11
 fractional = P / O.ideal(2)
 assert fractional.denominator() == 2
 assert fractional.numerator() == P
