@@ -13286,16 +13286,16 @@
         "name": "DirichletGroup",
         "qualified": "DirichletGroup",
         "path": "src/baselib/dirichlet.py",
-        "line": 1023,
+        "line": 1105,
         "excerpt": {
-          "start_line": 1011,
+          "start_line": 1093,
           "text": "                DirichletGroup_class(\n                    prime_power,\n                    self._value_field,\n                    self._value_order,\n                )\n            )\n        return result\n\n\n_dirichlet_groups = runtime.map()\n\n\ndef DirichletGroup(\n    modulus: Any,\n    base_ring: Any = None,\n    zeta: Any = None,\n) -> DirichletGroup_class:\n    r\"\"\"\n    Return the group of Dirichlet characters modulo `modulus`.\n\n    Characters are exact, iterable, multiplicative, and valued in a\n    cyclotomic field.  FLINT supplies the unit-group decomposition and native\n    character arithmetic.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/dirichlet.py#3f56e6f86d7f60ed-e3b0c44298fc1c14",
-          "line": 1038,
+          "line": 1120,
           "source": "G = DirichletGroup(20)",
           "want": "",
           "tags": [],
@@ -13311,7 +13311,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#15464eeb758d5890-3fc1d2b4a592f59b",
-          "line": 1039,
+          "line": 1121,
           "source": "G.order(), G.modulus()",
           "want": "(8, 20)\n",
           "tags": [],
@@ -13327,7 +13327,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#84ab25664e504489-e3b0c44298fc1c14",
-          "line": 1041,
+          "line": 1123,
           "source": "eps = G.gen(0)",
           "want": "",
           "tags": [],
@@ -13343,7 +13343,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#47ae783339cc5cbe-3cbc87c7681f34db",
-          "line": 1042,
+          "line": 1124,
           "source": "eps(3) * eps(7) == eps(21)",
           "want": "True\n",
           "tags": [],
@@ -27659,10 +27659,10 @@
         "name": "NumberField",
         "qualified": "NumberField",
         "path": "src/baselib/number_fields.py",
-        "line": 1977,
+        "line": 2277,
         "excerpt": {
-          "start_line": 1965,
-          "text": "                    \"general class groups need a number-field backend\"\n                )\n        return self._class_group_cache\n\n    def class_number(self) -> int:\n        if self._is_tutorial_cubic():\n            return 1\n        if self.degree() == 2:\n            return self._quadratic_backend()[0].class_number()\n        raise NotImplementedError(\"general class numbers need a number-field backend\")\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
+          "start_line": 2265,
+          "text": "        if self._is_tutorial_cubic():\n            return 1\n        if self.degree() == 2:\n            return self._quadratic_backend()[0].class_number()\n        result = self.class_group_result()\n        if result.complete:\n            return int(result.order())\n        raise NotImplementedError(\n            \"the bounded class-group search did not certify a class number\"\n        )\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
         }
       },
       "examples": []
@@ -29716,16 +29716,16 @@
         "name": "QuadraticField",
         "qualified": "QuadraticField",
         "path": "src/baselib/number_fields.py",
-        "line": 3099,
+        "line": 3399,
         "excerpt": {
-          "start_line": 3087,
+          "start_line": 3387,
           "text": "        # Split and ramified primes are represented by every first-quadrant\n        # solution a^2+b^2=p.  Ordered pairs give the two conjugate ideals.\n        for real in range(1, coordinate_bound + 1):\n            for imag in range(1, coordinate_bound + 1):\n                norm = real * real + imag * imag\n                if norm > limit:\n                    break\n                if runtime.flint_backend().isPrime(runtime.bigint(norm)):\n                    generators.append(GaussianInteger(self, real, imag))\n        return [GaussianPrimeIdeal(generator) for generator in generators]\n\n\ndef QuadraticField(\n    radicand: Any,\n    names: Any = None,\n) -> QuadraticField_class:\n    r\"\"\"Construct an exact imaginary quadratic field.\n\n    Negative radicands support exact field arithmetic, the maximal order,\n    integral bases, discriminants, and finite ideal class groups.\n\n    ### Examples\n\n    ```sage\n    sage: K.<a> = QuadraticField(-23)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
-          "line": 3111,
+          "line": 3411,
           "source": "K.<a> = QuadraticField(-23)",
           "want": "",
           "tags": [],
@@ -29741,7 +29741,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#44cb607cdf73cfb4-163f9d874bf45bcc",
-          "line": 3112,
+          "line": 3412,
           "source": "K.discriminant()",
           "want": "-23\n",
           "tags": [],
@@ -29757,7 +29757,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
-          "line": 3114,
+          "line": 3414,
           "source": "K.class_group().invariants()",
           "want": "(3,)\n",
           "tags": [],
@@ -29808,9 +29808,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7456,
+        "line": 7601,
         "excerpt": {
-          "start_line": 7444,
+          "start_line": 7589,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
