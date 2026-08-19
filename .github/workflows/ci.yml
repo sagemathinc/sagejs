@@ -672,7 +672,7 @@ jobs:
         env:
           SAGEJS_MACOS_SIGN_ID: ${{ secrets.SAGEJS_MACOS_SIGN_ID }}
           SAGEJS_MACOS_INSTALLER_ID: ${{ secrets.SAGEJS_MACOS_INSTALLER_ID }}
-        run: pnpm release:macos -- --skip-build
+        run: pnpm release:macos --skip-build
 
       - name: Package macOS arm64 for npm
         run: |

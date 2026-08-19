@@ -30,6 +30,7 @@ PUBLISH_TAG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --) shift ;;
     --skip-notarize) SKIP_NOTARIZE=1; shift ;;
     --skip-build) SKIP_BUILD=1; shift ;;
     --publish)
