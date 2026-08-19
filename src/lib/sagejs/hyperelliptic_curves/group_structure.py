@@ -16,6 +16,17 @@ import sagejs as sage
 class JacobianResourceLimitError(RuntimeError):
     """A requested exact group computation exceeded its declared budget."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        known_structure: Any = None,
+        partial_generators: Any = None,
+    ) -> None:
+        super().__init__(message)
+        self.known_structure = known_structure
+        self.partial_generators = partial_generators
+
 
 def factor_integer_bounded(
     value: Any,
@@ -88,11 +99,12 @@ def element_order_from_multiple(
     multiple: Any,
     factorization: list[tuple[Any, int]] | None = None,
     max_trial_divisions: int = 1_000_000,
+    scalar_algorithm: str = "auto",
 ) -> Any:
     """Return the exact order of `element`, given a known annihilating multiple."""
     if multiple <= 0:
         raise ValueError("the annihilating multiple must be positive")
-    if not (multiple * element).is_zero():
+    if not element.scalar_multiple(multiple, algorithm=scalar_algorithm).is_zero():
         raise ValueError("the supplied multiple does not annihilate the element")
     factors = (
         factor_integer_bounded(multiple, max_trial_divisions)
@@ -103,7 +115,9 @@ def element_order_from_multiple(
     for prime, exponent in factors:
         for _index in range(exponent):
             candidate = order // prime
-            if not (candidate * element).is_zero():
+            if not element.scalar_multiple(
+                candidate, algorithm=scalar_algorithm
+            ).is_zero():
                 break
             order = candidate
     return order

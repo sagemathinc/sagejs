@@ -86,10 +86,11 @@ The JSON result keeps the following stages separate:
 3. `certification` calls `rforest_genus3_local_factors`, records primary and
    twist sample/operation counts, sums any stage timing instrumentation, and
    digests every uniquely completed polynomial.
-4. `public` constructs a fresh curve and consumes
-   `local_lpolynomial_chunks(...)`, including exact per-row fallback and
-   public polynomial construction. It uses `algorithm='auto'` through the
-   measured endpoint 10000 and explicit `algorithm='rforest'` above it.
+4. `public` constructs a fresh curve and consumes `local_data(...)` with
+   `cache_size=0`, including exact per-row fallback, the research record
+   schema, and public polynomial construction. It uses `algorithm='auto'`
+   through the measured endpoint 100000 and explicit `algorithm='rforest'`
+   above it.
 
 Missing certification or public APIs make the benchmark fail. The
 `--allow-incomplete` switch exists only so an implementation lane can measure
@@ -142,10 +143,12 @@ not merely an explicit-backend timing. Streaming completed rows instead of
 retaining their Jacobian certificates reduced peak RSS for this run from about
 660 MB to 478 MB.
 
-That complete through-10000 receipt defines the deliberately bounded interval
-`auto` envelope. With all three native capabilities present, `auto` selects
+That complete through-10000 receipt originally defined the deliberately
+bounded interval `auto` envelope. With all three native capabilities present,
+`auto` selects
 the certified path for odd-degree genus-3 one-off primes throughout the
-checked native range and for intervals ending at 10000 or below. It fails
+checked native range and for intervals ending at the measured automatic
+ceiling. It fails
 closed to the exact reference backend for even-degree models, missing native
 capabilities, characteristic-two singleton requests, and larger intervals.
 Explicit `algorithm='rforest'` remains available beyond the measured
@@ -161,6 +164,39 @@ numbers isolate candidate lifting; they do not include the rforest traversal,
 primary/twist Jacobian witnesses, exact fallback, or public polynomial
 construction. They therefore remove candidate enumeration as the obvious
 scaling blocker without serving as an end-to-end acceptance result.
+
+### Through-100000 automatic-selector receipt
+
+The candidate enumerator now accepts a packed window of residue triples in
+one source-transparent native call. Each row has a fixed candidate bound and
+falls back to the already-proved single-row path if it is exceptional. This
+retains exact arbitrary-precision inequalities while avoiding thousands of
+compiler crossings and allocations.
+
+On 2026-08-19, the complete four-stage gate for `y^2=x^7+x+1` through
+100000 passed on Linux x86-64 / Node 26.7.0:
+
+| Stage | Wall time | Rows | Peak RSS | Exact digest |
+| --- | ---: | ---: | ---: | --- |
+| raw rforest | 5.826 s | 9592 | 260 MB | SHA-256 `6fb94e04ed80b8964cd1c8356950d0d8b3c91e13e42873ab22f795d34733922d` |
+| candidate lifts | 108.326 s | 9588 | 508 MB | `98151161505875232667123644541309019308` |
+| exact certification | 881.647 s | 9592 | 689 MB | `3728105193022836152423678822391807418` |
+| public `auto` stream | 958.669 s | 9592 | 749 MB | `3728105193022836152423678822391807418` |
+
+There were 9587 uniquely certified rows, one exact fallback, and four honest
+omissions caused by singular reductions of the supplied integral model. The
+public stream used `cache_size=0` and ended with zero curve-cache entries. Its
+digest agrees with the independent certification stage. The four stages ran
+sequentially in one process, so later RSS includes benchmark diagnostics
+retained from earlier stages; 749 MB is the cumulative harness peak, not a
+claim that every standalone stream uses that much memory. The complete
+machine-readable receipt is
+[`hyperelliptic-genus3-auto-100k-2026-08-19.json`](../results/hyperelliptic-genus3-auto-100k-2026-08-19.json).
+
+This receipt expands the automatic odd-degree genus-3 interval envelope to
+100000. The next performance target is streaming candidate completion and
+certificate production in smaller internal windows so diagnostic or public
+callers need not retain all 10,696,699 candidate triples at once.
 
 ## One-off oracle measurements
 

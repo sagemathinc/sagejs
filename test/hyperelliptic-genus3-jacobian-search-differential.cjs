@@ -42,6 +42,18 @@ function nativeSearch(addon, fixture, base, stride, count, options = {}) {
   );
 }
 
+function nativeScalar(addon, fixture, scalar, options = {}) {
+  return addon.genus3JacobianScalarMultiply(
+    BigInt(fixture.p),
+    u64(fixture.f),
+    u64(fixture.h),
+    u64(fixture.divisor),
+    BigInt(scalar),
+    BigInt(options.maxOperations ?? 1_000_000),
+    options.cancel,
+  );
+}
+
 const workerFixture = {
   p: 3,
   f: [1, 2, 0, 0, 0, 0, 0, 1],
@@ -129,8 +141,13 @@ for model_index,data in enumerate(model_data):
         packed=[u.degree()]
         packed += [int(u[i]) for i in range(4)]
         packed += [int(v[i]) for i in range(3)]
+        double=2*D
+        du,dv=double.uv()
+        double_packed=[du.degree()]
+        double_packed += [int(du[i]) for i in range(4)]
+        double_packed += [int(dv[i]) for i in range(3)]
         order=int(D.order(multiple=group_order))
-        output.append([model_index,p,group_order,f_data,h_data,packed,order,u.degree(),kind])
+        output.append([model_index,p,group_order,f_data,h_data,packed,double_packed,order,u.degree(),kind])
 output`,
         { timeout: 120_000 },
       );
@@ -148,13 +165,14 @@ output`,
       assert.equal(capabilities.available, true);
       assert.equal(capabilities.model, "odd-degree-generalized");
       const fixtures = (await ordinaryFixtures()).map(
-        ([model, p, groupOrder, f, h, divisor, order, degree, kind]) => ({
+        ([model, p, groupOrder, f, h, divisor, double, order, degree, kind]) => ({
           model,
           p,
           groupOrder,
           f,
           h,
           divisor,
+          double,
           order,
           degree,
           kind,
@@ -169,6 +187,9 @@ output`,
       assert.ok(fixtures.filter((fixture) => fixture.kind >= 10).length >= 10);
 
       for (const fixture of fixtures) {
+        const doubled = nativeScalar(addon, fixture, 2);
+        assert.equal(doubled.statusName, "ok");
+        assert.deepEqual([...doubled.divisor], fixture.double.map(BigInt));
         const exact = nativeSearch(
           addon,
           fixture,
@@ -271,6 +292,33 @@ output`,
           undefined,
         ),
       /packed BigUint64Array length/,
+    );
+  });
+
+  test("packed scalar multiplication has exact ingress and bounded statuses", () => {
+    const statuses = addon.genus3JacobianCapabilities().statuses;
+    const zero = nativeScalar(addon, workerFixture, 0);
+    assert.equal(zero.statusName, "ok");
+    assert.deepEqual([...zero.divisor], [0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n]);
+    const one = nativeScalar(addon, workerFixture, 1);
+    assert.equal(one.statusName, "ok");
+    assert.deepEqual([...one.divisor], workerFixture.divisor.map(BigInt));
+    const killed = nativeScalar(addon, workerFixture, 94);
+    assert.equal(killed.statusName, "ok");
+    assert.equal(killed.divisor[0], 0n);
+    const limited = nativeScalar(addon, workerFixture, 93, {
+      maxOperations: 1,
+    });
+    assert.equal(limited.status, statuses.RESOURCE_LIMIT);
+    const cancel = new Uint32Array(new SharedArrayBuffer(4));
+    Atomics.store(cancel, 0, 1);
+    assert.equal(
+      nativeScalar(addon, workerFixture, 93, { cancel }).status,
+      statuses.CANCELLED,
+    );
+    assert.throws(
+      () => nativeScalar(addon, workerFixture, -1),
+      /nonnegative/,
     );
   });
 
