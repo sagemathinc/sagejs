@@ -40,12 +40,44 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/number-field-foundations-oracle.cjs",
+    "node bench/number-field-foundations/oracle-workloads.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-foundations-oracle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.226,
+      "started_at": "2026-08-19T03:24:19.608Z",
+      "commit": "50d658711e820c3d7cb74011298f207de3931287",
+      "workspace_fingerprint": "129ab0a7fc9eabcb447510a93f5baed84393b1ff0953597694b50f7cb8bf34d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-foundations/oracle-workloads.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.058,
+      "started_at": "2026-08-19T03:24:20.465Z",
+      "commit": "50d658711e820c3d7cb74011298f207de3931287",
+      "workspace_fingerprint": "129ab0a7fc9eabcb447510a93f5baed84393b1ff0953597694b50f7cb8bf34d0",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a versioned 24-field offline corpus spanning degrees 1-6, all requested signatures, both quadratic signs, nonmaximal and genuinely nonmonogenic presentations, exact HNF prime decompositions, a_1 through a_64, analytic values/jets/residues/completions through 200 bits with selected 512-bit cases, Kronecker edge cases, fundamental units, regulators, and class groups. Added deterministic structural reconstruction tests, persistent Sage/PARI and Magma harnesses, and five digest-checked benchmark workloads. The offline checker also passed unchanged under native Windows Node.js.",
+    "risks": [
+      "Analytic values are sourced from Sage/PARI; Magma 2.18-5 independently corroborates exact invariants and prime decompositions only.",
+      "Hecke/Oscar was probed but Julia was not provisioned on the regeneration host, so that independent family is explicitly recorded as unavailable.",
+      "Unit generators are canonical only up to the usual sign, inverse, torsion, and basis changes; consumers should verify generated subgroups and regulators rather than compare display strings blindly."
+    ],
+    "next_steps": [
+      "Add test/number-field-foundations-oracle.cjs to the shared unit-test manifest in the integration lane.",
+      "Run the arithmetic-algebra lane's broad strict/native validation after the coordinator's active shared build completes; the coordinator explicitly deferred those gates for this data-only lane.",
+      "Have each implementation phase consume the relevant corpus projection and preserve the benchmark workload result digests.",
+      "Add a Hecke/Oscar independent snapshot if a Julia environment with those packages becomes available."
+    ]
   }
 }
