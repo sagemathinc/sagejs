@@ -16,7 +16,19 @@ var {
   moduleId: baselibModuleId,
 } = require("./baselib-modules.cjs");
 
-async function compile_baselib(PyLang, src_path) {
+const COMPILER_BASELIB_MODULES = new Set([
+  "__future__.py",
+  "builtins.py",
+  "compiler_bootstrap.py",
+  "containers.py",
+  "errors.py",
+  "internal.py",
+  "itertools.py",
+  "runtime_primitives.py",
+  "str.py",
+]);
+
+async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
   try {
     // The immutable stage-zero compiler predates this independently
@@ -24,6 +36,17 @@ async function compile_baselib(PyLang, src_path) {
     new PyLang.OutputStream({ python_ordering: false });
     supportsPythonOrdering = true;
   } catch (_error) {}
+  if (compiler_only) {
+    try {
+      new PyLang.OutputStream({ baselib_module_id: "__probe__" });
+    } catch (_error) {
+      // The immutable stage-zero compiler injects the complete historical
+      // runtime into every baselib parse.  Keep its first output internally
+      // consistent; that output immediately rebuilds itself with lexical
+      // modules and can then select the compiler-only bootstrap.
+      compiler_only = false;
+    }
+  }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
     ? await createPythonCompilerFrontend(PyLang, "python")
@@ -31,8 +54,13 @@ async function compile_baselib(PyLang, src_path) {
   var items = fs
     .readdirSync(path.join(src_path, "baselib"))
     .filter(function (name) {
-      return name.endsWith(".py");
-    });
+      return (
+        name.endsWith(".py") &&
+        name !== "compiler_bootstrap.py" &&
+        (!compiler_only || COMPILER_BASELIB_MODULES.has(name))
+      );
+    })
+    .concat(compiler_only ? ["compiler_bootstrap.py"] : []);
   var ans = { pretty: "" };
 
   // The concatenated baselib is the compiler prologue.  Its low-level Python
@@ -112,7 +140,9 @@ async function compile_baselib(PyLang, src_path) {
     // aliases name primitives owned by other baselib modules.
     if (supportsLexicalModuleMetadata) {
       const runtimeFilename = "sagejs/runtime.py";
-      const runtimePath = path.join(src_path, "baselib", runtimeFilename);
+      const runtimePath = compiler_only
+        ? path.join(src_path, "compiler_runtime.py")
+        : path.join(src_path, "baselib", runtimeFilename);
       const raw = fs.readFileSync(runtimePath, "utf-8");
       const ast = frontend.parse(raw, {
         filename: runtimeFilename,
@@ -177,7 +207,11 @@ async function compile_baselib(PyLang, src_path) {
     modules.sort(function (left, right) {
       const priority = function (module) {
         if (module.filename === "runtime_primitives.py") return 0;
-        if (module.filename === "sagejs_bootstrap.py") return 1;
+        if (
+          module.filename === "sagejs_bootstrap.py" ||
+          module.filename === "compiler_bootstrap.py"
+        )
+          return 1;
         if (module.filename === "builtins.py") return 2;
         if (module.filename === "containers.py") return 3;
         if (module.filename === "errors.py") return 4;
@@ -375,6 +409,7 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
   var PyLang = createCompiler();
   var output_options, profiler, cpu_profile;
   var compiled_baselib = await compile_baselib(PyLang, src_path);
+  var compiler_baselib = await compile_baselib(PyLang, src_path, true);
   var out_path = lib_path;
   try {
     fs.mkdirSync(out_path);
@@ -387,7 +422,7 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
   // truth testing.
   output_options = {
     beautify: true,
-    baselib_plain: compiled_baselib.pretty,
+    baselib_plain: compiler_baselib.pretty,
   };
   try {
     // The immutable stage-zero compiler predates this option and already

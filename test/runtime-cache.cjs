@@ -10,11 +10,30 @@ const cacheDirectory = join(root, "dist", "runtime-cache");
 const manifest = JSON.parse(
   readFileSync(join(cacheDirectory, "manifest.json"), "utf8"),
 );
+const compilerSource = readFileSync(
+  join(root, "dist", "compiler", "compiler.js"),
+);
+const sageRuntimeSource = readFileSync(
+  join(cacheDirectory, "runtime-bootstrap-sage.js"),
+);
 
 assert.equal(manifest.node, process.versions.node);
 assert.equal(manifest.v8, process.versions.v8);
 assert.equal(manifest.platform, process.platform);
 assert.equal(manifest.arch, process.arch);
+
+// The compiler VM must not embed the complete mathematical runtime. Doing so
+// initializes the same multi-megabyte baselib twice on the first expression:
+// once for compilation and once for evaluation. Keep this structural startup
+// invariant independent of noisy wall-clock measurements.
+assert.ok(
+  compilerSource.byteLength <= 4 * 1024 * 1024,
+  `compiler bootstrap grew to ${compilerSource.byteLength} bytes`,
+);
+assert.ok(
+  compilerSource.byteLength * 2 < sageRuntimeSource.byteLength,
+  "compiler bootstrap must remain substantially smaller than the runtime",
+);
 
 function acceptsCache(sourceFilename, cacheFilename, scriptFilename) {
   const source = readFileSync(sourceFilename, "utf8");
