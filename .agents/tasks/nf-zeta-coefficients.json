@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-zeta-coefficients",
+  "title": "nf-zeta-coefficients",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact Dedekind-zeta coefficients, compact splitting streams, direct series, and controlled Euler products.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/zeta_coefficients.py",
+    "src/lib/sagejs/number_fields/euler_products.py",
+    "test/number-field-zeta-coefficients.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/algebraic-number-field-computational-foundations-plan.md",
+    "SageMath 10.9/PARI zeta_coefficients oracle for x^3-x-1"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython",
+      "JavaScript",
+      "quadratic character convolution",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "bash -lc SAGEJS_SKIP_GENERATED=1 node --test test/number-field-zeta-coefficients.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.524,
+      "started_at": "2026-08-19T03:26:05.907Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "5b0e98d916656775adae676d9851f7174fcfb1ee295142315577d961a1821012",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_SKIP_GENERATED=1 node --test test/number-field-zeta-coefficients.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.338,
+      "started_at": "2026-08-19T03:26:31.084Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "5b0e98d916656775adae676d9851f7174fcfb1ee295142315577d961a1821012",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented strict ordinary-Python exact local Dedekind-zeta factors, authenticated compact splitting streams, Sage-indexed multiplicative coefficient sieves and blocks, and controlled direct-series/Euler-product midpoint evaluators for Re(s)>1. Focused tests cover quadratic convolution, a Sage/PARI cubic oracle, malformed streams, resource/domain guards, and honest proof diagnostics.",
+    "risks": [
+      "The proved analytic-tail formulas are displayed through non-outward-rounded mpmath midpoints; rigorous=True intentionally rejects until integration combines them with Arb rounding balls.",
+      "The coefficient sieve uses O(bound) storage under explicit deterministic limits; coefficient blocks bound transport size but do not make the sieve sublinear-memory."
+    ],
+    "next_steps": [
+      "Integration should bind the prime-ideal lane's splitting_records(order,start,stop) through a field/order closure.",
+      "Integration should expose coefficients, euler_factor(s), dirichlet_series, and euler_product on the shared DedekindZetaFunction and run the generated Sage.js half of the focused test after the root build stabilizes."
+    ]
+  }
+}
