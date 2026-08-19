@@ -1,0 +1,169 @@
+name: Publish validated Sage.js release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Completed Sage.js CI run containing validated release artifacts
+        required: true
+        type: string
+      release_tag:
+        description: Existing release tag pointing at the validated commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish previously validated GitHub and npm release
+    runs-on: ubuntu-24.04
+    environment: sagejs-release
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          registry-url: https://registry.npmjs.org
+
+      - name: Validate the source run and release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}")"
+          [[ "$(jq -r .name <<<"$run_metadata")" == "Sage.js CI" ]]
+          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
+          [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
+          [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
+          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
+          tag_sha="$(git rev-list -n 1 "$RELEASE_TAG")"
+          [[ "$source_sha" == "$tag_sha" ]] || {
+            echo "Source run $SOURCE_RUN_ID built $source_sha, but $RELEASE_TAG points at $tag_sha" >&2
+            exit 1
+          }
+
+          jobs="$(gh api --paginate "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}/jobs?per_page=100")"
+          for required in \
+            "Linux x64 native, tests, and SEA" \
+            "Linux arm64 native, tests, and SEA" \
+            "macOS arm64 native, tests, and SEA" \
+            "Windows x64 native, tests, and SEA" \
+            "Sign and notarize macOS arm64 release"
+          do
+            conclusion="$(jq -r --arg name "$required" \
+              '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
+              <<<"$jobs")"
+            [[ "$conclusion" == "success" ]] || {
+              echo "Required source job '$required' concluded '$conclusion'" >&2
+              exit 1
+            }
+          done
+
+          package_version="$(node -p 'require("./package.json").version')"
+          case "$RELEASE_TAG" in
+            "v${package_version}"|"v${package_version}+"*) ;;
+            *)
+              echo "Release tag $RELEASE_TAG does not represent npm version $package_version" >&2
+              exit 1
+              ;;
+          esac
+          echo "PACKAGE_VERSION=$package_version" >>"$GITHUB_ENV"
+
+      - name: Download the validated release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          mkdir -p release
+          for artifact in \
+            sagejs-linux-x64 \
+            sagejs-linux-arm64 \
+            sagejs-windows-x64 \
+            sagejs-macos-arm64
+          do
+            gh run download "$SOURCE_RUN_ID" --name "$artifact" --dir release
+          done
+          find release -maxdepth 2 -type f -print | sort
+
+      - name: Create or update the draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            [[ "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" == "true" ]] || {
+              echo "Release $RELEASE_TAG already exists and is not a mutable draft" >&2
+              exit 1
+            }
+          else
+            gh release create "$RELEASE_TAG" \
+              --draft \
+              --verify-tag \
+              --title "Sage.js ${PACKAGE_VERSION} — early alpha" \
+              --notes-file RELEASE_NOTES.md
+          fi
+          mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
+          [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+
+      - name: Publish the platform and public npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          [[ -n "$NODE_AUTH_TOKEN" ]] || { echo "Missing NPM_TOKEN" >&2; exit 1; }
+
+          publish_package() {
+            local archive="$1"
+            local tag="$2"
+            local metadata name version published
+            metadata="$(tar -xOzf "$archive" package/package.json)"
+            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
+            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
+            [[ "$version" == "$PACKAGE_VERSION" ]]
+            if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
+              [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
+                echo "Unexpected published version for ${name}@${version}: $published" >&2
+                exit 1
+              }
+              echo "${name}@${version} is already published; refreshing dist-tag ${tag}"
+              npm dist-tag add "${name}@${version}" "$tag"
+            else
+              pnpm publish "$archive" \
+                --access public --tag "$tag" --ignore-scripts --no-git-checks
+            fi
+          }
+
+          publish_package release/npm/sagejs-linux-x64.tgz linux-x64
+          publish_package release/npm/sagejs-linux-arm64.tgz linux-arm64
+          publish_package release/npm/sagejs-windows-x64.tgz windows-x64
+          publish_package release/npm/sagejs-macos-arm64.tgz macos-arm64
+          publish_package release/npm/sagejs.tgz latest
+
+      - name: Publish the immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest
