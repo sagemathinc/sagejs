@@ -32,16 +32,20 @@ Sage/PARI workers on the same host with:
 
 ```sh
 node bench/number-field-foundations/run.cjs \
-  --systems sagejs,sage --samples 5 --warmups 1 \
+  --systems sagejs,sage,magma --samples 5 --warmups 1 \
   --output bench/results/number-field-foundations-current.json
 ```
 
 The general analytic-zeta workload is intentionally excluded from the default
 profile because the readable Sage.js Meijer-G reference currently takes
 minutes.  Use `--include-slow` or select it explicitly to quantify that known
-production-kernel gap.  Magma and Hecke/Oscar availability is recorded in the
-report; a missing proprietary executable or pinned Julia project is reported,
-not silently replaced by another implementation.
+production-kernel gap.  The Magma adapter excludes process startup by running
+all warmups and samples in one Magma process per workload. Its sub-millisecond
+compact-stream and coefficient kernels use a recorded inner repetition count
+to overcome Magma 2.18's coarse timer; the report contains the per-operation
+average. Hecke/Oscar availability is recorded in the report; a missing
+proprietary executable or pinned Julia project is reported, not silently
+replaced by another implementation.
 
 The runner rejects a timing unless every retained sample has the reviewed
 answer digest.  It records the exact Git revision, dirty-tree state, tool

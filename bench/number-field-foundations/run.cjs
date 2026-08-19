@@ -19,11 +19,12 @@ const workers = join(__dirname, "workers");
 
 function options(argv) {
   const answer = {
-    systems: ["sagejs", "sage"],
+    systems: ["sagejs", "sage", "magma"],
     samples: 3,
     warmups: 1,
     timeoutMs: 300_000,
     sage: "/home/user/sagelite/sage",
+    magma: "/home/user/bin/magma",
     update: false,
     allowDirty: false,
     output: null,
@@ -40,16 +41,18 @@ function options(argv) {
     else if (argument === "--warmups") answer.warmups = Number(argv[++index]);
     else if (argument === "--timeout-ms") answer.timeoutMs = Number(argv[++index]);
     else if (argument === "--sage") answer.sage = argv[++index];
+    else if (argument === "--magma") answer.magma = argv[++index];
     else if (argument === "--output") answer.output = argv[++index];
     else if (argument === "--workloads") answer.workloads = argv[++index].split(",");
     else if (argument === "--help") {
       console.log(`Usage: node bench/number-field-foundations/run.cjs [options]
 
-  --systems sagejs,sage   persistent systems to compare
+  --systems sagejs,sage,magma   persistent systems to compare
   --workloads ID,...      select workload ids
   --samples N             retained samples per workload (default 3)
   --warmups N             warmups per workload (default 1)
   --sage PATH             Sage executable
+  --magma PATH            Magma executable
   --timeout-ms N          per-request timeout
   --output PATH           write the exact report JSON
   --include-slow          include multi-minute reference workloads
@@ -140,7 +143,19 @@ function adapter(system, config) {
       startupTimeoutMs: 60_000,
     });
   }
-  throw new Error(`unsupported system ${system}; current measured adapters are sagejs and sage`);
+  if (system === "magma") {
+    return new PersistentLineProcess({
+      name: system,
+      command: "python3",
+      args: [join(workers, "magma_worker.py")],
+      cwd: root,
+      env: { ...process.env, SAGEJS_MAGMA: config.magma },
+      readyPrefix: "@@NFFP_READY@@",
+      resultPrefix: "@@NFFP_RESULT@@",
+      startupTimeoutMs: 30_000,
+    });
+  }
+  throw new Error(`unsupported system ${system}; use sagejs, sage, or magma`);
 }
 
 async function run() {
@@ -178,6 +193,7 @@ async function run() {
           precision_bits: workload.precisionBits || 53,
           warmups: config.warmups,
           samples: config.samples,
+          timeout_ms: config.timeoutMs,
         };
         const raw = await worker.request(JSON.stringify(request), { timeoutMs: config.timeoutMs });
         if (raw.status !== "ok") {
@@ -207,6 +223,7 @@ async function run() {
           version: worker.version,
           startup_ms: worker.startupMs,
           request_wall_ms: raw.wall_ms,
+          timing_repetitions: response.timing_repetitions || 1,
           samples_ms: timings,
           median_ms: median(timings),
           minimum_ms: Math.min(...timings),
@@ -234,13 +251,19 @@ async function run() {
       sage_command: config.sage,
       sage_version: commandVersion(config.sage, ["--version"]),
       reference_availability: {
-        magma: commandVersion("/home/user/bin/magma", ["-b"]),
+        magma: { command: config.magma, executable: existsSync(config.magma) },
         julia: commandVersion("/home/user/.local/bin/julia", ["--version"]),
         hecke_project: existsSync("/home/user/upstream/Hecke.jl"),
         oscar_project: existsSync("/home/user/upstream/Oscar.jl"),
       },
     },
-    policy: { samples: config.samples, warmups: config.warmups, persistent_processes: true },
+    policy: {
+      samples: config.samples,
+      warmups: config.warmups,
+      adapter_processes_persistent: true,
+      system_startup_excluded_from_sample_timings: true,
+      magma_process_scope: "one process per workload request containing all warmups and samples",
+    },
     records,
   };
   const output = `${JSON.stringify(report, null, 2)}\n`;

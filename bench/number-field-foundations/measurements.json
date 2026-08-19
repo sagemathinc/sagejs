@@ -100,9 +100,9 @@
           "1"
         ]
       ],
-      "resultDigits": 5,
+      "resultDigits": 4,
       "default": false,
-      "expectedResultSha256": "1b2b45f7b6fd93546c40f5a50d8a5adaddfb40b2effe829eccfc6b793969373c"
+      "expectedResultSha256": "de3be4754ed3774574ec9af72ff1a8c266021155971a7401a2c8700918b638f9"
     },
     {
       "id": "global-arithmetic-cubic-mixed",

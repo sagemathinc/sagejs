@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
@@ -90,3 +90,33 @@ finally:
     await session.close();
   }
 });
+
+test(
+  "Magma compact-stream adapter agrees with the reviewed digest",
+  { skip: !existsSync("/home/user/bin/magma"), timeout: 60_000 },
+  () => {
+    const executed = spawnSync(
+      process.execPath,
+      [
+        "bench/number-field-foundations/run.cjs",
+        "--allow-dirty",
+        "--systems",
+        "magma",
+        "--samples",
+        "1",
+        "--warmups",
+        "0",
+        "--workloads",
+        "prime-stream-cubic-mixed-250",
+      ],
+      { cwd: root, encoding: "utf8", timeout: 60_000 },
+    );
+    assert.equal(executed.status, 0, `${executed.stdout}\n${executed.stderr}`);
+    const report = JSON.parse(executed.stdout);
+    assert.equal(report.records[0].status, "ok");
+    assert.equal(
+      report.records[0].result_sha256,
+      "ac9e9e4910bdde80734cc9cf602dfa608aa78d116d90e6d8292f160d66a9a776",
+    );
+  },
+);
