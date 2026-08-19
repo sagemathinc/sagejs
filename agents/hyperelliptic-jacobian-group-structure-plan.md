@@ -19,8 +19,8 @@ tests, and machine-readable benchmark receipt live under `bench/hyperelliptic`,
 `bench/results`, and `test/hyperelliptic-jacobian-group-structure.cjs`.
 The seeded Linux x86-64 receipt records 0.091 seconds for the order-2,160
 `GF(13)` structure and 0.048 seconds for the order-6,490 `GF(19)` basis after
-the exact group orders are known. Four-platform native receipts are recorded
-in the implementing commit and continuous-integration handoff.
+the exact group orders are known. The four-platform native receipt is recorded
+in `bench/results/hyperelliptic-jacobian-group-structure-native-platforms-2026-08-19.json`.
 
 ## Purpose
 

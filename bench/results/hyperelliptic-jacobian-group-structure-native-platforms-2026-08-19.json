@@ -1,0 +1,45 @@
+{
+  "schema": "sagejs.hyperelliptic-jacobian-native-platform-receipt/v1",
+  "source_commit": "dd71fbf78853d72f17ed959d98ee004bfcb5e5f7",
+  "date_utc": "2026-08-19",
+  "scope": "genus-3 Jacobian arithmetic core, including the batched sum primitive",
+  "platforms": [
+    {
+      "platform": "linux-x86_64",
+      "host": "bench-1",
+      "compiler": "GCC 13.3",
+      "core_test": "pass",
+      "napi_adapter_compile": "pass",
+      "napi_object_sha256": "dfb1c81fb755a8efafde1d0cbe92d7ca759464932c1f4f03a04662c254f026fb"
+    },
+    {
+      "platform": "linux-aarch64",
+      "host": "bench-arm",
+      "compiler": "GCC 13.3",
+      "core_test": "pass",
+      "napi_adapter_compile": "not_run_no_node_headers_in_isolated_toolchain"
+    },
+    {
+      "platform": "macos-arm64",
+      "host": "m1",
+      "compiler": "Apple clang 17",
+      "core_test": "pass",
+      "napi_adapter_compile": "pass_warnings_as_errors",
+      "napi_object_sha256": "cb4ac6a4cdb09b0565eb8e33331646499b6a481fe4ef4921c2c5d5e10b6104ae"
+    },
+    {
+      "platform": "windows-x86_64",
+      "host": "windows",
+      "compiler": "clang-cl 19.1.5 / MSVC /MD",
+      "core_test": "pass",
+      "napi_adapter_compile": "pass_/W4_/WX",
+      "napi_object_sha256": "71122250102da7d515d418d8848d601c3559e19f83fb8c304d0f480970bbe473",
+      "core_executable_sha256": "fdce5ba90a66d7f88f46667f42c5446c041bc0becc0e6fd257b56950e403fba"
+    }
+  ],
+  "notes": [
+    "The exact committed C sources and direct kernel tests were used on every platform.",
+    "The ordinary-Python implementation remains the authoritative fallback.",
+    "Full isolated addon rebuilds on the remote Unix hosts were not repeated after direct validation because their shared dependency caches predated the current eclib/NTL closure."
+  ]
+}
