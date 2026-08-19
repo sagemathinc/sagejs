@@ -461,7 +461,7 @@ class DedekindZetaFunction:
         with mp.workprec(precision + 40):
             point = _point(value)
             raw = _mpc_from_value(
-                self.value(point, prec=precision, algorithm=algorithm)
+                self.value(value, prec=precision, algorithm=algorithm)
             )
             discriminant_factor = mp.power(abs(self._discriminant), point / 2)
             if self._discriminant > 0:
@@ -485,7 +485,7 @@ class DedekindZetaFunction:
             # Avoid the indeterminate product of a gamma pole and a trivial
             # zero. The exact functional equation gives the regular value.
             return self.completed_value(
-                1 - point,
+                [str(1 - point.real), str(-point.imag)],
                 prec=precision,
                 algorithm=algorithm,
             )
@@ -523,7 +523,7 @@ class DedekindZetaFunction:
                 * (point - 1)
                 * _mpc_from_value(
                     self.completed_value(
-                        point,
+                        value,
                         prec=precision,
                         algorithm=algorithm,
                     )

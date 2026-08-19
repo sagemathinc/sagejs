@@ -110,9 +110,26 @@ def _point(value: Any) -> Any:
         real = value.get("real", value.get("real_part"))
         imag = value.get("imag", value.get("imaginary_part", 0))
         return mp.mpc(real, imag)
-    if isinstance(value, (tuple, list)) and len(value) == 2:
+    if isinstance(value, (tuple, list)):
+        if len(value) != 2:
+            raise ValueError("a complex point pair must have two entries")
         return mp.mpc(value[0], value[1])
-    return mp.mpc(value)
+    try:
+        return mp.mpc(value)
+    except (TypeError, ValueError):
+        evaluator_factory = getattr(value, "_plot_complex_callable", None)
+        if evaluator_factory is not None:
+            evaluated: Any = evaluator_factory([])(0.0, 0.0)
+            real = evaluated.real
+            imaginary = evaluated.imag
+        else:
+            real = value.real()
+            imaginary = value.imag()
+        if callable(real):
+            real = real()
+        if callable(imaginary):
+            imaginary = imaginary()
+        return mp.mpc(str(real), str(imaginary))
 
 
 def _number_string(value: Any, precision_bits: int) -> str:

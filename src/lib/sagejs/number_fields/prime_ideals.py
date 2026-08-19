@@ -700,7 +700,7 @@ class PrimeIdealDecomposition(sage.Factorization):
         self._producer = producer
         self._certificate_cache: Any = None
         self._prime_pairs = [
-            [factor, factor.ramification_index()] for factor in factors
+            [factor, runtime.number(factor.ramification_index())] for factor in factors
         ]
         super().__init__(
             self._prime_pairs,

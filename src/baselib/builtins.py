@@ -6566,20 +6566,34 @@ class _FlintRiemannZetaProvider:
             return field(value)
         except Exception:
             evaluator_factory = getattr(value, "_plot_complex_callable", None)
-            if evaluator_factory is None:
-                raise
-            evaluator = evaluator_factory([])
-            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
-            real_part = runtime.reflect.get(evaluated, "real")
-            imaginary_part = runtime.reflect.get(evaluated, "imag")
+            if evaluator_factory is not None:
+                evaluator = evaluator_factory([])
+                evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+                real_part = runtime.reflect.get(evaluated, "real")
+                imaginary_part = runtime.reflect.get(evaluated, "imag")
+                if (
+                    runtime.jstype(real_part) != "number"
+                    or runtime.jstype(imaginary_part) != "number"
+                    or not runtime.number.isFinite(real_part)
+                    or not runtime.number.isFinite(imaginary_part)
+                ):
+                    return _riemann_raise_nonfinite()
+                return field(real_part, imaginary_part)
+            real_part = getattr(value, "real", runtime.undefined)
+            imaginary_part = getattr(value, "imag", runtime.undefined)
             if (
-                runtime.jstype(real_part) != "number"
-                or runtime.jstype(imaginary_part) != "number"
-                or not runtime.number.isFinite(real_part)
-                or not runtime.number.isFinite(imaginary_part)
+                real_part is not runtime.undefined
+                and imaginary_part is not runtime.undefined
             ):
-                return _riemann_raise_nonfinite()
-            return field(real_part, imaginary_part)
+                if callable(real_part):
+                    real_part = real_part()
+                if callable(imaginary_part):
+                    imaginary_part = imaginary_part()
+                try:
+                    return field(str(real_part), str(imaginary_part))
+                except Exception:
+                    pass
+            raise
 
     def jet(
         self,
