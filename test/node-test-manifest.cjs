@@ -4,6 +4,7 @@ const unit = [
   "test/test-manifest.test.cjs",
   "test/python-executable.cjs",
   "test/completer.cjs",
+  "test/repl-initial-completion.cjs",
   "test/cowasm-landscape.cjs",
   "test/module-cache.cjs",
   "test/cache.cjs",

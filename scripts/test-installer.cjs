@@ -50,6 +50,42 @@ try {
     "sagejs 9.9.9-test",
   );
 
+  if (typeof process.getuid === "function" && process.getuid() !== 0) {
+    const home = join(temporaryRoot, "home");
+    mkdirSync(home);
+    const defaultEnvironment = {
+      ...process.env,
+      HOME: home,
+      SHELL: "/bin/bash",
+      PATH: "/usr/bin:/bin",
+      SAGEJS_DOWNLOAD_BASE_URL: `file://${temporaryRoot}`,
+      SAGEJS_INSTALL_PLATFORM: platform,
+    };
+    delete defaultEnvironment.SAGEJS_INSTALL_DIR;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const defaultResult = spawnSync("sh", [join(root, "install.sh")], {
+        cwd: root,
+        encoding: "utf8",
+        env: defaultEnvironment,
+      });
+      assert.equal(defaultResult.status, 0, defaultResult.stderr);
+      assert.match(defaultResult.stdout, /Added .*\.local\/bin to PATH/);
+      assert.match(defaultResult.stdout, /Restart your shell or run:/);
+    }
+    assert.equal(
+      execFileSync(join(home, ".local", "bin", "sagejs"), {
+        encoding: "utf8",
+      }).trim(),
+      "sagejs 9.9.9-test",
+    );
+    const bashrc = readFileSync(join(home, ".bashrc"), "utf8");
+    assert.equal(
+      bashrc.match(/export PATH="\$HOME\/\.local\/bin:\$PATH"/g)?.length,
+      1,
+      "PATH setup must be idempotent",
+    );
+  }
+
   const damaged = readFileSync(archive);
   damaged[damaged.length - 1] ^= 1;
   writeFileSync(archive, damaged);

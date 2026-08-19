@@ -15,14 +15,18 @@ const sage = await createSage();
 sage.on("stdout", (text) => process.stdout.write(text));
 
 const result = await sage.evaluate(`
-value = 2^127 - 1
-print("factoring", value)
-factor(value)
+sum(n^2 for n in [1..100])
 `);
 
 console.log(result.repr);
 await sage.close();
 ```
+
+In the 0.3.0 npm alpha, this API includes the compiler and pure-JavaScript
+runtime. The platform package's standalone `sagejs` command has the full native
+mathematics stack; those bundled native addons are not yet connected to the npm
+`createSage()` session. A source checkout with its native workspace packages
+built also provides native-backed embedding.
 
 Definitions persist between evaluations:
 
