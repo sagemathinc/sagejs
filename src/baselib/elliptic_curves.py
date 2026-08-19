@@ -1134,6 +1134,32 @@ class Lseries_ell:
             return None
         return self._last_diagnostics
 
+    def plot(self, *range_args: Any, **options: Any) -> Any:
+        """Plot `L(E,s)` on the real axis using one packed numerical batch.
+
+        Unlike the general adaptive curve sampler, this specialization samples
+        an equally spaced grid and evaluates it through the same prepared
+        Mellin grid used by `complex_plot`.  The global `plot` frontend owns
+        the graphics semantics; calling `L.plot(...)` and `plot(L, ...)` is
+        therefore equivalent.
+        """
+        plot_function = runtime.reflect.get(runtime.global_object, "plot")
+        return plot_function(self, *range_args, **options)
+
+    def _plot_real_batch(
+        self,
+        points: list[float],
+        precision: int,
+        adaptive: bool = True,
+    ) -> dict[str, Any]:
+        """Private packed protocol for an equally spaced real-axis plot."""
+        coordinates = [[float(point), 0.0] for point in points]
+        return self._plot_complex_batch(
+            coordinates,
+            precision,
+            {"adaptive": bool(adaptive)},
+        )
+
     def _plot_complex_batch(
         self,
         points: list[list[float]],

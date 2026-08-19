@@ -147,6 +147,36 @@ for curve_id, a_invariants in CURVES:
         }
     )
 
+rank_four = EllipticCurve([1, -1, 0, -79, 289])
+rank_four_L = rank_four.lseries()
+real_plot_seconds, real_plot = elapsed(
+    lambda: plot(rank_four_L, -0.1, 2, plot_points=200)
+)
+real_plot_diagnostics = None
+if (
+    hasattr(real_plot, "_plot_spec_diagnostics")
+    and len(real_plot._plot_spec_diagnostics)
+):
+    candidate = real_plot._plot_spec_diagnostics[-1]
+    if candidate["provider"] == "private_plot_real_batch":
+        real_plot_diagnostics = {
+            "provider": str(candidate["provider"]),
+            "sample_count": int(candidate["sample_count"]),
+            "native_call_count": int(candidate["native_call_count"]),
+            "packed_output": bool(candidate["packed_output"]),
+            "prepared_grid_reused": bool(candidate["prepared_grid_reused"]),
+        }
+
 print(
-    json.dumps({"schema": "sagejs.benchmark/elliptic-lseries-v1", "records": records})
+    json.dumps(
+        {
+            "schema": "sagejs.benchmark/elliptic-lseries-v1",
+            "records": records,
+            "rank_four_real_plot": {
+                "seconds": real_plot_seconds,
+                "point_count": len(real_plot[0]),
+                "diagnostics": real_plot_diagnostics,
+            },
+        }
+    )
 )

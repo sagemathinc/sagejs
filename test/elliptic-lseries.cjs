@@ -199,3 +199,32 @@ test("complex_plot prepares one packed grid above the ordinary native cap", asyn
     await session.close();
   }
 });
+
+test("plot samples an elliptic L-series real axis in one packed batch", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "E = EllipticCurve([1,-1,0,-79,289])",
+        "L = E.lseries()",
+        "P = plot(L, 0, 2, plot_points=201, color='purple')",
+        "Q = L.plot(-0.1, 2, plot_points=17)",
+        "d = P._plot_spec_diagnostics[-1]",
+        "[len(P), len(P[0]), len(Q[0]),",
+        " abs(P[0][100][0]-1) < 1e-15, abs(P[0][100][1]) < 1e-10,",
+        " P[0]._options['rgbcolor'] == 'purple',",
+        " d['provider'], d['sample_count'], d['equally_spaced'],",
+        " d['adaptive_sampling'], d['packed_output'],",
+        " d['native_call_count'], d['prepared_grid_reused'],",
+        " d['maximum_imaginary_part'] == 0]",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(
+      result.repr,
+      "[1, 201, 17, True, True, True, 'private_plot_real_batch', 201, True, False, True, 2, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

@@ -147,6 +147,39 @@ evaluations. Larger `plot_points` values keep working through smaller tiles.
 Every tile shares the `L`-series' coefficient cache, and conjugate pixels are
 evaluated only once with automatic precision.
 
+### Plot on the real axis
+
+The rank-4 curve also gives a striking ordinary real plot. Sage.js recognizes
+an elliptic `L`-series passed to `plot` and evaluates one equally spaced real
+grid as a packed native batch. This avoids the many individual `L(s)` calls
+made by the general adaptive curve sampler. `plot(L, ...)` and `L.plot(...)`
+are equivalent.
+
+```sage test
+rank_four = EllipticCurve([1, -1, 0, -79, 289])
+rank_four_L = rank_four.lseries()
+real_picture = plot(rank_four_L, -0.1, 2, plot_points=64)
+real_diagnostic = real_picture._plot_spec_diagnostics[-1]
+assert len(real_picture[0]) == 64
+assert real_diagnostic["provider"] == "private_plot_real_batch"
+assert real_diagnostic["packed_output"]
+[real_diagnostic["equally_spaced"], real_diagnostic["native_call_count"]]
+```
+
+For a finished image, use more samples and set the visible vertical range at
+display time:
+
+```sage
+picture = plot(rank_four_L, -0.1, 2, plot_points=600)
+picture.show(ymin=-2, ymax=2)
+```
+
+The default `plot_precision="auto"` computes a nested low-precision pair that
+is appropriate for drawing. An integer from 16 through 53 requests a fixed
+precision floor. The specialized curve sampler is deliberately non-adaptive:
+increase `plot_points` when you want more geometric resolution. The usual
+line, fill, legend, and axes options continue to work.
+
 ## Estimate analytic rank
 
 The same coefficient and completed-`L` infrastructure estimates the order of
@@ -167,6 +200,7 @@ problem.
 - Use `L(s)` or `L.value(s, prec=...)` for a single point.
 - Use `L.values(points, prec=...)` for unrelated batches and rectangular grids.
 - Use `L.values_along_line(s0, s1, n, prec=...)` for line samples.
+- Use `plot(L, a, b, plot_points=...)` for a packed real-axis plot.
 - Use `complex_plot(L, ...)` for adaptive visual-precision evaluation.
 - Use `L.completed_value(s)` when studying the functional equation.
 - Use `E.analytic_rank()` for the probable central order of vanishing.
