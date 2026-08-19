@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-global-arithmetic",
+  "title": "nf-global-arithmetic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact embeddings/signatures, roots of unity, bounded certified units, regulators, class groups, and class-number formula internals.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/embeddings.py",
+    "src/lib/sagejs/number_fields/units.py",
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "test/number-field-global-arithmetic.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma",
+      "existing imaginary quadratic implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.502,
+      "started_at": "2026-08-19T03:25:51.188Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "faddda554d29acc4bd128bf651db5ad2062c9898117ee8ce6f9bb3193758468f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
