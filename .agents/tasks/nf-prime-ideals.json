@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "nf-prime-ideals",
+  "title": "nf-prime-ideals",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement certified rational-prime decomposition, prime ideals, ideal inversion, valuations, and factorization internals.",
+  "base_commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+  "claims": [
+    "src/lib/sagejs/number_fields/prime_ideals.py",
+    "src/lib/sagejs/number_fields/ideal_arithmetic.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI",
+      "Magma",
+      "independent exact certificate verifier"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright src/lib/sagejs/number_fields/prime_ideals.py src/lib/sagejs/number_fields/ideal_arithmetic.py"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.325,
+      "started_at": "2026-08-19T03:24:47.319Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "b434ddb9b7278aab46a926395cf0a2f7593ccc7309ef3237ee3d0a51b13667e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/prime_ideals.py src/lib/sagejs/number_fields/ideal_arithmetic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.578,
+      "started_at": "2026-08-19T03:25:12.305Z",
+      "commit": "8f069cc7b34b0e28d0826597c49a29e2fc825e4e",
+      "workspace_fingerprint": "b434ddb9b7278aab46a926395cf0a2f7593ccc7309ef3237ee3d0a51b13667e1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented an exact Project-2 vertical slice in two strict lazy modules: NumberFieldPrimeIdeal and Sage-style certified decompositions; gated Dedekind--Kummer using the integral equation generator; a presentation-independent O/pO fallback using Frobenius nilradicals and recursive Frobenius-fixed component splitting (including nonmonogenic F_2^3); independent quotient-field, residue-map, comaximality, degree, and exact HNF-product verification; residue fields/maps, uniformizers, serialization authentication, cache and compact prime-range streams; plus exact colon, inverse, quotient, negative powers, denominators, containment/divisibility, element/ideal valuations, and reconstructing integral-ideal factorization. Runtime differential checks covered inert/split/ramified/wild/index-dividing primes, the Dedekind nonmonogenic cubic, degrees 2--4, fast/fallback agreement, exact inverses and valuations, serialization, streams, and p=1099511627791.",
+    "risks": [
+      "Integration must add thin NumberFieldParent/NumberFieldOrder/NumberFieldIdeal methods and register both lazy modules for strict/precompiled builds; those shared files were outside this lane's claims.",
+      "The explicit supported domain is degree <= 16, p <= 2^53-1, 4096 primitive candidates per residue field, and prime-stream intervals of length <= 1000000.",
+      "Serialization includes exact field/order fingerprints and live identity tokens; it intentionally rejects reconstruction in a distinct isomorphic-looking field instance until an explicit transport-map contract exists.",
+      "No native boundary changed, so pnpm test:native and four-platform integration smoke tests remain for the integration lane."
+    ],
+    "next_steps": [
+      "Bind factor_rational_prime, primes_above, splitting_records, inverse, quotient, valuation, factor, and serialization through thin public bootstrap methods.",
+      "Add the modules to pyrightconfig.json and scripts/precompiled-python-packages.json, then add focused public tests using the committed number-field oracle corpus.",
+      "Run pnpm architecture:check, the public number-field suites, and Linux arm64/macOS arm64/Windows x64 smoke tests after integration."
+    ]
+  }
+}
