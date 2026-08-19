@@ -24,6 +24,7 @@ import sagejs.runtime as runtime
 from sagejs.hyperelliptic_curves.genus3_completion import (
     _is_genus3_weil_candidate,
     enumerate_genus3_weil_candidates,
+    enumerate_genus3_weil_candidates_batch,
     genus3_candidate_kernel_available,
     jacobian_order_from_coefficients,
     twist_order_from_coefficients,
@@ -41,7 +42,7 @@ OrderCertificateProvider = Callable[
 ExactFallback = Callable[[Any, int], Iterable[int]]
 StageObserver = Callable[[str, Mapping[str, Any]], None]
 
-_AUTO_RFOREST_MAX_INTERVAL_STOP = 10_000
+_AUTO_RFOREST_MAX_INTERVAL_STOP = 100_000
 
 
 def _observe(
@@ -948,6 +949,7 @@ def complete_genus3_residues_with_jacobian(
     max_baby_steps: int = 100_000,
     max_group_operations: int = 10_000_000,
     stage_observer: StageObserver | None = None,
+    _candidate_enumeration: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Certify one genus-3 factor or use an exact fallback.
 
@@ -982,12 +984,20 @@ def complete_genus3_residues_with_jacobian(
     )
 
     _observe(stage_observer, "candidate_start", {"prime": prime})
-    enumeration = enumerate_genus3_weil_candidates(
-        prime,
-        normalized,
-        max_candidates=max_candidates,
-        max_combinations=max_combinations,
-    )
+    if _candidate_enumeration is None:
+        enumeration = enumerate_genus3_weil_candidates(
+            prime,
+            normalized,
+            max_candidates=max_candidates,
+            max_combinations=max_combinations,
+        )
+    else:
+        enumeration = dict(_candidate_enumeration)
+        if (
+            int(enumeration.get("prime", -1)) != prime
+            or tuple(enumeration.get("residues", ())) != normalized
+        ):
+            raise ArithmeticError("a batched candidate result is misaligned")
     _observe(
         stage_observer,
         "candidate_end",
@@ -1236,40 +1246,54 @@ def rforest_genus3_local_factors(
         "residue_end",
         {"start": start, "stop": stop, "rows": len(batch["rows"])},
     )
-    for row in batch["rows"]:
-        prime = int(row["prime"])
-        if not row["available"]:
-            reason = "rforest_" + str(row["status"])
-            result = _unavailable_reduction_result(
-                curve, prime, reason, {"rforest_row": row}
-            )
-            if result is None:
-                result = _fallback_result(
+    rows = batch["rows"]
+    candidate_window = 16
+    for window_start in range(0, len(rows), candidate_window):
+        window = rows[window_start : window_start + candidate_window]
+        available = [row for row in window if row["available"]]
+        enumerations = enumerate_genus3_weil_candidates_batch(
+            [(int(row["prime"]), row["residues"]) for row in available],
+            max_candidates=max_candidates,
+            max_combinations=max_combinations,
+        )
+        enumeration_index = 0
+        for row in window:
+            prime = int(row["prime"])
+            if not row["available"]:
+                reason = "rforest_" + str(row["status"])
+                result = _unavailable_reduction_result(
+                    curve, prime, reason, {"rforest_row": row}
+                )
+                if result is None:
+                    result = _fallback_result(
+                        curve,
+                        prime,
+                        None,
+                        fallback,
+                        reason,
+                        {"rforest_row": row},
+                        stage_observer,
+                    )
+            else:
+                enumeration = enumerations[enumeration_index]
+                enumeration_index += 1
+                result = complete_genus3_residues_with_jacobian(
                     curve,
                     prime,
-                    None,
-                    fallback,
-                    reason,
-                    {"rforest_row": row},
-                    stage_observer,
+                    row["residues"],
+                    exact_fallback=fallback,
+                    order_certificate_provider=order_certificate_provider,
+                    max_candidates=max_candidates,
+                    max_combinations=max_combinations,
+                    max_x_values=max_x_values,
+                    max_elements=max_elements,
+                    max_trial_divisions=max_trial_divisions,
+                    max_baby_steps=max_baby_steps,
+                    max_group_operations=max_group_operations,
+                    stage_observer=stage_observer,
+                    _candidate_enumeration=enumeration,
                 )
-        else:
-            result = complete_genus3_residues_with_jacobian(
-                curve,
-                prime,
-                row["residues"],
-                exact_fallback=fallback,
-                order_certificate_provider=order_certificate_provider,
-                max_candidates=max_candidates,
-                max_combinations=max_combinations,
-                max_x_values=max_x_values,
-                max_elements=max_elements,
-                max_trial_divisions=max_trial_divisions,
-                max_baby_steps=max_baby_steps,
-                max_group_operations=max_group_operations,
-                stage_observer=stage_observer,
-            )
-        yield prime, result
+            yield prime, result
 
 
 __all__ = [

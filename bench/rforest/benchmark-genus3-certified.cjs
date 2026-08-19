@@ -71,32 +71,50 @@ function parseArguments(argv) {
 
 function measurement(callback) {
   const cpu = process.cpuUsage();
+  const rssBefore = process.memoryUsage().rss;
   const started = performance.now();
   const value = callback();
   const used = process.cpuUsage(cpu);
+  const rssAfter = process.memoryUsage().rss;
   return {
     value,
     timing: {
       wall_ms: performance.now() - started,
       cpu_user_ms: used.user / 1000,
       cpu_system_ms: used.system / 1000,
-      rss_bytes: process.memoryUsage().rss,
+      rss_start_bytes: rssBefore,
+      rss_end_bytes: rssAfter,
+      peak_rss_bytes: Math.max(rssBefore, rssAfter),
     },
   };
 }
 
 async function measurementAsync(callback) {
   const cpu = process.cpuUsage();
+  const rssBefore = process.memoryUsage().rss;
+  let peakRss = rssBefore;
+  const sampler = setInterval(() => {
+    peakRss = Math.max(peakRss, process.memoryUsage().rss);
+  }, 25);
   const started = performance.now();
-  const value = await callback();
+  let value;
+  try {
+    value = await callback();
+  } finally {
+    clearInterval(sampler);
+  }
   const used = process.cpuUsage(cpu);
+  const rssAfter = process.memoryUsage().rss;
+  peakRss = Math.max(peakRss, rssAfter);
   return {
     value,
     timing: {
       wall_ms: performance.now() - started,
       cpu_user_ms: used.user / 1000,
       cpu_system_ms: used.system / 1000,
-      rss_bytes: process.memoryUsage().rss,
+      rss_start_bytes: rssBefore,
+      rss_end_bytes: rssAfter,
+      peak_rss_bytes: peakRss,
     },
   };
 }
@@ -127,7 +145,7 @@ const SETUP = [
   "x=R.gen()",
   "C=HyperellipticCurve(x^7+x+1)",
   "from sagejs.hyperelliptic_curves.rforest import rforest_hasse_witt_rows",
-  "from sagejs.hyperelliptic_curves.genus3_completion import enumerate_genus3_weil_candidates",
+  "from sagejs.hyperelliptic_curves.genus3_completion import enumerate_genus3_weil_candidates_batch",
   "digest_mod=2^127-1",
   "def digest_step(value,item):",
   "    return (value*1000003+int(item)+1000000007)%digest_mod",
@@ -140,15 +158,19 @@ function candidateProgram(limit) {
     "candidate_total=0",
     "candidate_max=0",
     "candidate_digest=0",
-    "for row in batch['rows']:",
-    "    if row['available']:",
-    "        result=enumerate_genus3_weil_candidates(row['prime'],row['residues'])",
+    "available_rows=[row for row in batch['rows'] if row['available']]",
+    "for window_start in range(0,len(available_rows),16):",
+    "    window=available_rows[window_start:window_start+16]",
+    "    results=enumerate_genus3_weil_candidates_batch([(row['prime'],row['residues']) for row in window])",
+    "    for row,result in zip(window,results):",
     "        count=result['candidate_count']",
     "        candidate_rows+=1",
     "        candidate_total+=count",
     "        candidate_max=max(candidate_max,count)",
     "        candidate_digest=digest_step(candidate_digest,row['prime'])",
     "        candidate_digest=digest_step(candidate_digest,count)",
+    "batch=None",
+    "available_rows=None",
     "{'rows':candidate_rows,'candidate_total':candidate_total,'candidate_max':candidate_max,'stream_digest':candidate_digest}",
   ].join("\n");
 }
@@ -194,19 +216,23 @@ function certificationProgram(limit) {
 }
 
 function publicProgram(limit) {
-  const algorithm = limit <= 10_000 ? "auto" : "rforest";
+  const algorithm = limit <= 100_000 ? "auto" : "rforest";
   return [
     "C_public=HyperellipticCurve(x^7+x+1)",
     `public_algorithm='${algorithm}'`,
+    "public_records=0",
     "public_rows=0",
     "public_digest=0",
-    `for chunk in C_public.local_lpolynomial_chunks(2,${limit},algorithm=public_algorithm):`,
-    "    for prime,factor in chunk:",
+    "public_status_counts={}",
+    `for record in C_public.local_data(2,${limit},algorithm=public_algorithm,cache_size=0):`,
+    "    public_records+=1",
+    "    public_status_counts[record.status]=public_status_counts.get(record.status,0)+1",
+    "    if record.available:",
     "        public_rows+=1",
-    "        public_digest=digest_step(public_digest,prime)",
-    "        for coefficient in factor.list():",
+    "        public_digest=digest_step(public_digest,record.prime)",
+    "        for coefficient in record.coefficients:",
     "            public_digest=digest_step(public_digest,coefficient)",
-    "{'algorithm':public_algorithm,'rows':public_rows,'exact_stream_digest':public_digest}",
+    "{'algorithm':public_algorithm,'records':public_records,'rows':public_rows,'status_counts':public_status_counts,'cache_entries':len(C_public._local_lpolynomial_cache),'exact_stream_digest':public_digest}",
   ].join("\n");
 }
 
@@ -256,6 +282,7 @@ async function main() {
       for (let repetition = 0; repetition < options.repeat; repetition += 1) {
         const sample = { limit, repetition };
         if (options.stages.has("raw")) {
+          console.error(`benchmark limit=${limit} stage=raw start`);
           try {
             const result = measurement(() =>
               addon.rforestHasseWittBatch(coefficients, 3, 2n, BigInt(limit)),
@@ -270,6 +297,7 @@ async function main() {
             sample.raw_rforest = errorRecord(error);
             incomplete = true;
           }
+          console.error(`benchmark limit=${limit} stage=raw end`);
         }
         for (const [stage, program] of [
           ["candidates", candidateProgram(limit)],
@@ -277,12 +305,14 @@ async function main() {
           ["public", publicProgram(limit)],
         ]) {
           if (!options.stages.has(stage)) continue;
+          console.error(`benchmark limit=${limit} stage=${stage} start`);
           try {
             sample[stage] = await evaluateStage(session, program);
           } catch (error) {
             sample[stage] = errorRecord(error);
             incomplete = true;
           }
+          console.error(`benchmark limit=${limit} stage=${stage} end`);
         }
         output.samples.push(sample);
       }

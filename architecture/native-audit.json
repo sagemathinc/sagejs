@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5118,
-      "bytes": 166893,
+      "lines": 5121,
+      "bytes": 167037,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,118-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,121-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -264,14 +264,14 @@
     },
     {
       "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
-      "lines": 326,
-      "bytes": 10980,
+      "lines": 431,
+      "bytes": 14357,
       "decision": "retain-bridge",
       "priority": "low",
       "responsibilities": [
         "checked fixed-width model and Mumford-divisor ingress",
         "lossless conversion between JavaScript BigInt and bounded native integers",
-        "Node-API capability, status, diagnostics, and certificate conversion"
+        "Node-API capability, scalar-multiplication, search, status, diagnostics, and certificate conversion"
       ],
       "rationale": "This file is a narrow host adapter around the separately audited genus-3 representation primitive. It contains no candidate-selection or uniqueness policy and exposes explicit bounds, cancellation, and resource statuses.",
       "fallback": "The Python certification pipeline detects an unavailable capability and uses its ordinary exact Jacobian implementation.",
@@ -281,7 +281,7 @@
         "Node-API focused integration tests",
         "native Windows x64"
       ],
-      "next": "Keep the adapter limited to one packed search call and capability metadata; do not move certification policy across this boundary."
+      "next": "Keep the adapter limited to packed scalar and search primitives plus capability metadata; do not move certification policy across this boundary."
     },
     {
       "path": "packages/flint/src/hyperelliptic/rforest.c",

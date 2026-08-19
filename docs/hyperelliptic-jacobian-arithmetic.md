@@ -234,10 +234,42 @@ The generic algorithm checks that the invariants divide successively, multiply
 to the exact order, and have rank at most `2*g`. A caller may supply a checked
 factorization to avoid bounded trial division.
 
-Sage.js does not yet expose an embedded abstract abelian group with certified
-generators. `J.abelian_group()` therefore raises `NotImplementedError` rather
-than returning invariant factors without the maps and generators such an
-object promises.
+For bounded groups, `J.abelian_group()` goes further and returns a certified
+abstract group together with an explicit isomorphism:
+
+```python
+G, phi = J.abelian_group()
+G.invariants()                 # for example, (6, 6)
+G.gens()                       # coordinate generators
+phi.images()                   # their reduced Mumford divisors
+phi(G.gen(0) + 2*G.gen(1))    # forward map
+phi.preimage(D)                # certified inverse coordinate lookup
+phi.verify()
+```
+
+This initial implementation is deliberately bounded and exhaustive. It finds
+divisors of the advertised orders, proves that their direct product has the
+full independently known Jacobian order, and constructs the complete inverse
+coordinate table. It is excellent for small research and oracle groups; it is
+not presented as a scalable general discrete-log algorithm. On exhaustion,
+`JacobianResourceLimitError` carries `known_structure` and any
+`partial_generators` already certified.
+
+Reduced divisors and element-order proofs also have exact, versioned data
+representations:
+
+```python
+payload = D.to_data()
+assert J.divisor_from_data(payload) == D
+
+certificate = D.order_certificate()
+assert J.verify_order_certificate(certificate)
+```
+
+The payload records the prime, exact curve model, and ascending coefficients
+of `(u,v)`, so it cannot accidentally be loaded into a different Jacobian.
+Certificate verification uses the ordinary Python group law independently of
+the native certificate search.
 
 ## Efficiency and native acceleration
 
@@ -246,7 +278,8 @@ The public group law is correctness-first:
 | Operation | Current method | Intended scale |
 | --- | --- | --- |
 | Addition/doubling | ordinary-Python generalized Cantor arithmetic | individual computations and correctness oracles |
-| Scalar multiplication | binary double-and-add, `O(log n)` group operations | moderate exact scalars |
+| Scalar multiplication | packed native genus-3 kernel when supported; ordinary Python fallback | exact scalars, with native inputs bounded to 128 bits |
+| Element order | native factor-and-strip when supported; independently readable Python fallback | an annihilating multiple and its factorization |
 | Jacobian order | evaluation/resultant from cached Frobenius data | inexpensive after local Frobenius computation |
 | Genus-2 structure | native smalljac when supported | production path in its declared domain |
 | Complete enumeration | roughly `O(q^(2g))` candidate pairs | tiny finite fields only |
@@ -261,9 +294,10 @@ space is dominated by `q^6`.
 
 ### Native genus-3 certification kernel
 
-The certified genus-3 local-factor pipeline has a narrower high-performance C
-kernel. It is not a second public Jacobian class. It accepts packed degree-7
-models and packed reduced divisors over odd prime fields with `p < 2^31`, then:
+The certified genus-3 local-factor pipeline has a high-performance C kernel,
+now also used opportunistically by the public Jacobian class. It accepts
+packed degree-7 models and packed reduced divisors over odd prime fields with
+`p < 2^31`, then:
 
 - validates the generalized Mumford relation;
 - maps `v` to `2*v+h` on the completed-square model;
@@ -274,6 +308,13 @@ models and packed reduced divisors over odd prime fields with `p < 2^31`, then:
   baby-step/giant-step algorithm;
 - factors and strips an annihilating multiple to produce the exact element
   order and its prime factorization.
+
+Thus `n*D`, `D.scalar_multiple(n, algorithm="native")`, and
+`D.order(algorithm="native")` avoid generic Python polynomial objects in the
+supported domain. `J.scalar_multiples(...)` and `J.annihilation_tests(...)`
+provide bounded batch-facing APIs. Scalars outside the native 128-bit ingress
+domain fall back automatically and remain arbitrary-precision exact; asking
+explicitly for `algorithm="native"` instead raises a capability error.
 
 The progression search costs approximately the square root of the progression
 length in group operations instead of testing every candidate independently.
@@ -318,4 +359,3 @@ The principal implementation files are:
 - [`hyperelliptic-jacobian.cjs`](../test/hyperelliptic-jacobian.cjs) and
   [`hyperelliptic-genus3-jacobian-search-differential.cjs`](../test/hyperelliptic-genus3-jacobian-search-differential.cjs)
   for public and independent-native regression tests.
-

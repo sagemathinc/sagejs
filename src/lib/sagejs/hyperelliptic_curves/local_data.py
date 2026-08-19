@@ -177,6 +177,7 @@ class LocalDataRecord:
             self.jacobian_order = None
             self.twist_order = None
             self.curve_point_counts: dict[int, Any] = {}
+            self.jacobian_extension_orders: dict[int, Any] = {}
             self.p_rank = None
             self.ordinary = None
             self.normalized_frobenius_coefficients = None
@@ -207,6 +208,9 @@ class LocalDataRecord:
             )
             for degree in extension_degrees
         }
+        self.jacobian_extension_orders = {
+            degree: self._jacobian_order_over(degree) for degree in extension_degrees
+        }
         p_rank = 0
         for index in range(1, self.genus + 1):
             if values[index] % self.prime != 0:
@@ -223,6 +227,59 @@ class LocalDataRecord:
     @property
     def available(self) -> bool:
         return self.coefficients is not None
+
+    def curve_point_count(self, extension_degree: Any = 1) -> Any:
+        """Return `#C(F_(p^n))`, derived from the exact local polynomial."""
+        degree = _exact_integer(extension_degree, "extension_degree")
+        if degree < 1:
+            raise ValueError("extension_degree must be positive")
+        if not self.available or self.coefficients is None:
+            raise ArithmeticError("this local-data record has no local polynomial")
+        if degree not in self.curve_point_counts:
+            self.curve_point_counts[degree] = sage.ZZ(
+                _frobenius().cardinality_from_lpolynomial(
+                    int(self.prime), list(self.coefficients), degree
+                )
+            )
+        return self.curve_point_counts[degree]
+
+    def _jacobian_order_over(self, extension_degree: int) -> Any:
+        if self.coefficients is None:
+            raise ArithmeticError("this local-data record has no local polynomial")
+        polynomial = _frobenius().frobenius_polynomial(list(self.coefficients))
+        variable = polynomial.parent().gen()
+        answer = polynomial.resultant(variable**extension_degree - 1)
+        return sage.ZZ(-answer if answer < 0 else answer)
+
+    def jacobian_order_over(self, extension_degree: Any = 1) -> Any:
+        """Return `#J(F_(p^n))`, derived from the exact local polynomial."""
+        degree = _exact_integer(extension_degree, "extension_degree")
+        if degree < 1:
+            raise ValueError("extension_degree must be positive")
+        if not self.available:
+            raise ArithmeticError("this local-data record has no local polynomial")
+        if degree not in self.jacobian_extension_orders:
+            self.jacobian_extension_orders[degree] = self._jacobian_order_over(degree)
+        return self.jacobian_extension_orders[degree]
+
+    def matches(
+        self,
+        *,
+        available: bool | None = None,
+        ordinary: bool | None = None,
+        p_rank: int | None = None,
+        status: str | None = None,
+    ) -> bool:
+        """Return whether this row has the requested inexpensive local behavior."""
+        if available is not None and self.available != available:
+            return False
+        if ordinary is not None and self.ordinary != ordinary:
+            return False
+        if p_rank is not None and self.p_rank != p_rank:
+            return False
+        if status is not None and self.status != status:
+            return False
+        return True
 
     def __getitem__(self, name: str) -> Any:
         if not hasattr(self, name):
@@ -293,7 +350,7 @@ class LocalDataStream:
         stop: Any,
         *,
         algorithm: str = "auto",
-        chunk_size: Any = 4096,
+        chunk_size: Any = 100_000,
         extension_degrees: Any = 0,
         cache_size: Any = 0,
         include_certificates: bool = False,
@@ -558,6 +615,40 @@ class LocalDataStream:
 
     def __iter__(self) -> Iterator[LocalDataRecord]:
         return self._iter_from(self.start)
+
+    def where(
+        self,
+        predicate: Callable[[LocalDataRecord], bool] | None = None,
+        *,
+        available: bool | None = None,
+        ordinary: bool | None = None,
+        p_rank: int | None = None,
+        status: str | None = None,
+    ) -> Iterator[LocalDataRecord]:
+        """Yield records matching local behavior without recomputing them."""
+        if predicate is not None and not callable(predicate):
+            raise TypeError("predicate must be callable")
+        for record in self:
+            if not record.matches(
+                available=available,
+                ordinary=ordinary,
+                p_rank=p_rank,
+                status=status,
+            ):
+                continue
+            if predicate is None or bool(predicate(record)):
+                yield record
+
+    def statistics(self, max_moment: Any = 4) -> Any:
+        """Consume the stream into exact coefficient and behavior accumulators."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.statistics",
+            fromlist=["LocalDataStatistics"],
+        )
+        result = module.LocalDataStatistics(max_moment=max_moment)
+        for record in self:
+            result.add(record)
+        return result
 
     def provenance(self) -> dict[str, Any]:
         """Return deterministic curve, request, and backend metadata."""

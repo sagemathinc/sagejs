@@ -363,8 +363,9 @@ J.group_structure()
 factors are verified to divide successively and multiply to the Jacobian
 order. The native smalljac group backend is available only for its documented
 odd-degree genus-2 domain; bounded ordinary-Python structure computation is
-the fallback for small groups. Sage.js does not return an embedded abelian
-group until generators and relations are certified.
+the fallback for small groups. For bounded groups, `J.abelian_group()` returns
+certified generators, an abstract invariant-coordinate group, a forward map
+into reduced divisors, and a fully checked inverse coordinate table.
 
 Even-degree models still have exact local polynomials and point counts, but
 their two-points-at-infinity Jacobian representation is not yet implemented.
@@ -387,6 +388,56 @@ Jacobian certification, twist certification, and fallback costs separate.
 `algorithm="auto"` selects this path for supported odd-degree genus-3 models
 when every native capability is present. One-off primes use it throughout the
 checked native range; interval calls use it when the upper endpoint is at most
-10000, the complete range measured by the acceptance benchmark. Larger
+100000, the complete range measured by the acceptance benchmark. Larger
 intervals remain on the exact reference path unless `algorithm="rforest"` is
 requested explicitly.
+
+## Derived statistics
+
+Local-data records derive extension counts and local invariants from the exact
+local polynomial, without rerunning a point counter:
+
+```python
+rows = C.local_data(2, 10^5, extension_degrees=(1, 2, 3))
+ordinary = rows.where(ordinary=True)
+stats = ordinary.statistics(max_moment=4)
+
+stats.available_records
+stats.p_rank_counts
+stats.coefficient_sums
+stats.normalized_moment(1, 2)       # exact rational value
+stats.normalized_moment_float(1, 1) # floating presentation boundary
+```
+
+For a record `row`, `row.curve_point_count(n)` and
+`row.jacobian_order_over(n)` lazily derive `#C(F_(p^n))` and `#J(F_(p^n))`.
+The accumulator keeps exact counts, integer power sums, extension-count sums,
+and every normalized moment for which no square root is needed. Filtering
+reads only existing status and invariant fields, so it does not change how a
+retained factor was computed or certified.
+
+## Good-prime Euler products and coefficients
+
+Until global bad factors, the conductor, root number, and archimedean factors
+are available, Sage.js exposes explicitly partial products rather than
+silently claiming a completed global L-function:
+
+```python
+stream = C.good_prime_lseries_coefficients(10^5)
+a = stream.coefficients()          # [a_0,...,a_100000], with a_0 = 0
+stream.coefficient(5^3)
+stream.provenance()
+stream.export_jsonl("coefficients.jsonl")
+
+value = C.good_prime_euler_product(2, 10^4)
+value["value"]
+value["included_primes"]
+value["omitted_primes"]
+assert not value["is_global_lfunction"]
+```
+
+The Dirichlet coefficients are computed multiplicatively from the reciprocal
+of each certified local numerator. If a prime has no available local factor,
+that prime is omitted from the product and coefficients divisible by it are
+zero in this partial-product sequence. JSONL stores every unbounded integer as
+a decimal string and includes backend and omission provenance.

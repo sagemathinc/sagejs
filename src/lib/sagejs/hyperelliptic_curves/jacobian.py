@@ -8,7 +8,7 @@ generalized Cantor composition and reduction algorithms in ordinary Python.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -223,6 +223,9 @@ class MumfordDivisor(sage.Element):
         return self.__rmul__(scalar)
 
     def __rmul__(self, scalar: Any) -> Any:
+        return self.scalar_multiple(scalar)
+
+    def _scalar_multiple_reference(self, scalar: Any) -> Any:
         if not runtime.is_exact_integer(scalar) and hasattr(scalar, "lift"):
             scalar = scalar.lift()
         if not runtime.is_exact_integer(scalar):
@@ -238,6 +241,38 @@ class MumfordDivisor(sage.Element):
             if scalar:
                 addend = addend + addend
         return result
+
+    def scalar_multiple(
+        self,
+        scalar: Any,
+        *,
+        algorithm: str = "auto",
+        max_group_operations: Any = None,
+    ) -> Any:
+        """Return `scalar*self`, using the packed genus-3 kernel when available."""
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown Jacobian scalar algorithm " + repr(algorithm))
+        if algorithm != "reference":
+            native = __import__(
+                "sagejs.hyperelliptic_curves.jacobian_native",
+                fromlist=["native_scalar_multiply"],
+            )
+            try:
+                answer = native.native_scalar_multiply(
+                    self,
+                    scalar,
+                    max_group_operations=max_group_operations,
+                )
+            except RuntimeError as error:
+                raise JacobianResourceLimitError(str(error)) from error
+            if answer is not None:
+                return answer[0]
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "native scalar multiplication requires a supported "
+                    "prime-field genus-3 Jacobian and a scalar below 2^128"
+                )
+        return self._scalar_multiple_reference(scalar)
 
     def _sage_binop_(
         self,
@@ -265,18 +300,77 @@ class MumfordDivisor(sage.Element):
         multiple: Any = None,
         factorization: list[tuple[Any, int]] | None = None,
         max_trial_divisions: int = 1_000_000,
+        algorithm: str = "auto",
     ) -> Any:
         """Return this element's order from a known finite group multiple."""
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown Jacobian order algorithm " + repr(algorithm))
         if multiple is None:
             multiple = self._parent.order()
+        if algorithm != "reference":
+            native = __import__(
+                "sagejs.hyperelliptic_curves.jacobian_native",
+                fromlist=["native_element_order"],
+            )
+            if factorization is not None:
+                from sagejs.hyperelliptic_curves.group_structure import (
+                    validate_factorization,
+                )
+
+                validate_factorization(multiple, factorization)
+            try:
+                answer = native.native_element_order(self, multiple)
+            except RuntimeError as error:
+                raise JacobianResourceLimitError(str(error)) from error
+            if answer is not None:
+                return sage.ZZ(answer[0])
+            if algorithm == "native":
+                raise NotImplementedError(
+                    "native element orders require a supported prime-field "
+                    "genus-3 Jacobian"
+                )
         return element_order_from_multiple(
             self,
             multiple,
             factorization,
             max_trial_divisions,
+            scalar_algorithm=algorithm,
         )
 
     additive_order = order
+
+    def to_data(self) -> dict[str, Any]:
+        """Return a versioned exact prime-field Mumford representation."""
+        return self._parent._divisor_data(self)
+
+    def order_certificate(
+        self,
+        multiple: Any = None,
+        factorization: list[tuple[Any, int]] | None = None,
+        max_trial_divisions: int = 1_000_000,
+        algorithm: str = "auto",
+    ) -> dict[str, Any]:
+        """Return an independently recheckable exact element-order certificate."""
+        if multiple is None:
+            multiple = self._parent.order()
+        order = self.order(
+            multiple,
+            factorization,
+            max_trial_divisions,
+            algorithm,
+        )
+        order_factors = factor_integer_bounded(order, max_trial_divisions)
+        certificate = {
+            "schema": "sagejs.hyperelliptic.mumford-order-certificate.v1",
+            "divisor": self.to_data(),
+            "annihilating_multiple": str(multiple),
+            "element_order": str(order),
+            "prime_factors": tuple(
+                (str(prime), int(exponent)) for prime, exponent in order_factors
+            ),
+        }
+        self._parent.verify_order_certificate(certificate)
+        return certificate
 
 
 @runtime.callable_instance_class
@@ -334,6 +428,101 @@ class HyperellipticJacobian(sage.Parent):
 
     def h(self) -> Any:
         return self._h
+
+    def _prime_field_model_data(self) -> dict[str, Any]:
+        field = self.base_ring()
+        if not hasattr(field, "characteristic") or not hasattr(field, "order"):
+            raise NotImplementedError("divisor serialization requires a prime field")
+        prime = int(field.characteristic())
+        if int(field.order()) != prime:
+            raise NotImplementedError("divisor serialization requires a prime field")
+
+        def coefficients(polynomial: Any) -> tuple[str, ...]:
+            answer = []
+            for value in polynomial.list():
+                lifted = value.lift() if hasattr(value, "lift") else value
+                answer.append(str(int(lifted) % prime))
+            return tuple(answer)
+
+        return {
+            "genus": self._genus,
+            "prime": str(prime),
+            "f_coefficients_ascending": coefficients(self._f),
+            "h_coefficients_ascending": coefficients(self._h),
+        }
+
+    def _divisor_data(self, divisor: MumfordDivisor) -> dict[str, Any]:
+        if divisor.parent() is not self:
+            raise ValueError("the divisor belongs to a different Jacobian")
+        model = self._prime_field_model_data()
+        prime = int(model["prime"])
+
+        def coefficients(polynomial: Any) -> tuple[str, ...]:
+            answer = []
+            for value in polynomial.list():
+                lifted = value.lift() if hasattr(value, "lift") else value
+                answer.append(str(int(lifted) % prime))
+            return tuple(answer)
+
+        u_value, v_value = divisor.uv()
+        return {
+            "schema": "sagejs.hyperelliptic.mumford-divisor.v1",
+            "curve": model,
+            "u_coefficients_ascending": coefficients(u_value),
+            "v_coefficients_ascending": coefficients(v_value),
+        }
+
+    def divisor_from_data(self, data: Mapping[str, Any]) -> MumfordDivisor:
+        """Reconstruct and validate a versioned prime-field Mumford divisor."""
+        if not hasattr(data, "get") or not hasattr(data, "__getitem__"):
+            raise TypeError("divisor data must be a mapping")
+        if data.get("schema") != "sagejs.hyperelliptic.mumford-divisor.v1":
+            raise ValueError("unknown Mumford-divisor schema")
+        if data.get("curve") != self._prime_field_model_data():
+            raise ValueError("the serialized divisor belongs to a different Jacobian")
+        prime = int(self.base_ring().characteristic())
+
+        def parse(values: Any) -> list[Any]:
+            answer = []
+            for value in values:
+                text = str(value)
+                integer = int(text)
+                if str(integer) != text or integer < 0 or integer >= prime:
+                    raise ValueError("a serialized coefficient is not canonical")
+                answer.append(self.base_ring()(integer))
+            return answer
+
+        u_value = self._ring(parse(data["u_coefficients_ascending"]))
+        v_value = self._ring(parse(data["v_coefficients_ascending"]))
+        return self._element(u_value, v_value, True)
+
+    def verify_order_certificate(self, certificate: Mapping[str, Any]) -> bool:
+        """Independently verify a serialized element-order certificate."""
+        from sagejs.hyperelliptic_curves.group_structure import validate_factorization
+
+        if not hasattr(certificate, "get") or not hasattr(certificate, "__getitem__"):
+            raise TypeError("the certificate must be a mapping")
+        if (
+            certificate.get("schema")
+            != "sagejs.hyperelliptic.mumford-order-certificate.v1"
+        ):
+            raise ValueError("unknown Mumford order-certificate schema")
+        divisor = self.divisor_from_data(certificate["divisor"])
+        multiple = int(certificate["annihilating_multiple"])
+        order = int(certificate["element_order"])
+        if multiple <= 0 or order <= 0 or multiple % order != 0:
+            raise ValueError("the certificate has inconsistent positive orders")
+        factors = [
+            (int(prime), int(exponent))
+            for prime, exponent in certificate["prime_factors"]
+        ]
+        validate_factorization(order, factors)
+        if not divisor.scalar_multiple(order, algorithm="reference").is_zero():
+            raise ArithmeticError("the claimed element order does not annihilate")
+        for prime, _exponent in factors:
+            if divisor.scalar_multiple(order // prime, algorithm="reference").is_zero():
+                raise ArithmeticError("the claimed element order is not minimal")
+        return True
 
     def __repr__(self) -> str:
         return "Jacobian of " + str(self._curve)
@@ -609,6 +798,54 @@ class HyperellipticJacobian(sage.Parent):
                 survivors.append(candidate)
         return survivors
 
+    def scalar_multiples(
+        self,
+        elements: Any,
+        scalars: Any,
+        *,
+        algorithm: str = "auto",
+        max_group_operations: Any = None,
+    ) -> list[MumfordDivisor]:
+        """Return a bounded batch of exact scalar multiples."""
+        element_list = list(elements)
+        if runtime.is_exact_integer(scalars) or hasattr(scalars, "lift"):
+            scalar_list = [scalars for _element in element_list]
+        else:
+            scalar_list = list(scalars)
+            if len(scalar_list) != len(element_list):
+                raise ValueError("elements and scalars must have the same length")
+        answer = []
+        for element, scalar in zip(element_list, scalar_list, strict=True):
+            if not isinstance(element, MumfordDivisor) or element.parent() is not self:
+                raise ValueError("every batch element must lie in this Jacobian")
+            answer.append(
+                element.scalar_multiple(
+                    scalar,
+                    algorithm=algorithm,
+                    max_group_operations=max_group_operations,
+                )
+            )
+        return answer
+
+    def annihilation_tests(
+        self,
+        elements: Any,
+        multiples: Any,
+        *,
+        algorithm: str = "auto",
+        max_group_operations: Any = None,
+    ) -> list[bool]:
+        """Test exact annihilation for one or many element/multiple pairs."""
+        return [
+            value.is_zero()
+            for value in self.scalar_multiples(
+                elements,
+                multiples,
+                algorithm=algorithm,
+                max_group_operations=max_group_operations,
+            )
+        ]
+
     def change_ring(self, base: Any) -> Any:
         return HyperellipticJacobian(self._curve.change_ring(base))
 
@@ -750,11 +987,40 @@ class HyperellipticJacobian(sage.Parent):
             raise ArithmeticError("Jacobian group rank exceeds 2g")
         return invariants
 
-    def abelian_group(self) -> Any:
-        raise NotImplementedError(
-            "embedded abelian groups require certified generators; "
-            "use group_structure() for exact invariant factors"
+    def abelian_group(
+        self,
+        factorization: list[tuple[Any, int]] | None = None,
+        max_elements: int = 50_000,
+        max_candidates: int = 5_000_000,
+        max_generator_tests: int = 100_000,
+        max_trial_divisions: int = 1_000_000,
+    ) -> Any:
+        """Return a bounded certified abstract group and explicit map."""
+        structure = self.group_structure(
+            factorization=factorization,
+            max_elements=max_elements,
+            max_candidates=max_candidates,
+            max_trial_divisions=max_trial_divisions,
+            algorithm="auto",
         )
+        module = __import__(
+            "sagejs.hyperelliptic_curves.abelian_group",
+            fromlist=["certified_abelian_group"],
+        )
+        try:
+            return module.certified_abelian_group(
+                self,
+                structure,
+                factorization=factorization,
+                max_elements=max_elements,
+                max_candidates=max_candidates,
+                max_generator_tests=max_generator_tests,
+                max_trial_divisions=max_trial_divisions,
+            )
+        except JacobianResourceLimitError as error:
+            if error.known_structure is None:
+                error.known_structure = structure
+            raise
 
 
 def Jacobian(curve: Any) -> HyperellipticJacobian:

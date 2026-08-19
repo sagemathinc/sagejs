@@ -523,8 +523,11 @@
     {
       "id": "genus3-weil-candidate-production",
       "source": "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
-      "functions": ["scan_genus3_weil_candidates"],
-      "semantic_domain": "bounded exact enumeration of all genus-3 p-Weil coefficient lifts from Hasse--Witt residues using arbitrary-precision integer arithmetic",
+      "functions": [
+        "scan_genus3_weil_candidates",
+        "scan_genus3_weil_candidates_batch"
+      ],
+      "semantic_domain": "bounded exact single-row and windowed enumeration of all genus-3 p-Weil coefficient lifts from Hasse--Witt residues using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "pari", "exact-sturm"],

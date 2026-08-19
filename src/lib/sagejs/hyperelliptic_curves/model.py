@@ -368,7 +368,7 @@ class HyperellipticCurve_generic(sage.Parent):
         start: Any,
         stop: Any,
         algorithm: str = "auto",
-        chunk_size: Any = 4096,
+        chunk_size: Any = 100_000,
     ) -> Iterator[list[Any]]:
         """Yield bounded chunks of good local factors in a closed interval."""
         if _is_finite_field(self._base):
@@ -384,7 +384,7 @@ class HyperellipticCurve_generic(sage.Parent):
         start: Any,
         stop: Any,
         algorithm: str = "auto",
-        chunk_size: Any = 4096,
+        chunk_size: Any = 100_000,
     ) -> list[Any]:
         """Return good local factors in the closed interval `[start, stop]`."""
         if _is_finite_field(self._base):
@@ -401,7 +401,7 @@ class HyperellipticCurve_generic(sage.Parent):
         stop: Any,
         *,
         algorithm: str = "auto",
-        chunk_size: Any = 4096,
+        chunk_size: Any = 100_000,
         extension_degrees: Any = 0,
         cache_size: Any = 0,
         include_certificates: bool = False,
@@ -434,6 +434,69 @@ class HyperellipticCurve_generic(sage.Parent):
             include_certificates=include_certificates,
             progress=progress,
             cancel=cancel,
+        )
+
+    def good_prime_euler_factors(
+        self,
+        start: Any,
+        stop: Any,
+        *,
+        algorithm: str = "auto",
+        chunk_size: Any = 100_000,
+    ) -> Any:
+        """Yield certified available local factors in a closed prime interval."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.euler_products",
+            fromlist=["good_prime_euler_factors"],
+        )
+        return module.good_prime_euler_factors(
+            self,
+            start,
+            stop,
+            algorithm=algorithm,
+            chunk_size=chunk_size,
+        )
+
+    def good_prime_lseries_coefficients(
+        self,
+        bound: Any,
+        *,
+        algorithm: str = "auto",
+        chunk_size: Any = 100_000,
+    ) -> Any:
+        """Return a lazy exact coefficient stream for the partial Euler product."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.euler_products",
+            fromlist=["GoodPrimeCoefficientStream"],
+        )
+        return module.GoodPrimeCoefficientStream(
+            self,
+            bound,
+            algorithm=algorithm,
+            chunk_size=chunk_size,
+        )
+
+    def good_prime_euler_product(
+        self,
+        s: Any,
+        prime_bound: Any,
+        *,
+        algorithm: str = "auto",
+        chunk_size: Any = 100_000,
+        field: Any = None,
+    ) -> Any:
+        """Evaluate an explicitly partial good-prime Euler product."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.euler_products",
+            fromlist=["truncated_good_prime_euler_product"],
+        )
+        return module.truncated_good_prime_euler_product(
+            self,
+            s,
+            prime_bound,
+            algorithm=algorithm,
+            chunk_size=chunk_size,
+            field=field,
         )
 
     def cardinality(
