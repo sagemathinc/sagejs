@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.number-fields/foundations-benchmarks-v1",
-  "corpusSha256": "f9b3096b085f1e2c2d910a478888cbd33ac449d8b42e2731a665b5431c8ae3ec",
+  "corpusSha256": "ef172f99342088196888154c940baa895643b88f5ce17e2c3396f9672adc25e0",
   "phases": [
     {
       "id": "phase-1-quadratic-zeta",
@@ -8,7 +8,7 @@
       "fields": [
         "qq",
         "imaginary-d23",
-        "real-d61-large-unit"
+        "real-d61-index-2"
       ],
       "data": [
         "analytic"
@@ -20,14 +20,14 @@
         "warm-batch",
         "cached-batch"
       ],
-      "expectedResultSha256": "72c801de304e4a9f4ddebef480933079049889b9549f11e687ccc7aa408e801d"
+      "expectedResultSha256": "74c9122e6b0b3b63906401cf6da0ab3c4f4a036b801b7cf50d24133209d3d025"
     },
     {
       "id": "phase-2-prime-decomposition",
       "description": "Good, index-dividing, tame, and wild rational-prime decompositions",
       "fields": [
         "imaginary-index-5",
-        "real-d61-large-unit",
+        "real-d61-index-2",
         "cubic-dedekind-nonmonogenic",
         "quartic-complex",
         "sextic-mixed"
@@ -52,7 +52,7 @@
         "cached",
         "prime-stream"
       ],
-      "expectedResultSha256": "480c22315cd067a6b3985060e9cbf7b68e6f9574f224c4300d8ea9fabbb64067"
+      "expectedResultSha256": "9bbaa8f032b62956bcac9e9155a17d3553ce30c9c56c03a3788bb72f7ca2b38d"
     },
     {
       "id": "phase-3-zeta-coefficients",
@@ -110,7 +110,8 @@
       "fields": [
         "imaginary-d84",
         "imaginary-d10007",
-        "real-d61-large-unit",
+        "real-d61-index-2",
+        "real-d184-large-unit",
         "cubic-mixed",
         "quartic-real",
         "sextic-mixed"
@@ -127,7 +128,7 @@
         "cached",
         "analytic-class-number-formula"
       ],
-      "expectedResultSha256": "f8305ce6acd2dca2f8da6710235ac8f76a5d7577866bf7efaa1bd9aa24bfeb18"
+      "expectedResultSha256": "e55e121ede4c29d5c955dfd3883a8b3532fe1a4f173e16774c5817961b80eb0a"
     }
   ]
 }

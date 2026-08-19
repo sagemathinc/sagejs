@@ -585,7 +585,7 @@
       ]
     },
     {
-      "id": "real-d61-large-unit",
+      "id": "real-d61-index-2",
       "degree": 2,
       "signature": [
         2,
@@ -602,6 +602,59 @@
               "e": 1,
               "f": 2,
               "norm": "4"
+            }
+          ]
+        },
+        {
+          "p": "3",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "3"
+            }
+          ]
+        },
+        {
+          "p": "5",
+          "factors": [
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            },
+            {
+              "e": 1,
+              "f": 1,
+              "norm": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "real-d184-large-unit",
+      "degree": 2,
+      "signature": [
+        2,
+        0
+      ],
+      "fieldDiscriminant": "184",
+      "classNumber": "1",
+      "rootsOfUnity": "2",
+      "primeDecompositions": [
+        {
+          "p": "2",
+          "factors": [
+            {
+              "e": 2,
+              "f": 1,
+              "norm": "2"
             }
           ]
         },
