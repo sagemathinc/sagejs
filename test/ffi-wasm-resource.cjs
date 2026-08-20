@@ -159,6 +159,15 @@ test("generated Wasm resource selection is explicit and fail-closed", () => {
   );
 });
 
+test("generated Wasm route traces retain the declaration library identity", () => {
+  const generated = generatedWasmResourceAdapter(flintDeclaration(), {
+    functionIds,
+    resourceIds: ["dirichlet_group"],
+  });
+  assert.doesNotMatch(generated.javascriptSource, /ffi:undefined:/);
+  assert.match(generated.javascriptSource, /"ffi:flint:dirichlet" \+ "_"/);
+});
+
 test("generated FLINT resource has a real Wasm lifecycle", {
   skip: hasWasmFlintToolchain()
     ? false

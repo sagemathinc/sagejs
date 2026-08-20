@@ -120,10 +120,7 @@
       "workflow": "number-field-cubic-headline",
       "tier": "routine",
       "requires": [
-        { "id": "kernel:number-field-om-proof-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-round4-state-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-composite-analysis-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:field-analysis-fixed-point-checker-production", "route": "receipt-backed-wasm-artifact" },
         { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3 - x - 1)\nO = K.maximal_order()\nD = O.factor_rational_prime(23)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(24))",

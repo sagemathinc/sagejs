@@ -1707,7 +1707,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
       }
     }
     lines.push(
-      `    traceCapability(${jsCapabilityId(`ffi:${declaration.id}:${fn.id}`)},`,
+      `    traceCapability(${jsCapabilityId(`ffi:${declaration.library.id}:${fn.id}`)},`,
       "      sagejsChunks.reduce((total, chunk) => total + chunk.bytes.length, 0),",
       "      sagejsEgressBytes);",
     );

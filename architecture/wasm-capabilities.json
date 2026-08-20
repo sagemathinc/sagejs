@@ -311,10 +311,7 @@
       "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix"
     ],
     "number-field-cubic-headline": [
-      "kernel:number-field-om-proof-production",
-      "kernel:number-field-round4-state-production",
-      "kernel:number-field-composite-analysis-production",
-      "kernel:number-field-zeta-coefficients-production",
+      "kernel:field-analysis-fixed-point-checker-production",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "number-field-ideal-certificate-sagepack": [
