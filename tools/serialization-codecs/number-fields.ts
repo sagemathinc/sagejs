@@ -76,12 +76,16 @@ function isNumberFieldPrimeIdeal(value: unknown): boolean {
 
 function encodeParent(value: unknown, context: EncodeContext): WireValue {
   switch (kind(value)) {
-    case "NumberField":
+    case "NumberField": {
+      const polynomial = Reflect.get(Object(value), "_polynomial");
+      const polynomialParent = Reflect.get(Object(polynomial), "_parent");
       return context.encode({
         kind: "NumberField",
-        polynomial: Reflect.get(Object(value), "_polynomial"),
+        polynomialCoefficients: callMethod(polynomial, "coefficients"),
+        polynomialVariable: Reflect.get(Object(polynomialParent), "_variable"),
         name: Reflect.get(Object(value), "_variable"),
       });
+    }
     case "QuadraticField":
       return context.encode({
         kind: "QuadraticField",
@@ -107,7 +111,25 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
 function decodeParent(payload: WireValue, context: DecodeContext): unknown {
   const data = context.decode(payload) as Record<string, unknown>;
   switch (data.kind) {
-    case "NumberField": return callGlobal("NumberField", [data.polynomial, data.name]);
+    case "NumberField": {
+      // The original v1 record stored the polynomial object itself.  New
+      // records use its exact coefficient data so optional compact native
+      // polynomial resources cannot change canonical SagePack bytes.
+      if (data.polynomial !== undefined) {
+        return callGlobal("NumberField", [data.polynomial, data.name]);
+      }
+      if (!Array.isArray(data.polynomialCoefficients)) {
+        throw new SageSerializationError(
+          "serialized number-field polynomial coefficients are invalid",
+        );
+      }
+      const polynomialRing = callGlobal("PolynomialRing", [
+        Reflect.get(globalThis, "QQ"),
+        String(data.polynomialVariable),
+      ]);
+      const polynomial = callPython(polynomialRing, [data.polynomialCoefficients]);
+      return callGlobal("NumberField", [polynomial, data.name]);
+    }
     case "QuadraticField": return callGlobal("QuadraticField", [data.discriminant]);
     case "CyclotomicField": return callGlobal("CyclotomicField", [data.order]);
     case "NumberFieldOrder": {
