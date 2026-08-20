@@ -33,7 +33,48 @@
     "pnpm test:native",
     "pnpm test:sea"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.79,
+      "started_at": "2026-08-20T05:27:24.637Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile lint",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.274,
+      "started_at": "2026-08-20T05:27:30.147Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.885,
+      "started_at": "2026-08-20T05:27:37.341Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.354,
+      "started_at": "2026-08-20T05:27:43.980Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
