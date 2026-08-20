@@ -220,8 +220,7 @@ async function main() {
   await runStage(3, async () => {
     const ffi = await run(process.execPath, [
       join(root, "bin", "sagejs"),
-      "ffi",
-      "generate",
+      "ffi", "generate",
     ]);
     const task = await run(process.execPath, [
       join(root, "scripts", "build-task-runtime.cjs"),
