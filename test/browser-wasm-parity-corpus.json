@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "description": "Public Sage programs that must agree across Node and browser WebAssembly hosts.",
+  "cases": [
+    {
+      "id": "exact-big-integer",
+      "family": "exact-arithmetic",
+      "workflow": "exact-integer-factorization",
+      "tier": "routine",
+      "requires": ["runtime:integer_factorization"],
+      "source": "print(2^80 + 17)\nprint(factor(2026))",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "1208925819614629174706193\n2 * 1013\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "exact-matrix-and-finite-field-polynomial",
+      "family": "exact-arithmetic",
+      "workflow": "exact-matrices-and-finite-field-polynomials",
+      "tier": "routine",
+      "requires": [
+        "ffi:flint:fmpz_matrix_det",
+        "ffi:flint:fmpz_matrix_hnf",
+        "ffi:flint:fmpz_mod_polynomial_gcd"
+      ],
+      "source": "A = matrix(ZZ, [[1,2],[3,4]])\nR.<x> = PolynomialRing(GF(18446744073709551629))\nf = x^4 + 3*x + 7\nprint(A.det(), A.rank())\nprint(A.hermite_form())\nprint(f.gcd(f.derivative()))",
+      "timeout_ms": 20000,
+      "expect": {
+        "stdout": "-2 2\n[1 0]\n[0 2]\n1\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "sagepack-exact-roundtrip",
+      "family": "serialization",
+      "workflow": "sagepack-exact-roundtrip",
+      "tier": "routine",
+      "requires": ["specialist:sagepack"],
+      "source": "from sagejs_serialization import dumps, loads\nA = matrix(QQ, [[1/2,2/3],[3/4,4/5]])\ndata = dumps(A)\nprint(data[:8] == b'SAGEPK1\\x00', loads(data) == A, dumps(loads(data)) == data)",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "number-field-maximal-order-prime-zeta",
+      "family": "number-fields",
+      "workflow": "number-field-maximal-order-prime-zeta",
+      "tier": "release",
+      "requires": [
+        "kernel:number-field-om-proof-production",
+        "kernel:number-field-round4-state-production",
+        "kernel:number-field-composite-analysis-production",
+        "kernel:number-field-zeta-coefficients-production",
+        "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+      ],
+      "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nD = O.factor_rational_prime(11)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(16))",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(2, 0)\n[(11, 1, 1, 11), (11, 1, 1, 11)]\n[1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 1]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "riemann-zeta-batch",
+      "family": "analytic-functions",
+      "workflow": "riemann-zeta-batch",
+      "tier": "release",
+      "requires": ["analytic:riemann-zeta-batch"],
+      "source": "R = RiemannZeta(80)\nfor z in R.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [1.6449340668482264, 0, 1.2020569031595942, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "dirichlet-l-batch",
+      "family": "analytic-functions",
+      "workflow": "dirichlet-l-batch",
+      "tier": "release",
+      "requires": ["analytic:dirichlet-l-batch"],
+      "source": "G = DirichletGroup(5)\nL = G[2].lfunction(80)\nfor z in L.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [0.706211403259741, 0, 0.854824766648543, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "quadratic-dedekind-zeta-batch",
+      "family": "analytic-functions",
+      "workflow": "quadratic-dedekind-zeta-batch",
+      "tier": "release",
+      "requires": [
+        "analytic:riemann-zeta-batch",
+        "analytic:dirichlet-l-batch",
+        "analytic:quadratic-dedekind-zeta"
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nfor z in Z.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [1.1616711956186385, 0, 1.0275480117416704, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "elliptic-portable-coefficients",
+      "family": "elliptic-curves",
+      "workflow": "elliptic-portable-coefficients",
+      "tier": "release",
+      "requires": [
+        "elliptic-coefficients-portable",
+        "elliptic-root-number-semistable"
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nprint(E.root_number())\nprint(E.anlist(12))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "-1\n[0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "elliptic-lseries-values",
+      "family": "elliptic-curves",
+      "workflow": "elliptic-lseries-values",
+      "tier": "release",
+      "requires": [
+        "elliptic-coefficients-portable",
+        "elliptic-root-number-semistable",
+        "elliptic-lseries-values"
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\nz = L(1+I)\nprint(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [-0.158925263301377, 0.457911066765115],
+          "absolute_tolerance": 1e-12,
+          "relative_tolerance": 1e-12
+        }
+      }
+    },
+    {
+      "id": "elliptic-lseries-complex-plot",
+      "family": "plotting",
+      "workflow": "elliptic-lseries-complex-plot",
+      "tier": "release",
+      "requires": [
+        "elliptic-coefficients-portable",
+        "elliptic-root-number-semistable",
+        "elliptic-lseries-values",
+        "elliptic-lseries-plot"
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\ncomplex_plot(L,(0,2),(-1,1),plot_points=12,interpolation='nearest')",
+      "timeout_ms": 90000,
+      "expect": {
+        "repr": "Graphics object consisting of 1 graphics primitive",
+        "display": {
+          "mime": "application/vnd.plotly.v1+json",
+          "minimum_traces": 1,
+          "trace_types": ["image"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+name: Sage.js WebAssembly reproducible release
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wasm-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  node-oracle:
+    name: Native Node oracle for the public browser corpus
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - name: Build the current native mathematical oracle
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake python3 python3-jupyter-client m4 xz-utils
+          pnpm install --frozen-lockfile
+          pnpm bootstrap
+      - name: Run exactly the public browser release programs in Node
+        run: |
+          node packages/flint-wasm/test/browser-wasm-node-parity.cjs \
+            --tier release --receipt build/wasm-node-oracle.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-node-oracle-receipt
+          path: build/wasm-node-oracle.json
+          if-no-files-found: error
+
+  clean-build:
+    name: Clean reproducibility build ${{ matrix.replica }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: true
+      matrix:
+        replica: [a, b]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: toolchain
+        run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/release/toolchain-lock.json') }}
+      - name: Build without an ambient CoWasm checkout
+        run: |
+          node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/_headers
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --budget bench/browser-wasm-budget.json \
+            --require-baseline \
+            --output build/wasm-artifact-${{ matrix.replica }}.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-clean-build-${{ matrix.replica }}
+          path: |
+            packages/flint-wasm/dist
+            build/wasm-artifact-${{ matrix.replica }}.json
+          if-no-files-found: error
+
+  reproducibility:
+    needs: clean-build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/a
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-b
+          path: build/b
+      - name: Require byte-identical production artifacts
+        run: |
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --dist build/a/packages/flint-wasm/dist \
+            --compare build/b/packages/flint-wasm/dist \
+            --output build/reproducible-artifact.json
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
+            -C build/a/packages/flint-wasm -czf build/sagejs-wasm.tar.gz dist
+          sha256sum build/sagejs-wasm.tar.gz > build/sagejs-wasm.tar.gz.sha256
+      - uses: actions/attest-build-provenance@v3
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          subject-path: build/sagejs-wasm.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-wasm-reproducible
+          path: |
+            build/sagejs-wasm.tar.gz
+            build/sagejs-wasm.tar.gz.sha256
+            build/reproducible-artifact.json
+
+  browser-release:
+    needs: clean-build
+    name: Public parity (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore the validated artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - run: pnpm exec playwright-core install --with-deps ${{ matrix.engine }}
+      - name: Run the complete public mathematical corpus
+        run: |
+          node packages/flint-wasm/test/browser-wasm-parity.mjs \
+            --tier release \
+            --engines ${{ matrix.engine }} \
+            --require-engines ${{ matrix.engine }} \
+            --receipt build/wasm-parity-${{ matrix.engine }}.json
+          node bench/browser-wasm-performance.mjs \
+            --engine ${{ matrix.engine }} --samples 3 \
+            --budget bench/browser-wasm-budget.json --require-baseline \
+            --output build/wasm-performance-${{ matrix.engine }}.json
+      - name: Exercise security, interruption, offline, upgrade, and rollback
+        if: matrix.engine == 'chromium'
+        run: |
+          node --test packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs
+          node packages/flint-wasm/test/browser-wasm-serialization.mjs
+          node packages/flint-wasm/test/browser-wasm-security.mjs
+          node packages/flint-wasm/test/browser-wasm-offline-cache.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-browser-${{ matrix.engine }}-receipts
+          path: build/wasm-*-${{ matrix.engine }}.json
+          if-no-files-found: error

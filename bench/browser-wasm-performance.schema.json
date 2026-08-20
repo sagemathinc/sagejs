@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/browser-wasm-performance-v1.json",
+  "title": "Sage.js browser WebAssembly performance receipt",
+  "type": "object",
+  "required": ["schema", "engine", "samples", "startup_ms", "interrupt_latency_ms", "operations"],
+  "properties": {
+    "schema": { "const": "sagejs.browser-wasm-performance/v1" },
+    "engine": { "enum": ["chromium", "firefox", "webkit"] },
+    "source_revision": { "type": ["string", "null"] },
+    "samples": { "type": "integer", "minimum": 1 },
+    "startup_ms": { "$ref": "#/$defs/distribution" },
+    "interrupt_latency_ms": { "$ref": "#/$defs/distribution" },
+    "operations": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/distribution" }
+    },
+    "diagnostics": { "type": "object" }
+  },
+  "$defs": {
+    "distribution": {
+      "type": "object",
+      "required": ["minimum", "median", "maximum", "samples"],
+      "properties": {
+        "minimum": { "type": "number", "minimum": 0 },
+        "median": { "type": "number", "minimum": 0 },
+        "maximum": { "type": "number", "minimum": 0 },
+        "samples": { "type": "array", "items": { "type": "number", "minimum": 0 } }
+      }
+    }
+  }
+}

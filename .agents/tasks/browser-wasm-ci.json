@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "browser-wasm-ci",
+  "title": "Browser Wasm Ci",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add public browser-Wasm parity, security, offline/cache, performance/payload, and reproducible release CI gates",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "test/browser-wasm-parity-corpus.json",
+    "test/browser-wasm-release-gates.cjs",
+    "packages/flint-wasm/test/browser-wasm-support.mjs",
+    "packages/flint-wasm/test/browser-wasm-parity.mjs",
+    "packages/flint-wasm/test/browser-wasm-security.mjs",
+    "packages/flint-wasm/test/browser-wasm-offline-cache.mjs",
+    "packages/flint-wasm/test/browser-wasm-node-parity.cjs",
+    "packages/flint-wasm/test/browser-wasm-serialization.mjs",
+    "packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs",
+    "packages/flint-wasm/scripts/browser-wasm-deployment.cjs",
+    "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+    ".github/workflows/wasm-routine.yml",
+    ".github/workflows/wasm-release.yml",
+    ".github/workflows/wasm-deployment.yml",
+    "bench/browser-wasm-budget.json",
+    "bench/browser-wasm-performance.mjs",
+    "bench/browser-wasm-performance.schema.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
