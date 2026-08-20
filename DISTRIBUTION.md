@@ -159,18 +159,18 @@ background/foreground transitions, or Apple's exact shipping WebKit build.
 The physical iPhone/iPad feasibility and release corpus therefore remain
 separate mandatory gates.
 
-The mobile shell currently uses bundled `file:` URLs. Those URLs cannot carry
-COOP/COEP response headers, are not cross-origin isolated, and must not be
-treated as if `SharedArrayBuffer` were available. A real WebKit file-origin
-release check exercises both the outer module worker and its nested module
+A mobile shell must not load the kernel from bundled `file:` URLs. Those URLs
+cannot carry COOP/COEP response headers, are not cross-origin isolated, and
+cannot be treated as if `SharedArrayBuffer` were available. A real WebKit
+file-origin release check exercises both the outer module worker and its nested module
 worker and records the actual isolation and `SharedArrayBuffer` state. The
-mobile runtime therefore requires the authoritative compiler's non-isolated,
-in-realm fallback whenever synchronous shared-memory RPC is unavailable. If a
-future feature truly requires cross-origin isolation, the mobile host must
-first move the bundled runtime to a narrowly scoped application-owned HTTPS or
-loopback HTTP asset origin with the same COOP/COEP/CORP policy, immutable asset
-verification, and no remote fallback; a `file:` URL plus HTML meta tags cannot
-provide that contract.
+release check proves why it is rejected. The mobile host instead serves the
+verified bundle through a narrowly scoped application-owned HTTPS or loopback
+HTTP asset origin with the same COOP/COEP/CORP policy, immutable asset
+verification, and no remote fallback. The authoritative compiler still keeps
+its non-isolated, in-realm fallback for WebViews where synchronous
+shared-memory RPC remains unavailable. A `file:` URL plus HTML meta tags cannot
+provide either contract.
 
 There is strong evidence that the native library stack is portable:
 

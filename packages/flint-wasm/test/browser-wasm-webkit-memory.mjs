@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { webkit } from "playwright-core";
@@ -14,6 +15,8 @@ const TREE_SITTER_MAXIMUM_MIB = 384;
 const LARGE_SOURCE_BYTES = 1024 * 1024;
 const PRESSURE_ITEMS = 250_000;
 const INTERRUPT_LIMIT_MS = 10_000;
+const require = createRequire(import.meta.url);
+const { validateProductionReceipt } = require("../scripts/production-receipt.cjs");
 
 function option(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -40,6 +43,16 @@ function treeSitterContract() {
 }
 
 function artifactIdentity() {
+  const validation = validateProductionReceipt({
+    packageRoot,
+    outputDirectory: path.join(packageRoot, "dist"),
+  });
+  const reason = validation.reason ?? "unknown receipt failure";
+  assert.equal(
+    validation.valid,
+    true,
+    `the WebKit gate requires an authenticated production artifact: ${reason}`,
+  );
   const manifest = JSON.parse(fs.readFileSync(
     path.join(packageRoot, "dist", "production-manifest.json"),
     "utf8",
@@ -64,12 +77,14 @@ function latestTreeSitterMemory(observations, contract) {
       ...memory,
       phase: observation.phase,
     })),
-  ).filter((memory) =>
-    memory.initialPages === contract.initialPages &&
-    memory.maximumPages === contract.maximumPages,
-  );
+  ).filter((memory) => memory.initialPages === contract.initialPages);
   assert.ok(matches.length > 0, "WebKit did not instantiate the declared Tree-sitter memory");
   for (const memory of matches) {
+    assert.equal(
+      memory.maximumPages,
+      contract.maximumPages,
+      `Tree-sitter instantiated with a ${memory.maximumPages}-page maximum instead of ${contract.maximumPages}`,
+    );
     assert.equal(memory.shared, false);
     assert.ok(Number.isInteger(memory.currentPages));
     assert.ok(memory.currentPages >= contract.initialPages);
@@ -151,6 +166,16 @@ try {
 
   const diagnostics = await page.evaluate(() => window.__sagejsTest.diagnostics());
   receipt.browser = diagnostics;
+  assert.equal(
+    diagnostics.cross_origin_isolated,
+    true,
+    "the WebKit production origin is not cross-origin isolated",
+  );
+  assert.equal(
+    diagnostics.shared_array_buffer,
+    true,
+    "the isolated WebKit production origin lacks SharedArrayBuffer",
+  );
   receipt.browser_memory_api = {
     performance_memory: diagnostics.memory !== null,
     measure_user_agent_specific_memory: await page.evaluate(
@@ -162,10 +187,10 @@ try {
   await waitForMemoryObservation(
     server,
     (observation) => observation.memories?.some((memory) =>
-      memory.initialPages === contract.initialPages &&
-      memory.maximumPages === contract.maximumPages,
+      memory.initialPages === contract.initialPages
     ),
   );
+  latestTreeSitterMemory(server.memoryObservations, contract);
 
   const paddingLength = LARGE_SOURCE_BYTES - 80;
   const largeSource = `payload = "${"x".repeat(paddingLength)}"\nprint(len(payload))`;
