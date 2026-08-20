@@ -802,6 +802,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -1342,6 +1343,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1385,6 +1388,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1432,6 +1437,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1571,6 +1578,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/modular.cjs",
         "src/baselib/dirichlet.py"
@@ -1649,6 +1658,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
