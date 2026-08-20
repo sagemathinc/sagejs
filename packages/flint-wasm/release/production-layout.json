@@ -79,6 +79,7 @@
     "stdlib.json",
     "lazy-modules.json",
     "dynamic-programs.json",
+    "production-kernel-coverage.json",
     "symbolic-backend.mjs",
     "serialization.mjs",
     "wasi-runtime.mjs",
@@ -87,8 +88,7 @@
     "wasm-pack-loader.mjs",
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",
-    "tree-sitter-sage.wasm"
-    ,
+    "tree-sitter-sage.wasm",
     "wasm-capability-api.mjs",
     "wasm-capabilities-report.json"
   ],

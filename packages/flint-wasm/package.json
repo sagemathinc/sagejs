@@ -38,6 +38,7 @@
     "dist/ffi-production-closure.json",
     "dist/lazy-modules.json",
     "dist/dynamic-programs.json",
+    "dist/production-kernel-coverage.json",
     "dist/production-manifest.json",
     "dist/build-receipt.json",
     "dist/runtime/",

@@ -103,6 +103,10 @@ const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
 const dynamicProgramsOutput = path.join(outputDirectory, "dynamic-programs.json");
+const kernelCoverageOutput = path.join(
+  outputDirectory,
+  "production-kernel-coverage.json",
+);
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const symbolicBackendOutput = path.join(
   outputDirectory,
@@ -134,6 +138,11 @@ const standardLibraryCacheDirectory = path.join(
   "module-cache",
 );
 const lazyModulesSource = path.join(repositoryRoot, "dist", "lazy-modules.json");
+const kernelCoverageSource = path.join(
+  packageRoot,
+  "release",
+  "production-kernel-coverage.json",
+);
 const dynamicProgramCacheDirectory = path.join(
   repositoryRoot,
   "dist",
@@ -735,6 +744,7 @@ fs.writeFileSync(
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
+fs.copyFileSync(kernelCoverageSource, kernelCoverageOutput);
 const dynamicProgramInputs = fs.readdirSync(dynamicProgramCacheDirectory)
   .filter((name) => /^[a-f0-9]{64}\.json$/.test(name))
   .sort()
@@ -841,6 +851,7 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    kernelCoverageSource,
     plotlySource,
     wasmPackLoaderSource,
     flintDeclaration.filename,
