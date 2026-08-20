@@ -1031,6 +1031,9 @@ function generatedCSource(declaration, surface, classified) {
       (parameter) => parameter.kind === "integer_buffer",
     ),
   );
+  const hasBuffer = classified.some(
+    (item) => item.bufferParameters.length !== 0,
+  );
   const orderedResources = [
     ...surface.resources.filter((resource) => resource.ownership === "owned"),
     ...surface.resources.filter((resource) => resource.ownership === "borrowed"),
@@ -1137,7 +1140,7 @@ sagejs_wasm_stage_pointer(void)
     return (uint32_t) (uintptr_t) sagejs_wasm_stage_data;
 }
 
-static int
+${hasBuffer ? `static int
 sagejs_wasm_stage_range(
     uint32_t offset, uint32_t count, uint32_t width, uint32_t alignment)
 {
@@ -1147,7 +1150,7 @@ sagejs_wasm_stage_range(
     const uint32_t length = count * width;
     return offset <= sagejs_wasm_stage_length &&
         length <= sagejs_wasm_stage_length - offset;
-}
+}` : ""}
 
 ${hasIntegerInput ? `static int
 sagejs_wasm_staged_integer(uint32_t offset, uint32_t length)

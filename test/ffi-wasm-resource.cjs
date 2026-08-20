@@ -105,6 +105,10 @@ test("generated Wasm resource selection is explicit and fail-closed", () => {
     scalarGenerated.cSource,
     /sagejs_wasm_wordIsPrime/,
   );
+  assert.doesNotMatch(
+    scalarGenerated.cSource,
+    /static int\s+sagejs_wasm_stage_range/,
+  );
   assert.throws(
     () => generatedWasmResourceAdapter(declaration, {
       resourceIds: ["fmpq_matrix"],
