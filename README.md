@@ -470,7 +470,7 @@ The `sagejs` command uses Sage-style syntax by default:
 
 ```py
 $ sagejs
-Welcome to Sage.js [Node.js v26.5.0 on x64].
+Welcome to Sage.js v0.3.0 [linux-x64].
 sage: 2^100
 1267650600228229401496703205376
 sage: sum([1..100])
@@ -758,7 +758,7 @@ Python mode retains Python's meaning of `^`:
 
 ```py
 $ sagejs --python
-Welcome to Sage.js (Python mode) [Node.js v26.5.0 on x64].
+Welcome to Sage.js v0.3.0 (Python mode) [linux-x64].
 >>> 2^3
 1
 >>> 2**3
