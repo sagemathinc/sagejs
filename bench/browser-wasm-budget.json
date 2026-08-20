@@ -1,13 +1,15 @@
 {
   "schema": "sagejs.browser-wasm-budget/v1",
-  "description": "Relative release gates. Populate artifact_baseline and performance_baseline from a reviewed release receipt; absent baselines are reported but never fabricated.",
+  "description": "Relative release gates. Populate artifact_baseline, performance_baseline, and native_ratio_baseline only from reviewed final-artifact receipts; absent baselines are reported but never fabricated.",
   "thresholds": {
     "compressed_growth_fraction": 0.05,
     "startup_regression_fraction": 0.2,
     "warm_operation_regression_fraction": 0.15,
     "interrupt_latency_regression_fraction": 0.2,
+    "native_ratio_regression_fraction": null,
     "maximum_interrupt_latency_ms": 1500
   },
   "artifact_baseline": null,
-  "performance_baseline": null
+  "performance_baseline": null,
+  "native_ratio_baseline": null
 }
