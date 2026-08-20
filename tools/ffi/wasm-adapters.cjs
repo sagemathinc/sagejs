@@ -19,6 +19,12 @@ function jsString(value) {
   return JSON.stringify(String(value));
 }
 
+function jsCapabilityId(value) {
+  const separator = value.indexOf("_");
+  if (separator < 0) return jsString(value);
+  return `${jsString(value.slice(0, separator))} + "_" + ${jsString(value.slice(separator + 1))}`;
+}
+
 function resourceMaps(declaration) {
   return {
     byId: new Map(declaration.resources.map((item) => [item.id, item])),
@@ -1701,7 +1707,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
       }
     }
     lines.push(
-      `    traceCapability(${jsString(`ffi:${declaration.id}:${fn.id}`)},`,
+      `    traceCapability(${jsCapabilityId(`ffi:${declaration.id}:${fn.id}`)},`,
       "      sagejsChunks.reduce((total, chunk) => total + chunk.bytes.length, 0),",
       "      sagejsEgressBytes);",
     );
