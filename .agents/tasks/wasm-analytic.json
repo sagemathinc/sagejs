@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-analytic",
+  "title": "WebAssembly analytic functions vertical slice",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide host-neutral arbitrary-precision Arb/Acb analytic batch ABIs and a WebAssembly backend for Riemann zeta jets/batches, Dirichlet L batches, quadratic Dedekind completion, gamma completion primitives, plotting tiles, and browser parity vectors",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "packages/flint/src/analytic_batch_core.c",
+    "packages/flint/src/analytic_batch_core.h",
+    "packages/flint-wasm/src/analytic.c",
+    "packages/flint-wasm/analytic-backend.mjs",
+    "packages/flint-wasm/test/analytic-backend.test.mjs",
+    "packages/flint-wasm/test/analytic-browser-parity.mjs",
+    "packages/flint-wasm/test/analytic-core-native.c",
+    "packages/flint-wasm/test/analytic-public-vectors.json",
+    "packages/flint-wasm/scripts/test-analytic-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT acb_dirichlet API",
+    "SageMath zeta and Dirichlet L semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT native Node provider and mpmath public references",
+      "Node and browser parity vector digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
