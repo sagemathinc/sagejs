@@ -36,6 +36,9 @@ from sagejs.number_fields.bl_composite_kernel import (
     packed_order_table_in_place,
     packed_row_hnf_in_place,
 )
+from sagejs.number_fields.bl_composite_kernel import (
+    packed_order_contains_vector_in_place as packed_order_contains_vector_in_place,
+)
 
 try:
     import sagejs.runtime as _rt

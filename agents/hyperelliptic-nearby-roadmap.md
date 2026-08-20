@@ -86,7 +86,7 @@ below.
 
 ## Accelerate public Jacobian divisor operations
 
-**Priority 2 / ready / M**
+**Priority 2 / completed 2026-08-19 / M**
 
 The native genus-3 certification kernel already implements exact divisor
 validation, scalar multiplication, order searches, and factor-and-strip order
@@ -118,9 +118,19 @@ scalar cases.
   mathematical answers.
 - Focused tests and benchmarks pass on all four native targets.
 
+### Completion
+
+Public genus-3 prime-field divisors now use the bounded native scalar kernel
+for `scalar_multiple(..., algorithm="auto")`, while arbitrary-size or
+unsupported inputs retain the ordinary-Python Cantor fallback. Exact
+factor-and-strip order search, batched scalar and annihilation operations,
+versioned curve-bound Mumford serialization, and independently rechecked
+order certificates are exposed. Fixed-width ingress rejects overflow and the
+native boundary reports deterministic resource and cancellation statuses.
+
 ## Certified generators and explicit abelian-group maps
 
-**Priority 3 / ready after Priority 2 / M**
+**Priority 3 / completed 2026-08-19 / M**
 
 `J.group_structure()` can return invariant factors, but `J.abelian_group()`
 correctly refuses to manufacture an abstract group without certified
@@ -162,9 +172,18 @@ generators.
 - Exhaustive small-group comparisons include cyclic and noncyclic genus-2 and
   genus-3 examples.
 
+### Completion
+
+`J.abelian_group()` now provides a certified invariant-coordinate group and an
+explicit map to the Jacobian for bounded finite groups. It verifies generator
+orders, independence, full subgroup size, and every inverse coordinate in an
+exhaustive table. Resource exhaustion raises `JacobianResourceLimitError`
+with the known structure and partial-generator context instead of claiming a
+scalable discrete-log implementation.
+
 ## Extend the automatic genus-3 performance envelope
 
-**Priority 4 / ready to measure / M**
+**Priority 4 / completed 2026-08-19 / M**
 
 Automatic rforest selection is currently bounded by the range for which the
 complete certified workflow, rather than only the modular residue stage, has a
@@ -200,9 +219,22 @@ receipt, and cross-platform agreement exist for the larger interval. Explicit
 - The automatic selector is based on measured end-to-end behavior, not raw
   remainder-forest timing alone.
 
+### Completion
+
+The source-transparent exact candidate kernel now scans packed row windows,
+reducing the through-100000 candidate stage from roughly 36 minutes to 108.3
+seconds on the development host. The full public `auto` stream completed in
+958.7 seconds with 9587 unique certificates, one exact fallback, four honest
+omissions, zero cache entries, and digest
+`3728105193022836152423678822391807418`. The cumulative four-stage harness
+peaked at 748,965,888 bytes RSS. The automatic odd-degree genus-3 interval
+ceiling is therefore 100000; larger explicit rforest requests remain
+available. See
+`bench/results/hyperelliptic-genus3-auto-100k-2026-08-19.json`.
+
 ## Derived local invariants and statistics
 
-**Priority 5 / ready / S**
+**Priority 5 / completed 2026-08-19 / S**
 
 Once `L_p(T)` is known, many research quantities are nearly free. Provide
 single-prime and streaming access to:
@@ -226,9 +258,18 @@ floating normalization belongs at the presentation boundary.
 - Filtering a stream does not change the computation or certification of a
   retained row.
 
+### Completion
+
+Local-data records now derive curve point counts and Jacobian orders over
+requested extensions directly from their certified polynomial. Streams offer
+pure projection filters and exact accumulators for status, p-rank,
+ordinarity, coefficient powers, extension counts, and normalized even
+moments. Square-root normalizations are deliberately floating only at the
+presentation boundary.
+
 ## Good-prime Euler products and coefficient streams
 
-**Priority 6 / ready / S**
+**Priority 6 / completed 2026-08-19 / S**
 
 Generate multiplicative Dirichlet coefficients and truncated Euler products
 from certified good-prime local factors. This is useful for experimentation
@@ -247,6 +288,15 @@ Useful outputs include:
 - exact files suitable for another `L`-function package;
 - consistency checks between local factors, point counts, and coefficient
   recurrences.
+
+### Completion
+
+Curves now expose certified available-prime Euler-factor iteration,
+multiplicative partial-product coefficients, exact decimal JSONL export, and
+truncated numerical Euler products. Provenance lists every included and
+omitted prime and explicitly sets `is_global_lfunction=False`: these tools do
+not invent bad factors, conductor data, gamma factors, or a completed global
+L-function.
 
 ## Smaller supporting improvements
 

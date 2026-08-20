@@ -21,6 +21,9 @@
     },
     "sea-cli": {
       "normalized_median_ms": 300,
+      "normalized_median_ms_by_platform_arch": {
+        "linux-arm64": 350
+      },
       "hard_limit_ms": 1500,
       "samples": 11,
       "reference_node_ms": 30
@@ -378,7 +381,7 @@
       "id": "hyperelliptic-curves-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 300000,
+      "max_source_bytes": 400000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "hyperelliptic-curves"

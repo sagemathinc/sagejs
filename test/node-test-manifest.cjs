@@ -2,8 +2,11 @@
 
 const unit = [
   "test/test-manifest.test.cjs",
+  "test/test-runner-ux.cjs",
+  "test/ci-policy.cjs",
   "test/python-executable.cjs",
   "test/completer.cjs",
+  "test/repl-initial-completion.cjs",
   "test/cowasm-landscape.cjs",
   "test/module-cache.cjs",
   "test/cache.cjs",
@@ -272,9 +275,11 @@ const integration = [
   "test/hyperelliptic-genus3-certified.cjs",
   "test/hyperelliptic-genus3-jacobian-search-differential.cjs",
   "test/hyperelliptic-jacobian.cjs",
+  "test/hyperelliptic-jacobian-group-structure.cjs",
   "test/hyperelliptic-local-data.cjs",
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",
+  "test/hyperelliptic-research-tools.cjs",
   "test/hyperelliptic-rforest.cjs",
   "test/number-fields.cjs",
   "test/number-field-analytic-zeta-reference.cjs",
@@ -295,15 +300,47 @@ const integration = [
 // Tests which exercise the compiler/runtime without requiring the optional
 // native mathematics addon.  This tier is useful during platform bring-up;
 // unit remains the complete fast developer tier once the addon is available.
-const portable = unit.filter(
-  (filename) =>
-    filename !== "test/foreign-languages.cjs" &&
-    filename !== "test/magma.cjs",
-);
+const nonPortableUnit = new Set([
+  // These exercise installed language runtimes rather than the portable host.
+  "test/foreign-languages.cjs",
+  "test/magma.cjs",
+  // These intentionally exercise FLINT-backed resources or compiled kernels.
+  "test/compiled-module-isolation.cjs",
+  "test/dynamic-ffi-call-cache.cjs",
+  "test/exact-integer-range-v1.cjs",
+  "test/gf2-polynomial-packed-core.cjs",
+]);
+const portable = unit.filter((filename) => !nonPortableUnit.has(filename));
+
+// A bounded public-surface sample for routine developer and CI validation.
+// These tests intentionally avoid the expensive native corpus and long-running
+// number-field evidence suites.
+const smoke = [
+  "test/datetime-module.cjs",
+  "test/calendar-module.cjs",
+  "test/time-module.cjs",
+  "test/os-module.cjs",
+];
+
+// Fast platform-sensitive tests which do not require compiling the complete
+// optional native dependency stack. The release and weekly workflows exercise
+// the exhaustive native and integration tiers on every supported platform.
+const platform = [
+  "test/python-executable.cjs",
+  "test/repl-initial-completion.cjs",
+  "test/runtime-intrinsics.cjs",
+  "test/timing-core.cjs",
+  "test/typed-math-lowering.cjs",
+  "test/baselib-boundaries.cjs",
+  "test/python-syntax-frontend.cjs",
+  "test/python-container-truthiness.cjs",
+];
 
 module.exports = {
   portable,
   unit,
+  smoke,
+  platform,
   integration,
   all: [...unit, ...integration],
 };

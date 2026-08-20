@@ -215,6 +215,7 @@ test("clean native builds retain optional FFLAS outside the portable release pac
     "pnpm --dir packages/fflas build",
     "pnpm --dir packages/graph build",
     "pnpm --dir packages/m4ri build",
+    "pnpm run python:precompile:run",
     "node scripts/build-production-native-kernels.cjs",
   ]);
 

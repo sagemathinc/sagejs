@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <node_api.h>
@@ -63,6 +64,14 @@ static int bigint_to_integer(
             env,
             napi_get_value_bigint_words(env, value, &sign, &count, words)))
         return 0;
+    if (sign)
+    {
+        napi_throw_range_error(
+            env, NULL,
+            "integer must be nonnegative and fit the 128-bit genus-3 "
+            "Jacobian domain");
+        return 0;
+    }
     for (size_t index = 0; index < count; index += 1)
     {
         uint64_t word = words[count - index - 1];
@@ -107,15 +116,14 @@ static napi_value integer_to_bigint(
     return result;
 }
 
-static int typed_u64(
+static int typed_u64_with_length(
     napi_env env,
     napi_value value,
-    size_t expected,
-    const uint64_t **data)
+    const uint64_t **data,
+    size_t *length)
 {
     bool is_array;
     napi_typedarray_type type;
-    size_t length;
     napi_value buffer;
     size_t offset;
     if (!check_napi(env, napi_is_typedarray(env, value, &is_array)))
@@ -123,12 +131,99 @@ static int typed_u64(
     if (!is_array || !check_napi(
             env,
             napi_get_typedarray_info(
-                env, value, &type, &length, (void **) data, &buffer, &offset)))
+                env, value, &type, length, (void **) data, &buffer, &offset)))
         return 0;
-    if (type != napi_biguint64_array || length != expected)
+    if (type != napi_biguint64_array)
+    {
+        napi_throw_type_error(env, NULL, "expected a packed BigUint64Array");
+        return 0;
+    }
+    return 1;
+}
+
+static int typed_u64(
+    napi_env env,
+    napi_value value,
+    size_t expected,
+    const uint64_t **data)
+{
+    size_t length;
+    if (!typed_u64_with_length(env, value, data, &length))
+        return 0;
+    if (length != expected)
     {
         napi_throw_type_error(env, NULL, "invalid packed BigUint64Array length");
         return 0;
+    }
+    return 1;
+}
+
+static int packed_divisor_from_words(
+    napi_env env,
+    const uint64_t packed[8],
+    sagejs_g3j_divisor *divisor)
+{
+    if (packed[0] > 3)
+    {
+        napi_throw_range_error(env, NULL, "packed divisor degree exceeds 3");
+        return 0;
+    }
+    memset(divisor, 0, sizeof(*divisor));
+    divisor->u_degree = (uint8_t) packed[0];
+    memcpy(divisor->u, packed + 1, 4 * sizeof(uint64_t));
+    memcpy(divisor->v, packed + 5, 3 * sizeof(uint64_t));
+    return 1;
+}
+
+static napi_value packed_divisor_value(
+    napi_env env,
+    const sagejs_g3j_divisor *divisor)
+{
+    napi_value buffer, result;
+    uint64_t *packed;
+    if (!check_napi(
+            env,
+            napi_create_arraybuffer(
+                env, 8 * sizeof(uint64_t), (void **) &packed, &buffer)))
+        return NULL;
+    packed[0] = divisor->u_degree;
+    memcpy(packed + 1, divisor->u, 4 * sizeof(uint64_t));
+    memcpy(packed + 5, divisor->v, 3 * sizeof(uint64_t));
+    if (!check_napi(
+            env,
+            napi_create_typedarray(
+                env, napi_biguint64_array, 8, buffer, 0, &result)))
+        return NULL;
+    return result;
+}
+
+static int cancellation_pointer(
+    napi_env env,
+    napi_value value,
+    const _Atomic uint32_t **cancel)
+{
+    napi_valuetype cancel_type;
+    *cancel = NULL;
+    if (!check_napi(env, napi_typeof(env, value, &cancel_type)))
+        return 0;
+    if (cancel_type == napi_undefined || cancel_type == napi_null)
+        return 1;
+    {
+        bool is_array;
+        napi_typedarray_type type;
+        size_t length, offset;
+        napi_value buffer;
+        if (!check_napi(env, napi_is_typedarray(env, value, &is_array)) ||
+            !is_array || !check_napi(
+                env, napi_get_typedarray_info(
+                    env, value, &type, &length, (void **) cancel,
+                    &buffer, &offset)) ||
+            type != napi_uint32_array || length < 1)
+        {
+            napi_throw_type_error(
+                env, NULL, "cancel must be a Uint32Array or undefined");
+            return 0;
+        }
     }
     return 1;
 }
@@ -202,6 +297,141 @@ napi_value sagejs_g3j_capabilities_value(
     return result;
 }
 
+napi_value sagejs_g3j_scalar_multiply_value(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[7];
+    size_t argc = 7;
+    const uint64_t *f, *h, *packed;
+    uint64_t prime, max_operations;
+    sagejs_g3j_divisor divisor, product;
+    sagejs_g3j_integer scalar;
+    sagejs_g3j_diagnostics native_diagnostics;
+    const _Atomic uint32_t *cancel = NULL;
+    napi_value result, diagnostics, value;
+    int32_t status;
+    if (!check_napi(
+            env, napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 7)
+    {
+        napi_throw_type_error(env, NULL, "expected 7 arguments");
+        return NULL;
+    }
+    if (!bigint_to_uint64(env, args[0], &prime) ||
+        !typed_u64(env, args[1], 8, &f) ||
+        !typed_u64(env, args[2], 4, &h) ||
+        !typed_u64(env, args[3], 8, &packed) ||
+        !packed_divisor_from_words(env, packed, &divisor) ||
+        !bigint_to_integer(env, args[4], &scalar) ||
+        !bigint_to_uint64(env, args[5], &max_operations) ||
+        !cancellation_pointer(env, args[6], &cancel))
+        return NULL;
+
+    memset(&product, 0, sizeof(product));
+    status = sagejs_g3j_scalar_multiply(
+        prime, f, h, &divisor, &scalar, max_operations, cancel,
+        &product, &native_diagnostics);
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_int32(env, status, &value)) ||
+        !set_property(env, result, "status", value) ||
+        !check_napi(
+            env,
+            napi_create_string_utf8(
+                env, sagejs_g3j_status_name(status), NAPI_AUTO_LENGTH,
+                &value)) ||
+        !set_property(env, result, "statusName", value) ||
+        !set_property(env, result, "divisor", packed_divisor_value(env, &product)) ||
+        !check_napi(env, napi_create_object(env, &diagnostics)) ||
+        !set_uint64(
+            env, diagnostics, "groupOperations",
+            native_diagnostics.group_operations) ||
+        !set_uint64(
+            env, diagnostics, "scalarBits", native_diagnostics.scalar_bits) ||
+        !set_property(env, result, "diagnostics", diagnostics))
+        return NULL;
+    return result;
+}
+
+napi_value sagejs_g3j_sum_value(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[6];
+    size_t argc = 6;
+    const uint64_t *f, *h, *packed;
+    size_t packed_length = 0;
+    uint64_t prime, max_operations;
+    sagejs_g3j_divisor *divisors = NULL, product;
+    uint64_t divisor_count;
+    sagejs_g3j_diagnostics native_diagnostics;
+    const _Atomic uint32_t *cancel = NULL;
+    napi_value result = NULL, diagnostics, value;
+    int32_t status = SAGEJS_G3J_INVALID_ARGUMENT;
+    if (!check_napi(
+            env, napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 6)
+    {
+        napi_throw_type_error(env, NULL, "expected 6 arguments");
+        return NULL;
+    }
+    if (!bigint_to_uint64(env, args[0], &prime) ||
+        !typed_u64(env, args[1], 8, &f) ||
+        !typed_u64(env, args[2], 4, &h) ||
+        !typed_u64_with_length(env, args[3], &packed, &packed_length) ||
+        packed_length % 8 != 0 ||
+        !bigint_to_uint64(env, args[4], &max_operations) ||
+        !cancellation_pointer(env, args[5], &cancel))
+    {
+        if (packed_length % 8 != 0)
+            napi_throw_type_error(
+                env, NULL, "packed divisor batch length must be divisible by 8");
+        return NULL;
+    }
+    divisor_count = (uint64_t) (packed_length / 8);
+    if (divisor_count > SIZE_MAX / sizeof(*divisors))
+    {
+        napi_throw_range_error(env, NULL, "packed divisor batch is too large");
+        return NULL;
+    }
+    if (divisor_count > 0)
+    {
+        divisors = calloc((size_t) divisor_count, sizeof(*divisors));
+        if (divisors == NULL)
+        {
+            napi_throw_error(env, NULL, "packed divisor allocation failed");
+            return NULL;
+        }
+        for (uint64_t index = 0; index < divisor_count; index += 1)
+            if (!packed_divisor_from_words(
+                    env, packed + 8 * index, divisors + index))
+                goto done;
+    }
+    memset(&product, 0, sizeof(product));
+    status = sagejs_g3j_sum(
+        prime, f, h, divisors, divisor_count, max_operations, cancel,
+        &product, &native_diagnostics);
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_int32(env, status, &value)) ||
+        !set_property(env, result, "status", value) ||
+        !check_napi(
+            env,
+            napi_create_string_utf8(
+                env, sagejs_g3j_status_name(status), NAPI_AUTO_LENGTH,
+                &value)) ||
+        !set_property(env, result, "statusName", value) ||
+        !set_property(env, result, "divisor", packed_divisor_value(env, &product)) ||
+        !check_napi(env, napi_create_object(env, &diagnostics)) ||
+        !set_uint64(
+            env, diagnostics, "groupOperations",
+            native_diagnostics.group_operations) ||
+        !set_property(env, result, "diagnostics", diagnostics))
+        result = NULL;
+done:
+    free(divisors);
+    return result;
+}
+
 napi_value sagejs_g3j_search_progression_value(
     napi_env env, napi_callback_info info)
 {
@@ -233,38 +463,9 @@ napi_value sagejs_g3j_search_progression_value(
         !bigint_to_uint64(env, args[7], &max_babies) ||
         !bigint_to_uint64(env, args[8], &max_operations))
         return NULL;
-    if (packed[0] > 3)
-    {
-        napi_throw_range_error(env, NULL, "packed divisor degree exceeds 3");
+    if (!packed_divisor_from_words(env, packed, &divisor) ||
+        !cancellation_pointer(env, args[9], &cancel))
         return NULL;
-    }
-    memset(&divisor, 0, sizeof(divisor));
-    divisor.u_degree = (uint8_t) packed[0];
-    memcpy(divisor.u, packed + 1, 4 * sizeof(uint64_t));
-    memcpy(divisor.v, packed + 5, 3 * sizeof(uint64_t));
-    {
-        napi_valuetype cancel_type;
-        if (!check_napi(env, napi_typeof(env, args[9], &cancel_type)))
-            return NULL;
-        if (cancel_type != napi_undefined && cancel_type != napi_null)
-        {
-            bool is_array;
-            napi_typedarray_type type;
-            size_t length, offset;
-            napi_value buffer;
-            if (!check_napi(env, napi_is_typedarray(env, args[9], &is_array)) ||
-                !is_array || !check_napi(
-                    env, napi_get_typedarray_info(
-                        env, args[9], &type, &length, (void **) &cancel,
-                        &buffer, &offset)) ||
-                type != napi_uint32_array || length < 1)
-            {
-                napi_throw_type_error(
-                    env, NULL, "cancel must be a Uint32Array or undefined");
-                return NULL;
-            }
-        }
-    }
 
     status = sagejs_g3j_search_progression(
         prime, f, h, &divisor, &base, &stride, count, max_babies,

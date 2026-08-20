@@ -33,11 +33,12 @@
     <main id="top">
       <section class="hero wrap" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">Open research mathematics, native to Node</p>
+          <p class="eyebrow">Free, open-source research mathematics · GPL-3.0</p>
           <h1 id="hero-title">See what exists.<br />See how good it is.<br />See what comes next.</h1>
           <p class="lede">
-            This is the living implementation map for Sage.js: concrete capabilities,
-            evidence about their maturity, and a prioritized research roadmap.
+            Sage.js is a new implementation of Python and Sage semantics on
+            JavaScript and Node. It does not embed or invoke CPython. This is
+            its living map of concrete capabilities, evidence, and priorities.
           </p>
           <div class="hero-actions">
             <a class="button primary" href="#capabilities">Explore capabilities</a>
@@ -59,28 +60,72 @@
       <section class="install-section" id="install" aria-labelledby="install-title">
         <div class="wrap">
           <p class="eyebrow light">Start using Sage.js</p>
-          <h2 id="install-title">One command, or one npm package.</h2>
+          <div class="install-title-row">
+            <h2 id="install-title">Native downloads for every supported desktop.</h2>
+            <span class="alpha-badge">Early alpha · v0.3.0</span>
+          </div>
+          <p class="alpha-note">
+            Sage.js is research software at a very early stage. Expect missing
+            functionality and rough edges, and please report what you discover.
+            It is free software, fully open source, and licensed under
+            <a href="https://github.com/sagemathinc/sagejs/blob/main/LICENSE">GPL-3.0</a>.
+          </p>
           <div class="install-grid">
             <article class="install-card">
-              <div class="install-heading"><span class="number">01</span><h3>Native installer</h3></div>
-              <p>Downloads the release for your platform and verifies its SHA-256 checksum.</p>
+              <div class="install-heading"><span class="number">01</span><h3>macOS or Linux</h3></div>
+              <p>Downloads the native release for your platform and verifies its SHA-256 checksum.</p>
               <div class="command-row">
-                <code>curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh</code>
-                <button class="copy" data-copy="curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh" type="button">Copy</button>
+                <code>curl -fsSL https://sagejs.org/install.sh | sh</code>
+                <button class="copy" data-copy="curl -fsSL https://sagejs.org/install.sh | sh" type="button">Copy</button>
               </div>
-              <p class="fine-print">Native preview v0.1.1 · Linux x64/arm64, Windows x64, macOS arm64</p>
+              <p class="fine-print">Linux x64/arm64 · signed and notarized Apple Silicon macOS · Linux needs <code>curl</code>, <code>xz</code>, and <code>libatomic.so.1</code></p>
             </article>
             <article class="install-card">
-              <div class="install-heading"><span class="number">02</span><h3>npm</h3></div>
-              <p>Installs the Sage.js command line and JavaScript embedding package.</p>
+              <div class="install-heading"><span class="number">02</span><h3>Windows x64</h3></div>
+              <p>Download the standalone ZIP, verify its neighboring SHA-256 file, extract it, and run <code>sagejs.exe</code>. No WSL or separate Node installation is needed.</p>
+              <a class="download-button" href="https://github.com/sagemathinc/sagejs/releases/latest/download/sagejs-windows-x64.zip">Download the Windows ZIP</a>
+              <p class="fine-print">v0.3.0 early alpha · unsigned; Windows SmartScreen may ask you to confirm this new publisher</p>
+            </article>
+            <article class="install-card">
+              <div class="install-heading"><span class="number">03</span><h3>npm and embedding</h3></div>
+              <p>Installs the command line and JavaScript embedding package, including its native executable for the current platform.</p>
               <div class="command-row">
-                <code>npm install -g @sagemath/sagejs</code>
-                <button class="copy" data-copy="npm install -g @sagemath/sagejs" type="button">Copy</button>
+                <code>npm install -g @sagemath/sagejs@0.3.0</code>
+                <button class="copy" data-copy="npm install -g @sagemath/sagejs@0.3.0" type="button">Copy</button>
               </div>
-              <p class="fine-print">npm preview v0.1.0 · the unified v0.2 release is next</p>
+              <p class="fine-print">For an application: <code>pnpm add --allow-build=zeromq @sagemath/sagejs@0.3.0</code>, then import <code>@sagemath/sagejs/kernel</code>. The 0.3.0 embedding API is the compiler and JavaScript runtime; the standalone command has the full native mathematics stack.</p>
             </article>
           </div>
+          <div class="install-facts" aria-label="Standalone installation size and behavior">
+            <div><strong>92–143 MiB</strong><span>current standalone download, depending on platform</span></div>
+            <div><strong>about 600–700 MiB</strong><span>installed size for both <code>sagejs</code> and <code>sagepython</code></span></div>
+            <div><strong>44–80 MiB temporary</strong><span>native addons extracted on demand, then removed at process exit</span></div>
+          </div>
           <p class="jupyter-note"><code>sagejs --install-jupyter-kernel</code> adds Sage.js to JupyterLab, CoCalc, or another Jupyter environment.</p>
+          <article class="source-build" id="build-from-source">
+            <div>
+              <p class="eyebrow light">Transparent native build</p>
+              <h3>Build the complete system from source</h3>
+              <p>
+                A single bootstrap command initializes submodules, installs the
+                pinned JavaScript dependencies, downloads verified native
+                dependency bundles when available, builds Sage.js, and tests
+                the standalone executable. A system GMP installation is not
+                required.
+              </p>
+            </div>
+            <div class="command-row source-command">
+              <code>git clone https://github.com/sagemathinc/sagejs.git &amp;&amp; cd sagejs &amp;&amp; pnpm bootstrap</code>
+              <button class="copy" data-copy="git clone https://github.com/sagemathinc/sagejs.git &amp;&amp; cd sagejs &amp;&amp; pnpm bootstrap" type="button">Copy</button>
+            </div>
+            <div class="source-requirements">
+              <p><strong>All platforms:</strong> Node.js 25.5+ (Node 26 recommended), pnpm 11.9+, Git, Python 3, CMake, and a C/C++ toolchain.</p>
+              <p><strong>Debian/Ubuntu:</strong> <code>sudo apt-get install build-essential cmake git python3 m4 xz-utils</code></p>
+              <p><strong>Apple Silicon:</strong> Xcode Command Line Tools plus Homebrew <code>node pnpm m4 xz</code>.</p>
+              <p><strong>Windows x64:</strong> Git, Python 3, CMake, and Visual Studio 2022 Build Tools with Desktop C++, clang-cl, and the ClangCL toolset. Native Windows is used directly—no WSL, MSYS2, or MinGW.</p>
+              <p><strong>Budget:</strong> allow 15–30 minutes on Linux/macOS and 30–60 minutes for a cold Windows build, plus roughly 6–8 GB of working disk. Verified prebuilt native dependencies usually make subsequent builds substantially faster.</p>
+            </div>
+          </article>
         </div>
       </section>
 

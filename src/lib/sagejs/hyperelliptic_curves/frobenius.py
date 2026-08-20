@@ -1121,7 +1121,7 @@ def rational_local_lpolynomial_chunks(
     start: Any,
     stop: Any,
     algorithm: str = "auto",
-    chunk_size: Any = 4096,
+    chunk_size: Any = 100_000,
 ) -> Iterator[list[Any]]:
     """Yield bounded ordered chunks of good `(p, L_p(T))` pairs.
 
@@ -1213,7 +1213,7 @@ def rational_local_lpolynomials(
     start: Any,
     stop: Any,
     algorithm: str = "auto",
-    chunk_size: Any = 4096,
+    chunk_size: Any = 100_000,
 ) -> list[Any]:
     """Return good local factors in the closed interval `[start, stop]`."""
     answer = []

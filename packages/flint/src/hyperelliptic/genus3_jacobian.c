@@ -730,6 +730,54 @@ done:
     return status;
 }
 
+int32_t sagejs_g3j_sum(
+    uint64_t prime,
+    const uint64_t f[8],
+    const uint64_t h[4],
+    const sagejs_g3j_divisor *divisors,
+    uint64_t divisor_count,
+    uint64_t max_group_operations,
+    const _Atomic uint32_t *cancel,
+    sagejs_g3j_divisor *result,
+    sagejs_g3j_diagnostics *diagnostics)
+{
+    g3j_model model;
+    g3j_divisor accumulator, input;
+    g3j_budget budget;
+    int32_t status;
+    if (result == NULL || diagnostics == NULL ||
+        (divisor_count > 0 && divisors == NULL))
+        return SAGEJS_G3J_INVALID_ARGUMENT;
+    diagnostics_zero(diagnostics);
+    status = model_set(&model, prime, f, h);
+    if (status != SAGEJS_G3J_OK)
+        return status;
+    divisor_init(&accumulator, model.prime);
+    divisor_init(&input, model.prime);
+    divisor_identity(&accumulator);
+    budget.maximum = max_group_operations;
+    budget.cancel = cancel;
+    budget.status = SAGEJS_G3J_OK;
+    budget.diagnostics = diagnostics;
+    for (uint64_t index = 0; index < divisor_count; index += 1)
+    {
+        status = divisor_from_packed(&input, divisors + index, &model);
+        if (status != SAGEJS_G3J_OK ||
+            !divisor_add(&accumulator, &accumulator, &input, &model, &budget))
+        {
+            if (status == SAGEJS_G3J_OK)
+                status = budget.status;
+            goto done;
+        }
+    }
+    divisor_to_packed(result, &accumulator, &model);
+done:
+    divisor_clear(&input);
+    divisor_clear(&accumulator);
+    model_clear(&model);
+    return status;
+}
+
 int32_t sagejs_g3j_filter_orders(
     uint64_t prime,
     const uint64_t f[8],

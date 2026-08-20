@@ -1,0 +1,75 @@
+{
+  "schema": "sagejs.hyperelliptic-jacobian-structure-benchmark.v1",
+  "date_utc": "2026-08-19",
+  "platform": "linux-x64",
+  "kernel": "Linux 6.17.0-1022-gcp",
+  "node": "26.7.0",
+  "pnpm": "11.9.0",
+  "command": "pnpm bench:hyperelliptic-jacobian-structure",
+  "notes": [
+    "The development host was shared; wall times are regression receipts, not portable guarantees.",
+    "Structure timings start after the exact Jacobian-order call.",
+    "The genus-3 rows use the packed native scalar/order kernel and one-crossing batch sums through algorithm=auto.",
+    "The genus-2 rank-three row uses the ordinary-Python generic-group fallback."
+  ],
+  "historical_baseline": {
+    "case": "g3-p13-cyclic",
+    "old_algorithm": "raw exhaustive (u,v) coefficient pairs",
+    "wall_seconds_reported": 12.0,
+    "raw_candidate_bound": "4855540",
+    "seeded_structure_speedup": "131.9x"
+  },
+  "rows": [
+    {
+      "prime": "13",
+      "order": "2160",
+      "invariants": ["2160"],
+      "seed": 1,
+      "order_seconds": 0.874,
+      "structure_seconds": 0.091,
+      "map_seconds": 1.082,
+      "samples": 2,
+      "accounted_group_operations": 36,
+      "baby_steps": 0,
+      "peak_table_entries": 0,
+      "sampling_seconds": 0.051,
+      "element_order_seconds": 0.004,
+      "basis_seconds": 0.027,
+      "verification_seconds": 0.001
+    },
+    {
+      "prime": "19",
+      "order": "6490",
+      "invariants": ["6490"],
+      "seed": 1,
+      "order_seconds": 2.508,
+      "structure_seconds": 0.048,
+      "map_seconds": 1.635,
+      "samples": 2,
+      "accounted_group_operations": 52,
+      "baby_steps": 0,
+      "peak_table_entries": 0,
+      "sampling_seconds": 0.028,
+      "element_order_seconds": 0.002,
+      "basis_seconds": 0.015,
+      "verification_seconds": 0.001
+    },
+    {
+      "prime": "5",
+      "order": "32",
+      "invariants": ["2", "2", "8"],
+      "seed": 3,
+      "order_seconds": 0.03,
+      "structure_seconds": 3.465,
+      "map_seconds": 8.103,
+      "samples": 6,
+      "accounted_group_operations": 1937,
+      "baby_steps": 72,
+      "peak_table_entries": 2,
+      "sampling_seconds": 0.134,
+      "element_order_seconds": 0.269,
+      "basis_seconds": 2.936,
+      "verification_seconds": 0.124
+    }
+  ]
+}

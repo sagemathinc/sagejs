@@ -74,31 +74,17 @@ function runCPython(source) {
   const bootstrap = String.raw`
 import importlib.util
 import sys
-import types
+sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
 
-sagejs = types.ModuleType("sagejs")
-number_fields = types.ModuleType("sagejs.number_fields")
-sagejs.number_fields = number_fields
-sys.modules["sagejs"] = sagejs
-sys.modules["sagejs.number_fields"] = number_fields
-
-spec = importlib.util.spec_from_file_location(
-    "sagejs.number_fields.discriminant_components",
-    ${JSON.stringify(decompositionPath)},
+components_module = importlib.import_module(
+    "sagejs.number_fields.discriminant_components"
 )
-components_module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = components_module
-spec.loader.exec_module(components_module)
 for name in components_module.__all__:
     globals()[name] = getattr(components_module, name)
 
-spec = importlib.util.spec_from_file_location(
-    "sagejs.number_fields.maximal_order_certification",
-    ${JSON.stringify(certificationPath)},
+certificate_module = importlib.import_module(
+    "sagejs.number_fields.maximal_order_certification"
 )
-certificate_module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = certificate_module
-spec.loader.exec_module(certificate_module)
 for name in certificate_module.__all__:
     globals()[name] = getattr(certificate_module, name)
 `;

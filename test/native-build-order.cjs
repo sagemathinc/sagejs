@@ -223,6 +223,7 @@ test("bootstrap publishes production kernels only after all native packages", ()
     ["pnpm", "--dir", "packages/fflas", "build"],
     ["pnpm", "--dir", "packages/graph", "build"],
     ["pnpm", "--dir", "packages/m4ri", "build"],
+    ["pnpm", "run", "python:precompile:run"],
     ["node", "scripts/build-production-native-kernels.cjs"],
   ]);
 });

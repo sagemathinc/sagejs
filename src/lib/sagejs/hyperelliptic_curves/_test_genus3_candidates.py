@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sagejs.hyperelliptic_curves.genus3_candidate_kernel import (
     scan_genus3_weil_candidates,
+    scan_genus3_weil_candidates_batch,
 )
 from sagejs.hyperelliptic_curves.genus3_completion import (
     _candidate_iterator,
@@ -20,6 +21,7 @@ from sagejs.hyperelliptic_curves.genus3_completion import (
 from sagejs.native import (
     integer_buffer_values,
     is_compiled,
+    kernel_integer_buffer,
     kernel_integer_zeros,
 )
 
@@ -141,6 +143,40 @@ def run(*, dense: bool = False) -> dict[str, int | bool]:
     )
     assert filtered["status"] == "unique"
     assert filtered["coefficients"] == (12, 56, 186)
+
+    batch_rows = [
+        (5, (3, 4, 2)),
+        (7, (0, 0, 0)),
+        (11, (1, 8, 0)),
+        (101, (12, 56, 85)),
+    ]
+    capacity = 256
+    stride = 3 + 3 * capacity
+    batch_output = kernel_integer_zeros(
+        scan_genus3_weil_candidates_batch, stride * len(batch_rows)
+    )
+    batch_input = kernel_integer_buffer(
+        scan_genus3_weil_candidates_batch,
+        [value for prime, residues in batch_rows for value in (prime, *residues)],
+    )
+    assert scan_genus3_weil_candidates_batch(
+        batch_output, batch_input, len(batch_rows), capacity, 2_000_000
+    ) == len(batch_rows)
+    batch_values = integer_buffer_values(batch_output)
+    for row_index, (prime, residues) in enumerate(batch_rows):
+        expected_batch = enumerate_genus3_weil_candidates(prime, residues)
+        offset = stride * row_index
+        assert int(batch_values[offset]) == 0
+        assert int(batch_values[offset + 1]) == expected_batch["candidate_count"]
+        actual_batch = tuple(
+            (
+                int(batch_values[offset + 3 + 3 * index]),
+                int(batch_values[offset + 4 + 3 * index]),
+                int(batch_values[offset + 5 + 3 * index]),
+            )
+            for index in range(expected_batch["candidate_count"])
+        )
+        assert actual_batch == expected_batch["candidates"]
 
     # The source-transparent exact kernel must promote beyond signed 64-bit
     # intermediates rather than silently wrapping.  A tiny combination cap

@@ -118,4 +118,125 @@ def scan_genus3_weil_candidates(
     return stored
 
 
-__all__ = ["scan_genus3_weil_candidates"]
+@native
+def scan_genus3_weil_candidates_batch(
+    output: IntegerBuffer,
+    rows: IntegerBuffer,
+    row_count: int,
+    capacity: int,
+    max_combinations: int,
+) -> int:
+    """Scan many `(p,r1,r2,r3)` rows across one native boundary.
+
+    Each output row has metadata `(status,count,combinations)` followed by
+    `capacity` candidate triples. Status zero is complete and `-1` denotes a
+    combination limit. A complete count larger than capacity is reported
+    exactly; the caller can retry just that exceptional row.
+    """
+    stride = 3 + 3 * capacity
+    if (
+        row_count < 0
+        or capacity < 1
+        or len(rows) < 4 * row_count
+        or len(output) < stride * row_count
+    ):
+        return -2
+    row_index = 0
+    while row_index < row_count:
+        input_offset = 4 * row_index
+        output_offset = stride * row_index
+        prime = rows[input_offset]
+        residue1 = rows[input_offset + 1]
+        residue2 = rows[input_offset + 2]
+        residue3 = rows[input_offset + 3]
+
+        coefficient1_bound_squared = 36 * prime
+        coefficient1_bound = 1
+        while coefficient1_bound * coefficient1_bound <= coefficient1_bound_squared:
+            coefficient1_bound *= 2
+        root = coefficient1_bound
+        next_root = (root + coefficient1_bound_squared // root) // 2
+        while next_root < root:
+            root = next_root
+            next_root = (root + coefficient1_bound_squared // root) // 2
+        coefficient1_bound = root
+
+        coefficient3_bound_squared = 400 * prime * prime * prime
+        coefficient3_bound = 1
+        while coefficient3_bound * coefficient3_bound <= coefficient3_bound_squared:
+            coefficient3_bound *= 2
+        root = coefficient3_bound
+        next_root = (root + coefficient3_bound_squared // root) // 2
+        while next_root < root:
+            root = next_root
+            next_root = (root + coefficient3_bound_squared // root) // 2
+        coefficient3_bound = root
+
+        candidate_count = 0
+        combinations_examined = 0
+        limited = 0
+        coefficient1 = -coefficient1_bound + (residue1 + coefficient1_bound) % prime
+        while coefficient1 <= coefficient1_bound and limited == 0:
+            coefficient2_lower = -((-coefficient1 * coefficient1 + 6 * prime) // 2)
+            coefficient2_upper = (coefficient1 * coefficient1 + 9 * prime) // 3
+            coefficient2 = coefficient2_lower + (residue2 - coefficient2_lower) % prime
+            while coefficient2 <= coefficient2_upper and limited == 0:
+                coefficient3 = (
+                    -coefficient3_bound + (residue3 + coefficient3_bound) % prime
+                )
+                while coefficient3 <= coefficient3_bound and limited == 0:
+                    combinations_examined += 1
+                    if combinations_examined > max_combinations:
+                        combinations_examined -= 1
+                        limited = 1
+                    else:
+                        a_value = coefficient1
+                        b_value = coefficient2 - 3 * prime
+                        c_value = coefficient3 - 2 * prime * coefficient1
+                        discriminant = (
+                            a_value * a_value * b_value * b_value
+                            - 4 * b_value * b_value * b_value
+                            - 4 * a_value * a_value * a_value * c_value
+                            - 27 * c_value * c_value
+                            + 18 * a_value * b_value * c_value
+                        )
+                        if discriminant >= 0:
+                            squared_coefficient2 = -(a_value * a_value - 2 * b_value)
+                            squared_coefficient1 = (
+                                b_value * b_value - 2 * a_value * c_value
+                            )
+                            squared_coefficient0 = -(c_value * c_value)
+                            endpoint = 4 * prime
+                            derivative_at_endpoint = (
+                                3 * endpoint * endpoint
+                                + 2 * squared_coefficient2 * endpoint
+                                + squared_coefficient1
+                            )
+                            value_at_endpoint = (
+                                (endpoint + squared_coefficient2) * endpoint
+                                + squared_coefficient1
+                            ) * endpoint + squared_coefficient0
+                            if derivative_at_endpoint >= 0 and value_at_endpoint >= 0:
+                                if candidate_count < capacity:
+                                    position = output_offset + 3 + 3 * candidate_count
+                                    output[position] = coefficient1
+                                    output[position + 1] = coefficient2
+                                    output[position + 2] = coefficient3
+                                candidate_count += 1
+                        coefficient3 += prime
+                coefficient2 += prime
+            coefficient1 += prime
+
+        output[output_offset] = 0
+        if limited:
+            output[output_offset] = -1
+        output[output_offset + 1] = candidate_count
+        output[output_offset + 2] = combinations_examined
+        row_index += 1
+    return row_count
+
+
+__all__ = [
+    "scan_genus3_weil_candidates",
+    "scan_genus3_weil_candidates_batch",
+]

@@ -146,7 +146,7 @@ The central `frobenius.py` integration is deliberately small:
 - cache the resulting exact coefficients under the selected algorithm;
 - add `certified_genus3.py` to the strict module list in `pyrightconfig.json`;
 - select `rforest` automatically for supported odd-degree one-off primes and
-  intervals ending at 10000, the measured complete-stream envelope; larger
+  intervals ending at 100000, the measured complete-stream envelope; larger
   intervals and unsupported capabilities fail closed to `exhaustive`.
 
 The curve model needs no new public method: its existing local-factor dispatch

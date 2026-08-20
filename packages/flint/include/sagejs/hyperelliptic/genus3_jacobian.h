@@ -82,6 +82,20 @@ int32_t sagejs_g3j_scalar_multiply(
     sagejs_g3j_divisor *result,
     sagejs_g3j_diagnostics *diagnostics);
 
+/* Add a packed batch in one native call.  This is primarily used by the
+ * full-support/public samplers so that 2g+1 point divisors do not cross the
+ * Node boundary one Cantor composition at a time. */
+int32_t sagejs_g3j_sum(
+    uint64_t prime,
+    const uint64_t f[8],
+    const uint64_t h[4],
+    const sagejs_g3j_divisor *divisors,
+    uint64_t divisor_count,
+    uint64_t max_group_operations,
+    const _Atomic uint32_t *cancel,
+    sagejs_g3j_divisor *result,
+    sagejs_g3j_diagnostics *diagnostics);
+
 /* Test explicit candidate orders.  outcomes[i] is 1 when candidates[i]
  * annihilates every supplied divisor, 0 when a checked divisor disproves it,
  * and 2 when the global resource/cancellation boundary leaves it untested. */

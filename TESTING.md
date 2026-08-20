@@ -5,7 +5,32 @@ framework. Tests which exercise compiled Python, native libraries, subprocesses,
 or browsers keep the harness appropriate to that boundary, but report through
 named and independently selectable tests whenever practical.
 
-## Fast development commands
+## Routine validation
+
+```sh
+pnpm test
+```
+
+This is the bounded validation plan used by routine CI. It prints the complete
+plan before starting, labels every phase, reports expected and elapsed time,
+emits a heartbeat every 20 seconds, and stops at the first failed phase. It
+covers architecture boundaries, a build, startup, strict Python checks, portable
+unit tests, and a representative public-API smoke suite. It deliberately does
+not compile every optional native dependency or run compatibility, performance,
+and evidence corpora.
+
+Use exhaustive validation before a release or after a broad native change:
+
+```sh
+pnpm test:full
+```
+
+The full plan adds the compiler corpus, every unit and integration file, native
+addon validation, generated documentation, and CoWasm compatibility. Release
+tags, manual CI dispatches, and the weekly scheduled workflow also run the full
+cross-platform native and SEA matrix.
+
+## Focused development commands
 
 ```sh
 pnpm test:unit
@@ -36,6 +61,20 @@ commit, and workspace fingerprint. See
 - `test:integration` covers the CLI, embeddable kernel, plotting, NumPy,
   symbolic expressions, and polyglot sessions.
 - `test:native` covers the native FLINT binding and its Sage-facing boundary.
+
+The Node test tiers run in small file batches. The runner reports completed and
+remaining files after each batch, estimates the remaining duration, and does not
+start later batches after a failure. Override the defaults when diagnosing an
+individual machine:
+
+```sh
+pnpm test:integration -- --batch-size 4 --heartbeat-seconds 10
+SAGEJS_TEST_BATCH_SIZE=1 SAGEJS_TEST_HEARTBEAT_SECONDS=5 pnpm test:unit
+```
+
+Noninteractive reporters such as JUnit use one batch by default so they produce
+one document. Set `SAGEJS_TEST_BATCH_SIZE` explicitly if separate documents are
+desired.
 
 The historical command
 
@@ -96,11 +135,11 @@ Keep individual tests independent. File-level parallel execution and process
 isolation are intentional; a test must not depend on another test having run
 first.
 
-## Full validation
+## CI policy
 
-```sh
-pnpm test
-```
-
-This builds Sage.js, runs strict baselib checks, the compiler and host suites,
-the pinned upstream Sage corpus, and the CoWasm compatibility benchmarks.
+Routine pushes first run the same bounded `pnpm test` plan on Linux x64. Only
+after it passes does a fail-fast matrix perform lightweight build and API smoke
+checks on Linux arm64, macOS arm64, and Windows x64. Expensive native dependency
+builds, complete integration corpora, SEA packaging, and release artifacts are
+reserved for tags, manual runs, and the weekly schedule. A new push cancels an
+older run for the same branch.

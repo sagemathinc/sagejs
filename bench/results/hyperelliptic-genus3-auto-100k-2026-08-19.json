@@ -1,0 +1,113 @@
+{
+  "schema": "sagejs.hyperelliptic-genus3-auto-acceptance.v1",
+  "generated_at_utc": "2026-08-19T05:02:29.458Z",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "release": "6.17.0-1022-gcp",
+    "node": "v26.7.0"
+  },
+  "curve": "y^2=x^7+x+1",
+  "interval": [2, 100000],
+  "backend_version": "rforest 3103d396c67cb1685131b1f11e84975cca335bdf",
+  "raw_rforest": {
+    "wall_ms": 5826.420975,
+    "rows": 9592,
+    "peak_rss_bytes": 259878912,
+    "exact_stream_sha256": "6fb94e04ed80b8964cd1c8356950d0d8b3c91e13e42873ab22f795d34733922d"
+  },
+  "candidates": {
+    "wall_ms": 108325.587037,
+    "rows": 9588,
+    "candidate_total": 10696699,
+    "candidate_max": 2199,
+    "peak_rss_bytes": 508334080,
+    "exact_stream_digest": "98151161505875232667123644541309019308"
+  },
+  "certification": {
+    "wall_ms": 881647.2451820001,
+    "rows": 9592,
+    "status_counts": {
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4
+    },
+    "peak_rss_bytes": 689438720,
+    "exact_stream_digest": "3728105193022836152423678822391807418"
+  },
+  "public": {
+    "algorithm": "auto",
+    "wall_ms": 958669.177088,
+    "records": 9592,
+    "available_rows": 9588,
+    "status_counts": {
+      "unique": 9587,
+      "fallback": 1,
+      "omitted": 4
+    },
+    "cache_entries": 0,
+    "peak_rss_bytes": 748965888,
+    "exact_stream_digest": "3728105193022836152423678822391807418"
+  },
+  "cross_platform_validation": {
+    "completed_at_utc": "2026-08-19T07:07:01Z",
+    "exact_commit": "047e9ed137a910df8d5693183ac5d8d934584499",
+    "production_candidate_pack": {
+      "result": {
+        "compiled": true,
+        "criterion_checks": 12000,
+        "scan_checks": 42
+      },
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ]
+    },
+    "same_source_batch_probe": {
+      "sha256": "70de97f22e700e399bd66b8776f31419a282d4e5a34ca3ec40e839d25c313e19",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ],
+      "records": [
+        {
+          "prime": 5,
+          "residues": [3, 4, 2],
+          "combinations": 1800,
+          "candidate_count": 28
+        },
+        {
+          "prime": 101,
+          "residues": [12, 56, 85],
+          "combinations": 2010,
+          "candidate_count": 50
+        },
+        {
+          "prime": 1009,
+          "residues": [0, 0, 0],
+          "combinations": 8897,
+          "candidate_count": 223
+        }
+      ]
+    },
+    "native_jacobian_boundary": {
+      "result": "warnings-as-errors compilation passed",
+      "platforms": [
+        "linux-x64",
+        "linux-arm64",
+        "darwin-arm64",
+        "win32-x64"
+      ]
+    }
+  },
+  "notes": [
+    "The four stages ran sequentially in one process, so later RSS includes retained benchmark diagnostics from earlier stages.",
+    "The public stage consumed local_data with cache_size=0 and its exact digest agrees with the independent certification stage.",
+    "This is a measured selector receipt for the automatic interval endpoint 100000, not an extrapolation from raw rforest timing.",
+    "The complete public stream was measured on the host above. Cross-platform validation separately compiled the exact production candidate pack and changed Jacobian boundary, then ran the same-source candidate differential suite on each supported native target."
+  ]
+}

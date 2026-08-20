@@ -7,6 +7,10 @@ const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
 const rootPackage = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const releaseWorkflow = readFileSync(
+  join(root, ".github", "workflows", "ci.yml"),
+  "utf8",
+);
 const nativePackages = [
   "native-darwin-arm64",
   "native-linux-arm64",
@@ -50,6 +54,30 @@ assert.deepEqual(
 for (const name of names) {
   assert.equal(rootPackage.optionalDependencies[name], "workspace:*");
 }
+
+const draftIndex = releaseWorkflow.indexOf(
+  "- name: Create or update the draft GitHub release",
+);
+const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
+const npmIndex = releaseWorkflow.indexOf(
+  "- name: Publish the platform and public npm packages",
+);
+const availabilityIndex = releaseWorkflow.indexOf("wait_for_package()", npmIndex);
+const publishIndex = releaseWorkflow.indexOf(
+  "- name: Publish the immutable GitHub release",
+);
+assert.ok(draftIndex >= 0, "release workflow must create a draft release");
+assert.ok(
+  releaseWorkflow.indexOf("--draft", draftIndex) > draftIndex,
+  "release creation must remain draft-first for immutable repositories",
+);
+assert.ok(
+  draftIndex < uploadIndex &&
+    uploadIndex < npmIndex &&
+    npmIndex < availabilityIndex &&
+    availabilityIndex < publishIndex,
+  "release workflow must upload, publish npm, and await public availability before making GitHub immutable",
+);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {

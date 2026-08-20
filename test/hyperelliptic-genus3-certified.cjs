@@ -204,7 +204,8 @@ test("auto selects only the measured complete odd-degree genus-3 pipeline", asyn
             "import sagejs.hyperelliptic_curves.certified_genus3 as certified",
             "selected = (_select_rational_algorithm(C,'auto',5,5),",
             "            _select_rational_algorithm(C,'auto',2,101),",
-            "            _select_rational_algorithm(C,'auto',2,10002),",
+            "            _select_rational_algorithm(C,'auto',2,100000),",
+            "            _select_rational_algorithm(C,'auto',2,100002),",
             "            _select_rational_algorithm(C,'auto',2,2),",
             "            _select_rational_algorithm(E,'auto',5,5))",
             "auto = C.local_lpolynomial(5)",
@@ -220,7 +221,8 @@ test("auto selects only the measured complete odd-degree genus-3 pipeline", asyn
           { timeout: 120_000 },
         )
       ).repr,
-      "(('rforest', 'rforest', 'exhaustive', 'exhaustive', 'exhaustive'), " +
+      "(('rforest', 'rforest', 'rforest', 'exhaustive', 'exhaustive', " +
+        "'exhaustive'), " +
         "False, True, (1, 3, 9, 17, 45, 75, 125), " +
         "22737343537*T^6 - 441423895*T^5 + 14230159*T^4 - " +
         "205077*T^3 + 5023*T^2 - 55*T + 1)",

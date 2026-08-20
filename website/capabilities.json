@@ -711,10 +711,10 @@
         "summary": "Covers package-manager and standalone installation across the supported desktop targets, including relocation and checksums.",
         "includes": ["npm global install", "npm embedding package", "curl | sh installer", "Linux x64 / arm64", "macOS arm64", "Windows x64", "SHA-256 verification", "relocatable SEA executables"]
       },
-      "summary": "Sage.js is installable from npm or with a curl-to-shell native installer.",
-      "implementation": "Meta-package plus platform packages for npm, and checksum-verifying release installer for native archives.",
+      "summary": "Sage.js 0.3.0 is installable from npm on every supported platform, with a curl-to-shell native installer for macOS and Linux.",
+      "implementation": "Meta-package plus platform packages for npm, checksum-verifying macOS/Linux installation, and standalone native archives.",
       "evidence": "Package, relocation, and installer tests in release CI.",
-      "target": "Publish the current 0.2 series with uniform signed artifacts and automatic update guidance.",
+      "target": "Learn from early-alpha installations, add native Windows installer ergonomics, and provide automatic update guidance.",
       "priority": "now"
     },
     {
@@ -725,13 +725,13 @@
       "quality": "tested",
       "coverage": {
         "level": "focused",
-        "label": "CI signing pipeline awaiting production credentials",
-        "summary": "The fail-closed automation is present; production trust depends on completing credential provisioning and external verification on each platform.",
+        "label": "macOS production trust; Windows signing in progress",
+        "summary": "macOS releases are required to pass Developer ID signing and notarization. Windows Authenticode automation exists, but the early-alpha release may be unsigned while identity provisioning is completed.",
         "includes": ["Apple Developer ID", "Apple notarization", "Windows Authenticode", "protected environments", "release checksums", "artifact verification"]
       },
-      "summary": "CI has signing and notarization workflows, but production credentials and final cross-platform verification are still being completed.",
-      "implementation": "Apple Developer ID/notarization, Windows Authenticode, checksums, protected environments, and CI release gates.",
-      "evidence": "Release workflow fails closed when signing is required and validates produced artifacts.",
+      "summary": "macOS signing and notarization are release gates; Windows signing is explicitly reported and remains optional for the 0.3.0 early alpha.",
+      "implementation": "Apple Developer ID/notarization, optional Azure or PFX Windows Authenticode, checksums, and CI release gates.",
+      "evidence": "The release workflow fails closed for macOS trust and labels the selected Windows signing policy in its job summary.",
       "target": "Every public desktop artifact signed and verified automatically from protected CI environments.",
       "priority": "now"
     },

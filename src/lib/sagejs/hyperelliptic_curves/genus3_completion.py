@@ -18,9 +18,15 @@ from typing import Any, Callable, Iterable
 
 from sagejs.hyperelliptic_curves.genus3_candidate_kernel import (
     scan_genus3_weil_candidates,
+    scan_genus3_weil_candidates_batch,
 )
 from sagejs.hyperelliptic_curves.hasse_witt import _is_prime
-from sagejs.native import integer_buffer_values, is_compiled, kernel_integer_zeros
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_integer_zeros,
+)
 
 try:
     import sagejs.runtime as _runtime
@@ -582,6 +588,100 @@ def enumerate_genus3_weil_candidates(
     }
 
 
+def enumerate_genus3_weil_candidates_batch(
+    rows: Iterable[tuple[int, Iterable[int]]],
+    *,
+    max_candidates: int = 100_000,
+    max_combinations: int = 2_000_000,
+    capacity: int = 4096,
+) -> tuple[dict[str, Any], ...]:
+    """Enumerate a bounded row window across one compiled-kernel call."""
+    max_candidates = _checked_exact_integer(max_candidates, "max_candidates")
+    max_combinations = _checked_exact_integer(max_combinations, "max_combinations")
+    capacity = _checked_exact_integer(capacity, "capacity")
+    if max_candidates < 1 or max_combinations < 1 or capacity < 1:
+        raise ValueError("batch candidate resource limits must be positive")
+    normalized_rows = []
+    for prime, residues in rows:
+        checked_prime, checked_residues, _maximum, _combinations = _checked_inputs(
+            prime, residues, max_candidates, max_combinations
+        )
+        normalized_rows.append((checked_prime, checked_residues))
+    if not normalized_rows:
+        return ()
+    if not is_compiled(scan_genus3_weil_candidates_batch):
+        return tuple(
+            enumerate_genus3_weil_candidates(
+                prime,
+                residues,
+                max_candidates=max_candidates,
+                max_combinations=max_combinations,
+            )
+            for prime, residues in normalized_rows
+        )
+    packed = []
+    for prime, residues in normalized_rows:
+        packed.extend([prime, residues[0], residues[1], residues[2]])
+    row_capacity = min(capacity, max_candidates)
+    stride = 3 + 3 * row_capacity
+    output = kernel_integer_zeros(
+        scan_genus3_weil_candidates_batch,
+        stride * len(normalized_rows),
+    )
+    source = kernel_integer_buffer(scan_genus3_weil_candidates_batch, packed)
+    completed = scan_genus3_weil_candidates_batch(
+        output,
+        source,
+        len(normalized_rows),
+        row_capacity,
+        max_combinations,
+    )
+    if completed != len(normalized_rows):
+        raise RuntimeError("native batch candidate scan rejected its buffers")
+    values = integer_buffer_values(output)
+    answer = []
+    for row_index, (prime, residues) in enumerate(normalized_rows):
+        offset = stride * row_index
+        status = int(values[offset])
+        candidate_count = int(values[offset + 1])
+        combinations_examined = int(values[offset + 2])
+        if status != 0 or candidate_count > row_capacity:
+            answer.append(
+                enumerate_genus3_weil_candidates(
+                    prime,
+                    residues,
+                    max_candidates=max_candidates,
+                    max_combinations=max_combinations,
+                )
+            )
+            continue
+        candidates = tuple(
+            (
+                int(values[offset + 3 + 3 * index]),
+                int(values[offset + 4 + 3 * index]),
+                int(values[offset + 5 + 3 * index]),
+            )
+            for index in range(candidate_count)
+        )
+        answer.append(
+            {
+                "status": "ok",
+                "prime": prime,
+                "residues": residues,
+                "candidate_count": candidate_count,
+                "candidates": candidates,
+                "truncated": False,
+                "diagnostics": {
+                    "combinations_examined": combinations_examined,
+                    "max_combinations": max_combinations,
+                    "max_candidates": max_candidates,
+                    "candidate_scan": "native_batch",
+                },
+            }
+        )
+    return tuple(answer)
+
+
 def _checked_positive_optional(value: int | None, name: str) -> int | None:
     if value is None:
         return None
@@ -750,6 +850,7 @@ __all__ = [
     "_is_genus3_weil_candidate_sturm",
     "complete_genus3_lpolynomial",
     "enumerate_genus3_weil_candidates",
+    "enumerate_genus3_weil_candidates_batch",
     "jacobian_order_from_coefficients",
     "twist_order_from_coefficients",
 ]

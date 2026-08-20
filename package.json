@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
@@ -82,7 +82,9 @@
     "install.sh",
     "index.cjs",
     "!**/__pycache__",
-    "!**/*.py[cod]"
+    "!**/*.py[cod]",
+    "!src/**/.sagejs-native-kernels",
+    "!dist/native-kernels"
   ],
   "engines": {
     "node": ">=22.22.2"
@@ -92,6 +94,7 @@
     "native:dependencies:identity": "node scripts/native-prebuilt-dependencies.cjs identity",
     "native:dependencies:pack": "node scripts/native-prebuilt-dependencies.cjs pack build/native-dependencies",
     "build": "node scripts/build.cjs",
+    "build:check": "node scripts/build.cjs --if-needed",
     "build:sea": "pnpm --dir packages/flint build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --python",
     "build:sea:math": "pnpm --dir packages/flint build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --with-flint",
@@ -123,10 +126,14 @@
     "parallel:cache": "node scripts/parallel-development.cjs cache",
     "clean": "node scripts/clean.cjs",
     "start": "node bin/sagejs",
-    "test": "pnpm run architecture:check && pnpm run build && pnpm run test:startup:run && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run && pnpm run test:cowasm:run",
+    "test": "node scripts/run-test-plan.cjs routine",
+    "test:ci": "node scripts/run-test-plan.cjs ci",
+    "test:full": "node scripts/run-test-plan.cjs full",
     "test:baselib:strict": "pnpm run format:python:check && node scripts/check-strict-baselib.cjs",
     "test:compiler": "node scripts/run-compiler-tests.cjs",
     "test:portable": "node scripts/run-test-tier.cjs portable",
+    "test:smoke": "node scripts/run-test-tier.cjs smoke",
+    "test:platform": "node scripts/run-test-tier.cjs platform",
     "test:changed": "node scripts/parallel-development.cjs changed",
     "test:unit": "node scripts/run-test-tier.cjs unit",
     "test:integration": "node scripts/run-test-tier.cjs integration",
@@ -154,6 +161,7 @@
     "bench:hyperelliptic-genus3-candidates": "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_benchmark_genus3_candidates.py",
     "bench:hyperelliptic-genus3-certified": "node bench/rforest/benchmark-genus3-certified.cjs",
     "bench:hyperelliptic-genus3-jacobian": "node bench/hyperelliptic/benchmark-genus3-jacobian-kernel.cjs",
+    "bench:hyperelliptic-jacobian-structure": "node bench/hyperelliptic/benchmark-jacobian-group-structure.cjs",
     "bench:dense-prime:public": "./bin/sagejs bench/dense-prime-v2.sage",
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",

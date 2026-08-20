@@ -362,6 +362,14 @@ function validationCommandsForFiles(files) {
 
   if (has("src/") || has("tools/") || has("scripts/")) add("pnpm", "build");
   if (
+    has("src/lib/sagejs/number_fields/") ||
+    has("src/lib/multiprocessing.py") ||
+    has("scripts/precompiled-python-packages.json") ||
+    has("scripts/build-lazy-module-cache.cjs")
+  ) {
+    add("pnpm", "python:precompile:run");
+  }
+  if (
     has("architecture/") || has("ARCHITECTURE.md") || has("AGENTS.md") ||
     has(".agents/lanes.json") || has(".agents/task.schema.json") ||
     matches(/\.(?:c|cc|cpp|h)$/) || has("tools/native-kernel/")

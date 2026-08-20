@@ -161,9 +161,8 @@ function writeHistory(options: Options, history: string[]): void {
   }
 }
 
-function createReadlineInterface(options: Options, PyLang) {
+function createReadlineInterface(options: Options, completer) {
   // See https://nodejs.org/api/readline.html#readline_readline_createinterface_options
-  const completer = Completer(PyLang);
   const history = options.terminal ? readHistory(options) : [];
   const readline = (options.mockReadline ?? createInterface)({
     input: options.input,
@@ -239,7 +238,37 @@ export default async function Repl(
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
-  const readline = createReadlineInterface(options, PyLang);
+  let contextInitialized = false;
+  const complete = Completer(PyLang);
+  const readline = createReadlineInterface(
+    options,
+    (
+      line: string,
+      callback?: (error: Error | null, result?: unknown) => void,
+    ) => {
+      if (contextInitialized) {
+        const result = complete(line);
+        if (callback) callback(null, result);
+        else return result;
+        return;
+      }
+      if (!callback) {
+        throw new Error(
+          "initial Sage completion requires readline's asynchronous completer protocol",
+        );
+      }
+      // Keep ordinary startup lazy, but make the first Tab see the same
+      // Sage/Python namespace that evaluation sees.  readline's asynchronous
+      // completer protocol also serializes this one-time initialization with
+      // the editor instead of exposing a temporarily incomplete namespace.
+      ensurePythonFrontend()
+        .then(() => {
+          initContext();
+          callback(null, complete(line));
+        })
+        .catch((error) => callback(error));
+    },
+  );
   const colorize = options.mockReadline
     ? (string, _color?, _bold?) => string
     : colored;
@@ -307,10 +336,8 @@ export default async function Repl(
     return output.get();
   }
 
-  let contextInitialized = false;
   function initContext(): void {
     if (contextInitialized) return;
-    contextInitialized = true;
     // @ts-ignore
     global.require = runtimeRequire;
     global.__sagejs_graph_database_bytes__ = () =>
@@ -327,6 +354,7 @@ export default async function Repl(
       moduleCacheDir,
     );
     runInThisContext('var __name__ = "__main__"; show_js=false;');
+    contextInitialized = true;
   }
 
   function resetBuffer() {
