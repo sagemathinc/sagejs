@@ -13,7 +13,7 @@ test("public shell exposes accessible execution and file controls", async () => 
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
   }
   for (const mode of ["selection", "cell", "all"]) assert.match(html, new RegExp(`data-run=["']${mode}["']`));
-  assert.match(html, /aria-live="assertive"/);
+  assert.match(html, /aria-live="polite"/);
   assert.match(html, /Skip to the Sage editor/);
   assert.doesNotMatch(html, /https?:\/\/[^"']+\.(?:js|css|woff2?)/i, "runtime UI must not load a CDN");
   const app = await read("app.mjs");

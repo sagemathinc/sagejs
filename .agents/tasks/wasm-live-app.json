@@ -32,7 +32,18 @@
     "pnpm docs:check",
     "pnpm test:tutorial"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test website/live/test/*.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.692,
+      "started_at": "2026-08-20T05:17:58.148Z",
+      "commit": "4c78361205d36cb30486b740bbc3d4aad7f605e8",
+      "workspace_fingerprint": "3d616da03f932e33ef55c655fb9945be48e265c34b48020584ca2c1d095439cc",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

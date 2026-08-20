@@ -121,7 +121,6 @@ function saveWorkspace() {
   try {
     workspace = store.save(workspace);
     renderSessionOptions();
-    setLive("Worksheet saved locally in this browser.");
   } catch (error) {
     setLive(`Worksheet was not saved: ${error.message}`);
   }
@@ -340,7 +339,8 @@ async function loadCapabilities() {
       family: elements.capabilityFamily.value,
       query: elements.capabilitySearch.value,
     });
-    elements.capabilitySummary.textContent = `${records.length.toLocaleString()} of ${report.capabilities.length.toLocaleString()} classified capabilities shown. Source ${report.source_sha256}.`;
+    const displayed = Math.min(records.length, 150);
+    elements.capabilitySummary.textContent = `${records.length.toLocaleString()} of ${report.capabilities.length.toLocaleString()} capabilities match; ${displayed.toLocaleString()} displayed. Source ${report.source_sha256}.`;
     const rows = [];
     for (const record of records.slice(0, 150)) {
       const row = document.createElement("tr");
