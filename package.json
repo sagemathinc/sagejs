@@ -155,6 +155,7 @@
     "bench:hyperelliptic-genus3-certified": "node bench/rforest/benchmark-genus3-certified.cjs",
     "bench:hyperelliptic-genus3-jacobian": "node bench/hyperelliptic/benchmark-genus3-jacobian-kernel.cjs",
     "bench:hyperelliptic-jacobian-structure": "node bench/hyperelliptic/benchmark-jacobian-group-structure.cjs",
+    "bench:hyperelliptic-lseries": "node bench/hyperelliptic/benchmark-lseries.cjs",
     "bench:dense-prime:public": "./bin/sagejs bench/dense-prime-v2.sage",
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",

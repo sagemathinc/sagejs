@@ -208,6 +208,8 @@ class HyperellipticCurve_generic(sage.Parent):
         self._check_squarefree = check_squarefree
         self._frobenius_cache: dict[str, list[int]] = {}
         self._local_lpolynomial_cache: dict[tuple[str, int], list[int]] = {}
+        self._global_arithmetic_cache: dict[str, Any] = {}
+        self._lseries_cache: Any = None
         self._names = names
         self._construction = {
             "kind": "HyperellipticCurve",
@@ -389,6 +391,57 @@ class HyperellipticCurve_generic(sage.Parent):
     def conductor_exponent(self, p: Any = None, algorithm: str = "auto") -> Any:
         """Return the certified local conductor exponent at `p`."""
         return self.local_reduction(p, algorithm).conductor_exponent
+
+    def local_root_number(self, p: Any = None, algorithm: str = "auto") -> Any:
+        """Return the certified local root number at `p`."""
+        return self.local_reduction(p, algorithm).local_root_number
+
+    def global_reduction(self, algorithm: str = "auto") -> Any:
+        """Return certified global conductor and root-number data."""
+        if _is_finite_field(self._base):
+            raise TypeError("global_reduction is defined for curves over QQ")
+        module = __import__(
+            "sagejs.hyperelliptic_curves.global_arithmetic",
+            fromlist=["global_reduction"],
+        )
+        return module.global_reduction(self, algorithm)
+
+    def bad_primes(self) -> Any:
+        """Return all certified primes of bad reduction."""
+        return self.global_reduction().bad_primes
+
+    def conductor(self) -> Any:
+        """Return the certified conductor of the Jacobian."""
+        return self.global_reduction().conductor
+
+    def root_number(self) -> Any:
+        """Return the certified global functional-equation sign."""
+        return self.global_reduction().root_number
+
+    def lseries(self) -> Any:
+        """Return the cached numerical Hasse--Weil L-series."""
+        if self._lseries_cache is None:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.lseries",
+                fromlist=["HyperellipticLSeries"],
+            )
+            self._lseries_cache = module.HyperellipticLSeries(self)
+        return self._lseries_cache
+
+    def analytic_rank(
+        self,
+        algorithm: str = "auto",
+        leading_coefficient: bool = False,
+        prec: Any = 53,
+        max_order: Any = 12,
+    ) -> Any:
+        """Return the probable analytic rank at the central point."""
+        return self.lseries().analytic_rank(
+            algorithm=algorithm,
+            leading_coefficient=leading_coefficient,
+            prec=prec,
+            max_order=max_order,
+        )
 
     def local_lpolynomial_chunks(
         self,

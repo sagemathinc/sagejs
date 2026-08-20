@@ -1,0 +1,62 @@
+{
+  "schema": "sagejs.hyperelliptic-lseries/oracles-v1",
+  "normalization": "Lambda(s)=(sqrt(N)/(2*pi)^g)^s*Gamma(s)^g*L(s)",
+  "rows": [
+    {
+      "id": "genus2-conductor-713",
+      "genus": 2,
+      "model": {
+        "f_coefficients_ascending": [0, 1],
+        "h_coefficients_ascending": [1, -1, 0, 1]
+      },
+      "conductor": "713",
+      "root_number": 1,
+      "bad_primes": [23, 31],
+      "L1": "0.28580100094696171702260972641418500977",
+      "L2": "0.65610310213914690538429304184746241072",
+      "sources": ["PARI 2.18.1.alpha lfungenus2/lfun"]
+    },
+    {
+      "id": "genus2-conductor-13223",
+      "genus": 2,
+      "model": {
+        "f_coefficients_ascending": [0, 1],
+        "h_coefficients_ascending": [1, -3, 0, 1]
+      },
+      "conductor": "13223",
+      "root_number": -1,
+      "bad_primes": [7, 1889],
+      "L1_derivative": "0.90225958262703557577752929646189081877",
+      "sources": ["PARI 2.18.1.alpha lfungenus2/lfun"]
+    },
+    {
+      "id": "genus3-x0-33",
+      "genus": 3,
+      "model": {
+        "f_coefficients_ascending": [0, 1, 1, 1, 0, 1, 1, 1],
+        "h_coefficients_ascending": [1, 0, 1, 0, 1]
+      },
+      "conductor": "3993",
+      "root_number": 1,
+      "bad_primes": [3, 11],
+      "L1": "0.048155313890050367774284460132097573114",
+      "L2": "0.30442788483392158526227254665163655353",
+      "sources": [
+        "Sutherland genus-3 database: Jac(C) is isogenous to J0(33)",
+        "PARI elliptic factors L(11a)^2*L(33a)"
+      ]
+    },
+    {
+      "id": "genus3-odd-conductor-24055",
+      "genus": 3,
+      "model": {
+        "f_coefficients_ascending": [0, 1, 3, 5, 7, 6, 4, 1],
+        "h_coefficients_ascending": [1]
+      },
+      "conductor": "24055",
+      "root_number": 1,
+      "bad_primes": [5, 17, 283],
+      "sources": ["Sutherland genus-3 hyperelliptic database"]
+    }
+  ]
+}
