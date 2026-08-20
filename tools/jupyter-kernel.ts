@@ -1,14 +1,15 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import {
+  existsSync,
+  lstatSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { homedir } from "node:os";
+import { basename, dirname, join, posix, resolve, win32 } from "node:path";
 
 import {
   createSage,
@@ -760,6 +761,101 @@ function optionValue(args: string[], names: string[]): string | undefined {
   return undefined;
 }
 
+export interface JupyterPathOptions {
+  platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
+  home?: string;
+  output?: (message: string) => void;
+}
+
+function environmentFlag(value: string | undefined): boolean {
+  if (value === undefined) return false;
+  return !new Set(["", "0", "0.0", "false", "n", "no", "off"])
+    .has(value.trim().toLowerCase());
+}
+
+function platformPath(platform: NodeJS.Platform) {
+  return platform === "win32" ? win32 : posix;
+}
+
+export function jupyterUserDataDirectory(
+  options: JupyterPathOptions = {},
+): string {
+  const platform = options.platform ?? process.platform;
+  const env = options.env ?? process.env;
+  const home = options.home ?? homedir();
+  const paths = platformPath(platform);
+  if (env.JUPYTER_DATA_DIR) return paths.resolve(env.JUPYTER_DATA_DIR);
+
+  const usePlatformDirs = environmentFlag(env.JUPYTER_PLATFORM_DIRS);
+  if (platform === "win32") {
+    if (usePlatformDirs) {
+      return paths.join(
+        env.LOCALAPPDATA ?? paths.join(home, "AppData", "Local"),
+        "jupyter",
+      );
+    }
+    if (env.APPDATA) return paths.join(env.APPDATA, "jupyter");
+    const config = env.JUPYTER_CONFIG_DIR ?? paths.join(home, ".jupyter");
+    return paths.join(config, "data");
+  }
+  if (platform === "darwin") {
+    if (usePlatformDirs) {
+      return env.XDG_DATA_HOME
+        ? paths.join(env.XDG_DATA_HOME, "jupyter")
+        : paths.join(home, "Library", "Application Support", "jupyter");
+    }
+    return paths.join(home, "Library", "Jupyter");
+  }
+  return paths.join(
+    env.XDG_DATA_HOME ?? paths.join(home, ".local", "share"),
+    "jupyter",
+  );
+}
+
+export function kernelSpecDirectory(
+  mode: SageLanguageMode,
+  args: string[],
+  options: JupyterPathOptions = {},
+): string {
+  const kernelName = mode === "sage" ? "sagejs" : "sagejs-python";
+  const platform = options.platform ?? process.platform;
+  const env = options.env ?? process.env;
+  const paths = platformPath(platform);
+  const prefix = optionValue(args, ["--prefix"]);
+  const requestedLocations = Number(Boolean(prefix)) +
+    Number(args.includes("--sys-prefix")) + Number(args.includes("--user"));
+  if (requestedLocations > 1) {
+    throw new Error("choose only one of --user, --sys-prefix, or --prefix");
+  }
+  if (prefix) {
+    return paths.join(
+      paths.resolve(prefix),
+      "share",
+      "jupyter",
+      "kernels",
+      kernelName,
+    );
+  }
+  if (args.includes("--sys-prefix")) {
+    const environmentPrefix = env.CONDA_PREFIX ?? env.VIRTUAL_ENV;
+    if (!environmentPrefix) {
+      throw new Error(
+        "--sys-prefix requires an active conda or virtual environment; " +
+          "activate it first or use --prefix PATH",
+      );
+    }
+    return paths.join(
+      paths.resolve(environmentPrefix),
+      "share",
+      "jupyter",
+      "kernels",
+      kernelName,
+    );
+  }
+  return paths.join(jupyterUserDataDirectory(options), "kernels", kernelName);
+}
+
 export function createKernelSpec(
   mode: SageLanguageMode,
   launcher: string[],
@@ -791,53 +887,81 @@ export function installKernelSpec(
   mode: SageLanguageMode,
   args: string[],
   launcher = defaultKernelLauncher(),
-): void {
-  const kernelName = mode === "sage" ? "sagejs" : "sagejs-python";
-  const temporaryRoot = mkdtempSync(
-    join(tmpdir(), "sagejs-kernelspec-"),
+  options: JupyterPathOptions = {},
+): string {
+  const destination = kernelSpecDirectory(mode, args, options);
+  const parent = dirname(destination);
+  const kernelName = basename(destination);
+  const staging = join(parent, `.${kernelName}-install-${randomUUID()}`);
+  const backup = join(parent, `.${kernelName}-backup-${randomUUID()}`);
+  const output = options.output ?? ((message: string) => process.stdout.write(message));
+  mkdirSync(parent, { recursive: true });
+  mkdirSync(staging);
+  writeFileSync(
+    join(staging, "kernel.json"),
+    `${JSON.stringify(createKernelSpec(mode, launcher), null, 2)}\n`,
   );
-  const specDirectory = join(temporaryRoot, kernelName);
+  let movedExisting = false;
   try {
-    mkdirSync(specDirectory);
-    writeFileSync(
-      join(specDirectory, "kernel.json"),
-      `${JSON.stringify(
-        createKernelSpec(mode, launcher),
-        null,
-        2,
-      )}\n`,
-    );
-    const installArgs = [
-      "kernelspec",
-      "install",
-      specDirectory,
-      "--name",
-      kernelName,
-      "--replace",
-    ];
-    const prefix = optionValue(args, ["--prefix"]);
-    const requestedLocations = Number(Boolean(prefix)) +
-      Number(args.includes("--sys-prefix")) + Number(args.includes("--user"));
-    if (requestedLocations > 1) {
-      throw new Error(
-        "choose only one of --user, --sys-prefix, or --prefix",
-      );
+    if (existsSync(destination)) {
+      const status = lstatSync(destination);
+      if (status.isSymbolicLink()) {
+        throw new Error(`refusing to replace kernelspec symlink ${destination}`);
+      }
+      if (!status.isDirectory()) {
+        throw new Error(`kernelspec destination is not a directory: ${destination}`);
+      }
+      renameSync(destination, backup);
+      movedExisting = true;
     }
-    if (prefix) installArgs.push("--prefix", prefix);
-    else if (args.includes("--sys-prefix")) installArgs.push("--sys-prefix");
-    else installArgs.push("--user");
-    const result = spawnSync("jupyter", installArgs, { stdio: "inherit" });
-    if (result.error) throw result.error;
-    if (result.status !== 0) process.exit(result.status ?? 1);
+    try {
+      renameSync(staging, destination);
+    } catch (error) {
+      if (movedExisting && !existsSync(destination)) {
+        renameSync(backup, destination);
+        movedExisting = false;
+      }
+      throw error;
+    }
+    if (movedExisting) rmSync(backup, { recursive: true, force: true });
   } finally {
-    rmSync(temporaryRoot, { recursive: true, force: true });
+    rmSync(staging, { recursive: true, force: true });
   }
+  output(
+    `Installed Sage.js Jupyter kernelspec at ${join(destination, "kernel.json")}\n` +
+      "Restart or refresh your Jupyter client so it reloads installed kernels.\n",
+  );
+  return destination;
+}
+
+export function uninstallKernelSpec(
+  mode: SageLanguageMode,
+  args: string[],
+  options: JupyterPathOptions = {},
+): boolean {
+  const destination = kernelSpecDirectory(mode, args, options);
+  const output = options.output ?? ((message: string) => process.stdout.write(message));
+  if (!existsSync(destination)) {
+    output(`Sage.js Jupyter kernelspec is not installed at ${destination}\n`);
+    return false;
+  }
+  const status = lstatSync(destination);
+  if (status.isSymbolicLink()) {
+    throw new Error(`refusing to remove kernelspec symlink ${destination}`);
+  }
+  if (!status.isDirectory()) {
+    throw new Error(`kernelspec destination is not a directory: ${destination}`);
+  }
+  rmSync(destination, { recursive: true });
+  output(`Removed Sage.js Jupyter kernelspec from ${destination}\n`);
+  return true;
 }
 
 function usage(): string {
   return `Usage:
   ${basename(process.argv[1])} --connection-file FILE [--mode sage|python]
   ${basename(process.argv[1])} --install [--mode sage|python] [--user|--sys-prefix|--prefix DIR]
+  ${basename(process.argv[1])} --uninstall [--mode sage|python] [--user|--sys-prefix|--prefix DIR]
 `;
 }
 
@@ -852,6 +976,10 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
   if (args.includes("--install")) {
     installKernelSpec(mode, args);
+    return;
+  }
+  if (args.includes("--uninstall")) {
+    uninstallKernelSpec(mode, args);
     return;
   }
   const connectionFile = optionValue(args, ["--connection-file", "-f"]);

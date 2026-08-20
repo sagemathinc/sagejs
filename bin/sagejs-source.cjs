@@ -38,15 +38,19 @@ if (
 ) sageMode = true;
 argv.sage = sageMode;
 
-if (argv.install_jupyter_kernel) {
+if (argv.install_jupyter_kernel || argv.uninstall_jupyter_kernel) {
+  if (argv.install_jupyter_kernel && argv.uninstall_jupyter_kernel) {
+    throw new Error("choose install or uninstall, not both");
+  }
   const installArguments = ["--mode", argv.jupyter_kernel_mode];
   if (argv.user) installArguments.push("--user");
   if (argv.sys_prefix) installArguments.push("--sys-prefix");
   if (argv.prefix) installArguments.push("--prefix", argv.prefix);
-  load("jupyter-kernel").installKernelSpec(
-    argv.jupyter_kernel_mode,
-    installArguments,
-  );
+  const jupyter = load("jupyter-kernel");
+  const operation = argv.install_jupyter_kernel
+    ? jupyter.installKernelSpec
+    : jupyter.uninstallKernelSpec;
+  operation(argv.jupyter_kernel_mode, installArguments);
   process.exit(0);
 }
 

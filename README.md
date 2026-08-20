@@ -406,8 +406,9 @@ output, completion, inspection, reliable interruption, and native Plotly
 display for 2D and 3D graphics. Cells marked `%%sage`, `%%python`, `%%magma`,
 `%%matlab`, `%%maple`, or `%%wolfram` share one JavaScript object namespace.
 Run `sagejs --install-jupyter-kernel`, then select **Sage.js Polyglot** in
-JupyterLab, CoCalc, or any other Jupyter environment. The command works for
-both npm and self-contained native installations. See
+JupyterLab, CoCalc, nteract, or any other Jupyter client. Registration is
+implemented directly without requiring Python or the `jupyter` command, and
+works for both npm and self-contained native installations. See
 [`JUPYTER.md`](JUPYTER.md) for installation, behavior, and testing details.
 [`POLYGLOT.md`](POLYGLOT.md) defines the shared-object
 interoperability contract, compatibility matrix, executable corpus, example

@@ -153,7 +153,9 @@ function print_top_level_usage() {
   console.log(label("Common options:"));
   console.log("  --emit-sage     show Sage source lowered from a foreign language");
   console.log("  --install-jupyter-kernel");
-  console.log("                  install Sage.js in the current Jupyter environment");
+  console.log("                  install a user kernelspec without requiring Jupyter/Python");
+  console.log("  --uninstall-jupyter-kernel");
+  console.log("                  remove the Sage.js user kernelspec");
   console.log("  -h, --help      show this help");
   console.log("  -V, --version   show the Sage.js version\n");
 
@@ -296,10 +298,11 @@ function parse_args() {
   } else {
     // Jupyter installation is a top-level operation whose placement and mode
     // options take values. Do not mistake those values for program files.
-    var install_jupyter_kernel = all_args.some(function (arg) {
-      return arg === "--install-jupyter-kernel";
+    var jupyter_kernel_operation = all_args.some(function (arg) {
+      return arg === "--install-jupyter-kernel" ||
+        arg === "--uninstall-jupyter-kernel";
     });
-    var has_files = !install_jupyter_kernel &&
+    var has_files = !jupyter_kernel_operation &&
       all_args.filter(function (a) {
         return a[0] !== "-";
       }).length > 0;
@@ -616,6 +619,12 @@ Install Sage.js as a Jupyter kernel for the current user.
 */
 });
 
+opt("uninstall_jupyter_kernel", "", "bool", false, function () {
+  /*
+Remove the Sage.js Jupyter kernel for the current user.
+*/
+});
+
 opt(
   "jupyter_kernel_mode",
   "",
@@ -638,6 +647,7 @@ Install the Jupyter kernelspec for the current user (the default).
 opt("sys_prefix", "", "bool", false, function () {
   /*
 Install the Jupyter kernelspec under Jupyter's current sys.prefix.
+The active CONDA_PREFIX or VIRTUAL_ENV identifies that prefix.
 */
 });
 

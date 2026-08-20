@@ -27,6 +27,7 @@ interface SeaArguments {
     | "docs"
     | "repl"
     | "jupyter-install"
+    | "jupyter-uninstall"
     | "jupyter-kernel"
     | "jupyter-self-test"
     | "pytest";
@@ -63,6 +64,7 @@ Run Sage.js from a self-contained executable. With no program, start a REPL.
   ${executable} docs <search|show|export|coverage> [query]
   ${executable} pytest [pytest options] [paths]
   ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
+  ${executable} --uninstall-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
 Options:
   --python        use Python syntax and division
@@ -75,7 +77,9 @@ Options:
   --mathematica   alias for --wolfram
   --emit-sage     print Sage source generated from foreign-language input
   --install-jupyter-kernel
-                  install this executable as a user Jupyter kernel
+                  install a user kernelspec without requiring Jupyter/Python
+  --uninstall-jupyter-kernel
+                  remove this executable's user kernelspec
   --no-js         hide generated JavaScript in the REPL (default)
   --tokens        display parser tokens
   -h, --help      show this help
@@ -115,12 +119,20 @@ function parseArguments(): SeaArguments {
     );
     return args;
   }
-  if (rawArguments.includes("--install-jupyter-kernel")) {
-    args.mode = "jupyter-install";
+  const installJupyter = rawArguments.includes("--install-jupyter-kernel");
+  const uninstallJupyter = rawArguments.includes("--uninstall-jupyter-kernel");
+  if (installJupyter || uninstallJupyter) {
+    if (installJupyter && uninstallJupyter) {
+      throw new Error("choose install or uninstall, not both");
+    }
+    args.mode = installJupyter ? "jupyter-install" : "jupyter-uninstall";
     const jupyterArguments: string[] = [];
     for (let index = 0; index < rawArguments.length; index += 1) {
       const argument = rawArguments[index];
-      if (argument === "--install-jupyter-kernel") continue;
+      if (
+        argument === "--install-jupyter-kernel" ||
+        argument === "--uninstall-jupyter-kernel"
+      ) continue;
       if (argument === "--jupyter-kernel-mode") {
         const value = rawArguments[++index];
         if (value === undefined) {
@@ -264,7 +276,7 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
-  if (argv.mode === "jupyter-install") {
+  if (argv.mode === "jupyter-install" || argv.mode === "jupyter-uninstall") {
     const jupyter = await import("./jupyter-kernel.js");
     const jupyterArguments = argv.jupyter_args ?? [];
     const modeIndex = jupyterArguments.indexOf("--mode");
@@ -274,10 +286,14 @@ async function main(): Promise<void> {
     if (mode !== "sage" && mode !== "python") {
       throw new Error(`unknown Sage.js Jupyter mode ${JSON.stringify(mode)}`);
     }
-    jupyter.installKernelSpec(mode, jupyterArguments, [
-      process.execPath,
-      "--jupyter-kernel",
-    ]);
+    if (argv.mode === "jupyter-install") {
+      jupyter.installKernelSpec(mode, jupyterArguments, [
+        process.execPath,
+        "--jupyter-kernel",
+      ]);
+    } else {
+      jupyter.uninstallKernelSpec(mode, jupyterArguments);
+    }
     return;
   }
   if (argv.mode === "jupyter-kernel") {

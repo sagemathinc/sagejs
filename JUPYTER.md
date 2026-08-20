@@ -14,22 +14,28 @@ sagejs --install-jupyter-kernel
 ```
 
 This works with both the npm command and the self-contained macOS, Linux, and
-Windows executable. It installs a user kernelspec named `sagejs`; no Python
-package, Jupyter extension, or second Sage.js launcher is required. Start
-JupyterLab or Notebook normally and select **Sage.js Polyglot**:
+Windows executable. It installs a user kernelspec named `sagejs`; neither
+Python nor the `jupyter` command is required. No Jupyter extension or second
+Sage.js launcher is installed. Open your preferred Jupyter client—such as
+JupyterLab, CoCalc, nteract, or VS Code—and select **Sage.js Polyglot**.
+
+For example, if JupyterLab is installed:
 
 ```sh
 jupyter lab
 ```
 
-The installer invokes the `jupyter` command from `PATH` and accepts its
-standard placement choices:
+The installer writes `kernel.json` directly into the standard Jupyter data
+directory and accepts the standard placement choices:
 
 ```sh
 sagejs --install-jupyter-kernel --user
 sagejs --install-jupyter-kernel --sys-prefix
 sagejs --install-jupyter-kernel --prefix /some/prefix
 ```
+
+`--sys-prefix` uses the active `CONDA_PREFIX` or `VIRTUAL_ENV`. If neither is
+set, activate the environment first or use the explicit `--prefix` form.
 
 To install a separate kernel which disables Sage syntax and uses Python
 operator semantics:
@@ -44,11 +50,11 @@ The generated kernelspec records the absolute path to the installed Sage.js
 command. A self-contained release launches its internal kernel mode directly;
 an npm or source installation records the Node executable and Jupyter launcher.
 Re-run the installer after moving the executable or changing Node
-installations. Remove it with:
+installations. Remove it, without requiring Jupyter or Python, with:
 
 ```sh
-jupyter kernelspec uninstall sagejs
-jupyter kernelspec uninstall sagejs-python
+sagejs --uninstall-jupyter-kernel
+sagejs --uninstall-jupyter-kernel --jupyter-kernel-mode python
 ```
 
 From a source checkout, build first and invoke the same public CLI:
