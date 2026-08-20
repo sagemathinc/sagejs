@@ -65,6 +65,13 @@ class LocalReductionData:
         self.backend = backend
         self.certified = True
         self.certificate = dict(certificate)
+        self.local_root_number = sage.ZZ(_certified_local_root_number(self))
+        self.certificate["local_root_number"] = int(self.local_root_number)
+        self.certificate["root_number_theorem"] = (
+            "good abelian reduction has local sign +1"
+            if self.jacobian_good_reduction
+            else "semistable sign (-1)^dim H_1(dual graph)^Frob"
+        )
 
     def __getitem__(self, name: str) -> Any:
         if not hasattr(self, name):
@@ -90,6 +97,38 @@ def _frobenius() -> Any:
         "sagejs.hyperelliptic_curves.frobenius",
         fromlist=["rational_local_lpolynomial"],
     )
+
+
+def _one_eigenspace_multiplicity(coefficients: Any) -> int:
+    """Return the multiplicity of `T=1` in an ascending polynomial."""
+    values = [int(value) for value in coefficients]
+    answer = 0
+    while len(values) > 1 and sum(values) == 0:
+        quotient = [0 for _index in range(len(values) - 1)]
+        quotient[-1] = -values[-1]
+        for index in range(len(values) - 2, 0, -1):
+            quotient[index - 1] = quotient[index] - values[index]
+        if quotient[0] != values[0]:
+            raise ArithmeticError("failed to divide a graph factor by 1-T")
+        values = quotient
+        answer += 1
+    return answer
+
+
+def _certified_local_root_number(data: LocalReductionData) -> int:
+    if data.jacobian_good_reduction:
+        return 1
+    if data.semistable is not True:
+        raise LocalReductionUnsupportedError(
+            "the local root number is not certified for this reduction type"
+        )
+    graph = data.certificate.get("dual_graph_euler_coefficients")
+    if graph is None:
+        if int(data.toric_rank) == 0:
+            return 1
+        raise ArithmeticError("a semistable certificate has no graph factor")
+    multiplicity = _one_eigenspace_multiplicity(graph)
+    return -1 if multiplicity % 2 else 1
 
 
 def _local_polygons() -> Any:
@@ -1657,10 +1696,16 @@ def conductor_exponent(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
     return local_reduction(curve, prime, algorithm).conductor_exponent
 
 
+def local_root_number(curve: Any, prime: Any, algorithm: str = "auto") -> Any:
+    """Return the certified local epsilon-factor sign at `prime`."""
+    return local_reduction(curve, prime, algorithm).local_root_number
+
+
 __all__ = [
     "LocalReductionData",
     "LocalReductionUnsupportedError",
     "conductor_exponent",
     "local_euler_factor",
     "local_reduction",
+    "local_root_number",
 ]

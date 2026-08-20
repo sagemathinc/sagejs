@@ -365,14 +365,14 @@
       "category": "mixed-native",
       "review_status": "audited",
       "lane": "elliptic-curves",
-      "rationale": "Combines the compact Molin Arb/Acb completed-L-function kernels with exact coefficient conversion and batched Node-API adapters for central jets and moderate-complex values."
+      "rationale": "Combines compact Arb/Acb completed-L-function kernels with exact coefficient conversion and batched Node-API adapters for elliptic and genus-2/3 hyperelliptic central jets and moderate-complex values."
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.h",
       "category": "public-abi",
       "review_status": "accepted",
       "lane": "elliptic-curves",
-      "rationale": "Internal addon declarations for the batched central-jet and moderate-complex elliptic L-function boundaries."
+      "rationale": "Internal addon declarations for the batched elliptic and hyperelliptic central-jet and moderate-complex L-function boundaries."
     },
     {
       "path": "packages/flint/src/extension_field.c",

@@ -139,3 +139,39 @@ test("completed central jet rejects invalid and unsupported resource inputs", ()
     /resource limits/,
   );
 });
+
+test("genus-2/3 Arb boundary plans packed coefficients and returns balls", () => {
+  const probe = flint.hyperellipticLseriesValues(
+    713n,
+    1,
+    2,
+    new Int32Array([0, 1]),
+    [["1", "0"]],
+    32,
+    2,
+  );
+  assert.equal(probe.status, "insufficient_coefficients");
+  assert.ok(probe.requiredCutoff > 64);
+
+  const coefficients = new Int32Array(probe.requiredCutoff + 1);
+  coefficients[1] = 1;
+  const result = flint.hyperellipticLseriesValues(
+    713n,
+    1,
+    2,
+    coefficients,
+    [["1", "0"]],
+    32,
+    2,
+  );
+  assert.equal(result.status, "ok");
+  assert.equal(result.rigorous, false);
+  assert.equal(result.genus, 2);
+  assert.equal(result.values.length, 1);
+  assert.equal(result.values[0].rawDerivatives.length, 3);
+  assert.equal(result.values[0].completedDerivatives.length, 3);
+  assert.equal(result.values[0].completedDerivatives[1].realMidpoint, "0");
+  assert.equal(result.values[0].completedDerivatives[1].imagMidpoint, "0");
+  assert.ok(Number(result.values[0].rawDerivatives[0].realRadius) >= 0);
+  assert.match(result.analyticErrorStatus, /nested_inverse_mellin/);
+});

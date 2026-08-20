@@ -15,6 +15,9 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info);
 napi_value sagejs_ec_lseries_direct_values(
     napi_env env, napi_callback_info info);
 
+napi_value sagejs_hyperelliptic_lseries_values(
+    napi_env env, napi_callback_info info);
+
 #ifdef __cplusplus
 }
 #endif
