@@ -3061,7 +3061,13 @@ class Matrix(sage.Element):
 
     def is_zero(self) -> bool:
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
+            if (
+                self._has_fmpq_matrix_resource()
+                and _flint_backend_has_function("ffiFmpqMatrixTrace")
+                and _flint_backend_has_function("ffiFmpqValueNumerator")
+                and _flint_backend_has_function("ffiFmpqValueDenominator")
+                and _flint_backend_has_function("ffiFmpqValueClose")
+            ):
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_is_zero(self._rational_resource())
                 )
