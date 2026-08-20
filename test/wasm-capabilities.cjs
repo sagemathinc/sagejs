@@ -255,6 +255,7 @@ test("the checked-in generated report is accepted by the public API", async () =
   const { createSagejsCapabilityAPI } = await publicApiModule();
   const api = createSagejsCapabilityAPI(report);
   assert.ok(api.sagejs_capabilities().length >= 900);
+  assert.ok(api.sagejs_capabilities("number-fields").length > 0);
   assert.deepEqual(
     api.workflow("number-field-maximal-order-prime-zeta").required_capabilities,
     [

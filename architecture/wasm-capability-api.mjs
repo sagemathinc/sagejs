@@ -180,12 +180,18 @@ export function createSagejsCapabilityAPI(
 
   function sagejsCapabilities(family = null) {
     if (family === null || family === undefined) return report.capabilities;
-    if (typeof family !== "string" || !families.includes(family)) {
+    const prefix = typeof family === "string" && family.endsWith("s")
+      ? `${family.slice(0, -1)}-`
+      : "";
+    const matches = typeof family === "string"
+      ? report.capabilities.filter((record) =>
+        record.family === family || (prefix !== "" && record.family.startsWith(prefix))
+      )
+      : [];
+    if (matches.length === 0) {
       throw new RangeError(`unknown Sage.js capability family ${JSON.stringify(family)}`);
     }
-    return Object.freeze(
-      report.capabilities.filter((record) => record.family === family),
-    );
+    return Object.freeze(matches);
   }
 
   function isAvailable(id) {

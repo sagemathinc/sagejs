@@ -10,7 +10,7 @@
       "requires": [
         { "id": "runtime:integer_factorization", "route": "shared-runtime-js" }
       ],
-      "source": "print(2^80 + 17)\nprint(factor(2026))\ncaps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps.append(None)\nexcept TypeError:\n    print('immutable')",
+      "source": "print(2^80 + 17)\nprint(factor(2026))\ncaps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
       "timeout_ms": 15000,
       "expect": {
         "stdout": "1208925819614629174706193\n2 * 1013\nTrue True True\nimmutable\n",

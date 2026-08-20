@@ -17,6 +17,7 @@
     "scripts/check-wasm-capabilities.cjs",
     "test/wasm-capabilities.cjs",
     "architecture/WASM-CAPABILITIES.md",
+    "architecture/wasm-capability-api.mjs",
     "packages/flint-wasm/kernel.mjs",
     "packages/flint-wasm/kernel-worker.mjs",
     "packages/flint-wasm/evaluator.mjs",
