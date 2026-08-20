@@ -109,3 +109,30 @@ test("rational matrix operations fall back independently of resource storage", a
     await session.close();
   }
 });
+
+test("modular-symbol integer matrices use the portable exact ingress", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate([
+      "import sagejs.runtime as rt",
+      "backend = rt.flint_backend()",
+      "global_object = rt.global_object",
+      "saved_process = rt.reflect.get(global_object, 'process')",
+      "export_packed = rt.reflect.get(backend, 'zzMatrixExportPacked')",
+      "matrix(ZZ, 1, 1, [1])",
+      "rt.reflect.deleteProperty(global_object, 'process')",
+      "rt.reflect.deleteProperty(backend, 'zzMatrixExportPacked')",
+      "try:",
+      "    M = ModularSymbols(37, 2)",
+      "    C = M.cuspidal_subspace()",
+      "    answer = [M.dimension(), C.dimension(), M.hecke_matrix(2).trace()]",
+      "finally:",
+      "    rt.reflect.set(backend, 'zzMatrixExportPacked', export_packed)",
+      "    rt.reflect.set(global_object, 'process', saved_process)",
+      "answer",
+    ].join("\n"));
+    assert.equal(result.repr, "[5, 4, -1]");
+  } finally {
+    await session.close();
+  }
+});

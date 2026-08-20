@@ -2479,8 +2479,36 @@ class Matrix(sage.Element):
             # may still return an opaque FLINT matrix.  Convert at this single
             # audited ingress and discard the handle immediately: no public
             # ZZ Matrix may own, cache, or later recover it.
-            packed_bytes = runtime.flint_backend().zzMatrixExportPacked(native_value)
-            packed_matrix = parent._from_packed_integers(packed_bytes)
+            backend = runtime.flint_backend()
+            export_packed = runtime.reflect.get(backend, "zzMatrixExportPacked")
+            if runtime.jstype(export_packed) == "function":
+                packed_bytes = runtime.reflect.apply(
+                    export_packed, backend, [native_value]
+                )
+                packed_matrix = parent._from_packed_integers(packed_bytes)
+            else:
+                # The browser's portable exact backend intentionally has no
+                # opaque-handle export. Its checked `matrixEntry` boundary is
+                # the compatibility ingress for the remaining legacy
+                # producers, including the weight-2 modular-symbol builders.
+                matrix_entry = runtime.reflect.get(backend, "matrixEntry")
+                if runtime.jstype(matrix_entry) != "function":
+                    raise RuntimeError(
+                        "integer matrix backend has no exact compatibility ingress"
+                    )
+                entries = []
+                for row in range(parent.nrows()):
+                    for column in range(parent.ncols()):
+                        entries.append(
+                            runtime.normalize_integer(
+                                runtime.reflect.apply(
+                                    matrix_entry,
+                                    backend,
+                                    [native_value, row, column],
+                                )
+                            )
+                        )
+                packed_matrix = parent._from_integer_values(entries)
             # Transfer the generated resource wrapper; copying here would
             # create a second owner and leave the temporary to GC finalization.
             native_value = packed_matrix._integer_storage_cache
