@@ -13,4 +13,3 @@ class SageRuntimeOriginPackage : ReactPackage {
     context: ReactApplicationContext,
   ): List<ViewManager<*, *>> = emptyList()
 }
-

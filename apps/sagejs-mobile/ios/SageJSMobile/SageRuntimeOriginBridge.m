@@ -6,4 +6,3 @@ RCT_EXTERN_METHOD(start:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 @end
-

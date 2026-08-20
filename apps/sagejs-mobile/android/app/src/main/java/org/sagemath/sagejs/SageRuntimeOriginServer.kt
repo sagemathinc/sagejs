@@ -64,7 +64,6 @@ internal object LoopbackHttpPolicy {
     else -> "application/octet-stream"
   }
 }
-
 object SageRuntimeOriginServer {
   private const val ASSET_ROOT = "runtime"
   private val lock = Any()
@@ -230,4 +229,3 @@ object SageRuntimeOriginServer {
   private fun sha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 }
-

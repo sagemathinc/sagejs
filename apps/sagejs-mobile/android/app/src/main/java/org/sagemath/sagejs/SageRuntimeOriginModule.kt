@@ -38,4 +38,3 @@ class SageRuntimeOriginModule(context: ReactApplicationContext) :
     super.invalidate()
   }
 }
-
