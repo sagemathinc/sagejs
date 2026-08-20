@@ -37,7 +37,15 @@ test("staging consumes and verifies the production artifact manifest", async () 
   const manifestContents = JSON.stringify(artifact);
   await writeFile(path.join(packageRoot, "dist/production-manifest.json"), manifestContents);
   await writeFile(path.join(packageRoot, "dist/build-receipt.json"), JSON.stringify({ schema: "sagejs.wasm-build-receipt/v1", artifact, commit: "deadbeef", productionManifestSha256: createHash("sha256").update(manifestContents).digest("hex") }));
-  await writeFile(path.join(temporary, "architecture/wasm-capabilities-report.json"), JSON.stringify({ schema: "sagejs.wasm-capability-report/v1", capabilities: [] }));
+  const capabilitySource = "architecture/wasm-capabilities.json";
+  const capabilitySourceContents = "{}\n";
+  await writeFile(path.join(temporary, capabilitySource), capabilitySourceContents);
+  await writeFile(path.join(temporary, "architecture/wasm-capabilities-report.json"), JSON.stringify({
+    schema: "sagejs.wasm-capability-report/v1",
+    source: capabilitySource,
+    source_sha256: createHash("sha256").update(capabilitySourceContents).digest("hex"),
+    capabilities: [],
+  }));
 
   const capabilityReport = path.join(temporary, "architecture/wasm-capabilities-report.json");
   const result = await stageRelease({ appRoot, packageRoot, capabilityReport, target: path.join(appRoot, "dist") });

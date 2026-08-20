@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promi
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { validateCapabilityReport } from "../capability-report.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const defaultAppRoot = path.resolve(scriptRoot, "..");
@@ -164,9 +165,15 @@ export async function stageRelease({
 
   await copyFileWithParents(manifestFile, path.join(runtimeTarget, "dist/production-manifest.json"));
   await copyFileWithParents(receiptFile, path.join(runtimeTarget, "dist/build-receipt.json"));
-  const capabilityData = await json(capabilityReport);
-  if (capabilityData.schema !== "sagejs.wasm-capability-report/v1" || !Array.isArray(capabilityData.capabilities)) {
-    throw new Error("generated WebAssembly capability report is invalid");
+  const capabilityData = validateCapabilityReport(await json(capabilityReport));
+  const capabilityRoot = path.resolve(path.dirname(capabilityReport), "..");
+  const capabilitySource = path.resolve(capabilityRoot, capabilityData.source);
+  if (!capabilitySource.startsWith(`${capabilityRoot}${path.sep}`)) {
+    throw new Error("generated WebAssembly capability source escapes the repository");
+  }
+  if (!/^[a-f0-9]{64}$/.test(capabilityData.source_sha256) ||
+      await sha256(capabilitySource) !== capabilityData.source_sha256) {
+    throw new Error("generated WebAssembly capability report is stale");
   }
   await copyFileWithParents(capabilityReport, path.join(target, "wasm-capabilities-report.json"));
 
