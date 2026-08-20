@@ -9,11 +9,17 @@ const { formatDuration } = require("./run-test-tier.cjs");
 
 const root = resolve(__dirname, "..");
 
-const routine = [
-  ["Architecture and generated-boundary checks", "architecture:check", 5],
+const foundation = [
+  ["Package architecture checks", "architecture:packages", 2],
+  ["Native architecture checks", "architecture:native", 3],
   ["Compiler and runtime build", "build", 300],
+  ["Generated FFI boundary checks", "ffi:check", 5],
   ["Startup regression budget", "test:startup:run", 15],
   ["Strict Python formatting and typing", "test:baselib:strict", 25],
+];
+
+const routine = [
+  ...foundation,
   ["Portable unit tests", "test:portable", 30],
   ["Public API smoke tests", "test:smoke", 45],
 ];
@@ -22,7 +28,7 @@ const plans = {
   routine,
   ci: routine,
   full: [
-    ...routine.slice(0, 4),
+    ...foundation,
     ["Compiler compatibility corpus", "test:compiler", 240],
     ["Complete unit tier", "test:unit", 35],
     ["Complete host integration tier", "test:integration", 900],
