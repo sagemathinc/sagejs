@@ -63,10 +63,19 @@ try {
       if (value) return value;
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
-    throw new Error(`timed out waiting for ${expression}\n${errors.join("\n")}\n${chromeErrors}`);
+    const snapshot = await evaluate(`JSON.stringify({
+      kernel: document.querySelector('#kernel-status')?.textContent.trim(),
+      kernelState: document.querySelector('#kernel-status')?.dataset.state,
+      live: document.querySelector('#live-status')?.textContent,
+      output: document.querySelector('#output')?.textContent,
+      source: document.querySelector('#source')?.value,
+      runDisabled: document.querySelector('[data-run="all"]')?.disabled,
+      diagnostics: document.querySelector('#diagnostics')?.textContent,
+    })`);
+    throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\n${errors.join("\n")}\n${chromeErrors}`);
   }
-  async function runFactor() {
-    await evaluate(`document.querySelector('#source').value='factor(2026)'; document.querySelector('[data-run="all"]').click()`);
+  async function runFactor({ setSource = true } = {}) {
+    await evaluate(`${setSource ? "document.querySelector('#source').value='factor(2026)';" : ""} document.querySelector('[data-run="all"]').click()`);
     await waitFor(`document.querySelector('#output')?.textContent.includes('2 * 1013')`);
   }
 
@@ -78,7 +87,8 @@ try {
   await command("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
   await command("Page.reload", { ignoreCache: true });
   await waitFor(`document.querySelector('#kernel-status')?.dataset.state === 'ready'`);
-  await runFactor();
+  assert.equal(await evaluate("document.querySelector('#source').value"), "factor(2026)");
+  await runFactor({ setSource: false });
   assert.deepEqual(errors, []);
   socket.close();
 } finally {
