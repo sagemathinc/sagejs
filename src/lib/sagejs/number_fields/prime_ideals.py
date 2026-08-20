@@ -47,7 +47,8 @@ _identity_tokens: list[Any] = []
 def _native_factor_degree_data(
     polynomial: Any,
     primes: list[int],
-    materialize_records: bool = False,
+    *,
+    backend_override: Any | None = None,
 ) -> dict[str, Any] | None:
     """Return raw packed FLINT factor degrees, or `None` without the adapter."""
     if len(primes) == 0:
@@ -63,13 +64,24 @@ def _native_factor_degree_data(
             "degrees": [],
             "records": [],
         }
-    try:
-        backend = runtime.flint_backend()
-    except Exception:
-        return None
+    if backend_override is None:
+        try:
+            backend = runtime.flint_backend()
+        except Exception:
+            return None
+    else:
+        backend = backend_override
     function = runtime.reflect.get(backend, "nfFactorDegreesBatch")
     if function is runtime.undefined:
         return None
+    maximum_prime = runtime.reflect.get(backend, "nfFactorDegreesBatchMaxPrime")
+    if maximum_prime is not runtime.undefined:
+        limit = int(runtime.integer_bigint(maximum_prime))
+        if any(prime > limit for prime in primes):
+            # Wasm32 deliberately exposes only the fixed-width word-prime
+            # accelerator. The caller retains the exact finite-field route,
+            # including certified index-prime decomposition, beyond it.
+            return None
     coefficients = [
         runtime.integer_bigint(coefficient) for coefficient in polynomial.list()
     ]
@@ -77,7 +89,7 @@ def _native_factor_degree_data(
     result = runtime.reflect.apply(
         function,
         backend,
-        [coefficients, packed_primes, materialize_records],
+        [coefficients, packed_primes],
     )
     degree = int(runtime.reflect.get(result, "degree"))
     counts = runtime.reflect.get(result, "factorCounts")
@@ -91,30 +103,23 @@ def _native_factor_degree_data(
         "exponents": exponents,
         "degrees": degrees,
     }
-    if materialize_records:
-        # Convert only the outer array shell.  Record and factor objects stay
-        # native and are read through `Reflect` by the generic validator.
-        data["records"] = list(runtime.reflect.get(result, "records"))
     return data
 
 
-def _native_factor_degree_records(
-    polynomial: Any,
-    primes: list[int],
-) -> list[dict[str, Any]] | None:
-    """Materialize public compact records from one packed FLINT batch."""
-    data = _native_factor_degree_data(polynomial, primes, True)
-    if data is None:
-        return None
-    if "records" in data:
-        return data["records"]
+def _materialize_factor_degree_records(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Construct public compact records from host-neutral packed arrays."""
     degree = int(data["degree"])
+    primes = data["primes"]
     counts = data["factorCounts"]
     exponents = data["exponents"]
     degrees = data["degrees"]
     records: list[dict[str, Any]] = []
     for row, prime in enumerate(primes):
         count = int(counts[row])
+        if count < 1 or count > degree:
+            raise ArithmeticError("packed compact splitting count is invalid")
         factors = [
             {
                 "e": int(exponents[row * degree + index]),
@@ -122,6 +127,8 @@ def _native_factor_degree_records(
             }
             for index in range(count)
         ]
+        if any(factor["e"] < 1 or factor["f"] < 1 for factor in factors):
+            raise ArithmeticError("packed compact splitting factor is invalid")
         if sum(factor["e"] * factor["f"] for factor in factors) != degree:
             raise ArithmeticError(
                 "packed compact splitting data has the wrong local degree"
@@ -134,6 +141,21 @@ def _native_factor_degree_records(
             }
         )
     return records
+
+
+def _native_factor_degree_records(
+    polynomial: Any,
+    primes: list[int],
+    *,
+    backend_override: Any | None = None,
+) -> list[dict[str, Any]] | None:
+    """Materialize public compact records above either packed host adapter."""
+    data = _native_factor_degree_data(
+        polynomial, primes, backend_override=backend_override
+    )
+    if data is None:
+        return None
+    return _materialize_factor_degree_records(data)
 
 
 def packed_factor_degree_data(
