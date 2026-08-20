@@ -131,6 +131,7 @@ const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
   "sagejs.kernels.polynomial.packed_flint",
   "sagejs.kernels.polynomial.packed_prime_field",
   "sagejs.kernels.polynomial.packed_rational",
+  "sagejs.polynomial_algorithms.arbitrary_prime_public",
 ]);
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
