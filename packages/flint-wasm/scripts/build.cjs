@@ -102,6 +102,7 @@ const compilerFrontendMetafile = path.join(
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
+const dynamicProgramsOutput = path.join(outputDirectory, "dynamic-programs.json");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const symbolicBackendOutput = path.join(
   outputDirectory,
@@ -133,6 +134,11 @@ const standardLibraryCacheDirectory = path.join(
   "module-cache",
 );
 const lazyModulesSource = path.join(repositoryRoot, "dist", "lazy-modules.json");
+const dynamicProgramCacheDirectory = path.join(
+  repositoryRoot,
+  "dist",
+  "dynamic-cache",
+);
 const lazyModuleGenerator = path.join(
   repositoryRoot,
   "scripts",
@@ -729,6 +735,36 @@ fs.writeFileSync(
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
+const dynamicProgramInputs = fs.readdirSync(dynamicProgramCacheDirectory)
+  .filter((name) => /^[a-f0-9]{64}\.json$/.test(name))
+  .sort()
+  .map((name) => path.join(dynamicProgramCacheDirectory, name));
+const dynamicPrograms = dynamicProgramInputs.map((filename) => {
+  const record = JSON.parse(fs.readFileSync(filename, "utf8"));
+  if (
+    !/^[a-f0-9]{64}$/.test(record.sourceHash) ||
+    typeof record.filename !== "string" ||
+    !["exec", "eval", "single"].includes(record.mode) ||
+    record.outputs === null ||
+    typeof record.outputs !== "object"
+  ) {
+    throw new TypeError(`invalid precompiled dynamic program ${filename}`);
+  }
+  return {
+    identity: path.basename(filename, ".json"),
+    sourceHash: record.sourceHash,
+    filename: record.filename,
+    mode: record.mode,
+    outputs: record.outputs,
+  };
+});
+fs.writeFileSync(
+  dynamicProgramsOutput,
+  JSON.stringify({
+    schema: "sagejs.browser-dynamic-programs/v1",
+    programs: dynamicPrograms,
+  }),
+);
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),
   plotlyOutput,
@@ -802,6 +838,7 @@ const receipt = writeProductionReceipt({
       .map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
     ...standardLibraryReceiptInputs,
+    ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
     plotlySource,

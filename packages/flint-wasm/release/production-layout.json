@@ -78,6 +78,7 @@
     "baselib.js",
     "stdlib.json",
     "lazy-modules.json",
+    "dynamic-programs.json",
     "symbolic-backend.mjs",
     "serialization.mjs",
     "wasi-runtime.mjs",

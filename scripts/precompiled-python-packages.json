@@ -21,6 +21,9 @@
     "sagejs.number_fields.zeta_coefficient_kernel",
     "sagejs.number_fields.zeta_coefficients"
   ],
+  "dynamicWarmups": [
+    "from mpmath import mp\nmp.dps = 30\nmp.hyp2f1(1, 2, 3, mp.mpf('0.25'))"
+  ],
   "taskRuntimeImports": [
     "sagejs.number_fields.local_parallel_worker",
     "sagejs.number_fields.local_parallel",

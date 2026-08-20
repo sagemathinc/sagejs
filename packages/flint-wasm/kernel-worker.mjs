@@ -26,6 +26,7 @@ async function initialize(message) {
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,
     lazyModules: message.lazyModules,
+    dynamicPrograms: message.dynamicPrograms,
     flint: message.flint,
     algebraic: message.algebraic,
     nativeKernels: message.nativeKernels,

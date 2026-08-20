@@ -1,58 +1,7 @@
-function createCompiler(compilerSource, standardLibrary) {
-  const compiler = {};
-  const unavailable = (operation) => () => {
-    throw new Error(`${operation} is unavailable in the browser compiler`);
-  };
-  const files = new Map();
-  const signatures = new Map();
-  for (const [name, module] of Object.entries(standardLibrary.modules)) {
-    const modulePath = name.replaceAll(".", "/");
-    files.set(
-      module.package
-        ? `__stdlib__/${modulePath}/__init__.py`
-        : `__stdlib__/${modulePath}.py`,
-      module.source,
-    );
-    files.set(
-      `__module_cache__/${name.replaceAll(".", "-")}.json`,
-      JSON.stringify(module.cache),
-    );
-    signatures.set(module.source, module.cache.signature);
-  }
-  const readfile = (filename) => {
-    if (files.has(filename)) {
-      return files.get(filename);
-    }
-    throw new Error(`browser compiler file not found: ${filename}`);
-  };
-  const sha1sum = (source) => {
-    const signature = signatures.get(source);
-    if (signature) {
-      return signature;
-    }
-    throw new Error("browser compiler cannot hash an unknown source");
-  };
-  const loadCompiler = new Function(
-    "exports",
-    "console",
-    "readfile",
-    "writefile",
-    "sha1sum",
-    "require",
-    "__sagejs_runtime_require__",
-    compilerSource,
-  );
-  loadCompiler(
-    compiler,
-    console,
-    readfile,
-    unavailable("compiler file writes"),
-    sha1sum,
-    unavailable("compiler module loading"),
-    unavailable("compiler runtime module loading"),
-  );
-  return compiler;
-}
+import {
+  createBrowserCompiler,
+  createBrowserDynamicCompiler,
+} from "./dynamic-compiler.mjs";
 
 function outputJavaScript(compiler, ast, baselib, includeBaselib) {
   const output = new compiler.OutputStream({
@@ -77,6 +26,7 @@ function serializeError(error) {
     name: error instanceof Error ? error.name : "Error",
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
+    sagejsErrorName: error?.sagejsErrorName,
   };
 }
 
@@ -98,6 +48,7 @@ async function fetchBytes(url) {
 
 let compiler;
 let frontend;
+let dynamicCompiler;
 let baselib;
 let toplevel;
 
@@ -134,12 +85,35 @@ function compile(source, filename) {
   return javascript;
 }
 
+function sendResponse(data, response) {
+  if (data.sync === undefined) {
+    self.postMessage({ id: data.id, ...response });
+    return;
+  }
+  const state = new Int32Array(data.sync.state);
+  const destination = new Uint8Array(data.sync.response);
+  let encoded = new TextEncoder().encode(JSON.stringify(response));
+  if (encoded.byteLength > destination.byteLength) {
+    encoded = new TextEncoder().encode(JSON.stringify({
+      ok: false,
+      error: serializeError(new RangeError(
+        `browser compiler response exceeds ${destination.byteLength} bytes`,
+      )),
+    }));
+  }
+  destination.set(encoded);
+  Atomics.store(state, 1, encoded.byteLength);
+  Atomics.store(state, 0, 1);
+  Atomics.notify(state, 0);
+}
+
 self.onmessage = async ({ data }) => {
   try {
     let result;
     if (data.type === "initialize") {
       compiler = undefined;
       frontend = undefined;
+      dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
       const [
@@ -159,7 +133,10 @@ self.onmessage = async ({ data }) => {
         fetchBytes(data.pythonGrammar),
         fetchBytes(data.sageGrammar),
       ]);
-      const nextCompiler = createCompiler(compilerSource, standardLibrary);
+      const nextCompiler = createBrowserCompiler(
+        compilerSource,
+        standardLibrary,
+      );
       compilerFrontend.configureBrowserCompilerResources({
         treeSitterRuntime,
         pythonGrammar,
@@ -170,6 +147,11 @@ self.onmessage = async ({ data }) => {
         nextCompiler,
         "sage",
       );
+      const nextDynamicFrontend =
+        await compilerFrontend.createPythonCompilerFrontend(
+          nextCompiler,
+          "python",
+        );
       const initializationSource = (standardLibrary.preload ?? [])
         .map((name) => `import ${name}`)
         .join("\n");
@@ -189,24 +171,42 @@ self.onmessage = async ({ data }) => {
       compiler = nextCompiler;
       baselib = baselibSource;
       frontend = nextFrontend;
+      dynamicCompiler = createBrowserDynamicCompiler(
+        nextCompiler,
+        nextDynamicFrontend,
+      );
     } else if (data.type === "compile") {
       if (!compiler) {
         throw new Error("Sage.js browser compiler is not initialized");
       }
       result = compile(data.source, data.filename);
+    } else if (data.type === "compileDynamic") {
+      if (!dynamicCompiler) {
+        throw new Error("Sage.js browser compiler is not initialized");
+      }
+      result = dynamicCompiler.compile(data.source, data.filename, data.mode);
+    } else if (data.type === "runDynamic") {
+      if (!dynamicCompiler) {
+        throw new Error("Sage.js browser compiler is not initialized");
+      }
+      result = dynamicCompiler.run(
+        data.handle,
+        data.names,
+        data.undefinedNames,
+      );
     } else {
       throw new Error(`unknown compiler request ${JSON.stringify(data.type)}`);
     }
-    self.postMessage({ id: data.id, ok: true, result });
+    sendResponse(data, { ok: true, result });
   } catch (error) {
     if (data.type === "initialize") {
       compiler = undefined;
       frontend = undefined;
+      dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
     }
-    self.postMessage({
-      id: data.id,
+    sendResponse(data, {
       ok: false,
       error: serializeError(error),
     });

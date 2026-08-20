@@ -37,6 +37,7 @@
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",
     "dist/lazy-modules.json",
+    "dist/dynamic-programs.json",
     "dist/production-manifest.json",
     "dist/build-receipt.json",
     "dist/runtime/",
@@ -62,6 +63,7 @@
     "algebraic.mjs",
     "analytic-backend.mjs",
     "compiler-worker.mjs",
+    "dynamic-compiler.mjs",
     "curve-backend.d.ts",
     "curve-backend.mjs",
     "dirichlet-group.mjs",
@@ -85,6 +87,7 @@
     "test:browser": "pnpm run build && node test/browser-smoke.mjs",
     "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
     "test:browser:webkit-memory": "node test/browser-wasm-webkit-memory.mjs",
+    "test:browser-dynamic-code": "pnpm run build && node test/browser-dynamic-code.mjs",
     "test:resource-browser": "pnpm run build && node test/resource-browser-smoke.mjs"
   },
   "dependencies": {

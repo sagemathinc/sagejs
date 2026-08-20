@@ -83,7 +83,12 @@ function sourceResource(sourceFilename) {
   return resource;
 }
 
-function compileImports(imports, moduleDirectory, dynamicDirectory) {
+function compileImports(
+  imports,
+  moduleDirectory,
+  dynamicDirectory,
+  dynamicWarmups = [],
+) {
   if (imports.length === 0) return;
   const result = spawnSync(
     process.execPath,
@@ -104,7 +109,11 @@ function compileImports(imports, moduleDirectory, dynamicDirectory) {
           "missing-modules",
         ),
       },
-      input: `${imports.map((name) => `import ${name}`).join("\n")}\n`,
+      input: [
+        ...imports.map((name) => `import ${name}`),
+        ...dynamicWarmups,
+        "",
+      ].join("\n"),
       stdio: ["pipe", "ignore", "inherit"],
     },
   );
@@ -235,6 +244,7 @@ try {
     ]),
   ].sort();
   const taskImports = manifest.taskRuntimeImports ?? [];
+  const dynamicWarmups = manifest.dynamicWarmups ?? [];
   for (const [kind, imports] of [
     ["package", packageImports],
     ["task-runtime", taskImports],
@@ -248,13 +258,20 @@ try {
           return true;
         }
       }
-    )) throw new TypeError(`invalid ${kind} precompile import list`);
+  )) throw new TypeError(`invalid ${kind} precompile import list`);
+  }
+  if (
+    !Array.isArray(dynamicWarmups) ||
+    dynamicWarmups.some((source) => typeof source !== "string")
+  ) {
+    throw new TypeError("dynamicWarmups must be an array of Python sources");
   }
 
   compileImports(
     packageImports,
     packageTemporary,
     packageDynamicTemporary,
+    dynamicWarmups,
   );
   compileImports(taskImports, taskTemporary, taskDynamicTemporary);
 

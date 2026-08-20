@@ -1,5 +1,9 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
+import {
+  canSeedDynamicName,
+  createPrecompiledDynamicCompiler,
+} from "./dynamic-compiler.mjs";
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
 import { instantiateWasmKernelPacks } from "./dist/wasm-pack-loader.mjs";
 import {
@@ -15,10 +19,23 @@ import {
 import { createSagejsCapabilityAPI } from "./dist/wasm-capability-api.mjs";
 
 function deserializeError(serialized) {
-  const error = new Error(serialized.message);
+  const constructors = {
+    Error,
+    EvalError,
+    RangeError,
+    ReferenceError,
+    SyntaxError,
+    TypeError,
+    URIError,
+  };
+  const Constructor = constructors[serialized.name] ?? Error;
+  const error = new Constructor(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) {
     error.stack = serialized.stack;
+  }
+  if (typeof serialized.sagejsErrorName === "string") {
+    error.sagejsErrorName = serialized.sagejsErrorName;
   }
   return error;
 }
@@ -49,11 +66,20 @@ function richDisplay(value) {
   };
 }
 
+function supportsSynchronousCompilerWorker() {
+  return (
+    typeof SharedArrayBuffer === "function" &&
+    typeof Atomics?.wait === "function"
+  );
+}
+
 class CompilerWorker {
   constructor(url, WorkerConstructor = globalThis.Worker) {
     this.worker = new WorkerConstructor(url, { type: "module" });
     this.nextId = 0;
     this.pending = new Map();
+    this.syncState = undefined;
+    this.syncResponse = undefined;
     this.worker.onmessage = ({ data }) => {
       const handlers = this.pending.get(data.id);
       if (!handlers) {
@@ -84,6 +110,54 @@ class CompilerWorker {
       this.pending.set(id, { resolve, reject });
       this.worker.postMessage({ id, type, ...parameters });
     });
+  }
+
+  requestSync(type, parameters) {
+    if (!this.worker) {
+      throw new Error("Sage.js compiler worker was terminated");
+    }
+    if (
+      typeof SharedArrayBuffer !== "function" ||
+      typeof Atomics?.wait !== "function"
+    ) {
+      throw new Error(
+        "synchronous Python compile/eval/exec requires a cross-origin-isolated worker",
+      );
+    }
+    this.syncState ??= new Int32Array(
+      new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
+    );
+    this.syncResponse ??= new Uint8Array(
+      new SharedArrayBuffer(8 * 1024 * 1024),
+    );
+    const state = this.syncState;
+    const responseBytes = this.syncResponse;
+    Atomics.store(state, 0, 0);
+    Atomics.store(state, 1, 0);
+    this.nextId += 1;
+    this.worker.postMessage({
+      id: this.nextId,
+      type,
+      ...parameters,
+      sync: {
+        state: state.buffer,
+        response: responseBytes.buffer,
+      },
+    });
+    const status = Atomics.wait(state, 0, 0, 120_000);
+    if (status === "timed-out") {
+      this.terminate();
+      throw new Error(`browser compiler timed out while handling ${type}`);
+    }
+    const length = Atomics.load(state, 1);
+    if (length <= 0 || length > responseBytes.byteLength) {
+      throw new Error("browser compiler returned an invalid synchronous response");
+    }
+    const response = JSON.parse(
+      new TextDecoder().decode(Uint8Array.from(responseBytes.subarray(0, length))),
+    );
+    if (response.ok) return response.result;
+    throw deserializeError(response.error);
   }
 
   terminate() {
@@ -203,15 +277,16 @@ function createGlobalInstaller(target) {
 /**
  * Create a persistent Sage.js evaluator in the current isolated worker.
  *
- * A nested worker hosts the self-compiled language compiler. This mirrors the
- * separate VM realm used by the Node REPL and prevents the compiler's Python
- * compatibility runtime from colliding with the evaluated program's runtime.
+ * A nested worker hosts the self-compiled language compiler. Isolated hosts
+ * use synchronous worker RPC for unrestricted `compile`/`eval`/`exec`;
+ * non-isolated hosts can execute authenticated precompiled dynamic programs.
  */
 export async function instantiateSageEvaluator({
   compiler,
   baselib,
   standardLibrary,
   lazyModules,
+  dynamicPrograms = new URL("./dist/dynamic-programs.json", import.meta.url),
   flint,
   algebraic = undefined,
   nativeKernels = undefined,
@@ -228,6 +303,15 @@ export async function instantiateSageEvaluator({
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
   fetchLazyModules = fetchLazyModuleBundle,
+  fetchDynamicPrograms = async (url) => {
+    const response = await fetch(String(url));
+    if (!response.ok) {
+      throw new Error(
+        `unable to load precompiled dynamic programs (${response.status})`,
+      );
+    }
+    return response.json();
+  },
   evaluateGlobal = globalThis.eval,
   fetchCapabilityReport = globalThis.fetch,
 }) {
@@ -263,6 +347,8 @@ export async function instantiateSageEvaluator({
   let wasmNativeResolver;
   let capabilityApi;
   let capabilityReportResponse;
+  let dynamicProgramBundle;
+  const useSynchronousCompilerWorker = supportsSynchronousCompilerWorker();
   try {
     [
       initialization,
@@ -271,6 +357,7 @@ export async function instantiateSageEvaluator({
       m4riBackend,
       symbolicBackendModule,
       capabilityReportResponse,
+      dynamicProgramBundle,
     ] = await Promise.all([
       language.request("initialize", {
         compiler: String(compiler),
@@ -286,6 +373,9 @@ export async function instantiateSageEvaluator({
       instantiateM4riBackend(m4ri),
       importSymbolic(symbolic),
       fetchCapabilityReport(String(capabilityReport)),
+      useSynchronousCompilerWorker
+        ? Promise.resolve(undefined)
+        : fetchDynamicPrograms(dynamicPrograms),
     ]);
     if (!capabilityReportResponse.ok) {
       throw new Error(
@@ -329,7 +419,43 @@ export async function instantiateSageEvaluator({
   let outputHandler = (text) => console.log(text);
   let errorHandler = (text) => console.error(text);
 
+  const dynamicCompiler = useSynchronousCompilerWorker
+    ? Object.freeze({
+        compile(source, filename, mode) {
+          return language.requestSync("compileDynamic", {
+            source,
+            filename,
+            mode,
+          });
+        },
+        run(handle, names, undefinedNames) {
+          return language.requestSync("runDynamic", {
+            handle,
+            names,
+            undefinedNames,
+          });
+        },
+      })
+    : createPrecompiledDynamicCompiler(dynamicProgramBundle);
+  const dynamicCodeHelper = Object.freeze({
+    compile(source, filename, mode) {
+      return dynamicCompiler.compile(source, filename, mode);
+    },
+    run(handle, namespace) {
+      const names = Object.keys(namespace)
+        .filter(canSeedDynamicName)
+        .sort();
+      return dynamicCompiler.run(
+        handle,
+        names,
+        names.filter((name) => namespace[name] === undefined),
+      );
+    },
+  });
   const runtimeRequire = (name) => {
+    if (name === "./dynamic-code.js") {
+      return { default: dynamicCodeHelper };
+    }
     if (name === "@sagemath/sagejs-flint") {
       return flintBackend;
     }

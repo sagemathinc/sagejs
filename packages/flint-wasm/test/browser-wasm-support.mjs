@@ -222,6 +222,7 @@ self.addEventListener("fetch", (event) => {
 export async function createBrowserWasmServer({
   root = packageRoot,
   release = "test-release",
+  crossOriginIsolation = true,
 } = {}) {
   const requests = [];
   const memoryObservations = [];
@@ -230,6 +231,11 @@ export async function createBrowserWasmServer({
     const url = new URL(request.url, "http://localhost");
     requests.push({ method: request.method, pathname: url.pathname });
     const headers = { ...securityHeaders };
+    if (!crossOriginIsolation) {
+      delete headers["Cross-Origin-Opener-Policy"];
+      delete headers["Cross-Origin-Embedder-Policy"];
+      delete headers["Cross-Origin-Resource-Policy"];
+    }
     if (url.pathname === "/browser-wasm-memory-observation") {
       if (request.method !== "POST") {
         response.writeHead(405, headers).end("method not allowed");
