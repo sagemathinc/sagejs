@@ -289,9 +289,6 @@ static int32_t compute_coefficients(mpz_t coefficients[5])
     }
     if (bound >= 1U)
         state.output[1] = 1;
-    /* Only callback entries without a smalljac a_p reach direct_ap.  In the
-       ordinary case this loop does work only at the finitely many primes of
-       bad reduction, not at every prime up to bound. */
     for (candidate = 2U; candidate <= bound; candidate++)
     {
         if (smallest[candidate] == 0U)
@@ -335,6 +332,9 @@ static int32_t compute_coefficients(mpz_t coefficients[5])
             goto done;
         }
     }
+    /* Only callback entries without a smalljac a_p reach direct_ap.  In the
+       ordinary case this loop does work only at the finitely many primes of
+       bad reduction, not at every prime up to bound. */
     for (candidate = 2U; candidate <= bound; candidate++)
     {
         if (smallest[candidate] == candidate && !available[candidate])
