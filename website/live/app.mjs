@@ -208,7 +208,7 @@ async function run(mode) {
     const activeSession = session ?? await sessionPromise;
     const result = await activeSession.evaluate(source, {
       filename: `<sagejs.org:${workspace.id}>`,
-      timeout: boundedTimeout(elements.timeout.valueAsNumber),
+      timeout: boundedTimeout(elements.timeout.value),
       onOutput(text) {
         const appended = collector.append(text);
         pre.textContent = collector.text || "Running…";
@@ -282,7 +282,7 @@ async function exportSagePack() {
   const expression = window.prompt("Expression to serialize as SagePack", selection || "_");
   if (!expression) return;
   setLive("Serializing the selected expression…");
-  const result = await session.evaluate(`import base64\nbase64.b64encode(dumps((${expression}))).decode('ascii')`, { timeout: boundedTimeout(elements.timeout.valueAsNumber) });
+  const result = await session.evaluate(`import base64\nbase64.b64encode(dumps((${expression}))).decode('ascii')`, { timeout: boundedTimeout(elements.timeout.value) });
   if (!/^'[A-Za-z0-9+/]*={0,2}'$/.test(result.repr)) {
     throw new TypeError("SagePack export returned an invalid base64 value");
   }

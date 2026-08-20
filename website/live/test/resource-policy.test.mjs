@@ -16,6 +16,7 @@ test("UTF-8 limits count encoded bytes rather than UTF-16 units", () => {
 
 test("timeouts are positive and capped by policy", () => {
   assert.equal(boundedTimeout(100, { maximumTimeoutMs: 50 }), 50);
+  assert.equal(boundedTimeout("15000"), 15_000);
   assert.throws(() => boundedTimeout(0), /positive/);
   assert.throws(() => boundedTimeout(Number.NaN), /positive/);
 });
