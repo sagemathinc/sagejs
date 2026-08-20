@@ -101,12 +101,17 @@ export class SageSession {
   spawnWorker(readyPromisePrepared = false) {
     if (!readyPromisePrepared) this.prepareReadyPromise();
     const worker = new Worker(this.resources.worker, { type: "module" });
+    const channel = new MessageChannel();
     this.worker = worker;
+    this.channel = channel.port1;
 
-    worker.onmessage = ({ data }) => {
-      if (worker !== this.worker) return;
+    channel.port1.onmessage = ({ data }) => {
+      if (worker !== this.worker || channel.port1 !== this.channel) return;
+      if (!data || typeof data !== "object" || typeof data.type !== "string") {
+        return;
+      }
       if (data.type === "ready") {
-        if (data.protocol !== 1) {
+        if (data.protocol !== 2) {
           this.readyReject(
             new Error(`unsupported Sage.js worker protocol ${data.protocol}`),
           );
@@ -169,20 +174,25 @@ export class SageSession {
       this.emit("error", error);
     };
 
-    worker.postMessage({
-      type: "initialize",
-      compiler: this.resources.compiler,
-      baselib: this.resources.baselib,
-      standardLibrary: this.resources.standardLibrary,
-      flint: this.resources.flint,
-      m4ri: this.resources.m4ri,
-      symbolic: this.resources.symbolic,
-      compilerWorker: this.resources.compilerWorker,
-      compilerFrontend: this.resources.compilerFrontend,
-      treeSitterRuntime: this.resources.treeSitterRuntime,
-      pythonGrammar: this.resources.pythonGrammar,
-      sageGrammar: this.resources.sageGrammar,
-    });
+    channel.port1.start?.();
+    worker.postMessage(
+      {
+        type: "initialize",
+        protocol: 2,
+        compiler: this.resources.compiler,
+        baselib: this.resources.baselib,
+        standardLibrary: this.resources.standardLibrary,
+        flint: this.resources.flint,
+        m4ri: this.resources.m4ri,
+        symbolic: this.resources.symbolic,
+        compilerWorker: this.resources.compilerWorker,
+        compilerFrontend: this.resources.compilerFrontend,
+        treeSitterRuntime: this.resources.treeSitterRuntime,
+        pythonGrammar: this.resources.pythonGrammar,
+        sageGrammar: this.resources.sageGrammar,
+      },
+      [channel.port2],
+    );
   }
 
   rejectPending(error) {
@@ -218,8 +228,8 @@ export class SageSession {
       throw new TypeError("Sage.js timeout must be a positive number");
     }
     await this.ready();
-    const worker = this.worker;
-    if (!worker) throw new SageSessionClosedError();
+    const channel = this.channel;
+    if (!channel) throw new SageSessionClosedError();
     const id = ++this.nextId;
 
     return new Promise((resolve, reject) => {
@@ -240,7 +250,7 @@ export class SageSession {
         }, timeout);
       }
       this.pending.set(id, pending);
-      worker.postMessage({
+      channel.postMessage({
         type: "evaluate",
         id,
         source,
@@ -257,6 +267,9 @@ export class SageSession {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
     this.worker = undefined;
+    const channel = this.channel;
+    this.channel = undefined;
+    channel?.close();
     this.prepareReadyPromise();
     this.rejectPending(error);
     worker?.terminate();
@@ -282,6 +295,9 @@ export class SageSession {
     this.readyReject(error);
     const worker = this.worker;
     this.worker = undefined;
+    const channel = this.channel;
+    this.channel = undefined;
+    channel?.close();
     this.rejectPending(error);
     worker?.terminate();
     this.listeners.clear();
