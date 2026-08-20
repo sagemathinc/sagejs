@@ -123,6 +123,7 @@ const integration = [
   "test/native-exact-uint64-buffer.cjs",
   "test/ffi-wasm-fmpz-resource-core.cjs",
   "test/ffi-wasm-fmpq-resource-core.cjs",
+  "test/ffi-wasm-generated-adapters.cjs",
   "test/ffi-wasm-m4ri-resource.cjs",
   "test/ffi-wasm-resource.cjs",
   "test/fmpq-matrix-right-kernel-resource.cjs",
