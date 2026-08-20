@@ -316,7 +316,6 @@
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "number-field-ideal-certificate-sagepack": [
-      "kernel:field-analysis-fixed-point-checker-production",
       "specialist:sagepack"
     ],
     "quadratic-dedekind-zeta-batch": [
