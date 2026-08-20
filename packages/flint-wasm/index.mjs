@@ -49,7 +49,10 @@ function readCString(memory, pointer, capacity) {
  * `source` may be a URL, Response, ArrayBuffer, typed-array view, or an
  * already compiled WebAssembly.Module.
  */
-export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
+export async function instantiateFlintFactor(
+  source,
+  { algebraicSource, recordCapability = () => {} } = {},
+) {
   const module = await compile(source);
   const wasi = createWasiHost();
   const instance = await WebAssembly.instantiate(module, {
@@ -57,13 +60,16 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
   });
   const memory = instance.exports.memory;
   wasi.initialize(instance);
-  const generatedResourceBackend = createGeneratedWasmBackend(instance);
+  const generatedResourceBackend = createGeneratedWasmBackend(instance, {
+    recordCapability,
+  });
   const polynomialBackend = createPortablePolynomialBackend();
   const matrixBackend = createPortableMatrixBackend();
   const numericBackend = createNumericBackend();
   const publicGeneratedResourceBackend = generatedResourceBackend;
   const dirichletGroupBackend = createDirichletGroupBackend(instance);
   const analyticBackend = createAnalyticWasmBackend(instance, {
+    recordCapability,
     serializePoint: numericBackend.serializeAnalyticPoint,
     materialize(record, precision) {
       return numericBackend.complexFromStrings(
@@ -78,8 +84,10 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
         : value;
     },
   });
-  const numberFieldZetaBackend = createNumberFieldZetaBackend(instance);
-  const curveBackend = createCurveBackend(instance);
+  const numberFieldZetaBackend = createNumberFieldZetaBackend(instance, {
+    recordCapability,
+  });
+  const curveBackend = createCurveBackend(instance, { recordCapability });
   let algebraicBackend = {};
   if (algebraicSource !== undefined) {
     const algebraicModule = await compile(algebraicSource);
@@ -88,7 +96,9 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
       wasi_snapshot_preview1: algebraicWasi.imports,
     });
     algebraicWasi.initialize(algebraicInstance);
-    algebraicBackend = createAlgebraicBackend(algebraicInstance);
+    algebraicBackend = createAlgebraicBackend(algebraicInstance, {
+      recordCapability,
+    });
   }
   const numericRepresentationBackend = composeNumericRepresentationBackends(
     numericBackend,
@@ -157,7 +167,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
 
     const encoded = readCString(memory, outputPointer, outputCapacity);
     const result = JSON.parse(encoded);
-    globalThis.__sagejs_capability_trace__?.(
+    recordCapability(
       "specialist:integer-factorization-wasm",
       "receipt-backed-wasm-artifact",
       {
@@ -438,7 +448,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
   ];
 
   function tracePortableP1(capabilityId) {
-    globalThis.__sagejs_capability_trace__?.(
+    recordCapability(
       `napi:@sagemath/sagejs-flint:${capabilityId}`,
       "portable-fallback",
       { executionTarget: "wasm-artifact" },

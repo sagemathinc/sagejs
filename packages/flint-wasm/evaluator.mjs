@@ -146,6 +146,61 @@ export function instrumentWasmNativeResolver(resolver, trace) {
   });
 }
 
+function preservePythonCallableMetadata(wrapper, original) {
+  Object.assign(wrapper, original);
+  for (const name of ["__name__", "__qualname__", "__module__", "__doc__"]) {
+    if (Object.hasOwn(original, name)) wrapper[name] = original[name];
+  }
+  return wrapper;
+}
+
+/**
+ * Observe the two strict-Python elliptic fallbacks without exposing the
+ * evaluator's recorder to the evaluated realm.  Calling either wrapper still
+ * performs the real operation; there is no callable "claim this route" hook.
+ */
+export function instrumentEllipticFallbackPrototype(prototype, trace, backend) {
+  if (prototype === null || typeof prototype !== "object") {
+    throw new TypeError("elliptic fallback instrumentation requires a prototype");
+  }
+  const originalRootNumber = prototype.root_number;
+  const originalAnlist = prototype.anlist;
+  if (typeof originalRootNumber !== "function" || typeof originalAnlist !== "function") {
+    throw new TypeError("elliptic fallback methods are unavailable");
+  }
+  prototype.root_number = preservePythonCallableMetadata(function (...args) {
+    const uncached = this._root_number === undefined;
+    const noPrecomputed = args.length === 0 || args[0] == null;
+    const value = Reflect.apply(originalRootNumber, this, args);
+    if (uncached && noPrecomputed && typeof backend.ecRootNumber !== "function") {
+      trace.record("elliptic-root-number-semistable", "portable-fallback");
+    }
+    return value;
+  }, originalRootNumber);
+  prototype.anlist = preservePythonCallableMetadata(function (...args) {
+    const originalNative = this._anlist_native;
+    let usedNative = false;
+    if (typeof originalNative !== "function") {
+      throw new TypeError("elliptic coefficient dispatch is unavailable");
+    }
+    this._anlist_native = function (...nativeArgs) {
+      const value = Reflect.apply(originalNative, this, nativeArgs);
+      usedNative = value !== null && value !== undefined;
+      return value;
+    };
+    let value;
+    try {
+      value = Reflect.apply(originalAnlist, this, args);
+    } finally {
+      this._anlist_native = originalNative;
+    }
+    if (!usedNative) {
+      trace.record("elliptic-coefficients-portable", "portable-fallback");
+    }
+    return value;
+  }, originalAnlist);
+}
+
 class CompilerWorker {
   constructor(url, WorkerConstructor = globalThis.Worker) {
     this.worker = new WorkerConstructor(url, { type: "module" });
@@ -443,7 +498,11 @@ export async function instantiateSageEvaluator({
         sageGrammar: String(sageGrammar),
       }),
       fetchLazyModules(lazyModules),
-      instantiateFlint(flint, { algebraicSource: algebraic }),
+      instantiateFlint(flint, {
+        algebraicSource: algebraic,
+        recordCapability: (id, route, options) =>
+          capabilityDispatchTrace.record(id, route, options),
+      }),
       instantiateM4riBackend(m4ri),
       importSymbolic(symbolic),
       fetchCapabilityReport(String(capabilityReport)),
@@ -676,10 +735,6 @@ export async function instantiateSageEvaluator({
     },
   });
   installGlobal("__sagejs_capability_api__", runtimeCapabilityApi);
-  installGlobal(
-    "__sagejs_capability_trace__",
-    (id, route, options) => capabilityDispatchTrace.record(id, route, options),
-  );
   if (wasmNativeResolver !== undefined) {
     installGlobal("__sagejs_wasm_native_resolver__", wasmNativeResolver);
   }
@@ -703,6 +758,17 @@ export async function instantiateSageEvaluator({
       error.message = `${error.message}\nBrowser initialization context:\n${context}`;
     }
     abort(error);
+  }
+  const ellipticCurveParent = globalEvaluate(
+    'typeof ρσ_baselib_facade === "undefined" ? undefined : ' +
+      'ρσ_baselib_facade["EllipticCurveParent"]',
+  );
+  if (typeof ellipticCurveParent === "function") {
+    instrumentEllipticFallbackPrototype(
+      ellipticCurveParent.prototype,
+      capabilityDispatchTrace,
+      flintBackend,
+    );
   }
   globals.restore("__sagejs_sage_mode__");
   const builtinsNamespace = globalThis.ρσ_modules?.builtins;

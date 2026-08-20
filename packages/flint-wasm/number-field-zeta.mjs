@@ -58,7 +58,10 @@ function batchError(status) {
  * copy into Wasm. Public factor records are constructed by ordinary Sage.js,
  * not by either host adapter.
  */
-export function createNumberFieldZetaBackend(instance) {
+export function createNumberFieldZetaBackend(
+  instance,
+  { recordCapability = () => {} } = {},
+) {
   if (!instance || typeof instance !== "object") {
     throw new TypeError("expected an instantiated FLINT WebAssembly module");
   }
@@ -158,7 +161,7 @@ export function createNumberFieldZetaBackend(instance) {
         outputPointer,
         outputWords,
       ).slice();
-      globalThis.__sagejs_capability_trace__?.(
+      recordCapability(
         "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
         "receipt-backed-wasm-artifact",
         {

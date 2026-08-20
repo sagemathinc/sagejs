@@ -199,7 +199,7 @@ function maximumDecimal(values) {
 }
 
 /** Create the public `runtime.flint_backend()` curve fragment for one reactor. */
-export function createCurveBackend(instance) {
+export function createCurveBackend(instance, { recordCapability = () => {} } = {}) {
   const exports = instance?.exports ?? instance;
   const memory = exports?.memory;
   if (!(memory instanceof WebAssembly.Memory)) {
@@ -328,7 +328,7 @@ export function createCurveBackend(instance) {
           "elliptic-lseries-values",
           "elliptic-lseries-plot",
         ]) {
-          globalThis.__sagejs_capability_trace__?.(
+          recordCapability(
             capabilityId,
             "receipt-backed-wasm-artifact",
             {
@@ -401,7 +401,7 @@ export function createCurveBackend(instance) {
       result.outerTailBound = maximumDecimal(outerTails);
       result.rawConversionMagnitude = maximumDecimal(rawConversions);
       result.analyticErrorBound = maximumDecimal(analyticErrors);
-      globalThis.__sagejs_capability_trace__?.(
+      recordCapability(
         "elliptic-lseries-values",
         "receipt-backed-wasm-artifact",
         {

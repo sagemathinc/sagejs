@@ -210,7 +210,7 @@ function formatDyadic(value, precision) {
 }
 
 /** Create the QQbar/AA backend over an instantiated FLINT Wasm module. */
-export function createAlgebraicBackend(instance) {
+export function createAlgebraicBackend(instance, { recordCapability = () => {} } = {}) {
   const wasm = instance?.exports ?? instance;
   const memory = wasm?.memory;
   if (!(memory instanceof WebAssembly.Memory)) {
@@ -442,7 +442,7 @@ export function createAlgebraicBackend(instance) {
       for (let index = 0; index < count; index += 1) {
         result.push([native(handles[index]), multiplicities[index]]);
       }
-      globalThis.__sagejs_capability_trace__?.(
+      recordCapability(
         "algebraic:qqbar-resource-core",
         "receipt-backed-wasm-artifact",
         {
