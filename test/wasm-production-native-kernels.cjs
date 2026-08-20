@@ -37,8 +37,8 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   assert.equal(inventory.nonProduction.length, 7);
   assert.equal(coverage.totals.registered_kernels, 31);
   assert.equal(coverage.totals.production_kernels, 24);
-  assert.equal(coverage.totals.compiled_functions, 193);
-  assert.equal(coverage.totals.unsupported_production_functions, 25);
+  assert.equal(coverage.totals.compiled_functions, 211);
+  assert.equal(coverage.totals.unsupported_production_functions, 7);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
     assert.match(omitted.reason, /\S/);
@@ -112,8 +112,8 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.registeredKernels, 31);
     assert.equal(manifest.productionKernels, 24);
     assert.equal(manifest.compiledKernelCores, 24);
-    assert.equal(manifest.compiledFunctions, 193);
-    assert.equal(manifest.unsupportedFunctions, 25);
+    assert.equal(manifest.compiledFunctions, 211);
+    assert.equal(manifest.unsupportedFunctions, 7);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
     const zeta = manifest.kernels.find((kernel) =>
@@ -129,6 +129,23 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.ok(extension.functions.every((fn) =>
       fn.status === "unsupported" && /resource/.test(fn.reason)
     ));
+    assert.deepEqual(
+      manifest.unsupported.map((fn) => `${fn.kernel}:${fn.function}`),
+      [
+        "extension-polynomial-flint-production:" +
+          "flint_extension_polynomial_from_coordinates",
+        "extension-polynomial-flint-production:flint_extension_polynomial_add",
+        "extension-polynomial-flint-production:" +
+          "flint_extension_polynomial_multiply",
+        "extension-polynomial-flint-production:flint_extension_element_coordinate",
+        "extension-polynomial-flint-production:" +
+          "flint_extension_element_coordinate_sum",
+        "extension-polynomial-flint-production:" +
+          "flint_extension_polynomial_coordinate",
+        "extension-polynomial-flint-production:" +
+          "flint_extension_polynomial_coordinate_sum",
+      ],
+    );
     assert.ok(manifest.unsupported.every((fn) =>
       fn.fallback === "same-source" && fn.oracles.length > 0 &&
       fn.tests.length > 0
@@ -156,6 +173,40 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       "wasm_bridge.c",
     ), "utf8");
     assert.match(denseIntegerBridge, /int sagejs_result_0/);
+    assert.match(
+      denseIntegerBridge,
+      /sagejs_wasm_resource_borrow_fmpz_matrix\(uint64_t handle/,
+    );
+    assert.match(
+      denseIntegerBridge,
+      /invalid or closed same-instance Wasm resource handle/,
+    );
+
+    const sparse = manifest.kernels.find((kernel) =>
+      kernel.id === "sparse-random-matrix-production"
+    );
+    const sparseBridge = readFileSync(join(
+      outputRoot,
+      "sources",
+      sparse.moduleIdentity,
+      "wasm_bridge.c",
+    ), "utf8");
+    assert.match(
+      sparseBridge,
+      /sagejs_wasm_resource_adopt_fmpq_matrix\(sagejs_result_0/,
+    );
+    assert.match(sparseBridge, /sagejs_fmpq_matrix_clear\(sagejs_result_0\)/);
+    const flintPack = manifest.packs.find((pack) => pack.domain === "flint");
+    assert.deepEqual(
+      flintPack.requiredResourceAdapters.map((resource) => resource.id),
+      [
+        "byte_region",
+        "fmpq_matrix",
+        "fmpz_matrix",
+        "fmpz_mod_polynomial",
+        "nmod_matrix",
+      ],
+    );
   } finally {
     rmSync(outputRoot, { recursive: true, force: true });
   }

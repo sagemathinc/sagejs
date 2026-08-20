@@ -1,0 +1,103 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-resource-closure",
+  "title": "Wasm source-kernel resource ownership closure",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate same-instance ownership-domain bridges for production source-transparent Wasm kernels that borrow or return declared FFI resources, prove generation-tagged lifecycle and real Wasm execution, and report the exact residual unsupported production surface",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "tools/native-kernel/wasm-bridge.cjs",
+    "tools/native-kernel/wasm-production-pack.cjs",
+    "tools/native-kernel/wasm-pack-loader.mjs",
+    "test/wasm-production-native-kernels.cjs",
+    "test/wasm-production-resource-closure.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "FFI.md",
+    "agents/webassembly-fast-mathematics-completion-plan.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "generated JavaScript same-source execution",
+      "real linked FLINT WebAssembly execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test --test-name-pattern=generated\\ runtime\\ manifests test/wasm-production-native-kernels.cjs",
+    "node --test test/wasm-production-resource-closure.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.71,
+      "started_at": "2026-08-20T23:53:02.825Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "191bc15e701369357850463ae44227f7a8a64f59dde48738c294be2c1af126be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.785,
+      "started_at": "2026-08-20T23:53:25.932Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "191bc15e701369357850463ae44227f7a8a64f59dde48738c294be2c1af126be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-production-resource-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.115,
+      "started_at": "2026-08-20T23:54:27.735Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "191bc15e701369357850463ae44227f7a8a64f59dde48738c294be2c1af126be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=generated runtime manifests test/wasm-production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.788,
+      "started_at": "2026-08-20T23:58:41.540Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "191bc15e701369357850463ae44227f7a8a64f59dde48738c294be2c1af126be",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Source-transparent Wasm bridges now borrow generation-tagged owned resources and adopt newly returned resources only through declaration-identified hooks linked into the same Wasm instance. The portable loader uses a trusted wrap/unwrap bridge, closes an adopted result when host wrapping is unavailable or fails, and never treats a handle as a foreign pointer. This closes all 18 production ownership-domain adapter classifications: 211 functions are bridgeable and the exact residual is seven extension-polynomial functions whose fq_context, fq_element, and fq_polynomial resources are not yet declared for Wasm. A real pinned FLINT reactor differential proves returned FmpqMatrix adoption, subsequent entry/count borrowing, memory growth, wrong and stale handle rejection, adoption-failure cleanup, idempotent host close, and zero final live resources.",
+    "risks": [
+      "The shared tools/ffi generator must emit the declared borrow/adopt hooks and trusted backend wrap/unwrap bridge before these resource functions may be linked in the production artifact; linking without it fails closed.",
+      "The checked-in production-kernel coverage and capability reports still record 193 compiled and 25 unsupported functions because this lane may not claim shared generated release registries; integration must regenerate them to 211 and 7.",
+      "The seven fq extension functions remain intentionally unsupported until their three resource families receive reviewed Wasm declarations and real lifecycle tests."
+    ],
+    "next_steps": [
+      "In tools/ffi/wasm-adapters.cjs, emit sagejs_wasm_resource_borrow_ID(handle, ABI_TYPE **value) and sagejs_wasm_resource_adopt_ID(ABI_TYPE value, uint64_t *handle) beside each owned resource table. Borrow must use the existing generation lookup. Adopt must reserve a slot, memcpy the ABI value as a move, mark it live, increment the live count, and publish the generation-tagged handle; failure leaves the caller-owned value untouched.",
+      "Have generated JavaScript expose a trusted ownership bridge bound to its backend brand and Wasm instance: unwrap validates the WeakMap brand, declaration identity, open state, and instance before returning a handle; wrap calls makeResource with the same brand/finalizer. Pass that bridge as instantiateWasmKernelPacks({resources}).",
+      "Link the generated FLINT resource adapter C and source-kernel bridge C into the same kernel-flint Wasm instance, pass its closure identity/sources/exports through ownershipAdapters.flint for receipt identity, then add this focused test to the Node manifest.",
+      "Regenerate packages/flint-wasm/release/production-kernel-coverage.json and Wasm capability/release receipts, rebuild the production artifact, and run the full native plus browser differential suites.",
+      "Declare and test fq_context, fq_element, and fq_polynomial for Wasm in a separate extension-algebra lane; do not reclassify those seven functions until actual lifecycle execution passes."
+    ]
+  }
+}
