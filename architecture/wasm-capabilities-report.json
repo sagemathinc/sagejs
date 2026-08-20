@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "dd62bab9d52fd85e21932674228f9a68a8d92c04f0c7e95c79c517047598b2b6",
+  "source_sha256": "d061c5377006b1bd4cd952da84eeaba65b7465a7a34798c65a496dc1578f0ab6",
   "counts": {
     "total": 941,
     "by_kind": {
@@ -22,8 +22,7 @@
     "by_status": {
       "available": 427,
       "desktop-only": 14,
-      "fallback": 485,
-      "planned": 15
+      "fallback": 500
     }
   },
   "workflow_aliases": {
@@ -5554,13 +5553,13 @@
       "id": "kernel:arbitrary-prime-polynomial-resource-production",
       "family": "arbitrary-prime-polynomial-resource",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "arbitrary-prime-polynomial-resource"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 resource-owned functions."
     },
     {
       "id": "kernel:buchmann-lenstra-row-hnf-production",
@@ -5572,43 +5571,43 @@
       "public_consumers": [
         "buchmann-lenstra-row-hnf"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
       "family": "compiler-owned-record",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "compiler-owned-record"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 3 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",
       "family": "dense-binary-m4ri",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-binary-m4ri"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 12 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:dense-integer-flint-production",
       "family": "dense-integer-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 9 of 15 functions and the same-source fallback for 6 resource-owned functions."
     },
     {
       "id": "kernel:dense-integer-production",
@@ -5620,19 +5619,19 @@
       "public_consumers": [
         "dense-integer"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 19 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:dense-prime-fflas-optional",
       "family": "dense-prime-fflas",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-prime-fflas"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 5 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:dense-prime-flint-production",
@@ -5644,7 +5643,7 @@
       "public_consumers": [
         "dense-prime-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 9 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:dense-prime-production",
@@ -5656,19 +5655,19 @@
       "public_consumers": [
         "dense-prime"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 30 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:dense-rational-flint-production",
       "family": "dense-rational-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-rational-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 7 of 12 functions and the same-source fallback for 5 resource-owned functions."
     },
     {
       "id": "kernel:dense-rational-production",
@@ -5680,43 +5679,43 @@
       "public_consumers": [
         "dense-rational"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 25 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:dense-word-prime-flint-production",
       "family": "dense-word-prime-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-word-prime-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 resource-owned functions."
     },
     {
       "id": "kernel:exact-integer-witness",
       "family": "exact-integer",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "exact-integer"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 4 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:extension-polynomial-flint-production",
       "family": "extension-polynomial-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "extension-polynomial-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 0 of 7 functions and the same-source fallback for 7 resource-owned functions."
     },
     {
       "id": "kernel:field-analysis-fixed-point-checker-production",
@@ -5728,7 +5727,7 @@
       "public_consumers": [
         "field-analysis-fixed-point-checker"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:genus3-weil-candidate-production",
@@ -5740,7 +5739,7 @@
       "public_consumers": [
         "genus3-weil-candidate"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 2 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",
@@ -5752,7 +5751,7 @@
       "public_consumers": [
         "number-field-composite-analysis"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:number-field-discriminant-prefactor-production",
@@ -5764,7 +5763,7 @@
       "public_consumers": [
         "number-field-discriminant-prefactor"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:number-field-om-proof-production",
@@ -5776,7 +5775,7 @@
       "public_consumers": [
         "number-field-om-proof"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:number-field-round4-state-production",
@@ -5788,7 +5787,7 @@
       "public_consumers": [
         "number-field-round4-state"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:number-field-zeta-coefficients-production",
@@ -5800,31 +5799,31 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:p1-heilbronn-production",
       "family": "p1-heilbronn",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "p1-heilbronn"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 19 of 20 functions and the same-source fallback for 1 resource-owned functions."
     },
     {
       "id": "kernel:packed-binary64-witness",
       "family": "packed-binary64",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "packed-binary64"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:packed-integer-polynomial-production",
@@ -5836,19 +5835,19 @@
       "public_consumers": [
         "packed-integer-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:packed-polynomial-flint-production",
       "family": "packed-polynomial-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "packed-polynomial-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 20 of 21 functions and the same-source fallback for 1 resource-owned functions."
     },
     {
       "id": "kernel:packed-prime-polynomial-production",
@@ -5860,7 +5859,7 @@
       "public_consumers": [
         "packed-prime-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 8 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:packed-rational-polynomial-production",
@@ -5872,43 +5871,43 @@
       "public_consumers": [
         "packed-rational-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 11 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "kernel:prime-field-witness",
       "family": "prime-field",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "prime-field"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:sparse-random-matrix-production",
       "family": "sparse-random-matrix",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "sparse-random-matrix"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "This family uses compiled WebAssembly for 2 of 4 functions and the same-source fallback for 2 resource-owned functions."
     },
     {
       "id": "kernel:tate-algorithm-witness",
       "family": "tate-algorithm",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "fallback",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "tate-algorithm"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
     },
     {
       "id": "kernel:word-prime-krylov-production",
@@ -5920,7 +5919,7 @@
       "public_consumers": [
         "word-prime-krylov"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
+      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",

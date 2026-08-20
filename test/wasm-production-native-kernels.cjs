@@ -26,11 +26,20 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   const manifestPath = join(root, "architecture", "native-kernels.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const inventory = await inventoryProductionKernels({ root, manifestPath });
+  const coverage = JSON.parse(readFileSync(join(
+    root,
+    "packages/flint-wasm/release/production-kernel-coverage.json",
+  ), "utf8"));
   assert.equal(manifest.kernels.length, 31);
   assert.equal(inventory.registered.length, manifest.kernels.length);
   assert.equal(inventory.production.length, 24);
   assert.equal(inventory.modules.length, inventory.production.length);
   assert.equal(inventory.nonProduction.length, 7);
+  assert.equal(coverage.totals.registered_kernels, 31);
+  assert.equal(coverage.totals.production_kernels, 24);
+  assert.equal(coverage.totals.compiled_functions, 193);
+  assert.equal(coverage.totals.unsupported_production_functions, 25);
+  const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
     assert.match(omitted.reason, /\S/);
     assert.equal(omitted.fallback, "same-source");
@@ -47,6 +56,24 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
     assert.equal(kernel.fallback, "same-source");
     assert.ok(kernel.oracles.length > 0);
     assert.ok(kernel.tests.length > 0);
+    const compiled = kernel.functions.filter((fn) => fn.status === "compiled-source").length;
+    const fallback = kernel.functions.filter((fn) => fn.status === "unsupported").length;
+    assert.deepEqual(coverageById.get(kernel.id), {
+      id: kernel.id,
+      production: true,
+      status: fallback === 0 ? "available" : "fallback",
+      compiled_functions: compiled,
+      fallback_functions: fallback,
+      total_functions: kernel.functions.length,
+      fallback_reasons: [...new Set(kernel.functions
+        .filter((fn) => fn.status === "unsupported")
+        .map((fn) => fn.reason))].sort(),
+    });
+  }
+  for (const kernel of inventory.nonProduction) {
+    assert.equal(coverageById.get(kernel.id).status, "fallback");
+    assert.equal(coverageById.get(kernel.id).compiled_functions, 0);
+    assert.equal(coverageById.get(kernel.id).fallback_functions, kernel.functions.length);
   }
 });
 

@@ -267,6 +267,16 @@ function discoverCapabilities(options = {}) {
 
 function validateManifest(manifest, options = {}) {
   const root = path.resolve(options.root || ROOT);
+  const kernelCoverage = readJson(path.join(
+    root,
+    "packages/flint-wasm/release/production-kernel-coverage.json",
+  ));
+  if (kernelCoverage.schema !== "sagejs.wasm-production-kernel-coverage/v1") {
+    throw new Error("unsupported production kernel coverage schema");
+  }
+  const kernelCoverageById = new Map(
+    kernelCoverage.kernels.map((item) => [`kernel:${item.id}`, item]),
+  );
   if (manifest.schema !== "sagejs.wasm-capabilities/v1") {
     throw new Error("unsupported WebAssembly capability manifest schema");
   }
@@ -397,6 +407,33 @@ function validateManifest(manifest, options = {}) {
       }
     } else if (manifestClosure.has(id) && capability.status !== "available") {
       throw new Error(`${id} is in a production manifest but is not marked available`);
+    }
+    if (capability.kind === "production-kernel") {
+      const coverage = kernelCoverageById.get(id);
+      if (coverage === undefined) {
+        throw new Error(`${id} is missing production kernel coverage`);
+      }
+      if (capability.status === "planned") {
+        throw new Error(`${id} cannot remain planned after production pack review`);
+      }
+      const expectedCoverage = {
+        compiled_functions: coverage.compiled_functions,
+        fallback_functions: coverage.fallback_functions,
+        total_functions: coverage.total_functions,
+        production_pack: coverage.production,
+        fallback_reasons: coverage.fallback_reasons,
+      };
+      if (JSON.stringify(capability.compiled_coverage) !== JSON.stringify(expectedCoverage)) {
+        throw new Error(`${id} compiled coverage disagrees with the production pack`);
+      }
+      if (capability.status !== coverage.status ||
+          (coverage.status === "available") !== manifestClosure.has(id)) {
+        throw new Error(`${id} aggregate status disagrees with production kernel coverage`);
+      }
+      if (coverage.status === "fallback" &&
+          (!coverage.fallback_functions || !coverage.fallback_reasons.length)) {
+        throw new Error(`${id} fallback coverage lacks an explicit reason`);
+      }
     }
     if (capability.kind === "specialist-capability" && capability.status === "available") {
       const evidencePath = repositoryPath(

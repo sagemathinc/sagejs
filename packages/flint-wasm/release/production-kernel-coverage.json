@@ -1,0 +1,323 @@
+{
+  "schema": "sagejs.wasm-production-kernel-coverage/v1",
+  "source_registry": "architecture/native-kernels.json",
+  "totals": {
+    "registered_kernels": 31,
+    "production_kernels": 24,
+    "compiled_functions": 193,
+    "unsupported_production_functions": 25,
+    "non_production_functions": 30,
+    "same_source_fallback_functions": 55
+  },
+  "kernels": [
+    {
+      "id": "arbitrary-prime-polynomial-resource-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 1,
+      "total_functions": 1,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "buchmann-lenstra-row-hnf-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 6,
+      "fallback_functions": 0,
+      "total_functions": 6,
+      "fallback_reasons": []
+    },
+    {
+      "id": "compiler-owned-record-witness",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 3,
+      "total_functions": 3,
+      "fallback_reasons": [
+        "development-witness-not-in-production-registry"
+      ]
+    },
+    {
+      "id": "dense-binary-m4ri-optional",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 12,
+      "total_functions": 12,
+      "fallback_reasons": [
+        "separate-m4ri-ownership-domain"
+      ]
+    },
+    {
+      "id": "dense-integer-flint-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 9,
+      "fallback_functions": 6,
+      "total_functions": 15,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "dense-integer-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 19,
+      "fallback_functions": 0,
+      "total_functions": 19,
+      "fallback_reasons": []
+    },
+    {
+      "id": "dense-prime-fflas-optional",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 5,
+      "total_functions": 5,
+      "fallback_reasons": [
+        "optional-fflas-desktop-accelerator"
+      ]
+    },
+    {
+      "id": "dense-prime-flint-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 9,
+      "fallback_functions": 0,
+      "total_functions": 9,
+      "fallback_reasons": []
+    },
+    {
+      "id": "dense-prime-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 30,
+      "fallback_functions": 0,
+      "total_functions": 30,
+      "fallback_reasons": []
+    },
+    {
+      "id": "dense-rational-flint-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 7,
+      "fallback_functions": 5,
+      "total_functions": 12,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "dense-rational-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 25,
+      "fallback_functions": 0,
+      "total_functions": 25,
+      "fallback_reasons": []
+    },
+    {
+      "id": "dense-word-prime-flint-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 2,
+      "total_functions": 2,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "exact-integer-witness",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 4,
+      "total_functions": 4,
+      "fallback_reasons": [
+        "development-witness-not-in-production-registry"
+      ]
+    },
+    {
+      "id": "extension-polynomial-flint-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 7,
+      "total_functions": 7,
+      "fallback_reasons": [
+        "foreign-resource-not-declared-for-wasm"
+      ]
+    },
+    {
+      "id": "field-analysis-fixed-point-checker-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 6,
+      "fallback_functions": 0,
+      "total_functions": 6,
+      "fallback_reasons": []
+    },
+    {
+      "id": "genus3-weil-candidate-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-composite-analysis-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-discriminant-prefactor-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-om-proof-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-round4-state-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-zeta-coefficients-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "p1-heilbronn-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 19,
+      "fallback_functions": 1,
+      "total_functions": 20,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "packed-binary64-witness",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 2,
+      "total_functions": 2,
+      "fallback_reasons": [
+        "development-witness-not-in-production-registry"
+      ]
+    },
+    {
+      "id": "packed-integer-polynomial-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 6,
+      "fallback_functions": 0,
+      "total_functions": 6,
+      "fallback_reasons": []
+    },
+    {
+      "id": "packed-polynomial-flint-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 20,
+      "fallback_functions": 1,
+      "total_functions": 21,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "packed-prime-polynomial-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 8,
+      "fallback_functions": 0,
+      "total_functions": 8,
+      "fallback_reasons": []
+    },
+    {
+      "id": "packed-rational-polynomial-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 11,
+      "fallback_functions": 0,
+      "total_functions": 11,
+      "fallback_reasons": []
+    },
+    {
+      "id": "prime-field-witness",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 2,
+      "total_functions": 2,
+      "fallback_reasons": [
+        "development-witness-not-in-production-registry"
+      ]
+    },
+    {
+      "id": "sparse-random-matrix-production",
+      "production": true,
+      "status": "fallback",
+      "compiled_functions": 2,
+      "fallback_functions": 2,
+      "total_functions": 4,
+      "fallback_reasons": [
+        "foreign-resource-ownership-domain-adapter-required"
+      ]
+    },
+    {
+      "id": "tate-algorithm-witness",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 2,
+      "total_functions": 2,
+      "fallback_reasons": [
+        "development-witness-not-in-production-registry"
+      ]
+    },
+    {
+      "id": "word-prime-krylov-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    }
+  ]
+}
