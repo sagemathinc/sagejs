@@ -942,6 +942,46 @@ assert.deepEqual(
     ["x+4", 1],
   ],
 );
+const numberFieldFactorDegrees = flint.nfFactorDegreesBatch(
+  [-1n, -1n, 0n, 1n],
+  BigUint64Array.from([2n, 3n, 5n, 7n, 11n]),
+  true,
+);
+assert.equal(numberFieldFactorDegrees.degree, 3);
+assert.equal(numberFieldFactorDegrees.primeCount, 5);
+assert.deepEqual(
+  Array.from(numberFieldFactorDegrees.factorCounts, Number),
+  [1, 1, 2, 2, 2],
+);
+assert.deepEqual(numberFieldFactorDegrees.records[2], {
+  version: 1,
+  prime: 5n,
+  factors: [{ e: 1, f: 1 }, { e: 1, f: 2 }],
+});
+assert.deepEqual(
+  Array.from(numberFieldFactorDegrees.exponents, Number),
+  [1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
+);
+assert.deepEqual(
+  Array.from(numberFieldFactorDegrees.degrees, Number),
+  [3, 0, 0, 3, 0, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0],
+);
+assert.throws(
+  () => flint.nfFactorDegreesBatch(
+    [-1n, -1n, 0n, 1n],
+    BigUint64Array.from([4n]),
+    false,
+  ),
+  /unable to factor the polynomial at a supplied prime/,
+);
+assert.throws(
+  () => flint.nfFactorDegreesBatch(
+    [-1n, -1n, 0n, 2n],
+    BigUint64Array.from([5n]),
+    false,
+  ),
+  /polynomial must be monic/,
+);
 const nmod5g = flint.polyMul(
   flint.polyPow(flint.polySub(nmod5x, nmod5one), 2n),
   flint.polyAdd(nmod5x, flint.nmodPolyConstant(2n, 5n)),

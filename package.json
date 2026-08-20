@@ -213,6 +213,7 @@
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
+    "bench:number-field-foundations": "node bench/number-field-foundations/run.cjs --systems sagejs",
     "bench:number-field-maximal-orders": "node tools/number-field-maximal-order/cli.cjs run",
     "bench:number-field-maximal-order-final-evidence": "node bench/number-field-maximal-order-final-evidence.cjs",
     "bench:number-field-maximal-order-parallel-public": "node bench/number-field-maximal-order-parallel-public.cjs",

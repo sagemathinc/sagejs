@@ -218,6 +218,7 @@
         "sagejs.number_fields.general_zeta",
         "sagejs.number_fields.quadratic_characters",
         "sagejs.number_fields.riemann_zeta",
+        "sagejs.number_fields.zeta_coefficient_kernel",
         "sagejs.number_fields.zeta_coefficients"
       ],
       "files": [
@@ -227,6 +228,7 @@
         "src/lib/sagejs/number_fields/general_zeta.py",
         "src/lib/sagejs/number_fields/quadratic_characters.py",
         "src/lib/sagejs/number_fields/riemann_zeta.py",
+        "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
         "src/lib/sagejs/number_fields/zeta_coefficients.py"
       ],
       "prefixes": []

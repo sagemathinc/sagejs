@@ -494,6 +494,34 @@
       "rationale": "Declarations for number-field factorization."
     },
     {
+      "path": "packages/flint/src/number_field_zeta.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Bounded Node-API marshalling for packed good-prime factor-degree batches."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API declaration for packed number-field zeta primitives."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta_core.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral batched adapter to mature FLINT finite-field polynomial factorization."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral ABI for packed good-prime factor degrees."
+    },
+    {
       "path": "packages/flint/src/p1.c",
       "category": "mixed-native",
       "review_status": "audited",

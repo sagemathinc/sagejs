@@ -634,7 +634,7 @@ class DedekindZetaFunction:
         return zeta_coefficients(
             int(bound),
             degree=2,
-            splitting_provider=order.splitting_records,
+            splitting_provider=order,
         )
 
     def euler_factor(self, prime: Any) -> Any:
@@ -656,7 +656,7 @@ class DedekindZetaFunction:
             value,
             int(prime_bound),
             degree=2,
-            splitting_provider=order.splitting_records,
+            splitting_provider=order,
             prec=precision,
         )
         return self._coerce(
@@ -743,7 +743,7 @@ class GeneralDedekindZetaFunction:
             self._coefficient_cache = zeta_coefficients(
                 requested,
                 degree=int(self._number_field.degree()),
-                splitting_provider=self._order.splitting_records,
+                splitting_provider=self._order,
             )
         return list(self._coefficient_cache[:requested])
 
@@ -868,7 +868,7 @@ class GeneralDedekindZetaFunction:
             value,
             int(prime_bound),
             degree=int(self._number_field.degree()),
-            splitting_provider=self._order.splitting_records,
+            splitting_provider=self._order,
             prec=precision,
             rigorous=rigorous,
         )

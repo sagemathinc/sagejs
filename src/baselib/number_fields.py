@@ -1810,6 +1810,10 @@ class NumberFieldOrder(sage.Parent):
     def splitting_records(self, start: Any, stop: Any) -> Any:
         return _nf_prime_ideals_module().splitting_records(self, start, stop)
 
+    def _zeta_factor_degree_data(self, start: Any, stop: Any) -> Any:
+        """Return private packed local factors when the native route applies."""
+        return _nf_prime_ideals_module().packed_factor_degree_data(self, start, stop)
+
     def ideal_from_dict(self, data: dict[str, Any]) -> NumberFieldIdeal:
         return _nf_ideal_arithmetic_module().ideal_from_dict(self, data)
 

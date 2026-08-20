@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 95,
+    "classified-native-file": 99,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
-    "napi-export": 308,
+    "napi-export": 309,
     "runtime-intrinsic": 137,
     "wasm-export": 46
   },
@@ -6631,6 +6631,16 @@
       "family": "exact-arithmetic"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nfFactorDegreesBatch",
+      "symbol": "sagejs_nf_factor_degrees_batch_value",
+      "disposition": "retain-host-adapter",
+      "family": "number-field-zeta"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrix",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8562,6 +8572,38 @@
       "id": "native-file:packages/flint/src/number_field_factor.h",
       "kind": "classified-native-file",
       "path": "packages/flint/src/number_field_factor.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_zeta_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_zeta_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_zeta_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_zeta_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_zeta.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_zeta.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_zeta.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_zeta.h",
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"

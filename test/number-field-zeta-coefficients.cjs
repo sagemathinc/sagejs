@@ -19,6 +19,11 @@ const coefficientPath = join(
   root,
   "src/lib/sagejs/number_fields/zeta_coefficients.py",
 );
+const nativePath = join(root, "src/lib/sagejs/native.py");
+const coefficientKernelPath = join(
+  root,
+  "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
+);
 const eulerPath = join(
   root,
   "src/lib/sagejs/number_fields/euler_products.py",
@@ -89,11 +94,24 @@ mpmath_spec.loader.exec_module(mpmath_module)
 
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
+runtime = types.ModuleType("sagejs.runtime")
+class Reflect:
+    @staticmethod
+    def has(value, name):
+        return hasattr(value, name)
+    @staticmethod
+    def get(value, name):
+        return getattr(value, name)
+runtime.reflect = Reflect
 sagejs.number_fields = number_fields
+sagejs.runtime = runtime
 sys.modules["sagejs"] = sagejs
 sys.modules["sagejs.number_fields"] = number_fields
+sys.modules["sagejs.runtime"] = runtime
 
 for module_name, module_path in [
+    ("sagejs.native", ${JSON.stringify(nativePath)}),
+    ("sagejs.number_fields.zeta_coefficient_kernel", ${JSON.stringify(coefficientKernelPath)}),
     ("sagejs.number_fields.zeta_coefficients", ${JSON.stringify(coefficientPath)}),
     ("sagejs.number_fields.euler_products", ${JSON.stringify(eulerPath)}),
 ]:
