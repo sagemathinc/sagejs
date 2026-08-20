@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createNumericBackend } from "../numeric-backend.mjs";
+import {
+  composeNumericRepresentationBackends,
+  createNumericBackend,
+} from "../numeric-backend.mjs";
 
 test("browser numeric values preserve decimal field arithmetic", () => {
   const backend = createNumericBackend();
@@ -29,4 +32,29 @@ test("analytic serialization remains arbitrary-precision decimal", () => {
     "1.6449340668482264364724151666460251892",
     "-0.00000000000000000000000000000000000000025",
   ]);
+});
+
+test("ordinary and algebraic numeric accessors coexist", () => {
+  const ordinary = createNumericBackend();
+  const algebraic = {
+    complexPrecision(value) {
+      assert.equal(value.__sagejsAlgebraicApprox, true);
+      return value.precision;
+    },
+    complexRealDouble(value) {
+      assert.equal(value.__sagejsAlgebraicApprox, true);
+      return 1.25;
+    },
+  };
+  const composed = composeNumericRepresentationBackends(ordinary, algebraic);
+  const regular = ordinary.complexFromStrings("3.5", "-2.25", 96);
+  const exactApproximation = Object.freeze({
+    __sagejsAlgebraicApprox: true,
+    precision: 160,
+  });
+
+  assert.equal(composed.complexPrecision(regular), 96);
+  assert.equal(composed.complexRealDouble(regular), 3.5);
+  assert.equal(composed.complexPrecision(exactApproximation), 160);
+  assert.equal(composed.complexRealDouble(exactApproximation), 1.25);
 });

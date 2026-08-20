@@ -5,7 +5,10 @@ import {
 } from "./dist/ffi-resource-backend.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
-import { createNumericBackend } from "./numeric-backend.mjs";
+import {
+  composeNumericRepresentationBackends,
+  createNumericBackend,
+} from "./numeric-backend.mjs";
 import { createAnalyticWasmBackend } from "./analytic-backend.mjs";
 import { createNumberFieldZetaBackend } from "./number-field-zeta.mjs";
 import { createCurveBackend } from "./curve-backend.mjs";
@@ -87,6 +90,10 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     algebraicWasi.initialize(algebraicInstance);
     algebraicBackend = createAlgebraicBackend(algebraicInstance);
   }
+  const numericRepresentationBackend = composeNumericRepresentationBackends(
+    numericBackend,
+    algebraicBackend,
+  );
 
   // WebAssembly i32 results reach JavaScript as signed numbers even when the
   // C declaration is uint32_t/size_t. Normalize handles, pointers, and sizes.
@@ -556,6 +563,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     ...analyticBackend,
     ...curveBackend,
     ...algebraicBackend,
+    ...numericRepresentationBackend,
   };
   Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
     value: () => instance.exports.sagejs_wasm_resource_live_count(),

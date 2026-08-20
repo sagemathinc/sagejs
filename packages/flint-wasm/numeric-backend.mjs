@@ -1,5 +1,46 @@
 const LOG10_2 = 0.3010299956639812;
 
+const REPRESENTATION_METHODS = Object.freeze([
+  "complexPrecision",
+  "complexReal",
+  "complexImag",
+  "complexRealDouble",
+  "complexImagDouble",
+  "complexToString",
+  "realPrecision",
+  "realToDouble",
+  "realToString",
+]);
+
+/**
+ * Compose ordinary browser numeric values with optional exact algebraic
+ * approximations. The specialist backend must not shadow ordinary
+ * `RealField` and `ComplexField` accessors merely because it is loaded.
+ */
+export function composeNumericRepresentationBackends(
+  numericBackend,
+  algebraicBackend = {},
+) {
+  const composed = {};
+  for (const name of REPRESENTATION_METHODS) {
+    composed[name] = (value, ...args) => {
+      const algebraic =
+        value?.__sagejsAlgebraicApprox === true ||
+        value?.__sagejsAlgebraicRealApprox === true;
+      const implementation = algebraic
+        ? algebraicBackend[name]
+        : numericBackend[name];
+      if (typeof implementation !== "function") {
+        throw new TypeError(
+          `${algebraic ? "algebraic" : "ordinary"} numeric backend does not implement ${name}`,
+        );
+      }
+      return implementation(value, ...args);
+    };
+  }
+  return Object.freeze(composed);
+}
+
 function gcd(left, right) {
   left = left < 0n ? -left : left;
   right = right < 0n ? -right : right;
