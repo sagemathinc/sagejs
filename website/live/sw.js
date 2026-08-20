@@ -1,6 +1,9 @@
 const CACHE_PREFIX = "sagejs-live-";
 const TRUSTED_MANIFEST_SHA256 = "__SAGEJS_ASSET_MANIFEST_SHA256__";
 const MANIFEST_PATH = "./asset-manifest.json";
+const FETCH_CREDENTIALS = new URL(self.location.href).searchParams.get("cocalc-preview") === "1"
+  ? "same-origin"
+  : "omit";
 let activeCache;
 let trustedManifestPromise;
 
@@ -83,7 +86,7 @@ async function trustedManifest() {
     try {
       response = await fetch(trustedUrl, {
         cache: "no-store",
-        credentials: "omit",
+        credentials: FETCH_CREDENTIALS,
       });
       return await parseTrustedManifest(response);
     } catch (networkError) {
@@ -102,7 +105,7 @@ async function trustedManifest() {
 
 async function fetchAndVerify(request, record) {
   const response = await fetch(request, {
-    credentials: "omit",
+    credentials: FETCH_CREDENTIALS,
   });
   return verifiedResponse(response, record);
 }
@@ -132,11 +135,11 @@ self.addEventListener("install", (event) => {
     const cache = await caches.open(activeCache);
     const manifestRequest = new Request(
       new URL(MANIFEST_PATH, self.registration.scope),
-      { credentials: "omit" },
+      { credentials: FETCH_CREDENTIALS },
     );
     await cache.put(manifestRequest, trusted.response.clone());
     for (const [url, record] of trusted.byUrl) {
-      const request = new Request(url, { credentials: "omit" });
+      const request = new Request(url, { credentials: FETCH_CREDENTIALS });
       await cacheVerified(cache, request, await fetchAndVerify(request, record));
     }
   })());
@@ -172,10 +175,10 @@ async function authenticatedRequest(request) {
     : new URL(requestUrl.pathname, scope).href;
   const record = trusted.byUrl.get(lookupUrl);
   if (record === undefined) {
-    return fetch(request, { cache: "no-store", credentials: "omit" });
+    return fetch(request, { cache: "no-store", credentials: FETCH_CREDENTIALS });
   }
   return authenticatedAsset(
-    new Request(lookupUrl, { credentials: "omit" }),
+    new Request(lookupUrl, { credentials: FETCH_CREDENTIALS }),
     record,
   );
 }

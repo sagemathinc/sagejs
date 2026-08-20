@@ -1,4 +1,4 @@
-import { loadSageRuntime } from "./runtime-api.mjs";
+import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
@@ -17,6 +17,7 @@ import {
 } from "./session-store.mjs";
 
 const $ = (selector) => document.querySelector(selector);
+const fetchCredentials = requestCredentials(location.search);
 const elements = {
   source: $("#source"),
   title: $("#worksheet-title"),
@@ -321,7 +322,7 @@ async function loadCapabilities() {
     ["Plot limit", `${DEFAULT_LIMITS.plotBytes.toLocaleString()} bytes per display`],
   ];
   try {
-    const response = await fetch("./runtime-version.json", { cache: "no-store", credentials: "omit" });
+    const response = await fetch("./runtime-version.json", { cache: "no-store", credentials: fetchCredentials });
     if (response.ok) {
       const version = await response.json();
       facts.push(["Artifact revision", version.revision ?? "unknown"]);
@@ -342,7 +343,7 @@ async function loadCapabilities() {
   }
   elements.runtimeFacts.replaceChildren(dl);
 
-  const reportResponse = await fetch("./wasm-capabilities-report.json", { cache: "no-cache", credentials: "omit" });
+  const reportResponse = await fetch("./wasm-capabilities-report.json", { cache: "no-cache", credentials: fetchCredentials });
   if (!reportResponse.ok) throw new Error(`capability report returned HTTP ${reportResponse.status}`);
   const report = validateCapabilityReport(await reportResponse.json());
   for (const family of capabilityFamilies(report)) {
@@ -452,10 +453,13 @@ sessionPromise = createSession();
 updateControls();
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   addEventListener("load", () => void (async () => {
-    const response = await fetch("./asset-manifest.json", { cache: "no-store", credentials: "omit" });
+    const response = await fetch("./asset-manifest.json", { cache: "no-store", credentials: fetchCredentials });
     if (!response.ok) throw new Error(`asset manifest returned ${response.status}`);
     const manifest = await response.json();
     if (!/^[a-f0-9]{64}$/.test(manifest.release)) throw new Error("asset manifest release is invalid");
-    await navigator.serviceWorker.register(`./sw.js?release=${manifest.release}`, { scope: "./" });
+    const worker = new URL("./sw.js", location.href);
+    worker.searchParams.set("release", manifest.release);
+    if (fetchCredentials === "same-origin") worker.searchParams.set("cocalc-preview", "1");
+    await navigator.serviceWorker.register(worker, { scope: "./" });
   })().catch((error) => setLive(`Offline cache unavailable: ${error.message}`)));
 }

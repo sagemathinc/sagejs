@@ -43,16 +43,18 @@ test("Cloudflare policy isolates a deliberately dynamic, credential-free origin"
   assert.match(privacy, /deliberately permits dynamic evaluation and WebAssembly/);
 });
 
-test("offline worker is same-origin, versioned and credentialless", async () => {
+test("offline worker is same-origin, versioned and credentialless by default", async () => {
   const worker = await read("sw.js");
   assert.match(worker, /CACHE_PREFIX/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
-  assert.match(worker, /credentials: "omit"/);
+  assert.match(worker, /cocalc-preview/);
+  assert.match(worker, /\? "same-origin"\s*:\s*"omit"/);
   assert.match(worker, /caches\.delete/);
   assert.match(worker, /__SAGEJS_ASSET_MANIFEST_SHA256__/);
   assert.match(worker, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(worker, /failed its authenticated byte contract/);
   assert.match(worker, /cache: "no-store"/);
   const app = await read("app.mjs");
-  assert.match(app, /sw\.js\?release=/);
+  assert.match(app, /new URL\("\.\/sw\.js"/);
+  assert.match(app, /searchParams\.set\("release"/);
 });

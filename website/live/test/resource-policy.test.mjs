@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assertDisplayWithinLimit, boundedTimeout, OutputCollector, utf8Size } from "../resource-policy.mjs";
+import { requestCredentials } from "../runtime-api.mjs";
+
+test("credentialed project previews are explicit and production stays credentialless", () => {
+  assert.equal(requestCredentials(""), "omit");
+  assert.equal(requestCredentials("?unrelated=1"), "omit");
+  assert.equal(requestCredentials("?cocalc-preview=1"), "same-origin");
+});
 
 test("UTF-8 limits count encoded bytes rather than UTF-16 units", () => {
   assert.equal(utf8Size("π🙂"), 6);
