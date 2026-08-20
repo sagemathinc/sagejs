@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Make Python compile/eval/exec execute synchronously in the production browser evaluator under CSP, including mpmath dynamic arithmetic and hypergeometric workflows, with Chromium regression coverage and packaged authenticated assets.",
-  "base_commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+  "base_commit": "bf254b0f8d9d2c4b43b5dc74cd5386e3157ac06c",
   "claims": [
     "packages/flint-wasm/",
     "scripts/build-lazy-module-cache.cjs",
