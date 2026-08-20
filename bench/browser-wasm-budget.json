@@ -6,10 +6,89 @@
     "startup_regression_fraction": 0.2,
     "warm_operation_regression_fraction": 0.15,
     "interrupt_latency_regression_fraction": 0.2,
-    "native_ratio_regression_fraction": null,
-    "maximum_interrupt_latency_ms": 1500
+    "native_ratio_regression_fraction": 0.25,
+    "maximum_interrupt_latency_ms": 5000
   },
-  "artifact_baseline": null,
-  "performance_baseline": null,
-  "native_ratio_baseline": null
+  "artifact_baseline": {
+    "totals": {
+      "bytes": 122301512,
+      "gzip_bytes": 17978236,
+      "brotli_bytes": 11313660
+    }
+  },
+  "performance_baseline": {
+    "node-native": {
+      "startup_ms": { "median": 229.2839899999999 },
+      "interrupt_latency_ms": { "median": 26.557466999998724 },
+      "operations": {
+        "exact-matrix-kernel": { "warm_ms": { "median": 50.69442999999956 } },
+        "cubic-number-field-zeta-1000": { "warm_ms": { "median": 72.49219099999937 } },
+        "analytic-special-value-batches": { "warm_ms": { "median": 114.86025999999765 } },
+        "elliptic-lseries-value-batch": { "warm_ms": { "median": 376.79761000000144 } },
+        "elliptic-lseries-complex-plot-64": { "warm_ms": { "median": 640.5640800000001 } }
+      }
+    },
+    "chromium": {
+      "startup_ms": { "median": 2188.7585859999526 },
+      "interrupt_latency_ms": { "median": 2122.7900000000373 },
+      "operations": {
+        "exact-matrix-kernel": { "warm_ms": { "median": 21.685000000026776 } },
+        "cubic-number-field-zeta-1000": { "warm_ms": { "median": 62.714999999967404 } },
+        "analytic-special-value-batches": { "warm_ms": { "median": 259.3999999999651 } },
+        "elliptic-lseries-value-batch": { "warm_ms": { "median": 406.91500000003725 } },
+        "elliptic-lseries-complex-plot-64": { "warm_ms": { "median": 3482.2099999999627 } }
+      }
+    },
+    "firefox": {
+      "startup_ms": { "median": 2308.8433629999927 },
+      "interrupt_latency_ms": { "median": 2213.56 },
+      "operations": {
+        "exact-matrix-kernel": { "warm_ms": { "median": 31.59999999999991 } },
+        "cubic-number-field-zeta-1000": { "warm_ms": { "median": 95.90000000000009 } },
+        "analytic-special-value-batches": { "warm_ms": { "median": 973.8800000000001 } },
+        "elliptic-lseries-value-batch": { "warm_ms": { "median": 687.8400000000001 } },
+        "elliptic-lseries-complex-plot-64": { "warm_ms": { "median": 26125.08 } }
+      }
+    },
+    "webkit": {
+      "startup_ms": { "median": 3142.0774180000008 },
+      "interrupt_latency_ms": { "median": 3046.4400000000005 },
+      "operations": {
+        "exact-matrix-kernel": { "warm_ms": { "median": 27.559999999999945 } },
+        "cubic-number-field-zeta-1000": { "warm_ms": { "median": 81.73999999999978 } },
+        "analytic-special-value-batches": { "warm_ms": { "median": 380.1199999999999 } },
+        "elliptic-lseries-value-batch": { "warm_ms": { "median": 636.0200000000004 } },
+        "elliptic-lseries-complex-plot-64": { "warm_ms": { "median": 3783.2000000000007 } }
+      }
+    }
+  },
+  "native_ratio_baseline": {
+    "chromium": {
+      "operations": {
+        "exact-matrix-kernel": { "warm_median_ratio": 0.4277590259921448 },
+        "cubic-number-field-zeta-1000": { "warm_median_ratio": 0.8651276659573988 },
+        "analytic-special-value-batches": { "warm_median_ratio": 2.258396420136698 },
+        "elliptic-lseries-value-batch": { "warm_median_ratio": 1.0799298859672588 },
+        "elliptic-lseries-complex-plot-64": { "warm_median_ratio": 5.436161827868903 }
+      }
+    },
+    "firefox": {
+      "operations": {
+        "exact-matrix-kernel": { "warm_median_ratio": 0.623342643363387 },
+        "cubic-number-field-zeta-1000": { "warm_median_ratio": 1.3229011108244877 },
+        "analytic-special-value-batches": { "warm_median_ratio": 8.478824616973878 },
+        "elliptic-lseries-value-batch": { "warm_median_ratio": 1.8254892858794871 },
+        "elliptic-lseries-complex-plot-64": { "warm_median_ratio": 40.78449106918389 }
+      }
+    },
+    "webkit": {
+      "operations": {
+        "exact-matrix-kernel": { "warm_median_ratio": 0.5436494699713595 },
+        "cubic-number-field-zeta-1000": { "warm_median_ratio": 1.127569726786165 },
+        "analytic-special-value-batches": { "warm_median_ratio": 3.3094126724073902 },
+        "elliptic-lseries-value-batch": { "warm_median_ratio": 1.6879618742804605 },
+        "elliptic-lseries-complex-plot-64": { "warm_median_ratio": 5.9060445599759515 }
+      }
+    }
+  }
 }

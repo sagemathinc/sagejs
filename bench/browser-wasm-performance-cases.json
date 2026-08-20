@@ -36,8 +36,7 @@
       "id": "elliptic-lseries-value-batch",
       "family": "elliptic-curves",
       "requires": [
-        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
-        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npoints = [CC(1, k/8) for k in range(-16,17)]\nvalues = L.values(points, prec=53)\nprint(len(values), float(values[0].real()), float(values[-1].imag()))",
@@ -47,8 +46,7 @@
       "id": "elliptic-lseries-complex-plot-64",
       "family": "plotting",
       "requires": [
-        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
-        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
       ],

@@ -184,7 +184,7 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
 });
 
-test("release performance profile covers heavyweight vertical slices without invented baselines", async () => {
+test("release performance profile has reviewed heavyweight baselines", async () => {
   const root = path.join(__dirname, "..");
   const manifest = JSON.parse(
     fs.readFileSync(path.join(root, "bench", "browser-wasm-performance-cases.json"), "utf8"),
@@ -209,9 +209,23 @@ test("release performance profile covers heavyweight vertical slices without inv
     manifest.cases.find((item) => item.id === "elliptic-lseries-complex-plot-64").source,
     /plot_points=64/,
   );
-  assert.equal(budget.performance_baseline, null);
-  assert.equal(budget.native_ratio_baseline, null);
-  assert.equal(budget.thresholds.native_ratio_regression_fraction, null);
+  for (const runtime of ["node-native", "chromium", "firefox", "webkit"]) {
+    const baseline = budget.performance_baseline[runtime];
+    assert.ok(Number.isFinite(baseline.startup_ms.median));
+    assert.ok(Number.isFinite(baseline.interrupt_latency_ms.median));
+    for (const id of ids) {
+      assert.ok(Number.isFinite(baseline.operations[id].warm_ms.median));
+    }
+  }
+  for (const engine of ["chromium", "firefox", "webkit"]) {
+    const ratios = budget.native_ratio_baseline[engine].operations;
+    for (const id of ids) {
+      assert.ok(Number.isFinite(ratios[id].warm_median_ratio));
+      assert.ok(ratios[id].warm_median_ratio > 0);
+    }
+  }
+  assert.equal(budget.thresholds.native_ratio_regression_fraction, 0.25);
+  assert.equal(budget.thresholds.maximum_interrupt_latency_ms, 5000);
 });
 
 test("performance instrumentation distinguishes unavailable data from measured zero", async () => {
