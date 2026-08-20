@@ -56,6 +56,13 @@ async function evaluate(message) {
         text,
       });
     },
+    onError(text) {
+      send({
+        type: "stderr",
+        id: message.id,
+        text,
+      });
+    },
   });
   send({
     type: "result",

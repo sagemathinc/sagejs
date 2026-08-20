@@ -31,6 +31,14 @@ try {
   await page.evaluate(() => window.__sagejsReady);
   assert.equal(await page.evaluate(() => globalThis.crossOriginIsolated), true);
 
+  const streams = await page.evaluate(() => window.__sagejsTest.evaluate(`
+import sys
+sys.stdout.write("ordinary-output")
+sys.stderr.write("diagnostic-output")
+`, 10_000));
+  assert.equal(streams.stdout, "ordinary-output");
+  assert.equal(streams.stderr, "diagnostic-output");
+
   const forged = await page.evaluate(() => window.__sagejsTest.evaluate(`
 from sagejs import runtime
 target = runtime.global_object
