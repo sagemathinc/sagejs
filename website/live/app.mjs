@@ -83,6 +83,21 @@ function createSession() {
   promise.then(
     (value) => {
       session = value;
+      value.on("error", (error) => {
+        setStatus("loading", "Recovering kernel");
+        setLive(`The kernel worker failed and is being replaced: ${error.message}`);
+        void value.reset().then(
+          () => {
+            setStatus("ready", "Ready — recovered session");
+            setLive("The kernel restarted with a clean session.");
+            updateControls();
+          },
+          (replacementError) => {
+            setStatus("error", "Kernel recovery failed");
+            setLive(`Kernel recovery failed: ${replacementError.message}`);
+          },
+        );
+      });
       setStatus("ready", "Ready — local WebAssembly");
       setLive("Sage.js is ready.");
       updateControls();
