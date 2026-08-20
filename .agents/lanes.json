@@ -107,7 +107,7 @@
     {
       "id": "distribution",
       "description": "Native dependencies, WASM, SEA, installers, CI, and supported platforms",
-      "allowed_claims": ["packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
+      "allowed_claims": ["apps/sagejs-mobile/", "packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
       "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
     },
     {
