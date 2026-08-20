@@ -3133,13 +3133,7 @@ class Matrix(sage.Element):
 
     def is_one(self) -> bool:
         if self._has_packed_rational_storage():
-            if (
-                self._has_fmpq_matrix_resource()
-                and _flint_backend_has_function("ffiFmpqMatrixTrace")
-                and _flint_backend_has_function("ffiFmpqValueNumerator")
-                and _flint_backend_has_function("ffiFmpqValueDenominator")
-                and _flint_backend_has_function("ffiFmpqValueClose")
-            ):
+            if self._has_fmpq_matrix_resource():
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_is_one(self._rational_resource())
                 )
@@ -7841,7 +7835,13 @@ class Matrix(sage.Element):
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
+            if (
+                self._has_fmpq_matrix_resource()
+                and _flint_backend_has_function("ffiFmpqMatrixTrace")
+                and _flint_backend_has_function("ffiFmpqValueNumerator")
+                and _flint_backend_has_function("ffiFmpqValueDenominator")
+                and _flint_backend_has_function("ffiFmpqValueClose")
+            ):
                 ffi = _flint_ffi_module()
                 value = ffi.fmpq_matrix_trace(self._rational_resource())
                 try:
