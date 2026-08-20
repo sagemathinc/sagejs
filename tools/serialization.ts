@@ -174,9 +174,17 @@ function encodePacket(
   const seen = new Map<object, number>();
   const transferable = new WeakSet<object>();
   const builtinPayloads = new WeakSet<object>();
+  let codecPayloadDepth = 0;
 
   const context: EncodeContext = {
-    encode: encodeValue,
+    encode(value: unknown): WireValue {
+      codecPayloadDepth += 1;
+      try {
+        return encodeValue(value);
+      } finally {
+        codecPayloadDepth -= 1;
+      }
+    },
     buffer(bufferValue) {
       const index = buffers.length;
       const bytes = bufferValue instanceof ArrayBuffer
@@ -228,7 +236,10 @@ function encodePacket(
       // BigInt depending on the selected native/portable arithmetic route.
       // SagePack emitted through the Python API must not expose that host
       // implementation detail in its canonical bytes.
-      if (canonicalPythonIntegers && Number.isSafeInteger(item)) {
+      if (
+        canonicalPythonIntegers && codecPayloadDepth === 0 &&
+        Number.isSafeInteger(item)
+      ) {
         return { $integer: String(item) };
       }
       return item;
@@ -325,7 +336,7 @@ function encodePacket(
                 if (isPlainObject(payloadValue)) {
                   builtinPayloads.add(payloadValue);
                 }
-                return encodeValue(payloadValue);
+                return context.encode(payloadValue);
               },
             });
           } catch (error) {
