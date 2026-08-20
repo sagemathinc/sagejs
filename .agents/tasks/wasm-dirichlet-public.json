@@ -56,6 +56,26 @@
       "commit": "6c3375cfcfd8d8b982f208134e7f5d7892c3292b",
       "workspace_fingerprint": "cac7ce0b61afb570c79705277002c495c80ca0f3f883cc82c33e4c27666be251",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.111,
+      "started_at": "2026-08-20T06:04:18.065Z",
+      "commit": "be26ae0e87c7442ef04fe7d2ab0c0c27a21bb513",
+      "workspace_fingerprint": "cc14fba109ed619a99e0d0e03bbb0d62f34c6095bca6d99dbdf3d0ba72982779",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_DIRICHLET_WASM=/tmp/tmp.sFYVz80VXX.wasm node --test packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.276,
+      "started_at": "2026-08-20T06:04:18.838Z",
+      "commit": "be26ae0e87c7442ef04fe7d2ab0c0c27a21bb513",
+      "workspace_fingerprint": "cc14fba109ed619a99e0d0e03bbb0d62f34c6095bca6d99dbdf3d0ba72982779",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
