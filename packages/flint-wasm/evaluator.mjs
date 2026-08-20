@@ -1,5 +1,7 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
+import { createWasiHost } from "./dist/wasi-runtime.mjs";
+import { instantiateWasmKernelPacks } from "./dist/wasm-pack-loader.mjs";
 import {
   dumps as serializationDumps,
   loads as serializationLoads,
@@ -96,6 +98,8 @@ export async function instantiateSageEvaluator({
   baselib,
   standardLibrary,
   flint,
+  algebraic = undefined,
+  nativeKernels = undefined,
   m4ri,
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
@@ -109,6 +113,7 @@ export async function instantiateSageEvaluator({
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
+  let wasmNativeResolver;
   try {
     [
       initialization,
@@ -125,10 +130,32 @@ export async function instantiateSageEvaluator({
         pythonGrammar: String(pythonGrammar),
         sageGrammar: String(sageGrammar),
       }),
-      instantiateFlintFactor(flint),
+      instantiateFlintFactor(flint, { algebraicSource: algebraic }),
       instantiateM4ri(m4ri),
       import(String(symbolic)),
     ]);
+    if (nativeKernels !== undefined) {
+      const manifestUrl = new URL(String(nativeKernels), import.meta.url);
+      const response = await fetch(manifestUrl);
+      if (!response.ok) {
+        throw new Error(`unable to load native-kernel manifest (${response.status})`);
+      }
+      const manifest = await response.json();
+      wasmNativeResolver = await instantiateWasmKernelPacks({
+        manifest,
+        async load(pack) {
+          const asset = new URL(pack.asset, manifestUrl);
+          const assetResponse = await fetch(asset);
+          if (!assetResponse.ok) {
+            throw new Error(`unable to load Wasm kernel pack ${pack.domain}`);
+          }
+          return new Uint8Array(await assetResponse.arrayBuffer());
+        },
+        async host() {
+          return createWasiHost();
+        },
+      });
+    }
   } catch (error) {
     language.terminate();
     throw error;
@@ -188,6 +215,9 @@ export async function instantiateSageEvaluator({
   globalThis.require = runtimeRequire;
   globalThis.__sagejs_runtime_require__ = runtimeRequire;
   globalThis.__sagejs_host__ = serializationHost;
+  if (wasmNativeResolver !== undefined) {
+    globalThis.__sagejs_wasm_native_resolver__ = wasmNativeResolver;
+  }
   globalThis.__sagejs_output_write__ = (text) => {
     outputHandler(String(text));
   };

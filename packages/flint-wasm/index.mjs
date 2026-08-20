@@ -5,6 +5,11 @@ import {
 } from "./dist/ffi-resource-backend.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
+import { createNumericBackend } from "./numeric-backend.mjs";
+import { createAnalyticWasmBackend } from "./analytic-backend.mjs";
+import { createNumberFieldZetaBackend } from "./number-field-zeta.mjs";
+import { createCurveBackend } from "./curve-backend.mjs";
+import { createAlgebraicBackend } from "./algebraic.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -40,7 +45,7 @@ function readCString(memory, pointer, capacity) {
  * `source` may be a URL, Response, ArrayBuffer, typed-array view, or an
  * already compiled WebAssembly.Module.
  */
-export async function instantiateFlintFactor(source) {
+export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
   const module = await compile(source);
   const wasi = createWasiHost();
   const instance = await WebAssembly.instantiate(module, {
@@ -51,6 +56,68 @@ export async function instantiateFlintFactor(source) {
   const generatedResourceBackend = createGeneratedWasmBackend(instance);
   const polynomialBackend = createPortablePolynomialBackend();
   const matrixBackend = createPortableMatrixBackend();
+  const numericBackend = createNumericBackend();
+  const publicGeneratedResourceBackend = generatedResourceBackend;
+  const dirichletGroupBackend = {
+    dirichletGroup(modulus) {
+      modulus = BigInt(modulus);
+      if (modulus <= 0n || modulus > 0xffffffffn) {
+        throw new RangeError("Dirichlet modulus exceeds the browser FLINT word limit");
+      }
+      return Object.freeze({ __sagejsWasmDirichletGroup: true, modulus });
+    },
+    dirichletGroupData(group) {
+      if (group?.__sagejsWasmDirichletGroup !== true) {
+        throw new TypeError("expected a browser Dirichlet group");
+      }
+      if (instance.exports.sagejs_wasm_dirichlet_group_begin(group.modulus) !== 1) {
+        throw new RangeError("FLINT could not initialize this Dirichlet modulus");
+      }
+      try {
+        const count = Number(
+          instance.exports.sagejs_wasm_dirichlet_group_component_count(),
+        ) >>> 0;
+        return Object.freeze({
+          modulus: group.modulus,
+          size: instance.exports.sagejs_wasm_dirichlet_group_size(),
+          exponent: instance.exports.sagejs_wasm_dirichlet_group_exponent(),
+          numberPrimitive:
+            instance.exports.sagejs_wasm_dirichlet_group_number_primitive(),
+          orders: Object.freeze(Array.from({ length: count }, (_, index) =>
+            instance.exports.sagejs_wasm_dirichlet_group_component_order(index))),
+          generators: Object.freeze(Array.from({ length: count }, (_, index) =>
+            instance.exports.sagejs_wasm_dirichlet_group_generator(index))),
+        });
+      } finally {
+        instance.exports.sagejs_wasm_dirichlet_group_clear();
+      }
+    },
+  };
+  const analyticBackend = createAnalyticWasmBackend(instance, {
+    serializePoint: numericBackend.serializeAnalyticPoint,
+    materialize(record, precision) {
+      return numericBackend.complexFromStrings(
+        record.real,
+        record.imaginary,
+        precision,
+      );
+    },
+    resolveDirichletModulus(value) {
+      return value?.__sagejsWasmDirichletGroup === true ? value.modulus : value;
+    },
+  });
+  const numberFieldZetaBackend = createNumberFieldZetaBackend(instance);
+  const curveBackend = createCurveBackend(instance);
+  let algebraicBackend = {};
+  if (algebraicSource !== undefined) {
+    const algebraicModule = await compile(algebraicSource);
+    const algebraicWasi = createWasiHost();
+    const algebraicInstance = await WebAssembly.instantiate(algebraicModule, {
+      wasi_snapshot_preview1: algebraicWasi.imports,
+    });
+    algebraicWasi.initialize(algebraicInstance);
+    algebraicBackend = createAlgebraicBackend(algebraicInstance);
+  }
 
   // WebAssembly i32 results reach JavaScript as signed numbers even when the
   // C declaration is uint32_t/size_t. Normalize handles, pointers, and sizes.
@@ -512,8 +579,14 @@ export async function instantiateFlintFactor(source) {
     p1ListReducePath,
     ...polynomialBackend,
     ...matrixBackend,
+    ...numericBackend,
     matrixCharpoly,
-    ...generatedResourceBackend,
+    ...publicGeneratedResourceBackend,
+    ...dirichletGroupBackend,
+    ...numberFieldZetaBackend,
+    ...analyticBackend,
+    ...curveBackend,
+    ...algebraicBackend,
   };
   Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
     value: () => instance.exports.sagejs_wasm_resource_live_count(),
