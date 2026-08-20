@@ -4,7 +4,7 @@
     {"id": "exact-factor", "source": "factor(2026)", "expectRepr": "2 * 1013"},
     {"id": "polynomial", "source": "R.<x> = PolynomialRing(QQ)\n(x^6 - 1).factor()", "expectContains": "x - 1"},
     {"id": "number-field", "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3-x-1)\nK.maximal_order().factor_rational_prime(23)", "expectContains": "23"},
-    {"id": "zeta", "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3-x-1)\nK.zeta_coefficients(250)[-5:]", "expectContains": "["},
+    {"id": "zeta", "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3-x-1)\nK.zeta_function().coefficients(250)[-5:]", "expectContains": "["},
     {"id": "elliptic-l", "source": "E = EllipticCurve([1,2,3,4,999])\nE.lseries().values([1+k*I/10 for k in range(16)])", "expectContains": "I"},
     {"id": "complex-plot", "source": "E = EllipticCurve([1,2,3,4,999])\ncomplex_plot(E.lseries(), (0,2), (-2,2), plot_points=60)", "expectDisplayMime": "application/vnd.plotly.v1+json"}
   ]
