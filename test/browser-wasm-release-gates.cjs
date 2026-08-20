@@ -16,22 +16,22 @@ const {
   validateHeadersRules,
 } = require("../packages/flint-wasm/scripts/browser-wasm-deployment.cjs");
 
-function fixtureDirectory() {
+function fixtureDirectory(answer = 42) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-wasm-release-"));
   const wasm = Buffer.from([
     0, 97, 115, 109, 1, 0, 0, 0,
     5, 4, 1, 1, 1, 2,
   ]);
-  const javascript = Buffer.from("export const answer = 42;\n");
+  const javascript = Buffer.from(`export const answer = ${answer};\n`);
   fs.writeFileSync(path.join(directory, "kernel.wasm"), wasm);
   fs.writeFileSync(path.join(directory, "kernel.mjs"), javascript);
   const assets = [
     { path: "kernel.mjs", servePath: "kernel.mjs", bytes: javascript.length, sha256: sha256(javascript) },
     { path: "kernel.wasm", servePath: "kernel.wasm", bytes: wasm.length, sha256: sha256(wasm) },
   ];
-  fs.writeFileSync(path.join(directory, "production-manifest.json"), JSON.stringify({
+  const manifest = {
     schema: "sagejs.wasm-production-artifact/v1",
-    identity: `sha256:${"0".repeat(64)}`,
+    identity: `sha256:${String(answer).padStart(64, "0")}`,
     assets,
     layout: {
       modules: [{
@@ -39,11 +39,14 @@ function fixtureDirectory() {
         memory: { pageBytes: 65536, initialPages: 1, maximumPages: 2 },
       }],
     },
-  }));
+  };
+  const manifestBytes = Buffer.from(JSON.stringify(manifest));
+  fs.writeFileSync(path.join(directory, "production-manifest.json"), manifestBytes);
   fs.writeFileSync(path.join(directory, "build-receipt.json"), JSON.stringify({
     schema: "sagejs.wasm-build-receipt/v1",
     source_revision: "fixture",
-    artifact: { identity: "fixture" },
+    artifact: manifest,
+    productionManifestSha256: sha256(manifestBytes),
   }));
   return directory;
 }
@@ -81,7 +84,7 @@ test("grammar modules inherit the authenticated bounded Tree-sitter memory", () 
       { path: "grammar.wasm", servePath: "grammar.wasm", bytes: grammar.length, sha256: sha256(grammar) },
       { path: "runtime.wasm", servePath: "runtime.wasm", bytes: provider.length, sha256: sha256(provider) },
     ];
-    fs.writeFileSync(path.join(directory, "production-manifest.json"), JSON.stringify({
+    const manifest = {
       schema: "sagejs.wasm-production-artifact/v1",
       identity: `sha256:${"1".repeat(64)}`,
       assets,
@@ -94,15 +97,61 @@ test("grammar modules inherit the authenticated bounded Tree-sitter memory", () 
           memory: { pageBytes: 65536, initialPages: 2, maximumPages: 8 },
         }],
       },
-    }));
+    };
+    const manifestBytes = Buffer.from(JSON.stringify(manifest));
+    fs.writeFileSync(path.join(directory, "production-manifest.json"), manifestBytes);
     fs.writeFileSync(path.join(directory, "build-receipt.json"), JSON.stringify({
       schema: "sagejs.wasm-build-receipt/v1",
       source_revision: "fixture",
-      artifact: { identity: "fixture" },
+      artifact: manifest,
+      productionManifestSha256: sha256(manifestBytes),
     }));
     assert.equal(inspectProductionArtifact(directory).files.length, 2);
   } finally {
     fs.rmSync(directory, { recursive: true });
+  }
+});
+
+test("Tree-sitter stays within the mobile WebView memory ceiling", () => {
+  const layout = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        path.join(__dirname, ".."),
+        "packages",
+        "flint-wasm",
+        "release",
+        "production-layout.json",
+      ),
+      "utf8",
+    ),
+  );
+  const treeSitter = layout.importedMemoryDomains.find(
+    (domain) => domain.id === "tree-sitter",
+  );
+  assert.ok(treeSitter, "missing Tree-sitter memory domain");
+  assert.equal(treeSitter.memory.pageBytes, 65_536);
+  assert.ok(
+    treeSitter.memory.maximumPages * treeSitter.memory.pageBytes <=
+      384 * 1024 * 1024,
+    "Tree-sitter exceeds the 384 MiB mobile WebView ceiling",
+  );
+});
+
+test("release artifact inspection rejects a receipt from another artifact", () => {
+  const left = fixtureDirectory(41);
+  const right = fixtureDirectory(43);
+  try {
+    fs.copyFileSync(
+      path.join(right, "build-receipt.json"),
+      path.join(left, "build-receipt.json"),
+    );
+    assert.throws(
+      () => inspectProductionArtifact(left),
+      /does not authenticate|does not exactly match/,
+    );
+  } finally {
+    fs.rmSync(left, { recursive: true });
+    fs.rmSync(right, { recursive: true });
   }
 });
 

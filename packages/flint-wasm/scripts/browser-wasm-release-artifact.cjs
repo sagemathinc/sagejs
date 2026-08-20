@@ -4,6 +4,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const { isDeepStrictEqual } = require("node:util");
 const zlib = require("node:zlib");
 
 function sha256(bytes) {
@@ -192,6 +193,13 @@ function inspectProductionArtifact(distDirectory) {
   if (manifest.schema !== "sagejs.wasm-production-artifact/v1") {
     throw new Error(`unsupported Wasm production manifest schema ${manifest.schema}`);
   }
+  const manifestDigest = sha256(manifestBytes);
+  if (buildReceipt.productionManifestSha256 !== manifestDigest) {
+    throw new Error("build receipt does not authenticate production-manifest.json");
+  }
+  if (!isDeepStrictEqual(buildReceipt.artifact, manifest)) {
+    throw new Error("build receipt artifact does not exactly match production-manifest.json");
+  }
   const names = [...new Set(manifestFileNames(manifest))].sort();
   const servePaths = new Set();
   for (const asset of manifest.assets) {
@@ -247,7 +255,7 @@ function inspectProductionArtifact(distDirectory) {
   });
   return {
     schema: "sagejs.browser-wasm-release-artifact/v1",
-    production_manifest_sha256: sha256(manifestBytes),
+    production_manifest_sha256: manifestDigest,
     build_receipt_sha256: sha256(buildReceiptBytes),
     source_revision:
       buildReceipt.source_revision ??

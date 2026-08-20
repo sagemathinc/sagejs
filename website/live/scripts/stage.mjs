@@ -21,6 +21,7 @@ const REQUIRED_RUNTIME_HOSTS = [
   "portable-polynomial.mjs",
 ];
 const SHELL_EXCLUDED = new Set(["dist", "scripts", "test", "README.md"]);
+const SERVICE_WORKER_INTEGRITY_MARKER = "__SAGEJS_ASSET_MANIFEST_SHA256__";
 
 async function sha256(filename) {
   return createHash("sha256").update(await readFile(filename)).digest("hex");
@@ -113,6 +114,18 @@ async function collectFiles(root, prefix = "./") {
   return answer.sort();
 }
 
+async function webAssetRecord(target, relative) {
+  const filename = relative === "./"
+    ? path.join(target, "index.html")
+    : path.join(target, relative.slice(2));
+  const contents = await readFile(filename);
+  return {
+    path: relative,
+    bytes: contents.byteLength,
+    sha256: createHash("sha256").update(contents).digest("hex"),
+  };
+}
+
 export async function stageRelease({
   appRoot = defaultAppRoot,
   packageRoot = path.join(defaultRepository, "packages/flint-wasm"),
@@ -198,21 +211,50 @@ export async function stageRelease({
   };
   await writeFile(path.join(target, "runtime-version.json"), `${JSON.stringify(version, null, 2)}\n`);
 
-  const assets = await collectFiles(target);
-  const releaseHash = createHash("sha256");
-  for (const relative of assets) {
-    releaseHash.update(relative);
-    releaseHash.update(await readFile(path.join(target, relative.slice(2))));
-  }
-  const release = releaseHash.digest("hex");
+  const files = await collectFiles(target);
+  const integrityPaths = [
+    "./",
+    ...files.filter((item) =>
+      item !== "./asset-manifest.json" && item !== "./sw.js"
+    ),
+  ];
+  const assets = await Promise.all(
+    integrityPaths.map((relative) => webAssetRecord(target, relative)),
+  );
+  assets.sort((left, right) => left.path.localeCompare(right.path));
+  const release = createHash("sha256").update(canonicalJson({
+    artifactIdentity: manifest.identity,
+    assets,
+  })).digest("hex");
   const assetManifest = {
-    schema: "org.sagejs.web/assets-v1",
+    schema: "org.sagejs.web/assets-v2",
     release,
     artifactIdentity: manifest.identity,
-    assets: ["./", ...assets.filter((item) => item !== "./asset-manifest.json")],
+    assets,
   };
-  await writeFile(path.join(target, "asset-manifest.json"), `${JSON.stringify(assetManifest, null, 2)}\n`);
-  return { target, release, artifactIdentity: manifest.identity, assets: assetManifest.assets.length };
+  const assetManifestContents = `${JSON.stringify(assetManifest, null, 2)}\n`;
+  const assetManifestSha256 = createHash("sha256")
+    .update(assetManifestContents)
+    .digest("hex");
+  await writeFile(path.join(target, "asset-manifest.json"), assetManifestContents);
+
+  const serviceWorkerFilename = path.join(target, "sw.js");
+  const serviceWorker = await readFile(serviceWorkerFilename, "utf8");
+  const markerCount = serviceWorker.split(SERVICE_WORKER_INTEGRITY_MARKER).length - 1;
+  if (markerCount !== 1) {
+    throw new Error("service worker must contain exactly one asset-integrity marker");
+  }
+  await writeFile(
+    serviceWorkerFilename,
+    serviceWorker.replace(SERVICE_WORKER_INTEGRITY_MARKER, assetManifestSha256),
+  );
+  return {
+    target,
+    release,
+    artifactIdentity: manifest.identity,
+    assetManifestSha256,
+    assets: assetManifest.assets.length,
+  };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

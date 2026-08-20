@@ -16,7 +16,10 @@ test("staging consumes and verifies the production artifact manifest", async () 
   await mkdir(path.join(packageRoot, "dist"), { recursive: true });
   await mkdir(path.join(temporary, "architecture"), { recursive: true });
   await writeFile(path.join(appRoot, "index.html"), "<!doctype html><title>test</title>");
-  await writeFile(path.join(appRoot, "sw.js"), "// test");
+  await writeFile(
+    path.join(appRoot, "sw.js"),
+    'const TRUSTED_MANIFEST_SHA256 = "__SAGEJS_ASSET_MANIFEST_SHA256__";\n',
+  );
   await mkdir(path.join(packageRoot, "dist/runtime"), { recursive: true });
   const bytes = Buffer.from("wasm bytes");
   await writeFile(path.join(packageRoot, "dist/kernel.wasm"), bytes);
@@ -55,8 +58,17 @@ test("staging consumes and verifies the production artifact manifest", async () 
   const version = JSON.parse(await readFile(path.join(appRoot, "dist/runtime-version.json"), "utf8"));
   assert.equal(version.assetBase, `./assets/sha256-${identity}/`);
   const webManifest = JSON.parse(await readFile(path.join(appRoot, "dist/asset-manifest.json"), "utf8"));
-  assert.equal(webManifest.schema, "org.sagejs.web/assets-v1");
-  assert.ok(webManifest.assets.includes("./index.html"));
+  assert.equal(webManifest.schema, "org.sagejs.web/assets-v2");
+  const indexRecord = webManifest.assets.find((entry) => entry.path === "./index.html");
+  assert.equal(indexRecord.bytes, Buffer.byteLength("<!doctype html><title>test</title>"));
+  assert.match(indexRecord.sha256, /^[a-f0-9]{64}$/);
+  const webManifestContents = await readFile(
+    path.join(appRoot, "dist/asset-manifest.json"),
+  );
+  const manifestDigest = createHash("sha256").update(webManifestContents).digest("hex");
+  const stagedWorker = await readFile(path.join(appRoot, "dist/sw.js"), "utf8");
+  assert.match(stagedWorker, new RegExp(manifestDigest));
+  assert.doesNotMatch(stagedWorker, /__SAGEJS_ASSET_MANIFEST_SHA256__/);
 
   await writeFile(path.join(packageRoot, "dist/runtime/kernel.mjs"), "// unauthenticated mutation");
   await assert.rejects(() => stageRelease({ appRoot, packageRoot, capabilityReport, target: path.join(appRoot, "dist") }), /size mismatch|digest mismatch/);
