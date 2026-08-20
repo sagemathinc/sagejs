@@ -1,32 +1,247 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "114e73b4d2d8bf8fa677ce08c54a3678841976bb86ecdc812d250d51aab79ddc",
+  "source_sha256": "d5eec7665b8dce642dc77e364ede8aee6830b6a465923ab3d7ec5e95c795dd9c",
   "counts": {
-    "total": 928,
+    "total": 939,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
       "production-kernel": 31,
       "runtime-intrinsic": 137,
-      "specialist-capability": 8
+      "specialist-capability": 19
     },
     "by_disposition": {
       "compiled-source": 31,
       "desktop-only": 14,
-      "generated-wasm": 238,
-      "portable-fallback": 644,
-      "shared-core": 1
+      "generated-wasm": 239,
+      "portable-fallback": 647,
+      "shared-core": 8
     },
     "by_status": {
-      "available": 209,
+      "available": 210,
       "desktop-only": 14,
-      "fallback": 507,
-      "planned": 198
+      "fallback": 509,
+      "planned": 206
     }
   },
+  "workflow_aliases": {
+    "dirichlet-l-batch": [
+      "analytic:dirichlet-l-batch"
+    ],
+    "elliptic-lseries-complex-plot": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable",
+      "elliptic-lseries-values",
+      "elliptic-lseries-plot"
+    ],
+    "elliptic-lseries-values": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable",
+      "elliptic-lseries-values"
+    ],
+    "elliptic-portable-coefficients": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable"
+    ],
+    "exact-integer-factorization": [
+      "runtime:integer_factorization"
+    ],
+    "exact-matrices-and-finite-field-polynomials": [
+      "ffi:flint:fmpz_matrix_det",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "number-field-maximal-order-prime-zeta": [
+      "kernel:number-field-om-proof-production",
+      "kernel:number-field-round4-state-production",
+      "kernel:number-field-composite-analysis-production",
+      "kernel:number-field-zeta-coefficients-production",
+      "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+    ],
+    "quadratic-dedekind-zeta-batch": [
+      "analytic:riemann-zeta-batch",
+      "analytic:dirichlet-l-batch",
+      "analytic:quadratic-dedekind-zeta"
+    ],
+    "riemann-zeta-batch": [
+      "analytic:riemann-zeta-batch"
+    ],
+    "sagepack-exact-roundtrip": [
+      "specialist:sagepack"
+    ]
+  },
   "capabilities": [
+    {
+      "id": "algebraic:qqbar-resource-core",
+      "family": "algebraic-numbers",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "flint-algebraic",
+      "public_consumers": [
+        "AA",
+        "QQbar",
+        "Polynomial.roots",
+        "NumberField.embeddings"
+      ],
+      "explanation": "Exact algebraic-number resources are planned as a separately attested browser artifact with bounded handles, degrees, transfers, and precision.",
+      "resource_limits": {
+        "maximum_live_values": 4095,
+        "maximum_polynomial_degree": 256,
+        "maximum_packed_bytes": 1048576,
+        "maximum_precision_bits": 1000000
+      }
+    },
+    {
+      "id": "analytic:complex-gamma",
+      "family": "analytic-functions",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-complex-gamma-evaluation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "ComplexField.gamma"
+      ],
+      "explanation": "Batched complex gamma values share the bounded analytic Arb core and become available only with an authenticated browser artifact.",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      }
+    },
+    {
+      "id": "analytic:dirichlet-l-batch",
+      "family": "analytic-functions",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-dirichlet-series-and-functional-equation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "DirichletCharacter.lfunction.values"
+      ],
+      "explanation": "Batched Dirichlet L-values have a shared Arb core and exact decimal transport; the production browser artifact must still attest the module.",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      }
+    },
+    {
+      "id": "analytic:quadratic-dedekind-zeta",
+      "family": "analytic-functions",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-riemann-zeta-times-quadratic-l-series",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "QuadraticNumberField.zeta_function.values"
+      ],
+      "explanation": "Quadratic Dedekind zeta batches use the shared Riemann-zeta and Dirichlet-L core and remain unavailable until the browser artifact attests it.",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      }
+    },
+    {
+      "id": "analytic:riemann-xi",
+      "family": "analytic-functions",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-riemann-xi-completion",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "RiemannXi.values"
+      ],
+      "explanation": "Standard Riemann xi values use the shared bounded analytic core and become available only with an authenticated browser artifact.",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      }
+    },
+    {
+      "id": "analytic:riemann-zeta-batch",
+      "family": "analytic-functions",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-riemann-zeta-functional-equation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "RiemannZeta.values",
+        "complex_plot"
+      ],
+      "explanation": "Batched Riemann zeta values use exact decimal ball transport and a shared Arb core; the production browser artifact must still attest it.",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      }
+    },
+    {
+      "id": "elliptic-coefficients-portable",
+      "family": "elliptic-curves",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "exact-direct-point-count-and-euler-recurrence",
+      "wasm_module": "sage-runtime",
+      "public_consumers": [
+        "EllipticCurve.anlist",
+        "EllipticCurve.lseries"
+      ],
+      "explanation": "Elliptic-curve coefficients use exact point counting and Euler recurrences in browsers when desktop curve accelerators are absent."
+    },
+    {
+      "id": "elliptic-lseries-plot",
+      "family": "elliptic-curves",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-lseries-values-and-tiled-plotting",
+      "wasm_module": "flint-curves",
+      "public_consumers": [
+        "complex_plot(EllipticCurve.lseries())"
+      ],
+      "explanation": "Elliptic L-series plots use bounded 10,000-point tiles and a plot-only binary64 transport once the production curve module is attested.",
+      "resource_limits": {
+        "maximum_points_per_tile": 10000,
+        "transport": "binary64-plot-only",
+        "tiled": true
+      }
+    },
+    {
+      "id": "elliptic-lseries-values",
+      "family": "elliptic-curves",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "ordinary-mellin-and-direct-lseries-evaluation",
+      "wasm_module": "flint-curves",
+      "public_consumers": [
+        "EllipticCurve.lseries.values",
+        "EllipticCurve.lseries.__call__"
+      ],
+      "explanation": "Elliptic L-series batches use decimal-ball transport in a bounded moderate domain once the production curve module is attested.",
+      "resource_limits": {
+        "maximum_points_per_tile": 10000,
+        "maximum_height": 100,
+        "maximum_real_offset_from_center": 8,
+        "rigorous": false
+      }
+    },
+    {
+      "id": "elliptic-root-number-semistable",
+      "family": "elliptic-curves",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "certified-tate-local-data-and-explicit-additive-override",
+      "wasm_module": "sage-runtime",
+      "public_consumers": [
+        "EllipticCurve.root_number",
+        "EllipticCurve.lseries"
+      ],
+      "explanation": "Semistable elliptic curves compute root numbers from certified local data in browsers without requiring a desktop addon."
+    },
     {
       "id": "ffi-resource:flint:byte_region",
       "family": "flint",
@@ -11164,6 +11379,19 @@
         "HyperellipticCurve.hasse_witt_matrix"
       ],
       "explanation": "Rforest is an optional native batch accelerator with an exact strict-Python browser fallback."
+    },
+    {
+      "id": "specialist:sagepack",
+      "family": "serialization",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "canonical-javascript-sagepack-codec",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "sagejs_serialization.dumps",
+        "sagejs_serialization.loads"
+      ],
+      "explanation": "Canonical SagePack serialization is available in browsers and produces the same exact byte representation as the Node runtime."
     },
     {
       "id": "specialist:smalljac",

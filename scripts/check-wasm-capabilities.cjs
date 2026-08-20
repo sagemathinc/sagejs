@@ -15,6 +15,11 @@ const REPORT_PATH = path.join(
   "architecture",
   "wasm-capabilities-report.json",
 );
+const WORKFLOW_CORPUS_PATH = path.join(
+  ROOT,
+  "test",
+  "browser-wasm-parity-corpus.json",
+);
 
 function readJson(filename) {
   return JSON.parse(fs.readFileSync(filename, "utf8"));
@@ -93,6 +98,67 @@ function productionManifestClosure(policy, root = ROOT) {
     }
   }
   return result;
+}
+
+function validatedWorkflowAliases(manifest, capabilityIds, options = {}) {
+  const root = path.resolve(options.root || ROOT);
+  const aliases = manifest.workflow_aliases;
+  if (
+    aliases === null || typeof aliases !== "object" || Array.isArray(aliases)
+  ) {
+    throw new Error("WebAssembly workflow aliases must be an object");
+  }
+  const normalized = {};
+  for (const tag of Object.keys(aliases).sort()) {
+    if (!/^[a-z][a-z0-9-]*$/.test(tag)) {
+      throw new Error(`invalid WebAssembly workflow tag ${JSON.stringify(tag)}`);
+    }
+    const ids = aliases[tag];
+    if (
+      !Array.isArray(ids) || ids.length === 0 ||
+      ids.some((id) => typeof id !== "string" || id.length === 0)
+    ) {
+      throw new Error(`workflow ${tag} must name exact capability IDs`);
+    }
+    if (new Set(ids).size !== ids.length) {
+      throw new Error(`workflow ${tag} contains duplicate capability IDs`);
+    }
+    const unknown = ids.filter((id) => !capabilityIds.has(id));
+    if (unknown.length) {
+      throw new Error(`workflow ${tag} contains unknown capabilities: ${unknown.join(", ")}`);
+    }
+    normalized[tag] = [...ids];
+  }
+
+  const corpus = readJson(path.join(root, path.relative(ROOT, WORKFLOW_CORPUS_PATH)));
+  if (corpus.schema_version !== 1 || !Array.isArray(corpus.cases)) {
+    throw new Error("unsupported browser WebAssembly workflow corpus schema");
+  }
+  const corpusAliases = {};
+  for (const item of corpus.cases) {
+    const tag = item?.workflow;
+    if (typeof tag !== "string" || !/^[a-z][a-z0-9-]*$/.test(tag)) {
+      throw new Error(`browser parity case ${item?.id ?? "<unknown>"} has an invalid workflow tag`);
+    }
+    if (Object.hasOwn(corpusAliases, tag)) {
+      throw new Error(`browser parity workflow tag ${tag} is not unique`);
+    }
+    if (!Array.isArray(item.requires) || item.requires.length === 0) {
+      throw new Error(`browser parity workflow ${tag} has no exact capability requirements`);
+    }
+    corpusAliases[tag] = item.requires;
+  }
+  const aliasTags = Object.keys(normalized);
+  const corpusTags = Object.keys(corpusAliases).sort();
+  if (JSON.stringify(aliasTags) !== JSON.stringify(corpusTags)) {
+    throw new Error("reviewed workflow aliases do not exactly cover the browser parity corpus");
+  }
+  for (const tag of corpusTags) {
+    if (JSON.stringify(normalized[tag]) !== JSON.stringify(corpusAliases[tag])) {
+      throw new Error(`workflow ${tag} requirements disagree with the browser parity corpus`);
+    }
+  }
+  return normalized;
 }
 
 function discoverCapabilities(options = {}) {
@@ -323,6 +389,11 @@ function validateManifest(manifest, options = {}) {
       }
     }
   }
+  const workflowAliases = validatedWorkflowAliases(
+    manifest,
+    new Set(actualById.keys()),
+    { root },
+  );
   for (const modulePath of manifest.policy.browser_entry_modules || []) {
     const relative = repositoryPath(modulePath, "browser entry module");
     const source = fs.readFileSync(path.join(root, relative), "utf8");
@@ -335,6 +406,7 @@ function validateManifest(manifest, options = {}) {
     discovered,
     closure,
     manifestClosure,
+    workflowAliases,
   };
 }
 
@@ -343,9 +415,14 @@ function countBy(items, field) {
     .sort().map((value) => [value, items.filter((item) => item[field] === value).length]));
 }
 
-function publicReport(manifest) {
+function publicReport(manifest, options = {}) {
   const capabilities = [...manifest.capabilities].sort((left, right) =>
     left.id.localeCompare(right.id)
+  );
+  const workflowAliases = validatedWorkflowAliases(
+    manifest,
+    new Set(capabilities.map((item) => item.id)),
+    options,
   );
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
   return {
@@ -358,6 +435,7 @@ function publicReport(manifest) {
       by_disposition: countBy(capabilities, "disposition"),
       by_status: countBy(capabilities, "status"),
     },
+    workflow_aliases: workflowAliases,
     capabilities: capabilities.map((item) => ({
       id: item.id,
       family: item.family,
@@ -405,4 +483,5 @@ module.exports = {
   repositoryPath,
   validateManifest,
   validateReport,
+  validatedWorkflowAliases,
 };

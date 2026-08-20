@@ -117,6 +117,33 @@
           "test/modular-symbols.cjs",
           "packages/flint-wasm/test/browser-smoke.mjs"
         ]
+      },
+      "browser-wasm-workflow-parity": {
+        "differential": true,
+        "paths": [
+          "test/browser-wasm-parity-corpus.json",
+          "packages/flint-wasm/test/browser-wasm-node-parity.cjs",
+          "packages/flint-wasm/test/browser-wasm-parity.mjs"
+        ]
+      },
+      "sagepack-browser-parity": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/browser-wasm-serialization.mjs"
+        ]
+      },
+      "analytic-browser-parity": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/analytic-backend.test.mjs",
+          "packages/flint-wasm/test/analytic-browser-parity.mjs"
+        ]
+      },
+      "elliptic-browser-parity": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/curve-parity.test.mjs"
+        ]
       }
     },
     "browser_entry_modules": [
@@ -127,6 +154,61 @@
       "packages/flint-wasm/evaluator.mjs"
     ],
     "specialist_capabilities": [
+      {
+        "id": "algebraic:qqbar-resource-core",
+        "family": "algebraic-numbers",
+        "source": "packages/flint-wasm/scripts/build.cjs"
+      },
+      {
+        "id": "analytic:complex-gamma",
+        "family": "analytic-functions",
+        "source": "packages/flint-wasm/src/analytic.c"
+      },
+      {
+        "id": "analytic:dirichlet-l-batch",
+        "family": "analytic-functions",
+        "source": "packages/flint-wasm/src/analytic.c"
+      },
+      {
+        "id": "analytic:quadratic-dedekind-zeta",
+        "family": "analytic-functions",
+        "source": "packages/flint-wasm/src/analytic.c"
+      },
+      {
+        "id": "analytic:riemann-xi",
+        "family": "analytic-functions",
+        "source": "packages/flint-wasm/src/analytic.c"
+      },
+      {
+        "id": "analytic:riemann-zeta-batch",
+        "family": "analytic-functions",
+        "source": "packages/flint-wasm/src/analytic.c"
+      },
+      {
+        "id": "elliptic-coefficients-portable",
+        "family": "elliptic-curves",
+        "source": "src/lib/sagejs/elliptic_curves/lseries.py"
+      },
+      {
+        "id": "elliptic-lseries-plot",
+        "family": "elliptic-curves",
+        "source": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c"
+      },
+      {
+        "id": "elliptic-lseries-values",
+        "family": "elliptic-curves",
+        "source": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c"
+      },
+      {
+        "id": "elliptic-root-number-semistable",
+        "family": "elliptic-curves",
+        "source": "src/baselib/elliptic_curves.py"
+      },
+      {
+        "id": "specialist:sagepack",
+        "family": "serialization",
+        "source": "packages/flint-wasm/evaluator.mjs"
+      },
       {
         "id": "specialist:flint-arb-gmp-stack",
         "family": "exact-and-analytic",
@@ -170,7 +252,306 @@
     ],
     "production_manifests": []
   },
+  "workflow_aliases": {
+    "dirichlet-l-batch": [
+      "analytic:dirichlet-l-batch"
+    ],
+    "elliptic-lseries-complex-plot": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable",
+      "elliptic-lseries-values",
+      "elliptic-lseries-plot"
+    ],
+    "elliptic-lseries-values": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable",
+      "elliptic-lseries-values"
+    ],
+    "elliptic-portable-coefficients": [
+      "elliptic-coefficients-portable",
+      "elliptic-root-number-semistable"
+    ],
+    "exact-integer-factorization": [
+      "runtime:integer_factorization"
+    ],
+    "exact-matrices-and-finite-field-polynomials": [
+      "ffi:flint:fmpz_matrix_det",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "number-field-maximal-order-prime-zeta": [
+      "kernel:number-field-om-proof-production",
+      "kernel:number-field-round4-state-production",
+      "kernel:number-field-composite-analysis-production",
+      "kernel:number-field-zeta-coefficients-production",
+      "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+    ],
+    "quadratic-dedekind-zeta-batch": [
+      "analytic:riemann-zeta-batch",
+      "analytic:dirichlet-l-batch",
+      "analytic:quadratic-dedekind-zeta"
+    ],
+    "riemann-zeta-batch": [
+      "analytic:riemann-zeta-batch"
+    ],
+    "sagepack-exact-roundtrip": [
+      "specialist:sagepack"
+    ]
+  },
   "capabilities": [
+    {
+      "id": "algebraic:qqbar-resource-core",
+      "kind": "specialist-capability",
+      "family": "algebraic-numbers",
+      "source": "packages/flint-wasm/scripts/build.cjs",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "flint-algebraic",
+      "public_consumers": [
+        "AA",
+        "QQbar",
+        "Polynomial.roots",
+        "NumberField.embeddings"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The aggregate resource capability is reserved for the bounded generation-tagged QQbar artifact and cannot become available without its receipt.",
+      "resource_limits": {
+        "maximum_live_values": 4095,
+        "maximum_polynomial_degree": 256,
+        "maximum_packed_bytes": 1048576,
+        "maximum_precision_bits": 1000000
+      },
+      "public_explanation": "Exact algebraic-number resources are planned as a separately attested browser artifact with bounded handles, degrees, transfers, and precision."
+    },
+    {
+      "id": "analytic:complex-gamma",
+      "kind": "specialist-capability",
+      "family": "analytic-functions",
+      "source": "packages/flint-wasm/src/analytic.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-complex-gamma-evaluation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "ComplexField.gamma"
+      ],
+      "tests": [
+        "analytic-browser-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "Complex gamma is implemented by the same bounded Arb batch protocol and remains unavailable until its production receipt is authenticated.",
+      "shared_core": "packages/flint/src/analytic_batch_core.c",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      },
+      "public_explanation": "Batched complex gamma values share the bounded analytic Arb core and become available only with an authenticated browser artifact."
+    },
+    {
+      "id": "analytic:dirichlet-l-batch",
+      "kind": "specialist-capability",
+      "family": "analytic-functions",
+      "source": "packages/flint-wasm/src/analytic.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-dirichlet-series-and-functional-equation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "DirichletCharacter.lfunction.values"
+      ],
+      "tests": [
+        "analytic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The host-neutral Arb batch core and packed Wasm adapter are reviewed, but production availability awaits a signed build receipt.",
+      "shared_core": "packages/flint/src/analytic_batch_core.c",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      },
+      "public_explanation": "Batched Dirichlet L-values have a shared Arb core and exact decimal transport; the production browser artifact must still attest the module."
+    },
+    {
+      "id": "analytic:quadratic-dedekind-zeta",
+      "kind": "specialist-capability",
+      "family": "analytic-functions",
+      "source": "packages/flint-wasm/src/analytic.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-riemann-zeta-times-quadratic-l-series",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "QuadraticNumberField.zeta_function.values"
+      ],
+      "tests": [
+        "analytic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The quadratic completion is shared with native Arb and has browser differential vectors; release availability remains receipt-gated.",
+      "shared_core": "packages/flint/src/analytic_batch_core.c",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      },
+      "public_explanation": "Quadratic Dedekind zeta batches use the shared Riemann-zeta and Dirichlet-L core and remain unavailable until the browser artifact attests it."
+    },
+    {
+      "id": "analytic:riemann-xi",
+      "kind": "specialist-capability",
+      "family": "analytic-functions",
+      "source": "packages/flint-wasm/src/analytic.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-riemann-xi-completion",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "RiemannXi.values"
+      ],
+      "tests": [
+        "analytic-browser-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The standard completed xi operation uses the reviewed analytic batch core and is deliberately gated by a production receipt.",
+      "shared_core": "packages/flint/src/analytic_batch_core.c",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      },
+      "public_explanation": "Standard Riemann xi values use the shared bounded analytic core and become available only with an authenticated browser artifact."
+    },
+    {
+      "id": "analytic:riemann-zeta-batch",
+      "kind": "specialist-capability",
+      "family": "analytic-functions",
+      "source": "packages/flint-wasm/src/analytic.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-riemann-zeta-functional-equation",
+      "wasm_module": "flint-analytic",
+      "public_consumers": [
+        "RiemannZeta.values",
+        "complex_plot"
+      ],
+      "tests": [
+        "analytic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The native and Wasm adapters exercise the same bounded Arb core, while production exposure remains authenticated-receipt gated.",
+      "shared_core": "packages/flint/src/analytic_batch_core.c",
+      "resource_limits": {
+        "maximum_points_per_batch": 65536,
+        "maximum_input_bytes": 8388608,
+        "maximum_output_bytes": 67108864
+      },
+      "public_explanation": "Batched Riemann zeta values use exact decimal ball transport and a shared Arb core; the production browser artifact must still attest it."
+    },
+    {
+      "id": "elliptic-coefficients-portable",
+      "kind": "specialist-capability",
+      "family": "elliptic-curves",
+      "source": "src/lib/sagejs/elliptic_curves/lseries.py",
+      "disposition": "portable-fallback",
+      "fallback": "exact-direct-point-count-and-euler-recurrence",
+      "wasm_module": "sage-runtime",
+      "public_consumers": [
+        "EllipticCurve.anlist",
+        "EllipticCurve.lseries"
+      ],
+      "tests": [
+        "elliptic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The ordinary exact coefficient path is deliberately retained when native curve accelerators are unavailable in a browser.",
+      "public_explanation": "Elliptic-curve coefficients use exact point counting and Euler recurrences in browsers when desktop curve accelerators are absent."
+    },
+    {
+      "id": "elliptic-lseries-plot",
+      "kind": "specialist-capability",
+      "family": "elliptic-curves",
+      "source": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-lseries-values-and-tiled-plotting",
+      "wasm_module": "flint-curves",
+      "public_consumers": [
+        "complex_plot(EllipticCurve.lseries())"
+      ],
+      "tests": [
+        "elliptic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The bounded binary64 plotting transport and tiling policy are implemented, but the production reactor has not yet attested this shared core.",
+      "shared_core": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "resource_limits": {
+        "maximum_points_per_tile": 10000,
+        "transport": "binary64-plot-only",
+        "tiled": true
+      },
+      "public_explanation": "Elliptic L-series plots use bounded 10,000-point tiles and a plot-only binary64 transport once the production curve module is attested."
+    },
+    {
+      "id": "elliptic-lseries-values",
+      "kind": "specialist-capability",
+      "family": "elliptic-curves",
+      "source": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "disposition": "shared-core",
+      "fallback": "ordinary-mellin-and-direct-lseries-evaluation",
+      "wasm_module": "flint-curves",
+      "public_consumers": [
+        "EllipticCurve.lseries.values",
+        "EllipticCurve.lseries.__call__"
+      ],
+      "tests": [
+        "elliptic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The flat Wasm32 curve adapter and native oracle agree, while browser release availability remains authenticated-receipt gated.",
+      "shared_core": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "resource_limits": {
+        "maximum_points_per_tile": 10000,
+        "maximum_height": 100,
+        "maximum_real_offset_from_center": 8,
+        "rigorous": false
+      },
+      "public_explanation": "Elliptic L-series batches use decimal-ball transport in a bounded moderate domain once the production curve module is attested."
+    },
+    {
+      "id": "elliptic-root-number-semistable",
+      "kind": "specialist-capability",
+      "family": "elliptic-curves",
+      "source": "src/baselib/elliptic_curves.py",
+      "disposition": "portable-fallback",
+      "fallback": "certified-tate-local-data-and-explicit-additive-override",
+      "wasm_module": "sage-runtime",
+      "public_consumers": [
+        "EllipticCurve.root_number",
+        "EllipticCurve.lseries"
+      ],
+      "tests": [
+        "elliptic-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Semistable root numbers retain the ordinary certified local-data implementation instead of requiring a Node-only adapter.",
+      "public_explanation": "Semistable elliptic curves compute root numbers from certified local data in browsers without requiring a desktop addon."
+    },
     {
       "id": "ffi-resource:flint:byte_region",
       "kind": "declared-ffi-resource",
@@ -19128,6 +19509,30 @@
       "kind": "specialist-capability",
       "reviewed": true,
       "public_explanation": "Smalljac uses a portable native bridge today, while browser execution selects the exact strict-Python route."
+    },
+    {
+      "id": "specialist:sagepack",
+      "family": "serialization",
+      "source": "packages/flint-wasm/evaluator.mjs",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "canonical-javascript-sagepack-codec",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "sagejs_serialization.dumps",
+        "sagejs_serialization.loads"
+      ],
+      "tests": [
+        "sagepack-browser-parity",
+        "browser-wasm-workflow-parity"
+      ],
+      "review_note": "The canonical SagePack codec is host-neutral JavaScript and is differentially checked between Node and browser runtimes.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/test/browser-wasm-serialization.mjs"
+      },
+      "public_explanation": "Canonical SagePack serialization is available in browsers and produces the same exact byte representation as the Node runtime."
     },
     {
       "id": "specialist:tree-sitter",
