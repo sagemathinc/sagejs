@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-graph-lane-policy",
+  "title": "Declare the graph fast-math lane",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add the narrow graph source and production-kernel registry claims needed for a public WebAssembly graph acceleration lane",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    ".agents/lanes.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      ".agents/lanes.json"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -72,7 +72,14 @@
     {
       "id": "combinatorics-groups",
       "description": "Groups, combinatorics, iterators, and discrete structures",
-      "allowed_claims": ["src/baselib/groups.py", "src/baselib/containers.py", "src/baselib/itertools.py"],
+      "allowed_claims": [
+        "architecture/native-kernels.json",
+        "src/baselib/groups.py",
+        "src/baselib/containers.py",
+        "src/baselib/graphs.py",
+        "src/baselib/itertools.py",
+        "src/lib/sagejs/kernels/graph/"
+      ],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:compiler"]
     },
     {
