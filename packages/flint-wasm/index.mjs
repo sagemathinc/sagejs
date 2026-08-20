@@ -10,6 +10,7 @@ import { createAnalyticWasmBackend } from "./analytic-backend.mjs";
 import { createNumberFieldZetaBackend } from "./number-field-zeta.mjs";
 import { createCurveBackend } from "./curve-backend.mjs";
 import { createAlgebraicBackend } from "./algebraic.mjs";
+import { createDirichletGroupBackend } from "./dirichlet-group.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -58,41 +59,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
   const matrixBackend = createPortableMatrixBackend();
   const numericBackend = createNumericBackend();
   const publicGeneratedResourceBackend = generatedResourceBackend;
-  const dirichletGroupBackend = {
-    dirichletGroup(modulus) {
-      modulus = BigInt(modulus);
-      if (modulus <= 0n || modulus > 0xffffffffn) {
-        throw new RangeError("Dirichlet modulus exceeds the browser FLINT word limit");
-      }
-      return Object.freeze({ __sagejsWasmDirichletGroup: true, modulus });
-    },
-    dirichletGroupData(group) {
-      if (group?.__sagejsWasmDirichletGroup !== true) {
-        throw new TypeError("expected a browser Dirichlet group");
-      }
-      if (instance.exports.sagejs_wasm_dirichlet_group_begin(group.modulus) !== 1) {
-        throw new RangeError("FLINT could not initialize this Dirichlet modulus");
-      }
-      try {
-        const count = Number(
-          instance.exports.sagejs_wasm_dirichlet_group_component_count(),
-        ) >>> 0;
-        return Object.freeze({
-          modulus: group.modulus,
-          size: instance.exports.sagejs_wasm_dirichlet_group_size(),
-          exponent: instance.exports.sagejs_wasm_dirichlet_group_exponent(),
-          numberPrimitive:
-            instance.exports.sagejs_wasm_dirichlet_group_number_primitive(),
-          orders: Object.freeze(Array.from({ length: count }, (_, index) =>
-            instance.exports.sagejs_wasm_dirichlet_group_component_order(index))),
-          generators: Object.freeze(Array.from({ length: count }, (_, index) =>
-            instance.exports.sagejs_wasm_dirichlet_group_generator(index))),
-        });
-      } finally {
-        instance.exports.sagejs_wasm_dirichlet_group_clear();
-      }
-    },
-  };
+  const dirichletGroupBackend = createDirichletGroupBackend(instance);
   const analyticBackend = createAnalyticWasmBackend(instance, {
     serializePoint: numericBackend.serializeAnalyticPoint,
     materialize(record, precision) {
@@ -103,7 +70,9 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
       );
     },
     resolveDirichletModulus(value) {
-      return value?.__sagejsWasmDirichletGroup === true ? value.modulus : value;
+      return dirichletGroupBackend.isDirichletGroup(value)
+        ? dirichletGroupBackend.dirichletGroupModulus(value)
+        : value;
     },
   });
   const numberFieldZetaBackend = createNumberFieldZetaBackend(instance);
