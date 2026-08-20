@@ -1779,6 +1779,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -11921,6 +11922,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
       ],
@@ -11975,6 +11977,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
       ],
@@ -12013,6 +12016,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
       ],

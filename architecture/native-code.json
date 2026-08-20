@@ -95,6 +95,13 @@
       "rationale": "Narrow Wasm ABI over FLINT factorization and primality operations."
     },
     {
+      "path": "packages/flint-wasm/src/analytic.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Bounded Wasm32 buffer and status adapter over the shared Arb and Acb analytic batch core; all mathematical policy remains in the host-neutral core."
+    },
+    {
       "path": "packages/flint-wasm/src/modsym.c",
       "category": "host-adapter",
       "review_status": "accepted",
@@ -452,6 +459,20 @@
       "rationale": "Declarations for native matrix operations."
     },
     {
+      "path": "packages/flint/src/analytic_batch_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral bounded packed bridge to mature Arb and Acb analytic batch operations shared by native and WebAssembly adapters."
+    },
+    {
+      "path": "packages/flint/src/analytic_batch_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width packed ABI and resource limits for the shared Arb and Acb analytic batch core."
+    },
+    {
       "path": "packages/flint/src/modsym_core.c",
       "category": "mathematical-algorithm",
       "review_status": "audited",
@@ -604,6 +625,13 @@
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
       "rationale": "Standalone cross-platform regression harness for exact genus-2/3 modular streams at the rforest boundary."
+    },
+    {
+      "path": "packages/flint-wasm/test/analytic-core-native.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone native differential and allocation-lifecycle witness for the host-neutral analytic batch core; it is not linked into Sage.js."
     },
     {
       "path": "packages/graph/src/addon.c",

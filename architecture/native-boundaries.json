@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 99,
+    "classified-native-file": 103,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
@@ -8157,6 +8157,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/flint-wasm/src/analytic.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/analytic.c",
+      "disposition": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/flint-wasm/src/factor.c",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/factor.c",
@@ -8177,6 +8185,14 @@
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/wasi-stubs.c",
       "disposition": "portability-shim",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/test/analytic-core-native.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/test/analytic-core-native.c",
+      "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
     },
@@ -8376,6 +8392,22 @@
       "id": "native-file:packages/flint/src/algebraic.h",
       "kind": "classified-native-file",
       "path": "packages/flint/src/algebraic.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/analytic_batch_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/analytic_batch_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/analytic_batch_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/analytic_batch_core.h",
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"

@@ -370,6 +370,44 @@
       "fallback": "Dynamic graph methods provide tested behavior when the native graph capability is absent.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "igraph"],
       "next": "Keep registration separate from ownership adaptation and migrate further igraph calls only through checked declarations."
+    },
+    {
+      "path": "packages/flint-wasm/src/analytic.c",
+      "lines": 159,
+      "bytes": 4460,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded Wasm32 input and output buffer ownership",
+        "fixed-status dispatch into the host-neutral analytic batch core",
+        "allocation release and capacity reporting"
+      ],
+      "rationale": "This is a compact WebAssembly representation adapter with no mathematical policy. It keeps all allocation inside the owning reactor, rejects excessive requests before growth, and shares the actual Arb and Acb operations with the native host.",
+      "fallback": "Existing ordinary Python analytic evaluators and native FLINT adapters retain the same public normalizations when the WebAssembly accelerator is absent.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Keep this adapter flat and generated-status-compatible as additional analytic requests are added to the shared core."
+    },
+    {
+      "path": "packages/flint/src/analytic_batch_core.c",
+      "lines": 547,
+      "bytes": 18318,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "packed decimal parsing and result serialization",
+        "batched Arb and Acb special-function invocation",
+        "accuracy and enclosure diagnostic transport"
+      ],
+      "rationale": "The mathematical implementations are mature FLINT Arb and Acb operations. This host-neutral core amortizes crossings, preserves arbitrary-precision decimal transport, and is shared byte-for-byte by native and WebAssembly witnesses rather than duplicating analytic formulas.",
+      "fallback": "Strict ordinary Python reference evaluators remain available and are compared against native and WebAssembly vectors at the requested precision.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath",
+        "PARI/GP"
+      ],
+      "next": "Preserve one packed ingress and egress per batch and retain explicit precision and allocation caps as the public analytic closure grows."
     }
   ]
 }
