@@ -7,7 +7,6 @@
 
 #include "number_field_zeta.h"
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -90,8 +89,8 @@ napi_value sagejs_nf_factor_degrees_batch_value(
     napi_env env,
     napi_callback_info info)
 {
-    napi_value args[3];
-    size_t argc = 3;
+    napi_value args[2];
+    size_t argc = 2;
     bool coefficients_are_array;
     uint32_t coefficient_count;
     napi_typedarray_type prime_type;
@@ -106,12 +105,11 @@ napi_value sagejs_nf_factor_degrees_batch_value(
     uint64_t *factor_counts, *exponents, *degrees;
     size_t cells;
     int failure;
-    bool materialize_records;
 
     if (!check_napi(env,
             napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
-    if (argc != 3)
+    if (argc != 2)
     {
         napi_throw_type_error(env, NULL, "wrong number of arguments");
         return NULL;
@@ -152,10 +150,6 @@ napi_value sagejs_nf_factor_degrees_batch_value(
             "a factor-degree batch is limited to 65536 primes");
         return NULL;
     }
-    if (!check_napi(env,
-            napi_get_value_bool(env, args[2], &materialize_records)))
-        return NULL;
-
     coefficients = _fmpz_vec_init((slong) coefficient_count);
     for (uint32_t index = 0; index < coefficient_count; index++)
     {
@@ -188,7 +182,13 @@ napi_value sagejs_nf_factor_degrees_batch_value(
         (const uint64_t *) prime_data,
         (slong) prime_count);
     _fmpz_vec_clear(coefficients, (slong) coefficient_count);
-    if (failure != 0)
+    if (failure < 0)
+    {
+        napi_throw_error(env, NULL,
+            "number-field factor-degree batch rejected its packed buffers");
+        return NULL;
+    }
+    if (failure > 0)
     {
         napi_throw_range_error(env, NULL,
             "unable to factor the polynomial at a supplied prime");
@@ -211,54 +211,6 @@ napi_value sagejs_nf_factor_degrees_batch_value(
         !check_napi(env,
             napi_set_named_property(env, result, "primeCount", count_value)))
         return NULL;
-    if (materialize_records)
-    {
-        napi_value records;
-        if (!check_napi(env,
-                napi_create_array_with_length(env, prime_count, &records)))
-            return NULL;
-        for (size_t row = 0; row < prime_count; row++)
-        {
-            napi_value record, version, prime, factors;
-            size_t count = (size_t) factor_counts[row];
-            if (!check_napi(env, napi_create_object(env, &record)) ||
-                !check_napi(env, napi_create_uint32(env, 1, &version)) ||
-                !check_napi(env, napi_create_bigint_uint64(
-                    env, ((const uint64_t *) prime_data)[row], &prime)) ||
-                !check_napi(env,
-                    napi_create_array_with_length(env, count, &factors)) ||
-                !check_napi(env,
-                    napi_set_named_property(env, record, "version", version)) ||
-                !check_napi(env,
-                    napi_set_named_property(env, record, "prime", prime)) ||
-                !check_napi(env,
-                    napi_set_named_property(env, record, "factors", factors)))
-                return NULL;
-            for (size_t index = 0; index < count; index++)
-            {
-                size_t offset = row * (size_t) (coefficient_count - 1) + index;
-                napi_value factor, exponent, residue_degree;
-                if (!check_napi(env, napi_create_object(env, &factor)) ||
-                    !check_napi(env, napi_create_uint32(
-                        env, (uint32_t) exponents[offset], &exponent)) ||
-                    !check_napi(env, napi_create_uint32(
-                        env, (uint32_t) degrees[offset], &residue_degree)) ||
-                    !check_napi(env,
-                        napi_set_named_property(env, factor, "e", exponent)) ||
-                    !check_napi(env,
-                        napi_set_named_property(env, factor, "f", residue_degree)) ||
-                    !check_napi(env,
-                        napi_set_element(env, factors, (uint32_t) index, factor)))
-                    return NULL;
-            }
-            if (!check_napi(env,
-                    napi_set_element(env, records, (uint32_t) row, record)))
-                return NULL;
-        }
-        if (!check_napi(env,
-                napi_set_named_property(env, result, "records", records)))
-            return NULL;
-    }
     return result;
 
 failure:
