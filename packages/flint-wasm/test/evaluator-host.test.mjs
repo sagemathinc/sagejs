@@ -120,7 +120,8 @@ test("a throwing post-worker initialization terminates and restores globals", as
 
 test("evaluator host shares process.env and separates stdout from stderr", async () => {
   const WorkerConstructor = fakeWorkerClass(
-    "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;",
+    "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;" +
+      "globalThis.ρσ_baselib_facade=null;",
   );
   const originalModules = globalThis.ρσ_modules;
   const evaluator = await instantiateSageEvaluator({
