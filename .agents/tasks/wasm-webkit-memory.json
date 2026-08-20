@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-webkit-memory",
+  "title": "Wasm Webkit Memory",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a real Playwright WebKit memory-pressure, interruption, reset, and recovery gate for the production Sage WebAssembly kernel under the 384 MiB Tree-sitter contract",
+  "base_commit": "b4fa8d1f5eface1475dff43c5acafa3ed31473db",
+  "claims": [
+    "packages/flint-wasm/test/",
+    "packages/flint-wasm/package.json",
+    ".github/workflows/",
+    "DISTRIBUTION.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "node --test test/browser-wasm-release-gates.cjs",
+    "node packages/flint-wasm/test/browser-wasm-webkit-file-origin.mjs",
+    "node packages/flint-wasm/test/browser-wasm-webkit-memory.mjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

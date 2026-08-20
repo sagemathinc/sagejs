@@ -181,6 +181,13 @@ jobs:
           node packages/flint-wasm/test/browser-wasm-security.mjs
           node packages/flint-wasm/test/browser-wasm-offline-cache.mjs
           node website/live/test/browser-cache-integrity.mjs
+      - name: Exercise WebKit memory pressure and kernel recovery
+        if: matrix.engine == 'webkit'
+        run: |
+          node packages/flint-wasm/test/browser-wasm-webkit-file-origin.mjs \
+            --receipt build/wasm-file-origin-webkit.json
+          node packages/flint-wasm/test/browser-wasm-webkit-memory.mjs \
+            --receipt build/wasm-memory-webkit.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

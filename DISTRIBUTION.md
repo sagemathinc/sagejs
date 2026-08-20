@@ -142,6 +142,36 @@ freeze the page, and the first reliable interruption mechanism simply
 terminates and recreates the outer worker. WebAssembly mathematical objects
 remain opaque handles owned by that worker.
 
+The release gate also runs the production kernel in Playwright's Linux WebKit
+port under deliberate pressure. It directly observes the memory object passed
+to Tree-sitter and requires its 384 MiB maximum, compiles and evaluates a
+bounded 1 MiB source, exercises number-field zeta coefficients and analytic
+values, interrupts and resets active allocation-heavy computations, and then
+proves that a fresh kernel can compute again. WebKit does not expose a standard
+per-worker JavaScript heap measurement API, so the receipt says which memory
+facts were observed directly and which limits were authenticated statically.
+The gate refuses to infer a heap figure from an unavailable API.
+
+Playwright WebKit on Linux is an important JavaScriptCore/WebKit compatibility
+signal, but it is **not** physical iOS or iPadOS validation. It does not model
+WKWebView process eviction, device RAM classes, thermal pressure,
+background/foreground transitions, or Apple's exact shipping WebKit build.
+The physical iPhone/iPad feasibility and release corpus therefore remain
+separate mandatory gates.
+
+The mobile shell currently uses bundled `file:` URLs. Those URLs cannot carry
+COOP/COEP response headers, are not cross-origin isolated, and must not be
+treated as if `SharedArrayBuffer` were available. A real WebKit file-origin
+release check exercises both the outer module worker and its nested module
+worker and records the actual isolation and `SharedArrayBuffer` state. The
+mobile runtime therefore requires the authoritative compiler's non-isolated,
+in-realm fallback whenever synchronous shared-memory RPC is unavailable. If a
+future feature truly requires cross-origin isolation, the mobile host must
+first move the bundled runtime to a narrowly scoped application-owned HTTPS or
+loopback HTTP asset origin with the same COOP/COEP/CORP policy, immutable asset
+verification, and no remote fallback; a `file:` URL plus HTML meta tags cannot
+provide that contract.
+
 There is strong evidence that the native library stack is portable:
 
 - the earlier CoWasm SageMath work builds GMP, MPFR, and FLINT for WASI and
