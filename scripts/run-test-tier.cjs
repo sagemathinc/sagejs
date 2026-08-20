@@ -11,8 +11,8 @@ const manifest = require("../test/node-test-manifest.cjs");
 const historicalSeconds = {
   portable: 25,
   unit: 30,
-  smoke: 45,
-  platform: 60,
+  smoke: 5,
+  platform: 10,
   integration: 900,
   all: 930,
 };

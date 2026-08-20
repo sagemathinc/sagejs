@@ -21,7 +21,7 @@ const foundation = [
 const routine = [
   ...foundation,
   ["Portable unit tests", "test:portable", 30],
-  ["Public API smoke tests", "test:smoke", 45],
+  ["Public API smoke tests", "test:smoke", 5],
 ];
 
 const plans = {

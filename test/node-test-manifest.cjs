@@ -300,19 +300,22 @@ const integration = [
 // Tests which exercise the compiler/runtime without requiring the optional
 // native mathematics addon.  This tier is useful during platform bring-up;
 // unit remains the complete fast developer tier once the addon is available.
-const portable = unit.filter(
-  (filename) =>
-    filename !== "test/foreign-languages.cjs" &&
-    filename !== "test/magma.cjs",
-);
+const nonPortableUnit = new Set([
+  // These exercise installed language runtimes rather than the portable host.
+  "test/foreign-languages.cjs",
+  "test/magma.cjs",
+  // These intentionally exercise FLINT-backed resources or compiled kernels.
+  "test/compiled-module-isolation.cjs",
+  "test/dynamic-ffi-call-cache.cjs",
+  "test/exact-integer-range-v1.cjs",
+  "test/gf2-polynomial-packed-core.cjs",
+]);
+const portable = unit.filter((filename) => !nonPortableUnit.has(filename));
 
 // A bounded public-surface sample for routine developer and CI validation.
 // These tests intentionally avoid the expensive native corpus and long-running
 // number-field evidence suites.
 const smoke = [
-  "test/cli-smoke.cjs",
-  "test/serialization.cjs",
-  "test/kernel.cjs",
   "test/datetime-module.cjs",
   "test/calendar-module.cjs",
   "test/time-module.cjs",
@@ -326,11 +329,11 @@ const platform = [
   "test/python-executable.cjs",
   "test/repl-initial-completion.cjs",
   "test/runtime-intrinsics.cjs",
-  "test/exact-integer-range-v1.cjs",
-  "test/compiled-module-isolation.cjs",
-  "test/cli-smoke.cjs",
-  "test/serialization.cjs",
-  "test/python-float-identity.cjs",
+  "test/timing-core.cjs",
+  "test/typed-math-lowering.cjs",
+  "test/baselib-boundaries.cjs",
+  "test/python-syntax-frontend.cjs",
+  "test/python-container-truthiness.cjs",
 ];
 
 module.exports = {
