@@ -75,6 +75,7 @@
       "allowed_claims": [
         "architecture/native-kernels.json",
         "architecture/package-graph.json",
+        "architecture/wasm-capabilities.json",
         "pyrightconfig.json",
         "src/baselib/groups.py",
         "src/baselib/containers.py",
