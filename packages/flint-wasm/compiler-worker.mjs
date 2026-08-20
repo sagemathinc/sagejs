@@ -180,10 +180,12 @@ self.onmessage = async ({ data }) => {
         import_dirs: ["__stdlib__"],
         precompiled_module_cache_dir: "__module_cache__",
       });
-      result = {
-        javascript: outputJavaScript(nextCompiler, initialization, baselibSource, true),
-        lazyModules: standardLibrary.lazyModules ?? {},
-      };
+      result = outputJavaScript(
+        nextCompiler,
+        initialization,
+        baselibSource,
+        true,
+      );
       compiler = nextCompiler;
       baselib = baselibSource;
       frontend = nextFrontend;

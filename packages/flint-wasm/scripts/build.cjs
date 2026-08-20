@@ -101,6 +101,7 @@ const compilerFrontendMetafile = path.join(
 );
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
+const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const symbolicBackendOutput = path.join(
   outputDirectory,
@@ -131,10 +132,16 @@ const standardLibraryCacheDirectory = path.join(
   "dist",
   "module-cache",
 );
-const lazyModuleCacheDirectory = path.join(
+const lazyModulesSource = path.join(repositoryRoot, "dist", "lazy-modules.json");
+const lazyModuleGenerator = path.join(
   repositoryRoot,
-  "dist",
-  "lazy-module-cache",
+  "scripts",
+  "build-lazy-module-cache.cjs",
+);
+const lazyModuleConfig = path.join(
+  repositoryRoot,
+  "scripts",
+  "precompiled-python-packages.json",
 );
 const browserAdditionalModules = [
   "collections.abc",
@@ -216,8 +223,9 @@ requirePath(
   compilerSource,
 );
 run(process.execPath, [
-  path.join(repositoryRoot, "scripts", "build-lazy-module-cache.cjs"),
+  lazyModuleGenerator,
 ]);
+requirePath("receipt-authenticated lazy module bundle", lazyModulesSource);
 requirePath(
   "built Sage.js baselib (run `pnpm build` first)",
   baselibSource,
@@ -688,7 +696,6 @@ for (const name of browserAdditionalModules) {
 }
 
 const standardLibraryModules = {};
-const lazyModules = {};
 const standardLibraryReceiptInputs = [];
 for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   const relative = path.relative(standardLibrarySourceDirectory, filename);
@@ -713,33 +720,14 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
     ),
   };
 }
-requirePath(
-  "precompiled lazy Python modules (run `pnpm python:precompile:run` first)",
-  lazyModuleCacheDirectory,
-);
-for (const entry of fs.readdirSync(lazyModuleCacheDirectory, {
-  withFileTypes: true,
-})) {
-  if (!entry.isFile() || !entry.name.endsWith(".json") ||
-      entry.name === "task-runtime-modules.json") continue;
-  const filename = path.join(lazyModuleCacheDirectory, entry.name);
-  const record = JSON.parse(fs.readFileSync(filename, "utf8"));
-  if (typeof record.module !== "string" ||
-      typeof record.javascriptTemplate !== "string") continue;
-  if (Object.hasOwn(lazyModules, record.module)) {
-    throw new Error(`duplicate precompiled lazy module ${record.module}`);
-  }
-  lazyModules[record.module] = record;
-  standardLibraryReceiptInputs.push(filename);
-}
 fs.writeFileSync(
   standardLibraryOutput,
   JSON.stringify({
     modules: standardLibraryModules,
-    lazyModules,
     preload: browserAdditionalModules,
   }),
 );
+fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),
   plotlyOutput,
@@ -772,6 +760,11 @@ console.log(
 console.log(
   `Copied browser evaluator assets to ` +
     `${path.relative(repositoryRoot, outputDirectory)}`,
+);
+console.log(
+  `Separated lazy modules: stdlib ` +
+    `${(fs.statSync(standardLibraryOutput).size / 1024 / 1024).toFixed(2)} MiB, ` +
+    `lazy ${(fs.statSync(lazyModulesOutput).size / 1024 / 1024).toFixed(2)} MiB`,
 );
 const receipt = writeProductionReceipt({
   repositoryRoot,
@@ -808,6 +801,8 @@ const receipt = writeProductionReceipt({
       .map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
     ...standardLibraryReceiptInputs,
+    lazyModuleGenerator,
+    lazyModuleConfig,
     plotlySource,
     wasmPackLoaderSource,
     flintDeclaration.filename,

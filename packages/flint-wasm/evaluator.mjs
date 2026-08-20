@@ -3,6 +3,10 @@ import { instantiateM4ri } from "./m4ri.mjs";
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
 import { instantiateWasmKernelPacks } from "./dist/wasm-pack-loader.mjs";
 import {
+  fetchLazyModuleBundle,
+  installLazyModuleLoader,
+} from "./lazy-modules.mjs";
+import {
   dumps as serializationDumps,
   loads as serializationLoads,
   pack as serializationPack,
@@ -207,6 +211,7 @@ export async function instantiateSageEvaluator({
   compiler,
   baselib,
   standardLibrary,
+  lazyModules,
   flint,
   algebraic = undefined,
   nativeKernels = undefined,
@@ -222,6 +227,7 @@ export async function instantiateSageEvaluator({
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
+  fetchLazyModules = fetchLazyModuleBundle,
   evaluateGlobal = globalThis.eval,
   fetchCapabilityReport = globalThis.fetch,
 }) {
@@ -249,7 +255,8 @@ export async function instantiateSageEvaluator({
       abort(error);
     }
   };
-  let initializationResult;
+  let initialization;
+  let lazyModuleBundle;
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
@@ -258,7 +265,8 @@ export async function instantiateSageEvaluator({
   let capabilityReportResponse;
   try {
     [
-      initializationResult,
+      initialization,
+      lazyModuleBundle,
       flintBackend,
       m4riBackend,
       symbolicBackendModule,
@@ -273,6 +281,7 @@ export async function instantiateSageEvaluator({
         pythonGrammar: String(pythonGrammar),
         sageGrammar: String(sageGrammar),
       }),
+      fetchLazyModules(lazyModules),
       instantiateFlint(flint, { algebraicSource: algebraic }),
       instantiateM4riBackend(m4ri),
       importSymbolic(symbolic),
@@ -313,19 +322,9 @@ export async function instantiateSageEvaluator({
   } catch (error) {
     abort(error);
   }
-  if (
-    initializationResult === null ||
-    typeof initializationResult !== "object" ||
-    typeof initializationResult.javascript !== "string" ||
-    initializationResult.lazyModules === null ||
-    typeof initializationResult.lazyModules !== "object"
-  ) {
-    abort(
-      new TypeError("browser compiler returned an invalid initialization bundle"),
-    );
+  if (typeof initialization !== "string") {
+    abort(new TypeError("browser compiler returned invalid initialization code"));
   }
-  const initialization = initializationResult.javascript;
-  const lazyModules = initializationResult.lazyModules;
   const globalEvaluate = evaluateGlobal;
   let outputHandler = (text) => console.log(text);
   let errorHandler = (text) => console.error(text);
@@ -487,70 +486,14 @@ export async function instantiateSageEvaluator({
     stdout: stdoutStream,
     stderr: stderrStream,
   }));
-  const lazyModuleName = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
-  const precompiledFilenameMarker = "__sagejs_precompiled_module_filename__";
-  const loadingLazyModules = new Set();
-  installGlobal("__sagejs_load_module__", function loadBrowserModule(name) {
-    if (typeof name !== "string" || !lazyModuleName.test(name)) {
-      throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
-    }
-    const registry = globalThis.ρσ_modules;
-    if (registry && Object.prototype.hasOwnProperty.call(registry, name)) {
-      return registry[name];
-    }
-    const record = lazyModules[name];
-    if (
-      record === null ||
-      typeof record !== "object" ||
-      record.module !== name ||
-      typeof record.javascriptTemplate !== "string" ||
-      !record.javascriptTemplate.includes(JSON.stringify(precompiledFilenameMarker))
-    ) {
-      const ImportErrorClass = globalThis.ImportError;
-      const message = `No module named '${name}'`;
-      if (typeof ImportErrorClass === "function") {
-        throw new ImportErrorClass(message);
-      }
-      throw Object.assign(new Error(message), { name: "ImportError" });
-    }
-    const separator = name.lastIndexOf(".");
-    const parentName = separator < 0 ? "" : name.slice(0, separator);
-    const childName = separator < 0 ? "" : name.slice(separator + 1);
-    const parent = parentName ? loadBrowserModule(parentName) : undefined;
-    if (Object.prototype.hasOwnProperty.call(registry, name)) {
-      return registry[name];
-    }
-    const namespace = Object.create(null);
-    registry[name] = namespace;
-    if (parent !== undefined && childName) parent[childName] = namespace;
-    loadingLazyModules.add(name);
-    const previous = globalThis.__sagejs_current_module_namespace__;
-    globalThis.__sagejs_current_module_namespace__ = namespace;
-    const filename = `/__sagejs_browser_modules__/${name.replaceAll(".", "/")}.py`;
-    try {
-      const javascript = record.javascriptTemplate.replaceAll(
-        JSON.stringify(precompiledFilenameMarker),
-        JSON.stringify(filename),
-      );
-      globalEvaluate(`(function(){\n${javascript}\n}).call(globalThis);`);
-    } catch (error) {
-      delete registry[name];
-      if (parent !== undefined && childName) delete parent[childName];
-      throw error;
-    } finally {
-      loadingLazyModules.delete(name);
-      if (previous === undefined) {
-        delete globalThis.__sagejs_current_module_namespace__;
-      } else {
-        globalThis.__sagejs_current_module_namespace__ = previous;
-      }
-    }
-    if (!Object.prototype.hasOwnProperty.call(registry, name)) {
-      throw new Error(`lazy module ${name} did not register itself`);
-    }
-    return registry[name];
-  });
   try {
+    installLazyModuleLoader(lazyModuleBundle, {
+      globalObject: globalThis,
+      evaluate: globalEvaluate,
+      install(name, value) {
+        globals.set(name, value);
+      },
+    });
     globalEvaluate('var __name__ = "__repl__";');
   } catch (error) {
     abort(error);

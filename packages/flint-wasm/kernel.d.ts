@@ -27,6 +27,7 @@ export interface BrowserSageSessionOptions {
   compiler?: string | URL;
   baselib?: string | URL;
   standardLibrary?: string | URL;
+  lazyModules?: string | URL;
   flint?: string | URL;
   m4ri?: string | URL;
   symbolic?: string | URL;

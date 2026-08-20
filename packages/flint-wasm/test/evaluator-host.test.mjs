@@ -35,6 +35,37 @@ const backendOptions = {
   instantiateFlint: async () => ({}),
   instantiateM4riBackend: async () => ({}),
   importSymbolic: async () => ({}),
+  fetchLazyModules: async () => ({
+    schema: "sagejs.lazy-module-bundle/v1",
+    generator: {
+      path: "scripts/build-lazy-module-cache.cjs",
+      sha256: "0".repeat(64),
+    },
+    config: {
+      path: "scripts/precompiled-python-packages.json",
+      sha256: "0".repeat(64),
+    },
+    roots: { package: [], taskRuntime: [] },
+    modules: {},
+  }),
+  fetchCapabilityReport: async () => ({
+    ok: true,
+    async json() {
+      return {
+        schema: "sagejs.wasm-capability-report/v1",
+        source: "architecture/wasm-capabilities.json",
+        source_sha256: "0".repeat(64),
+        counts: {
+          total: 0,
+          by_kind: {},
+          by_disposition: {},
+          by_status: {},
+        },
+        workflow_aliases: {},
+        capabilities: [],
+      };
+    },
+  }),
 };
 
 test("browser POSIX realpath normalization is rooted and rejects NUL", () => {
@@ -63,7 +94,7 @@ test("browser environment validates values and exposes a coherent proxy", () => 
 });
 
 test("a throwing post-worker initialization terminates and restores globals", async () => {
-  const WorkerConstructor = fakeWorkerClass({ javascript: "boom", lazyModules: {} });
+  const WorkerConstructor = fakeWorkerClass("boom");
   const sentinelRequire = globalThis.require;
   const sentinelProcess = globalThis.process;
 
@@ -87,10 +118,9 @@ test("a throwing post-worker initialization terminates and restores globals", as
 });
 
 test("evaluator host shares process.env and separates stdout from stderr", async () => {
-  const WorkerConstructor = fakeWorkerClass({
-    javascript: "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;",
-    lazyModules: {},
-  });
+  const WorkerConstructor = fakeWorkerClass(
+    "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;",
+  );
   const originalModules = globalThis.ρσ_modules;
   const evaluator = await instantiateSageEvaluator({
     ...backendOptions,
