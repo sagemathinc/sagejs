@@ -4409,6 +4409,7 @@
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
+        "test/browser-wasm-resource-fallbacks.cjs",
         "test/native-kernel.cjs"
       ],
       "declared_ffi": "flint:fmpz_gcd"
@@ -4706,6 +4707,7 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/dynamic-compiler.mjs",
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint-wasm/scripts/build.cjs",
         "packages/flint-wasm/scripts/production-receipt.cjs",
