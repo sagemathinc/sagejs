@@ -11,6 +11,7 @@ function assertEnospc(callback) {
 
 test("the authenticated WASI host enforces byte, file, and per-file quotas", () => {
   const limits = WASI_MEMORY_FILESYSTEM_LIMITS;
+  assert.equal(Object.isFrozen(limits), true);
   for (const name of ["maxFileBytes", "maxTotalBytes", "maxFiles"]) {
     assert.ok(Number.isSafeInteger(limits[name]) && limits[name] > 0, `${name} is not bounded`);
   }
@@ -47,5 +48,9 @@ test("the authenticated WASI host enforces byte, file, and per-file quotas", () 
     total.filesystem.writeFileSync(`/tmp/b-${index}`, Buffer.alloc(remainder));
     index += 1;
   }
+  const usage = total.filesystemUsage();
+  assert.equal(Object.isFrozen(usage), true);
+  assert.equal(usage.totalBytes, limits.maxTotalBytes);
   assertEnospc(() => total.filesystem.writeFileSync(`/tmp/b-${index}`, Buffer.from([1])));
+  assert.equal(total.filesystemUsage().totalBytes, limits.maxTotalBytes);
 });
