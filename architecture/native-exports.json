@@ -12258,6 +12258,7 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/lazy-modules.mjs",
         "packages/flint-wasm/scripts/wasm-toolchain.cjs",
         "packages/flint-wasm/test/toolchain-resolution.test.cjs",
         "packages/flint/scripts/build-deps.cjs",
