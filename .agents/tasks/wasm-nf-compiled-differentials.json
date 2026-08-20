@@ -4,7 +4,7 @@
   "id": "wasm-nf-compiled-differentials",
   "title": "Wasm Nf Compiled Differentials",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Execute and differentially verify the four number-field aggregate Wasm kernel packs without claiming public workflow dispatch",
   "base_commit": "0c2722bd0be7d0e438dbb23308f63bf0c37d4d27",
