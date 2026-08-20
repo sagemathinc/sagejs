@@ -389,8 +389,8 @@
     },
     {
       "path": "packages/flint/src/analytic_batch_core.c",
-      "lines": 547,
-      "bytes": 18318,
+      "lines": 554,
+      "bytes": 18709,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [

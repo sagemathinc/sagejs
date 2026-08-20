@@ -4686,6 +4686,7 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs"
