@@ -179,12 +179,133 @@ test("runtime bootstrap consults a preloaded Wasm resolver before Node lookup", 
 const clang = process.env.SAGEJS_WASI_CLANG;
 const sysroot = process.env.SAGEJS_WASI_SYSROOT;
 const gmpPrefix = process.env.SAGEJS_WASM_GMP_PREFIX;
-const toolchainAvailable = [clang, sysroot, gmpPrefix].every((value) =>
+const flintPrefix = process.env.SAGEJS_WASM_FLINT_PREFIX;
+const mpfrPrefix = process.env.SAGEJS_WASM_MPFR_PREFIX;
+const mpcPrefix = process.env.SAGEJS_WASM_MPC_PREFIX;
+const gmpToolchainAvailable = [clang, sysroot, gmpPrefix].every((value) =>
   typeof value === "string" && existsSync(value)
 ) && existsSync(join(gmpPrefix ?? "", "lib", "libgmp.a"));
+const flintToolchainAvailable = gmpToolchainAvailable &&
+  [flintPrefix, mpfrPrefix, mpcPrefix].every((value) =>
+    typeof value === "string" && existsSync(value)
+  ) && [
+    [flintPrefix, "libflint.a"],
+    [mpfrPrefix, "libmpfr.a"],
+    [mpcPrefix, "libmpc.a"],
+  ].every(([prefix, library]) => existsSync(join(prefix, "lib", library)));
 
-test("a compiled Wasm core executes the same exact source as the fallback", {
-  skip: toolchainAvailable
+let portableNumberFieldOracle;
+
+function numberFieldOracle() {
+  if (portableNumberFieldOracle !== undefined) return portableNumberFieldOracle;
+  const oracle = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
+      input: String.raw`
+import json
+from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_integer_zeros, kernel_uint64_buffer
+from sagejs.number_fields.composite_field_analysis import packed_integer_square_root
+from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
+from sagejs.number_fields.round4_state_kernel import packed_round4_padic_characteristic
+from sagejs.number_fields.zeta_coefficient_kernel import assemble_zeta_coefficients_from_factors
+
+def words(buffer):
+    return [str(value) for value in integer_buffer_values(buffer)]
+
+om_workspace = kernel_integer_zeros(packed_maxmin_valuations_are_maximal, 4, 8)
+om_result = packed_maxmin_valuations_are_maximal(
+    om_workspace,
+    kernel_integer_buffer(packed_maxmin_valuations_are_maximal, [1, 1]),
+    kernel_integer_buffer(
+        packed_maxmin_valuations_are_maximal, [0, 0, 0, 2, 0, 0, 1, 0]
+    ),
+    kernel_integer_buffer(
+        packed_maxmin_valuations_are_maximal, [1, 1, 0, 1, 1, 1, 1, 0]
+    ),
+    kernel_integer_buffer(packed_maxmin_valuations_are_maximal, [0, 2]),
+    2,
+    1,
+    4,
+)
+
+round4_control = kernel_integer_buffer(
+    packed_round4_padic_characteristic, [0, 0, 0, 7]
+)
+round4_output = kernel_integer_zeros(packed_round4_padic_characteristic, 3, 16)
+round4_workspace = kernel_integer_zeros(packed_round4_padic_characteristic, 22, 32)
+round4_result = packed_round4_padic_characteristic(
+    round4_control,
+    round4_output,
+    kernel_integer_buffer(packed_round4_padic_characteristic, [1, 1, 1]),
+    kernel_integer_buffer(packed_round4_padic_characteristic, [1, 3, -2]),
+    kernel_integer_buffer(packed_round4_padic_characteristic, [3]),
+    round4_workspace,
+    9,
+    2,
+)
+
+zeta_output = kernel_integer_zeros(assemble_zeta_coefficients_from_factors, 8, 8)
+zeta_local = kernel_integer_zeros(assemble_zeta_coefficients_from_factors, 5, 8)
+zeta_result = assemble_zeta_coefficients_from_factors(
+    zeta_output,
+    zeta_local,
+    kernel_uint64_buffer(assemble_zeta_coefficients_from_factors, [2, 3, 5, 7]),
+    kernel_uint64_buffer(assemble_zeta_coefficients_from_factors, [1, 1, 1, 1]),
+    kernel_uint64_buffer(
+        assemble_zeta_coefficients_from_factors, [2, 0, 1, 0, 2, 0, 1, 0]
+    ),
+    kernel_uint64_buffer(
+        assemble_zeta_coefficients_from_factors, [1, 0, 2, 0, 1, 0, 2, 0]
+    ),
+    2,
+)
+
+print(json.dumps({
+    "om": [om_result, words(om_workspace)],
+    "round4": [round4_result, words(round4_control), words(round4_output)],
+    "composite": str(packed_integer_square_root(2**190 + 123456789)),
+    "zeta": [zeta_result, words(zeta_output)],
+}))
+`,
+    },
+  );
+  assert.equal(oracle.status, 0, oracle.stdout + oracle.stderr);
+  portableNumberFieldOracle = JSON.parse(oracle.stdout.trim().split("\n").at(-1));
+  return portableNumberFieldOracle;
+}
+
+async function instantiateKernelRuntime(manifest, outputRoot) {
+  const { WASI } = require("node:wasi");
+  const { instantiateWasmKernelPacks } = await import(
+    "../tools/native-kernel/wasm-pack-loader.mjs"
+  );
+  return instantiateWasmKernelPacks({
+    manifest,
+    load(pack) {
+      return readFileSync(join(outputRoot, pack.asset));
+    },
+    host() {
+      const wasi = new WASI({ version: "preview1", returnOnExit: true });
+      return {
+        imports: { wasi_snapshot_preview1: wasi.wasiImport },
+        initialize(instance) {
+          wasi.initialize(instance);
+        },
+      };
+    },
+  });
+}
+
+function words(values) {
+  return Array.from(values, String);
+}
+
+test("number-field GMP Wasm cores execute the same exact sources as fallbacks", {
+  skip: gmpToolchainAvailable
     ? false
     : "set SAGEJS_WASI_CLANG, SAGEJS_WASI_SYSROOT, and SAGEJS_WASM_GMP_PREFIX",
   timeout: 180_000,
@@ -195,12 +316,15 @@ test("a compiled Wasm core executes the same exact source as the fallback", {
       join(root, "architecture", "native-kernels.json"),
       "utf8",
     ));
-    const kernel = registered.kernels.find((item) =>
-      item.id === "number-field-composite-analysis-production"
-    );
-    assert.ok(kernel);
+    const kernelIds = new Set([
+      "number-field-om-proof-production",
+      "number-field-composite-analysis-production",
+      "number-field-zeta-coefficients-production",
+    ]);
+    const kernels = registered.kernels.filter((item) => kernelIds.has(item.id));
+    assert.deepEqual(new Set(kernels.map((item) => item.id)), kernelIds);
     const manifestPath = join(temporary, "native-kernels.json");
-    writeFileSync(manifestPath, `${JSON.stringify({ kernels: [kernel] }, null, 2)}\n`);
+    writeFileSync(manifestPath, `${JSON.stringify({ kernels }, null, 2)}\n`);
     const outputRoot = join(temporary, "output");
     const manifest = await buildWasmProductionPacks({
       root,
@@ -217,25 +341,24 @@ test("a compiled Wasm core executes the same exact source as the fallback", {
         mpcPrefix: "unused",
       },
     });
-    const { WASI } = require("node:wasi");
-    const { instantiateWasmKernelPacks } = await import(
-      "../tools/native-kernel/wasm-pack-loader.mjs"
+    const runtime = await instantiateKernelRuntime(manifest, outputRoot);
+    const omSource = "sagejs/number_fields/om_maxmin.py";
+    const maxmin = runtime.function(
+      omSource,
+      "packed_maxmin_valuations_are_maximal",
     );
-    const runtime = await instantiateWasmKernelPacks({
-      manifest,
-      load(pack) {
-        return readFileSync(join(outputRoot, pack.asset));
-      },
-      host() {
-        const wasi = new WASI({ version: "preview1", returnOnExit: true });
-        return {
-          imports: { wasi_snapshot_preview1: wasi.wasiImport },
-          initialize(instance) {
-            wasi.initialize(instance);
-          },
-        };
-      },
-    });
+    const omWorkspace = [0n, 0n, 0n, 0n];
+    const omResult = maxmin(
+      omWorkspace,
+      [1n, 1n],
+      [0n, 0n, 0n, 2n, 0n, 0n, 1n, 0n],
+      [1n, 1n, 0n, 1n, 1n, 1n, 1n, 0n],
+      [0n, 2n],
+      2n,
+      1n,
+      4n,
+    );
+
     const source = "sagejs/number_fields/composite_field_analysis.py";
     const squareRoot = runtime.function(source, "packed_integer_square_root");
     assert.equal(runtime.resolve(source, "packed_integer_square_root", {
@@ -248,24 +371,108 @@ test("a compiled Wasm core executes the same exact source as the fallback", {
       declarationHash: "0".repeat(64),
     }), null);
     const value = (1n << 190n) + 123456789n;
-    const wasmAnswer = squareRoot(value);
-    const oracle = spawnSync(
-      process.execPath,
-      [join(root, "bin", "sagejs"), "--python"],
-      {
-        cwd: root,
-        encoding: "utf8",
-        env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
-        input: [
-          "from sagejs.number_fields.composite_field_analysis import packed_integer_square_root",
-          `print(packed_integer_square_root(Integer('${value}')))`,
-          "",
-        ].join("\n"),
-      },
+    const zeta = runtime.function(
+      "sagejs/number_fields/zeta_coefficient_kernel.py",
+      "assemble_zeta_coefficients_from_factors",
     );
-    assert.equal(oracle.status, 0, oracle.stderr);
-    assert.equal(wasmAnswer, BigInt(oracle.stdout.trim()));
+    const zetaOutput = Array(8).fill(0n);
+    const zetaResult = zeta(
+      zetaOutput,
+      Array(5).fill(0n),
+      new BigUint64Array([2n, 3n, 5n, 7n]),
+      new BigUint64Array([1n, 1n, 1n, 1n]),
+      new BigUint64Array([2n, 0n, 1n, 0n, 2n, 0n, 1n, 0n]),
+      new BigUint64Array([1n, 0n, 2n, 0n, 1n, 0n, 2n, 0n]),
+      2n,
+    );
+    const actual = {
+      om: [omResult, words(omWorkspace)],
+      composite: String(squareRoot(value)),
+      zeta: [zetaResult, words(zetaOutput)],
+    };
+    const oracle = numberFieldOracle();
+    assert.deepEqual(actual, {
+      om: oracle.om,
+      composite: oracle.composite,
+      zeta: oracle.zeta,
+    });
+    assert.deepEqual(actual, {
+      om: [true, ["0", "2", "0", "0"]],
+      composite: "39614081257132168796771975168",
+      zeta: [true, ["1", "1", "0", "1", "1", "0", "0", "1"]],
+    });
+    for (const fn of [maxmin, squareRoot, zeta]) {
+      assert.equal(fn.nativeAvailable, true);
+      assert.equal(fn.executionTarget, "wasm");
+      assert.equal(fn.sourceTransparent, true);
+    }
     assert.equal(squareRoot(-1n), -1n);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("the Round-4 Wasm core executes the same exact source as its fallback", {
+  skip: flintToolchainAvailable
+    ? false
+    : "set the complete SAGEJS WASI FLINT/GMP/MPFR/MPC toolchain",
+  timeout: 180_000,
+}, async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-wasm-round4-run-"));
+  try {
+    const registered = JSON.parse(readFileSync(
+      join(root, "architecture", "native-kernels.json"),
+      "utf8",
+    ));
+    const kernel = registered.kernels.find((item) =>
+      item.id === "number-field-round4-state-production"
+    );
+    assert.ok(kernel);
+    const manifestPath = join(temporary, "native-kernels.json");
+    writeFileSync(manifestPath, `${JSON.stringify({ kernels: [kernel] }, null, 2)}\n`);
+    const outputRoot = join(temporary, "output");
+    const manifest = await buildWasmProductionPacks({
+      root,
+      manifestPath,
+      outputRoot,
+      domains: ["flint"],
+      emitOnly: false,
+      toolchain: {
+        clang,
+        sysroot,
+        gmpPrefix,
+        flintPrefix,
+        mpfrPrefix,
+        mpcPrefix,
+      },
+    });
+    const runtime = await instantiateKernelRuntime(manifest, outputRoot);
+    const round4 = runtime.function(
+      "sagejs/number_fields/round4_state_kernel.py",
+      "packed_round4_padic_characteristic",
+    );
+    const control = [0n, 0n, 0n, 7n];
+    const output = [0n, 0n, 0n];
+    const result = round4(
+      control,
+      output,
+      [1n, 1n, 1n],
+      [1n, 3n, -2n],
+      [3n],
+      Array(22).fill(0n),
+      9n,
+      2n,
+    );
+    const actual = [result, words(control), words(output)];
+    assert.deepEqual(actual, numberFieldOracle().round4);
+    assert.deepEqual(actual, [
+      true,
+      ["1", "0", "9", "7"],
+      ["19", "-8", "1"],
+    ]);
+    assert.equal(round4.nativeAvailable, true);
+    assert.equal(round4.executionTarget, "wasm");
+    assert.equal(round4.sourceTransparent, true);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
