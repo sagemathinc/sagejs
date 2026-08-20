@@ -49,6 +49,7 @@ const unit = [
   "test/wasm-capabilities.cjs",
   "test/browser-wasm-release-gates.cjs",
   "test/browser-wasm-resource-fallbacks.cjs",
+  "test/wasm-fmpq-polynomial-ingress.cjs",
   "test/algebraic-wasm-core.cjs",
   "test/algebraic-wasm-parity.cjs",
   "test/wasm-deployment-workflow.cjs",

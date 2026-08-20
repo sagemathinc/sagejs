@@ -18,6 +18,8 @@ _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
+_generated_fmpz_polynomial_resources_available_cache = runtime.undefined
+_generated_fmpq_polynomial_resources_available_cache = runtime.undefined
 
 
 class _PackedIntegerPolynomialStorage:
@@ -105,6 +107,33 @@ def _generated_flint_resources_available() -> bool:
             runtime.jstype(create) == "function" and runtime.jstype(close) == "function"
         )
     return bool(_generated_flint_resources_available_cache)
+
+
+def _generated_exact_polynomial_resources_available(base: Any) -> bool:
+    """Return whether `ZZ[x]` or `QQ[x]` has its complete ingress lifecycle."""
+    global _generated_fmpz_polynomial_resources_available_cache
+    global _generated_fmpq_polynomial_resources_available_cache
+    if base is sage.ZZ:
+        if _generated_fmpz_polynomial_resources_available_cache is runtime.undefined:
+            backend = runtime.flint_backend()
+            create = runtime.reflect.get(backend, "ffiFmpzPolynomialFromByteRegion")
+            close = runtime.reflect.get(backend, "ffiFmpzPolynomialClose")
+            _generated_fmpz_polynomial_resources_available_cache = (
+                runtime.jstype(create) == "function"
+                and runtime.jstype(close) == "function"
+            )
+        return bool(_generated_fmpz_polynomial_resources_available_cache)
+    if base is sage.QQ:
+        if _generated_fmpq_polynomial_resources_available_cache is runtime.undefined:
+            backend = runtime.flint_backend()
+            create = runtime.reflect.get(backend, "ffiFmpqPolynomialFromByteRegion")
+            close = runtime.reflect.get(backend, "ffiFmpqPolynomialClose")
+            _generated_fmpq_polynomial_resources_available_cache = (
+                runtime.jstype(create) == "function"
+                and runtime.jstype(close) == "function"
+            )
+        return bool(_generated_fmpq_polynomial_resources_available_cache)
+    return False
 
 
 def _packed_integer_polynomial_module() -> Any:
@@ -890,9 +919,9 @@ class PolynomialElement(sage.Element):
         resource before the result escapes this operation.  Portable hosts
         keep the same packed output without an unnecessary conversion.
         """
-        if not _generated_flint_resources_available():
-            return self._new(storage)
         base = self._parent.base_ring()
+        if not _generated_exact_polynomial_resources_available(base):
+            return self._new(storage)
         if base is sage.ZZ:
             return self._parent._from_coefficients(
                 _integer_buffer_values(storage.coefficients)
@@ -3241,7 +3270,7 @@ class PolynomialRingParent(sage.Parent):
         """
         kind = _packed_polynomial_kind(self._base)
         if kind == "ZZ":
-            if _generated_flint_resources_available():
+            if _generated_exact_polynomial_resources_available(sage.ZZ):
                 values = coefficients
                 try:
                     body = runtime.exact_integer_values_to_packed_bytes(values)
@@ -3276,7 +3305,7 @@ class PolynomialRingParent(sage.Parent):
                 self,
                 _PackedIntegerPolynomialStorage(runtime.integer_buffer(values, 1)),
             )
-        if kind == "QQ" and _generated_flint_resources_available():
+        if kind == "QQ" and _generated_exact_polynomial_resources_available(sage.QQ):
             values = coefficients
             body = runtime.canonical_rational_values_to_packed_bytes(
                 values, _untyped(sage.Rational), sage.QQ
@@ -3392,7 +3421,9 @@ class PolynomialRingParent(sage.Parent):
         n = int(degree)
         if n < 1:
             raise ValueError("cyclotomic polynomial degree must be positive")
-        if self._base is sage.ZZ and _generated_flint_resources_available():
+        if self._base is sage.ZZ and _generated_exact_polynomial_resources_available(
+            sage.ZZ
+        ):
             if n >= (1 << 64):
                 raise OverflowError("cyclotomic polynomial degree is too large")
             return self._from_fmpz_polynomial_resource(
