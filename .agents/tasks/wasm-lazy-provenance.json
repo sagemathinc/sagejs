@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-lazy-provenance",
+  "title": "Reproducible lazy-module provenance",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Harden lazy-module generation and production provenance with canonical virtual filenames/package paths, strict record validation, and receipt closure over generator configuration and every lazy Python source",
+  "base_commit": "697590c5622123e25b724c88b915d083225ec995",
+  "claims": [
+    "scripts/build-lazy-module-cache.cjs",
+    "scripts/check-lseries-precompiled-cache.cjs",
+    "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
+    "scripts/lazy-module-provenance.cjs",
+    "packages/flint-wasm/scripts/production-receipt.cjs",
+    "test/lazy-module-provenance.cjs",
+    "test/module-cache.cjs",
+    "test/multiprocessing-module.cjs",
+    "packages/flint-wasm/test/lazy-module-receipt.test.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Rebuild in distinct checkout roots and require byte-identical lazy records",
+      "Mutation of generator, config, or any lazy Python source changes production source closure"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/lazy-module-provenance.cjs packages/flint-wasm/test/lazy-module-receipt.test.cjs test/module-cache.cjs test/cowasm-landscape.cjs scripts/check-lseries-precompiled-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.588,
+      "started_at": "2026-08-20T07:57:00.384Z",
+      "commit": "697590c5622123e25b724c88b915d083225ec995",
+      "workspace_fingerprint": "3f5dc09225797f79fed78a518caf9c31f9d31ee16404a44d605d13807268641d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc --project tsconfig.json --pretty false",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.369,
+      "started_at": "2026-08-20T07:57:21.321Z",
+      "commit": "697590c5622123e25b724c88b915d083225ec995",
+      "workspace_fingerprint": "3f5dc09225797f79fed78a518caf9c31f9d31ee16404a44d605d13807268641d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Canonicalized lazy-module filenames and package __path__ values under /__sagejs_lazy_modules__, introduced the strict sagejs.lazy-module-bundle/v1 schema with inline templates and source hashes, rejected malformed/reserved module records, preserved correct dynamic compilation for local modules that shadow a valid shipped record, and bound the generator, configuration, and every lazy Python source into the production Wasm receipt closure. Two complete generations of 126 modules were byte-identical and contained no checkout paths.",
+    "risks": [
+      "pnpm architecture:check reaches an unrelated pre-existing native-export inventory drift on this isolated base commit.",
+      "pnpm test:portable requires the integration lane to register test/lazy-module-provenance.cjs in test/node-test-manifest.cjs; the scoped lane intentionally did not claim that shared registry.",
+      "One multiprocessing subtest needs the optional packages/flint/build/Release/sagejs_flint.node addon, which is absent in this isolated worktree; the remaining 16 multiprocessing subtests passed."
+    ],
+    "next_steps": [
+      "Add test/lazy-module-provenance.cjs to the unit array in test/node-test-manifest.cjs, adjacent to test/module-cache.cjs.",
+      "Copy the generated repo dist/lazy-modules.json byte-for-byte to packages/flint-wasm/dist/lazy-modules.json and include it in the production artifact layout; validate it with scripts/lazy-module-provenance.cjs before evaluator installation.",
+      "Run node scripts/audit-native-exports.cjs --write on the integrated branch, review the unrelated export additions, and rerun pnpm architecture:check and pnpm test:portable."
+    ]
+  }
+}

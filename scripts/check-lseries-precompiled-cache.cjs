@@ -20,7 +20,8 @@ const lseriesCacheFilename = join(
   precompiledDirectory,
   "sagejs-elliptic_curves-lseries.json",
 );
-const filenameMarker = "__sagejs_precompiled_module_filename__";
+const filenameMarker =
+  "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
 
 function filesBelow(directory) {
   const answer = [];
@@ -40,6 +41,10 @@ test("the production lazy cache contains and materializes elliptic L-series", ()
   );
   const precompiled = JSON.parse(readFileSync(lseriesCacheFilename, "utf8"));
   assert.equal(precompiled.module, "sagejs.elliptic_curves.lseries");
+  assert.equal(precompiled.schema, "sagejs.lazy-module-template/v1");
+  assert.equal(precompiled.package, false);
+  assert.equal(precompiled.filenameMarker, filenameMarker);
+  assert.equal(precompiled.packagePathMarker, null);
   assert.equal(precompiled.mode, "python");
   assert.equal(typeof precompiled.version, "string");
   assert.equal(typeof precompiled.signature, "string");

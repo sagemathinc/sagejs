@@ -2,12 +2,12 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "wasm-production-toolchain",
-  "title": "Reproducible Wasm production toolchain",
+  "title": "Receipt-authenticated lazy Wasm modules",
   "lane": "distribution",
   "status": "active",
   "owner": "user",
-  "objective": "Build the integrated generated, analytic, number-field, curve, algebraic, M4RI, and source-transparent kernel WebAssembly production closure with deterministic authenticated receipts",
-  "base_commit": "b9e34e7767b7104761151a7a41d1c0956006f5a8",
+  "objective": "Separate precompiled lazy Python templates from compiler-worker stdlib transport and load their authenticated bundle directly in the evaluator before synchronous imports",
+  "base_commit": "c518f6f5b9f894f3cd3f47755a91f246587f6c9d",
   "claims": [
     "packages/flint-wasm/scripts/build.cjs",
     "packages/flint-wasm/scripts/build-compiler-frontend.cjs",
@@ -16,6 +16,14 @@
     "packages/flint-wasm/package.json",
     "packages/flint-wasm/toolchain/",
     "packages/flint-wasm/release/",
+    "packages/flint-wasm/compiler-worker.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/kernel.d.ts",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/lazy-modules.mjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs",
+    "packages/flint-wasm/test/lazy-modules.test.mjs",
     "packages/flint-wasm/test/toolchain-resolution.test.cjs",
     "packages/flint-wasm/test/production-receipt.test.cjs"
   ],
@@ -42,22 +50,63 @@
     "pnpm test:portable",
     "pnpm test:native",
     "pnpm test:sea",
-    "node --test packages/flint-wasm/test/toolchain-resolution.test.cjs packages/flint-wasm/test/production-receipt.test.cjs",
-    "pnpm --dir packages/flint-wasm build",
+    "SAGEJS_WASM_REUSE_LINKED_ARTIFACTS=1 pnpm --dir packages/flint-wasm build",
+    "node --test packages/flint-wasm/test/lazy-module-receipt.test.cjs packages/flint-wasm/test/lazy-modules.test.mjs packages/flint-wasm/test/evaluator-host.test.mjs",
+    "node test/lazy-module-provenance.cjs",
     "node packages/flint-wasm/scripts/production-receipt.cjs validate",
-    "pnpm architecture:check",
-    "pnpm test:changed"
+    "pnpm parallel:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node packages/flint-wasm/scripts/production-receipt.cjs validate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.183,
+      "started_at": "2026-08-20T06:26:53.452Z",
+      "commit": "1b6f7c43579195580e15769b89ab93db7cb19736",
+      "workspace_fingerprint": "f97f0db97f402788af0b9282098dc926e33ef629f49e85d9694ec6f43cd5c431",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/lazy-module-receipt.test.cjs packages/flint-wasm/test/lazy-modules.test.mjs packages/flint-wasm/test/evaluator-host.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.248,
+      "started_at": "2026-08-20T08:03:25.649Z",
+      "commit": "a5e993a884e05e32384cb497bace627427fab3a7",
+      "workspace_fingerprint": "7d44f003b92843be66e0c31632e2a2ef0262c52b8d348f4d7f247602758f753d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/lazy-module-provenance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.085,
+      "started_at": "2026-08-20T08:03:26.785Z",
+      "commit": "a5e993a884e05e32384cb497bace627427fab3a7",
+      "workspace_fingerprint": "7d44f003b92843be66e0c31632e2a2ef0262c52b8d348f4d7f247602758f753d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/scripts/production-receipt.cjs validate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.73,
+      "started_at": "2026-08-20T08:03:27.771Z",
+      "commit": "a5e993a884e05e32384cb497bace627427fab3a7",
+      "workspace_fingerprint": "7d44f003b92843be66e0c31632e2a2ef0262c52b8d348f4d7f247602758f753d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Integrated the all-declared FLINT/M4RI generated FFI closure, analytic, number-field, elliptic-curve, public Dirichlet, lazy algebraic, and source-transparent kernel modules into the pinned production build. The build emits five finite-memory Wasm artifacts, 43 authenticated runtime assets, 284 exact capabilities, and a deterministic manifest/receipt with complete C, compiler, bundle, and generated-kernel source closure.",
+    "summary": "Separated 172 precompiled lazy Python templates from stdlib/compiler-worker transport into a strict evaluator-owned sagejs.lazy-module-bundle/v1 asset. The evaluator fetches the bundle in parallel, validates canonical names, source digests, virtual filenames, package paths, and templates before installing a synchronous loader, while transactional host cleanup restores every temporary global. A packaging checkpoint copies the 26,194,522-byte bundle byte-for-byte, authenticates its SHA-256 87d3312c4bd256525f57bb734dc61868484401f923309c779c1aa0b255378e32 in checkpoint identity sha256:2a44116997785ebeb795ac4d4335c3073451a1586f96dfa57ba6d337917b5a16, and binds the generator, config, and every referenced Python source into the receipt closure. stdlib.json contains no lazyModules member, so approximately 25 MiB is no longer parsed or structured-cloned through the compiler worker.",
     "risks": [
-      "The all-declared FLINT closure is 5.00 MiB uncompressed, so the old proof-of-concept 2 MiB test ceiling must be replaced by the reviewed release payload budget.",
-      "Native differential tests require the platform addon to be built in the consuming worktree; browser/Wasm-only specialist tests passed here."
+      "The full Chromium smoke initialized the evaluator and synchronously imported math, then hit an unrelated stale expected rendering of 1 instead of the current correct float rendering 1.0.",
+      "The broad unit tier in this isolated worktree requires a separately generated dist/module-cache canonical cache; its focused provenance, receipt, loader, and evaluator lifecycle tests all pass."
     ],
     "next_steps": [
-      "Integration should update the old exact-five-resource assertion to the all-declared 11-resource surface and establish the first measured browser payload baseline.",
-      "Flip receipt-backed FFI, analytic, curve, algebraic, and complete-kernel inventory records to available, then run the mandatory browser parity/release workflows."
+      "Register test/lazy-module-provenance.cjs in the shared unit test manifest as coordinated with the root integration lane.",
+      "After the pending FFI resource and dynamic-execution commits integrate, rebase exact root and regenerate the ignored final production bundle and receipt so build-receipt.source.gitCommit records the release commit, then run all release workflows."
     ]
   }
 }

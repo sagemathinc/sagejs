@@ -17,6 +17,7 @@
     "./dirichlet-group": "./dirichlet-group.mjs",
     "./evaluator": "./evaluator.mjs",
     "./m4ri": "./m4ri.mjs",
+    "./lazy-modules": "./lazy-modules.mjs",
     "./number-field-zeta": "./number-field-zeta.mjs",
     "./kernel": {
       "types": "./kernel.d.ts",
@@ -35,6 +36,7 @@
     "dist/native-kernels/",
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",
+    "dist/lazy-modules.json",
     "dist/production-manifest.json",
     "dist/build-receipt.json",
     "dist/runtime/",
@@ -66,6 +68,7 @@
     "evaluator.mjs",
     "index.mjs",
     "m4ri.mjs",
+    "lazy-modules.mjs",
     "number-field-zeta.mjs",
     "kernel.d.ts",
     "kernel-worker.mjs",

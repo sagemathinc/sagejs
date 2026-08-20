@@ -41,7 +41,77 @@ import {
 export type RuntimeBootstrapMode = "sage" | "python";
 
 export const PRECOMPILED_MODULE_FILENAME =
-  "__sagejs_precompiled_module_filename__";
+  "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
+export const PRECOMPILED_PACKAGE_PATH =
+  "/__sagejs_lazy_modules__/__SAGEJS_PACKAGE_PATH__";
+
+const pythonModuleNamePattern =
+  /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+const reservedModuleSegments = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
+
+function validLazyModuleName(name: unknown): name is string {
+  return typeof name === "string" && pythonModuleNamePattern.test(name) &&
+    name.split(".").every((segment) => !reservedModuleSegments.has(segment));
+}
+
+function exactRecordKeys(
+  value: unknown,
+  expected: string[],
+): boolean {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return JSON.stringify(Object.keys(value).sort()) ===
+    JSON.stringify([...expected].sort());
+}
+
+function validPrecompiledLazyModuleRecord(
+  cached: any,
+  name: string,
+): boolean {
+  return exactRecordKeys(cached, [
+    "schema",
+    "version",
+    "signature",
+    "mode",
+    "module",
+    "package",
+    "filenameMarker",
+    "packagePathMarker",
+    "javascriptTemplate",
+  ]) && cached.schema === "sagejs.lazy-module-template/v1" &&
+    typeof cached.version === "string" &&
+    typeof cached.signature === "string" && /^[a-f0-9]{40}$/.test(cached.signature) &&
+    cached.mode === "python" && cached.module === name &&
+    typeof cached.package === "boolean" &&
+    cached.filenameMarker === PRECOMPILED_MODULE_FILENAME &&
+    cached.packagePathMarker === (
+      cached.package ? PRECOMPILED_PACKAGE_PATH : null
+    ) &&
+    typeof cached.javascriptTemplate === "string" &&
+    cached.javascriptTemplate.includes(
+      JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+    ) && (cached.package
+      ? cached.javascriptTemplate.includes(JSON.stringify(PRECOMPILED_PACKAGE_PATH))
+      : !cached.javascriptTemplate.includes(JSON.stringify(PRECOMPILED_PACKAGE_PATH)));
+}
+
+function precompiledLazyModuleMatchesSource(
+  cached: any,
+  sourceHash: string,
+  version: string,
+  mode: RuntimeBootstrapMode,
+  isPackage: boolean,
+): boolean {
+  return cached.version === version && cached.signature === sourceHash &&
+    cached.mode === mode && cached.package === isPackage;
+}
 
 // This is the runtime half of `NATIVE_ABI_VERSION` in
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
@@ -284,7 +354,7 @@ export function runRuntimeBootstrap(
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
-    for (const marker of ["/src/lib/", "/__sagejs_task_modules__/"]) {
+    for (const marker of ["/src/lib/", "/__sagejs_lazy_modules__/"]) {
       const index = normalized.lastIndexOf(marker);
       if (index >= 0) return normalized.slice(index + marker.length);
     }
@@ -587,7 +657,7 @@ export function runRuntimeBootstrap(
     resolveNativeFunction,
   );
   const loadModule = (name: string): any => {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)) {
+    if (!validLazyModuleName(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
     }
     const registry = Reflect.get(globalThis, "ρσ_modules");
@@ -704,30 +774,45 @@ export function runRuntimeBootstrap(
         } catch (_error) {}
       }
       if (!javascript) {
+        let precompiledText: string | undefined;
         try {
-          const cached = JSON.parse(
-            readResourceText(precompiledCacheFilename),
+          precompiledText = readResourceText(precompiledCacheFilename);
+        } catch (_error) {}
+        if (precompiledText !== undefined) {
+          let cached: any;
+          try {
+            cached = JSON.parse(precompiledText);
+          } catch {
+            throw new Error(`invalid precompiled lazy module record ${name}`);
+          }
+          const isPackage = filename.replaceAll("\\", "/").endsWith(
+            "/__init__.py",
           );
-          if (
-            cached.version === compiler.get_compiler_version() &&
-            cached.signature === sourceHash &&
-            cached.mode === moduleMode &&
-            cached.module === name &&
-            typeof cached.javascriptTemplate === "string" &&
-            cached.javascriptTemplate.includes(
-              JSON.stringify(PRECOMPILED_MODULE_FILENAME),
-            )
-          ) {
-            javascript = cached.javascriptTemplate.replaceAll(
-              JSON.stringify(PRECOMPILED_MODULE_FILENAME),
-              JSON.stringify(filename),
-            );
+          if (!validPrecompiledLazyModuleRecord(cached, name)) {
+            throw new Error(`invalid precompiled lazy module record ${name}`);
+          }
+          if (precompiledLazyModuleMatchesSource(
+            cached,
+            sourceHash,
+            compiler.get_compiler_version(),
+            moduleMode,
+            isPackage,
+          )) {
+            javascript = cached.javascriptTemplate
+              .replaceAll(
+                JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+                JSON.stringify(filename),
+              )
+              .replaceAll(
+                JSON.stringify(PRECOMPILED_PACKAGE_PATH),
+                JSON.stringify(dirname(filename)),
+              );
             // Portable build artifacts intentionally omit V8 cached data
             // because their source filename is materialized at load time.
             // Write a local bytecode cache after constructing the script.
             cacheNeedsWrite = true;
           }
-        } catch (_error) {}
+        }
       }
       if (!javascript) {
         const ast = pythonFrontend.parse(source, {
