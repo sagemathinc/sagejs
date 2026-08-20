@@ -48,15 +48,20 @@ async function activate(release) {
 
 async function proveOffline(expected) {
   await context.setOffline(true);
+  await server.setReachable(false);
   const before = server.requests.length;
-  await page.reload({ waitUntil: "load" });
-  await page.evaluate(() => window.__sagejsReady);
-  const result = await page.evaluate(() =>
-    window.__sagejsTest.evaluate("print(factor(2026))", 15_000),
-  );
-  assert.equal(result.stdout, expected);
-  assert.equal(server.requests.length, before, "offline reload unexpectedly reached the origin");
-  await context.setOffline(false);
+  try {
+    await page.reload({ waitUntil: "load" });
+    await page.evaluate(() => window.__sagejsReady);
+    const result = await page.evaluate(() =>
+      window.__sagejsTest.evaluate("print(factor(2026))", 15_000),
+    );
+    assert.equal(result.stdout, expected);
+    assert.equal(server.requests.length, before, "offline reload unexpectedly reached the origin");
+  } finally {
+    await server.setReachable(true);
+    await context.setOffline(false);
+  }
 }
 
 try {

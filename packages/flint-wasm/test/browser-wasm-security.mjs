@@ -40,7 +40,7 @@ sys.stderr.write("diagnostic-output")
   assert.equal(streams.stderr, "diagnostic-output");
 
   const forged = await page.evaluate(() => window.__sagejsTest.evaluate(`
-from sagejs import runtime
+import sagejs.runtime as runtime
 target = runtime.global_object
 if runtime.reflect.has(target, "postMessage"):
     result = runtime.object()

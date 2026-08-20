@@ -229,7 +229,7 @@ export async function createBrowserWasmServer({
   const { assets, mappings } = collectReleaseAssets(root);
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, "http://localhost");
-    requests.push({ method: request.method, pathname: url.pathname });
+    requests.push({ method: request.method, pathname: url.pathname, url: request.url });
     const headers = { ...securityHeaders };
     if (!crossOriginIsolation) {
       delete headers["Cross-Origin-Opener-Policy"];
@@ -332,14 +332,30 @@ export async function createBrowserWasmServer({
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
+  async function setReachable(reachable) {
+    if (reachable === server.listening) return;
+    if (!reachable) {
+      await new Promise((resolve, reject) =>
+        server.close((error) => error ? reject(error) : resolve())
+      );
+      return;
+    }
+    await new Promise((resolve, reject) => {
+      const onError = (error) => reject(error);
+      server.once("error", onError);
+      server.listen(port, "127.0.0.1", () => {
+        server.off("error", onError);
+        resolve();
+      });
+    });
+  }
   return {
     origin: `http://127.0.0.1:${port}`,
     requests,
     memoryObservations,
     assets,
-    close: () => new Promise((resolve, reject) =>
-      server.close((error) => error ? reject(error) : resolve()),
-    ),
+    setReachable,
+    close: () => setReachable(false),
   };
 }
 
