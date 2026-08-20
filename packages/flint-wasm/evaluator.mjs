@@ -17,6 +17,10 @@ import {
   unpack as serializationUnpack,
 } from "./dist/serialization.mjs";
 import { createSagejsCapabilityAPI } from "./dist/wasm-capability-api.mjs";
+import {
+  capabilityTraceInstrumentation,
+  createCapabilityDispatchTrace,
+} from "./capability-trace.mjs";
 
 function deserializeError(serialized) {
   const constructors = {
@@ -71,6 +75,75 @@ function supportsSynchronousCompilerWorker() {
     typeof SharedArrayBuffer === "function" &&
     typeof Atomics?.wait === "function"
   );
+}
+
+const KERNEL_CAPABILITY_BY_SOURCE = new Map([
+  [
+    "sagejs/number_fields/field_analysis_resource.py",
+    "kernel:field-analysis-fixed-point-checker-production",
+  ],
+  [
+    "sagejs/number_fields/om_maxmin.py",
+    "kernel:number-field-om-proof-production",
+  ],
+  [
+    "sagejs/number_fields/round4_state_kernel.py",
+    "kernel:number-field-round4-state-production",
+  ],
+  [
+    "sagejs/number_fields/composite_field_analysis.py",
+    "kernel:number-field-composite-analysis-production",
+  ],
+  [
+    "sagejs/number_fields/zeta_coefficient_kernel.py",
+    "kernel:number-field-zeta-coefficients-production",
+  ],
+]);
+
+function transportByteLength(value) {
+  if (ArrayBuffer.isView(value)) return value.byteLength;
+  if (value instanceof ArrayBuffer) return value.byteLength;
+  if (typeof value === "string") return new TextEncoder().encode(value).length;
+  if (typeof value === "bigint" || typeof value === "number") return 8;
+  return 0;
+}
+
+export function instrumentWasmNativeResolver(resolver, trace) {
+  const wrapped = new WeakMap();
+  const instrument = (logicalSource, candidate) => {
+    const capabilityId = KERNEL_CAPABILITY_BY_SOURCE.get(logicalSource);
+    if (capabilityId === undefined || typeof candidate !== "function") return candidate;
+    let result = wrapped.get(candidate);
+    if (result) return result;
+    result = new Proxy(candidate, {
+      apply(target, thisArgument, arguments_) {
+        const value = Reflect.apply(target, thisArgument, arguments_);
+        trace.record(capabilityId, "receipt-backed-wasm-artifact", {
+          executionTarget: "wasm-artifact",
+          ingressBytes: arguments_.reduce(
+            (total, argument) => total + transportByteLength(argument),
+            0,
+          ),
+          egressBytes: transportByteLength(value),
+        });
+        return value;
+      },
+    });
+    wrapped.set(candidate, result);
+    return result;
+  };
+  return Object.freeze({
+    ...resolver,
+    resolve(logicalSource, name, expected) {
+      return instrument(
+        logicalSource,
+        resolver.resolve(logicalSource, name, expected),
+      );
+    },
+    function(logicalSource, name) {
+      return instrument(logicalSource, resolver.function(logicalSource, name));
+    },
+  });
 }
 
 class CompilerWorker {
@@ -317,6 +390,7 @@ export async function instantiateSageEvaluator({
 }) {
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
+  const capabilityDispatchTrace = createCapabilityDispatchTrace();
   const abort = (error) => {
     try {
       globals.restoreAll();
@@ -408,6 +482,10 @@ export async function instantiateSageEvaluator({
           };
         },
       });
+      wasmNativeResolver = instrumentWasmNativeResolver(
+        wasmNativeResolver,
+        capabilityDispatchTrace,
+      );
     }
   } catch (error) {
     abort(error);
@@ -468,6 +546,23 @@ export async function instantiateSageEvaluator({
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
   const browserEnvironment = createBrowserEnvironment();
+  const traceByteLength = (value) => {
+    if (typeof value === "string") return new TextEncoder().encode(value).length;
+    if (typeof value === "bigint" || typeof value === "number") {
+      return new TextEncoder().encode(String(value)).length;
+    }
+    if (ArrayBuffer.isView(value)) return value.byteLength;
+    if (value instanceof ArrayBuffer) return value.byteLength;
+    return 0;
+  };
+  const traceSagePack = (args, value) => capabilityDispatchTrace.record(
+    "specialist:sagepack",
+    "shared-runtime-js",
+    {
+      ingressBytes: args.reduce((total, item) => total + traceByteLength(item), 0),
+      egressBytes: traceByteLength(value),
+    },
+  );
   const serializationHost = Object.freeze({
     call(operation, args) {
       try {
@@ -517,19 +612,27 @@ export async function instantiateSageEvaluator({
           return { ok: true, value: [...bytes] };
         }
         if (operation === "serializationDumps") {
-          return { ok: true, value: serializationDumps(args[0]) };
+          const value = serializationDumps(args[0]);
+          traceSagePack(args, value);
+          return { ok: true, value };
         }
         if (operation === "serializationLoads") {
-          return { ok: true, value: serializationLoads(String(args[0])) };
+          const value = serializationLoads(String(args[0]));
+          traceSagePack(args, value);
+          return { ok: true, value };
         }
         if (operation === "serializationPack") {
-          return { ok: true, value: serializationPack(args[0]) };
+          const value = serializationPack(args[0]);
+          traceSagePack(args, value);
+          return { ok: true, value };
         }
         if (operation === "serializationUnpack") {
           const source = args[0] === null || args[0] === undefined
             ? args[0]
             : Reflect.get(Object(args[0]), "_values") ?? args[0];
-          return { ok: true, value: serializationUnpack(source) };
+          const value = serializationUnpack(source);
+          traceSagePack(args, value);
+          return { ok: true, value };
         }
         return {
           ok: false,
@@ -553,7 +656,30 @@ export async function instantiateSageEvaluator({
   installGlobal("require", runtimeRequire);
   installGlobal("__sagejs_runtime_require__", runtimeRequire);
   installGlobal("__sagejs_host__", serializationHost);
-  installGlobal("__sagejs_capability_api__", capabilityApi);
+  const traceCapabilityApiCall = () => capabilityDispatchTrace.record(
+    "specialist:capability-report-api",
+    "shared-runtime-js",
+  );
+  const runtimeCapabilityApi = Object.freeze({
+    ...capabilityApi,
+    sagejs_capabilities(...args) {
+      traceCapabilityApiCall();
+      return capabilityApi.sagejs_capabilities(...args);
+    },
+    sagejsCapabilities(...args) {
+      traceCapabilityApiCall();
+      return capabilityApi.sagejsCapabilities(...args);
+    },
+    workflow(...args) {
+      traceCapabilityApiCall();
+      return capabilityApi.workflow(...args);
+    },
+  });
+  installGlobal("__sagejs_capability_api__", runtimeCapabilityApi);
+  installGlobal(
+    "__sagejs_capability_trace__",
+    (id, route, options) => capabilityDispatchTrace.record(id, route, options),
+  );
   if (wasmNativeResolver !== undefined) {
     installGlobal("__sagejs_wasm_native_resolver__", wasmNativeResolver);
   }
@@ -642,6 +768,7 @@ export async function instantiateSageEvaluator({
     const saveRequests = [];
     outputHandler = onOutput;
     errorHandler = onError;
+    capabilityDispatchTrace.clear();
     globalThis.__sagejs_graphics_save_hook__ = (
       graphic,
       filename,
@@ -665,6 +792,7 @@ export async function instantiateSageEvaluator({
           ? undefined
           : richDisplay(value),
         saveRequests,
+        instrumentation: capabilityTraceInstrumentation(capabilityDispatchTrace),
       };
     } finally {
       outputHandler = previousOutputHandler;

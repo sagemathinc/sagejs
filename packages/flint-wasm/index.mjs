@@ -118,7 +118,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     } catch {
       throw new TypeError(`${operation} input must be an integer`);
     }
-    writeText(input, operation);
+    return writeText(input, operation);
   }
 
   function writeText(input, operation) {
@@ -136,10 +136,11 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     );
     destination.set(bytes);
     destination[bytes.length] = 0;
+    return bytes.length;
   }
 
   function factor(value) {
-    writeInteger(value, "factor");
+    const ingressBytes = writeInteger(value, "factor");
     const status = instance.exports.sagejs_factor();
     if (status === 1) {
       throw new TypeError("FLINT rejected the integer input");
@@ -156,6 +157,15 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
 
     const encoded = readCString(memory, outputPointer, outputCapacity);
     const result = JSON.parse(encoded);
+    globalThis.__sagejs_capability_trace__?.(
+      "specialist:integer-factorization-wasm",
+      "receipt-backed-wasm-artifact",
+      {
+        executionTarget: "wasm-artifact",
+        ingressBytes,
+        egressBytes: encoder.encode(encoded).length,
+      },
+    );
     return {
       sign: result.sign,
       factors: result.factors.map(([prime, exponent]) => [

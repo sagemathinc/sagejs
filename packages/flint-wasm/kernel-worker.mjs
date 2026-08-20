@@ -74,6 +74,7 @@ async function evaluate(message) {
       repr: result.repr,
       display: result.display,
       saveRequests: result.saveRequests,
+      instrumentation: result.instrumentation,
       durationMs: performance.now() - started,
     },
   });

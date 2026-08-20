@@ -1337,6 +1337,13 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     "    const status = wasm.sagejs_wasm_last_status() >>> 0;",
     "    return new WasmFfiError(message, status);",
     "  }",
+    "  function traceCapability(id, ingressBytes, egressBytes) {",
+    "    const trace = globalThis.__sagejs_capability_trace__;",
+    "    if (typeof trace === \"function\") trace(id,",
+    '      "receipt-backed-wasm-artifact", {',
+    '        executionTarget: "wasm-artifact", ingressBytes, egressBytes,',
+    "      });",
+    "  }",
     "  function inputBytes(source) {",
     "    let view;",
     "    if (source instanceof Uint8Array) view = source;",
@@ -1567,6 +1574,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     const chunks = new Map();
     let chunkCount = 0;
     lines.push("    const sagejsChunks = [];");
+    lines.push("    let sagejsEgressBytes = 0;");
     for (const parameter of fn.signature.parameters) {
       const name = cName(parameter.name);
       if (parameter.type === "Integer") {
@@ -1676,6 +1684,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
             `${chunk.index}], sagejsBuffer_${name}.storage.length * 8),`,
           `      sagejsBuffer_${name}.storage);`,
           `    sagejsBuffer_${name}.commit();`,
+          `    sagejsEgressBytes += sagejsBuffer_${name}.storage.byteLength;`,
         );
       } else {
         lines.push(
@@ -1686,9 +1695,16 @@ function generatedJavaScriptSource(declaration, surface, classified) {
             `${chunk.limbsIndex}], sagejsBuffer_${name}.limbs.length * 8),`,
           `      sagejsBuffer_${name}.limbs);`,
           `    sagejsBuffer_${name}.commit();`,
+          `    sagejsEgressBytes += sagejsBuffer_${name}.sizes.byteLength + ` +
+            `sagejsBuffer_${name}.limbs.byteLength;`,
         );
       }
     }
+    lines.push(
+      `    traceCapability(${jsString(`ffi:${declaration.id}:${fn.id}`)},`,
+      "      sagejsChunks.reduce((total, chunk) => total + chunk.bytes.length, 0),",
+      "      sagejsEgressBytes);",
+    );
     if (item.kind === "constructor") {
       lines.push(
         "    const raw = wasm.sagejs_wasm_last_u64();",

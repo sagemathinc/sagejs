@@ -190,6 +190,9 @@ def register_doc(
     value: Any,
     metadata: Any = None,
 ) -> None: ...
+
+
+def capability_trace(capability_id: str, selected_route: str) -> None: ...
 def documentation_registry() -> list[list[Any]]: ...
 kwargs_symbol: Any
 iterator_symbol: Any

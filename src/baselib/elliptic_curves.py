@@ -1754,6 +1754,9 @@ class EllipticCurveParent(sage.Parent):
                     )
             answer = -finite_sign
             self._root_number = answer
+            runtime.capability_trace(
+                "elliptic-root-number-semistable", "portable-fallback"
+            )
             return answer
         native_arguments = []
         for coefficient in self._ainvs:
@@ -2459,6 +2462,9 @@ class EllipticCurveParent(sage.Parent):
             return list(native_values)
         values = [0 for _index in range(bound + 1)]
         if bound == 0:
+            runtime.capability_trace(
+                "elliptic-coefficients-portable", "portable-fallback"
+            )
             return values
         values[1] = 1
         smallest = [0 for _index in range(bound + 1)]
@@ -2499,6 +2505,7 @@ class EllipticCurveParent(sage.Parent):
                     current = next_value
                     prime_power_value = current
             values[index] = values[rest] * prime_power_value
+        runtime.capability_trace("elliptic-coefficients-portable", "portable-fallback")
         return values
 
 

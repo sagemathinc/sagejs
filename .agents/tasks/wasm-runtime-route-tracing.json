@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-runtime-route-tracing",
+  "title": "Runtime capability route tracing",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Record exact runtime capability route dispatch per evaluation and require observed routes in browser and Node parity receipts without fallback laundering",
+  "base_commit": "2136af4843c48855a3a3148ea8d9c50e8f42f438",
+  "claims": [
+    "packages/flint-wasm/",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "src/baselib/elliptic_curves.py",
+    "src/baselib/matrix.py",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs_bootstrap.py",
+    "tools/ffi/wasm-adapters.cjs",
+    "test/browser-wasm-parity-corpus.json",
+    "test/wasm-elliptic-public-fallbacks.cjs",
+    "test/node-test-manifest.cjs",
+    "test/wasm-capabilities.cjs",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "docs/webassembly-examples.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

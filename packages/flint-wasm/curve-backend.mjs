@@ -324,6 +324,21 @@ export function createCurveBackend(instance) {
             count,
           ),
         );
+        for (const capabilityId of [
+          "elliptic-lseries-values",
+          "elliptic-lseries-plot",
+        ]) {
+          globalThis.__sagejs_capability_trace__?.(
+            capabilityId,
+            "receipt-backed-wasm-artifact",
+            {
+              executionTarget: "wasm-artifact",
+              ingressBytes: coefficientData.byteLength + pointData.bytes.length +
+                pointData.offsets.byteLength + conductorData.length,
+              egressBytes: result.packedValues.byteLength,
+            },
+          );
+        }
         return result;
       }
       const byteCount = exports.sagejs_wasm_ec_lseries_decimal_byte_count();
@@ -386,6 +401,16 @@ export function createCurveBackend(instance) {
       result.outerTailBound = maximumDecimal(outerTails);
       result.rawConversionMagnitude = maximumDecimal(rawConversions);
       result.analyticErrorBound = maximumDecimal(analyticErrors);
+      globalThis.__sagejs_capability_trace__?.(
+        "elliptic-lseries-values",
+        "receipt-backed-wasm-artifact",
+        {
+          executionTarget: "wasm-artifact",
+          ingressBytes: coefficientData.byteLength + pointData.bytes.length +
+            pointData.offsets.byteLength + conductorData.length,
+          egressBytes: bytes.byteLength + offsets.byteLength,
+        },
+      );
       return result;
     } finally {
       exports.sagejs_wasm_ec_lseries_clear();

@@ -13,6 +13,7 @@ import {
   repositoryRoot,
   resolveCapabilityRequirements,
   sha256,
+  unobservedCapabilityRequirements,
 } from "./browser-wasm-support.mjs";
 
 function option(name, fallback) {
@@ -79,7 +80,13 @@ try {
       await page.evaluate(() => window.__sagejsReady);
       engineReceipt.diagnostics = await page.evaluate(() => window.__sagejsTest.diagnostics());
       assert.equal(engineReceipt.diagnostics.cross_origin_isolated, true);
-      for (const item of cases) {
+      for (let caseIndex = 0; caseIndex < cases.length; caseIndex += 1) {
+        const item = cases[caseIndex];
+        if (caseIndex > 0) {
+          // Each receipt must observe this case's dispatches, not a result
+          // retained by a prior evaluation in the long-lived worker.
+          await page.evaluate(() => window.__sagejsTest.reset());
+        }
         const caseReceipt = {
           id: item.id,
           family: item.family,
@@ -104,7 +111,18 @@ try {
             [item.source, item.timeout_ms],
           );
           caseReceipt.duration_ms = result.duration_ms;
+          caseReceipt.instrumentation = result.instrumentation;
           caseReceipt.failures = assertParityExpectation(item, result);
+          const unobserved = unobservedCapabilityRequirements(
+            item.requires,
+            result.instrumentation.routes,
+          );
+          if (unobserved.length) {
+            caseReceipt.failures.push(
+              `required capability routes were not observed: ${JSON.stringify(unobserved)}`,
+            );
+            caseReceipt.unobserved_capability_routes = unobserved;
+          }
           caseReceipt.status = caseReceipt.failures.length === 0 ? "passed" : "mismatch";
         } catch (error) {
           caseReceipt.status = "missing-or-failed-capability";
