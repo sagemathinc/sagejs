@@ -8,7 +8,7 @@ K.<a> = NumberField(x^3 - x - 1)
 O = K.maximal_order()
 print(O)
 print(O.factor_rational_prime(23))
-K.zeta_coefficients(80)`,
+K.zeta_function().coefficients(80)`,
   },
   {
     id: "elliptic-lseries",
