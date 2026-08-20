@@ -69,6 +69,7 @@ function checkoutFixture(label) {
     package: true,
     filename: canonical.filename,
     packagePath: canonical.packagePath,
+    dependencies: [],
     javascriptTemplate: canonical.javascriptTemplate,
   };
   const bundle = {
