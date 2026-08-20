@@ -43,6 +43,7 @@ jobs:
           node bench/browser-wasm-performance.mjs \
             --runtime node-native --samples 3 \
             --budget bench/browser-wasm-budget.json \
+            --require-baseline \
             --output build/wasm-performance-node-native.json
       - uses: actions/upload-artifact@v7
         if: always()
@@ -183,6 +184,7 @@ jobs:
             --engine ${{ matrix.engine }} --samples 3 \
             --native-reference build/node-reference/wasm-performance-node-native.json \
             --budget bench/browser-wasm-budget.json \
+            --require-baseline \
             --output build/wasm-performance-${{ matrix.engine }}.json
       - name: Exercise security, interruption, offline, upgrade, and rollback
         if: matrix.engine == 'chromium'
