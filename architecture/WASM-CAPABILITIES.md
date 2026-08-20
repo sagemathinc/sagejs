@@ -44,6 +44,52 @@ record shape is `id`, `family`, `disposition`, `status`, `fallback`,
 `resource_limits`. Its source hash and complete contents are checked
 deterministically.
 
+The report also contains `workflow_aliases`. Each key is a stable public
+workflow tag from `test/browser-wasm-parity-corpus.json`; its value is the
+ordered list of exact capability IDs required by that workflow. The
+architecture audit rejects unknown IDs, duplicate IDs, missing or extra tags,
+and any disagreement between the reviewed aliases and the executable corpus.
+This makes the alias table suitable for release gates and user interfaces: a
+shell does not have to infer requirements from display names or implementation
+symbols.
+
+[`wasm-capability-api.mjs`](wasm-capability-api.mjs) is the host-neutral query
+surface for the website, mobile shell, and release tooling. It accepts the
+separately staged report, validates and detaches all public data, freezes its
+result, and fails closed on malformed or unreviewed identifiers:
+
+```javascript
+import { createSagejsCapabilityAPI } from "./wasm-capability-api.mjs";
+
+const response = await fetch("./wasm-capabilities-report.json", {
+  cache: "no-cache",
+  credentials: "omit",
+});
+if (!response.ok) throw new Error(`capability report: HTTP ${response.status}`);
+
+const capabilities = createSagejsCapabilityAPI(await response.json());
+capabilities.sagejs_capabilities("analytic-functions");
+capabilities.workflow("quadratic-dedekind-zeta-batch");
+```
+
+Pass the exact receipt-authenticated production closure as
+`availableCapabilityIds` when reporting a concrete release. In that mode the
+API computes workflow availability from the receipt, not from descriptive
+manifest status:
+
+```javascript
+const capabilities = createSagejsCapabilityAPI(report, {
+  availableCapabilityIds: productionManifest.capabilities.map(({ id }) => id),
+});
+capabilities.workflow("elliptic-lseries-complex-plot").available;
+```
+
+The report remains a separate 400+ KiB asset rather than being duplicated in
+strict Python or every application bundle. The method name
+`sagejs_capabilities` is deliberately ready for the Sage-facing helper: a
+kernel host can install this checked API in its isolated evaluator and expose
+the same call without embedding manifest data in mathematical source.
+
 Run the audit directly with:
 
 ```sh
