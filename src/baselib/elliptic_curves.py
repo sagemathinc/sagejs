@@ -1304,7 +1304,7 @@ class Lseries_ell:
             "evaluated_point_count": len(point_pairs),
             "conjugation_reconstructed": len(points) - len(point_pairs),
             "tile_count": len(tile_diagnostics),
-            "tile_point_limit": native_tile_limit,
+            "tile_point_limit": max(tile["point_count"] for tile in tile_diagnostics),
             "native_call_count": 2 * len(tile_diagnostics),
             "packed_output": True,
             "prepared_grid_reused": True,
@@ -1701,18 +1701,60 @@ class EllipticCurveParent(sage.Parent):
             self._lseries_cache = Lseries_ell(self)
         return self._lseries_cache
 
-    def root_number(self) -> int:
-        """Return the global root number of this elliptic curve over `QQ`."""
+    def root_number(self, precomputed: Any = None) -> int:
+        """Return the global root number of this elliptic curve over `QQ`.
+
+        The optional `precomputed` value records a certified root number from
+        an external source.  It must be `-1` or `1` and is cached on the
+        curve.  This explicit override is useful on portable hosts when the
+        curve has additive reduction and the optional eclib backend is not
+        present; Sage.js never guesses the missing additive local signs.
+
+        Without eclib, semistable curves are handled exactly from certified
+        Tate local data: split multiplicative primes have local sign `-1`,
+        nonsplit multiplicative primes have sign `1`, and the real place has
+        sign `-1`.
+
+        ```sage
+        sage: EllipticCurve([0,0,1,-1,0]).root_number()
+        -1
+        sage: E = EllipticCurve([1,2,3,4,999])
+        sage: E.root_number(precomputed=1)
+        1
+        """
         if self._base is not sage.QQ and self._base is not sage.ZZ:
             raise NotImplementedError("root numbers are only implemented over QQ")
+        if precomputed is not None:
+            answer = int(precomputed)
+            if answer not in (-1, 1):
+                raise ValueError("a precomputed root number must be -1 or 1")
+            if (
+                self._root_number is not runtime.undefined
+                and int(self._root_number) != answer
+            ):
+                raise ValueError("the precomputed root number conflicts with the cache")
+            self._root_number = answer
+            return answer
         if self._root_number is not runtime.undefined:
             return int(self._root_number)
         backend = runtime.flint_backend()
         native_function = runtime.reflect.get(backend, "ecRootNumber")
         if native_function is runtime.undefined:
-            raise NotImplementedError(
-                "the native eclib root-number evaluator is unavailable"
-            )
+            finite_sign = 1
+            for prime in self.bad_primes():
+                local = self.local_data(prime)
+                if local.has_split_multiplicative_reduction():
+                    finite_sign = -finite_sign
+                elif not local.has_nonsplit_multiplicative_reduction():
+                    raise NotImplementedError(
+                        "the eclib root-number evaluator is unavailable and "
+                        "additive local root numbers are not yet implemented; "
+                        "supply root_number(precomputed=-1 or 1) from a "
+                        "certified external computation"
+                    )
+            answer = -finite_sign
+            self._root_number = answer
+            return answer
         native_arguments = []
         for coefficient in self._ainvs:
             if hasattr(coefficient, "_denominator"):
@@ -2316,8 +2358,8 @@ class EllipticCurveParent(sage.Parent):
         Return the trace of Frobenius `a_p` at the prime `p`.
 
         Integral curves over `QQ` use smalljac's optimized native
-        point-counting algorithms. Rational nonintegral models use the
-        direct Sage.js point counter.
+        point-counting algorithms when available. Portable hosts use the
+        exact direct Sage.js point counter.
 
         ```sage
         sage: E = EllipticCurve([0,0,1,-1,0])
@@ -2332,16 +2374,23 @@ class EllipticCurveParent(sage.Parent):
             raise ValueError("p must be prime")
         integral_coefficients = self._integral_model_coefficients()
         if integral_coefficients is not None:
-            return int(
-                runtime.flint_backend().ecApIntegral(
-                    integral_coefficients[0],
-                    integral_coefficients[1],
-                    integral_coefficients[2],
-                    integral_coefficients[3],
-                    integral_coefficients[4],
-                    runtime.bigint(prime),
+            backend = runtime.flint_backend()
+            native_function = runtime.reflect.get(backend, "ecApIntegral")
+            if native_function is not runtime.undefined:
+                return int(
+                    runtime.reflect.apply(
+                        native_function,
+                        backend,
+                        [
+                            integral_coefficients[0],
+                            integral_coefficients[1],
+                            integral_coefficients[2],
+                            integral_coefficients[3],
+                            integral_coefficients[4],
+                            runtime.bigint(prime),
+                        ],
+                    )
                 )
-            )
         if self._base is not sage.QQ and self._base is not sage.ZZ:
             raise NotImplementedError(
                 "ap() is currently implemented for curves over QQ or ZZ"
@@ -2353,7 +2402,8 @@ class EllipticCurveParent(sage.Parent):
         Return `[a_p : p < bound]`, with `p` prime.
 
         The complete prime interval is computed in one native smalljac
-        invocation for integral curves.
+        invocation for integral curves when available. Portable hosts retain
+        the same exact Euler-factor recurrence using direct point counts.
 
         ```sage
         sage: EllipticCurve([0,0,1,-1,0]).aplist(10)
@@ -2377,19 +2427,27 @@ class EllipticCurveParent(sage.Parent):
         integral_coefficients = self._integral_model_coefficients()
         if integral_coefficients is None:
             return None
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecAnlistIntegral")
+        if native_function is runtime.undefined:
+            return None
         discriminant = self.discriminant()
         if hasattr(discriminant, "_numerator"):
             native_discriminant = discriminant._numerator
         else:
             native_discriminant = runtime.integer_bigint(discriminant)
-        return runtime.flint_backend().ecAnlistIntegral(
-            integral_coefficients[0],
-            integral_coefficients[1],
-            integral_coefficients[2],
-            integral_coefficients[3],
-            integral_coefficients[4],
-            native_discriminant,
-            runtime.bigint(bound),
+        return runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                integral_coefficients[0],
+                integral_coefficients[1],
+                integral_coefficients[2],
+                integral_coefficients[3],
+                integral_coefficients[4],
+                native_discriminant,
+                runtime.bigint(bound),
+            ],
         )
 
     def anlist(self, bound: int) -> list[int]:

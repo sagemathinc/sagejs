@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-curves-public",
+  "title": "Wasm Curves Public",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make public elliptic L-series and plot workflows select existing exact portable coefficient and root-number fallbacks when eclib exports are absent",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "src/baselib/elliptic_curves.py",
+    "test/wasm-elliptic-public-fallbacks.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath elliptic Frobenius coefficients",
+      "eclib root numbers for representative semistable curves",
+      "existing native ecApIntegral and ecAnlistIntegral results"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves",
+    "node --test test/wasm-elliptic-public-fallbacks.cjs test/elliptic-curves.cjs test/elliptic-lseries.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Public elliptic ap/anlist now capability-check optional smalljac exports and retain the exact direct point-count/Euler recurrence; semistable global root numbers use certified Tate local data, with an explicit checked precomputed override for additive curves when eclib is absent.",
+    "risks": [
+      "The portable direct point counter is exact but intentionally slower than smalljac at large coefficient bounds.",
+      "Portable additive local root-number formulas remain unimplemented; callers must provide a certified precomputed sign rather than receiving a guess."
+    ],
+    "next_steps": [
+      "Run the E37 public L-series and complex_plot fixtures in the integrated Chromium Wasm build.",
+      "Consider a future portable fast elliptic point-counting backend if large-conductor browser coefficient generation becomes a measured bottleneck."
+    ]
+  }
+}
