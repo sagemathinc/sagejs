@@ -113,8 +113,7 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
   switch (data.kind) {
     case "NumberField": {
       // The original v1 record stored the polynomial object itself.  New
-      // records use its exact coefficient data so optional compact native
-      // polynomial resources cannot change canonical SagePack bytes.
+      // Exact coefficients keep optional native resources out of SagePack.
       if (data.polynomial !== undefined) {
         return callGlobal("NumberField", [data.polynomial, data.name]);
       }
