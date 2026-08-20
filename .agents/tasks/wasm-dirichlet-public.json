@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-dirichlet-public",
+  "title": "Wasm Dirichlet Public",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the narrow public browser DirichletGroup and DirichletCharacter FLINT bridge for the browser corpus and quadratic Dedekind zeta",
+  "base_commit": "6c3375cfcfd8d8b982f208134e7f5d7892c3292b",
+  "claims": [
+    "packages/flint-wasm/src/dirichlet-group.c",
+    "packages/flint-wasm/dirichlet-group.mjs",
+    "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
+    "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT dirichlet API and Sage DirichletGroup semantics"
+    ],
+    "exceptions": [
+      "A small C host adapter is required to expose FLINT's stateful dirichlet_group_t and dirichlet_char_t through the WebAssembly scalar ABI."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+    "bash -lc SAGEJS_DIRICHLET_WASM=/tmp/tmp.sFYVz80VXX.wasm node --test packages/flint-wasm/test/dirichlet-group-resource.test.mjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.151,
+      "started_at": "2026-08-20T06:02:40.286Z",
+      "commit": "6c3375cfcfd8d8b982f208134e7f5d7892c3292b",
+      "workspace_fingerprint": "cac7ce0b61afb570c79705277002c495c80ca0f3f883cc82c33e4c27666be251",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_DIRICHLET_WASM=/tmp/tmp.sFYVz80VXX.wasm node --test packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.324,
+      "started_at": "2026-08-20T06:02:41.182Z",
+      "commit": "6c3375cfcfd8d8b982f208134e7f5d7892c3292b",
+      "workspace_fingerprint": "cac7ce0b61afb570c79705277002c495c80ca0f3f883cc82c33e4c27666be251",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a representation-independent FLINT Wasm adapter and JavaScript backend for Dirichlet groups, character metadata, single evaluations, and packed value tables, with focused unit and direct real-Wasm parity tests.",
+    "risks": [
+      "Complete character value tables are intentionally capped at 1,048,576 entries in browsers; scalar character evaluation remains available for larger moduli."
+    ],
+    "next_steps": [
+      "The integration lane must link and export the C adapter, compose createDirichletGroupBackend into the main FLINT backend, register the new tests, and classify the adapter as a host adapter in architecture/native-code.json."
+    ]
+  }
+}
