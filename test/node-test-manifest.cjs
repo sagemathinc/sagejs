@@ -9,6 +9,7 @@ const unit = [
   "test/repl-initial-completion.cjs",
   "test/cowasm-landscape.cjs",
   "test/module-cache.cjs",
+  "test/lazy-module-provenance.cjs",
   "test/cache.cjs",
   "test/cache-automatic.cjs",
   "test/native-math-profile.cjs",
