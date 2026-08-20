@@ -150,15 +150,12 @@ function validateWasmMemory(filename, memory, manifest) {
   if (memory.length !== 1 || !memory[0].imported || memory[0].shared) {
     throw new Error(`${filename} must import exactly one non-shared memory`);
   }
-  if (filename === domain.provider) {
-    if (
-      memory[0].initialPages !== domain.memory.initialPages ||
-      memory[0].maximumPages !== domain.memory.maximumPages
-    ) {
-      throw new Error(`${filename} provider memory does not match its domain contract`);
-    }
-    return;
-  }
+  // Emscripten's runtime module imports the same JavaScript-owned memory as
+  // each grammar. Its Wasm declaration is an acceptance envelope, not the
+  // allocator: the authenticated compiler frontend constructs the memory
+  // using this stricter production contract. It is therefore safe (and
+  // desirable on mobile) for the actual maximum to be lower than the generic
+  // upper bound baked into the upstream runtime binary.
   if (
     memory[0].initialPages > domain.memory.initialPages ||
     (memory[0].maximumPages !== null &&

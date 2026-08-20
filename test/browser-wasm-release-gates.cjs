@@ -94,7 +94,7 @@ test("grammar modules inherit the authenticated bounded Tree-sitter memory", () 
           id: "tree-sitter",
           provider: "runtime.wasm",
           consumers: ["grammar.wasm"],
-          memory: { pageBytes: 65536, initialPages: 2, maximumPages: 8 },
+          memory: { pageBytes: 65536, initialPages: 2, maximumPages: 4 },
         }],
       },
     };
