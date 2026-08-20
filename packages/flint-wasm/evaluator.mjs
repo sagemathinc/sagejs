@@ -760,7 +760,8 @@ export async function instantiateSageEvaluator({
     abort(error);
   }
   const ellipticCurveParent = globalEvaluate(
-    'typeof ρσ_baselib_facade === "undefined" ? undefined : ' +
+    'typeof ρσ_baselib_facade === "undefined" || ρσ_baselib_facade === null ' +
+      '? undefined : ' +
       'ρσ_baselib_facade["EllipticCurveParent"]',
   );
   if (typeof ellipticCurveParent === "function") {
