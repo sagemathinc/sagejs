@@ -120,6 +120,14 @@ def _ec_integral_coefficients(values: Any) -> list[Any]:
     return answer
 
 
+def _record_capability_trace(capability_id: str, selected_route: str) -> None:
+    """Record a successful dispatch when the host enabled route telemetry."""
+    trace = runtime.reflect.get(runtime.global_object, "__sagejs_capability_trace__")
+    if trace is runtime.undefined:
+        return
+    runtime.reflect.apply(trace, runtime.undefined, [capability_id, selected_route])
+
+
 def _ec_invariants(values: list[Any]) -> dict[str, Any]:
     a1, a2, a3, a4, a6 = values
     b2 = a1 * a1 + runtime.bigint(4) * a2
@@ -1754,7 +1762,7 @@ class EllipticCurveParent(sage.Parent):
                     )
             answer = -finite_sign
             self._root_number = answer
-            runtime.capability_trace(
+            _record_capability_trace(
                 "elliptic-root-number-semistable", "portable-fallback"
             )
             return answer
@@ -2462,7 +2470,7 @@ class EllipticCurveParent(sage.Parent):
             return list(native_values)
         values = [0 for _index in range(bound + 1)]
         if bound == 0:
-            runtime.capability_trace(
+            _record_capability_trace(
                 "elliptic-coefficients-portable", "portable-fallback"
             )
             return values
@@ -2505,7 +2513,7 @@ class EllipticCurveParent(sage.Parent):
                     current = next_value
                     prime_power_value = current
             values[index] = values[rest] * prime_power_value
-        runtime.capability_trace("elliptic-coefficients-portable", "portable-fallback")
+        _record_capability_trace("elliptic-coefficients-portable", "portable-fallback")
         return values
 
 

@@ -19,11 +19,11 @@ test("public elliptic methods capability-check optional eclib/smalljac exports",
   assert.match(source, /supply root_number\(precomputed=-1 or 1\)/);
   assert.match(
     source,
-    /capability_trace\(\s*"elliptic-root-number-semistable", "portable-fallback"/,
+    /_record_capability_trace\(\s*"elliptic-root-number-semistable", "portable-fallback"/,
   );
   assert.match(
     source,
-    /capability_trace\("elliptic-coefficients-portable", "portable-fallback"\)/,
+    /_record_capability_trace\("elliptic-coefficients-portable", "portable-fallback"\)/,
   );
 });
 

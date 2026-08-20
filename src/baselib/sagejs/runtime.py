@@ -547,19 +547,6 @@ def documentation_registry():
     return registry
 
 
-def capability_trace(capability_id: str, selected_route: str) -> None:
-    """Record a successful capability dispatch when a host trace is active.
-
-    This diagnostic boundary is deliberately inert in ordinary Node and
-    Python-style execution. Browser parity evaluators install the private
-    collector for the duration of one evaluation.
-    """
-    trace = reflect.get(global_object, "__sagejs_capability_trace__")
-    if trace is undefined:
-        return
-    reflect.apply(trace, undefined, [capability_id, selected_route])
-
-
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt
