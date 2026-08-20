@@ -17,6 +17,9 @@ export class NodeWebWorker {
     this.thread = new ThreadWorker(bootstrap, {
       type: "module",
       workerData: { target: String(url) },
+      // The Wasm workers need no process flags. Avoid inheriting stdin-only
+      // `--input-type` and test-runner flags that Node rejects for workers.
+      execArgv: [],
     });
     this.thread.on("message", (data) => this.onmessage?.({ data }));
     this.thread.on("error", (error) => {
