@@ -10,10 +10,26 @@
       "requires": [
         { "id": "runtime:integer_factorization", "route": "shared-runtime-js" }
       ],
-      "source": "print(2^80 + 17)\nprint(factor(2026))\ncaps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
+      "source": "print(2^80 + 17)\nprint(factor(2026))",
       "timeout_ms": 15000,
       "expect": {
-        "stdout": "1208925819614629174706193\n2 * 1013\nTrue True True\nimmutable\n",
+        "stdout": "1208925819614629174706193\n2 * 1013\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "capability-report-api",
+      "family": "runtime",
+      "workflow": "capability-report-api",
+      "tier": "routine",
+      "requires": [
+        { "id": "runtime:global_object", "route": "shared-runtime-js" },
+        { "id": "runtime:reflect", "route": "shared-runtime-js" }
+      ],
+      "source": "caps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\nimmutable\n",
         "repr": ""
       }
     },
@@ -50,6 +66,40 @@
       }
     },
     {
+      "id": "exact-algebraic-roots",
+      "family": "algebraic-numbers",
+      "workflow": "exact-algebraic-roots",
+      "tier": "routine",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nprint((x^2 - 2).roots(AA))\nprint((x^2 + 1).roots(QQbar))\na = AA(2).sqrt()\nprint(a.minpoly(), a > 1, a < 2)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[(-1.414213562373095?, 1), (1.414213562373095?, 1)]\n[(-I, 1), (I, 1)]\nx^2 - 2 True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "modular-symbols-weight-two",
+      "family": "modular-symbols",
+      "workflow": "modular-symbols-weight-two",
+      "tier": "routine",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "portable-fallback" }
+      ],
+      "source": "M = ModularSymbols(37, 2)\nprint(M)\nprint(M.dimension())\nC = M.cuspidal_subspace()\nprint(C.dimension())\nprint(M.hecke_matrix(2).trace())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "Modular Symbols space of dimension 5 for Gamma_0(37) of weight 2 with sign 0 over Rational Field\n5\n4\n-1\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "number-field-maximal-order-prime-zeta",
       "family": "number-fields",
       "workflow": "number-field-maximal-order-prime-zeta",
@@ -65,6 +115,25 @@
       "timeout_ms": 60000,
       "expect": {
         "stdout": "(2, 0)\n[(11, 1, 1, 11), (11, 1, 1, 11)]\n[1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 1]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "number-field-cubic-headline",
+      "family": "number-fields",
+      "workflow": "number-field-cubic-headline",
+      "tier": "routine",
+      "requires": [
+        { "id": "kernel:number-field-om-proof-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-round4-state-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-composite-analysis-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3 - x - 1)\nO = K.maximal_order()\nD = O.factor_rational_prime(23)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(24))",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(1, 1)\n[(23, 1, 1, 23), (23, 2, 1, 23)]\n[1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 2, 0]\n",
         "repr": ""
       }
     },

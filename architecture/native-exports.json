@@ -4709,6 +4709,7 @@
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint-wasm/scripts/build.cjs",
         "packages/flint-wasm/scripts/production-receipt.cjs",
+        "packages/flint-wasm/test/browser-wasm-webkit-memory.mjs",
         "packages/flint-wasm/test/production-receipt.test.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
