@@ -46,7 +46,32 @@ function domainFor(identity) {
       : "gmp";
 }
 
-function packIdentity(domain, modules) {
+function requiredResourceAdapters(modules) {
+  const resources = new Map();
+  for (const module of modules) {
+    for (const fn of module.functions) {
+      for (const resource of fn.resources ?? []) {
+        resources.set(resource.identity, {
+          id: resource.id,
+          identity: resource.identity,
+          declarationIdentity: resource.declarationIdentity,
+          abiType: resource.abiType,
+          ownership: resource.ownership,
+          handleDomain: resource.handleDomain,
+          borrowExport: resource.borrowExport,
+          adoptExport: resource.adoptExport,
+          closeExport: resource.closeExport,
+        });
+      }
+    }
+  }
+  return [...resources.values()].sort((left, right) =>
+    left.identity.localeCompare(right.identity)
+  );
+}
+
+function packIdentity(domain, modules, ownershipAdapter = null) {
+  const resourceAdapters = requiredResourceAdapters(modules);
   const identity = {
     schema: WASM_PACK_IDENTITY_SCHEMA,
     domain,
@@ -60,6 +85,10 @@ function packIdentity(domain, modules) {
       foreignDeclarations: module.identity.foreignDeclarations,
       functions: module.functions.map((fn) => fn.name),
     })),
+    resourceAdapters,
+    ownershipAdapter: ownershipAdapter === null
+      ? null
+      : { identity: ownershipAdapter.identity },
   };
   return { identity, packKey: sha256(JSON.stringify(identity)) };
 }
@@ -95,7 +124,12 @@ async function inventoryProductionKernels({ root, manifestPath }) {
         kernelKind: fn.kernelKind,
         status: classification.supported ? "compiled-source" : "unsupported",
         ...(classification.supported
-          ? { results: classification.results }
+          ? {
+            results: classification.results,
+            ...(classification.resources === undefined
+              ? {}
+              : { resources: classification.resources }),
+          }
           : {
             reason: classification.reason,
             ...(classification.resources === undefined
@@ -265,7 +299,15 @@ function toolchainReceipt(toolchain, configuration) {
   };
 }
 
-function buildDomain({ root, outputRoot, domain, modules, packKey, toolchain }) {
+function buildDomain({
+  root,
+  outputRoot,
+  domain,
+  modules,
+  packKey,
+  toolchain,
+  ownershipAdapter,
+}) {
   const configuration = domainConfiguration(domain, toolchain);
   configuration.libraries = availableLibraries(configuration, toolchain);
   requirePath("WASI clang", toolchain.clang);
@@ -317,7 +359,18 @@ __attribute__((weak)) clock_t clock(void)
         value.tv_nsec / (1000000000 / CLOCKS_PER_SEC));
 }
 `);
-  const exports = modules.flatMap((module) => module.bridge.exports);
+  const requiredAdapters = requiredResourceAdapters(modules);
+  if (requiredAdapters.length !== 0 && ownershipAdapter === null) {
+    throw new Error(
+      `Wasm ${domain} pack requires a same-instance ownership adapter for ` +
+      requiredAdapters.map((resource) => resource.id).join(", "),
+    );
+  }
+  const adapterSources = ownershipAdapter?.sources ?? [];
+  const exports = [
+    ...modules.flatMap((module) => module.bridge.exports),
+    ...(ownershipAdapter?.exports ?? []),
+  ];
   const args = [
     "--target=wasm32-wasi",
     `--sysroot=${toolchain.sysroot}`,
@@ -338,6 +391,7 @@ __attribute__((weak)) clock_t clock(void)
       join(module.directory, "kernel_core.c"),
       join(module.directory, "wasm_bridge.c"),
     ]),
+    ...adapterSources,
     compatibilityPath,
     ...configuration.prefixes.map((prefix) => `-L${join(prefix, "lib")}`),
     ...configuration.libraries.map((library) => `-l${library}`),
@@ -389,7 +443,21 @@ async function buildWasmProductionPacks(options) {
     const modules = unsorted.sort((left, right) =>
       left.logicalSource.localeCompare(right.logicalSource)
     );
-    const { identity, packKey } = packIdentity(domain, modules);
+    const ownershipAdapter = options.ownershipAdapters?.[domain] ?? null;
+    if (ownershipAdapter !== null &&
+        (typeof ownershipAdapter.identity !== "string" ||
+         ownershipAdapter.identity.length === 0 ||
+         !Array.isArray(ownershipAdapter.sources) ||
+         !Array.isArray(ownershipAdapter.exports))) {
+      throw new TypeError(
+        `invalid same-instance ownership adapter for Wasm ${domain} pack`,
+      );
+    }
+    const { identity, packKey } = packIdentity(
+      domain,
+      modules,
+      ownershipAdapter,
+    );
     const built = options.emitOnly || !requestedDomains.has(domain)
       ? null
       : buildDomain({
@@ -399,6 +467,7 @@ async function buildWasmProductionPacks(options) {
         modules,
         packKey,
         toolchain: options.toolchain,
+        ownershipAdapter,
       });
     packs.push({
       domain,
@@ -406,6 +475,8 @@ async function buildWasmProductionPacks(options) {
       identity,
       status: built === null ? "emitted" : "built",
       modules: modules.map((module) => module.identity.identityHash),
+      requiredResourceAdapters: identity.resourceAdapters,
+      ownershipAdapter: identity.ownershipAdapter,
       ...(built ?? {}),
     });
   }
@@ -533,6 +604,7 @@ module.exports = {
   defaultToolchain,
   inventoryProductionKernels,
   packIdentity,
+  requiredResourceAdapters,
   parseArguments,
 };
 

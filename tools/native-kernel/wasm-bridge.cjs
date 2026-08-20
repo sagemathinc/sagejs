@@ -27,6 +27,37 @@ function supportedRecord(record) {
   );
 }
 
+function resourceForType(fn, type) {
+  return (fn.foreignResources ?? []).find((resource) =>
+    (resource.compiler_type ?? resource.python_name) === type ||
+    resource.python_name === type
+  ) ?? null;
+}
+
+function resourceHookName(operation, resource) {
+  return `sagejs_wasm_resource_${operation}_${cName(resource.id)}`;
+}
+
+function resourceDescriptor(resource) {
+  return Object.freeze({
+    kind: "resource",
+    id: resource.id,
+    identity: `resource:${resource.declaration_identity}:${resource.id}`,
+    declarationIdentity: resource.declaration_identity,
+    type: resource.compiler_type ?? resource.python_name,
+    pythonName: resource.python_name,
+    abiType: resource.abi_type,
+    ownership: resource.ownership,
+    handleDomain: "same-wasm-instance",
+    borrowExport: resourceHookName("borrow", resource),
+    adoptExport: resourceHookName("adopt", resource),
+    closeExport: resource.dynamic?.close_export === undefined ||
+      resource.dynamic.close_export === null
+      ? null
+      : `sagejs_wasm_${cName(resource.dynamic.close_export)}`,
+  });
+}
+
 function classifyWasmFunction(fn, ir) {
   if (!["integer", "prime-field-source"].includes(fn.kernelKind)) {
     return {
@@ -34,20 +65,42 @@ function classifyWasmFunction(fn, ir) {
       reason: `kernel-kind-${fn.kernelKind}-bridge-not-generated`,
     };
   }
-  if ((fn.foreignResources ?? []).length !== 0) {
-    const resources = fn.foreignResources.map((resource) => resource.id).sort();
+  const usedResources = new Map();
+  for (const type of [
+    ...fn.params.map((parameter) => parameter.type),
+    ...(tupleElementTypes(fn.returnType) ?? [fn.returnType]),
+  ]) {
+    const resource = resourceForType(fn, type);
+    if (resource !== null) usedResources.set(resource.id, resource);
+  }
+  if (usedResources.size !== 0) {
+    const resources = [...usedResources.values()];
     const missingTarget = fn.foreignResources.find(
-      (resource) => resource.targets?.wasm !== true,
+      (resource) => usedResources.has(resource.id) &&
+        resource.targets?.wasm !== true,
     );
-    return {
-      supported: false,
-      reason: missingTarget === undefined
-        ? "foreign-resource-ownership-domain-adapter-required"
-        : "foreign-resource-not-declared-for-wasm",
-      resources,
-    };
+    if (missingTarget !== undefined) {
+      return {
+        supported: false,
+        reason: "foreign-resource-not-declared-for-wasm",
+        resources: resources.map((resource) => resource.id).sort(),
+      };
+    }
+    const unsupportedOwnership = resources.find((resource) =>
+      resource.ownership !== "owned" || resource.owner !== null ||
+      resource.native?.clear_symbol === undefined ||
+      resource.native.clear_symbol === null
+    );
+    if (unsupportedOwnership !== undefined) {
+      return {
+        supported: false,
+        reason: "foreign-resource-ownership-shape-not-bridgeable",
+        resources: resources.map((resource) => resource.id).sort(),
+      };
+    }
   }
   for (const parameter of fn.params) {
+    if (resourceForType(fn, parameter.type) !== null) continue;
     if (SCALAR_TYPES.has(parameter.type) || BUFFER_TYPES.has(parameter.type)) {
       continue;
     }
@@ -59,14 +112,40 @@ function classifyWasmFunction(fn, ir) {
     };
   }
   const results = tupleElementTypes(fn.returnType) ?? [fn.returnType];
-  const unsupported = results.find((type) => !RESULT_TYPES.has(type));
+  const returnedResources = results
+    .map((type) => resourceForType(fn, type))
+    .filter((resource) => resource !== null);
+  if (returnedResources.length !== 0 && results.length !== 1) {
+    return {
+      supported: false,
+      reason: "resource-tuple-result-bridge-not-generated",
+      resources: returnedResources.map((resource) => resource.id).sort(),
+    };
+  }
+  const unsupported = results.find((type) =>
+    !RESULT_TYPES.has(type) && resourceForType(fn, type) === null
+  );
   if (unsupported !== undefined) {
     return {
       supported: false,
       reason: `result-type-${unsupported}-bridge-not-generated`,
     };
   }
-  return { supported: true, results };
+  const resultDescriptors = results.map((type) => {
+    const resource = resourceForType(fn, type);
+    return resource === null ? type : resourceDescriptor(resource);
+  });
+  return {
+    supported: true,
+    results: resultDescriptors,
+    ...(usedResources.size === 0
+      ? {}
+      : {
+        resources: [...usedResources.values()]
+          .map((resource) => resourceDescriptor(resource))
+          .sort((left, right) => left.id.localeCompare(right.id)),
+      }),
+  };
 }
 
 function bufferParameters(type, name) {
@@ -107,6 +186,27 @@ function bufferDeclaration(type, variable, name, sourceBuffer = false) {
 function parameterBridge(parameter, ir, fn) {
   const name = cName(parameter.name);
   const variable = `sagejs_value_${name}`;
+  const resource = resourceForType(fn, parameter.type);
+  if (resource !== null) {
+    const hook = resourceHookName("borrow", resource);
+    return {
+      signature: [`uint64_t sagejs_arg_${name}_handle`],
+      declaration: `    ${resource.abi_type} *${variable} = NULL;
+    if (!${hook}(sagejs_arg_${name}_handle, &${variable}))
+    {
+        sagejs_wasm_last_message_storage_m_${"$MODULE"} =
+            "invalid or closed same-instance Wasm resource handle";
+        return SAGEJS_NATIVE_TYPE_ERROR;
+    }`,
+      argument: `*${variable}`,
+      cleanup: "",
+      descriptor: {
+        name: parameter.name,
+        type: parameter.type,
+        resource: resourceDescriptor(resource),
+      },
+    };
+  }
   if (parameter.type === "Integer") {
     return {
       signature: [`uint32_t sagejs_arg_${name}_decimal`],
@@ -202,7 +302,27 @@ function resultLocals(results, fn) {
   const stores = [];
   results.forEach((type, index) => {
     const name = `sagejs_result_${index}`;
-    if (type === "Integer") {
+    if (type !== null && typeof type === "object" && type.kind === "resource") {
+      const resource = resourceForType(fn, type.type);
+      if (resource === null) {
+        throw new Error(`missing resource result metadata for ${type.type}`);
+      }
+      const handle = `${name}_handle`;
+      declarations.push(`    ${resource.abi_type} ${name};`);
+      declarations.push(`    uint64_t ${handle} = 0;`);
+      arguments_.push(name);
+      stores.push(
+        `    if (!${resourceHookName("adopt", resource)}(${name}, &${handle}))`,
+        "    {",
+        `        ${resource.native.clear_symbol}(${name});`,
+        `        sagejs_wasm_last_message_storage_m_$MODULE =`,
+        `            "unable to adopt returned Wasm resource";`,
+        "        sagejs_wasm_ok = 0;",
+        "    }",
+        "    else",
+        `        sagejs_wasm_result_u64_storage_m_$MODULE[${index}] = ${handle};`,
+      );
+    } else if (type === "Integer") {
       declarations.push(`    mpz_t ${name};`);
       initializations.push(`    mpz_init(${name});`);
       cleanups.unshift(`    mpz_clear(${name});`);
@@ -301,6 +421,16 @@ function generateWasmBridge({ ir, moduleIdentity, functionNames }) {
   const needsIntegerResult = generated.some((item) =>
     item.descriptor.results.includes("Integer")
   );
+  const resources = new Map();
+  for (const fn of requested) {
+    for (const resource of fn.foreignResources ?? []) {
+      const used = [
+        ...fn.params.map((parameter) => parameter.type),
+        ...(tupleElementTypes(fn.returnType) ?? [fn.returnType]),
+      ].some((type) => resourceForType(fn, type)?.id === resource.id);
+      if (used) resources.set(resource.id, resource);
+    }
+  }
   const allocate = `sagejs_wasm_allocate_m_${moduleIdentity}`;
   const deallocate = `sagejs_wasm_deallocate_m_${moduleIdentity}`;
   const resultU64 = `sagejs_wasm_result_u64_at_m_${moduleIdentity}`;
@@ -338,6 +468,17 @@ static int sagejs_wasm_store_integer_m_${moduleIdentity}(
 #include <stdlib.h>
 #include <string.h>
 #include "kernel_core.h"
+
+/* These hooks are emitted by the declaration-derived FFI resource adapter
+ * and must be linked into this exact Wasm instance. Handles are never foreign
+ * pointers and are invalid across instances or allocator domains. */
+${[...resources.values()].sort((left, right) => left.id.localeCompare(right.id))
+    .flatMap((resource) => [
+      `int ${resourceHookName("borrow", resource)}(uint64_t handle, ` +
+        `${resource.abi_type} **value);`,
+      `int ${resourceHookName("adopt", resource)}(${resource.abi_type} value, ` +
+        "uint64_t *handle);",
+    ]).join("\n")}
 
 #define SAGEJS_WASM_RESULT_SLOTS 8
 static uint64_t sagejs_wasm_result_u64_storage_m_${moduleIdentity}[
@@ -418,4 +559,6 @@ module.exports = {
   RESULT_TYPES,
   classifyWasmFunction,
   generateWasmBridge,
+  resourceDescriptor,
+  resourceHookName,
 };

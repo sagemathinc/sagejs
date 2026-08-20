@@ -68,7 +68,26 @@ function cString(memory, address) {
   return textDecoder.decode(bytes.subarray(address, stop));
 }
 
-function makeMarshaller(instance, runtime) {
+function resourceHandle(resourceBridge, instance, parameter, argument) {
+  if (resourceBridge === null || typeof resourceBridge.unwrap !== "function") {
+    throw new TypeError(
+      `Wasm kernel resource ${parameter.resource.id} requires its ` +
+      "same-instance generated ownership adapter",
+    );
+  }
+  const handle = resourceBridge.unwrap({
+    instance,
+    resource: parameter.resource,
+    value: argument,
+  });
+  if (typeof handle !== "bigint" || handle <= 0n ||
+      handle > 0xffffffffffffffffn) {
+    throw new TypeError("ownership adapter returned an invalid resource handle");
+  }
+  return handle;
+}
+
+function makeMarshaller(instance, runtime, resourceBridge) {
   const exports = instance.exports;
   const allocate = exports[runtime.allocate];
   const deallocate = exports[runtime.deallocate];
@@ -136,6 +155,9 @@ function makeMarshaller(instance, runtime) {
     return [address, values.length];
   }
   function encode(parameter, argument) {
+    if (parameter.resource !== undefined) {
+      return [resourceHandle(resourceBridge, instance, parameter, argument)];
+    }
     if (parameter.type === "Integer") {
       const bytes = textEncoder.encode(`${BigInt(argument)}\0`);
       const address = alloc(bytes.length);
@@ -172,8 +194,31 @@ function makeMarshaller(instance, runtime) {
   return { encode, finish };
 }
 
-function decodeResults(instance, runtime, resultTypes) {
+function decodeResults(instance, runtime, resultTypes, resourceBridge) {
   const values = resultTypes.map((type, index) => {
+    if (type !== null && typeof type === "object" && type.kind === "resource") {
+      const handle = instance.exports[runtime.resultU64](index);
+      if (typeof handle !== "bigint" || handle === 0n) {
+        throw new Error("Wasm kernel returned an invalid owned-resource handle");
+      }
+      if (resourceBridge === null || typeof resourceBridge.wrap !== "function") {
+        const close = type.closeExport === null
+          ? null : instance.exports[type.closeExport];
+        if (typeof close === "function") close(handle);
+        throw new TypeError(
+          `Wasm kernel resource ${type.id} requires its same-instance ` +
+          "generated ownership adapter",
+        );
+      }
+      try {
+        return resourceBridge.wrap({ instance, resource: type, handle });
+      } catch (error) {
+        const close = type.closeExport === null
+          ? null : instance.exports[type.closeExport];
+        if (typeof close === "function") close(handle);
+        throw error;
+      }
+    }
     if (type === "bool" || type === "uint64") {
       const value = instance.exports[runtime.resultU64](index);
       return type === "bool" ? value !== 0n : value;
@@ -196,7 +241,7 @@ function decodeResults(instance, runtime, resultTypes) {
   return values.length === 1 ? values[0] : values;
 }
 
-function callable(instance, kernel, fn) {
+function callable(instance, kernel, fn, resourceBridge) {
   const bridge = fn.bridge;
   const target = instance.exports[bridge.export];
   if (typeof target !== "function") {
@@ -209,7 +254,7 @@ function callable(instance, kernel, fn) {
           `not ${arguments_.length}`,
       );
     }
-    const marshaller = makeMarshaller(instance, kernel.runtime);
+    const marshaller = makeMarshaller(instance, kernel.runtime, resourceBridge);
     let answer;
     try {
       const wasmArguments = bridge.parameters.flatMap((parameter, index) =>
@@ -224,7 +269,12 @@ function callable(instance, kernel, fn) {
           ? RangeError : Error;
         throw new error(cString(instance.exports.memory, address));
       }
-      answer = decodeResults(instance, kernel.runtime, bridge.results);
+      answer = decodeResults(
+        instance,
+        kernel.runtime,
+        bridge.results,
+        resourceBridge,
+      );
     } finally {
       marshaller.finish();
     }
@@ -278,8 +328,27 @@ export async function instantiateWasmKernelPacks(options) {
     throw new TypeError("Wasm kernel loading requires load and host callbacks");
   }
   const instances = new Map();
+  const resourceBridges = new Map();
   for (const pack of manifest.packs.filter((item) => item.status === "built")) {
-    instances.set(pack.domain, await instantiateModule(pack, options));
+    const instance = await instantiateModule(pack, options);
+    instances.set(pack.domain, instance);
+    const configuredResources = options.resources;
+    const bridge = typeof configuredResources === "function"
+      ? await configuredResources(pack, instance)
+      : configuredResources !== null &&
+          typeof configuredResources === "object" &&
+          typeof configuredResources.unwrap === "function"
+        ? configuredResources
+        : configuredResources?.[pack.domain] ?? null;
+    if (bridge !== null &&
+        (typeof bridge !== "object" ||
+         typeof bridge.unwrap !== "function" ||
+         typeof bridge.wrap !== "function")) {
+      throw new TypeError(
+        `invalid same-instance resource bridge for Wasm ${pack.domain} pack`,
+      );
+    }
+    resourceBridges.set(pack.domain, bridge);
   }
   const functions = new Map();
   for (const kernel of manifest.kernels) {
@@ -288,7 +357,7 @@ export async function instantiateWasmKernelPacks(options) {
     for (const fn of kernel.functions) {
       if (fn.status !== "compiled-source" || fn.bridge === undefined) continue;
       functions.set(`${kernel.logicalSource}:${fn.name}`,
-        callable(instance, kernel, fn));
+        callable(instance, kernel, fn, resourceBridges.get(kernel.domain)));
     }
   }
   function resolve(logicalSource, name, expected = {}) {
