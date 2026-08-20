@@ -217,17 +217,22 @@ try {
   });
   assert.ok(currentCacheFilename);
   const currentCache = JSON.parse(readFileSync(currentCacheFilename, "utf8"));
-  const filenameMarker = "__sagejs_precompiled_module_filename__";
+  const filenameMarker =
+    "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
   const filenameLiteral = JSON.stringify(currentCache.filename);
   assert.ok(currentCache.javascript.includes(filenameLiteral));
   mkdirSync(portableCache);
   writeFileSync(
     join(portableCache, "cached_value.json"),
     JSON.stringify({
+      schema: "sagejs.lazy-module-template/v1",
       version: currentCache.version,
       signature: currentCache.signature,
       mode: currentCache.mode,
       module: "cached_value",
+      package: false,
+      filenameMarker,
+      packagePathMarker: null,
       javascriptTemplate: currentCache.javascript.replaceAll(
         filenameLiteral,
         JSON.stringify(filenameMarker),

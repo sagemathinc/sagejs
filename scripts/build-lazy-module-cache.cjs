@@ -15,10 +15,20 @@ const { tmpdir } = require("node:os");
 const { dirname, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
+const {
+  LAZY_MODULE_BUNDLE_SCHEMA,
+  PRECOMPILED_MODULE_FILENAME,
+  PRECOMPILED_PACKAGE_PATH,
+  assertLazyModuleName,
+  canonicalizeJavascriptTemplate,
+  provenanceRecord,
+  validateLazyModuleBundle,
+} = require("./lazy-module-provenance.cjs");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
 const outputDirectory = join(root, "dist", "lazy-module-cache");
+const bundleFilename = join(root, "dist", "lazy-modules.json");
 const dynamicOutputDirectory = join(root, "dist", "dynamic-cache");
 const manifest = JSON.parse(readFileSync(
   join(__dirname, "precompiled-python-packages.json"),
@@ -29,11 +39,8 @@ const packageTemporary = join(temporary, "packages");
 const taskTemporary = join(temporary, "tasks");
 const packageDynamicTemporary = join(temporary, "dynamic-packages");
 const taskDynamicTemporary = join(temporary, "dynamic-tasks");
-const filenameMarker = "__sagejs_precompiled_module_filename__";
 const taskManifestFilename = "task-runtime-modules.json";
 const compilerFilename = join(root, "dist", "compiler", "compiler.js");
-const moduleNamePattern =
-  /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 
 function filesBelow(directory) {
   const answer = [];
@@ -71,14 +78,6 @@ function sourceResource(sourceFilename) {
     throw new Error(`compiled source is outside src/lib: ${sourceFilename}`);
   }
   return resource;
-}
-
-function portableModuleFilename(name, sourceFilename) {
-  const normalizedSource = sourceFilename.replaceAll("\\", "/");
-  const suffix = normalizedSource.endsWith("/__init__.py")
-    ? "/__init__.py"
-    : ".py";
-  return `/__sagejs_task_modules__/${name.replaceAll(".", "/")}${suffix}`;
 }
 
 function compileImports(imports, moduleDirectory, dynamicDirectory) {
@@ -128,29 +127,40 @@ function compileImports(imports, moduleDirectory, dynamicDirectory) {
   rmSync(generated, { recursive: true, force: true });
 }
 
-function copyCompiledModules(moduleDirectory, taskModules) {
+function copyCompiledModules(moduleDirectory, taskModules, bundleModules) {
   let count = 0;
   for (const cacheFilename of filesBelow(moduleDirectory)) {
     if (!cacheFilename.endsWith(".json")) continue;
     const cached = JSON.parse(readFileSync(cacheFilename, "utf8"));
     const name = moduleName(cached.filename);
     if (!name || typeof cached.javascript !== "string") continue;
-    const filenameLiteral = JSON.stringify(cached.filename);
-    if (!cached.javascript.includes(filenameLiteral)) {
-      throw new Error(`compiled module ${name} does not contain its filename`);
+    assertLazyModuleName(name);
+    const canonical = canonicalizeJavascriptTemplate({
+      name,
+      sourceFilename: cached.filename,
+      javascript: cached.javascript,
+      repositoryRoot: root,
+    });
+    const source = sourceResource(cached.filename);
+    const sourceContents = readFileSync(join(libraryDirectory, source));
+    const sourceSignature = digest("sha1", sourceContents);
+    if (sourceSignature !== cached.signature) {
+      throw new Error(`compiled source signature is stale for ${name}`);
     }
-    const javascriptTemplate = cached.javascript.replaceAll(
-      filenameLiteral,
-      JSON.stringify(filenameMarker),
-    );
     const resource = cacheResource(name);
     const record = {
+      schema: "sagejs.lazy-module-template/v1",
       version: cached.version,
       signature: cached.signature,
       mode: cached.mode,
       module: name,
-      javascriptTemplate,
+      package: canonical.package,
+      filenameMarker: PRECOMPILED_MODULE_FILENAME,
+      packagePathMarker:
+        canonical.package ? PRECOMPILED_PACKAGE_PATH : null,
+      javascriptTemplate: canonical.javascriptTemplate,
     };
+    const recordContents = JSON.stringify(record);
     const outputFilename = join(outputDirectory, resource);
     if (existsSync(outputFilename)) {
       const existing = JSON.parse(readFileSync(outputFilename, "utf8"));
@@ -158,24 +168,36 @@ function copyCompiledModules(moduleDirectory, taskModules) {
         throw new Error(`conflicting precompiled output for ${name}`);
       }
     } else {
-      writeFileSync(outputFilename, JSON.stringify(record));
+      writeFileSync(outputFilename, recordContents);
       count += 1;
     }
+    const bundleRecord = {
+      resource,
+      resourceSha256: digest("sha256", recordContents),
+      source,
+      sourceSha256: digest("sha256", sourceContents),
+      signature: cached.signature,
+      version: cached.version,
+      mode: cached.mode,
+      package: canonical.package,
+      filename: canonical.filename,
+      packagePath: canonical.packagePath,
+      javascriptTemplate: canonical.javascriptTemplate,
+    };
+    if (Object.hasOwn(bundleModules, name) &&
+        JSON.stringify(bundleModules[name]) !== JSON.stringify(bundleRecord)) {
+      throw new Error(`conflicting lazy-module provenance for ${name}`);
+    }
+    bundleModules[name] = bundleRecord;
     if (taskModules) {
-      const source = sourceResource(cached.filename);
-      const sourceSignature = digest(
-        "sha1",
-        readFileSync(join(libraryDirectory, source), "utf8"),
-      );
-      if (sourceSignature !== cached.signature) {
-        throw new Error(`compiled source signature is stale for ${name}`);
-      }
       taskModules[name] = {
         resource,
         version: cached.version,
         signature: cached.signature,
         mode: cached.mode,
-        filename: portableModuleFilename(name, cached.filename),
+        package: canonical.package,
+        filename: canonical.filename,
+        packagePath: canonical.packagePath,
         source,
       };
     }
@@ -198,6 +220,7 @@ function copyDynamicPrograms(directory) {
 
 rmSync(outputDirectory, { recursive: true, force: true });
 rmSync(dynamicOutputDirectory, { recursive: true, force: true });
+rmSync(bundleFilename, { force: true });
 mkdirSync(outputDirectory, { recursive: true });
 mkdirSync(dynamicOutputDirectory, { recursive: true });
 
@@ -209,7 +232,14 @@ try {
     ["task-runtime", taskImports],
   ]) {
     if (!Array.isArray(imports) || imports.some(
-      (name) => typeof name !== "string" || !moduleNamePattern.test(name)
+      (name) => {
+        try {
+          assertLazyModuleName(name, `${kind} precompile import`);
+          return false;
+        } catch (_error) {
+          return true;
+        }
+      }
     )) throw new TypeError(`invalid ${kind} precompile import list`);
   }
 
@@ -220,9 +250,18 @@ try {
   );
   compileImports(taskImports, taskTemporary, taskDynamicTemporary);
 
-  let moduleCount = copyCompiledModules(packageTemporary);
+  const bundleModules = Object.create(null);
+  let moduleCount = copyCompiledModules(
+    packageTemporary,
+    undefined,
+    bundleModules,
+  );
   const taskModules = Object.create(null);
-  moduleCount += copyCompiledModules(taskTemporary, taskModules);
+  moduleCount += copyCompiledModules(
+    taskTemporary,
+    taskModules,
+    bundleModules,
+  );
 
   for (const name of [...packageImports, ...taskImports]) {
     const expected = join(
@@ -236,18 +275,39 @@ try {
 
   const sortedTaskModules = Object.fromEntries(
     Object.entries(taskModules).sort(([left], [right]) =>
-      left.localeCompare(right)
+      left < right ? -1 : left > right ? 1 : 0
     ),
   );
   writeFileSync(
     join(outputDirectory, taskManifestFilename),
     JSON.stringify({
-      schema: "sagejs.task-runtime-modules/v2",
+      schema: "sagejs.task-runtime-modules/v3",
       compilerSha256: digest("sha256", readFileSync(compilerFilename)),
       roots: [...taskImports].sort(),
       modules: sortedTaskModules,
     }),
   );
+
+  const sortedBundleModules = Object.fromEntries(
+    Object.entries(bundleModules).sort(([left], [right]) =>
+      left < right ? -1 : left > right ? 1 : 0
+    ),
+  );
+  const bundle = {
+    schema: LAZY_MODULE_BUNDLE_SCHEMA,
+    generator: provenanceRecord(root, __filename),
+    config: provenanceRecord(
+      root,
+      join(__dirname, "precompiled-python-packages.json"),
+    ),
+    roots: {
+      package: [...new Set(packageImports)].sort(),
+      taskRuntime: [...new Set(taskImports)].sort(),
+    },
+    modules: sortedBundleModules,
+  };
+  validateLazyModuleBundle(bundle, { repositoryRoot: root });
+  writeFileSync(bundleFilename, `${JSON.stringify(bundle)}\n`);
 
   const dynamicCount =
     copyDynamicPrograms(packageDynamicTemporary) +
