@@ -22,6 +22,7 @@ Start with:
 - [Certified number-field maximal orders](number-field-maximal-orders.md)
 - [Plotting](../PLOTTING.md)
 - [Hyperelliptic curves and local Frobenius data](hyperelliptic-curves.md)
+- [Hyperelliptic conductors, root numbers, and L-series](hyperelliptic-lseries.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 
 The Markdown sources are intentionally ordinary files: they render on GitHub

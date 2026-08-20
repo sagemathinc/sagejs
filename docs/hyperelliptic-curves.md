@@ -8,6 +8,10 @@ for inertia-invariant Euler factors and conductor exponents. Those factors
 can have degree below `2g`, so they deliberately use a separate API from the
 good-reduction `local_lpolynomial` method.
 
+For certified global conductors, root numbers, analytic L-values, and probable
+analytic ranks, see [Hyperelliptic conductors, root numbers, and
+L-series](hyperelliptic-lseries.md).
+
 Sage.js supports smooth genus-2 and genus-3 curves written
 
 ```text
