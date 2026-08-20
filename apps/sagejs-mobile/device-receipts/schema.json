@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/mobile-device-feasibility-v1.json",
+  "title": "Sage.js mobile physical-device feasibility receipt",
+  "type": "object",
+  "required": ["schema", "recordedAt", "gitCommit", "artifactIdentity", "device", "checks", "measurements", "testFlight"],
+  "properties": {
+    "schema": {"const": "sagejs.mobile-device-feasibility/v1"},
+    "recordedAt": {"type": "string", "format": "date-time"},
+    "gitCommit": {"type": "string", "minLength": 40, "maxLength": 64},
+    "artifactIdentity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "device": {
+      "type": "object",
+      "required": ["family", "model", "osVersion", "physical"],
+      "properties": {
+        "family": {"enum": ["iphone", "ipad"]},
+        "model": {"type": "string"},
+        "osVersion": {"type": "string"},
+        "physical": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "checks": {"type": "object"},
+    "measurements": {"type": "object"},
+    "testFlight": {"enum": ["not-submitted", "submitted", "approved", "rejected"]}
+  },
+  "additionalProperties": false
+}

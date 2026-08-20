@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="sagejs-artifact" content="__SAGEJS_ARTIFACT_ID__" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; base-uri 'none'; connect-src 'self' blob:; img-src 'self' data: blob:; script-src 'self' blob: 'unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; child-src 'self' blob:; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Sage.js worksheet</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <label class="sr-only" for="source">Sage worksheet source</label>
+      <textarea
+        id="source"
+        aria-label="Sage worksheet source"
+        autocapitalize="off"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      ></textarea>
+      <nav aria-label="Worksheet execution controls">
+        <button
+          id="run"
+          type="button"
+          disabled
+          aria-keyshortcuts="Meta+Enter Control+Enter"
+        >
+          Run
+        </button>
+        <button id="interrupt" type="button" disabled>Interrupt</button>
+        <button id="share-source" type="button">Share source</button>
+        <button id="share-plot" type="button" hidden>Share plot data</button>
+      </nav>
+      <output id="status" role="status" aria-live="polite"
+        >Loading bundled Sage.js…</output
+      >
+      <pre id="output" aria-label="Sage output" tabindex="0"></pre>
+      <section
+        id="display"
+        aria-label="Sage graphical output"
+        aria-live="polite"
+      ></section>
+    </main>
+    <script src="./sagejs/dist/plotly.min.js"></script>
+    <script type="module" src="./main.mjs"></script>
+  </body>
+</html>
