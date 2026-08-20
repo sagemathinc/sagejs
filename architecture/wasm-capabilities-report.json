@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "a398c5d3c75d7988be3635419b4d844950a8093f5f8c972bb9314671dfb79c94",
+  "source_sha256": "be98f8e6a37717d83827bc4e84ba8437845f4c8c06fc9b4e85087a6694609825",
   "counts": {
     "total": 941,
     "by_kind": {
@@ -66,7 +66,8 @@
       "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix"
     ],
     "number-field-cubic-headline": [
-      "kernel:field-analysis-fixed-point-checker-production",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:nmod_poly_factor",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "number-field-ideal-certificate-sagepack": [
