@@ -442,6 +442,15 @@ export function createAlgebraicBackend(instance) {
       for (let index = 0; index < count; index += 1) {
         result.push([native(handles[index]), multiplicities[index]]);
       }
+      globalThis.__sagejs_capability_trace__?.(
+        "algebraic:qqbar-resource-core",
+        "receipt-backed-wasm-artifact",
+        {
+          executionTarget: "wasm-artifact",
+          ingressBytes: bytes.byteLength,
+          egressBytes: count * 8,
+        },
+      );
       return result;
     },
     qqbarSerialize(value) {
