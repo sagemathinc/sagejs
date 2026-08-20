@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Public Sage programs that must agree across Node and browser WebAssembly hosts.",
   "cases": [
     {
@@ -7,11 +7,13 @@
       "family": "exact-arithmetic",
       "workflow": "exact-integer-factorization",
       "tier": "routine",
-      "requires": ["runtime:integer_factorization"],
-      "source": "print(2^80 + 17)\nprint(factor(2026))",
+      "requires": [
+        { "id": "runtime:integer_factorization", "route": "shared-runtime-js" }
+      ],
+      "source": "print(2^80 + 17)\nprint(factor(2026))\ncaps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
       "timeout_ms": 15000,
       "expect": {
-        "stdout": "1208925819614629174706193\n2 * 1013\n",
+        "stdout": "1208925819614629174706193\n2 * 1013\nTrue True True\nimmutable\n",
         "repr": ""
       }
     },
@@ -21,9 +23,9 @@
       "workflow": "exact-matrices-and-finite-field-polynomials",
       "tier": "routine",
       "requires": [
-        "ffi:flint:fmpz_matrix_det",
-        "ffi:flint:fmpz_matrix_hnf",
-        "ffi:flint:fmpz_mod_polynomial_gcd"
+        { "id": "ffi:flint:fmpz_matrix_det", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_mod_polynomial_gcd", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "A = matrix(ZZ, [[1,2],[3,4]])\nR.<x> = PolynomialRing(GF(18446744073709551629))\nf = x^4 + 3*x + 7\nprint(A.det(), A.rank())\nprint(A.hermite_form())\nprint(f.gcd(f.derivative()))",
       "timeout_ms": 20000,
@@ -37,7 +39,9 @@
       "family": "serialization",
       "workflow": "sagepack-exact-roundtrip",
       "tier": "routine",
-      "requires": ["specialist:sagepack"],
+      "requires": [
+        { "id": "specialist:sagepack", "route": "shared-runtime-js" }
+      ],
       "source": "from sagejs_serialization import dumps, loads\nA = matrix(QQ, [[1/2,2/3],[3/4,4/5]])\ndata = dumps(A)\nprint(data[:8] == b'SAGEPK1\\x00', loads(data) == A, dumps(loads(data)) == data)",
       "timeout_ms": 15000,
       "expect": {
@@ -51,11 +55,11 @@
       "workflow": "number-field-maximal-order-prime-zeta",
       "tier": "release",
       "requires": [
-        "kernel:number-field-om-proof-production",
-        "kernel:number-field-round4-state-production",
-        "kernel:number-field-composite-analysis-production",
-        "kernel:number-field-zeta-coefficients-production",
-        "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+        { "id": "kernel:number-field-om-proof-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-round4-state-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-composite-analysis-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nD = O.factor_rational_prime(11)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(16))",
       "timeout_ms": 60000,
@@ -69,7 +73,9 @@
       "family": "analytic-functions",
       "workflow": "riemann-zeta-batch",
       "tier": "release",
-      "requires": ["analytic:riemann-zeta-batch"],
+      "requires": [
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
       "source": "R = RiemannZeta(80)\nfor z in R.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,
       "expect": {
@@ -87,7 +93,9 @@
       "family": "analytic-functions",
       "workflow": "dirichlet-l-batch",
       "tier": "release",
-      "requires": ["analytic:dirichlet-l-batch"],
+      "requires": [
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
       "source": "G = DirichletGroup(5)\nL = G[2].lfunction(80)\nfor z in L.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,
       "expect": {
@@ -106,9 +114,9 @@
       "workflow": "quadratic-dedekind-zeta-batch",
       "tier": "release",
       "requires": [
-        "analytic:riemann-zeta-batch",
-        "analytic:dirichlet-l-batch",
-        "analytic:quadratic-dedekind-zeta"
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:quadratic-dedekind-zeta", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nfor z in Z.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,
@@ -128,8 +136,8 @@
       "workflow": "elliptic-portable-coefficients",
       "tier": "release",
       "requires": [
-        "elliptic-coefficients-portable",
-        "elliptic-root-number-semistable"
+        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
+        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nprint(E.root_number())\nprint(E.anlist(12))",
       "timeout_ms": 30000,
@@ -144,9 +152,9 @@
       "workflow": "elliptic-lseries-values",
       "tier": "release",
       "requires": [
-        "elliptic-coefficients-portable",
-        "elliptic-root-number-semistable",
-        "elliptic-lseries-values"
+        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
+        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\nz = L(1+I)\nprint(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,
@@ -166,10 +174,10 @@
       "workflow": "elliptic-lseries-complex-plot",
       "tier": "release",
       "requires": [
-        "elliptic-coefficients-portable",
-        "elliptic-root-number-semistable",
-        "elliptic-lseries-values",
-        "elliptic-lseries-plot"
+        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
+        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\ncomplex_plot(L,(0,2),(-1,1),plot_points=12,interpolation='nearest')",
       "timeout_ms": 90000,

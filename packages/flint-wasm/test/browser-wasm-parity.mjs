@@ -8,9 +8,10 @@ import {
   createBrowserWasmServer,
   executablePathFor,
   loadParityCorpus,
-  loadProductionCapabilityIds,
+  loadProductionCapabilityRoutes,
   parseEngineList,
   repositoryRoot,
+  resolveCapabilityRequirements,
   sha256,
 } from "./browser-wasm-support.mjs";
 
@@ -30,7 +31,7 @@ const requireEngines = new Set(parseEngineList(
 const receiptPath = option("--receipt", process.env.SAGEJS_WASM_PARITY_RECEIPT);
 const browserTypes = { chromium, firefox, webkit };
 const corpus = await loadParityCorpus();
-const productionCapabilities = await loadProductionCapabilityIds();
+const productionCapabilityRoutes = await loadProductionCapabilityRoutes();
 const cases = corpus.cases.filter((item) => tier === "release" || item.tier === "routine");
 const server = await createBrowserWasmServer();
 const receipt = {
@@ -83,14 +84,18 @@ try {
           id: item.id,
           family: item.family,
           workflow: item.workflow,
-          required_capabilities: item.requires,
+          required_capability_routes: item.requires,
           status: "failed",
         };
         engineReceipt.cases.push(caseReceipt);
-        const missing = item.requires.filter((id) => !productionCapabilities.has(id));
-        if (missing.length) {
-          caseReceipt.status = "missing-manifest-capability";
-          caseReceipt.missing_capabilities = missing;
+        const resolution = resolveCapabilityRequirements(
+          item.requires,
+          productionCapabilityRoutes,
+        );
+        caseReceipt.selected_capability_routes = resolution.selected;
+        if (resolution.missing.length) {
+          caseReceipt.status = "missing-capability-route";
+          caseReceipt.missing_capability_routes = resolution.missing;
           continue;
         }
         try {

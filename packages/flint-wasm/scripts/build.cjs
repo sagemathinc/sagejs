@@ -111,6 +111,8 @@ const serializationOutput = path.join(
   "serialization.mjs",
 );
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
+const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
+const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
 const compilerSource = path.join(
   repositoryRoot,
   "dist",
@@ -250,6 +252,14 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+fs.copyFileSync(
+  path.join(repositoryRoot, "architecture", "wasm-capability-api.mjs"),
+  capabilityApiOutput,
+);
+fs.copyFileSync(
+  path.join(repositoryRoot, "architecture", "wasm-capabilities-report.json"),
+  capabilityReportOutput,
+);
 
 const registry = loadRegistry({ root: repositoryRoot });
 const generatedClosure = generatedWasmClosure(registry, {

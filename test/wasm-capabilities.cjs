@@ -21,6 +21,10 @@ const report = JSON.parse(fs.readFileSync(
   path.join(root, "architecture", "wasm-capabilities-report.json"),
   "utf8",
 ));
+const productionCapabilities = JSON.parse(fs.readFileSync(
+  path.join(root, "packages", "flint-wasm", "release", "production-capabilities.json"),
+  "utf8",
+));
 
 test("all current Wasm-relevant capability kinds are reviewed", () => {
   const result = validateManifest(manifest);
@@ -32,7 +36,10 @@ test("all current Wasm-relevant capability kinds are reviewed", () => {
   assert.equal(counts["runtime-intrinsic"].length, 137);
   assert.equal(counts["specialist-capability"].length, 19);
   assert.equal(result.capabilities.length, 939);
-  assert.equal(productionClosure().size, 69);
+  const expectedProductionClosure = Object.values(productionCapabilities.modules)
+    .flatMap((module) => module.capabilities)
+    .sort();
+  assert.deepEqual([...productionClosure()].sort(), expectedProductionClosure);
   assert.deepEqual(
     result.workflowAliases["riemann-zeta-batch"],
     ["analytic:riemann-zeta-batch"],
@@ -53,9 +60,10 @@ test("an unreviewed N-API operation fails closed", () => {
 test("Wasm-ready declarations require an explicit production-closure decision", () => {
   const changed = structuredClone(manifest);
   const item = changed.capabilities.find((entry) =>
-    entry.wasm_declared === true && entry.wasm_closure.status === "planned"
+    entry.wasm_declared === true && entry.wasm_closure.status === "included"
   );
   assert.ok(item);
+  item.wasm_closure.status = "planned";
   delete item.wasm_closure.explanation;
   assert.throws(
     () => validateManifest(changed),
@@ -247,6 +255,7 @@ test("the checked-in generated report is accepted by the public API", async () =
   const { createSagejsCapabilityAPI } = await publicApiModule();
   const api = createSagejsCapabilityAPI(report);
   assert.ok(api.sagejs_capabilities().length >= 900);
+  assert.ok(api.sagejs_capabilities("number-fields").length > 0);
   assert.deepEqual(
     api.workflow("number-field-maximal-order-prime-zeta").required_capabilities,
     [

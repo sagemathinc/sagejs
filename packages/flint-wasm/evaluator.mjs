@@ -8,6 +8,7 @@ import {
   pack as serializationPack,
   unpack as serializationUnpack,
 } from "./dist/serialization.mjs";
+import { createSagejsCapabilityAPI } from "./dist/wasm-capability-api.mjs";
 
 function deserializeError(serialized) {
   const error = new Error(serialized.message);
@@ -216,11 +217,13 @@ export async function instantiateSageEvaluator({
   treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
   pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
   sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+  capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
   WorkerConstructor = globalThis.Worker,
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
   evaluateGlobal = globalThis.eval,
+  fetchCapabilityReport = globalThis.fetch,
 }) {
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
@@ -251,12 +254,15 @@ export async function instantiateSageEvaluator({
   let m4riBackend;
   let symbolicBackendModule;
   let wasmNativeResolver;
+  let capabilityApi;
+  let capabilityReportResponse;
   try {
     [
       initializationResult,
       flintBackend,
       m4riBackend,
       symbolicBackendModule,
+      capabilityReportResponse,
     ] = await Promise.all([
       language.request("initialize", {
         compiler: String(compiler),
@@ -270,7 +276,14 @@ export async function instantiateSageEvaluator({
       instantiateFlint(flint, { algebraicSource: algebraic }),
       instantiateM4riBackend(m4ri),
       importSymbolic(symbolic),
+      fetchCapabilityReport(String(capabilityReport)),
     ]);
+    if (!capabilityReportResponse.ok) {
+      throw new Error(
+        `unable to load WebAssembly capability report (${capabilityReportResponse.status})`,
+      );
+    }
+    capabilityApi = createSagejsCapabilityAPI(await capabilityReportResponse.json());
     if (nativeKernels !== undefined) {
       const manifestUrl = new URL(String(nativeKernels), import.meta.url);
       const response = await fetch(manifestUrl);
@@ -415,6 +428,7 @@ export async function instantiateSageEvaluator({
   installGlobal("require", runtimeRequire);
   installGlobal("__sagejs_runtime_require__", runtimeRequire);
   installGlobal("__sagejs_host__", serializationHost);
+  installGlobal("__sagejs_capability_api__", capabilityApi);
   if (wasmNativeResolver !== undefined) {
     installGlobal("__sagejs_wasm_native_resolver__", wasmNativeResolver);
   }

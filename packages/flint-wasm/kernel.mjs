@@ -48,6 +48,7 @@ export class SageSession {
     treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
     pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
     sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+    capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
     onGraphicsSave,
   } = {}) {
     this.resources = {
@@ -65,6 +66,7 @@ export class SageSession {
       treeSitterRuntime: String(treeSitterRuntime),
       pythonGrammar: String(pythonGrammar),
       sageGrammar: String(sageGrammar),
+      capabilityReport: String(capabilityReport),
     };
     this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
@@ -203,6 +205,7 @@ export class SageSession {
         treeSitterRuntime: this.resources.treeSitterRuntime,
         pythonGrammar: this.resources.pythonGrammar,
         sageGrammar: this.resources.sageGrammar,
+        capabilityReport: this.resources.capabilityReport,
       },
       [channel.port2],
     );

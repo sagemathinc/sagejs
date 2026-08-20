@@ -35,6 +35,7 @@ async function initialize(message) {
     treeSitterRuntime: message.treeSitterRuntime,
     pythonGrammar: message.pythonGrammar,
     sageGrammar: message.sageGrammar,
+    capabilityReport: message.capabilityReport,
   });
   await evaluatorPromise;
   send({
