@@ -155,6 +155,39 @@ test("integral genus-2 grammars return complete coefficient streams", () => {
   }
 });
 
+test("the packed L-polynomial boundary retains smalljac genus-one number fields", () => {
+  const batch = flint.smalljacLpolyBatch(
+    "[0,0,0,1,1]/(z^2+1)",
+    9n,
+    9n,
+    { maxRows: 1 },
+  );
+  assert.equal(batch.status, 0);
+  assert.equal(batch.genus, 1);
+  assert.equal(batch.rowCount, 1);
+  assert.deepEqual(Array.from(batch.primes), [9n]);
+  assert.deepEqual(Array.from(batch.good), [1]);
+  assert.deepEqual(Array.from(batch.coefficientCounts), [1]);
+  assert.deepEqual(Array.from(batch.coefficients), [6n, 0n]);
+
+  // The quadratic-field norm bound is independent of the public genus-2
+  // prime bound.  This row is just above 2^32 and exercises the path used by
+  // nested almost-good genus-2 cluster refinements.
+  const largeNorm = 65539n ** 2n;
+  const largeBatch = flint.smalljacLpolyBatch(
+    "[0,0,0,1,1]/(z^2+1)",
+    largeNorm,
+    largeNorm,
+    { maxRows: 1 },
+  );
+  assert.equal(largeBatch.status, 0);
+  assert.equal(largeBatch.genus, 1);
+  assert.deepEqual(Array.from(largeBatch.primes), [largeNorm]);
+  assert.deepEqual(Array.from(largeBatch.good), [1]);
+  assert.deepEqual(Array.from(largeBatch.coefficientCounts), [1]);
+  assert.deepEqual(Array.from(largeBatch.coefficients), [54902n, 0n]);
+});
+
 test("bad rows remain aligned and maxRows reports exact truncation", () => {
   const batch = flint.smalljacLpolyBatch("x^5+x+1", 2n, 31n, {
     maxRows: 3,

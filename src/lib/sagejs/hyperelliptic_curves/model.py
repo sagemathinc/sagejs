@@ -363,6 +363,33 @@ class HyperellipticCurve_generic(sage.Parent):
             raise TypeError("local_lpolynomial requires a prime")
         return _frobenius_module().rational_local_lpolynomial(self, p, algorithm)
 
+    def local_reduction(self, p: Any = None, algorithm: str = "auto") -> Any:
+        """Return certified Euler-factor and conductor data at `p`.
+
+        Unlike `local_lpolynomial`, this method also handles the implemented
+        odd bad-reduction cases.  Its Euler factor is defined on inertia
+        invariants and may therefore have degree less than `2*genus()`.
+        """
+        if _is_finite_field(self._base):
+            raise TypeError("local_reduction(p) is defined for curves over QQ")
+        if self._base is not sage.QQ and getattr(self._base, "_kind", None) != "QQ":
+            raise TypeError("local_reduction requires a curve over QQ")
+        if p is None:
+            raise TypeError("local_reduction requires a prime")
+        module = __import__(
+            "sagejs.hyperelliptic_curves.bad_reduction",
+            fromlist=["local_reduction"],
+        )
+        return module.local_reduction(self, p, algorithm)
+
+    def local_euler_factor(self, p: Any = None, algorithm: str = "auto") -> Any:
+        """Return the certified good or bad Euler numerator at `p`."""
+        return self.local_reduction(p, algorithm).euler_factor
+
+    def conductor_exponent(self, p: Any = None, algorithm: str = "auto") -> Any:
+        """Return the certified local conductor exponent at `p`."""
+        return self.local_reduction(p, algorithm).conductor_exponent
+
     def local_lpolynomial_chunks(
         self,
         start: Any,

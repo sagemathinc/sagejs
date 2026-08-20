@@ -250,19 +250,21 @@ static int lpoly_callback(
         : SAGEJS_SMALLJAC_ROW_BAD_REDUCTION;
     if (!good)
         return 1;
-    if (coefficients == NULL || count != batch->genus || count != 2)
+    if (coefficients == NULL || count != batch->genus ||
+        (count != 1 && count != 2))
     {
         batch->status = SAGEJS_SMALLJAC_STATUS_INTERNAL_ERROR;
         context->callback_failed = 1;
         return 0;
     }
     row->coefficient_count = (uint8_t) count;
-    if (coefficients[0] < INT64_C(-262144) ||
-        coefficients[0] > INT64_C(262144) ||
-        coefficients[1] < -(sagejs_smalljac_coefficient_t)
-            (UINT64_C(6) * (uint64_t) prime) ||
-        coefficients[1] > (sagejs_smalljac_coefficient_t)
-            (UINT64_C(6) * (uint64_t) prime))
+    if ((count == 2 &&
+            (coefficients[0] < INT64_C(-262144) ||
+             coefficients[0] > INT64_C(262144) ||
+             coefficients[1] < -(sagejs_smalljac_coefficient_t)
+                (UINT64_C(6) * (uint64_t) prime) ||
+             coefficients[1] > (sagejs_smalljac_coefficient_t)
+                (UINT64_C(6) * (uint64_t) prime))))
     {
         batch->status = SAGEJS_SMALLJAC_STATUS_COEFFICIENT_RANGE;
         context->callback_failed = 1;
@@ -389,8 +391,6 @@ int32_t sagejs_smalljac_lpoly_batch_compute(
 
     if (invalid_common_arguments(curve_text, start, stop))
         result->status = SAGEJS_SMALLJAC_STATUS_INVALID_ARGUMENT;
-    else if (stop > SAGEJS_SMALLJAC_LPOLY_MAX_PRIME)
-        result->status = SAGEJS_SMALLJAC_STATUS_INVALID_INTERVAL;
     else
     {
         sagejs_smalljac_lock();
@@ -405,9 +405,17 @@ int32_t sagejs_smalljac_lpoly_batch_compute(
             return result->status;
         }
         result->genus = (uint8_t) smalljac_curve_genus(curve);
-        if (result->genus != 2)
+        if (result->genus != 1 && result->genus != 2)
         {
             result->status = SAGEJS_SMALLJAC_STATUS_UNSUPPORTED_CURVE;
+            smalljac_curve_clear(curve);
+            sagejs_smalljac_unlock();
+            return result->status;
+        }
+        if ((result->genus == 1 && stop > SAGEJS_SMALLJAC_G1_LPOLY_MAX_NORM) ||
+            (result->genus == 2 && stop > SAGEJS_SMALLJAC_LPOLY_MAX_PRIME))
+        {
+            result->status = SAGEJS_SMALLJAC_STATUS_INVALID_INTERVAL;
             smalljac_curve_clear(curve);
             sagejs_smalljac_unlock();
             return result->status;
