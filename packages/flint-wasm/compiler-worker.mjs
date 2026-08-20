@@ -82,7 +82,10 @@ function compile(source, filename) {
       }
     }
   }
-  return javascript;
+  const dynamicImports = Object.values(toplevel.imports ?? {})
+    .filter((module) => module?.dynamic === true)
+    .map((module) => module.module_id);
+  return { javascript, dynamicImports };
 }
 
 function sendResponse(data, response) {

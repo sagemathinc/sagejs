@@ -40,7 +40,7 @@ test("packed exact polynomial fallback ships its synchronous helper", async () =
   const bundle = JSON.parse(
     await fs.readFile(new URL("../dist/lazy-modules.json", import.meta.url), "utf8"),
   );
-  assert.equal(bundle.schema, "sagejs.lazy-module-bundle/v1");
+  assert.equal(bundle.schema, "sagejs.lazy-module-bundle/v2");
   assert.ok(bundle.modules["sagejs.polynomial_algorithms.structural_calculus"]);
   assert.ok(bundle.modules.multiprocessing);
 });

@@ -44,6 +44,8 @@ const packageDynamicTemporary = join(temporary, "dynamic-packages");
 const taskDynamicTemporary = join(temporary, "dynamic-tasks");
 const taskManifestFilename = "task-runtime-modules.json";
 const compilerFilename = join(root, "dist", "compiler", "compiler.js");
+const compilerModuleCacheDirectory = join(root, "dist", "module-cache");
+const bootstrapModules = new Set(["builtins"]);
 
 function filesBelow(directory) {
   const answer = [];
@@ -67,6 +69,21 @@ function moduleName(filename) {
 
 function cacheResource(name) {
   return `${name.replaceAll(".", "-")}.json`;
+}
+
+function importedModuleIds(name, version, signature) {
+  const filename = join(compilerModuleCacheDirectory, cacheResource(name));
+  if (!existsSync(filename)) return [];
+  const cached = JSON.parse(readFileSync(filename, "utf8"));
+  if (
+    cached.version !== version ||
+    cached.signature !== signature ||
+    !Array.isArray(cached.imported_module_ids) ||
+    cached.imported_module_ids.some((dependency) => typeof dependency !== "string")
+  ) {
+    throw new Error(`invalid compiler dependency metadata for ${name}`);
+  }
+  return [...new Set(cached.imported_module_ids)];
 }
 
 function digest(algorithm, value) {
@@ -194,6 +211,11 @@ function copyCompiledModules(moduleDirectory, taskModules, bundleModules) {
       package: canonical.package,
       filename: canonical.filename,
       packagePath: canonical.packagePath,
+      dependencies: importedModuleIds(
+        name,
+        cached.version,
+        cached.signature,
+      ),
       javascriptTemplate: canonical.javascriptTemplate,
     };
     if (Object.hasOwn(bundleModules, name) &&
@@ -318,6 +340,18 @@ try {
       left < right ? -1 : left > right ? 1 : 0
     ),
   );
+  for (const [name, record] of Object.entries(sortedBundleModules)) {
+    for (const dependency of record.dependencies) {
+      if (
+        !Object.hasOwn(sortedBundleModules, dependency) &&
+        !bootstrapModules.has(dependency)
+      ) {
+        throw new Error(
+          `lazy module ${name} has unbundled dependency ${dependency}`,
+        );
+      }
+    }
+  }
   const bundle = {
     schema: LAZY_MODULE_BUNDLE_SCHEMA,
     generator: provenanceRecord(root, __filename),

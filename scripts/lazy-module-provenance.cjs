@@ -4,7 +4,7 @@ const { createHash } = require("node:crypto");
 const { readFileSync } = require("node:fs");
 const { relative, resolve, sep } = require("node:path");
 
-const LAZY_MODULE_BUNDLE_SCHEMA = "sagejs.lazy-module-bundle/v1";
+const LAZY_MODULE_BUNDLE_SCHEMA = "sagejs.lazy-module-bundle/v2";
 const LAZY_MODULE_VIRTUAL_ROOT = "/__sagejs_lazy_modules__";
 const PRECOMPILED_MODULE_FILENAME =
   `${LAZY_MODULE_VIRTUAL_ROOT}/__SAGEJS_MODULE_FILENAME__`;
@@ -184,13 +184,16 @@ function validateLazyModuleBundle(bundle, { repositoryRoot } = {}) {
     if (!hasExactKeys(record, [
       "resource", "resourceSha256", "source", "sourceSha256", "signature",
       "version", "mode", "package", "filename", "packagePath",
-      "javascriptTemplate",
+      "dependencies", "javascriptTemplate",
     ]) || record.resource !== `${name.replaceAll(".", "-")}.json` ||
         !SHA256_PATTERN.test(record.resourceSha256) ||
         !SHA256_PATTERN.test(record.sourceSha256) ||
         !SHA1_PATTERN.test(record.signature) ||
         typeof record.version !== "string" || record.mode !== "python" ||
         typeof record.package !== "boolean" ||
+        !Array.isArray(record.dependencies) ||
+        record.dependencies.some((dependency) => !validLazyModuleName(dependency)) ||
+        new Set(record.dependencies).size !== record.dependencies.length ||
         typeof record.javascriptTemplate !== "string" ||
         !validSourceForModule(name, record.source, record.package) ||
         record.filename !== canonicalModuleFilename(name, record.package) ||

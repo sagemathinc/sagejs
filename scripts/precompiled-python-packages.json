@@ -7,6 +7,7 @@
     "sagejs_elliptic_descent",
     "sagejs.elliptic_curves.analytic_rank",
     "sagejs.elliptic_curves.lseries",
+    "sagejs.linear_algebra.sparse_random_m4ri",
     "sagejs.number_fields.analytic_zeta",
     "sagejs.number_fields.class_groups",
     "sagejs.number_fields.dedekind_zeta",
@@ -19,7 +20,8 @@
     "sagejs.number_fields.riemann_zeta",
     "sagejs.number_fields.units",
     "sagejs.number_fields.zeta_coefficient_kernel",
-    "sagejs.number_fields.zeta_coefficients"
+    "sagejs.number_fields.zeta_coefficients",
+    "traceback"
   ],
   "dynamicWarmups": [
     "from mpmath import mp\nmp.dps = 30\nmp.hyp2f1(1, 2, 3, mp.mpf('0.25'))"

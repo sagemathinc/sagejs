@@ -64,6 +64,7 @@ function fixture(label) {
           package: false,
           filename: "/__sagejs_lazy_modules__/example.py",
           packagePath: null,
+          dependencies: [],
           javascriptTemplate: template,
         },
       },

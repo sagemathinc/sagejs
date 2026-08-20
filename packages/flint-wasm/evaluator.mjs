@@ -805,8 +805,9 @@ export async function instantiateSageEvaluator({
     stdout: stdoutStream,
     stderr: stderrStream,
   }));
+  let lazyModuleLoader;
   try {
-    installLazyModuleLoader(lazyModuleBundle, {
+    lazyModuleLoader = installLazyModuleLoader(lazyModuleBundle, {
       globalObject: globalThis,
       evaluate: globalEvaluate,
       install(name, value) {
@@ -826,10 +827,19 @@ export async function instantiateSageEvaluator({
       onError = onOutput,
     } = {},
   ) {
-    const javascript = await language.request("compile", {
+    const compiled = await language.request("compile", {
       source,
       filename,
     });
+    if (
+      compiled === null ||
+      typeof compiled !== "object" ||
+      typeof compiled.javascript !== "string" ||
+      !Array.isArray(compiled.dynamicImports) ||
+      compiled.dynamicImports.some((name) => typeof name !== "string")
+    ) {
+      throw new TypeError("browser compiler returned an invalid program");
+    }
     const previousOutputHandler = outputHandler;
     const previousErrorHandler = errorHandler;
     const saveRequests = [];
@@ -849,7 +859,8 @@ export async function instantiateSageEvaluator({
       return graphic;
     };
     try {
-      const value = globalEvaluate(javascript);
+      for (const name of compiled.dynamicImports) lazyModuleLoader(name);
+      const value = globalEvaluate(compiled.javascript);
       return {
         value,
         repr: value === undefined || value === null

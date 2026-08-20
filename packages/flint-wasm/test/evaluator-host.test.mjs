@@ -21,7 +21,7 @@ function fakeWorkerClass(initialization) {
       queueMicrotask(() => {
         const result = message.type === "initialize"
           ? initialization
-          : message.source;
+          : { javascript: message.source, dynamicImports: [] };
         this.onmessage({ data: { id: message.id, ok: true, result } });
       });
     }
@@ -37,7 +37,7 @@ const backendOptions = {
   instantiateM4riBackend: async () => ({}),
   importSymbolic: async () => ({}),
   fetchLazyModules: async () => ({
-    schema: "sagejs.lazy-module-bundle/v1",
+    schema: "sagejs.lazy-module-bundle/v2",
     generator: {
       path: "scripts/build-lazy-module-cache.cjs",
       sha256: "0".repeat(64),

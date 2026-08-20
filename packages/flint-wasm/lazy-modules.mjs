@@ -1,4 +1,4 @@
-const SCHEMA = "sagejs.lazy-module-bundle/v1";
+const SCHEMA = "sagejs.lazy-module-bundle/v2";
 const VIRTUAL_ROOT = "/__sagejs_lazy_modules__";
 const FILENAME_MARKER = `${VIRTUAL_ROOT}/__SAGEJS_MODULE_FILENAME__`;
 const PACKAGE_PATH_MARKER = `${VIRTUAL_ROOT}/__SAGEJS_PACKAGE_PATH__`;
@@ -88,7 +88,7 @@ export function validateLazyModuleBundle(document) {
     if (!canonicalName(name) || !exactKeys(record, [
       "resource", "resourceSha256", "source", "sourceSha256", "signature",
       "version", "mode", "package", "filename", "packagePath",
-      "javascriptTemplate",
+      "dependencies", "javascriptTemplate",
     ])) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
     }
@@ -106,6 +106,9 @@ export function validateLazyModuleBundle(document) {
       typeof record.package !== "boolean" ||
       record.filename !== expected.filename ||
       record.packagePath !== expected.packagePath ||
+      !Array.isArray(record.dependencies) ||
+      record.dependencies.some((dependency) => !canonicalName(dependency)) ||
+      new Set(record.dependencies).size !== record.dependencies.length ||
       typeof record.javascriptTemplate !== "string" ||
       !record.javascriptTemplate.includes(JSON.stringify(FILENAME_MARKER)) ||
       (record.package
@@ -117,7 +120,10 @@ export function validateLazyModuleBundle(document) {
     requireDigest(record.resourceSha256, SHA256, `${name} resource digest`);
     requireDigest(record.sourceSha256, SHA256, `${name} source digest`);
     requireDigest(record.signature, SHA1, `${name} source signature`);
-    modules[name] = Object.freeze({ ...record });
+    modules[name] = Object.freeze({
+      ...record,
+      dependencies: Object.freeze([...record.dependencies]),
+    });
   }
   return Object.freeze({
     schema: SCHEMA,
@@ -188,6 +194,13 @@ export function installLazyModuleLoader(
     const previous = globalObject.__sagejs_current_module_namespace__;
     globalObject.__sagejs_current_module_namespace__ = namespace;
     try {
+      for (const dependency of record.dependencies) {
+        if (validated.modules[dependency] !== undefined) {
+          load(dependency);
+        } else if (!Object.prototype.hasOwnProperty.call(registry, dependency)) {
+          throw importError(globalObject, dependency);
+        }
+      }
       const javascript = record.javascriptTemplate
         .replaceAll(JSON.stringify(FILENAME_MARKER), JSON.stringify(record.filename))
         .replaceAll(
@@ -197,9 +210,40 @@ export function installLazyModuleLoader(
       Reflect.apply(evaluate, globalObject, [
         `(function(){\n${javascript}\n}).call(globalThis);`,
       ]);
+      if (!Object.prototype.hasOwnProperty.call(registry, name)) {
+        throw new Error(`lazy module ${name} did not register itself`);
+      }
+      const installed = registry[name];
+      // Compiled module bodies replace the cycle-breaking placeholder in the
+      // registry.  Preserve Python's import invariant that already-loaded
+      // immediate children remain attributes of that final module object.
+      // This matters for non-package aliases such as `os.path` just as it does
+      // for ordinary packages.
+      if (
+        installed !== namespace &&
+        installed !== null &&
+        (typeof installed === "object" || typeof installed === "function")
+      ) {
+        const prefix = `${name}.`;
+        for (const registeredName of Object.keys(registry)) {
+          if (!registeredName.startsWith(prefix)) continue;
+          const registeredChild = registeredName.slice(prefix.length);
+          if (!registeredChild || registeredChild.includes(".")) continue;
+          installed[registeredChild] = registry[registeredName];
+        }
+      }
+      if (parent !== undefined && childName) parent[childName] = installed;
+      return installed;
     } catch (error) {
+      const installed = registry[name];
       delete registry[name];
-      if (parent !== undefined && childName) delete parent[childName];
+      if (
+        parent !== undefined &&
+        childName &&
+        (parent[childName] === namespace || parent[childName] === installed)
+      ) {
+        delete parent[childName];
+      }
       throw error;
     } finally {
       if (previous === undefined) {
@@ -208,10 +252,6 @@ export function installLazyModuleLoader(
         globalObject.__sagejs_current_module_namespace__ = previous;
       }
     }
-    if (!Object.prototype.hasOwnProperty.call(registry, name)) {
-      throw new Error(`lazy module ${name} did not register itself`);
-    }
-    return registry[name];
   };
   install("__sagejs_load_module__", load);
   return load;
