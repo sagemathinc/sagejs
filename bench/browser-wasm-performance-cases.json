@@ -1,0 +1,59 @@
+{
+  "schema": "sagejs.browser-wasm-performance-cases/v1",
+  "description": "A small release-performance profile. These are workloads, not substitutes for the complete browser parity corpus.",
+  "cases": [
+    {
+      "id": "exact-matrix-kernel",
+      "family": "exact-arithmetic",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_det", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "A = matrix(ZZ, 12, 12, lambda i,j: (i+2)*(j+3) + (1 if i == j else 0))\nprint(A.det())\nprint(A.hermite_form()[0,0])",
+      "timeout_ms": 60000
+    },
+    {
+      "id": "cubic-number-field-zeta-1000",
+      "family": "number-fields",
+      "requires": [
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^3-x-1)\nO = K.maximal_order()\ncoefficients = K.zeta_function().coefficients(1000)\nprint(O.discriminant(), len(coefficients), sum(coefficients[:32]))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "analytic-special-value-batches",
+      "family": "analytic-functions",
+      "requires": [
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "points = [CC(2, k/8) for k in range(-16,17)]\nR = RiemannZeta(80)\nG = DirichletGroup(5)\nD = G[2].lfunction(80)\nP.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nvalues = R.values(points) + D.values(points) + Z.values(points)\nprint(len(values), float(values[0].real()), float(values[-1].real()))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "elliptic-lseries-value-batch",
+      "family": "elliptic-curves",
+      "requires": [
+        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
+        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npoints = [CC(1, k/8) for k in range(-16,17)]\nvalues = L.values(points, prec=53)\nprint(len(values), float(values[0].real()), float(values[-1].imag()))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "elliptic-lseries-complex-plot-64",
+      "family": "plotting",
+      "requires": [
+        { "id": "elliptic-coefficients-portable", "route": "portable-fallback" },
+        { "id": "elliptic-root-number-semistable", "route": "portable-fallback" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npicture = complex_plot(L,(0,2),(-4,4),plot_points=64,interpolation='nearest')\nprint(picture._plot_spec_diagnostics[0]['pixel_count'])",
+      "timeout_ms": 240000
+    }
+  ]
+}

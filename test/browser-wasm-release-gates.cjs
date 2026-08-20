@@ -183,3 +183,103 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
 });
+
+test("release performance profile covers heavyweight vertical slices without invented baselines", async () => {
+  const root = path.join(__dirname, "..");
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "bench", "browser-wasm-performance-cases.json"), "utf8"),
+  );
+  const budget = JSON.parse(
+    fs.readFileSync(path.join(root, "bench", "browser-wasm-budget.json"), "utf8"),
+  );
+  const { validatePerformanceWorkloads } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  validatePerformanceWorkloads(manifest);
+  const ids = new Set(manifest.cases.map((item) => item.id));
+  assert.ok(ids.has("cubic-number-field-zeta-1000"));
+  assert.ok(ids.has("analytic-special-value-batches"));
+  assert.ok(ids.has("elliptic-lseries-value-batch"));
+  assert.ok(ids.has("elliptic-lseries-complex-plot-64"));
+  assert.match(
+    manifest.cases.find((item) => item.id === "cubic-number-field-zeta-1000").source,
+    /coefficients\(1000\)/,
+  );
+  assert.match(
+    manifest.cases.find((item) => item.id === "elliptic-lseries-complex-plot-64").source,
+    /plot_points=64/,
+  );
+  assert.equal(budget.performance_baseline, null);
+  assert.equal(budget.native_ratio_baseline, null);
+  assert.equal(budget.thresholds.native_ratio_regression_fraction, null);
+});
+
+test("performance instrumentation distinguishes unavailable data from measured zero", async () => {
+  const { summarizeInstrumentation } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  const requirement = [{
+    id: "analytic:riemann-zeta-batch",
+    route: "receipt-backed-wasm-artifact",
+  }];
+  const unavailable = summarizeInstrumentation([null, null], requirement);
+  assert.equal(unavailable.status, "unavailable");
+  assert.equal(unavailable.boundary_crossings, null);
+  assert.equal(unavailable.copied_bytes, null);
+  assert.equal(unavailable.required_routes[0].status, "unavailable");
+
+  const measured = summarizeInstrumentation([{
+    routes: [{
+      capability_id: "analytic:riemann-zeta-batch",
+      selected_route: "receipt-backed-wasm-artifact",
+      execution_target: "wasm-artifact",
+      call_count: 2,
+      ingress_bytes: 64,
+      egress_bytes: 128,
+    }],
+    boundary_crossings: 2,
+    copied_bytes: 192,
+  }], requirement);
+  assert.equal(measured.status, "available");
+  assert.equal(measured.boundary_crossings.median, 2);
+  assert.equal(measured.copied_bytes.median, 192);
+  assert.equal(measured.required_routes[0].status, "matched");
+});
+
+test("browser/native comparison requires identical workload identities", async () => {
+  const { compareNativeReceipts } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  const operation = {
+    cold_ms: { median: 30 },
+    warm_ms: { median: 10 },
+  };
+  const browser = {
+    workload_identity: `sha256:${"1".repeat(64)}`,
+    startup_ms: { median: 40 },
+    interrupt_latency_ms: { median: 20 },
+    operations: { example: operation },
+  };
+  const native = {
+    schema: "sagejs.browser-wasm-performance/v2",
+    runtime: { kind: "node-native", engine: null },
+    source_revision: "fixture",
+    workload_identity: browser.workload_identity,
+    startup_ms: { median: 20 },
+    interrupt_latency_ms: { median: 5 },
+    operations: {
+      example: {
+        cold_ms: { median: 10 },
+        warm_ms: { median: 5 },
+      },
+    },
+  };
+  const comparison = compareNativeReceipts(browser, native, "sha256:fixture");
+  assert.equal(comparison.startup_median_ratio, 2);
+  assert.equal(comparison.operations.example.cold_median_ratio, 3);
+  assert.equal(comparison.operations.example.warm_median_ratio, 2);
+  assert.throws(
+    () => compareNativeReceipts(browser, { ...native, workload_identity: "other" }),
+    /different workloads/,
+  );
+});
