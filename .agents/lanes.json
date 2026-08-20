@@ -74,6 +74,7 @@
       "description": "Groups, combinatorics, iterators, and discrete structures",
       "allowed_claims": [
         "architecture/native-kernels.json",
+        "architecture/package-graph.json",
         "pyrightconfig.json",
         "src/baselib/groups.py",
         "src/baselib/containers.py",
