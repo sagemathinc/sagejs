@@ -138,6 +138,10 @@ self.onmessage = async ({ data }) => {
   try {
     let result;
     if (data.type === "initialize") {
+      compiler = undefined;
+      frontend = undefined;
+      baselib = undefined;
+      toplevel = undefined;
       const [
         compilerSource,
         baselibSource,
@@ -155,22 +159,21 @@ self.onmessage = async ({ data }) => {
         fetchBytes(data.pythonGrammar),
         fetchBytes(data.sageGrammar),
       ]);
-      compiler = createCompiler(compilerSource, standardLibrary);
-      baselib = baselibSource;
+      const nextCompiler = createCompiler(compilerSource, standardLibrary);
       compilerFrontend.configureBrowserCompilerResources({
         treeSitterRuntime,
         pythonGrammar,
         sageGrammar,
         standardLibrary,
       });
-      frontend = await compilerFrontend.createPythonCompilerFrontend(
-        compiler,
+      const nextFrontend = await compilerFrontend.createPythonCompilerFrontend(
+        nextCompiler,
         "sage",
       );
       const initializationSource = (standardLibrary.preload ?? [])
         .map((name) => `import ${name}`)
         .join("\n");
-      const initialization = frontend.parse(initializationSource, {
+      const initialization = nextFrontend.parse(initializationSource, {
         filename: "<browser-init>",
         basedir: "__stdlib__",
         libdir: "__stdlib__",
@@ -178,9 +181,12 @@ self.onmessage = async ({ data }) => {
         precompiled_module_cache_dir: "__module_cache__",
       });
       result = {
-        javascript: outputJavaScript(compiler, initialization, baselib, true),
+        javascript: outputJavaScript(nextCompiler, initialization, baselibSource, true),
         lazyModules: standardLibrary.lazyModules ?? {},
       };
+      compiler = nextCompiler;
+      baselib = baselibSource;
+      frontend = nextFrontend;
     } else if (data.type === "compile") {
       if (!compiler) {
         throw new Error("Sage.js browser compiler is not initialized");
@@ -191,6 +197,12 @@ self.onmessage = async ({ data }) => {
     }
     self.postMessage({ id: data.id, ok: true, result });
   } catch (error) {
+    if (data.type === "initialize") {
+      compiler = undefined;
+      frontend = undefined;
+      baselib = undefined;
+      toplevel = undefined;
+    }
     self.postMessage({
       id: data.id,
       ok: false,

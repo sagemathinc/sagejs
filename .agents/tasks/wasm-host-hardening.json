@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-host-hardening",
+  "title": "Harden browser evaluator host semantics",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make browser evaluator initialization cleanup, POSIX path normalization, environment validation, and output sinks fail-safe and regression tested",
+  "base_commit": "993ddd59b43b0bad20b275f06a6046174cf3d126",
+  "claims": [
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/compiler-worker.mjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Node browser-host unit tests for failure cleanup and POSIX/environment semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "node --check packages/flint-wasm/evaluator.mjs",
+    "node --check packages/flint-wasm/compiler-worker.mjs",
+    "node --test packages/flint-wasm/test/evaluator-host.test.mjs",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node --check packages/flint-wasm/evaluator.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-08-20T07:44:39.019Z",
+      "commit": "993ddd59b43b0bad20b275f06a6046174cf3d126",
+      "workspace_fingerprint": "55740f8d0833d16cafa8a785421ee70d873f5e2f5de33105aef0e622c5a266e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check packages/flint-wasm/compiler-worker.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.028,
+      "started_at": "2026-08-20T07:44:39.668Z",
+      "commit": "993ddd59b43b0bad20b275f06a6046174cf3d126",
+      "workspace_fingerprint": "55740f8d0833d16cafa8a785421ee70d873f5e2f5de33105aef0e622c5a266e3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Transactional browser evaluator initialization now terminates its compiler worker and restores explicit and runtime-added globals on failure or termination. Browser host paths and environment state use tested POSIX/CPython-like validation, process.env is a coherent read-through proxy, and stdout/stderr have separate callbacks.",
+    "risks": [
+      "The focused evaluator test imports generated dist modules, so it must run after the flint-wasm build in a clean checkout."
+    ],
+    "next_steps": [
+      "Run the package's build-plus-test command once the pinned production artifact build completes in the integration lane."
+    ]
+  }
+}
