@@ -102,6 +102,20 @@
       "rationale": "Bounded Wasm32 buffer and status adapter over the shared Arb and Acb analytic batch core; all mathematical policy remains in the host-neutral core."
     },
     {
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Flat bounded Wasm32 transport adapter over the authoritative host-neutral elliptic L-series core, with separate arbitrary-precision and explicitly binary64 plot schemas."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Fixed-width Wasm32 ABI, status codes, and resource limits for the shared elliptic L-series value and plotting core."
+    },
+    {
       "path": "packages/flint-wasm/src/modsym.c",
       "category": "host-adapter",
       "review_status": "accepted",

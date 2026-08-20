@@ -13,12 +13,12 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 103,
+    "classified-native-file": 105,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
     "runtime-intrinsic": 137,
-    "wasm-export": 46
+    "wasm-export": 62
   },
   "boundaries": [
     {
@@ -8165,6 +8165,22 @@
       "lane": "distribution"
     },
     {
+      "id": "native-file:packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/flint-wasm/src/factor.c",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/factor.c",
@@ -10408,6 +10424,150 @@
       "package": "@sagemath/sagejs-flint-wasm",
       "export": "sagejs_rational_charpoly_set",
       "symbol": "sagejs_rational_charpoly_set",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_begin",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_begin",
+      "symbol": "sagejs_wasm_ec_lseries_begin",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_coefficients",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_coefficients",
+      "symbol": "sagejs_wasm_ec_lseries_coefficients",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_compute",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_compute",
+      "symbol": "sagejs_wasm_ec_lseries_compute",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_conductor_text",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_conductor_text",
+      "symbol": "sagejs_wasm_ec_lseries_conductor_text",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_decimal_byte_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_decimal_byte_count",
+      "symbol": "sagejs_wasm_ec_lseries_decimal_byte_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_decimal_bytes",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_decimal_bytes",
+      "symbol": "sagejs_wasm_ec_lseries_decimal_bytes",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_decimal_field_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_decimal_field_count",
+      "symbol": "sagejs_wasm_ec_lseries_decimal_field_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_decimal_offset_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_decimal_offset_count",
+      "symbol": "sagejs_wasm_ec_lseries_decimal_offset_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_decimal_offsets",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_decimal_offsets",
+      "symbol": "sagejs_wasm_ec_lseries_decimal_offsets",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_diagnostic",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_diagnostic",
+      "symbol": "sagejs_wasm_ec_lseries_diagnostic",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_diagnostic_double",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_diagnostic_double",
+      "symbol": "sagejs_wasm_ec_lseries_diagnostic_double",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_plot_stride",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_plot_stride",
+      "symbol": "sagejs_wasm_ec_lseries_plot_stride",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_plot_value_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_plot_value_count",
+      "symbol": "sagejs_wasm_ec_lseries_plot_value_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_plot_values",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_plot_values",
+      "symbol": "sagejs_wasm_ec_lseries_plot_values",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_point_offsets",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_point_offsets",
+      "symbol": "sagejs_wasm_ec_lseries_point_offsets",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_point_text",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_point_text",
+      "symbol": "sagejs_wasm_ec_lseries_point_text",
       "disposition": "legacy-handwritten-wasm"
     }
   ]

@@ -271,6 +271,8 @@ const integration = [
   "test/elliptic-lseries-native.cjs",
   "test/elliptic-lseries-oracles.cjs",
   "test/elliptic-lseries-reference.cjs",
+  "test/wasm-curve-fallbacks.cjs",
+  "test/wasm-elliptic-public-fallbacks.cjs",
   "test/doc-examples.cjs",
   "test/elliptic-curves.cjs",
   "test/hyperelliptic-genus3-completion.cjs",

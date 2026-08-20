@@ -1925,8 +1925,7 @@
       ],
       "consumers": [
         "packages/flint/test/elliptic-native.cjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/elliptic_curves.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -2191,7 +2190,9 @@
         "PARI/GP",
         "upstream eclib"
       ],
-      "consumers": [],
+      "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs"
+      ],
       "declared_ffi": null
     },
     {
