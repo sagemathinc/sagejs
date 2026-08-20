@@ -6,8 +6,11 @@ title: "Exploring elliptic-curve L-series"
 Sage.js can evaluate the complex `L`-series of an elliptic curve over the
 rationals, sample it efficiently at many points, make adaptive complex plots,
 and estimate its order of vanishing at the center. The implementation is
-portable across Linux, macOS, and native Windows: smalljac supplies the
-coefficients and FLINT/Arb performs the complex numerical work.
+portable across Linux, macOS, native Windows, browser WebAssembly, and the
+Node-Wasm command line: smalljac supplies the coefficients and FLINT/Arb
+performs the complex numerical work. Browser release tests require both Wasm
+routes explicitly, so they fail if coefficient generation silently falls back
+to the ordinary Python point counter.
 
 These are numerical computations, not proofs. In particular,
 `analytic_rank()` returns a probable analytic rank, and the error accounting

@@ -19,8 +19,9 @@ The production browser corpus covers these public vertical slices:
   factorization, zeta coefficients, and quadratic Dedekind zeta values;
 - batched Riemann zeta and Dirichlet L-values with arbitrary-precision
   transport;
-- elliptic-curve coefficients, semistable root numbers, moderate L-series
-  values, and tiled real/complex plots.
+- elliptic-curve coefficients through the pinned portable ffpoly/smalljac
+  genus-one closure, semistable root numbers, moderate L-series values, and
+  tiled real/complex plots.
 
 The generated [capability
 report](../architecture/wasm-capabilities-report.json), not this prose list, is

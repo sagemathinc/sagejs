@@ -8,7 +8,7 @@
       "eager": true,
       "memory": {
         "pageBytes": 65536,
-        "initialPages": 256,
+        "initialPages": 512,
         "maximumPages": 8192
       }
     },

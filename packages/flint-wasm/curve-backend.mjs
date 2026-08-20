@@ -21,7 +21,16 @@ export const curveCapabilities = Object.freeze({
     disposition: "portable-fallback",
     status: "implemented",
     fallback: "exact-direct-point-count-and-euler-recurrence",
-    limits: Object.freeze({ specialistAcceleration: "smalljac-desktop-only" }),
+    limits: Object.freeze({ specialistAcceleration: "smalljac-wasm" }),
+  }),
+  "elliptic-coefficients-smalljac-wasm": Object.freeze({
+    family: "elliptic-curves",
+    disposition: "shared-core",
+    status: "implemented",
+    wasmModule: "flint",
+    upstream: "smalljac-4.1.3-ffpoly-1.2.7",
+    fallback: "exact-direct-point-count-and-euler-recurrence",
+    limits: Object.freeze({ maximumCoefficientBound: 5_000_000 }),
   }),
   "elliptic-root-number-semistable": Object.freeze({
     family: "elliptic-curves",
@@ -79,7 +88,7 @@ export const curveCapabilities = Object.freeze({
     family: "hyperelliptic-curves",
     disposition: "desktop-only",
     status: "specialist-external-library",
-    reason: "smalljac is not presently portable to wasm32-wasip1",
+    reason: "the first smalljac Wasm closure is deliberately genus one only",
     fallback: "exact-bounded-exhaustive-frobenius",
   }),
   "rforest-genus3": Object.freeze({
@@ -112,6 +121,32 @@ function statusName(status) {
     [STATUS.ADAPTER_PARSE_FAILED]: "invalid exact decimal elliptic L-series input",
   };
   throw new RangeError(names[status] ?? `elliptic L-series failed with status ${status}`);
+}
+
+function smalljacStatus(status) {
+  if (status === 0) return;
+  const names = {
+    [-1]: "invalid elliptic coefficient request",
+    [-2]: "elliptic coefficient request exceeds the Wasm smalljac limit",
+    [-3]: "Wasm smalljac allocation failed",
+    [-4]: "Wasm smalljac rejected the Weierstrass coefficients",
+    [-5]: "Wasm smalljac coefficient generation failed",
+    [-6]: "elliptic coefficient exceeds Int32 storage",
+  };
+  throw new RangeError(names[status] ?? `Wasm smalljac failed with status ${status}`);
+}
+
+function exactCurveText(values) {
+  if (!Array.isArray(values) || values.length !== 5) {
+    throw new TypeError("an integral elliptic curve requires five coefficients");
+  }
+  return encoder.encode(`[${values.map((value) => {
+    const text = String(value);
+    if (!/^-?[0-9]+$/.test(text)) {
+      throw new TypeError("elliptic-curve coefficients must be exact integers");
+    }
+    return text;
+  }).join(",")}]`);
 }
 
 function exactCoefficient(value) {
@@ -220,6 +255,68 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
     if (typeof exports[name] !== "function") {
       throw new TypeError(`curve Wasm export ${name} is unavailable`);
     }
+  }
+  const smalljacExports = [
+    "sagejs_wasm_smalljac_begin",
+    "sagejs_wasm_smalljac_curve_text",
+    "sagejs_wasm_smalljac_output",
+    "sagejs_wasm_smalljac_output_words",
+    "sagejs_wasm_smalljac_compute",
+    "sagejs_wasm_smalljac_clear",
+  ];
+  const smalljacExportCount = smalljacExports.filter(
+    (name) => typeof exports[name] === "function",
+  ).length;
+  if (smalljacExportCount !== 0 && smalljacExportCount !== smalljacExports.length) {
+    throw new TypeError("the curve Wasm smalljac export closure is incomplete");
+  }
+
+  function smalljacCoefficients(values, boundOrPrime, mode) {
+    if (smalljacExportCount === 0) {
+      throw new TypeError("the curve Wasm smalljac accelerator is unavailable");
+    }
+    const curveText = exactCurveText(values);
+    const numericBound = typeof boundOrPrime === "bigint"
+      ? boundOrPrime
+      : BigInt(boundOrPrime);
+    const beginStatus = exports.sagejs_wasm_smalljac_begin(
+      curveText.length,
+      numericBound,
+      mode,
+    );
+    smalljacStatus(beginStatus);
+    try {
+      new Uint8Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_curve_text()) >>> 0,
+        curveText.length,
+      ).set(curveText);
+      smalljacStatus(exports.sagejs_wasm_smalljac_compute());
+      const words = Number(exports.sagejs_wasm_smalljac_output_words()) >>> 0;
+      const output = new Int32Array(
+        new Int32Array(
+          memory.buffer,
+          Number(exports.sagejs_wasm_smalljac_output()) >>> 0,
+          words,
+        ),
+      );
+      recordCapability("elliptic-coefficients-smalljac-wasm", "receipt-backed-wasm-artifact", {
+        executionTarget: "wasm-artifact",
+        ingressBytes: curveText.byteLength,
+        egressBytes: output.byteLength,
+      });
+      return output;
+    } finally {
+      exports.sagejs_wasm_smalljac_clear();
+    }
+  }
+
+  function ecApIntegral(a1, a2, a3, a4, a6, prime) {
+    return smalljacCoefficients([a1, a2, a3, a4, a6], prime, 1)[0];
+  }
+
+  function ecAnlistIntegral(a1, a2, a3, a4, a6, _discriminant, bound) {
+    return smalljacCoefficients([a1, a2, a3, a4, a6], bound, 0);
   }
 
   function diagnostic(index) {
@@ -418,6 +515,9 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
   }
 
   return Object.freeze({
+    ...(smalljacExportCount === smalljacExports.length
+      ? { ecApIntegral, ecAnlistIntegral }
+      : {}),
     ecLseriesValues,
     curveCapabilities,
   });

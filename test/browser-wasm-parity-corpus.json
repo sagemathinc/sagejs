@@ -209,12 +209,13 @@
       }
     },
     {
-      "id": "elliptic-portable-coefficients",
+      "id": "elliptic-smalljac-coefficients",
       "family": "elliptic-curves",
-      "workflow": "elliptic-portable-coefficients",
+      "workflow": "elliptic-smalljac-coefficients",
       "tier": "release",
       "requires": [
-        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" }
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nprint(E.root_number())\nprint(E.anlist(12))",
       "timeout_ms": 30000,
@@ -230,15 +231,16 @@
       "tier": "release",
       "requires": [
         { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\nz = L(1+I)\nprint(float(z.real()), float(z.imag()))",
+      "source": "E = EllipticCurve([1,2,3,4,999])\nL = E.lseries()\nz = L(1+I)\nprint(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,
       "expect": {
         "repr": "",
         "numeric_tokens": {
           "stream": "stdout",
-          "values": [-0.158925263301377, 0.457911066765115],
+          "values": [-0.005310319526029921, 0.09905202773967817],
           "absolute_tolerance": 1e-12,
           "relative_tolerance": 1e-12
         }
@@ -251,6 +253,7 @@
       "tier": "release",
       "requires": [
         { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
       ],

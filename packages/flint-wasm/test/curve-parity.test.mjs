@@ -22,6 +22,8 @@ function fakeCurveReactor() {
   let plotPointer = 0;
   let plotCount = 0;
   let clears = 0;
+  let smalljac;
+  let smalljacClears = 0;
   const diagnostics = [0, 31, 37, 9, 81, 53, 565, 2, 0.125, 1, 0, 1, 0];
 
   function allocate(bytes, width = 8) {
@@ -154,10 +156,47 @@ function fakeCurveReactor() {
     sagejs_wasm_ec_lseries_plot_values: () => plotPointer,
     sagejs_wasm_ec_lseries_plot_value_count: () => plotCount,
     sagejs_wasm_ec_lseries_plot_stride: () => 5,
+    sagejs_wasm_smalljac_begin(curveTextBytes, boundOrPrime, mode) {
+      const words = mode === 0 ? Number(boundOrPrime) + 1 : 1;
+      smalljac = {
+        curveTextBytes,
+        boundOrPrime,
+        mode,
+        curvePointer: allocate(curveTextBytes, 1),
+        outputPointer: allocate(words * 4, 4),
+        words,
+      };
+      return 0;
+    },
+    sagejs_wasm_smalljac_curve_text: () => smalljac.curvePointer,
+    sagejs_wasm_smalljac_output: () => smalljac.outputPointer,
+    sagejs_wasm_smalljac_output_words: () => smalljac.words,
+    sagejs_wasm_smalljac_compute() {
+      smalljac.curveText = new TextDecoder().decode(new Uint8Array(
+        memory.buffer,
+        smalljac.curvePointer,
+        smalljac.curveTextBytes,
+      ));
+      const values = new Int32Array(
+        memory.buffer,
+        smalljac.outputPointer,
+        smalljac.words,
+      );
+      if (smalljac.mode === 0) {
+        values.set([0, 1, -2, -3, -2, -1].slice(0, smalljac.words));
+      } else {
+        values[0] = -6;
+      }
+      memory.grow(1);
+      return 0;
+    },
+    sagejs_wasm_smalljac_clear() {
+      smalljacClears += 1;
+    },
   };
   return {
     instance: { exports },
-    state: () => ({ request, clears }),
+    state: () => ({ request, clears, smalljac, smalljacClears }),
   };
 }
 
@@ -241,6 +280,10 @@ test("curve capability decisions distinguish shared cores and specialists", () =
     "implemented",
   );
   assert.equal(
+    curveCapabilities["elliptic-coefficients-smalljac-wasm"].disposition,
+    "shared-core",
+  );
+  assert.equal(
     curveCapabilities["hyperelliptic-genus3-candidate-scan"].disposition,
     "compiled-source",
   );
@@ -252,6 +295,28 @@ test("curve capability decisions distinguish shared cores and specialists", () =
     assert.equal(curveCapabilities[name].disposition, "desktop-only");
     assert.match(curveCapabilities[name].fallback, /fallback|rank|exhaustive|capability/i);
   }
+});
+
+test("smalljac coefficients use copied exact input and survive memory growth", () => {
+  const reactor = fakeCurveReactor();
+  const traces = [];
+  const backend = createCurveBackend(reactor.instance, {
+    recordCapability(...args) { traces.push(args); },
+  });
+  assert.equal(backend.ecApIntegral(1n, 2n, 3n, 4n, 999n, 101n), -6);
+  assert.deepEqual(
+    Array.from(backend.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 5n)),
+    [0, 1, -2, -3, -2, -1],
+  );
+  assert.equal(reactor.state().smalljac.curveText, "[0,0,1,-1,0]");
+  assert.equal(reactor.state().smalljacClears, 2);
+  assert.deepEqual(
+    traces.map(([id, route]) => [id, route]),
+    [
+      ["elliptic-coefficients-smalljac-wasm", "receipt-backed-wasm-artifact"],
+      ["elliptic-coefficients-smalljac-wasm", "receipt-backed-wasm-artifact"],
+    ],
+  );
 });
 
 test("one Wasm tile has an explicit bounded point count", () => {

@@ -37,6 +37,7 @@
       "family": "elliptic-curves",
       "requires": [
         { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npoints = [CC(1, k/8) for k in range(-16,17)]\nvalues = L.values(points, prec=53)\nprint(len(values), float(values[0].real()), float(values[-1].imag()))",
@@ -47,6 +48,7 @@
       "family": "plotting",
       "requires": [
         { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
         { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
       ],

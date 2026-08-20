@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 110,
+    "classified-native-file": 112,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
@@ -8184,6 +8184,22 @@
       "id": "native-file:packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/curves/smalljac-coefficients.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.h",
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "distribution"

@@ -50,6 +50,26 @@
       "recipeBaseVersion": "20250128",
       "recipeBaseSourceSha256": "b4098db651483c0e1506c16f79091eba02f41dadbacf1bb25be8eb97e5515f96",
       "prefix": "sagemath/m4ri/dist/wasi-sdk"
+    },
+    "ffpoly": {
+      "version": "1.2.7",
+      "sourceSha256": "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
+      "prefix": "sagemath/ffpoly/dist/wasi-sdk",
+      "recipe": "sagejs-portable-smalljac",
+      "url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/ff_poly_v1.2.7.tar",
+      "mirrors": ["https://math.mit.edu/~drew/ff_poly_v1.2.7.tar"],
+      "archiveEnvironment": "SAGEJS_FFPOLY_TARBALL",
+      "archiveName": "libff_poly.a"
+    },
+    "smalljac": {
+      "version": "4.1.3",
+      "sourceSha256": "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
+      "prefix": "sagemath/smalljac/dist/wasi-sdk",
+      "recipe": "sagejs-portable-smalljac",
+      "url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/smalljac_v4.1.3.tar",
+      "mirrors": ["https://math.mit.edu/~drew/smalljac_v4.1.3.tar"],
+      "archiveEnvironment": "SAGEJS_SMALLJAC_TARBALL",
+      "archiveName": "libsmalljac.a"
     }
   },
   "build": {
@@ -81,6 +101,14 @@
       ["make", "-C", "sagemath/flint", "test-wasi-sdk-standalone"],
       ["make", "-C", "sagemath/mpc", "test-wasi-sdk-standalone"],
       ["make", "-C", "sagemath/m4ri", "test-wasi-sdk-standalone"]
+    ],
+    "repositoryInputs": [
+      "packages/flint-wasm/scripts/build-smalljac-toolchain.cjs",
+      "packages/flint/scripts/portable-smalljac/prepare-sources.cjs",
+      "packages/flint/scripts/portable-smalljac/sagejs_ffpoly_word.h",
+      "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
+      "packages/flint/patches/ffpoly-portability.patch",
+      "packages/flint/patches/smalljac-portability.patch"
     ],
     "cFlags": [
       "--target=wasm32-wasip1",

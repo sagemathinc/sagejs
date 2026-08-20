@@ -123,6 +123,20 @@
       "rationale": "Fixed-width Wasm32 ABI, status codes, and resource limits for the shared elliptic L-series value and plotting core."
     },
     {
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded copied-input Wasm32 adapter over the pinned genus-one ffpoly/smalljac coefficient generator; exact Euler recurrence and bad-reduction fallback remain explicit and differentially tested."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Fixed-width lifecycle, mode, status, and copied-buffer ABI for elliptic coefficient generation in the production Wasm reactor."
+    },
+    {
       "path": "packages/flint-wasm/src/dirichlet-group.c",
       "category": "host-adapter",
       "review_status": "accepted",

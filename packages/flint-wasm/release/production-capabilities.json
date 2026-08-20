@@ -9,6 +9,7 @@
         "analytic:quadratic-dedekind-zeta",
         "analytic:riemann-xi",
         "analytic:riemann-zeta-batch",
+        "elliptic-coefficients-smalljac-wasm",
         "elliptic-lseries-plot",
         "elliptic-lseries-values",
         "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",

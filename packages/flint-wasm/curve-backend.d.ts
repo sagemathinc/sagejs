@@ -53,6 +53,23 @@ export declare const curveCapabilities: Readonly<Record<string, Readonly<{
 export declare function createCurveBackend(
   instance: WebAssembly.Instance | WebAssembly.Exports,
 ): Readonly<{
+  ecApIntegral?(
+    a1: bigint | number,
+    a2: bigint | number,
+    a3: bigint | number,
+    a4: bigint | number,
+    a6: bigint | number,
+    prime: bigint | number,
+  ): number;
+  ecAnlistIntegral?(
+    a1: bigint | number,
+    a2: bigint | number,
+    a3: bigint | number,
+    a4: bigint | number,
+    a6: bigint | number,
+    discriminant: bigint | number,
+    bound: bigint | number,
+  ): Int32Array;
   ecLseriesValues(
     conductor: bigint | string | number,
     rootNumber: -1 | 1,

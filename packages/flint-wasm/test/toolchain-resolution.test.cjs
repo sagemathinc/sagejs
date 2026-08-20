@@ -25,6 +25,10 @@ const {
   toolchainLockDigest,
   verifySourcePins,
 } = require("../scripts/wasm-toolchain.cjs");
+const {
+  ffpolySources,
+  smalljacSources,
+} = require("../scripts/build-smalljac-toolchain.cjs");
 
 test("the committed toolchain lock is complete and content addressed", () => {
   const lock = loadToolchainLock();
@@ -33,11 +37,37 @@ test("the committed toolchain lock is complete and content addressed", () => {
   assert.equal(lock.wasiSdk.version, "33.0");
   assert.equal(lock.libraries.flint.version, "3.6.0");
   assert.equal(lock.libraries.m4ri.version, "20260122");
-  assert.deepEqual(Object.keys(lock.libraries).sort(), ["arb", "flint", "gmp", "m4ri", "mpc", "mpfr"]);
+  assert.equal(lock.libraries.ffpoly.version, "1.2.7");
+  assert.equal(lock.libraries.smalljac.version, "4.1.3");
+  assert.deepEqual(Object.keys(lock.libraries).sort(), [
+    "arb", "ffpoly", "flint", "gmp", "m4ri", "mpc", "mpfr", "smalljac",
+  ]);
   assert.match(toolchainLockDigest(lock), /^[0-9a-f]{64}$/);
   const differentlyOrdered = Object.fromEntries(Object.entries(lock).reverse());
   assert.equal(canonicalJson(differentlyOrdered), canonicalJson(lock));
   assert.equal(toolchainLockDigest(differentlyOrdered), toolchainLockDigest(lock));
+});
+
+test("the portable smalljac recipe is a closed genus-one source selection", () => {
+  const lock = loadToolchainLock();
+  assert.equal(ffpolySources.length, 8);
+  assert.equal(smalljacSources.length, 23);
+  assert.ok(smalljacSources.includes("smalljac.c"));
+  assert.ok(smalljacSources.includes("ecurve.c"));
+  for (const excluded of ["smalljac_parallel.c", "smalljac_moments.c", "STgroups.c"]) {
+    assert.equal(smalljacSources.includes(excluded), false);
+  }
+  assert.deepEqual(
+    [lock.libraries.ffpoly.recipe, lock.libraries.smalljac.recipe],
+    ["sagejs-portable-smalljac", "sagejs-portable-smalljac"],
+  );
+  for (const input of [
+    "packages/flint/patches/ffpoly-portability.patch",
+    "packages/flint/patches/smalljac-portability.patch",
+    "packages/flint-wasm/scripts/build-smalljac-toolchain.cjs",
+  ]) {
+    assert.ok(lock.build.repositoryInputs.includes(input));
+  }
 });
 
 test("prepared compiler wrappers survive an atomic checkout rename", () => {
@@ -72,6 +102,7 @@ test("toolchain paths derive only from the resolved root", () => {
   assert.equal(paths.clang, "/explicit/cowasm/core/build/build/wasi-sdk/dist/wasi-sdk-next/native/bin/clang");
   assert.equal(paths.libraries.flint.prefix, "/explicit/cowasm/sagemath/flint/dist/wasi-sdk");
   assert.equal(paths.libraries.m4ri.prefix, "/explicit/cowasm/sagemath/m4ri/dist/wasi-sdk");
+  assert.equal(paths.libraries.smalljac.prefix, "/explicit/cowasm/sagemath/smalljac/dist/wasi-sdk");
 });
 
 test("the local override is explicit and conflicting legacy configuration fails", () => {
@@ -105,7 +136,8 @@ test("source dependency pin verification detects exact version and digest drift"
   const lock = loadToolchainLock();
   try {
     for (const [name, dependency] of Object.entries(lock.libraries)) {
-      if (name === "arb" || dependency.required === false) continue;
+      if (name === "arb" || dependency.required === false ||
+          dependency.recipe === "sagejs-portable-smalljac") continue;
       const directory = join(temporary, "sagemath", name);
       mkdirSync(directory, { recursive: true });
       const expectedVersion = dependency.recipeBaseVersion ?? dependency.version;

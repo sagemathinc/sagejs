@@ -51,13 +51,22 @@ function loadToolchainLock(filename = lockFilename) {
     if (!dependency.prefix || dependency.prefix.startsWith("/") || dependency.prefix.includes("..")) {
       throw new Error(`${name} has an unsafe prefix path`);
     }
+    if (dependency.recipe === "sagejs-portable-smalljac" &&
+        (!dependency.url || !dependency.archiveName || !dependency.archiveEnvironment)) {
+      throw new Error(`${name} has an incomplete portable-smalljac recipe`);
+    }
   }
   return lock;
 }
 
 function toolchainLockDigest(lock = loadToolchainLock()) {
+  const repositoryInputs = (lock.build.repositoryInputs ?? []).map((name) => {
+    const filename = resolve(repositoryRoot, ...name.split("/"));
+    return `${name}\0${sha256Bytes(readFileSync(filename))}`;
+  });
   return sha256Bytes(
-    `${canonicalJson(lock)}\0${sha256Bytes(readFileSync(__filename))}`,
+    `${canonicalJson(lock)}\0${sha256Bytes(readFileSync(__filename))}\0` +
+      repositoryInputs.join("\0"),
   );
 }
 
@@ -141,7 +150,7 @@ function makefilePin(filename, field) {
 function verifySourcePins(cowasmRoot, lock, { recipeBase = false } = {}) {
   const differences = [];
   for (const [name, dependency] of Object.entries(lock.libraries)) {
-    if (name === "arb") continue;
+    if (name === "arb" || dependency.recipe === "sagejs-portable-smalljac") continue;
     const filename = join(cowasmRoot, "sagemath", name, "Makefile");
     if (!existsSync(filename)) {
       if (dependency.required === false) continue;
@@ -221,7 +230,10 @@ function requiredFiles(paths, lock) {
   for (const [name, dependency] of Object.entries(paths.libraries)) {
     if (dependency.required === false) continue;
     files.push([`${name} headers`, join(dependency.prefix, "include")]);
-    files.push([`${name} archive`, join(dependency.prefix, "lib", `lib${name}.a`)]);
+    files.push([
+      `${name} archive`,
+      join(dependency.prefix, "lib", dependency.archiveName ?? `lib${name}.a`),
+    ]);
   }
   const sdkDigest = lock.wasiSdk.archives[platformKey()];
   if (sdkDigest === undefined) {
@@ -369,6 +381,11 @@ function prepareToolchain({ root = repositoryRoot } = {}) {
     for (const [command, ...arguments_] of lock.build.prepareTargets) {
       runChecked(command, arguments_, temporary);
     }
+    runChecked(
+      process.execPath,
+      [join(packageRoot, "scripts", "build-smalljac-toolchain.cjs"), temporary],
+      repositoryRoot,
+    );
     writeFileSync(
       join(temporary, markerName),
       `${JSON.stringify({
@@ -410,7 +427,11 @@ function toolchainReceiptIdentity(status = resolveToolchain()) {
   const libraries = {};
   for (const [name, dependency] of Object.entries(status.paths.libraries)) {
     if (dependency.required === false || !existsSync(dependency.prefix)) continue;
-    const archive = join(dependency.prefix, "lib", `lib${name}.a`);
+    const archive = join(
+      dependency.prefix,
+      "lib",
+      status.lock.libraries[name].archiveName ?? `lib${name}.a`,
+    );
     libraries[name] = {
       version: status.lock.libraries[name].version,
       sourceSha256: status.lock.libraries[name].sourceSha256,

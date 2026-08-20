@@ -190,6 +190,11 @@
         "source": "src/lib/sagejs/elliptic_curves/lseries.py"
       },
       {
+        "id": "elliptic-coefficients-smalljac-wasm",
+        "family": "elliptic-curves",
+        "source": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
+      },
+      {
         "id": "elliptic-lseries-plot",
         "family": "elliptic-curves",
         "source": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c"
@@ -275,15 +280,18 @@
     ],
     "elliptic-lseries-complex-plot": [
       "specialist:integer-factorization-wasm",
+      "elliptic-coefficients-smalljac-wasm",
       "elliptic-lseries-values",
       "elliptic-lseries-plot"
     ],
     "elliptic-lseries-values": [
       "specialist:integer-factorization-wasm",
+      "elliptic-coefficients-smalljac-wasm",
       "elliptic-lseries-values"
     ],
-    "elliptic-portable-coefficients": [
-      "specialist:integer-factorization-wasm"
+    "elliptic-smalljac-coefficients": [
+      "specialist:integer-factorization-wasm",
+      "elliptic-coefficients-smalljac-wasm"
     ],
     "exact-algebraic-roots": [
       "algebraic:qqbar-resource-core"
@@ -569,6 +577,36 @@
       "reviewed": true,
       "review_note": "The ordinary exact coefficient path is deliberately retained when native curve accelerators are unavailable in a browser.",
       "public_explanation": "Elliptic-curve coefficients use exact point counting and Euler recurrences in browsers when desktop curve accelerators are absent."
+    },
+    {
+      "id": "elliptic-coefficients-smalljac-wasm",
+      "kind": "specialist-capability",
+      "family": "elliptic-curves",
+      "source": "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "disposition": "shared-core",
+      "fallback": "exact-direct-point-count-and-euler-recurrence",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "EllipticCurve.ap",
+        "EllipticCurve.anlist",
+        "EllipticCurve.lseries"
+      ],
+      "tests": [
+        "elliptic-browser-parity"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The pinned portable ffpoly/smalljac genus-one closure is linked into the authenticated FLINT reactor and selected through the ordinary elliptic coefficient backend.",
+      "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "resource_limits": {
+        "maximum_coefficient_bound": 5000000,
+        "maximum_direct_bad_prime": 5000000,
+        "coefficient_storage": "signed-int32"
+      },
+      "public_explanation": "Integral elliptic-curve coefficients use the pinned ffpoly 1.2.7 and smalljac 4.1.3 algorithms inside the production WebAssembly reactor, with the exact portable recurrence retained as a fallback.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
     },
     {
       "id": "elliptic-lseries-plot",

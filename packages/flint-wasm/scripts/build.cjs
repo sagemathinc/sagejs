@@ -29,6 +29,10 @@ const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
   name,
   prefix: toolchain.paths.libraries[name].prefix,
 }));
+const smalljacDependencies = ["smalljac", "ffpoly"].map((name) => ({
+  name,
+  prefix: toolchain.paths.libraries[name].prefix,
+}));
 const m4riDependency = {
   name: "m4ri",
   prefix: toolchain.paths.libraries.m4ri.prefix,
@@ -348,7 +352,14 @@ const includeArguments = dependencies.flatMap(({ prefix }) => [
   "-isystem",
   path.join(prefix, "include"),
 ]);
+const smalljacIncludeArguments = smalljacDependencies.flatMap(({ prefix }) => [
+  "-isystem",
+  path.join(prefix, "include"),
+]);
 const libraryArguments = dependencies.flatMap(({ prefix }) => [
+  `-L${path.join(prefix, "lib")}`,
+]);
+const smalljacLibraryArguments = smalljacDependencies.flatMap(({ prefix }) => [
   `-L${path.join(prefix, "lib")}`,
 ]);
 const flintLocalIncludeArguments = [
@@ -362,6 +373,7 @@ const flintLinkedSources = [
   path.join(packageRoot, "src", "dirichlet-group.c"),
   path.join(packageRoot, "src", "number-field-zeta.c"),
   path.join(packageRoot, "src", "curves", "elliptic-lseries-adapter.c"),
+  path.join(packageRoot, "src", "curves", "smalljac-coefficients.c"),
   curveCoreOutput,
   resourceAdapterSource,
   path.join(repositoryRoot, "packages", "flint", "src", "analytic_batch_core.c"),
@@ -425,6 +437,12 @@ const curveExports = [
   "sagejs_wasm_ec_lseries_plot_stride",
   "sagejs_wasm_ec_lseries_diagnostic",
   "sagejs_wasm_ec_lseries_diagnostic_double",
+  "sagejs_wasm_smalljac_begin",
+  "sagejs_wasm_smalljac_curve_text",
+  "sagejs_wasm_smalljac_output",
+  "sagejs_wasm_smalljac_output_words",
+  "sagejs_wasm_smalljac_compute",
+  "sagejs_wasm_smalljac_clear",
 ];
 const algebraicExports = [
   "sagejs_wasm_algebraic_input",
@@ -547,16 +565,24 @@ run(clang, [
   `--sysroot=${sysroot}`,
   "-Oz",
   ...includeArguments,
+  ...smalljacIncludeArguments,
   ...flintLocalIncludeArguments,
   ...flintLinkedSources,
   ...libraryArguments,
+  ...smalljacLibraryArguments,
+  "-lsmalljac",
+  "-lff_poly",
   "-lflint",
   "-lmpfr",
   "-lgmp",
   "-lm",
   "-lwasi-emulated-signal",
   ...exportNames.map((name) => `-Wl,--export=${name}`),
-  ...toolchain.lock.build.linkFlags,
+  "-Wl,-z,stack-size=1048576",
+  ...toolchain.lock.build.linkFlags.filter(
+    (flag) => !flag.startsWith("-Wl,--initial-memory="),
+  ),
+  "-Wl,--initial-memory=33554432",
   "-o",
   rawOutput,
 ]);
@@ -821,6 +847,7 @@ const receipt = writeProductionReceipt({
   sourceInputs: [
     ...compilerDependencyClosure(flintLinkedSources, [
       ...includeArguments,
+      ...smalljacIncludeArguments,
       ...flintLocalIncludeArguments,
     ]),
     ...compilerDependencyClosure(m4riLinkedSources, [

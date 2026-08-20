@@ -121,7 +121,7 @@ piped source, or starts a line-oriented REPL:
 
 ```sh
 node packages/flint-wasm/node-cli.mjs -c 'print(factor(2026))'
-printf '%s\n' 'E = EllipticCurve([0,0,1,-1,0]); print(E.anlist(100))' |
+printf '%s\n' 'E = EllipticCurve([1,2,3,4,999]); print(E.anlist(10000)[-5:])' |
   node packages/flint-wasm/node-cli.mjs
 ```
 
