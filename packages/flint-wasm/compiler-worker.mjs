@@ -39,6 +39,7 @@ function createCompiler(compilerSource, standardLibrary) {
     "writefile",
     "sha1sum",
     "require",
+    "__sagejs_runtime_require__",
     compilerSource,
   );
   loadCompiler(
@@ -48,6 +49,7 @@ function createCompiler(compilerSource, standardLibrary) {
     unavailable("compiler file writes"),
     sha1sum,
     unavailable("compiler module loading"),
+    unavailable("compiler runtime module loading"),
   );
   return compiler;
 }
@@ -175,7 +177,10 @@ self.onmessage = async ({ data }) => {
         import_dirs: ["__stdlib__"],
         precompiled_module_cache_dir: "__module_cache__",
       });
-      result = outputJavaScript(compiler, initialization, baselib, true);
+      result = {
+        javascript: outputJavaScript(compiler, initialization, baselib, true),
+        lazyModules: standardLibrary.lazyModules ?? {},
+      };
     } else if (data.type === "compile") {
       if (!compiler) {
         throw new Error("Sage.js browser compiler is not initialized");

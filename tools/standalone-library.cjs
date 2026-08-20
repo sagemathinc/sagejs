@@ -148,7 +148,12 @@ const BASELIB_STANDALONE_MODULES = Object.freeze([
 // standalone compilation without maintaining a second module list by hand.
 const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze(
   EMBEDDED_STANDALONE_LIBRARY?.cache ??
-    moduleClosure(BASELIB_STANDALONE_MODULES),
+    [...new Set([
+      ...moduleClosure(BASELIB_STANDALONE_MODULES),
+      // This dotted standard-library dependency is imported by the matrix
+      // and plotting closure, but is not part of `standardModules` above.
+      "collections.abc",
+    ])].sort(),
 );
 
 function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {

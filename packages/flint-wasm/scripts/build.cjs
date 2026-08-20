@@ -129,6 +129,11 @@ const standardLibraryCacheDirectory = path.join(
   "dist",
   "module-cache",
 );
+const lazyModuleCacheDirectory = path.join(
+  repositoryRoot,
+  "dist",
+  "lazy-module-cache",
+);
 const browserAdditionalModules = [
   "collections.abc",
   "sagejs.ffi.flint",
@@ -208,6 +213,9 @@ requirePath(
   "built Sage.js compiler (run `pnpm build` first)",
   compilerSource,
 );
+run(process.execPath, [
+  path.join(repositoryRoot, "scripts", "build-lazy-module-cache.cjs"),
+]);
 requirePath(
   "built Sage.js baselib (run `pnpm build` first)",
   baselibSource,
@@ -670,6 +678,7 @@ for (const name of browserAdditionalModules) {
 }
 
 const standardLibraryModules = {};
+const lazyModules = {};
 const standardLibraryReceiptInputs = [];
 for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   const relative = path.relative(standardLibrarySourceDirectory, filename);
@@ -677,11 +686,11 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   if (components.at(-1) === "__init__") components.pop();
   const name = components.join(".");
   if (!name) continue;
-  const cacheFilename = path.join(
-    standardLibraryCacheDirectory,
-    `${name}.json`,
-  );
-  if (!fs.existsSync(cacheFilename)) continue;
+  const cacheFilename = [
+    path.join(standardLibraryCacheDirectory, `${name}.json`),
+    path.join(standardLibraryCacheDirectory, `${name.replaceAll(".", "-")}.json`),
+  ].find((filename) => fs.existsSync(filename));
+  if (cacheFilename === undefined) continue;
   standardLibraryReceiptInputs.push(filename, cacheFilename);
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
@@ -694,10 +703,30 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
     ),
   };
 }
+requirePath(
+  "precompiled lazy Python modules (run `pnpm python:precompile:run` first)",
+  lazyModuleCacheDirectory,
+);
+for (const entry of fs.readdirSync(lazyModuleCacheDirectory, {
+  withFileTypes: true,
+})) {
+  if (!entry.isFile() || !entry.name.endsWith(".json") ||
+      entry.name === "task-runtime-modules.json") continue;
+  const filename = path.join(lazyModuleCacheDirectory, entry.name);
+  const record = JSON.parse(fs.readFileSync(filename, "utf8"));
+  if (typeof record.module !== "string" ||
+      typeof record.javascriptTemplate !== "string") continue;
+  if (Object.hasOwn(lazyModules, record.module)) {
+    throw new Error(`duplicate precompiled lazy module ${record.module}`);
+  }
+  lazyModules[record.module] = record;
+  standardLibraryReceiptInputs.push(filename);
+}
 fs.writeFileSync(
   standardLibraryOutput,
   JSON.stringify({
     modules: standardLibraryModules,
+    lazyModules,
     preload: browserAdditionalModules,
   }),
 );

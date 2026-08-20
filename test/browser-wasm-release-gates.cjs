@@ -64,6 +64,48 @@ test("release artifact receipts validate hashes, Wasm magic, compression, and re
   }
 });
 
+test("grammar modules inherit the authenticated bounded Tree-sitter memory", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-wasm-imported-memory-"));
+  const provider = Buffer.from([
+    0, 97, 115, 109, 1, 0, 0, 0,
+    2, 16, 1, 3, 101, 110, 118, 6, 109, 101, 109, 111, 114, 121, 2, 1, 2, 8,
+  ]);
+  const grammar = Buffer.from([
+    0, 97, 115, 109, 1, 0, 0, 0,
+    2, 15, 1, 3, 101, 110, 118, 6, 109, 101, 109, 111, 114, 121, 2, 0, 1,
+  ]);
+  try {
+    fs.writeFileSync(path.join(directory, "runtime.wasm"), provider);
+    fs.writeFileSync(path.join(directory, "grammar.wasm"), grammar);
+    const assets = [
+      { path: "grammar.wasm", servePath: "grammar.wasm", bytes: grammar.length, sha256: sha256(grammar) },
+      { path: "runtime.wasm", servePath: "runtime.wasm", bytes: provider.length, sha256: sha256(provider) },
+    ];
+    fs.writeFileSync(path.join(directory, "production-manifest.json"), JSON.stringify({
+      schema: "sagejs.wasm-production-artifact/v1",
+      identity: `sha256:${"1".repeat(64)}`,
+      assets,
+      layout: {
+        modules: [],
+        importedMemoryDomains: [{
+          id: "tree-sitter",
+          provider: "runtime.wasm",
+          consumers: ["grammar.wasm"],
+          memory: { pageBytes: 65536, initialPages: 2, maximumPages: 8 },
+        }],
+      },
+    }));
+    fs.writeFileSync(path.join(directory, "build-receipt.json"), JSON.stringify({
+      schema: "sagejs.wasm-build-receipt/v1",
+      source_revision: "fixture",
+      artifact: { identity: "fixture" },
+    }));
+    assert.equal(inspectProductionArtifact(directory).files.length, 2);
+  } finally {
+    fs.rmSync(directory, { recursive: true });
+  }
+});
+
 test("relative payload gates reject unexplained compressed growth", () => {
   const report = { totals: { gzip_bytes: 106, brotli_bytes: 100 } };
   const baseline = {

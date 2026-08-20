@@ -15,6 +15,9 @@ const { tmpdir } = require("node:os");
 const { dirname, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
+const {
+  BASELIB_STANDALONE_MODULES,
+} = require("../tools/standalone-library.cjs");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -202,7 +205,12 @@ mkdirSync(outputDirectory, { recursive: true });
 mkdirSync(dynamicOutputDirectory, { recursive: true });
 
 try {
-  const packageImports = manifest.imports ?? [];
+  const packageImports = [
+    ...new Set([
+      ...(manifest.imports ?? []),
+      ...BASELIB_STANDALONE_MODULES,
+    ]),
+  ].sort();
   const taskImports = manifest.taskRuntimeImports ?? [];
   for (const [kind, imports] of [
     ["package", packageImports],

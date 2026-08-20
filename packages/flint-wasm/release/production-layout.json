@@ -57,6 +57,21 @@
       }
     }
   ],
+  "importedMemoryDomains": [
+    {
+      "id": "tree-sitter",
+      "provider": "web-tree-sitter.wasm",
+      "consumers": [
+        "tree-sitter-python.wasm",
+        "tree-sitter-sage.wasm"
+      ],
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 512,
+        "maximumPages": 32768
+      }
+    }
+  ],
   "hostAssets": [
     "compiler.js",
     "compiler-frontend.mjs",

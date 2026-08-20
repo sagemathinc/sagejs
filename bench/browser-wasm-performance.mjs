@@ -53,6 +53,7 @@ try {
     const page = await browser.newPage();
     const started = performance.now();
     await page.goto(`${server.origin}/browser-wasm-harness.html`, { waitUntil: "load" });
+    await page.waitForFunction(() => window.__sagejsReady !== undefined);
     await page.evaluate(() => window.__sagejsReady);
     startup.push(performance.now() - started);
     diagnostics ??= await page.evaluate(() => window.__sagejsTest.diagnostics());

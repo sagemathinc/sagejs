@@ -25,6 +25,21 @@ function readJson(filename) {
   return JSON.parse(fs.readFileSync(filename, "utf8"));
 }
 
+function productionCapabilityIds(document, { generatedOnly = false } = {}) {
+  const ids = [];
+  for (const [module, closure] of Object.entries(document.modules || {})) {
+    if (!Array.isArray(closure.capabilities)) {
+      throw new Error(`production capability module ${module} has no capability array`);
+    }
+    ids.push(...closure.capabilities);
+    if (!generatedOnly) ids.push(...(closure.additionalCapabilities || []));
+  }
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("tracked Wasm production closure contains duplicate capabilities");
+  }
+  return ids;
+}
+
 function repositoryPath(value, label) {
   if (
     typeof value !== "string" || value.length === 0 ||
@@ -49,10 +64,7 @@ function productionClosure(root = ROOT) {
     if (document.schema !== "sagejs.wasm-production-capabilities/v1") {
       throw new Error("tracked Wasm production closure has an unsupported schema");
     }
-    const ids = (document.capabilities || []).map((item) => item.id);
-    if (new Set(ids).size !== ids.length) {
-      throw new Error("tracked Wasm production closure contains duplicate capabilities");
-    }
+    const ids = productionCapabilityIds(document, { generatedOnly: true });
     return new Set(ids);
   }
   const filename = path.join(root, "packages", "flint-wasm", "scripts", "build.cjs");
@@ -87,14 +99,14 @@ function productionManifestClosure(policy, root = ROOT) {
     if (document.schema !== "sagejs.wasm-production-capabilities/v1") {
       throw new Error(`${relative} has an unsupported production capability schema`);
     }
-    for (const capability of document.capabilities || []) {
-      if (typeof capability.id !== "string" || capability.id.length === 0) {
+    for (const id of productionCapabilityIds(document)) {
+      if (typeof id !== "string" || id.length === 0) {
         throw new Error(`${relative} contains an invalid production capability id`);
       }
-      if (result.has(capability.id)) {
-        throw new Error(`duplicate production capability receipt ${capability.id}`);
+      if (result.has(id)) {
+        throw new Error(`duplicate production capability receipt ${id}`);
       }
-      result.add(capability.id);
+      result.add(id);
     }
   }
   return result;

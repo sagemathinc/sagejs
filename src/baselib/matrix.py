@@ -582,6 +582,40 @@ def _dense_integer_zeros(
     return [0 for _index in range(length)]
 
 
+def _portable_integer_matrix_rank(source: Any, rows: int, columns: int) -> int:
+    """Compute exact rank by division-free elimination over `ZZ`."""
+    values = [runtime.integer_bigint(value) for value in source]
+    rank = 0
+    for column in range(columns):
+        pivot_row = rank
+        while pivot_row < rows and values[pivot_row * columns + column] == 0:
+            pivot_row += 1
+        if pivot_row == rows:
+            continue
+        if pivot_row != rank:
+            for index in range(columns):
+                left = rank * columns + index
+                right = pivot_row * columns + index
+                values[left], values[right] = values[right], values[left]
+        pivot = values[rank * columns + column]
+        for row in range(rank + 1, rows):
+            factor = values[row * columns + column]
+            if factor == 0:
+                continue
+            for index in range(column + 1, columns):
+                destination = row * columns + index
+                pivot_entry = rank * columns + index
+                values[destination] = runtime.native_sub(
+                    runtime.native_mul(pivot, values[destination]),
+                    runtime.native_mul(factor, values[pivot_entry]),
+                )
+            values[row * columns + column] = runtime.bigint(0)
+        rank += 1
+        if rank == rows:
+            break
+    return rank
+
+
 def _compact_integer_buffer(source: Any) -> Any:
     """Shrink spare per-entry limbs without decoding exact values."""
     current = runtime.reflect.get(source, "wordCapacity")
@@ -4911,20 +4945,39 @@ class Matrix(sage.Element):
                 )
             elif self._has_integer_storage():
                 ffi = _flint_ffi_module()
-                resource = self._integer_resource()
                 maximum_rank = min(self.nrows(), self.ncols())
+                exact_rank = runtime.reflect.get(backend, "ffiFmpzMatrixRank")
+                modular_rank = runtime.reflect.get(backend, "ffiFmpzMatrixRankMod46337")
+                if exact_rank is runtime.undefined:
+                    self._rank_cache = _portable_integer_matrix_rank(
+                        self._exact_host_values(), self.nrows(), self.ncols()
+                    )
+                    _trace_dense_integer_selection(
+                        "rank",
+                        "division-free-integer-portable",
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                    return self._rank_cache
+                resource = self._integer_resource()
                 if algorithm in ["flint", "linbox"]:
                     rank = ffi.fmpz_matrix_rank(resource)
                     implementation = "generated-flint-resource-exact"
                 else:
-                    rank = ffi.fmpz_matrix_rank_mod_46337(resource)
-                    if rank == maximum_rank:
-                        implementation = "generated-flint-resource-modular-certificate"
-                    else:
+                    if modular_rank is runtime.undefined:
                         rank = ffi.fmpz_matrix_rank(resource)
-                        implementation = (
-                            "generated-flint-resource-modular-inconclusive-exact"
-                        )
+                        implementation = "generated-flint-resource-exact"
+                    else:
+                        rank = ffi.fmpz_matrix_rank_mod_46337(resource)
+                        if rank == maximum_rank:
+                            implementation = (
+                                "generated-flint-resource-modular-certificate"
+                            )
+                        else:
+                            rank = ffi.fmpz_matrix_rank(resource)
+                            implementation = (
+                                "generated-flint-resource-modular-inconclusive-exact"
+                            )
                 self._rank_cache = runtime.number(rank)
                 _trace_dense_integer_selection(
                     "rank",
@@ -7737,7 +7790,14 @@ class Matrix(sage.Element):
         left = self.change_ring(base)
         right = other.change_ring(base)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
-            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+            rational_equal = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpqMatrixEqual"
+            )
+            if (
+                rational_equal is not runtime.undefined
+                and left._has_fmpq_matrix_resource()
+                and right._has_fmpq_matrix_resource()
+            ):
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_equal(
                         left._rational_resource(),
@@ -7770,14 +7830,22 @@ class Matrix(sage.Element):
             )
             return result
         if left._has_integer_storage() and right._has_integer_storage():
-            result = bool(
-                _flint_ffi_module().fmpz_matrix_equal(
-                    left._integer_resource(), right._integer_resource()
-                )
+            integer_equal = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpzMatrixEqual"
             )
+            if integer_equal is runtime.undefined:
+                result = left._exact_host_values() == right._exact_host_values()
+                implementation = "exact-host-values"
+            else:
+                result = bool(
+                    _flint_ffi_module().fmpz_matrix_equal(
+                        left._integer_resource(), right._integer_resource()
+                    )
+                )
+                implementation = "generated-flint-resource"
             _trace_dense_integer_selection(
                 "equal",
-                "generated-flint-resource",
+                implementation,
                 left.nrows(),
                 left.ncols(),
             )

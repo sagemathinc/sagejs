@@ -21,15 +21,15 @@ function liveResources() {
 
 test("loads the generated resource backend through the public package", () => {
   assert.ok(
-    wasm.byteLength <= 5_050_000,
+    wasm.byteLength <= 5_300_000,
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
   assert.ok(
-    resourceBackend.byteLength <= 32_000,
+    resourceBackend.byteLength <= 300_000,
     `generated resource backend grew to ${resourceBackend.byteLength} bytes`,
   );
   assert.ok(
-    serializationBackend.byteLength <= 50_000,
+    serializationBackend.byteLength <= 55_000,
     `browser SagePack backend grew to ${serializationBackend.byteLength} bytes`,
   );
   assert.equal(
@@ -39,8 +39,14 @@ test("loads the generated resource backend through the public package", () => {
   assert.deepEqual(flint.__sagejs_ffi_manifest__.resources, [
     "fmpz_matrix",
     "fmpq_matrix",
+    "fmpz_vector",
+    "fmpq_vector",
+    "nmod_matrix",
     "fmpq_value",
     "byte_region",
+    "fmpz_mod_polynomial",
+    "fmpz_mod_polynomial_division_result",
+    "fmpz_mod_polynomial_xgcd_result",
     "dirichlet_group",
   ]);
   assert.equal(liveResources(), 0n);

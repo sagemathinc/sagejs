@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d5eec7665b8dce642dc77e364ede8aee6830b6a465923ab3d7ec5e95c795dd9c",
+  "source_sha256": "af1270836cf04b6e5961707b69471aa36b359db738a1f4df94eecdb1b774f241",
   "counts": {
     "total": 939,
     "by_kind": {
@@ -15,15 +15,15 @@
     "by_disposition": {
       "compiled-source": 31,
       "desktop-only": 14,
-      "generated-wasm": 239,
-      "portable-fallback": 647,
-      "shared-core": 8
+      "generated-wasm": 238,
+      "portable-fallback": 623,
+      "shared-core": 33
     },
     "by_status": {
-      "available": 210,
+      "available": 425,
       "desktop-only": 14,
-      "fallback": 509,
-      "planned": 206
+      "fallback": 485,
+      "planned": 15
     }
   },
   "workflow_aliases": {
@@ -76,17 +76,17 @@
     {
       "id": "algebraic:qqbar-resource-core",
       "family": "algebraic-numbers",
-      "disposition": "generated-wasm",
-      "status": "planned",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-exact-algebraic-number-operations",
-      "wasm_module": "flint-algebraic",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "AA",
         "QQbar",
         "Polynomial.roots",
         "NumberField.embeddings"
       ],
-      "explanation": "Exact algebraic-number resources are planned as a separately attested browser artifact with bounded handles, degrees, transfers, and precision.",
+      "explanation": "Exact algebraic-number resources are planned as a separately attested browser artifact with bounded handles, degrees, transfers, and precision. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_live_values": 4095,
         "maximum_polynomial_degree": 256,
@@ -98,13 +98,13 @@
       "id": "analytic:complex-gamma",
       "family": "analytic-functions",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-complex-gamma-evaluation",
-      "wasm_module": "flint-analytic",
+      "wasm_module": "flint",
       "public_consumers": [
         "ComplexField.gamma"
       ],
-      "explanation": "Batched complex gamma values share the bounded analytic Arb core and become available only with an authenticated browser artifact.",
+      "explanation": "Batched complex gamma values share the bounded analytic Arb core and become available only with an authenticated browser artifact. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_batch": 65536,
         "maximum_input_bytes": 8388608,
@@ -115,13 +115,13 @@
       "id": "analytic:dirichlet-l-batch",
       "family": "analytic-functions",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-dirichlet-series-and-functional-equation",
-      "wasm_module": "flint-analytic",
+      "wasm_module": "flint",
       "public_consumers": [
         "DirichletCharacter.lfunction.values"
       ],
-      "explanation": "Batched Dirichlet L-values have a shared Arb core and exact decimal transport; the production browser artifact must still attest the module.",
+      "explanation": "Batched Dirichlet L-values have a shared Arb core and exact decimal transport; the production browser artifact must still attest the module. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_batch": 65536,
         "maximum_input_bytes": 8388608,
@@ -132,13 +132,13 @@
       "id": "analytic:quadratic-dedekind-zeta",
       "family": "analytic-functions",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-riemann-zeta-times-quadratic-l-series",
-      "wasm_module": "flint-analytic",
+      "wasm_module": "flint",
       "public_consumers": [
         "QuadraticNumberField.zeta_function.values"
       ],
-      "explanation": "Quadratic Dedekind zeta batches use the shared Riemann-zeta and Dirichlet-L core and remain unavailable until the browser artifact attests it.",
+      "explanation": "Quadratic Dedekind zeta batches use the shared Riemann-zeta and Dirichlet-L core and remain unavailable until the browser artifact attests it. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_batch": 65536,
         "maximum_input_bytes": 8388608,
@@ -149,13 +149,13 @@
       "id": "analytic:riemann-xi",
       "family": "analytic-functions",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-riemann-xi-completion",
-      "wasm_module": "flint-analytic",
+      "wasm_module": "flint",
       "public_consumers": [
         "RiemannXi.values"
       ],
-      "explanation": "Standard Riemann xi values use the shared bounded analytic core and become available only with an authenticated browser artifact.",
+      "explanation": "Standard Riemann xi values use the shared bounded analytic core and become available only with an authenticated browser artifact. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_batch": 65536,
         "maximum_input_bytes": 8388608,
@@ -166,14 +166,14 @@
       "id": "analytic:riemann-zeta-batch",
       "family": "analytic-functions",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-riemann-zeta-functional-equation",
-      "wasm_module": "flint-analytic",
+      "wasm_module": "flint",
       "public_consumers": [
         "RiemannZeta.values",
         "complex_plot"
       ],
-      "explanation": "Batched Riemann zeta values use exact decimal ball transport and a shared Arb core; the production browser artifact must still attest it.",
+      "explanation": "Batched Riemann zeta values use exact decimal ball transport and a shared Arb core; the production browser artifact must still attest it. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_batch": 65536,
         "maximum_input_bytes": 8388608,
@@ -197,13 +197,13 @@
       "id": "elliptic-lseries-plot",
       "family": "elliptic-curves",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-lseries-values-and-tiled-plotting",
-      "wasm_module": "flint-curves",
+      "wasm_module": "flint",
       "public_consumers": [
         "complex_plot(EllipticCurve.lseries())"
       ],
-      "explanation": "Elliptic L-series plots use bounded 10,000-point tiles and a plot-only binary64 transport once the production curve module is attested.",
+      "explanation": "Elliptic L-series plots use bounded 10,000-point tiles and a plot-only binary64 transport once the production curve module is attested. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_tile": 10000,
         "transport": "binary64-plot-only",
@@ -214,14 +214,14 @@
       "id": "elliptic-lseries-values",
       "family": "elliptic-curves",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "ordinary-mellin-and-direct-lseries-evaluation",
-      "wasm_module": "flint-curves",
+      "wasm_module": "flint",
       "public_consumers": [
         "EllipticCurve.lseries.values",
         "EllipticCurve.lseries.__call__"
       ],
-      "explanation": "Elliptic L-series batches use decimal-ball transport in a bounded moderate domain once the production curve module is attested.",
+      "explanation": "Elliptic L-series batches use decimal-ball transport in a bounded moderate domain once the production curve module is attested. This capability is included in the receipt-authenticated production WebAssembly artifact.",
       "resource_limits": {
         "maximum_points_per_tile": 10000,
         "maximum_height": 100,
@@ -252,7 +252,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:dirichlet_group",
@@ -264,7 +264,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:exact_polynomial_factorization",
@@ -288,7 +288,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpq_polynomial",
@@ -336,19 +336,19 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpq_vector",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpz_matrix",
@@ -360,31 +360,31 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpz_mod_polynomial",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpz_mod_polynomial_division_result",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpz_mod_polynomial_factorization",
@@ -414,13 +414,13 @@
       "id": "ffi-resource:flint:fmpz_mod_polynomial_xgcd_result",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fmpz_polynomial",
@@ -462,13 +462,13 @@
       "id": "ffi-resource:flint:fmpz_vector",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:fq_context",
@@ -510,13 +510,13 @@
       "id": "ffi-resource:flint:nmod_matrix",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:flint:number_field_analysis_resource",
@@ -576,7 +576,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi-resource:m4ri:matrix",
@@ -588,7 +588,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:fflas:modular_double_available",
@@ -720,7 +720,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:dirichlet_group_num_primitive",
@@ -732,7 +732,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:dirichlet_group_size",
@@ -744,7 +744,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:exact_polynomial_factorization_count",
@@ -822,13 +822,13 @@
       "id": "ffi:flint:flint_byte_region",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:flint_byte_region_get",
@@ -858,97 +858,97 @@
       "id": "ffi:flint:flint_byte_region_set",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_charpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_det",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_inv",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_rank",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_rref",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_mat_solve",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix",
@@ -960,7 +960,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_add",
@@ -978,13 +978,13 @@
       "id": "ffi:flint:fmpq_matrix_add_scaled_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_augment",
@@ -1020,7 +1020,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_deserialize",
@@ -1032,7 +1032,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_det",
@@ -1044,7 +1044,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_echelon_pivots",
@@ -1056,7 +1056,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_entry_denominator",
@@ -1068,7 +1068,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_entry_is_zero",
@@ -1080,7 +1080,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_entry_numerator",
@@ -1092,7 +1092,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_equal",
@@ -1116,7 +1116,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_from_fmpz",
@@ -1188,19 +1188,19 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_mul_vector",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_ncols",
@@ -1212,7 +1212,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_neg",
@@ -1248,7 +1248,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_prefix_rows",
@@ -1260,7 +1260,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_randbits",
@@ -1284,7 +1284,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_right_kernel",
@@ -1308,7 +1308,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_scalar_mul",
@@ -1356,7 +1356,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_serialize_sequence",
@@ -1392,7 +1392,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_solve",
@@ -1446,25 +1446,25 @@
       "id": "ffi:flint:fmpq_matrix_swap_columns",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_swap_rows",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_trace",
@@ -1488,43 +1488,43 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_poly_divexact",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_poly_factor",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_poly_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_polynomial",
@@ -1968,7 +1968,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_value_numerator",
@@ -1980,295 +1980,295 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_add",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_copy",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_dot",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_entry_denominator",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_entry_numerator",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_equal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_from_byte_region",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_length",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_mul_matrix",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_scalar_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_serialize",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_set_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_vector_sub",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_gcd",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_is_probabprime",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_charpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_det",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_hnf",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_hnf_modular_eldiv",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_hnf_transform",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_rank",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_right_kernel",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mat_snf_transform",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix",
@@ -2280,7 +2280,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_add",
@@ -2328,7 +2328,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_deserialize",
@@ -2340,7 +2340,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_deserialize_entries",
@@ -2352,7 +2352,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_det",
@@ -2364,7 +2364,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_echelon_pivots",
@@ -2376,7 +2376,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_entry",
@@ -2388,7 +2388,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_equal",
@@ -2424,7 +2424,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_from_fmpq_integral",
@@ -2448,7 +2448,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
@@ -2508,19 +2508,19 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_mul_vector",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_ncols",
@@ -2532,7 +2532,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_neg",
@@ -2568,7 +2568,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_pow",
@@ -2592,7 +2592,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_rank",
@@ -2676,7 +2676,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_serialize_sequence",
@@ -2712,7 +2712,7 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf",
@@ -2778,25 +2778,25 @@
       "id": "ffi:flint:fmpz_matrix_swap_columns",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_swap_rows",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_trace",
@@ -2820,151 +2820,151 @@
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_add",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_coefficient",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_copy",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_derivative",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_deserialize",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_division_result_quotient",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_division_result_remainder",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_divrem_resource",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_entry_count",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_equal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_evaluate",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_factor_resource",
@@ -2994,85 +2994,85 @@
       "id": "ffi:flint:fmpz_mod_polynomial_gcd",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_is_zero",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_length",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_modulus",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_neg",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_pow",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_roots_resource",
@@ -3090,145 +3090,145 @@
       "id": "ffi:flint:fmpz_mod_polynomial_seal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_serialize",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_set_coefficient",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_sub",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_xgcd_resource",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_xgcd_result_gcd",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_xgcd_result_left_coefficient",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_mod_polynomial_xgcd_result_right_coefficient",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_perfect_power_data",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_poly_divexact",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_poly_factor",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_poly_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_polynomial",
@@ -3678,145 +3678,145 @@
       "id": "ffi:flint:fmpz_vector_add",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_copy",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_dot",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_equal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_from_byte_region",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_length",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_mul_matrix",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_scalar_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_serialize",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_set_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_vector_sub",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fq_context",
@@ -4170,841 +4170,841 @@
       "id": "ffi:flint:n_is_prime",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_charpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_det",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_inv",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_minpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_rank",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_right_kernel",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_rref",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_mat_solve",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_add",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_augment",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_charpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_copy",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_det",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_equal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_format",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_from_entries",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_inv",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_is_one",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_is_zero",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_minpoly",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_modulus",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_mul_vector",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_ncols",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_neg",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_nonzero_count",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_nrows",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_random",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_rank",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_right_kernel",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_rref",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_scalar_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_select_columns",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_select_rows",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_serialize",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_set_block",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_set_entry",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_solve",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_stack",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_sub",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_swap_columns",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_swap_rows",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_trace",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_matrix_transpose",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_add",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_compose",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_derivative",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_discriminant",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_divexact",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_divrem",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_equal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_evaluate",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_factor",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_gcd",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_integral",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_is_irreducible",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_mul",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_neg",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_resultant",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_reverse",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_roots",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_shift_left",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_shift_right",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_sub",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_truncate",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_poly_xgcd",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:nmod_vector_mul_matrix",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:number_field_analyze_resource",
@@ -5034,25 +5034,25 @@
       "id": "ffi:flint:number_field_order_maximal_at_primes",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:number_field_order_pmaximal",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:number_field_order_resource_degree",
@@ -5232,7 +5232,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix",
@@ -5244,7 +5244,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_add",
@@ -5256,7 +5256,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_copy",
@@ -5268,7 +5268,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_determinant_code",
@@ -5280,7 +5280,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_entry_code",
@@ -5292,7 +5292,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_equal",
@@ -5304,7 +5304,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_format",
@@ -5316,7 +5316,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_from_logical_words",
@@ -5328,7 +5328,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_from_sagepack_bytes",
@@ -5340,7 +5340,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_inverse",
@@ -5352,7 +5352,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_logical_words",
@@ -5364,7 +5364,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_mul",
@@ -5376,7 +5376,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_ncols",
@@ -5388,7 +5388,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_nrows",
@@ -5400,7 +5400,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_prefix_rows",
@@ -5412,7 +5412,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_rank",
@@ -5424,7 +5424,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_right_kernel",
@@ -5436,7 +5436,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_rref",
@@ -5448,7 +5448,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_sagepack_bytes",
@@ -5460,7 +5460,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_select_rows",
@@ -5484,7 +5484,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_solve",
@@ -5496,31 +5496,31 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_swap_columns",
       "family": "m4ri",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "m4ri",
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_swap_rows",
       "family": "m4ri",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "m4ri",
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:m4ri:matrix_transpose",
@@ -5532,7 +5532,7 @@
       "public_consumers": [
         "sagejs.ffi.m4ri"
       ],
-      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:arbitrary-prime-polynomial-resource-production",
@@ -5550,13 +5550,13 @@
       "id": "kernel:buchmann-lenstra-row-hnf-production",
       "family": "buchmann-lenstra-row-hnf",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "buchmann-lenstra-row-hnf"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
@@ -5598,13 +5598,13 @@
       "id": "kernel:dense-integer-production",
       "family": "dense-integer",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "dense-integer"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:dense-prime-fflas-optional",
@@ -5622,25 +5622,25 @@
       "id": "kernel:dense-prime-flint-production",
       "family": "dense-prime-flint",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-flint",
       "public_consumers": [
         "dense-prime-flint"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:dense-prime-production",
       "family": "dense-prime",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-flint",
       "public_consumers": [
         "dense-prime"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:dense-rational-flint-production",
@@ -5658,13 +5658,13 @@
       "id": "kernel:dense-rational-production",
       "family": "dense-rational",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "dense-rational"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:dense-word-prime-flint-production",
@@ -5706,85 +5706,85 @@
       "id": "kernel:field-analysis-fixed-point-checker-production",
       "family": "field-analysis-fixed-point-checker",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "field-analysis-fixed-point-checker"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:genus3-weil-candidate-production",
       "family": "genus3-weil-candidate",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "genus3-weil-candidate"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",
       "family": "number-field-composite-analysis",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-composite-analysis"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:number-field-discriminant-prefactor-production",
       "family": "number-field-discriminant-prefactor",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-discriminant-prefactor"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:number-field-om-proof-production",
       "family": "number-field-om-proof",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-om-proof"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:number-field-round4-state-production",
       "family": "number-field-round4-state",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-flint",
       "public_consumers": [
         "number-field-round4-state"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:number-field-zeta-coefficients-production",
       "family": "number-field-zeta-coefficients",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",
@@ -5814,13 +5814,13 @@
       "id": "kernel:packed-integer-polynomial-production",
       "family": "packed-integer-polynomial",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "packed-integer-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:packed-polynomial-flint-production",
@@ -5838,25 +5838,25 @@
       "id": "kernel:packed-prime-polynomial-production",
       "family": "packed-prime-polynomial",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-flint",
       "public_consumers": [
         "packed-prime-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:packed-rational-polynomial-production",
       "family": "packed-rational-polynomial",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-gmp",
       "public_consumers": [
         "packed-rational-polynomial"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "kernel:prime-field-witness",
@@ -5898,13 +5898,13 @@
       "id": "kernel:word-prime-krylov-production",
       "family": "word-prime-krylov",
       "disposition": "compiled-source",
-      "status": "planned",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
-      "wasm_module": "source-kernel-pack",
+      "wasm_module": "kernel-flint",
       "public_consumers": [
         "word-prime-krylov"
       ],
-      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned."
+      "explanation": "The canonical typed Python source and dynamic fallback are reviewed; production Wasm packaging remains planned. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
@@ -7943,13 +7943,13 @@
       "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
       "family": "number-field-zeta",
       "disposition": "shared-core",
-      "status": "planned",
+      "status": "available",
       "fallback": "strict-python-finite-field-factorization",
       "wasm_module": "flint",
       "public_consumers": [
         "NumberField.zeta_coefficients"
       ],
-      "explanation": "The host-neutral FLINT batch core is reviewed; only typed-buffer Node and Wasm adapters should differ."
+      "explanation": "The host-neutral FLINT batch core is reviewed; only typed-buffer Node and Wasm adapters should differ. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrix",
@@ -8399,14 +8399,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:polyExactRoots",
       "family": "polynomials",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyFactor",
@@ -8667,164 +8667,164 @@
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarAbs",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarAdd",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarApprox",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarCompareReal",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarConjugate",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarDegree",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarDiv",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarEqual",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarFromRational",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarI",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarImag",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarIsRational",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/matrix.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarIsReal",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMatrix",
@@ -8853,127 +8853,127 @@
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMinpolyCoefficients",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMul",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarNeg",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarPow",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarPowRational",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarReal",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarRootOfUnity",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarSqrt",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarSub",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarToString",
       "family": "algebraic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-algebraic-number-operations",
+      "wasm_module": "algebraic",
       "public_consumers": [
         "src/baselib/number_fields.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqEisensteinSeries",

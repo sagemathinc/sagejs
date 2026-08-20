@@ -109,14 +109,14 @@ export async function instantiateSageEvaluator({
   sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
 }) {
   const language = new CompilerWorker(compilerWorker);
-  let initialization;
+  let initializationResult;
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
   let wasmNativeResolver;
   try {
     [
-      initialization,
+      initializationResult,
       flintBackend,
       m4riBackend,
       symbolicBackendModule,
@@ -152,7 +152,11 @@ export async function instantiateSageEvaluator({
           return new Uint8Array(await assetResponse.arrayBuffer());
         },
         async host() {
-          return createWasiHost();
+          const wasi = createWasiHost();
+          return {
+            imports: { wasi_snapshot_preview1: wasi.imports },
+            initialize: (instance) => wasi.initialize(instance),
+          };
         },
       });
     }
@@ -160,6 +164,18 @@ export async function instantiateSageEvaluator({
     language.terminate();
     throw error;
   }
+  if (
+    initializationResult === null ||
+    typeof initializationResult !== "object" ||
+    typeof initializationResult.javascript !== "string" ||
+    initializationResult.lazyModules === null ||
+    typeof initializationResult.lazyModules !== "object"
+  ) {
+    language.terminate();
+    throw new TypeError("browser compiler returned an invalid initialization bundle");
+  }
+  const initialization = initializationResult.javascript;
+  const lazyModules = initializationResult.lazyModules;
   const globalEvaluate = globalThis.eval;
   let outputHandler = (text) => console.log(text);
 
@@ -175,9 +191,55 @@ export async function instantiateSageEvaluator({
     }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
+  const browserEnvironment = new Map();
   const serializationHost = Object.freeze({
     call(operation, args) {
       try {
+        if (operation === "describe") {
+          return {
+            ok: true,
+            value: {
+              name: "posix",
+              sep: "/",
+              altsep: null,
+              pathsep: ":",
+              linesep: "\n",
+              devnull: "/dev/null",
+              curdir: ".",
+              pardir: "..",
+              tempdir: "/tmp",
+            },
+          };
+        }
+        if (operation === "environmentEntries") {
+          return { ok: true, value: [...browserEnvironment.entries()] };
+        }
+        if (operation === "setEnv") {
+          browserEnvironment.set(String(args[0]), String(args[1]));
+          return { ok: true, value: null };
+        }
+        if (operation === "deleteEnv") {
+          browserEnvironment.delete(String(args[0]));
+          return { ok: true, value: null };
+        }
+        if (operation === "getcwd" || operation === "realpath") {
+          return { ok: true, value: operation === "getcwd" ? "/" : String(args[0]) };
+        }
+        if (operation === "cpuCount") {
+          return { ok: true, value: navigator.hardwareConcurrency || 1 };
+        }
+        if (operation === "getpid") {
+          return { ok: true, value: 1 };
+        }
+        if (operation === "urandom") {
+          const length = Number(args[0]);
+          if (!Number.isSafeInteger(length) || length < 0 || length > 65536) {
+            throw new RangeError("browser urandom request is out of range");
+          }
+          const bytes = new Uint8Array(length);
+          crypto.getRandomValues(bytes);
+          return { ok: true, value: [...bytes] };
+        }
         if (operation === "serializationDumps") {
           return { ok: true, value: serializationDumps(args[0]) };
         }
@@ -222,8 +284,113 @@ export async function instantiateSageEvaluator({
     outputHandler(String(text));
   };
   globalThis.__sagejs_sage_mode__ = true;
-  globalEvaluate(initialization);
+  try {
+    globalEvaluate(initialization);
+  } catch (error) {
+    const match = String(error?.stack ?? "").match(/<anonymous>:(\d+):(\d+)/);
+    if (match) {
+      const line = Number(match[1]);
+      const lines = initialization.split("\n");
+      const start = Math.max(0, line - 3);
+      const end = Math.min(lines.length, line + 2);
+      const context = lines
+        .slice(start, end)
+        .map((source, index) => `${start + index + 1}: ${source}`)
+        .join("\n");
+      error.message = `${error.message}\nBrowser initialization context:\n${context}`;
+    }
+    throw error;
+  }
   delete globalThis.__sagejs_sage_mode__;
+  const builtinsNamespace = globalThis.ρσ_modules?.builtins;
+  if (builtinsNamespace) {
+    for (const name of ["compile", "eval", "exec"]) {
+      if (globalThis[name] !== undefined) {
+        builtinsNamespace[name] = globalThis[name];
+      }
+    }
+  }
+  const browserStream = Object.freeze({
+    isTTY: false,
+    write(value) {
+      outputHandler(String(value));
+      return true;
+    },
+  });
+  globalThis.process = Object.freeze({
+    argv: Object.freeze([]),
+    cwd: () => "/",
+    env: Object.freeze(Object.create(null)),
+    execPath: "",
+    platform: "browser",
+    versions: Object.freeze(Object.create(null)),
+    stdin: browserStream,
+    stdout: browserStream,
+    stderr: browserStream,
+  });
+  const lazyModuleName = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+  const precompiledFilenameMarker = "__sagejs_precompiled_module_filename__";
+  const loadingLazyModules = new Set();
+  globalThis.__sagejs_load_module__ = function loadBrowserModule(name) {
+    if (typeof name !== "string" || !lazyModuleName.test(name)) {
+      throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
+    }
+    const registry = globalThis.ρσ_modules;
+    if (registry && Object.prototype.hasOwnProperty.call(registry, name)) {
+      return registry[name];
+    }
+    const record = lazyModules[name];
+    if (
+      record === null ||
+      typeof record !== "object" ||
+      record.module !== name ||
+      typeof record.javascriptTemplate !== "string" ||
+      !record.javascriptTemplate.includes(JSON.stringify(precompiledFilenameMarker))
+    ) {
+      const ImportErrorClass = globalThis.ImportError;
+      const message = `No module named '${name}'`;
+      if (typeof ImportErrorClass === "function") {
+        throw new ImportErrorClass(message);
+      }
+      throw Object.assign(new Error(message), { name: "ImportError" });
+    }
+    const separator = name.lastIndexOf(".");
+    const parentName = separator < 0 ? "" : name.slice(0, separator);
+    const childName = separator < 0 ? "" : name.slice(separator + 1);
+    const parent = parentName ? loadBrowserModule(parentName) : undefined;
+    if (Object.prototype.hasOwnProperty.call(registry, name)) {
+      return registry[name];
+    }
+    const namespace = Object.create(null);
+    registry[name] = namespace;
+    if (parent !== undefined && childName) parent[childName] = namespace;
+    loadingLazyModules.add(name);
+    const previous = globalThis.__sagejs_current_module_namespace__;
+    globalThis.__sagejs_current_module_namespace__ = namespace;
+    const filename = `/__sagejs_browser_modules__/${name.replaceAll(".", "/")}.py`;
+    try {
+      const javascript = record.javascriptTemplate.replaceAll(
+        JSON.stringify(precompiledFilenameMarker),
+        JSON.stringify(filename),
+      );
+      globalEvaluate(`(function(){\n${javascript}\n}).call(globalThis);`);
+    } catch (error) {
+      delete registry[name];
+      if (parent !== undefined && childName) delete parent[childName];
+      throw error;
+    } finally {
+      loadingLazyModules.delete(name);
+      if (previous === undefined) {
+        delete globalThis.__sagejs_current_module_namespace__;
+      } else {
+        globalThis.__sagejs_current_module_namespace__ = previous;
+      }
+    }
+    if (!Object.prototype.hasOwnProperty.call(registry, name)) {
+      throw new Error(`lazy module ${name} did not register itself`);
+    }
+    return registry[name];
+  };
   globalEvaluate('var __name__ = "__repl__";');
 
   async function evaluateNow(
@@ -256,8 +423,12 @@ export async function instantiateSageEvaluator({
       const value = globalEvaluate(javascript);
       return {
         value,
-        repr: value === undefined ? "" : globalThis.ρσ_repr(value),
-        display: richDisplay(value),
+        repr: value === undefined || value === null
+          ? ""
+          : globalThis.ρσ_repr(value),
+        display: value === undefined || value === null
+          ? undefined
+          : richDisplay(value),
         saveRequests,
       };
     } finally {

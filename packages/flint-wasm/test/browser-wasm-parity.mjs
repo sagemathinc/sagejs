@@ -74,6 +74,7 @@ try {
       const pageErrors = [];
       page.on("pageerror", (error) => pageErrors.push(String(error.stack ?? error)));
       await page.goto(`${server.origin}/browser-wasm-harness.html`, { waitUntil: "load" });
+      await page.waitForFunction(() => window.__sagejsReady !== undefined);
       await page.evaluate(() => window.__sagejsReady);
       engineReceipt.diagnostics = await page.evaluate(() => window.__sagejsTest.diagnostics());
       assert.equal(engineReceipt.diagnostics.cross_origin_isolated, true);

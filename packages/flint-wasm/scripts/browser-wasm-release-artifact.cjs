@@ -98,6 +98,75 @@ function layoutModules(manifest) {
   return [];
 }
 
+function importedMemoryDomains(manifest) {
+  const domains = manifest.layout?.importedMemoryDomains ?? [];
+  if (!Array.isArray(domains)) {
+    throw new Error("production layout importedMemoryDomains must be an array");
+  }
+  return domains;
+}
+
+function validateWasmMemory(filename, memory, manifest) {
+  const modules = layoutModules(manifest);
+  const module = modules.find((item) =>
+    (item.artifact ?? item.path ?? item.file) === filename,
+  );
+  if (module) {
+    if (
+      memory.length !== 1 ||
+      memory[0].imported ||
+      memory[0].shared ||
+      memory[0].maximumPages === null
+    ) {
+      throw new Error(`${filename} must define exactly one bounded, non-shared memory`);
+    }
+    const expected = module.memory;
+    if (
+      expected?.pageBytes !== 65536 ||
+      expected.initialPages !== memory[0].initialPages ||
+      expected.maximumPages !== memory[0].maximumPages
+    ) {
+      throw new Error(`${filename} memory does not match the production layout`);
+    }
+    return;
+  }
+
+  const domains = importedMemoryDomains(manifest);
+  const domain = domains.find((item) =>
+    item.provider === filename || item.consumers?.includes(filename),
+  );
+  if (!domain) throw new Error(`${filename} has no production memory contract`);
+  if (
+    !domain.memory ||
+    domain.memory.pageBytes !== 65536 ||
+    !Number.isSafeInteger(domain.memory.initialPages) ||
+    !Number.isSafeInteger(domain.memory.maximumPages) ||
+    domain.memory.initialPages < 1 ||
+    domain.memory.maximumPages < domain.memory.initialPages
+  ) {
+    throw new Error(`${filename} has an invalid imported-memory domain contract`);
+  }
+  if (memory.length !== 1 || !memory[0].imported || memory[0].shared) {
+    throw new Error(`${filename} must import exactly one non-shared memory`);
+  }
+  if (filename === domain.provider) {
+    if (
+      memory[0].initialPages !== domain.memory.initialPages ||
+      memory[0].maximumPages !== domain.memory.maximumPages
+    ) {
+      throw new Error(`${filename} provider memory does not match its domain contract`);
+    }
+    return;
+  }
+  if (
+    memory[0].initialPages > domain.memory.initialPages ||
+    (memory[0].maximumPages !== null &&
+      domain.memory.maximumPages > memory[0].maximumPages)
+  ) {
+    throw new Error(`${filename} cannot accept the bounded provider memory`);
+  }
+}
+
 function validateRelative(filename) {
   if (
     typeof filename !== "string" ||
@@ -132,7 +201,6 @@ function inspectProductionArtifact(distDirectory) {
     }
     servePaths.add(asset.servePath);
   }
-  const modules = layoutModules(manifest);
   if (names.length === 0) throw new Error("production manifest describes no artifacts");
   const files = names.map((filename) => {
     validateRelative(filename);
@@ -146,21 +214,7 @@ function inspectProductionArtifact(distDirectory) {
     }
     if (filename.endsWith(".wasm")) {
       const memory = wasmMemories(bytes);
-      if (memory.length !== 1 || memory[0].imported || memory[0].shared || memory[0].maximumPages === null) {
-        throw new Error(`${filename} must define exactly one bounded, non-shared memory`);
-      }
-      const layoutModule = modules.find((item) =>
-        (item.artifact ?? item.path ?? item.file) === filename,
-      );
-      if (!layoutModule?.memory) throw new Error(`${filename} has no layout memory contract`);
-      const expectedMemory = layoutModule.memory;
-      if (
-        expectedMemory.pageBytes !== 65536 ||
-        expectedMemory.initialPages !== memory[0].initialPages ||
-        expectedMemory.maximumPages !== memory[0].maximumPages
-      ) {
-        throw new Error(`${filename} memory does not match the production layout`);
-      }
+      validateWasmMemory(filename, memory, manifest);
     }
     const expected = expectedFileRecord(manifest, filename);
     const digest = sha256(bytes);
@@ -195,7 +249,11 @@ function inspectProductionArtifact(distDirectory) {
     schema: "sagejs.browser-wasm-release-artifact/v1",
     production_manifest_sha256: sha256(manifestBytes),
     build_receipt_sha256: sha256(buildReceiptBytes),
-    source_revision: buildReceipt.source_revision ?? buildReceipt.source?.revision ?? null,
+    source_revision:
+      buildReceipt.source_revision ??
+      buildReceipt.source?.revision ??
+      buildReceipt.source?.gitCommit ??
+      null,
     artifact_identity: buildReceipt.artifact?.identity ?? manifest.identity ?? null,
     files,
     totals: files.reduce((totals, item) => ({

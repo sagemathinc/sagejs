@@ -42,7 +42,9 @@ export const securityHeaders = Object.freeze({
 
 const HARNESS_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Sage.js Wasm parity</title></head>
-<body><output id="status">loading</output><script type="module">
+<body><output id="status">loading</output><script type="module" src="/browser-wasm-harness.mjs"></script></body></html>`;
+
+const HARNESS_JAVASCRIPT = `
 import { createSage } from "/kernel.mjs";
 const state = { session: null, error: null };
 window.__sagejsTest = {
@@ -92,7 +94,7 @@ window.__sagejsReady = (async () => {
     throw error;
   }
 })();
-</script></body></html>`;
+`;
 
 function collectReleaseAssets(root) {
   const productionManifest = path.join(root, "dist", "production-manifest.json");
@@ -146,6 +148,7 @@ function serviceWorkerSource(release, assets) {
   const urls = [
     "/browser-wasm-harness.html",
     `/browser-wasm-harness.html?release=${encodeURIComponent(release)}`,
+    "/browser-wasm-harness.mjs",
     ...assets.map((x) => `/${x}`),
   ];
   return `const CACHE = ${JSON.stringify(`sagejs-${release}`)};
@@ -177,6 +180,15 @@ export async function createBrowserWasmServer({
         "Cache-Control": "no-cache",
       });
       response.end(HARNESS_HTML);
+      return;
+    }
+    if (url.pathname === "/browser-wasm-harness.mjs") {
+      response.writeHead(200, {
+        ...headers,
+        "Content-Type": MIME_TYPES.get(".mjs"),
+        "Cache-Control": "no-cache",
+      });
+      response.end(HARNESS_JAVASCRIPT);
       return;
     }
     if (url.pathname === "/browser-wasm-test-sw.js") {
@@ -289,7 +301,23 @@ export async function loadProductionCapabilityIds() {
   ) {
     throw new Error("production manifest has no reviewed capability closure");
   }
-  return new Set(manifest.capabilities.map((item) => item.id));
+  const result = new Set(manifest.capabilities.map((item) => item.id));
+  const reportFilename = path.join(
+    repositoryRoot,
+    "architecture",
+    "wasm-capabilities-report.json",
+  );
+  const report = JSON.parse(await fs.promises.readFile(reportFilename, "utf8"));
+  if (report.schema !== "sagejs.wasm-capability-report/v1" ||
+      !Array.isArray(report.capabilities)) {
+    throw new Error("public capability report has no reviewed browser closure");
+  }
+  for (const capability of report.capabilities) {
+    if (capability.status === "available" || capability.status === "fallback") {
+      result.add(capability.id);
+    }
+  }
+  return result;
 }
 
 export function assertParityExpectation(item, result) {
