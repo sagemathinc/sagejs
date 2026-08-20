@@ -281,6 +281,7 @@ const integration = [
   "test/webassembly-docs.cjs",
   "test/doc-examples.cjs",
   "test/elliptic-curves.cjs",
+  "test/hyperelliptic-bad-reduction.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
   "test/hyperelliptic-genus3-certified-oracle.cjs",
   "test/hyperelliptic-genus3-certified.cjs",

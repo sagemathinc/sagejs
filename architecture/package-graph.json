@@ -381,7 +381,7 @@
       "id": "hyperelliptic-curves-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 400000,
+      "max_source_bytes": 450000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "hyperelliptic-curves"

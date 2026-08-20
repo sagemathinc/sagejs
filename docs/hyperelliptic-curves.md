@@ -3,6 +3,11 @@ title: "Hyperelliptic curves and local Frobenius data"
 ---
 # Hyperelliptic curves and local Frobenius data
 
+See also [certified local data at bad odd primes](hyperelliptic-bad-reduction.md)
+for inertia-invariant Euler factors and conductor exponents. Those factors
+can have degree below `2g`, so they deliberately use a separate API from the
+good-reduction `local_lpolynomial` method.
+
 Sage.js supports smooth genus-2 and genus-3 curves written
 
 ```text

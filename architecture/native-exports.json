@@ -2491,6 +2491,7 @@
         "src/baselib/modular.py",
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py",
+        "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
         "src/lib/sagejs/number_fields/prime_ideals.py",
         "test/ffi.cjs"
       ],

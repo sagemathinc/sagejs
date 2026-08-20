@@ -17,7 +17,7 @@ import {
 import Completer from "./completer";
 import { clearLine, createInterface } from "readline";
 import createCompiler from "./compiler";
-import { arch } from "os";
+import { arch, platform } from "os";
 import { expandSageLoads, parseLoadDirective } from "./sage-source";
 import {
   readResourceBytes,
@@ -48,6 +48,9 @@ import {
 } from "./timing";
 
 const DEFAULT_HISTORY_SIZE = 1000;
+const SAGEJS_VERSION = String(
+  (require("../../package.json") as { version: unknown }).version,
+);
 const HOME =
   process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? "/tmp";
 
@@ -92,6 +95,27 @@ export function defaultHistoryFile(
   const mode = foreignLanguage ?? (options.sage ? "sage" : "python");
   const filename = mode === "sage" ? "history" : `history-${mode}`;
   return join(cacheDirectory, "sagejs", filename);
+}
+
+function releasePlatformName(value: NodeJS.Platform): string {
+  switch (value) {
+    case "darwin":
+      return "macos";
+    case "win32":
+      return "windows";
+    default:
+      return value;
+  }
+}
+
+export function replWelcomeBanner(options: Partial<Options>): string {
+  const foreignLanguage = selectedForeignLanguage(options);
+  const mode = foreignLanguage
+    ? ` (${foreignDisplayName(foreignLanguage)} mode)`
+    : options.sage ? "" : " (Python mode)";
+  return `Welcome to Sage.js v${SAGEJS_VERSION}${mode} [${
+    releasePlatformName(platform())
+  }-${arch()}].`;
 }
 
 function replDefaults(options: Partial<Options>): Options {
@@ -299,17 +323,7 @@ export default async function Repl(
   */
   if (process.stdin.isTTY) {
     options.console.log(
-      colorize(
-        `Welcome to Sage.js${
-          foreignLanguage
-            ? ` (${foreignDisplayName(foreignLanguage)} mode)`
-            : options.sage ? "" : " (Python mode)"
-        } [Node.js ${
-          process.version
-        } on ${arch()}].`,
-        "green",
-        true
-      )
+      colorize(replWelcomeBanner(options), "green", true),
     );
   }
 

@@ -5,12 +5,45 @@ const { existsSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { defaultHistoryFile } = require("../dist/tools/repl.js");
+const {
+  defaultHistoryFile,
+  replWelcomeBanner,
+} = require("../dist/tools/repl.js");
 const packageVersion = require("../package.json").version;
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
 const cache = join("/cache", "sagejs");
+const releasePlatform =
+  process.platform === "darwin"
+    ? "macos"
+    : process.platform === "win32"
+      ? "windows"
+      : process.platform;
+const bannerSuffix = `[${releasePlatform}-${process.arch}].`;
+
+assert.equal(
+  replWelcomeBanner({ sage: true }),
+  `Welcome to Sage.js v${packageVersion} ${bannerSuffix}`,
+);
+assert.equal(
+  replWelcomeBanner({ sage: false }),
+  `Welcome to Sage.js v${packageVersion} (Python mode) ${bannerSuffix}`,
+);
+for (const [flag, displayName] of [
+  ["magma", "Magma"],
+  ["macaulay2", "Macaulay2"],
+  ["m2", "Macaulay2"],
+  ["maple", "Maple"],
+  ["matlab", "MATLAB"],
+  ["wolfram", "Wolfram"],
+  ["mathematica", "Wolfram"],
+]) {
+  assert.equal(
+    replWelcomeBanner({ [flag]: true }),
+    `Welcome to Sage.js v${packageVersion} (${displayName} mode) ${bannerSuffix}`,
+  );
+}
 
 assert.equal(defaultHistoryFile({ sage: true }, "/cache"), join(cache, "history"));
 assert.equal(
