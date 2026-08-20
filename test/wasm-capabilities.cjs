@@ -102,6 +102,7 @@ test("the public machine report is deterministic and excludes review internals",
   assert.equal(report.schema, "sagejs.wasm-capability-report/v1");
   assert.equal(report.capabilities.length, manifest.capabilities.length);
   assert.equal("review_note" in report.capabilities[0], false);
+  assert.equal(typeof report.capabilities[0].explanation, "string");
   const stale = structuredClone(report);
   stale.capabilities[0].status = "stale";
   assert.throws(() => validateReport(stale, manifest), /report is stale/);

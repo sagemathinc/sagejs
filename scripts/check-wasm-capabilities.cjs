@@ -269,6 +269,10 @@ function validateManifest(manifest, options = {}) {
     if (typeof capability.review_note !== "string" || capability.review_note.length < 24) {
       throw new Error(`${id} needs a substantive human review note`);
     }
+    if (typeof capability.public_explanation !== "string" ||
+        capability.public_explanation.length < 24) {
+      throw new Error(`${id} needs a substantive public capability explanation`);
+    }
     if (capability.reviewed !== true) throw new Error(`${id} is not reviewed`);
     if (capability.disposition === "portable-fallback" &&
         !capability.tests.some((test) => evidence[test].differential)) {
@@ -362,6 +366,7 @@ function publicReport(manifest) {
       fallback: item.fallback,
       wasm_module: item.wasm_module,
       public_consumers: item.public_consumers,
+      explanation: item.public_explanation,
       ...(item.resource_limits === undefined ? {} : { resource_limits: item.resource_limits }),
     })),
   };

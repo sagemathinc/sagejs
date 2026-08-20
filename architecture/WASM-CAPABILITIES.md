@@ -38,8 +38,11 @@ packages.
 [`wasm-capabilities-report.json`](wasm-capabilities-report.json) is a generated,
 machine-readable projection intended for the website, diagnostic tooling, and
 mobile shells. It contains public availability, ownership, fallback, consumer,
-and resource-limit fields without internal review prose. Its source hash and
-complete contents are checked deterministically.
+explanation, and resource-limit fields without internal review prose. The
+record shape is `id`, `family`, `disposition`, `status`, `fallback`,
+`wasm_module`, `public_consumers`, `explanation`, and optional
+`resource_limits`. Its source hash and complete contents are checked
+deterministically.
 
 Run the audit directly with:
 
