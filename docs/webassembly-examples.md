@@ -129,6 +129,34 @@ print([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])
 print(K.zeta_function().coefficients(24))
 ```
 
+Number fields, maximal orders, ideals, prime ideals, and independently checked
+maximality certificates are all ordinary public objects above the packed ABI.
+Decoding replays maximal-order construction and prime decomposition before it
+accepts the serialized lattices. SagePack retains shared object identity and
+emits canonical bytes: the digest below is required to agree between the Node
+oracle and browser workers.
+
+```sage test browser-parity=number-field-ideal-certificate-sagepack
+from sagejs_serialization import dumps, loads
+import hashlib
+R.<x> = QQ[]
+K.<a> = NumberField(x^2 - 5)
+O = K.maximal_order()
+I = O.ideal(2)
+P = O.factor_rational_prime(5)[0][0]
+certificate = O.maximality_certificate()
+data = dumps([K, O, I, P, I, P, certificate])
+answer = loads(data)
+KK, OO, II, PP, II2, PP2, restored_certificate = answer
+print(hashlib.sha256(data).hexdigest())
+print(len(data), data[:8] == b'SAGEPK1\x00', dumps(loads(data)) == data)
+print(OO.number_field() is KK, II.ring() is OO, PP.ring() is OO)
+print(II2 is II, PP2 is PP, OO.is_maximal())
+print(II.basis_matrix() == I.basis_matrix(), II.norm() == I.norm())
+print(PP.basis_matrix() == P.basis_matrix(), PP.rational_prime(), PP.ramification_index(), PP.residue_class_degree())
+print(restored_certificate == certificate, OO.maximality_certificate() == certificate, certificate['certified'])
+```
+
 ## Batched analytic values
 
 The batch retains arbitrary-precision Arb/Acb computation and only converts to

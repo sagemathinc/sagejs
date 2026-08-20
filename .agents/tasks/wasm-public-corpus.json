@@ -6,8 +6,8 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Add bounded public browser parity coverage for AA/QQbar, modular symbols, and the headline cubic number-field workflow with exact capability routes and synchronized documentation",
-  "base_commit": "f4a5edd61949d76b5327f0551ab61b6ab370aa16",
+  "objective": "Add bounded public browser parity coverage for AA/QQbar, modular symbols, the headline cubic number-field workflow, and canonical number-field ideal/certificate serialization with exact capability routes and synchronized documentation",
+  "base_commit": "6923efe0238ffeac9c6039e617ca280266b1e32f",
   "claims": [
     "test/browser-wasm-parity-corpus.json",
     "docs/webassembly-examples.md",
@@ -141,7 +141,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added bounded routine browser-parity cases and byte-identical documentation for AA/QQbar roots, weight-two modular symbols, and the headline cubic number-field maximal-order/prime-factor/zeta workflow. Declared each workflow's exact artifact or portable-fallback capability routes and regenerated the public capability report. Also synchronized the existing capability-discovery lines in the exact-integer documentation fence.",
+    "summary": "Added bounded routine browser-parity cases and byte-identical documentation for AA/QQbar roots, weight-two modular symbols, the headline cubic number-field workflow, and canonical SagePack persistence of number fields, maximal orders, ideals, authenticated prime ideals, and maximality certificates. Declared each workflow's exact artifact, shared-runtime, or portable-fallback routes and regenerated the public capability report.",
     "risks": [
       "The full browser run must use the final clean production artifact. Native AA/QQbar and modular-symbol outputs were checked directly; the cubic signature and ramified-prime output were checked directly, while the isolated lane lacked a built optional FLINT adapter for rerunning the zeta coefficient batch.",
       "A post-rebase portable-suite rerun reached an unrelated module-cache failure because this lane's dist predates the integrated Unicode dynamic-namespace fix. The final clean integration build must rerun that suite."
