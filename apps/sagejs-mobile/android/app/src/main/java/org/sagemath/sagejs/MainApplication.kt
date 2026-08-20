@@ -15,7 +15,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          add(SageRuntimeOriginPackage())
         },
     )
   }
@@ -23,5 +23,10 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     loadReactNative(this)
+  }
+
+  override fun onTerminate() {
+    SageRuntimeOriginServer.stop()
+    super.onTerminate()
   }
 }

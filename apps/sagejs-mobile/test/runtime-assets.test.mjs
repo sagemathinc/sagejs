@@ -116,12 +116,13 @@ test('runtime shell has a restrictive offline CSP and no remote code path', asyn
     'utf8',
   );
   assert.match(html, /default-src 'none'/);
-  assert.match(html, /connect-src 'self' blob:/);
+  assert.match(html, /connect-src 'self'/);
+  assert.match(html, /'wasm-unsafe-eval'/);
   assert.doesNotMatch(`${html}\n${main}`, /\bhttps?:\/\//i);
   assert.doesNotMatch(main, /fetch\s*\(/);
 });
 
-test('native hosts deny remote runtime networking and require asset verification', async () => {
+test('native hosts permit only the verified application-owned loopback origin', async () => {
   const android = await readFile(
     new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url),
     'utf8',
@@ -134,8 +135,9 @@ test('native hosts deny remote runtime networking and require asset verification
     new URL('../ios/SageJSMobile.xcodeproj/project.pbxproj', import.meta.url),
     'utf8',
   );
-  assert.doesNotMatch(android, /android.permission.INTERNET/);
+  assert.match(android, /android.permission.INTERNET/);
   assert.match(android, /usesCleartextTraffic="false"/);
+  assert.match(android, /networkSecurityConfig/);
   assert.match(gradle, /verify-runtime-assets\.mjs/);
   assert.match(project, /Verify offline runtime/);
   assert.match(project, /verify-runtime-assets\.mjs/);

@@ -13,7 +13,11 @@ pnpm device:validate -- device-receipts/DEVICE-DATE.json
 ## Required checks
 
 1. Cold-launch and instantiate the local Wasm engine. Relaunch for warm time.
-2. Verify every relative Wasm/module/worker asset loads with no network.
+2. Verify the entry URL is an ephemeral
+   `http://127.0.0.1:<port>/<capability>/...` URL, then verify every relative
+   Wasm/module/worker asset loads from that exact origin with no external
+   network. Record `crossOriginIsolated`, SharedArrayBuffer availability, and
+   the outer plus nested-worker topology.
 3. Record whether nested workers work; if not, stop release and implement/test
    the sibling topology before recording a pass.
 4. Run `factor(2026)` and a computation using FLINT temporary files.

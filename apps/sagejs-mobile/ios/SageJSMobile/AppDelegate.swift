@@ -40,6 +40,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   ) -> Bool {
     RCTLinkingManager.application(app, open: url, options: options)
   }
+
+  func applicationWillTerminate(_ application: UIApplication) {
+    SageRuntimeOrigin.stopRuntimeServer()
+  }
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
