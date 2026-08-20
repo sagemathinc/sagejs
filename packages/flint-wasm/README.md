@@ -104,6 +104,30 @@ const result = await sage.evaluate("factor(2026)");
 await sage.close();
 ```
 
+Node can host the identical isolated WebAssembly kernel.  This entry point
+installs a narrow `worker_threads` adapter and a local-file fetch adapter; it
+does not load the native Node addon:
+
+```js
+import { createSage } from "@sagemath/sagejs-flint-wasm/node";
+
+const sage = await createSage();
+console.log((await sage.evaluate("factor(2026)")).stdout);
+await sage.close();
+```
+
+The package also includes a developer CLI.  It accepts a source file, `-c`,
+piped source, or starts a line-oriented REPL:
+
+```sh
+node packages/flint-wasm/node-cli.mjs -c 'print(factor(2026))'
+printf '%s\n' 'E = EllipticCurve([0,0,1,-1,0]); print(E.anlist(100))' |
+  node packages/flint-wasm/node-cli.mjs
+```
+
+Both forms use `dist/production-manifest.json` and the same Wasm modules,
+compiler cache, capability report, and nested compiler worker as the browser.
+
 Rich graphics can be rendered with the separate adapter:
 
 ```js

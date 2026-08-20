@@ -5,6 +5,9 @@
   "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
+  "bin": {
+    "sagejs-wasm": "./node-cli.mjs"
+  },
   "exports": {
     ".": "./index.mjs",
     "./algebraic": "./algebraic.mjs",
@@ -23,6 +26,11 @@
       "types": "./kernel.d.ts",
       "import": "./kernel.mjs",
       "default": "./kernel.mjs"
+    },
+    "./node": {
+      "types": "./kernel.d.ts",
+      "import": "./node-kernel.mjs",
+      "default": "./node-kernel.mjs"
     },
     "./plotly-renderer": {
       "types": "./plotly-renderer.d.ts",
@@ -76,6 +84,10 @@
     "kernel.d.ts",
     "kernel-worker.mjs",
     "kernel.mjs",
+    "node-cli.mjs",
+    "node-kernel.mjs",
+    "node-worker.mjs",
+    "node-worker-bootstrap.mjs",
     "plotly-renderer.d.ts",
     "plotly-renderer.mjs",
     "portable-matrix.mjs",
