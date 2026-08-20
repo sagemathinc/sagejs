@@ -42,11 +42,38 @@
       "commit": "4c78361205d36cb30486b740bbc3d4aad7f605e8",
       "workspace_fingerprint": "3d616da03f932e33ef55c655fb9945be48e265c34b48020584ca2c1d095439cc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 415.519,
+      "started_at": "2026-08-20T05:18:05.536Z",
+      "commit": "cf106773a14f11acbe7098b050e4d39083f1d51b",
+      "workspace_fingerprint": "1dc50d4ae991295c529606240c383a7c3cd61e8305fd4daaa491f9091d7fcab1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test website/live/test/*.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.614,
+      "started_at": "2026-08-20T05:27:55.188Z",
+      "commit": "3873bcea746911a491a272159a2e3d6adc7d899f",
+      "workspace_fingerprint": "69f6fd3d2ec1e8f2795703401d704cb41a8075318d38bb599c280c983caadd7e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented and integrated the production static Sage.js browser workspace: accessible editor execution controls, streamed bounded output, Plotly rendering, interrupt/reset/recovery, local worksheets and source-only sharing, source/SagePack interchange, public capability filtering, content-addressed authenticated runtime staging, Cloudflare isolation headers, offline cache upgrade/rollback, public privacy/limits documentation, and 17 focused tests.",
+    "risks": [
+      "End-to-end offline browser execution requires the final pinned packages/flint-wasm reactor artifact and generated architecture capability report, which are owned by dependency lanes.",
+      "The shared browser kernel still requires integration-owned protocol-global isolation and an explicit in-memory filesystem quota before the public release gate."
+    ],
+    "next_steps": [
+      "After all Wasm lanes integrate, run node website/live/test/browser-offline.mjs against the final authenticated production artifact.",
+      "Run pnpm docs:check and pnpm test:tutorial once in the final integration workspace; the coordinator stopped this lane's contended broad rebuild to prioritize the pinned FLINT reactor.",
+      "Deploy website/live/dist to the dedicated non-credentialed app.sagejs.org origin without adding cookies, privileged APIs, CDNs, or remote fonts."
+    ]
   }
 }
