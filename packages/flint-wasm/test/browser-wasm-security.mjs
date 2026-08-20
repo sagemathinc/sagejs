@@ -82,7 +82,7 @@ print("protocol-authenticated")
   assert.equal(afterInterrupt.stdout, "42\n");
 
   const filesystemHeavy = await page.evaluate(() =>
-    window.__sagejsTest.interrupt("factor(2^521 - 1)"),
+    window.__sagejsTest.interrupt("factor(2^10007 - 1)"),
   );
   assert.equal(filesystemHeavy.rejected, true);
   assert.ok(
