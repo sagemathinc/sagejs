@@ -274,19 +274,16 @@
       "analytic:dirichlet-l-batch"
     ],
     "elliptic-lseries-complex-plot": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable",
+      "specialist:integer-factorization-wasm",
       "elliptic-lseries-values",
       "elliptic-lseries-plot"
     ],
     "elliptic-lseries-values": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable",
+      "specialist:integer-factorization-wasm",
       "elliptic-lseries-values"
     ],
     "elliptic-portable-coefficients": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable"
+      "specialist:integer-factorization-wasm"
     ],
     "exact-algebraic-roots": [
       "algebraic:qqbar-resource-core"
@@ -300,7 +297,8 @@
       "ffi:flint:fmpz_mod_polynomial_gcd"
     ],
     "number-field-maximal-order-prime-zeta": [
-      "kernel:field-analysis-fixed-point-checker-production",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:nmod_poly_factor",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "modular-symbols-weight-two": [
