@@ -141,6 +141,12 @@ export class SageSession {
         this.emit("stdout", data.text, { evaluationId: data.id });
         return;
       }
+      if (data.type === "stderr") {
+        pending.errorOutput += data.text;
+        pending.onError?.(data.text);
+        this.emit("stderr", data.text, { evaluationId: data.id });
+        return;
+      }
       if (data.type !== "result") return;
 
       this.pending.delete(data.id);
@@ -159,6 +165,7 @@ export class SageSession {
           return {
             ...result,
             stdout: pending.output,
+            stderr: pending.errorOutput,
           };
         })().then(pending.resolve, pending.reject);
       } else {
@@ -221,6 +228,7 @@ export class SageSession {
       filename = "<browser>",
       timeout,
       onOutput,
+      onError,
     } = {},
   ) {
     if (this.closed) throw new SageSessionClosedError();
@@ -241,7 +249,9 @@ export class SageSession {
     return new Promise((resolve, reject) => {
       const pending = {
         output: "",
+        errorOutput: "",
         onOutput,
+        onError,
         resolve,
         reject,
       };

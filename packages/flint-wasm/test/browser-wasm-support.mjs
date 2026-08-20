@@ -55,6 +55,7 @@ window.__sagejsTest = {
     return {
       repr: result.repr,
       stdout: result.stdout,
+      stderr: result.stderr,
       display: result.display ?? null,
       duration_ms: performance.now() - started
     };
