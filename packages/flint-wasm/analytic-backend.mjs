@@ -219,6 +219,7 @@ export function createAnalyticWasmBackend(instance, options = {}) {
   const serializePoint = options.serializePoint ?? defaultSerializeAnalyticPoint;
   const materialize = options.materialize ?? ((record) => record);
   const resolveDirichletModulus = options.resolveDirichletModulus ?? ((value) => value);
+  const recordCapability = options.recordCapability ?? (() => {});
 
   const roundedCapacity = (needed, maximum) => {
     let capacity = 4096;
@@ -325,7 +326,7 @@ export function createAnalyticWasmBackend(instance, options = {}) {
           ]
           : [];
     for (const capabilityId of capabilityIds) {
-      globalThis.__sagejs_capability_trace__?.(
+      recordCapability(
         capabilityId,
         "receipt-backed-wasm-artifact",
         {

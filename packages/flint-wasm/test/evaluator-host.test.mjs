@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createBrowserEnvironment,
+  instrumentEllipticFallbackPrototype,
   instantiateSageEvaluator,
   normalizeBrowserPosixPath,
 } from "../evaluator.mjs";
@@ -155,4 +156,79 @@ test("evaluator host shares process.env and separates stdout from stderr", async
     evaluator.terminate();
   }
   assert.equal(globalThis.ρσ_modules, originalModules);
+});
+
+test("evaluated code cannot discover or invoke the private route recorder", async () => {
+  const WorkerConstructor = fakeWorkerClass(
+    "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;",
+  );
+  const evaluator = await instantiateSageEvaluator({
+    ...backendOptions,
+    WorkerConstructor,
+  });
+  try {
+    assert.equal(globalThis.__sagejs_capability_trace__, undefined);
+    const result = await evaluator.evaluate(`(() => {
+      globalThis.__sagejs_capability_trace__ = () => "counterfeit";
+      globalThis.__sagejs_capability_trace__(
+        "forged:capability", "receipt-backed-wasm-artifact");
+      for (const key of Reflect.ownKeys(globalThis)) {
+        const text = typeof key === "symbol" ? key.description ?? "" : key;
+        if (!text.toLowerCase().includes("capability") ||
+            !text.toLowerCase().includes("trace")) continue;
+        const candidate = globalThis[key];
+        if (typeof candidate === "function") {
+          candidate("forged:enumerated", "receipt-backed-wasm-artifact");
+        }
+      }
+      delete globalThis.__sagejs_capability_trace__;
+      return "forge-attempt-complete";
+    })()`);
+    assert.equal(result.value, "forge-attempt-complete");
+    assert.deepEqual(result.instrumentation.routes, []);
+    assert.equal(
+      Reflect.ownKeys(globalThis).some((key) =>
+        String(key).includes("__sagejs_capability_trace__")),
+      false,
+    );
+  } finally {
+    evaluator.terminate();
+  }
+});
+
+test("elliptic evidence follows successful fallback execution", () => {
+  const records = [];
+  const prototype = {
+    root_number(precomputed = null) {
+      if (precomputed !== null) return precomputed;
+      this._root_number = -1;
+      return -1;
+    },
+    anlist(bound) {
+      const native = this._anlist_native(bound);
+      return native ?? [0, 1, -2];
+    },
+  };
+  instrumentEllipticFallbackPrototype(
+    prototype,
+    { record: (...args) => records.push(args) },
+    {},
+  );
+  const curve = Object.create(prototype);
+  curve._root_number = undefined;
+  curve._anlist_native = () => null;
+  assert.equal(curve.root_number(), -1);
+  assert.deepEqual(curve.anlist(2), [0, 1, -2]);
+  assert.deepEqual(records, [
+    ["elliptic-root-number-semistable", "portable-fallback"],
+    ["elliptic-coefficients-portable", "portable-fallback"],
+  ]);
+
+  records.length = 0;
+  const accelerated = Object.create(prototype);
+  accelerated._root_number = undefined;
+  accelerated._anlist_native = () => [0, 1, 7];
+  assert.deepEqual(accelerated.anlist(2), [0, 1, 7]);
+  assert.equal(accelerated.root_number(1), 1);
+  assert.deepEqual(records, []);
 });

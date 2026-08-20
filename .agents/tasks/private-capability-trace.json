@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "private-capability-trace",
+  "title": "Private capability trace integrity",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prevent evaluated code from fabricating runtime capability-route evidence while retaining backend, generated FFI, and elliptic fallback tracing",
+  "base_commit": "8120068f",
+  "claims": [
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/capability-trace.mjs",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/analytic-backend.mjs",
+    "packages/flint-wasm/curve-backend.mjs",
+    "packages/flint-wasm/algebraic.mjs",
+    "packages/flint-wasm/number-field-zeta.mjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs",
+    "tools/ffi/wasm-adapters.cjs",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "adversarial browser and unit tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
