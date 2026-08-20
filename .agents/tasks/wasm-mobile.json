@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-mobile",
+  "title": "Offline Sage.js mobile shell",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Deliver a React Native new-architecture iPhone and iPad WebView application foundation with bundled offline runtime assets, a restricted versioned bridge, worksheet documents, iPad integration, lifecycle recovery, tests, and physical-device feasibility recording",
+  "base_commit": "b7cc6ce31c0dca8564b1d90bef05165f755d4948",
+  "claims": [
+    "apps/sagejs-mobile/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Versioned bridge contract and React Native component tests",
+      "Physical-device feasibility receipt schema and validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
