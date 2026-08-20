@@ -22,3 +22,23 @@ test("production Wasm accurately omits native-only exact polynomial resources", 
 function flintsResourceIds() {
   return flint.__sagejs_ffi_manifest__.resources;
 }
+
+test("packed exact polynomial fallback ships its synchronous helper", async () => {
+  const config = JSON.parse(
+    await fs.readFile(
+      new URL("../../../scripts/precompiled-python-packages.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.ok(
+    config.taskRuntimeImports.includes(
+      "sagejs.polynomial_algorithms.structural_calculus",
+    ),
+  );
+
+  const bundle = JSON.parse(
+    await fs.readFile(new URL("../dist/lazy-modules.json", import.meta.url), "utf8"),
+  );
+  assert.equal(bundle.schema, "sagejs.lazy-module-bundle/v1");
+  assert.ok(bundle.modules["sagejs.polynomial_algorithms.structural_calculus"]);
+});
