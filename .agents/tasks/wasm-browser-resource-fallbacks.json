@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Make exact matrix, finite-field polynomial, and number-field browser workflows use sound generated-resource capability checks with exact source-transparent fallbacks, with focused regressions",
-  "base_commit": "b6eeaa8f38a7c3576c9616668b4a80e6778dfa7e",
+  "base_commit": "f4a5edd6df995f2690610178e57692d177f69930",
   "claims": [
     "src/baselib/matrix.py",
     "src/baselib/polynomial.py",
@@ -37,12 +37,59 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
+    "node --test test/browser-wasm-resource-fallbacks.cjs",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/browser-wasm-resource-fallbacks.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.868,
+      "started_at": "2026-08-20T08:25:21.981Z",
+      "commit": "d37dbeeb33a6c58a925c0ab0aab3fd5181b30e62",
+      "workspace_fingerprint": "aa251057617a65168e219322bde65a234fed2b7e7c25b1a770350c043c8a844d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.332,
+      "started_at": "2026-08-20T08:25:29.173Z",
+      "commit": "d37dbeeb33a6c58a925c0ab0aab3fd5181b30e62",
+      "workspace_fingerprint": "aa251057617a65168e219322bde65a234fed2b7e7c25b1a770350c043c8a844d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.623,
+      "started_at": "2026-08-20T08:25:41.820Z",
+      "commit": "d37dbeeb33a6c58a925c0ab0aab3fd5181b30e62",
+      "workspace_fingerprint": "aa251057617a65168e219322bde65a234fed2b7e7c25b1a770350c043c8a844d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/browser-wasm-parity.mjs --tier routine --engines chromium --require-engines chromium",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.726,
+      "started_at": "2026-08-20T08:26:41.769Z",
+      "commit": "d37dbeeb33a6c58a925c0ab0aab3fd5181b30e62",
+      "workspace_fingerprint": "aa251057617a65168e219322bde65a234fed2b7e7c25b1a770350c043c8a844d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generated arbitrary-prime polynomial resources now follow backend lifecycle capabilities in browsers, use an exact serialization-backed formatter when the native-only formatter is absent, and ship their codec in the browser module closure. Integer matrix row selection uses exact bulk values when the native-only selector is absent. The public Chromium routine corpus and focused runtime regressions pass.",
+    "risks": [
+      "The final integrated production artifact must be rebuilt after cherry-pick; the focused Chromium proof used the same deterministic package build on the immediately preceding integration base.",
+      "The repository-wide architecture check currently reports pre-existing native export inventory drift on the integration base; this lane does not modify native exports."
+    ],
+    "next_steps": [
+      "Rebuild the final production Wasm artifact and rerun the Chromium routine corpus after integration."
+    ]
   }
 }
