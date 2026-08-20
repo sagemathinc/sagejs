@@ -275,7 +275,11 @@ static sagejs_analytic_status validate_request(
     }
     if ((request->operation == SAGEJS_ANALYTIC_DIRICHLET_L_VALUES ||
          request->operation == SAGEJS_ANALYTIC_QUADRATIC_ZETA_VALUES) &&
-        (request->modulus == 0 || request->modulus > UWORD_MAX ||
+        request->modulus == 0)
+        return SAGEJS_ANALYTIC_INVALID_REQUEST;
+    if ((request->operation == SAGEJS_ANALYTIC_DIRICHLET_L_VALUES ||
+         request->operation == SAGEJS_ANALYTIC_QUADRATIC_ZETA_VALUES) &&
+        (request->modulus > UWORD_MAX ||
          request->character_index > UWORD_MAX))
         return SAGEJS_ANALYTIC_UNSUPPORTED_WORD;
     if (request->operation == SAGEJS_ANALYTIC_QUADRATIC_ZETA_VALUES &&
@@ -284,9 +288,12 @@ static sagejs_analytic_status validate_request(
     if ((request->operation == SAGEJS_ANALYTIC_QUADRATIC_ZETA_VALUES ||
          request->operation == SAGEJS_ANALYTIC_QUADRATIC_COMPLETION_VALUES) &&
         (request->discriminant == 0 || request->discriminant == 1 ||
-         request->discriminant == INT64_MIN ||
-         (uint64_t) (request->discriminant < 0
-             ? -request->discriminant : request->discriminant) > UWORD_MAX))
+         request->discriminant == INT64_MIN))
+        return SAGEJS_ANALYTIC_INVALID_REQUEST;
+    if ((request->operation == SAGEJS_ANALYTIC_QUADRATIC_ZETA_VALUES ||
+         request->operation == SAGEJS_ANALYTIC_QUADRATIC_COMPLETION_VALUES) &&
+        (uint64_t) (request->discriminant < 0
+            ? -request->discriminant : request->discriminant) > UWORD_MAX)
         return SAGEJS_ANALYTIC_UNSUPPORTED_WORD;
     return SAGEJS_ANALYTIC_OK;
 }
