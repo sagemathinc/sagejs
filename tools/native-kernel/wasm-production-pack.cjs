@@ -286,13 +286,35 @@ function buildDomain({ root, outputRoot, domain, modules, packKey, toolchain }) 
   mkdirSync(directory, { recursive: true });
   const wasmPath = join(directory, `${packKey}.wasm`);
   const compatibilityPath = join(directory, "wasi_compat.c");
-  writeFileSync(compatibilityPath, `#include <stdlib.h>
+  writeFileSync(compatibilityPath, `#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
 /* GMP reaches this only for fatal invalid-operation signaling. */
 __attribute__((weak)) int kill(int pid, int signal)
 {
     (void) pid;
     (void) signal;
     abort();
+}
+
+/* WASI has no process-wide temporary-file namespace. Resource-owned kernels
+ * must provide one explicitly if they ever exercise FLINT's qsieve path. */
+__attribute__((weak)) int mkstemp(char *template_name)
+{
+    (void) template_name;
+    errno = ENOSYS;
+    return -1;
+}
+
+/* FLINT uses this only for algorithm-selection timing. Wall time is an
+ * adequate deterministic-compatible replacement for unavailable CPU time. */
+__attribute__((weak)) clock_t clock(void)
+{
+    struct timespec value;
+    if (timespec_get(&value, TIME_UTC) != TIME_UTC)
+        return (clock_t) -1;
+    return (clock_t) (value.tv_sec * CLOCKS_PER_SEC +
+        value.tv_nsec / (1000000000 / CLOCKS_PER_SEC));
 }
 `);
   const exports = modules.flatMap((module) => module.bridge.exports);
