@@ -11,6 +11,7 @@ for (const key of [
   'gitCommit',
   'artifactIdentity',
   'device',
+  'runtimeEnvironment',
   'checks',
   'measurements',
 ]) {
@@ -18,6 +19,85 @@ for (const key of [
 }
 if (!['iphone', 'ipad'].includes(receipt.device.family)) {
   throw new Error('device family must be iphone or ipad');
+}
+const runtime = receipt.runtimeEnvironment;
+if (!['pass', 'fail', 'blocked'].includes(runtime?.status)) {
+  throw new Error('runtime environment has no valid status');
+}
+if (!String(runtime?.evidence ?? '').trim()) {
+  throw new Error('runtime environment has no evidence');
+}
+for (const [key, allowed] of Object.entries({
+  assetOrigin: ['loopback-http', 'unobserved'],
+  scheme: ['http', 'unobserved'],
+  host: ['127.0.0.1', 'unobserved'],
+})) {
+  if (!allowed.includes(runtime?.[key])) {
+    throw new Error(`runtime environment has invalid ${key}`);
+  }
+}
+if (
+  ![true, false, null].includes(runtime?.crossOriginIsolated) ||
+  ![true, false, null].includes(runtime?.sharedArrayBuffer) ||
+  !['dedicated-module-worker', 'unobserved'].includes(
+    runtime?.workerTopology?.outer,
+  ) ||
+  !['nested-module-worker', 'unobserved'].includes(
+    runtime?.workerTopology?.compiler,
+  )
+) {
+  throw new Error('runtime environment contains invalid observations');
+}
+const runtimeKeys = [
+  'status',
+  'assetOrigin',
+  'scheme',
+  'host',
+  'crossOriginIsolated',
+  'sharedArrayBuffer',
+  'workerTopology',
+  'evidence',
+];
+if (
+  !runtime ||
+  Object.keys(runtime).some(key => !runtimeKeys.includes(key)) ||
+  Object.keys(runtime.workerTopology ?? {}).some(
+    key => !['outer', 'compiler'].includes(key),
+  )
+) {
+  throw new Error('runtime environment contains unsupported fields');
+}
+if (runtime.status === 'pass') {
+  const expected = {
+    assetOrigin: 'loopback-http',
+    scheme: 'http',
+    host: '127.0.0.1',
+    crossOriginIsolated: true,
+    sharedArrayBuffer: true,
+  };
+  for (const [key, value] of Object.entries(expected)) {
+    if (runtime[key] !== value) {
+      throw new Error(`passing runtime environment has invalid ${key}`);
+    }
+  }
+  if (
+    runtime.workerTopology?.outer !== 'dedicated-module-worker' ||
+    runtime.workerTopology?.compiler !== 'nested-module-worker'
+  ) {
+    throw new Error('passing runtime environment has invalid worker topology');
+  }
+}
+if (
+  runtime.status === 'blocked' &&
+  (runtime.assetOrigin !== 'unobserved' ||
+    runtime.scheme !== 'unobserved' ||
+    runtime.host !== 'unobserved' ||
+    runtime.crossOriginIsolated !== null ||
+    runtime.sharedArrayBuffer !== null ||
+    runtime.workerTopology?.outer !== 'unobserved' ||
+    runtime.workerTopology?.compiler !== 'unobserved')
+) {
+  throw new Error('blocked runtime environment must remain unobserved');
 }
 const requiredChecks = [
   'wasmInstantiation',

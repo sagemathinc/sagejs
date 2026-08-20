@@ -23,6 +23,48 @@ test('accepts the narrow worksheet update contract', () => {
   expect(decoded.ok).toBe(true);
 });
 
+const runtimeReady = {
+  engineVersion: 'bundled',
+  assetVersion: `sha256:${'a'.repeat(64)}`,
+  assetOrigin: 'loopback-http',
+  assetScheme: 'http',
+  assetHost: '127.0.0.1',
+  crossOriginIsolated: true,
+  sharedArrayBuffer: true,
+  workerTopology: {
+    outer: 'dedicated-module-worker',
+    compiler: 'nested-module-worker',
+  },
+  capabilities: ['offline'],
+};
+
+test('accepts loopback isolation evidence without capability-path disclosure', () => {
+  const decoded = decodeWebMessage(
+    webMessage('runtime.ready', runtimeReady),
+    'secret',
+  );
+  expect(decoded.ok).toBe(true);
+  expect(JSON.stringify(runtimeReady)).not.toContain('/');
+});
+
+test('rejects remote, capability-bearing, and incomplete runtime evidence', () => {
+  for (const payload of [
+    { ...runtimeReady, assetHost: 'localhost' },
+    { ...runtimeReady, assetScheme: 'https' },
+    { ...runtimeReady, assetPath: '/secret/index.html' },
+    { ...runtimeReady, assetVersion: '/secret/index.html' },
+    { ...runtimeReady, crossOriginIsolated: 'yes' },
+    {
+      ...runtimeReady,
+      workerTopology: { outer: 'dedicated-module-worker' },
+    },
+  ]) {
+    expect(
+      decodeWebMessage(webMessage('runtime.ready', payload), 'secret').ok,
+    ).toBe(false);
+  }
+});
+
 test('rejects unknown operations, extra privilege fields, and oversized messages', () => {
   expect(
     decodeWebMessage(

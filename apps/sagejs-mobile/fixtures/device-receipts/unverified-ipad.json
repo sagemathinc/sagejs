@@ -3,32 +3,101 @@
   "recordedAt": "2026-08-20T00:00:00.000Z",
   "gitCommit": "0000000000000000000000000000000000000000",
   "artifactIdentity": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  "device": {"family": "ipad", "model": "UNVERIFIED", "osVersion": "UNVERIFIED", "physical": true},
+  "device": {
+    "family": "ipad",
+    "model": "UNVERIFIED",
+    "osVersion": "UNVERIFIED",
+    "physical": true
+  },
+  "runtimeEnvironment": {
+    "status": "blocked",
+    "assetOrigin": "unobserved",
+    "scheme": "unobserved",
+    "host": "unobserved",
+    "crossOriginIsolated": null,
+    "sharedArrayBuffer": null,
+    "workerTopology": { "outer": "unobserved", "compiler": "unobserved" },
+    "evidence": "No signed physical iPad runtime has been observed."
+  },
   "checks": {
-    "wasmInstantiation": {"status": "blocked", "evidence": "No signed physical iPad is available on this Linux implementation host."},
-    "relativeWorkerLoading": {"status": "blocked", "evidence": "Requires a signed physical iPad build."},
-    "workerTopology": {"status": "blocked", "evidence": "Nested-worker feasibility has not been claimed without hardware."},
-    "temporaryFiles": {"status": "blocked", "evidence": "Requires the production runtime on device."},
-    "interrupt": {"status": "blocked", "evidence": "Requires latency measurement on device."},
-    "allocationCeiling": {"status": "blocked", "evidence": "Requires Instruments on device."},
-    "lifecycleRecovery": {"status": "blocked", "evidence": "Requires background/foreground testing on device."},
-    "plotRenderExport": {"status": "blocked", "evidence": "Requires WebKit and share-sheet testing on device."},
-    "hardwareKeyboard": {"status": "blocked", "evidence": "Requires a hardware keyboard and physical iPad."},
-    "voiceOver": {"status": "blocked", "evidence": "Requires a physical accessibility audit."},
-    "offlineNetworkDenied": {"status": "blocked", "evidence": "Static denial tests pass, but the device check is outstanding."}
+    "wasmInstantiation": {
+      "status": "blocked",
+      "evidence": "No signed physical iPad is available on this Linux implementation host."
+    },
+    "relativeWorkerLoading": {
+      "status": "blocked",
+      "evidence": "Requires a signed physical iPad build."
+    },
+    "workerTopology": {
+      "status": "blocked",
+      "evidence": "Nested-worker feasibility has not been claimed without hardware."
+    },
+    "temporaryFiles": {
+      "status": "blocked",
+      "evidence": "Requires the production runtime on device."
+    },
+    "interrupt": {
+      "status": "blocked",
+      "evidence": "Requires latency measurement on device."
+    },
+    "allocationCeiling": {
+      "status": "blocked",
+      "evidence": "Requires Instruments on device."
+    },
+    "lifecycleRecovery": {
+      "status": "blocked",
+      "evidence": "Requires background/foreground testing on device."
+    },
+    "plotRenderExport": {
+      "status": "blocked",
+      "evidence": "Requires WebKit and share-sheet testing on device."
+    },
+    "hardwareKeyboard": {
+      "status": "blocked",
+      "evidence": "Requires a hardware keyboard and physical iPad."
+    },
+    "voiceOver": {
+      "status": "blocked",
+      "evidence": "Requires a physical accessibility audit."
+    },
+    "offlineNetworkDenied": {
+      "status": "blocked",
+      "evidence": "Static denial tests pass, but the device check is outstanding."
+    }
   },
   "measurements": {
-    "appBytes": {"status": "blocked", "evidence": "No signed build."},
-    "compressedRuntimeBytes": {"status": "blocked", "evidence": "Production mobile bundle not archived."},
-    "coldStartupMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "warmStartupMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "peakResidentMiB": {"status": "blocked", "evidence": "No Instruments measurement."},
-    "numberFieldCoefficientMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "ellipticLSeriesBatchMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "complexPlotMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "interruptLatencyMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "worksheetRoundTripMs": {"status": "blocked", "evidence": "No physical iPad."},
-    "thermalObservation": {"status": "blocked", "evidence": "No sustained physical-device run."}
+    "appBytes": { "status": "blocked", "evidence": "No signed build." },
+    "compressedRuntimeBytes": {
+      "status": "blocked",
+      "evidence": "Production mobile bundle not archived."
+    },
+    "coldStartupMs": { "status": "blocked", "evidence": "No physical iPad." },
+    "warmStartupMs": { "status": "blocked", "evidence": "No physical iPad." },
+    "peakResidentMiB": {
+      "status": "blocked",
+      "evidence": "No Instruments measurement."
+    },
+    "numberFieldCoefficientMs": {
+      "status": "blocked",
+      "evidence": "No physical iPad."
+    },
+    "ellipticLSeriesBatchMs": {
+      "status": "blocked",
+      "evidence": "No physical iPad."
+    },
+    "complexPlotMs": { "status": "blocked", "evidence": "No physical iPad." },
+    "interruptLatencyMs": {
+      "status": "blocked",
+      "evidence": "No physical iPad."
+    },
+    "worksheetRoundTripMs": {
+      "status": "blocked",
+      "evidence": "No physical iPad."
+    },
+    "thermalObservation": {
+      "status": "blocked",
+      "evidence": "No sustained physical-device run."
+    }
   },
   "testFlight": "not-submitted"
 }
