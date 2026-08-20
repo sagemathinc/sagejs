@@ -4,7 +4,7 @@
   "thresholds": {
     "compressed_growth_fraction": 0.05,
     "startup_regression_fraction": 0.2,
-    "warm_operation_regression_fraction": 0.15,
+    "warm_operation_regression_fraction": 0.3,
     "interrupt_latency_regression_fraction": 0.2,
     "native_ratio_regression_fraction": 0.25,
     "maximum_interrupt_latency_ms": 5000

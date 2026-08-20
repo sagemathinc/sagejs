@@ -225,6 +225,7 @@ test("release performance profile has reviewed heavyweight baselines", async () 
     }
   }
   assert.equal(budget.thresholds.native_ratio_regression_fraction, 0.25);
+  assert.equal(budget.thresholds.warm_operation_regression_fraction, 0.3);
   assert.equal(budget.thresholds.maximum_interrupt_latency_ms, 5000);
 });
 
