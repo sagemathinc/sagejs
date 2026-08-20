@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/wasm-toolchain-lock-v1.json",
+  "title": "Sage.js WebAssembly toolchain lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "cowasm", "wasiSdk", "libraries", "build"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema": { "const": "sagejs.wasm-toolchain-lock/v1" },
+    "cowasm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision"],
+      "properties": {
+        "repository": { "type": "string", "format": "uri" },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "wasiSdk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "target", "archives"],
+      "properties": {
+        "version": { "type": "string" },
+        "target": { "const": "wasm32-wasip1" },
+        "archives": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "libraries": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "sourceSha256", "prefix"],
+        "properties": {
+          "version": { "type": "string" },
+          "sourceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "recipeBaseVersion": { "type": "string" },
+          "recipeBaseSourceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "prefix": { "type": "string" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wrapperSources", "recipeOverrides", "prepareTargets", "cFlags", "linkFlags"],
+      "properties": {
+        "wrapperSources": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        },
+        "recipeOverrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "versionFrom", "versionTo", "digestFrom", "digestTo"],
+            "properties": {
+              "path": { "type": "string" },
+              "versionFrom": { "type": "string" },
+              "versionTo": { "type": "string" },
+              "digestFrom": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "digestTo": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        },
+        "prepareTargets": {
+          "type": "array",
+          "items": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+        },
+        "cFlags": { "type": "array", "items": { "type": "string" } },
+        "linkFlags": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

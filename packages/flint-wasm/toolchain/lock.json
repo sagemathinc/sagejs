@@ -1,0 +1,100 @@
+{
+  "$schema": "./lock.schema.json",
+  "schema": "sagejs.wasm-toolchain-lock/v1",
+  "cowasm": {
+    "repository": "https://github.com/sagemathinc/cowasm.git",
+    "revision": "cd512732d002f6e5447143c963dbc59950908266"
+  },
+  "wasiSdk": {
+    "version": "33.0",
+    "target": "wasm32-wasip1",
+    "archives": {
+      "linux-x64": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
+      "linux-arm64": "4f98ee738c7abb45c81a94d1461fc53cc569d1cd01498951c8184d841a027844",
+      "darwin-x64": "18f3f201ba9734e6a4455b0b6410690395a55e9ffa9f6f5066f66083a94b93b3",
+      "darwin-arm64": "85c997a2665ead91673b5bb88b7d0df3fc8900df3bfa244f720d478187bbdc78"
+    }
+  },
+  "libraries": {
+    "flint": {
+      "version": "3.6.0",
+      "sourceSha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+      "recipeBaseVersion": "3.5.0",
+      "recipeBaseSourceSha256": "3982f385f00610a944e0152eb0a29893b2366fa640e8f5f3076c47564cf7e2a6",
+      "prefix": "sagemath/flint/dist/wasi-sdk"
+    },
+    "gmp": {
+      "version": "6.2.1",
+      "sourceSha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
+      "prefix": "sagemath/gmp/dist/wasi-sdk"
+    },
+    "mpfr": {
+      "version": "4.2.2",
+      "sourceSha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+      "prefix": "sagemath/mpfr/dist/wasi-sdk"
+    },
+    "mpc": {
+      "version": "1.4.1",
+      "sourceSha256": "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
+      "prefix": "sagemath/mpc/dist/wasi-sdk"
+    },
+    "arb": {
+      "version": "bundled-with-flint-3.6.0",
+      "sourceSha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+      "prefix": "sagemath/flint/dist/wasi-sdk",
+      "required": false
+    },
+    "m4ri": {
+      "version": "20260122",
+      "sourceSha256": "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+      "recipeBaseVersion": "20250128",
+      "recipeBaseSourceSha256": "b4098db651483c0e1506c16f79091eba02f41dadbacf1bb25be8eb97e5515f96",
+      "prefix": "sagemath/m4ri/dist/wasi-sdk"
+    }
+  },
+  "build": {
+    "wrapperSources": {
+      "cowasm-cc": "core/build/src/zig/bin/zig_cowasm_compiler.py",
+      "cowasm-c++": "core/build/src/zig/bin/zig_cowasm_compiler.py",
+      "cowasm-ar": "core/build/src/zig/bin/cowasm_archive_tool.py",
+      "cowasm-ranlib": "core/build/src/zig/bin/cowasm_archive_tool.py"
+    },
+    "recipeOverrides": [
+      {
+        "path": "sagemath/flint/Makefile",
+        "versionFrom": "3.5.0",
+        "versionTo": "3.6.0",
+        "digestFrom": "3982f385f00610a944e0152eb0a29893b2366fa640e8f5f3076c47564cf7e2a6",
+        "digestTo": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b"
+      },
+      {
+        "path": "sagemath/m4ri/Makefile",
+        "versionFrom": "20250128",
+        "versionTo": "20260122",
+        "digestFrom": "b4098db651483c0e1506c16f79091eba02f41dadbacf1bb25be8eb97e5515f96",
+        "digestTo": "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404"
+      }
+    ],
+    "prepareTargets": [
+      ["pnpm", "install", "--filter", "dylink...", "--frozen-lockfile", "--ignore-scripts", "--config.blockExoticSubdeps=false"],
+      ["pnpm", "--dir", "core/wasi-js", "run", "build"],
+      ["make", "-C", "sagemath/flint", "test-wasi-sdk-standalone"],
+      ["make", "-C", "sagemath/mpc", "test-wasi-sdk-standalone"],
+      ["make", "-C", "sagemath/m4ri", "test-wasi-sdk-standalone"]
+    ],
+    "cFlags": [
+      "--target=wasm32-wasip1",
+      "-mexec-model=reactor",
+      "-fvisibility=hidden",
+      "-Wall",
+      "-Wextra",
+      "-Werror"
+    ],
+    "linkFlags": [
+      "-Wl,--export-memory",
+      "-Wl,--initial-memory=16777216",
+      "-Wl,--max-memory=536870912",
+      "-Wl,--gc-sections"
+    ]
+  }
+}
