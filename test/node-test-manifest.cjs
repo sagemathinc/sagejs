@@ -280,6 +280,7 @@ const integration = [
   "test/hyperelliptic-oracles.cjs",
   "test/hyperelliptic-reference.cjs",
   "test/hyperelliptic-rforest.cjs",
+  "test/hyperelliptic-twist-lseries.cjs",
   "test/number-fields.cjs",
   "test/polynomial-ideals.cjs",
   "test/symbolic.cjs",

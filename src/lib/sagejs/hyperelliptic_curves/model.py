@@ -428,6 +428,42 @@ class HyperellipticCurve_generic(sage.Parent):
             self._lseries_cache = module.HyperellipticLSeries(self)
         return self._lseries_cache
 
+    def quadratic_twist(self, discriminant: Any, check: bool = True) -> Any:
+        """Return the quadratic twist by `discriminant`."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.twists", fromlist=["quadratic_twist"]
+        )
+        return module.quadratic_twist(self, discriminant, check=check)
+
+    def quadratic_twists(
+        self,
+        start: Any,
+        stop: Any,
+        *,
+        prec: Any = 53,
+        max_order: Any = 0,
+        algorithm: str = "auto",
+        block_size: Any = 65536,
+        progress: Any = None,
+        cancel: Any = None,
+    ) -> Any:
+        """Return a bounded stream over fundamental quadratic twists."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.twists",
+            fromlist=["QuadraticTwistFamily"],
+        )
+        return module.QuadraticTwistFamily(
+            self,
+            start,
+            stop,
+            prec=prec,
+            max_order=max_order,
+            algorithm=algorithm,
+            block_size=block_size,
+            progress=progress,
+            cancel=cancel,
+        )
+
     def analytic_rank(
         self,
         algorithm: str = "auto",

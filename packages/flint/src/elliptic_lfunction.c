@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <flint/acb.h>
+#include <flint/acb_poly.h>
 #include <flint/arb.h>
 #include <flint/arf.h>
 #include <flint/flint.h>
@@ -2457,5 +2458,617 @@ direct_failure:
     _acb_vec_clear(raw, point_count);
     _acb_vec_clear(completed, point_count);
     _acb_vec_clear(points, point_count);
+    return NULL;
+}
+
+/*
+ * Genus-2/3 Hasse--Weil L-functions have completion
+ *
+ *   Lambda(s) = A^s Gamma(s)^g L(s),  A=sqrt(N)/(2*pi)^g.
+ *
+ * Unlike the elliptic kernel above, the inverse Mellin transform of
+ * Gamma(s)^g is not a single exponential.  This bounded adapter is the Arb
+ * translation of the ordinary-Python double-Mellin reference in
+ * sagejs.hyperelliptic_curves.lseries.  The two independently parameterized
+ * grids are intentionally retained: Arb encloses all arithmetic roundoff,
+ * while their difference is an honest (non-rigorous) witness for the two
+ * trapezoid discretizations.
+ */
+
+#define SAGEJS_HG_LSERIES_MAX_POINTS 128
+#define SAGEJS_HG_LSERIES_MAX_DERIVATIVE 16
+#define SAGEJS_HG_LSERIES_MAX_CUTOFF 2000000
+#define SAGEJS_HG_LSERIES_MAX_INVERSE_POINTS 4000
+#define SAGEJS_HG_LSERIES_MAX_OUTER_POINTS 20000
+#define SAGEJS_HG_LSERIES_MAX_COEFFICIENT_TERMS 200000000
+
+typedef struct
+{
+    slong cutoff;
+    slong inverse_points;
+    slong outer_points;
+    slong work_precision;
+    double inverse_step;
+    double outer_step;
+    double outer_height;
+    double log_a;
+} hg_lseries_plan;
+
+static int hg_lseries_make_plan(
+    hg_lseries_plan *plan,
+    const fmpz_t conductor,
+    slong genus,
+    slong target_bits,
+    acb_srcptr points,
+    slong point_count,
+    int fine)
+{
+    const double conductor_double = fmpz_get_d(conductor);
+    if (!isfinite(conductor_double) || conductor_double <= 0.0 ||
+        (genus != 2 && genus != 3) || target_bits < 16 ||
+        point_count < 1 || point_count > SAGEJS_HG_LSERIES_MAX_POINTS)
+        return 0;
+
+    double maximum_imaginary = 0.0;
+    double maximum_real_offset = 0.0;
+    arb_t offset;
+    arb_init(offset);
+    for (slong index = 0; index < point_count; ++index)
+    {
+        if (!acb_is_finite(points + index))
+        {
+            arb_clear(offset);
+            return 0;
+        }
+        const double imaginary =
+            arb_abs_upper_double(acb_imagref(points + index));
+        arb_sub_ui(offset, acb_realref(points + index), 1, target_bits + 64);
+        const double real_offset = arb_abs_upper_double(offset);
+        if (!isfinite(imaginary) || !isfinite(real_offset) ||
+            imaginary > SAGEJS_EC_LSERIES_MAX_HEIGHT ||
+            real_offset > SAGEJS_EC_LSERIES_MAX_REAL_OFFSET)
+        {
+            arb_clear(offset);
+            return 0;
+        }
+        if (imaginary > maximum_imaginary)
+            maximum_imaginary = imaginary;
+        if (real_offset > maximum_real_offset)
+            maximum_real_offset = real_offset;
+    }
+    arb_clear(offset);
+
+    const double demand = ((double) target_bits + 18.0) * SAGEJS_LN2;
+    const double denominator = 2.0 * SAGEJS_PI * (double) genus;
+    double cutoff_double = 2.0 * sqrt(conductor_double) *
+        pow(demand / denominator, (double) genus);
+    if (cutoff_double < 64.0) cutoff_double = 64.0;
+    if (fine) cutoff_double *= 2.0;
+    const double inverse_step = fine ? 0.05 : 0.1;
+    const double inverse_height =
+        (demand + (1.5 * (double) genus + 3.0) * log(demand + 3.0) + 8.0) /
+        ((double) genus * SAGEJS_PI / 2.0);
+    const double outer_step_limit = fine ? 0.05 : 0.1;
+    const double outer_step = fmin(
+        outer_step_limit,
+        (fine ? 0.35 : 0.7) / (maximum_imaginary + 1.0));
+    const double log_a = log(conductor_double) / 2.0 -
+        (double) genus * log(2.0 * SAGEJS_PI);
+    const double outer_height = fmax(
+        4.0,
+        log_a + (double) genus *
+            log((demand + maximum_real_offset * 8.0 + 8.0) /
+                (double) genus) + 2.0);
+    if (!isfinite(cutoff_double) || !isfinite(inverse_height) ||
+        !isfinite(outer_height) || inverse_step <= 0.0 || outer_step <= 0.0)
+        return 0;
+
+    const double inverse_points_double = ceil(inverse_height / inverse_step);
+    const double outer_points_double = ceil(outer_height / outer_step);
+    if (cutoff_double > SAGEJS_HG_LSERIES_MAX_CUTOFF ||
+        inverse_points_double > SAGEJS_HG_LSERIES_MAX_INVERSE_POINTS ||
+        outer_points_double > SAGEJS_HG_LSERIES_MAX_OUTER_POINTS)
+        return 0;
+    const slong cutoff = (slong) ceil(cutoff_double);
+    const slong inverse_points = (slong) inverse_points_double;
+    const slong outer_points = (slong) outer_points_double;
+    if (cutoff > SAGEJS_HG_LSERIES_MAX_COEFFICIENT_TERMS /
+            (inverse_points + 1))
+        return 0;
+
+    plan->cutoff = cutoff;
+    plan->inverse_points = inverse_points;
+    plan->outer_points = outer_points;
+    plan->work_precision = target_bits + 96 +
+        (slong) ceil(4.0 * maximum_imaginary);
+    plan->inverse_step = inverse_step;
+    plan->outer_step = outer_step;
+    plan->outer_height = outer_height;
+    plan->log_a = log_a;
+    return 1;
+}
+
+static void hg_acb_mul_factorial(acb_t value, slong order, slong precision)
+{
+    for (slong index = 2; index <= order; ++index)
+        acb_mul_ui(value, value, (ulong) index, precision);
+}
+
+static int hg_raw_jet_from_completed(
+    acb_ptr raw,
+    acb_srcptr completed,
+    const acb_t point,
+    slong derivative_count,
+    slong genus,
+    double log_a,
+    slong precision)
+{
+    acb_poly_t variable, inverse_gamma, exponential, multiplier;
+    acb_poly_t lambda, product;
+    acb_poly_init(variable);
+    acb_poly_init(inverse_gamma);
+    acb_poly_init(exponential);
+    acb_poly_init(multiplier);
+    acb_poly_init(lambda);
+    acb_poly_init(product);
+
+    acb_poly_set_coeff_acb(variable, 0, point);
+    acb_t one, scalar, coefficient;
+    acb_init(one);
+    acb_init(scalar);
+    acb_init(coefficient);
+    acb_one(one);
+    acb_poly_set_coeff_acb(variable, 1, one);
+
+    acb_poly_rgamma_series(
+        inverse_gamma, variable, derivative_count, precision);
+    acb_poly_pow_ui(
+        inverse_gamma, inverse_gamma, (ulong) genus, precision);
+    acb_poly_truncate(inverse_gamma, derivative_count);
+    acb_set_d(scalar, -log_a);
+    acb_poly_scalar_mul(exponential, variable, scalar, precision);
+    acb_poly_exp_series(exponential, exponential, derivative_count, precision);
+    acb_poly_mullow(
+        multiplier, inverse_gamma, exponential, derivative_count, precision);
+
+    for (slong order = 0; order < derivative_count; ++order)
+    {
+        acb_set(coefficient, completed + order);
+        for (slong divisor = 2; divisor <= order; ++divisor)
+            acb_div_ui(coefficient, coefficient, (ulong) divisor, precision);
+        acb_poly_set_coeff_acb(lambda, order, coefficient);
+    }
+    acb_poly_mullow(product, lambda, multiplier, derivative_count, precision);
+    for (slong order = 0; order < derivative_count; ++order)
+    {
+        acb_poly_get_coeff_acb(raw + order, product, order);
+        hg_acb_mul_factorial(raw + order, order, precision);
+    }
+
+    acb_clear(coefficient);
+    acb_clear(scalar);
+    acb_clear(one);
+    acb_poly_clear(product);
+    acb_poly_clear(lambda);
+    acb_poly_clear(multiplier);
+    acb_poly_clear(exponential);
+    acb_poly_clear(inverse_gamma);
+    acb_poly_clear(variable);
+    return 1;
+}
+
+static int hg_lseries_grid(
+    acb_ptr completed,
+    acb_ptr raw,
+    const int32_t *coefficients,
+    slong available_cutoff,
+    const fmpz_t conductor,
+    int root_number,
+    slong genus,
+    acb_srcptr points,
+    slong point_count,
+    slong maximum_derivative,
+    const hg_lseries_plan *plan)
+{
+    if (available_cutoff < plan->cutoff) return 0;
+    const slong precision = plan->work_precision;
+    const slong inverse_count = plan->inverse_points + 1;
+    const slong outer_count = plan->outer_points + 1;
+    const slong derivative_count = maximum_derivative + 1;
+    acb_ptr bases = _acb_vec_init(inverse_count);
+    arb_ptr theta = _arb_vec_init(outer_count);
+
+    arb_t logarithm, amplitude, angle, sine, cosine, u, scale, temporary_arb;
+    arb_init(logarithm);
+    arb_init(amplitude);
+    arb_init(angle);
+    arb_init(sine);
+    arb_init(cosine);
+    arb_init(u);
+    arb_init(scale);
+    arb_init(temporary_arb);
+    acb_t phase, phase_step, temporary, q, gamma_value, power_value;
+    acb_t exponential, factor, term;
+    acb_init(phase);
+    acb_init(phase_step);
+    acb_init(temporary);
+    acb_init(q);
+    acb_init(gamma_value);
+    acb_init(power_value);
+    acb_init(exponential);
+    acb_init(factor);
+    acb_init(term);
+
+    /* All Dirichlet polynomials on the vertical inverse-Mellin grid. */
+    for (slong n = 1; n <= plan->cutoff; ++n)
+    {
+        const int32_t coefficient_value = coefficients[n];
+        if (coefficient_value == 0) continue;
+        arb_set_ui(logarithm, (ulong) n);
+        arb_log(logarithm, logarithm, precision);
+        arb_mul_si(amplitude, logarithm, -2, precision);
+        arb_exp(amplitude, amplitude, precision);
+        arb_mul_si(amplitude, amplitude, (slong) coefficient_value, precision);
+        arb_set_d(angle, -plan->inverse_step);
+        arb_mul(angle, angle, logarithm, precision);
+        arb_sin_cos(sine, cosine, angle, precision);
+        acb_set_arb_arb(phase_step, cosine, sine);
+        acb_one(phase);
+        for (slong index = 0; index < inverse_count; ++index)
+        {
+            acb_mul_arb(temporary, phase, amplitude, precision);
+            acb_add(bases + index, bases + index, temporary, precision);
+            if (index + 1 < inverse_count)
+                acb_mul(phase, phase, phase_step, precision);
+        }
+    }
+
+    for (slong index = 0; index < inverse_count; ++index)
+    {
+        acb_set_si(q, 2);
+        arb_set_d(acb_imagref(q), plan->inverse_step * (double) index);
+        acb_gamma(gamma_value, q, precision);
+        acb_pow_ui(power_value, gamma_value, (ulong) genus, precision);
+        acb_mul(bases + index, bases + index, power_value, precision);
+        arb_set_d(temporary_arb, plan->log_a);
+        acb_mul_arb(temporary, q, temporary_arb, precision);
+        acb_exp(temporary, temporary, precision);
+        acb_mul(bases + index, bases + index, temporary, precision);
+        if (index == plan->inverse_points)
+            acb_mul_2exp_si(bases + index, bases + index, -1);
+    }
+
+    arb_set_d(scale, plan->inverse_step / (2.0 * SAGEJS_PI));
+    for (slong outer = 0; outer < outer_count; ++outer)
+    {
+        const double u_double = plan->outer_step * (double) outer;
+        arb_set_d(u, u_double);
+        acb_set_si(q, 2);
+        acb_mul_arb(temporary, q, u, precision);
+        acb_neg(temporary, temporary);
+        acb_exp(exponential, temporary, precision);
+        acb_mul(temporary, bases, exponential, precision);
+        arb_set(theta + outer, acb_realref(temporary));
+        for (slong index = 1; index < inverse_count; ++index)
+        {
+            acb_set_si(q, 2);
+            arb_set_d(acb_imagref(q), plan->inverse_step * (double) index);
+            acb_mul_arb(temporary, q, u, precision);
+            acb_neg(temporary, temporary);
+            acb_exp(exponential, temporary, precision);
+            acb_mul(temporary, bases + index, exponential, precision);
+            arb_mul_ui(temporary_arb, acb_realref(temporary), 2, precision);
+            arb_add(theta + outer, theta + outer, temporary_arb, precision);
+        }
+        arb_mul(theta + outer, theta + outer, scale, precision);
+    }
+
+    for (slong point_index = 0; point_index < point_count; ++point_index)
+    {
+        acb_ptr point_completed = completed + point_index * derivative_count;
+        acb_ptr point_raw = raw + point_index * derivative_count;
+        for (slong order = 0; order < derivative_count; ++order)
+            acb_zero(point_completed + order);
+        for (slong outer = 0; outer < outer_count; ++outer)
+        {
+            const double u_double = plan->outer_step * (double) outer;
+            arb_set_d(u, u_double);
+            acb_mul_arb(temporary, points + point_index, u, precision);
+            acb_exp(exponential, temporary, precision);
+            acb_set_si(temporary, 2);
+            acb_sub(temporary, temporary, points + point_index, precision);
+            acb_mul_arb(temporary, temporary, u, precision);
+            acb_exp(factor, temporary, precision);
+            for (slong order = 0; order < derivative_count; ++order)
+            {
+                acb_set(term, factor);
+                if (((order & 1) == 0) != (root_number == 1))
+                    acb_neg(term, term);
+                acb_add(term, term, exponential, precision);
+                if (order != 0)
+                {
+                    arb_pow_ui(temporary_arb, u, (ulong) order, precision);
+                    acb_mul_arb(term, term, temporary_arb, precision);
+                }
+                acb_mul_arb(term, term, theta + outer, precision);
+                if (outer == 0 || outer == plan->outer_points)
+                    acb_mul_2exp_si(term, term, -1);
+                acb_add(
+                    point_completed + order,
+                    point_completed + order,
+                    term,
+                    precision);
+            }
+        }
+        {
+            arb_set_d(temporary_arb, plan->outer_step);
+            for (slong order = 0; order < derivative_count; ++order)
+                acb_mul_arb(
+                    point_completed + order,
+                    point_completed + order,
+                    temporary_arb,
+                    precision);
+        }
+        hg_raw_jet_from_completed(
+            point_raw, point_completed, points + point_index,
+            derivative_count, genus, plan->log_a, precision);
+    }
+
+    acb_clear(term);
+    acb_clear(factor);
+    acb_clear(exponential);
+    acb_clear(power_value);
+    acb_clear(gamma_value);
+    acb_clear(q);
+    acb_clear(temporary);
+    acb_clear(phase_step);
+    acb_clear(phase);
+    arb_clear(temporary_arb);
+    arb_clear(scale);
+    arb_clear(u);
+    arb_clear(cosine);
+    arb_clear(sine);
+    arb_clear(angle);
+    arb_clear(amplitude);
+    arb_clear(logarithm);
+    _arb_vec_clear(theta, outer_count);
+    _acb_vec_clear(bases, inverse_count);
+    (void) conductor;
+    return 1;
+}
+
+static napi_value hg_ball_array(
+    napi_env env,
+    acb_srcptr values,
+    slong count,
+    slong digits,
+    slong accuracy_cap)
+{
+    napi_value result;
+    if (!check_napi(env,
+            napi_create_array_with_length(env, (size_t) count, &result)))
+        return NULL;
+    for (slong index = 0; index < count; ++index)
+    {
+        napi_value item = complex_ball_to_object(
+            env, values + index, digits, accuracy_cap);
+        if (item == NULL || !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, item)))
+            return NULL;
+    }
+    return result;
+}
+
+napi_value sagejs_hyperelliptic_lseries_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[7];
+    size_t argc = 7;
+    if (!check_napi(env,
+            napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 7)
+    {
+        napi_throw_type_error(env, NULL,
+            "hyperellipticLseriesValues expects conductor, root number, "
+            "genus, coefficients, points, precision, and maximum derivative");
+        return NULL;
+    }
+
+    fmpz_t conductor;
+    fmpz_init(conductor);
+    slong root_number, genus, target_bits, maximum_derivative;
+    if (!value_to_fmpz(env, args[0], conductor) ||
+        !value_to_slong(env, args[1], -1, 1, &root_number) ||
+        !value_to_slong(env, args[2], 2, 3, &genus) ||
+        !value_to_slong(env, args[5], 16, 512, &target_bits) ||
+        !value_to_slong(env, args[6], 0,
+            SAGEJS_HG_LSERIES_MAX_DERIVATIVE, &maximum_derivative) ||
+        (root_number != -1 && root_number != 1))
+    {
+        fmpz_clear(conductor);
+        return NULL;
+    }
+
+    bool is_array = false;
+    uint32_t point_count_u32 = 0;
+    if (!check_napi(env, napi_is_array(env, args[4], &is_array)) || !is_array ||
+        !check_napi(env,
+            napi_get_array_length(env, args[4], &point_count_u32)) ||
+        point_count_u32 < 1 ||
+        point_count_u32 > SAGEJS_HG_LSERIES_MAX_POINTS)
+    {
+        napi_throw_range_error(env, NULL,
+            "points must be a nonempty bounded array");
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    const slong point_count = (slong) point_count_u32;
+    acb_ptr points = _acb_vec_init(point_count);
+    if (!values_to_acb_points(
+            env, args[4], points, point_count, target_bits + 160))
+    {
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    hg_lseries_plan coarse_plan, fine_plan;
+    if (!hg_lseries_make_plan(
+            &coarse_plan, conductor, genus, target_bits, points, point_count, 0) ||
+        !hg_lseries_make_plan(
+            &fine_plan, conductor, genus, target_bits, points, point_count, 1))
+    {
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        napi_throw_range_error(env, NULL,
+            "hyperelliptic L-series plan exceeds native resource limits");
+        return NULL;
+    }
+
+    packed_coefficient_view coefficient_view;
+    if (!value_to_packed_coefficients(env, args[3], &coefficient_view))
+    {
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return NULL;
+    }
+    const slong available_cutoff = coefficient_view.length - 1;
+    napi_value result, status, rigorous, stable, error_status;
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            available_cutoff < fine_plan.cutoff
+                ? "insufficient_coefficients" : "ok",
+            NAPI_AUTO_LENGTH, &status)) ||
+        !check_napi(env, napi_get_boolean(env, false, &rigorous)) ||
+        !set_named(env, result, "status", status) ||
+        !set_named(env, result, "rigorous", rigorous) ||
+        !set_named_slong(env, result, "genus", genus) ||
+        !set_named_slong(env, result, "precisionBits", target_bits) ||
+        !set_named_slong(env, result, "workPrecisionBits",
+            fine_plan.work_precision) ||
+        !set_named_slong(env, result, "cutoff", available_cutoff) ||
+        !set_named_slong(env, result, "requiredCutoff", fine_plan.cutoff) ||
+        !set_named_slong(env, result, "coarseCutoff", coarse_plan.cutoff) ||
+        !set_named_slong(env, result, "inverseMellinPoints",
+            fine_plan.inverse_points) ||
+        !set_named_slong(env, result, "outerPoints", fine_plan.outer_points) ||
+        !set_named_slong(env, result, "pointCount", point_count) ||
+        !set_named_slong(env, result, "maximumDerivative", maximum_derivative))
+        goto hg_failure;
+    if (available_cutoff < fine_plan.cutoff)
+    {
+        packed_coefficient_view_clear(&coefficient_view);
+        _acb_vec_clear(points, point_count);
+        fmpz_clear(conductor);
+        return result;
+    }
+
+    const slong derivative_count = maximum_derivative + 1;
+    const slong total_values = point_count * derivative_count;
+    acb_ptr coarse_completed = _acb_vec_init(total_values);
+    acb_ptr coarse_raw = _acb_vec_init(total_values);
+    acb_ptr fine_completed = _acb_vec_init(total_values);
+    acb_ptr fine_raw = _acb_vec_init(total_values);
+    const int computed = hg_lseries_grid(
+            coarse_completed, coarse_raw, coefficient_view.data,
+            available_cutoff, conductor, (int) root_number, genus, points,
+            point_count, maximum_derivative, &coarse_plan) &&
+        hg_lseries_grid(
+            fine_completed, fine_raw, coefficient_view.data,
+            available_cutoff, conductor, (int) root_number, genus, points,
+            point_count, maximum_derivative, &fine_plan);
+    packed_coefficient_view_clear(&coefficient_view);
+    fmpz_clear(conductor);
+    if (!computed)
+    {
+        napi_throw_error(env, NULL,
+            "hyperelliptic L-series native grid failed");
+        goto hg_computed_failure;
+    }
+
+    double maximum_relative_difference = 0.0;
+    acb_t difference;
+    acb_init(difference);
+    mag_t magnitude, denominator;
+    mag_init(magnitude);
+    mag_init(denominator);
+    for (slong index = 0; index < total_values; ++index)
+    {
+        acb_sub(difference, fine_raw + index, coarse_raw + index,
+            fine_plan.work_precision);
+        acb_get_mag(magnitude, difference);
+        acb_get_mag(denominator, fine_raw + index);
+        if (mag_cmp_2exp_si(denominator, 0) < 0) mag_one(denominator);
+        mag_div(magnitude, magnitude, denominator);
+        const double relative = mag_get_d(magnitude);
+        if (relative > maximum_relative_difference)
+            maximum_relative_difference = relative;
+    }
+    const int is_stable = maximum_relative_difference <=
+        ldexp(1.0, -(target_bits / 2 > 12 ? target_bits / 2 : 12));
+    mag_clear(denominator);
+    mag_clear(magnitude);
+    acb_clear(difference);
+
+    napi_value values;
+    if (!check_napi(env,
+            napi_create_array_with_length(env, point_count_u32, &values)) ||
+        !set_named(env, result, "values", values) ||
+        !check_napi(env, napi_get_boolean(env, is_stable, &stable)) ||
+        !set_named(env, result, "refinementStable", stable) ||
+        !set_named_double(env, result, "refinementRelativeDifference",
+            maximum_relative_difference) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "arb_roundoff_with_nested_inverse_mellin_and_outer_grid_refinement",
+            NAPI_AUTO_LENGTH, &error_status)) ||
+        !set_named(env, result, "analyticErrorStatus", error_status))
+        goto hg_computed_failure;
+
+    const slong digits = (slong) ceil((double) target_bits * 0.30103) + 12;
+    for (slong point_index = 0; point_index < point_count; ++point_index)
+    {
+        const slong offset = point_index * derivative_count;
+        napi_value item, completed_values, raw_values;
+        napi_value coarse_completed_values, coarse_raw_values;
+        completed_values = hg_ball_array(env, fine_completed + offset,
+            derivative_count, digits, target_bits + 64);
+        raw_values = hg_ball_array(env, fine_raw + offset,
+            derivative_count, digits, target_bits + 64);
+        coarse_completed_values = hg_ball_array(env, coarse_completed + offset,
+            derivative_count, digits, target_bits + 64);
+        coarse_raw_values = hg_ball_array(env, coarse_raw + offset,
+            derivative_count, digits, target_bits + 64);
+        if (completed_values == NULL || raw_values == NULL ||
+            coarse_completed_values == NULL || coarse_raw_values == NULL ||
+            !check_napi(env, napi_create_object(env, &item)) ||
+            !set_named(env, item, "completedDerivatives", completed_values) ||
+            !set_named(env, item, "rawDerivatives", raw_values) ||
+            !set_named(env, item, "coarseCompletedDerivatives",
+                coarse_completed_values) ||
+            !set_named(env, item, "coarseRawDerivatives", coarse_raw_values) ||
+            !check_napi(env, napi_set_element(
+                env, values, (uint32_t) point_index, item)))
+            goto hg_computed_failure;
+    }
+
+    _acb_vec_clear(fine_raw, total_values);
+    _acb_vec_clear(fine_completed, total_values);
+    _acb_vec_clear(coarse_raw, total_values);
+    _acb_vec_clear(coarse_completed, total_values);
+    _acb_vec_clear(points, point_count);
+    return result;
+
+hg_computed_failure:
+    _acb_vec_clear(fine_raw, total_values);
+    _acb_vec_clear(fine_completed, total_values);
+    _acb_vec_clear(coarse_raw, total_values);
+    _acb_vec_clear(coarse_completed, total_values);
+    _acb_vec_clear(points, point_count);
+    return NULL;
+
+hg_failure:
+    packed_coefficient_view_clear(&coefficient_view);
+    _acb_vec_clear(points, point_count);
+    fmpz_clear(conductor);
     return NULL;
 }

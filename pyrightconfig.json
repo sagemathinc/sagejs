@@ -108,6 +108,7 @@
     "src/lib/sagejs/hyperelliptic_curves/model.py",
     "src/lib/sagejs/hyperelliptic_curves/rforest.py",
     "src/lib/sagejs/hyperelliptic_curves/statistics.py",
+    "src/lib/sagejs/hyperelliptic_curves/twists.py",
     "src/lib/sagejs/javascript.py",
     "src/lib/sagejs/native.py",
     "src/lib/sagejs/plotting/__init__.py",

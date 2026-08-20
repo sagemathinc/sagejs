@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 21,
+    "retain-host-adapter": 22,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -1937,7 +1937,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1661,
+        "line": 1662,
         "lines": 184,
         "sha256": "98ad7c9d6d195026cca472915d1218816d3c3255c221fb6701b4f34038b276eb",
         "calls": [
@@ -2007,7 +2007,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2296,
+        "line": 2297,
         "lines": 166,
         "sha256": "eb581a6624de19d5ef5ccc4775122cb4a03ab51548fde9cda821bbe5c9155d6d",
         "calls": [
@@ -2065,7 +2065,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1846,
+        "line": 1847,
         "lines": 449,
         "sha256": "cb6e115f15eb1b2cd4e71654c24e3a72207507bf2109fc5b05b1d30eb5fd5df8",
         "calls": [
@@ -4369,8 +4369,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -4418,8 +4418,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -4469,8 +4469,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -4522,8 +4522,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -4602,6 +4602,79 @@
       "consumers": [
         "src/baselib/modular.py",
         "test/native-kernel.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "hyperellipticLseriesValues",
+      "callback": "sagejs_hyperelliptic_lseries_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/elliptic_lfunction.c",
+        "line": 2862,
+        "lines": 213,
+        "sha256": "ee1c40b05db883f70bac9820946ba8bc13c6d782e75307b31bbae25b03794d36",
+        "calls": [
+          "_acb_vec_clear",
+          "_acb_vec_init",
+          "acb_clear",
+          "acb_get_mag",
+          "acb_init",
+          "acb_sub",
+          "ceil",
+          "check_napi",
+          "fmpz_clear",
+          "fmpz_init",
+          "hg_ball_array",
+          "hg_lseries_grid",
+          "hg_lseries_make_plan",
+          "ldexp",
+          "mag_clear",
+          "mag_cmp_2exp_si",
+          "mag_div",
+          "mag_get_d",
+          "mag_init",
+          "mag_one",
+          "napi_create_array_with_length",
+          "napi_create_object",
+          "napi_create_string_utf8",
+          "napi_get_array_length",
+          "napi_get_boolean",
+          "napi_get_cb_info",
+          "napi_is_array",
+          "napi_set_element",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "packed_coefficient_view_clear",
+          "set_named",
+          "set_named_double",
+          "set_named_slong",
+          "value_to_fmpz",
+          "value_to_packed_coefficients",
+          "value_to_slong",
+          "values_to_acb_points"
+        ]
+      },
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
+      "oracles": [
+        "CPython",
+        "Sage.js exact fallback",
+        "SageMath",
+        "Magma",
+        "PARI/GP",
+        "standalone smalljac and rforest bridges"
+      ],
+      "consumers": [
+        "packages/flint/test/elliptic-native.cjs"
       ],
       "declared_ffi": null
     },
@@ -11722,8 +11795,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -11768,8 +11841,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -11813,8 +11886,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -11856,8 +11929,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -11898,8 +11971,8 @@
       "family": "hyperelliptic",
       "decision": "retain-host-adapter",
       "note": null,
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries; exact reconstruction and ambiguity handling remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, and bounded ordinary Jacobian arithmetic remain available without either native capability.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",

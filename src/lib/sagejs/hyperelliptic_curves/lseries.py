@@ -183,6 +183,24 @@ def _deserialized_complex(value: Any) -> Any:
     return mp.mpc(value[0], value[1])
 
 
+def _property(value: Any, name: str) -> Any:
+    return runtime.reflect.get(value, name)
+
+
+def _ball_pair(value: Any) -> tuple[str, str]:
+    return str(_property(value, "realMidpoint")), str(_property(value, "imagMidpoint"))
+
+
+def _ball_diagnostics(value: Any) -> dict[str, Any]:
+    return {
+        "real_midpoint": str(_property(value, "realMidpoint")),
+        "imaginary_midpoint": str(_property(value, "imagMidpoint")),
+        "real_radius": str(_property(value, "realRadius")),
+        "imaginary_radius": str(_property(value, "imagRadius")),
+        "accuracy_bits": int(_property(value, "accuracyBits")),
+    }
+
+
 def _plan(
     conductor: int,
     genus: int,
@@ -501,12 +519,133 @@ def lseries_values(
         }
 
 
+def native_lseries_values(
+    curve: Any,
+    point_pairs: list[tuple[str, str]],
+    precision_bits: int,
+    coefficient_prefix: GlobalCoefficientPrefix,
+    maximum_derivative: int = 0,
+) -> dict[str, Any] | None:
+    """Evaluate the same double-Mellin grid with FLINT Arb/Acb.
+
+    The returned balls enclose native arithmetic roundoff.  The inverse-Mellin
+    and outer trapezoid errors are still witnessed by an independently chosen
+    coarse grid, so this boundary deliberately does not claim a fully rigorous
+    analytic enclosure.
+    """
+    try:
+        backend = runtime.flint_backend()
+        function = _property(backend, "hyperellipticLseriesValues")
+        if function is runtime.undefined:
+            return None
+        conductor = runtime.bigint(int(curve.conductor()))
+        root_number = int(curve.root_number())
+        genus = int(curve.genus())
+        arguments: list[Any] = [
+            conductor,
+            root_number,
+            genus,
+            [0, 1],
+            [list(pair) for pair in point_pairs],
+            precision_bits,
+            maximum_derivative,
+        ]
+        planned = runtime.reflect.apply(function, backend, arguments)
+        required = int(_property(planned, "requiredCutoff"))
+        coefficients = coefficient_prefix.through(required)
+        if any(value < -(2**31) or value > 2**31 - 1 for value in coefficients):
+            return None
+        arguments[3] = coefficients
+        native = runtime.reflect.apply(function, backend, arguments)
+        if str(_property(native, "status")) != "ok":
+            raise HyperellipticLseriesResourceError(
+                "the native hyperelliptic L-series coefficient plan was not satisfied",
+                {"required_cutoff": required},
+            )
+        values = []
+        native_values = _property(native, "values")
+        ball_rows = []
+        for point_index in range(len(point_pairs)):
+            row = native_values[point_index]
+            raw = _property(row, "rawDerivatives")
+            completed = _property(row, "completedDerivatives")
+            coarse_raw = _property(row, "coarseRawDerivatives")
+            coarse_completed = _property(row, "coarseCompletedDerivatives")
+            raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
+            completed_pairs = tuple(
+                _ball_pair(completed[index]) for index in range(len(completed))
+            )
+            coarse_raw_pairs = tuple(
+                _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
+            )
+            coarse_completed_pairs = tuple(
+                _ball_pair(coarse_completed[index])
+                for index in range(len(coarse_completed))
+            )
+            values.append(
+                {
+                    "s_real": point_pairs[point_index][0],
+                    "s_imag": point_pairs[point_index][1],
+                    "raw_derivatives": raw_pairs,
+                    "completed_derivatives": completed_pairs,
+                    "coarse_raw_derivatives": coarse_raw_pairs,
+                    "coarse_completed_derivatives": coarse_completed_pairs,
+                }
+            )
+            ball_rows.append(
+                {
+                    "raw": tuple(
+                        _ball_diagnostics(raw[index]) for index in range(len(raw))
+                    ),
+                    "completed": tuple(
+                        _ball_diagnostics(completed[index])
+                        for index in range(len(completed))
+                    ),
+                }
+            )
+        return {
+            "algorithm": "native-arb-double-mellin",
+            "status": "ok",
+            "precision_bits": precision_bits,
+            "work_precision_bits": int(_property(native, "workPrecisionBits")),
+            "conductor": int(curve.conductor()),
+            "root_number": root_number,
+            "genus": genus,
+            "cutoff": int(_property(native, "requiredCutoff")),
+            "coarse_cutoff": int(_property(native, "coarseCutoff")),
+            "inverse_mellin_points": int(_property(native, "inverseMellinPoints")),
+            "outer_points": int(_property(native, "outerPoints")),
+            "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
+            "coefficient_prefix_extensions": coefficient_prefix.extensions,
+            "values": values,
+            "balls": tuple(ball_rows),
+            "refinement_difference": "not-materialized",
+            "refinement_relative_difference": str(
+                _property(native, "refinementRelativeDifference")
+            ),
+            "refinement_stable": bool(_property(native, "refinementStable")),
+            "rigorous": False,
+            "arithmetic_balls_rigorous": True,
+            "analytic_error_status": str(_property(native, "analyticErrorStatus")),
+        }
+    except (HyperellipticLseriesResourceError, ArithmeticError):
+        raise
+    except Exception:
+        return None
+
+
 class HyperellipticLSeries:
     """Numerical Hasse--Weil L-function of a genus-2/3 Jacobian."""
 
-    def __init__(self, curve: Any) -> None:
+    def __init__(
+        self, curve: Any, coefficient_prefix: GlobalCoefficientPrefix | None = None
+    ) -> None:
         self._curve = curve
-        self._coefficient_prefix = GlobalCoefficientPrefix(curve)
+        self._coefficient_prefix = (
+            GlobalCoefficientPrefix(curve)
+            if coefficient_prefix is None
+            else coefficient_prefix
+        )
         self._last_diagnostics: Any = None
 
     def __repr__(self) -> str:
@@ -517,18 +656,38 @@ class HyperellipticLSeries:
         return self._curve
 
     def _evaluate(
-        self, points: list[Any], precision: Any, maximum_derivative: int = 0
+        self,
+        points: list[Any],
+        precision: Any,
+        maximum_derivative: int = 0,
+        algorithm: str = "auto",
     ) -> tuple[dict[str, Any], int]:
         bits = _checked_precision(precision)
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(bits)
         pairs = [_point_pair(complex_field, point) for point in points]
-        result = lseries_values(
-            self._curve,
-            pairs,
-            bits,
-            self._coefficient_prefix,
-            maximum_derivative,
-        )
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+        result = None
+        if algorithm != "reference":
+            result = native_lseries_values(
+                self._curve,
+                pairs,
+                bits,
+                self._coefficient_prefix,
+                maximum_derivative,
+            )
+            if result is None and algorithm == "native":
+                raise NotImplementedError(
+                    "the native Arb hyperelliptic L-series backend is unavailable"
+                )
+        if result is None:
+            result = lseries_values(
+                self._curve,
+                pairs,
+                bits,
+                self._coefficient_prefix,
+                maximum_derivative,
+            )
         if not result["refinement_stable"]:
             raise HyperellipticLseriesNumericalIndeterminacyError(
                 "the hyperelliptic L-series refinement did not stabilize"
@@ -548,19 +707,15 @@ class HyperellipticLSeries:
 
     def value(self, s: Any, prec: Any = 53, algorithm: str = "auto") -> Any:
         """Return a probable numerical value of `L(C,s)`."""
-        if algorithm not in ("auto", "reference"):
-            raise ValueError("algorithm must be 'auto' or 'reference'")
-        result, bits = self._evaluate([s], prec)
+        result, bits = self._evaluate([s], prec, algorithm=algorithm)
         return self._coerce(result["values"][0]["raw_derivatives"][0], bits)
 
     def values(self, points: Any, prec: Any = 53, algorithm: str = "auto") -> Any:
         """Evaluate several points using one coefficient prefix and theta grid."""
-        if algorithm not in ("auto", "reference"):
-            raise ValueError("algorithm must be 'auto' or 'reference'")
         point_list = list(points)
         if not point_list:
             return []
-        result, bits = self._evaluate(point_list, prec)
+        result, bits = self._evaluate(point_list, prec, algorithm=algorithm)
         return [
             self._coerce(record["raw_derivatives"][0], bits)
             for record in result["values"]
@@ -568,9 +723,7 @@ class HyperellipticLSeries:
 
     def completed_value(self, s: Any, prec: Any = 53, algorithm: str = "auto") -> Any:
         """Return the canonical completed value `Lambda(C,s)`."""
-        if algorithm not in ("auto", "reference"):
-            raise ValueError("algorithm must be 'auto' or 'reference'")
-        result, bits = self._evaluate([s], prec)
+        result, bits = self._evaluate([s], prec, algorithm=algorithm)
         return self._coerce(result["values"][0]["completed_derivatives"][0], bits)
 
     def derivative(
@@ -578,9 +731,7 @@ class HyperellipticLSeries:
     ) -> Any:
         """Return the indicated derivative of the raw L-function."""
         derivative_order = _checked_order(order)
-        if algorithm not in ("auto", "reference"):
-            raise ValueError("algorithm must be 'auto' or 'reference'")
-        result, bits = self._evaluate([s], prec, derivative_order)
+        result, bits = self._evaluate([s], prec, derivative_order, algorithm)
         return self._coerce(
             result["values"][0]["raw_derivatives"][derivative_order], bits
         )
@@ -594,10 +745,8 @@ class HyperellipticLSeries:
         max_order: Any = 12,
     ) -> Any:
         """Return the probable order of vanishing at the central point."""
-        if algorithm not in ("auto", "reference"):
-            raise ValueError("algorithm must be 'auto' or 'reference'")
         maximum = _checked_order(max_order)
-        result, bits = self._evaluate([1], prec, maximum)
+        result, bits = self._evaluate([1], prec, maximum, algorithm)
         completed = [
             _deserialized_complex(value)
             for value in result["values"][0]["completed_derivatives"]
@@ -649,6 +798,54 @@ class HyperellipticLSeries:
         if cutoff < 1 or cutoff != bound:
             raise ValueError("coefficient bound must be a positive integer")
         return [sage.ZZ(value) for value in self._coefficient_prefix.through(cutoff)]
+
+    def central_jet(
+        self,
+        max_order: Any = 6,
+        *,
+        completed: bool = False,
+        prec: Any = 53,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Return derivatives through `max_order` at the central point.
+
+        With the native backend, `last_diagnostics()['balls']` contains the
+        associated Arb arithmetic radii.  The returned numbers remain
+        probable because the two trapezoid discretizations are checked by
+        refinement rather than a proved enclosure.
+        """
+        maximum = _checked_order(max_order)
+        result, bits = self._evaluate([1], prec, maximum, algorithm)
+        key = "completed_derivatives" if completed else "raw_derivatives"
+        return runtime.math_tuple(
+            [self._coerce(value, bits) for value in result["values"][0][key]]
+        )
+
+    def value_ball(
+        self, s: Any, prec: Any = 53, algorithm: str = "native"
+    ) -> dict[str, Any]:
+        """Return midpoint/radius diagnostics for one native Arb value.
+
+        The radius encloses Arb arithmetic error only.  The separate
+        `analytic_error_status` and refinement fields must be retained when
+        serializing this result; this is not yet a proved analytic enclosure.
+        """
+        result, _bits = self._evaluate([s], prec, algorithm=algorithm)
+        balls = result.get("balls")
+        if balls is None:
+            raise NotImplementedError(
+                "the selected evaluator does not return Arb balls"
+            )
+        return {
+            "raw": balls[0]["raw"][0],
+            "completed": balls[0]["completed"][0],
+            "rigorous": bool(result["rigorous"]),
+            "arithmetic_balls_rigorous": bool(
+                result.get("arithmetic_balls_rigorous", False)
+            ),
+            "analytic_error_status": result["analytic_error_status"],
+            "refinement_stable": bool(result["refinement_stable"]),
+        }
 
     def last_diagnostics(self) -> Any:
         return self._last_diagnostics
