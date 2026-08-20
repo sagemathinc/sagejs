@@ -92,6 +92,7 @@
     "src/lib/sagejs/elliptic_curves/lseries.py",
     "src/lib/sagejs/hyperelliptic_curves/__init__.py",
     "src/lib/sagejs/hyperelliptic_curves/abelian_group.py",
+    "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
     "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
     "src/lib/sagejs/hyperelliptic_curves/euler_products.py",
     "src/lib/sagejs/hyperelliptic_curves/frobenius.py",

@@ -2422,6 +2422,7 @@
         "src/baselib/modular.py",
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py",
+        "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null

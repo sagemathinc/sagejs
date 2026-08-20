@@ -129,6 +129,13 @@ through `p < 2^32`: the Weil bounds give `|c1| <= 4*sqrt(p)` and
 product overflow are checked before conversion. These are capability limits,
 not promises to coerce an unsupported result.
 
+The same packed L-polynomial boundary privately retains smalljac's genus-one
+number-field grammar for the almost-good genus-2 reduction algorithms.  In
+that path the callback returns one coefficient over a finite field of norm
+`q < 2^44`; it is tested both over `F_(3^2)` and above norm `2^32`.  It is not
+advertised by `smalljacCapabilities()` as a public hyperelliptic backend: the
+public contract remains the genus-2 coefficient stream described above.
+
 All elliptic and hyperelliptic calls share one native mutex because ffpoly's
 finite-field context is process-global. Callback allocation/range failures
 cancel the upstream traversal, clean up the curve, release the mutex, and
