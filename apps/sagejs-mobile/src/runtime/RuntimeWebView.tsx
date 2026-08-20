@@ -1,12 +1,12 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
+  useState,
 } from 'react';
-import { MainBundlePath } from '@dr.pogodin/react-native-fs';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import WebView, {
   type WebViewMessageEvent,
   type WebViewNavigation,
@@ -23,7 +23,11 @@ import {
   type ShareRequestPayload,
   type WorksheetSnapshot,
 } from '../bridge/protocol';
-import { isAllowedRuntimeNavigation } from '../bridge/navigation';
+import {
+  startRuntimeOrigin,
+  stopRuntimeOrigin,
+  type RuntimeOriginDescription,
+} from './loopbackOrigin';
 
 export interface RuntimeWebViewHandle {
   interrupt(): void;
@@ -47,27 +51,33 @@ interface Props {
   onProcessRecovery(): void;
 }
 
-function runtimeLocation() {
-  if (Platform.OS === 'android') {
-    return {
-      uri: 'file:///android_asset/runtime/index.html',
-      root: 'file:///android_asset/runtime/',
-      readAccess: undefined,
-    };
-  }
-  const bundle = MainBundlePath ?? '';
-  return {
-    uri: `file://${bundle}/runtime/index.html`,
-    root: `file://${bundle}/runtime/`,
-    readAccess: `file://${bundle}/runtime/`,
-  };
-}
-
 export const RuntimeWebView = forwardRef<RuntimeWebViewHandle, Props>(
   function RuntimeWebViewComponent(props, forwardedRef) {
     const webView = useRef<WebView>(null);
-    const location = useMemo(runtimeLocation, []);
-    const capability = useMemo(createBridgeCapability, []);
+    const [location, setLocation] = useState<RuntimeOriginDescription>();
+    const [capability] = useState(createBridgeCapability);
+    const runtimeActive = props.lifecycle !== 'background';
+    const onRuntimeError = useRef(props.onRuntimeError);
+    useEffect(() => {
+      onRuntimeError.current = props.onRuntimeError;
+    }, [props.onRuntimeError]);
+    useEffect(() => {
+      let current = true;
+      if (!runtimeActive) {
+        setLocation(undefined);
+        stopRuntimeOrigin().catch(error =>
+          onRuntimeError.current(String(error)),
+        );
+        return;
+      }
+      startRuntimeOrigin().then(value => {
+        if (current) setLocation(value);
+      }, onRuntimeError.current);
+      return () => {
+        current = false;
+        stopRuntimeOrigin().catch(() => {});
+      };
+    }, [runtimeActive]);
     const post = useCallback((message: string) => {
       webView.current?.postMessage(message);
     }, []);
@@ -135,22 +145,33 @@ export const RuntimeWebView = forwardRef<RuntimeWebViewHandle, Props>(
 
     const shouldStart = useCallback(
       (request: WebViewNavigation) =>
-        isAllowedRuntimeNavigation(request.url, location.root),
-      [location.root],
+        request.url === 'about:blank' ||
+        (!!location && isAllowedLoopbackNavigation(request.url, location)),
+      [location],
     );
+
+    if (!location) {
+      return (
+        <View
+          style={styles.loading}
+          accessibilityLabel="Starting Sage.js runtime"
+        >
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
 
     return (
       <PortableWebView
         ref={webView}
         style={styles.webView}
-        source={{ uri: location.uri }}
+        source={{ uri: location.url }}
         injectedJavaScriptBeforeContentLoaded={`Object.defineProperty(globalThis, '__SAGEJS_MOBILE_BRIDGE_CAPABILITY__', {value: ${JSON.stringify(
           capability,
         )}, configurable: true}); true;`}
-        originWhitelist={['file://*']}
-        allowingReadAccessToURL={location.readAccess}
-        allowFileAccess
-        allowFileAccessFromFileURLs
+        originWhitelist={['http://127.0.0.1:*']}
+        allowFileAccess={false}
+        allowFileAccessFromFileURLs={false}
         allowUniversalAccessFromFileURLs={false}
         javaScriptEnabled
         javaScriptCanOpenWindowsAutomatically={false}
@@ -176,7 +197,33 @@ export const RuntimeWebView = forwardRef<RuntimeWebViewHandle, Props>(
 
 const styles = StyleSheet.create({
   webView: { flex: 1, backgroundColor: '#fbfbf8' },
+  loading: {
+    alignItems: 'center',
+    backgroundColor: '#fbfbf8',
+    flex: 1,
+    justifyContent: 'center',
+  },
 });
+
+function isAllowedLoopbackNavigation(
+  url: string,
+  location: RuntimeOriginDescription,
+): boolean {
+  try {
+    const parsed = new URL(url);
+    const root = new URL(location.root);
+    return (
+      parsed.origin === location.origin &&
+      parsed.username === '' &&
+      parsed.password === '' &&
+      !parsed.search &&
+      !parsed.hash &&
+      decodeURIComponent(parsed.pathname).startsWith(root.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
 
 function createBridgeCapability(): string {
   const cryptoProvider = (

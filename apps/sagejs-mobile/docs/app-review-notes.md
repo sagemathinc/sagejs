@@ -13,9 +13,13 @@ use case described by App Review Guideline 2.5.2, not an application mechanism
 for changing the app's features after review.
 
 Computations execute in a bundled `WKWebView` worker so the interface remains
-responsive. The application can terminate and reconstruct that worker for
+responsive. Verified bundled resources are exposed only through an
+application-owned `127.0.0.1` server on a random port and 256-bit capability
+path; no external interface or remote server is used. This local origin is
+needed for browser worker isolation and is stopped on background/teardown. The
+application can terminate and reconstruct that worker for
 interrupts, timeouts, lifecycle transitions, or recovery. The worker has no
-credentialed origin and no privileged native object. The versioned native
+cookies, credentials, or privileged native object. The versioned native
 message allowlist supports only document autosave, explicit share/export,
 lifecycle, status, interruption, and reset. A random per-session capability
 prevents evaluated worker code from forging native messages. There is no
@@ -26,6 +30,11 @@ Meaningful native integration includes Files/iCloud document workflows, recent
 worksheets and crash recovery, share sheets for source/plot data, iPad split
 layout, hardware-keyboard execution, accessibility labels/live regions,
 appearance/resource settings, and offline operation.
+
+On Android, the normal `INTERNET` permission is used solely because Android
+requires it for TCP loopback. Network Security Configuration denies cleartext
+globally and permits only `127.0.0.1`; there is no external bind or remote
+fallback. iOS uses only its narrow local-network transport exception.
 
 Suggested review steps:
 
