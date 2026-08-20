@@ -82,7 +82,7 @@ function bufferParameters(type, name) {
   return [`uint32_t ${prefix}_data`, `uint32_t ${prefix}_buffer_length`];
 }
 
-function bufferDeclaration(type, variable, name) {
+function bufferDeclaration(type, variable, name, sourceBuffer = false) {
   const prefix = `sagejs_arg_${cName(name)}`;
   if (type === "IntegerBuffer") {
     return `    sagejs_integer_buffer ${variable} = {
@@ -95,16 +95,16 @@ function bufferDeclaration(type, variable, name) {
   const cType = type === "Int64Buffer" ? "int64_t" : "uint64_t";
   const structType = type === "Int64Buffer"
     ? "sagejs_int64_buffer"
-    : type === "UInt64Buffer"
-      ? "sagejs_uint64_buffer"
-      : "sagejs_source_u64_buffer";
+    : sourceBuffer
+      ? "sagejs_source_u64_buffer"
+      : "sagejs_uint64_buffer";
   return `    ${structType} ${variable} = {
         (${cType} *) (uintptr_t) ${prefix}_data,
         (size_t) ${prefix}_buffer_length
     };`;
 }
 
-function parameterBridge(parameter, ir) {
+function parameterBridge(parameter, ir, fn) {
   const name = cName(parameter.name);
   const variable = `sagejs_value_${name}`;
   if (parameter.type === "Integer") {
@@ -137,7 +137,12 @@ function parameterBridge(parameter, ir) {
   if (BUFFER_TYPES.has(parameter.type)) {
     return {
       signature: bufferParameters(parameter.type, parameter.name),
-      declaration: bufferDeclaration(parameter.type, variable, parameter.name),
+      declaration: bufferDeclaration(
+        parameter.type,
+        variable,
+        parameter.name,
+        fn.kernelKind === "prime-field-source",
+      ),
       argument: variable,
       cleanup: "",
       descriptor: { name: parameter.name, type: parameter.type },
@@ -155,7 +160,12 @@ function parameterBridge(parameter, ir) {
     const fieldVariable = `sagejs_value_${cName(fieldName)}`;
     if (BUFFER_TYPES.has(field.type)) {
       signature.push(...bufferParameters(field.type, fieldName));
-      declarations.push(bufferDeclaration(field.type, fieldVariable, fieldName));
+      declarations.push(bufferDeclaration(
+        field.type,
+        fieldVariable,
+        fieldName,
+        field.type === "UInt64Buffer",
+      ));
     } else {
       signature.push(`uint64_t sagejs_arg_${cName(fieldName)}`);
     }
@@ -184,7 +194,7 @@ function parameterBridge(parameter, ir) {
   };
 }
 
-function resultLocals(results) {
+function resultLocals(results, fn) {
   const declarations = [];
   const initializations = [];
   const cleanups = [];
@@ -205,7 +215,9 @@ function resultLocals(results) {
         "    }",
       );
     } else {
-      const cType = type === "bool" ? "int" : "uint64_t";
+      const cType = type === "bool" && fn.kernelKind !== "prime-field-source"
+        ? "int"
+        : "uint64_t";
       declarations.push(`    ${cType} ${name} = 0;`);
       arguments_.push(`&${name}`);
       stores.push(
@@ -222,8 +234,10 @@ function bridgeFunction(fn, ir, moduleIdentity) {
   if (!classification.supported) {
     throw new Error(`cannot bridge ${fn.name}: ${classification.reason}`);
   }
-  const parameters = fn.params.map((parameter) => parameterBridge(parameter, ir));
-  const result = resultLocals(classification.results);
+  const parameters = fn.params.map((parameter) =>
+    parameterBridge(parameter, ir, fn)
+  );
+  const result = resultLocals(classification.results, fn);
   const signature = parameters.flatMap((parameter) => parameter.signature);
   const substitutions = (value) => value.replaceAll("$MODULE", moduleIdentity);
   const callName = `sagejs_wasm_call_m_${moduleIdentity}_${fn.name}`;
@@ -284,6 +298,9 @@ function generateWasmBridge({ ir, moduleIdentity, functionNames }) {
     return fn;
   });
   const generated = requested.map((fn) => bridgeFunction(fn, ir, moduleIdentity));
+  const needsIntegerResult = generated.some((item) =>
+    item.descriptor.results.includes("Integer")
+  );
   const allocate = `sagejs_wasm_allocate_m_${moduleIdentity}`;
   const deallocate = `sagejs_wasm_deallocate_m_${moduleIdentity}`;
   const resultU64 = `sagejs_wasm_result_u64_at_m_${moduleIdentity}`;
@@ -291,25 +308,7 @@ function generateWasmBridge({ ir, moduleIdentity, functionNames }) {
   const resultLength = `sagejs_wasm_result_length_m_${moduleIdentity}`;
   const resultSign = `sagejs_wasm_result_sign_m_${moduleIdentity}`;
   const lastMessage = `sagejs_wasm_last_message_m_${moduleIdentity}`;
-  const source = `/* Generated source-transparent WebAssembly bridge.
- * Mathematical execution remains in the canonical emitted kernel core.
- */
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include "kernel_core.h"
-
-#define SAGEJS_WASM_RESULT_SLOTS 8
-static uint64_t sagejs_wasm_result_u64_storage_m_${moduleIdentity}[
-    SAGEJS_WASM_RESULT_SLOTS];
-static uint64_t *sagejs_wasm_result_limbs_storage_m_${moduleIdentity}[
-    SAGEJS_WASM_RESULT_SLOTS];
-static uint32_t sagejs_wasm_result_length_storage_m_${moduleIdentity}[
-    SAGEJS_WASM_RESULT_SLOTS];
-static int32_t sagejs_wasm_result_sign_storage_m_${moduleIdentity}[
-    SAGEJS_WASM_RESULT_SLOTS];
-static const char *sagejs_wasm_last_message_storage_m_${moduleIdentity};
-
+  const integerStore = needsIntegerResult ? `
 static int sagejs_wasm_store_integer_m_${moduleIdentity}(
     uint32_t slot, const mpz_t value)
 {
@@ -331,6 +330,26 @@ static int sagejs_wasm_store_integer_m_${moduleIdentity}(
     sagejs_wasm_result_sign_storage_m_${moduleIdentity}[slot] = mpz_sgn(value);
     return 1;
 }
+` : "";
+  const source = `/* Generated source-transparent WebAssembly bridge.
+ * Mathematical execution remains in the canonical emitted kernel core.
+ */
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include "kernel_core.h"
+
+#define SAGEJS_WASM_RESULT_SLOTS 8
+static uint64_t sagejs_wasm_result_u64_storage_m_${moduleIdentity}[
+    SAGEJS_WASM_RESULT_SLOTS];
+static uint64_t *sagejs_wasm_result_limbs_storage_m_${moduleIdentity}[
+    SAGEJS_WASM_RESULT_SLOTS];
+static uint32_t sagejs_wasm_result_length_storage_m_${moduleIdentity}[
+    SAGEJS_WASM_RESULT_SLOTS];
+static int32_t sagejs_wasm_result_sign_storage_m_${moduleIdentity}[
+    SAGEJS_WASM_RESULT_SLOTS];
+static const char *sagejs_wasm_last_message_storage_m_${moduleIdentity};
+${integerStore}
 
 uint32_t ${allocate}(uint32_t bytes)
 {

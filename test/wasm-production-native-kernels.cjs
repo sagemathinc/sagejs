@@ -108,6 +108,27 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     ));
     const persisted = JSON.parse(readFileSync(join(outputRoot, "index.json")));
     assert.deepEqual(persisted, manifest);
+
+    const densePrimeBridge = readFileSync(join(
+      outputRoot,
+      "sources",
+      manifest.kernels.find((kernel) =>
+        kernel.id === "dense-prime-production"
+      ).moduleIdentity,
+      "wasm_bridge.c",
+    ), "utf8");
+    assert.match(densePrimeBridge, /sagejs_source_u64_buffer/);
+    assert.match(densePrimeBridge, /uint64_t sagejs_result_0/);
+
+    const denseIntegerBridge = readFileSync(join(
+      outputRoot,
+      "sources",
+      manifest.kernels.find((kernel) =>
+        kernel.id === "dense-integer-flint-production"
+      ).moduleIdentity,
+      "wasm_bridge.c",
+    ), "utf8");
+    assert.match(denseIntegerBridge, /int sagejs_result_0/);
   } finally {
     rmSync(outputRoot, { recursive: true, force: true });
   }
