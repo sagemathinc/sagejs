@@ -483,6 +483,72 @@ static double raw_conversion_guard_bits(
     return result > 0.0 ? result : 0.0;
 }
 
+int sagejs_ec_lseries_work_precision(
+    slong *work_precision,
+    const fmpz_t conductor,
+    acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong planning_precision)
+{
+    if (work_precision == NULL || points == NULL || point_count < 1 ||
+        point_count > SAGEJS_EC_LSERIES_MAX_POINTS ||
+        fmpz_sgn(conductor) <= 0 || target_bits < 16 || target_bits > 8192 ||
+        planning_precision < target_bits || planning_precision > 8192)
+        return SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+
+    double max_abs_imaginary, max_abs_real_offset;
+    if (!ec_lseries_domain(
+            &max_abs_imaginary, &max_abs_real_offset, points, point_count,
+            planning_precision))
+        return SAGEJS_EC_LFUNCTION_INVALID_INPUT;
+    if (max_abs_imaginary > SAGEJS_EC_LSERIES_MAX_HEIGHT ||
+        max_abs_real_offset > SAGEJS_EC_LSERIES_MAX_REAL_OFFSET)
+        return SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+
+    const double conductor_double = fmpz_get_d(conductor);
+    const double a_double = 2.0 * SAGEJS_PI / sqrt(conductor_double);
+    if (!isfinite(conductor_double) || !isfinite(a_double) || a_double <= 0.0)
+        return SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+
+    arb_t pi, conductor_arb, a;
+    arb_init(pi);
+    arb_init(conductor_arb);
+    arb_init(a);
+    arb_const_pi(pi, planning_precision);
+    arb_set_fmpz(conductor_arb, conductor);
+    arb_sqrt(conductor_arb, conductor_arb, planning_precision);
+    arb_mul_ui(a, pi, 2, planning_precision);
+    arb_div(a, a, conductor_arb, planning_precision);
+
+    const double conversion_bits = raw_conversion_guard_bits(
+        a, points, point_count, planning_precision);
+    const double summation_bits =
+        2.0 * fmax(0.0, -log(a_double) / SAGEJS_LN2);
+    const double preliminary_D =
+        (double) target_bits * SAGEJS_LN2 +
+        SAGEJS_PI * max_abs_imaginary / 2.0 + 64.0;
+    const double preliminary_U =
+        fmax(0.0, log(preliminary_D / a_double));
+    const double real_growth_bits =
+        max_abs_real_offset * preliminary_U / SAGEJS_LN2;
+    const double requested =
+        (double) target_bits + conversion_bits + summation_bits +
+        real_growth_bits + 48.0;
+
+    arb_clear(a);
+    arb_clear(conductor_arb);
+    arb_clear(pi);
+
+    if (!isfinite(requested) || requested > 8192.0)
+        return SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+    const slong selected = (slong) ceil(requested);
+    if (selected < target_bits || selected > 8192)
+        return SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT;
+    *work_precision = selected;
+    return SAGEJS_EC_LFUNCTION_OK;
+}
+
 /*
  * Generalization of PARI 2.17 `param_points` to a bounded complex domain.
  * The height terms are Molin's degree-two terms.  The cutoff is enlarged
@@ -1919,77 +1985,40 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         return NULL;
     }
 
-    double initial_tmax, initial_real_width;
-    if (!ec_lseries_domain(
-            &initial_tmax, &initial_real_width, points, point_count,
-            planning_precision) ||
-        initial_tmax > SAGEJS_EC_LSERIES_MAX_HEIGHT ||
-        initial_real_width > SAGEJS_EC_LSERIES_MAX_REAL_OFFSET)
+    slong work_precision = 0;
+    const int precision_status = sagejs_ec_lseries_work_precision(
+        &work_precision, conductor, points, point_count, fine_target_bits,
+        planning_precision);
+    if (precision_status != SAGEJS_EC_LFUNCTION_OK)
     {
         napi_throw_range_error(env, NULL,
-            "complex points exceed native moderate-domain limits");
+            precision_status == SAGEJS_EC_LFUNCTION_RESOURCE_LIMIT
+                ? "complex points or precision exceed native resource limits"
+                : "invalid elliptic L-function precision-planning input");
         _acb_vec_clear(points, point_count);
         fmpz_clear(conductor);
         return NULL;
     }
-
-    const double conductor_double = fmpz_get_d(conductor);
-    const double a_double = 2.0 * SAGEJS_PI / sqrt(conductor_double);
-    if (!isfinite(conductor_double) || !isfinite(a_double) || a_double <= 0.0)
-    {
-        napi_throw_range_error(env, NULL,
-            "elliptic L-function conductor exceeds native resource limits");
-        _acb_vec_clear(points, point_count);
-        fmpz_clear(conductor);
-        return NULL;
-    }
-    arb_t pi, conductor_arb, a;
-    arb_init(pi);
-    arb_init(conductor_arb);
-    arb_init(a);
-    arb_const_pi(pi, planning_precision);
-    arb_set_fmpz(conductor_arb, conductor);
-    arb_sqrt(conductor_arb, conductor_arb, planning_precision);
-    arb_mul_ui(a, pi, 2, planning_precision);
-    arb_div(a, a, conductor_arb, planning_precision);
-    const double conversion_bits = raw_conversion_guard_bits(
-        a, points, point_count, planning_precision);
-    const double summation_bits =
-        2.0 * fmax(0.0, -log(a_double) / SAGEJS_LN2);
-    const double preliminary_D =
-        (double) fine_target_bits * SAGEJS_LN2 +
-        SAGEJS_PI * initial_tmax / 2.0 + 64.0;
-    const double preliminary_U =
-        fmax(0.0, log(preliminary_D / a_double));
-    const double real_growth_bits =
-        initial_real_width * preliminary_U / SAGEJS_LN2;
-    const double work_double =
-        (double) fine_target_bits + conversion_bits + summation_bits +
-        real_growth_bits + 48.0;
-    if (!isfinite(work_double) || work_double > 8192.0)
-    {
-        napi_throw_range_error(env, NULL,
-            "elliptic L-function precision exceeds native resource limits");
-        arb_clear(a);
-        arb_clear(conductor_arb);
-        arb_clear(pi);
-        _acb_vec_clear(points, point_count);
-        fmpz_clear(conductor);
-        return NULL;
-    }
-    const slong work_precision = (slong) ceil(work_double);
     if (!values_to_acb_points(
             env, args[3], points, point_count, work_precision))
     {
-        arb_clear(a);
-        arb_clear(conductor_arb);
-        arb_clear(pi);
         _acb_vec_clear(points, point_count);
         fmpz_clear(conductor);
         return NULL;
     }
     if (output_mode == 1)
     {
+        const double conductor_double = fmpz_get_d(conductor);
+        const double a_double = 2.0 * SAGEJS_PI / sqrt(conductor_double);
+        arb_t pi, conductor_arb, a;
+        arb_init(pi);
+        arb_init(conductor_arb);
+        arb_init(a);
+        arb_const_pi(pi, work_precision);
+        arb_set_fmpz(conductor_arb, conductor);
+        arb_sqrt(conductor_arb, conductor_arb, work_precision);
+        arb_mul_ui(a, pi, 2, work_precision);
+        arb_div(a, a, conductor_arb, work_precision);
         ec_lseries_plan plan;
         const int plan_status = make_ec_lseries_plan(
             &plan, a, a_double, points, point_count, fine_target_bits,
@@ -2010,9 +2039,6 @@ napi_value sagejs_ec_lseries_values(napi_env env, napi_callback_info info)
         fmpz_clear(conductor);
         return plan_result;
     }
-    arb_clear(a);
-    arb_clear(conductor_arb);
-    arb_clear(pi);
 
     packed_coefficient_view coefficient_view;
     if (!value_to_packed_coefficients(env, args[2], &coefficient_view))
