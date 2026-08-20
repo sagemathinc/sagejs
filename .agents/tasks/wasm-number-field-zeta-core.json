@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-number-field-zeta-core",
+  "title": "Wasm Number Field Zeta Core",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide one flat fixed-width FLINT residue factor-degree core with native and browser WebAssembly adapters, preserving arbitrary-prime native fallback and exact packed parity",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "packages/flint/src/number_field_zeta_core.c",
+    "packages/flint/src/number_field_zeta_core.h",
+    "packages/flint/src/number_field_zeta.c",
+    "packages/flint-wasm/src/number-field-zeta.c",
+    "packages/flint-wasm/number-field-zeta.mjs",
+    "packages/flint-wasm/test/number-field-zeta.test.mjs",
+    "packages/flint/test/test.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing native nfFactorDegreesBatch and strict finite-field factorization",
+      "Node/Wasm packed factor-degree differential corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
