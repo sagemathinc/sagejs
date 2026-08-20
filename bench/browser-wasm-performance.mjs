@@ -46,6 +46,7 @@ const browser = await type.launch({
 });
 const startup = [];
 const interrupts = [];
+const memory = [];
 const timings = Object.fromEntries(operations.map((item) => [item.id, []]));
 let diagnostics;
 try {
@@ -67,6 +68,23 @@ try {
     const interrupted = await page.evaluate(() => window.__sagejsTest.interrupt("while True:\n    pass"));
     if (!interrupted.rejected) throw new Error("interrupted evaluation unexpectedly completed");
     interrupts.push(interrupted.latency_ms);
+    memory.push(await page.evaluate(async () => {
+      const result = {
+        js_heap_bytes: Number.isFinite(performance.memory?.usedJSHeapSize)
+          ? performance.memory.usedJSHeapSize
+          : null,
+        user_agent_bytes: null,
+      };
+      if (typeof performance.measureUserAgentSpecificMemory === "function") {
+        try {
+          const measured = await performance.measureUserAgentSpecificMemory();
+          if (Number.isFinite(measured?.bytes)) result.user_agent_bytes = measured.bytes;
+        } catch (_error) {
+          // Firefox and WebKit do not currently expose this Chromium API.
+        }
+      }
+      return result;
+    }));
     await page.close();
   }
 } finally {
@@ -81,6 +99,14 @@ const report = {
   startup_ms: distribution(startup),
   interrupt_latency_ms: distribution(interrupts),
   operations: Object.fromEntries(Object.entries(timings).map(([id, values]) => [id, distribution(values)])),
+  memory: {
+    samples: memory,
+    maximum_js_heap_bytes: Math.max(0, ...memory.map((item) => item.js_heap_bytes ?? 0)),
+    maximum_user_agent_bytes: Math.max(
+      0,
+      ...memory.map((item) => item.user_agent_bytes ?? 0),
+    ) || null,
+  },
   diagnostics,
   artifact_root: path.relative(process.cwd(), packageRoot),
 };
