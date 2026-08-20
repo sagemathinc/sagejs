@@ -161,6 +161,12 @@ static uint64_t multiply_mod(uint64_t left, uint64_t right, uint64_t prime)
     return (uint64_t) (((__uint128_t) left * (__uint128_t) right) % prime);
 }
 
+/* Exact exceptional-prime fallback, not the normal coefficient algorithm.
+   For odd p this enumerates x in F_p and uses a residue table, so it costs
+   O(p) time and O(p) bytes.  smalljac_Lpolys supplies a_p at every supported
+   good-reduction prime; this routine is used only when its callback reports
+   no coefficient (normally a bad-reduction prime).  The p=2 double loop is
+   constant-sized. */
 static int64_t direct_ap(mpz_t coefficients[5], uint64_t prime)
 {
     uint64_t reduced[5];
@@ -241,6 +247,9 @@ static int coefficient_callback(
     index = (size_t) (prime - context->minimum_prime);
     if (!good)
     {
+        /* smalljac reports the exceptional prime but deliberately supplies no
+           good-reduction L-polynomial.  Mark it for direct exact treatment and
+           for the multiplicative bad-prime Euler recurrence below. */
         context->bad_reduction[index] = 1U;
         return 1;
     }
@@ -280,6 +289,9 @@ static int32_t compute_coefficients(mpz_t coefficients[5])
     }
     if (bound >= 1U)
         state.output[1] = 1;
+    /* Only callback entries without a smalljac a_p reach direct_ap.  In the
+       ordinary case this loop does work only at the finitely many primes of
+       bad reduction, not at every prime up to bound. */
     for (candidate = 2U; candidate <= bound; candidate++)
     {
         if (smallest[candidate] == 0U)

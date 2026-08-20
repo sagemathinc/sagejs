@@ -12,6 +12,35 @@ performs the complex numerical work. Browser release tests require both Wasm
 routes explicitly, so they fail if coefficient generation silently falls back
 to the ordinary Python point counter.
 
+## How smalljac supplies the coefficients
+
+The WebAssembly adapter does not replace smalljac with exhaustive point
+counting. It sieves the primes up to the requested coefficient bound and calls
+upstream `smalljac_Lpolys(..., SMALLJAC_A1_ONLY, ...)` at every prime of good
+reduction. The portability patch changes low-level 64-bit arithmetic,
+x86-64-assembly intrinsics, parsing, and nondeterministic host assumptions; it
+does not replace smalljac's point-counting algorithms.
+
+The adapter currently enters `smalljac_Lpolys` once per prime. This is a
+deliberate Wasm tradeoff: it gives bounded interruption points and resets
+smalljac's interval-level BSGS state, which was not safe to retain across a
+large wasm32 interval. It gives up some of upstream smalljac's interval
+batching, but each good-prime coefficient is still computed by smalljac.
+
+There is a separate C helper named `direct_ap`. It runs only when smalljac's
+callback supplied no good-reduction coefficient—normally at one of the
+finitely many primes of bad reduction. For odd `p`, it enumerates the `p`
+possible x-coordinates using a quadratic-residue table, taking `O(p)` time and
+`O(p)` bytes; the special `p=2` loop is constant-sized. It is therefore a
+bounded exact exceptional-prime fallback, not the normal `anlist` algorithm.
+For `EllipticCurve([1,2,3,4,999])`, the discriminant is
+`-430250329 = -9349 * 46021`, so among the 26,424 primes at most 305,204,
+those two are bad-reduction cases expected to take this direct path; the
+26,422 good-reduction primes use smalljac. Any other callback omission is also
+handled by the same bounded exact fallback rather than silently producing an
+absent coefficient. A single-prime request for which smalljac supplies no
+coefficient is rejected rather than enumerated when `p > 5,000,000`.
+
 These are numerical computations, not proofs. In particular,
 `analytic_rank()` returns a probable analytic rank, and the error accounting
 for general complex values does not yet rigorously enclose the quadrature
