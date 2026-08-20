@@ -49,7 +49,10 @@ test("offline worker is same-origin, versioned and credentialless", async () => 
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /credentials: "omit"/);
   assert.match(worker, /caches\.delete/);
-  assert.match(worker, /caches\.match\("\.\/index\.html"\)/);
+  assert.match(worker, /__SAGEJS_ASSET_MANIFEST_SHA256__/);
+  assert.match(worker, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(worker, /failed its authenticated byte contract/);
+  assert.match(worker, /cache: "no-store"/);
   const app = await read("app.mjs");
   assert.match(app, /sw\.js\?release=/);
 });
