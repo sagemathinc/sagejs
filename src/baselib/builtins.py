@@ -18,6 +18,27 @@ _Int = int
 _Str = str
 
 
+def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
+    """Return checked WebAssembly capabilities or one public workflow.
+
+    With no arguments this returns every public capability record. Pass a
+    family such as `"number-fields"` to filter records, or pass
+    `workflow="riemann-zeta-batch"` for its checked requirement and
+    availability record. Results are detached, deeply immutable host data.
+    """
+
+    api = runtime.reflect.get(runtime.global_object, "__sagejs_capability_api__")
+    if api is runtime.undefined:
+        raise RuntimeError("the Sage.js host did not install capability metadata")
+    if workflow is not None:
+        if family is not None:
+            raise TypeError("family and workflow cannot both be specified")
+        method = runtime.reflect.get(api, "workflow")
+        return runtime.reflect.apply(method, api, [workflow])
+    method = runtime.reflect.get(api, "sagejs_capabilities")
+    return runtime.reflect.apply(method, api, [family])
+
+
 def _builtins_default_build_class(
     body: Any,
     name: str,

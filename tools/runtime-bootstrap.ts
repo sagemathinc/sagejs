@@ -31,6 +31,7 @@ import {
   readRuntimeBootstrapSource,
   standardLibraryCacheDirectory,
 } from "./resources";
+import { loadSagejsCapabilityApi } from "./capability-api";
 import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
   beginInitializationTiming,
@@ -107,6 +108,9 @@ export function runRuntimeBootstrap(
   additionalImportDirs: string[] = [],
   requestedModuleCacheDirectory?: string | false,
 ): void {
+  if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
+    Reflect.set(globalThis, "__sagejs_capability_api__", loadSagejsCapabilityApi());
+  }
   const internalRequire = Reflect.get(globalThis, "require");
   if (typeof internalRequire === "function") {
     // Compiler intrinsics use this collision-proof name. In particular,

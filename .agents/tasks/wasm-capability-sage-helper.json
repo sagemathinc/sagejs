@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-capability-sage-helper",
+  "title": "Sage capability builtin",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Expose the generated checked WebAssembly capability report through immutable sagejs_capabilities queries in ordinary Node and browser Sage sessions",
+  "base_commit": "28b4fde0c0d6ed776c17ebbd59bb31e4645dbc0d",
+  "claims": [
+    "src/baselib/builtins.py",
+    "tools/capability-api.ts",
+    "tools/kernel-evaluator.ts"
+    ,
+    "tools/runtime-bootstrap.ts"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
