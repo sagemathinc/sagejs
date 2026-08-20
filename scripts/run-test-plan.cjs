@@ -5,30 +5,37 @@ const { spawn } = require("node:child_process");
 const { resolve } = require("node:path");
 
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
+const { inspectBuildReceipt } = require("./build-receipt.cjs");
 const { formatDuration } = require("./run-test-tier.cjs");
 
 const root = resolve(__dirname, "..");
 
-const foundation = [
-  ["Package architecture checks", "architecture:packages", 2],
-  ["Native architecture checks", "architecture:native", 3],
-  ["Compiler and runtime build", "build", 300],
-  ["Generated FFI boundary checks", "ffi:check", 5],
-  ["Startup regression budget", "test:startup:run", 15],
-  ["Strict Python formatting and typing", "test:baselib:strict", 25],
-];
+function foundation(buildScript = "build") {
+  return [
+    ["Package architecture checks", "architecture:packages", 2],
+    ["Native architecture checks", "architecture:native", 3],
+    ["Build readiness", buildScript, 300],
+    ["Generated FFI boundary checks", "ffi:check", 5],
+    ["Startup regression budget", "test:startup:run", 15],
+    ["Strict Python formatting and typing", "test:baselib:strict", 25],
+  ];
+}
 
 const routine = [
-  ...foundation,
+  ...foundation("build:check"),
   ["Portable unit tests", "test:portable", 30],
   ["Public API smoke tests", "test:smoke", 5],
 ];
 
 const plans = {
   routine,
-  ci: routine,
+  ci: [
+    ...foundation(),
+    ["Portable unit tests", "test:portable", 30],
+    ["Public API smoke tests", "test:smoke", 5],
+  ],
   full: [
-    ...foundation,
+    ...foundation(),
     ["Compiler compatibility corpus", "test:compiler", 240],
     ["Complete unit tier", "test:unit", 35],
     ["Complete host integration tier", "test:integration", 900],
@@ -49,12 +56,19 @@ function runPhase(phase, index, total, planStarted, laterExpectedMilliseconds) {
         `${formatDuration(expectedSeconds * 1000)}\n`,
     );
     const invocation = pnpmInvocation([script]);
+    const showChildOutput =
+      script.startsWith("build") || process.env.SAGEJS_TEST_VERBOSE === "1";
     const child = spawn(invocation.command, invocation.arguments, {
       cwd: root,
       env: process.env,
       shell: invocation.shell,
-      stdio: "inherit",
+      stdio: showChildOutput ? "inherit" : ["ignore", "pipe", "pipe"],
     });
+    const output = [];
+    if (!showChildOutput) {
+      child.stdout.on("data", (data) => output.push({ stream: "stdout", data }));
+      child.stderr.on("data", (data) => output.push({ stream: "stderr", data }));
+    }
     const heartbeatSeconds = Number(
       process.env.SAGEJS_TEST_HEARTBEAT_SECONDS || 20,
     );
@@ -78,20 +92,41 @@ function runPhase(phase, index, total, planStarted, laterExpectedMilliseconds) {
     });
     child.once("exit", (status) => {
       clearInterval(heartbeat);
+      if ((status ?? 1) !== 0 && !showChildOutput) {
+        process.stderr.write(
+          `[test] detailed output from failed phase ${index + 1}/${total}:\n`,
+        );
+        for (const chunk of output) {
+          (chunk.stream === "stderr" ? process.stderr : process.stdout).write(
+            chunk.data,
+          );
+        }
+      }
       resolvePromise({ status: status ?? 1, duration: Date.now() - started });
     });
   });
 }
 
+function materializePlan(requested, buildStatus = null) {
+  return plans[requested].map((phase) => {
+    if (phase[1] !== "build:check") return [...phase];
+    const status = buildStatus ?? inspectBuildReceipt(root);
+    return status.current
+      ? ["Build readiness (reuse current successful build)", phase[1], 1]
+      : ["Build readiness (rebuild required)", phase[1], phase[2]];
+  });
+}
+
 async function main(arguments_ = process.argv.slice(2)) {
   const [requested = "routine"] = arguments_;
-  const plan = plans[requested];
-  if (!plan) {
+  if (!plans[requested]) {
     console.error(
       `usage: node scripts/run-test-plan.cjs <${Object.keys(plans).join("|")}>`,
     );
     return 2;
   }
+  const buildStatus = requested === "routine" ? inspectBuildReceipt(root) : null;
+  const plan = materializePlan(requested, buildStatus);
   const expectedMilliseconds =
     plan.reduce((sum, phase) => sum + phase[2], 0) * 1000;
   process.stdout.write(
@@ -100,6 +135,13 @@ async function main(arguments_ = process.argv.slice(2)) {
       `  expected: about ${formatDuration(expectedMilliseconds)} on a warm Linux ` +
       `developer build\n` +
       `  policy:   sequential phases; stop immediately on the first failure\n` +
+      `  activity: validation; a source build runs only when its receipt is stale\n` +
+      `  output:   successful child logs are summarized; failure logs are replayed\n` +
+      (buildStatus === null
+        ? `  build:    forced for ${requested} validation\n`
+        : buildStatus.current
+          ? `  build:    current successful build will be reused\n`
+          : `  build:    rebuild required (${buildStatus.reason})\n`) +
       `  hint:     use pnpm test:full only for exhaustive pre-release validation\n`,
   );
   for (let index = 0; index < plan.length; index += 1) {
@@ -159,4 +201,4 @@ if (require.main === module) {
   );
 }
 
-module.exports = { main, plans };
+module.exports = { main, materializePlan, plans, runPhase };

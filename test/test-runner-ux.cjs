@@ -3,7 +3,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { plans } = require("../scripts/run-test-plan.cjs");
+const { materializePlan, plans } = require("../scripts/run-test-plan.cjs");
+const { validateBuildReceipt } = require("../scripts/build-receipt.cjs");
 const {
   estimateRemaining,
   formatDuration,
@@ -56,4 +57,42 @@ test("routine validation is bounded and full validation remains exhaustive", () 
   assert.equal(fullScripts.includes("test:integration"), true);
   assert.equal(fullScripts.includes("test:native"), true);
   assert.ok(plans.routine.length < plans.full.length);
+  assert.equal(routineScripts.includes("build:check"), true);
+  assert.equal(plans.ci.map((phase) => phase[1]).includes("build:check"), false);
+});
+
+test("routine validation describes whether build work is reused", () => {
+  const reused = materializePlan("routine", { current: true });
+  const stale = materializePlan("routine", { current: false });
+  assert.deepEqual(reused[2], [
+    "Build readiness (reuse current successful build)",
+    "build:check",
+    1,
+  ]);
+  assert.deepEqual(stale[2], [
+    "Build readiness (rebuild required)",
+    "build:check",
+    300,
+  ]);
+});
+
+test("build receipts require identical inputs and every output witness", () => {
+  const identity = { source: "same", node: "same" };
+  const receipt = {
+    schema: "sagejs.build-receipt/v1",
+    completedAt: "2026-08-20T00:00:00.000Z",
+    durationMilliseconds: 12,
+    identity,
+    outputs: ["package.json"],
+  };
+  assert.equal(validateBuildReceipt(receipt, identity).current, true);
+  assert.deepEqual(
+    validateBuildReceipt(receipt, { ...identity, source: "changed" }),
+    { current: false, reason: "build inputs changed" },
+  );
+  assert.match(
+    validateBuildReceipt({ ...receipt, outputs: ["definitely-missing"] }, identity)
+      .reason,
+    /output is missing/,
+  );
 });

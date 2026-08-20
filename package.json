@@ -94,6 +94,7 @@
     "native:dependencies:identity": "node scripts/native-prebuilt-dependencies.cjs identity",
     "native:dependencies:pack": "node scripts/native-prebuilt-dependencies.cjs pack build/native-dependencies",
     "build": "node scripts/build.cjs",
+    "build:check": "node scripts/build.cjs --if-needed",
     "build:sea": "pnpm --dir packages/flint build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --python",
     "build:sea:math": "pnpm --dir packages/flint build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --with-flint",
