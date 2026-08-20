@@ -69,6 +69,18 @@ window.__sagejsTest = {
     try { await evaluation; } catch { rejected = true; }
     return { rejected, latency_ms: performance.now() - started };
   },
+  async replaceDuring(method, source, delay = 100) {
+    if (method !== "interrupt" && method !== "reset") {
+      throw new TypeError("replacement method must be interrupt or reset");
+    }
+    const evaluation = state.session.evaluate(source);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    const started = performance.now();
+    await state.session[method]();
+    let rejected = false;
+    try { await evaluation; } catch { rejected = true; }
+    return { rejected, latency_ms: performance.now() - started };
+  },
   async reset() { await state.session.reset(); },
   async close() { await state.session.close(); },
   diagnostics() {
@@ -86,7 +98,7 @@ window.__sagejsTest = {
 };
 window.__sagejsReady = (async () => {
   try {
-    state.session = await createSage();
+    state.session = await createSage(window.__sagejsTestOptions ?? {});
     document.querySelector("#status").textContent = "ready";
     return true;
   } catch (error) {
@@ -95,6 +107,47 @@ window.__sagejsReady = (async () => {
     throw error;
   }
 })();
+`;
+
+const MEMORY_OBSERVER_PREFIX = `
+const __sagejsNativeMemory = WebAssembly.Memory;
+const __sagejsObservedMemories = [];
+function __sagejsReportMemory(phase) {
+  const body = JSON.stringify({
+    phase,
+    observedAt: new Date().toISOString(),
+    memories: __sagejsObservedMemories.map(({ descriptor, memory }) => ({
+      initialPages: descriptor.initial,
+      maximumPages: descriptor.maximum ?? null,
+      shared: descriptor.shared === true,
+      currentPages: memory.buffer.byteLength / 65536,
+    })),
+  });
+  void fetch("/browser-wasm-memory-observation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  }).catch(() => {});
+}
+Object.defineProperty(WebAssembly, "Memory", {
+  configurable: true,
+  writable: true,
+  value: class SageJSTestObservedMemory extends __sagejsNativeMemory {
+    constructor(descriptor) {
+      super(descriptor);
+      __sagejsObservedMemories.push({ descriptor: { ...descriptor }, memory: this });
+      __sagejsReportMemory("constructed");
+    }
+  },
+});
+const __sagejsNativePostMessage = self.postMessage.bind(self);
+self.postMessage = function __sagejsObservedPostMessage(message, transfer) {
+  __sagejsReportMemory(message?.ok ? "response-ok" : "response-error");
+  return transfer === undefined
+    ? __sagejsNativePostMessage(message)
+    : __sagejsNativePostMessage(message, transfer);
+};
+__sagejsReportMemory("worker-start");
 `;
 
 function collectReleaseAssets(root) {
@@ -169,11 +222,40 @@ export async function createBrowserWasmServer({
   release = "test-release",
 } = {}) {
   const requests = [];
+  const memoryObservations = [];
   const { assets, mappings } = collectReleaseAssets(root);
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, "http://localhost");
     requests.push({ method: request.method, pathname: url.pathname });
     const headers = { ...securityHeaders };
+    if (url.pathname === "/browser-wasm-memory-observation") {
+      if (request.method !== "POST") {
+        response.writeHead(405, headers).end("method not allowed");
+        return;
+      }
+      let body = "";
+      request.setEncoding("utf8");
+      request.on("data", (chunk) => {
+        body += chunk;
+        if (body.length > 65_536) request.destroy();
+      });
+      request.on("end", () => {
+        try {
+          const observation = JSON.parse(body);
+          if (!observation || typeof observation !== "object") {
+            throw new TypeError("memory observation must be an object");
+          }
+          memoryObservations.push(observation);
+          response.writeHead(204, {
+            ...headers,
+            "Cache-Control": "no-store",
+          }).end();
+        } catch {
+          response.writeHead(400, headers).end("invalid observation");
+        }
+      });
+      return;
+    }
     if (url.pathname === "/browser-wasm-harness.html") {
       response.writeHead(200, {
         ...headers,
@@ -190,6 +272,17 @@ export async function createBrowserWasmServer({
         "Cache-Control": "no-cache",
       });
       response.end(HARNESS_JAVASCRIPT);
+      return;
+    }
+    if (url.pathname === "/browser-wasm-observed-compiler-worker.mjs") {
+      const compilerWorker = mappings.get("/compiler-worker.mjs") ??
+        path.join(root, "compiler-worker.mjs");
+      response.writeHead(200, {
+        ...headers,
+        "Content-Type": MIME_TYPES.get(".mjs"),
+        "Cache-Control": "no-store",
+      });
+      response.end(`${MEMORY_OBSERVER_PREFIX}\n${fs.readFileSync(compilerWorker, "utf8")}`);
       return;
     }
     if (url.pathname === "/browser-wasm-test-sw.js") {
@@ -234,6 +327,7 @@ export async function createBrowserWasmServer({
   return {
     origin: `http://127.0.0.1:${port}`,
     requests,
+    memoryObservations,
     assets,
     close: () => new Promise((resolve, reject) =>
       server.close((error) => error ? reject(error) : resolve()),

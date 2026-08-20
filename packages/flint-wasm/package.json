@@ -83,6 +83,8 @@
     "build": "node scripts/build.cjs",
     "test": "pnpm run build && node --expose-gc --test test/*.test.mjs",
     "test:browser": "pnpm run build && node test/browser-smoke.mjs",
+    "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
+    "test:browser:webkit-memory": "node test/browser-wasm-webkit-memory.mjs",
     "test:resource-browser": "pnpm run build && node test/resource-browser-smoke.mjs"
   },
   "dependencies": {

@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sage.js file-origin WebKit probe</title>
+<script type="module">
+  const result = {
+    protocol: location.protocol,
+    origin: location.origin,
+    crossOriginIsolated: globalThis.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer === "function",
+    directOuterWorker: false,
+    portableOuterWorker: false,
+    nestedWorker: false,
+  };
+
+  function portableWorkerBootstrap(target) {
+    const NativeWorker = globalThis.Worker;
+    const source = url => `(${portableWorkerBootstrap.toString()})(${JSON.stringify(url)});`;
+    globalThis.Worker = class PortableWorker extends NativeWorker {
+      constructor(url, options = {}) {
+        const resolved = new URL(String(url), globalThis.location.href);
+        if (resolved.protocol !== 'file:') return new NativeWorker(resolved, options);
+        const bootstrap = URL.createObjectURL(new Blob([source(resolved.href)], {
+          type: 'text/javascript',
+        }));
+        const worker = new NativeWorker(bootstrap, { ...options, type: 'module' });
+        URL.revokeObjectURL(bootstrap);
+        return worker;
+      }
+    };
+    return import(target);
+  }
+
+  function portableWorker(url) {
+    const bootstrap = URL.createObjectURL(new Blob([
+      `(${portableWorkerBootstrap.toString()})(${JSON.stringify(url.href)});`,
+    ], { type: 'text/javascript' }));
+    const worker = new Worker(bootstrap, { type: 'module' });
+    URL.revokeObjectURL(bootstrap);
+    return worker;
+  }
+
+  const workerUrl = new URL("./file-origin-worker.mjs", import.meta.url);
+  try {
+    const direct = new Worker(workerUrl, { type: "module" });
+    direct.onmessage = () => { result.directOuterWorker = true; };
+    direct.onerror = () => {};
+  } catch {}
+
+  try {
+    const worker = portableWorker(workerUrl);
+    worker.onmessage = ({ data }) => {
+      Object.assign(result, data);
+      result.portableOuterWorker = true;
+      globalThis.__sagejsFileOriginProbe = result;
+    };
+    worker.onerror = (event) => {
+      result.outerError = event.message;
+      globalThis.__sagejsFileOriginProbe = result;
+    };
+  } catch (error) {
+    result.outerError = error instanceof Error ? error.message : String(error);
+    globalThis.__sagejsFileOriginProbe = result;
+  }
+  setTimeout(() => {
+    globalThis.__sagejsFileOriginProbe ??= result;
+  }, 2000);
+</script>
