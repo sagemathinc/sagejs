@@ -142,17 +142,17 @@ import hashlib
 R.<x> = QQ[]
 K.<a> = NumberField(x^2 - 5)
 O = K.maximal_order()
-I = O.ideal(2)
+ideal = O.ideal(2)
 P = O.factor_rational_prime(5)[0][0]
 certificate = O.maximality_certificate()
-data = dumps([K, O, I, P, I, P, certificate])
+data = dumps([K, O, ideal, P, ideal, P, certificate])
 answer = loads(data)
 KK, OO, II, PP, II2, PP2, restored_certificate = answer
 print(hashlib.sha256(data).hexdigest())
 print(len(data), data[:8] == b'SAGEPK1\x00', dumps(loads(data)) == data)
 print(OO.number_field() is KK, II.ring() is OO, PP.ring() is OO)
 print(II2 is II, PP2 is PP, OO.is_maximal())
-print(II.basis_matrix() == I.basis_matrix(), II.norm() == I.norm())
+print(II.basis_matrix() == ideal.basis_matrix(), II.norm() == ideal.norm())
 print(PP.basis_matrix() == P.basis_matrix(), PP.rational_prime(), PP.ramification_index(), PP.residue_class_degree())
 print(restored_certificate == certificate, OO.maximality_certificate() == certificate, certificate['certified'])
 ```
