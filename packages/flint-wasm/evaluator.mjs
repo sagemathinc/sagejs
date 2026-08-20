@@ -45,8 +45,8 @@ function richDisplay(value) {
 }
 
 class CompilerWorker {
-  constructor(url) {
-    this.worker = new Worker(url, { type: "module" });
+  constructor(url, WorkerConstructor = globalThis.Worker) {
+    this.worker = new WorkerConstructor(url, { type: "module" });
     this.nextId = 0;
     this.pending = new Map();
     this.worker.onmessage = ({ data }) => {
@@ -82,8 +82,117 @@ class CompilerWorker {
   }
 
   terminate() {
+    if (!this.worker) return;
+    const error = new Error("Sage.js compiler worker was terminated");
+    for (const handlers of this.pending.values()) handlers.reject(error);
+    this.pending.clear();
     this.worker.terminate();
+    this.worker = undefined;
   }
+}
+
+export function normalizeBrowserPosixPath(value, cwd = "/") {
+  if (typeof value !== "string") throw new TypeError("path must be a string");
+  if (value.includes("\0")) throw new TypeError("path contains null bytes");
+  if (typeof cwd !== "string" || !cwd.startsWith("/")) {
+    throw new TypeError("cwd must be an absolute POSIX path");
+  }
+  const source = value.startsWith("/") ? value : `${cwd}/${value}`;
+  const components = [];
+  for (const component of source.split("/")) {
+    if (!component || component === ".") continue;
+    if (component === "..") components.pop();
+    else components.push(component);
+  }
+  return `/${components.join("/")}`;
+}
+
+function validateEnvironmentKey(key) {
+  if (typeof key !== "string") throw new TypeError("environment key must be a string");
+  if (key.length === 0) throw new TypeError("environment key must not be empty");
+  if (key.includes("=")) throw new TypeError("illegal environment variable name");
+  if (key.includes("\0")) throw new TypeError("environment key contains a null byte");
+  return key;
+}
+
+function validateEnvironmentValue(value) {
+  if (typeof value !== "string") throw new TypeError("environment value must be a string");
+  if (value.includes("\0")) throw new TypeError("environment value contains a null byte");
+  return value;
+}
+
+export function createBrowserEnvironment(initialEntries = []) {
+  const values = new Map();
+  for (const [key, value] of initialEntries) {
+    values.set(validateEnvironmentKey(key), validateEnvironmentValue(value));
+  }
+  const proxy = new Proxy(Object.create(null), {
+    get(_target, key) {
+      if (typeof key !== "string") return undefined;
+      return values.get(key);
+    },
+    set(_target, key, value) {
+      values.set(validateEnvironmentKey(key), validateEnvironmentValue(value));
+      return true;
+    },
+    deleteProperty(_target, key) {
+      values.delete(validateEnvironmentKey(key));
+      return true;
+    },
+    has(_target, key) {
+      return typeof key === "string" && values.has(key);
+    },
+    ownKeys() {
+      return [...values.keys()];
+    },
+    getOwnPropertyDescriptor(_target, key) {
+      if (typeof key !== "string" || !values.has(key)) return undefined;
+      return { configurable: true, enumerable: true, writable: true, value: values.get(key) };
+    },
+  });
+  return Object.freeze({
+    entries: () => [...values.entries()],
+    set: (key, value) => values.set(validateEnvironmentKey(key), validateEnvironmentValue(value)),
+    delete: (key) => values.delete(validateEnvironmentKey(key)),
+    proxy,
+  });
+}
+
+function createGlobalInstaller(target) {
+  const baseline = new Map(
+    Reflect.ownKeys(target).map((name) => [
+      name,
+      Object.getOwnPropertyDescriptor(target, name),
+    ]),
+  );
+  const originals = new Map();
+  return {
+    set(name, value) {
+      if (!originals.has(name)) originals.set(name, Object.getOwnPropertyDescriptor(target, name));
+      Object.defineProperty(target, name, { configurable: true, enumerable: false, writable: true, value });
+    },
+    restore(name) {
+      if (!originals.has(name)) return;
+      const descriptor = originals.get(name);
+      originals.delete(name);
+      if (descriptor === undefined) delete target[name];
+      else Object.defineProperty(target, name, descriptor);
+    },
+    restoreAll() {
+      for (const name of [...originals.keys()].reverse()) this.restore(name);
+      for (const name of Reflect.ownKeys(target)) {
+        if (
+          !baseline.has(name) &&
+          Object.getOwnPropertyDescriptor(target, name)?.configurable
+        ) {
+          delete target[name];
+        }
+      }
+      for (const [name, descriptor] of baseline) {
+        Object.defineProperty(target, name, descriptor);
+      }
+    },
+  };
 }
 
 /**
@@ -107,8 +216,36 @@ export async function instantiateSageEvaluator({
   treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
   pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
   sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+  WorkerConstructor = globalThis.Worker,
+  instantiateFlint = instantiateFlintFactor,
+  instantiateM4riBackend = instantiateM4ri,
+  importSymbolic = (url) => import(String(url)),
+  evaluateGlobal = globalThis.eval,
 }) {
-  const language = new CompilerWorker(compilerWorker);
+  const language = new CompilerWorker(compilerWorker, WorkerConstructor);
+  const globals = createGlobalInstaller(globalThis);
+  const abort = (error) => {
+    try {
+      globals.restoreAll();
+    } catch (cleanupError) {
+      if (error && typeof error === "object") error.cleanupError = cleanupError;
+    }
+    try {
+      language.terminate();
+    } catch (cleanupError) {
+      if (error && typeof error === "object" && !error.cleanupError) {
+        error.cleanupError = cleanupError;
+      }
+    }
+    throw error;
+  };
+  const installGlobal = (name, value) => {
+    try {
+      globals.set(name, value);
+    } catch (error) {
+      abort(error);
+    }
+  };
   let initializationResult;
   let flintBackend;
   let m4riBackend;
@@ -130,9 +267,9 @@ export async function instantiateSageEvaluator({
         pythonGrammar: String(pythonGrammar),
         sageGrammar: String(sageGrammar),
       }),
-      instantiateFlintFactor(flint, { algebraicSource: algebraic }),
-      instantiateM4ri(m4ri),
-      import(String(symbolic)),
+      instantiateFlint(flint, { algebraicSource: algebraic }),
+      instantiateM4riBackend(m4ri),
+      importSymbolic(symbolic),
     ]);
     if (nativeKernels !== undefined) {
       const manifestUrl = new URL(String(nativeKernels), import.meta.url);
@@ -161,8 +298,7 @@ export async function instantiateSageEvaluator({
       });
     }
   } catch (error) {
-    language.terminate();
-    throw error;
+    abort(error);
   }
   if (
     initializationResult === null ||
@@ -171,13 +307,15 @@ export async function instantiateSageEvaluator({
     initializationResult.lazyModules === null ||
     typeof initializationResult.lazyModules !== "object"
   ) {
-    language.terminate();
-    throw new TypeError("browser compiler returned an invalid initialization bundle");
+    abort(
+      new TypeError("browser compiler returned an invalid initialization bundle"),
+    );
   }
   const initialization = initializationResult.javascript;
   const lazyModules = initializationResult.lazyModules;
-  const globalEvaluate = globalThis.eval;
+  const globalEvaluate = evaluateGlobal;
   let outputHandler = (text) => console.log(text);
+  let errorHandler = (text) => console.error(text);
 
   const runtimeRequire = (name) => {
     if (name === "@sagemath/sagejs-flint") {
@@ -191,7 +329,7 @@ export async function instantiateSageEvaluator({
     }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
-  const browserEnvironment = new Map();
+  const browserEnvironment = createBrowserEnvironment();
   const serializationHost = Object.freeze({
     call(operation, args) {
       try {
@@ -212,18 +350,18 @@ export async function instantiateSageEvaluator({
           };
         }
         if (operation === "environmentEntries") {
-          return { ok: true, value: [...browserEnvironment.entries()] };
+          return { ok: true, value: browserEnvironment.entries() };
         }
         if (operation === "setEnv") {
-          browserEnvironment.set(String(args[0]), String(args[1]));
+          browserEnvironment.set(args[0], args[1]);
           return { ok: true, value: null };
         }
         if (operation === "deleteEnv") {
-          browserEnvironment.delete(String(args[0]));
+          browserEnvironment.delete(args[0]);
           return { ok: true, value: null };
         }
         if (operation === "getcwd" || operation === "realpath") {
-          return { ok: true, value: operation === "getcwd" ? "/" : String(args[0]) };
+          return { ok: true, value: operation === "getcwd" ? "/" : normalizeBrowserPosixPath(args[0]) };
         }
         if (operation === "cpuCount") {
           return { ok: true, value: navigator.hardwareConcurrency || 1 };
@@ -274,16 +412,16 @@ export async function instantiateSageEvaluator({
       }
     },
   });
-  globalThis.require = runtimeRequire;
-  globalThis.__sagejs_runtime_require__ = runtimeRequire;
-  globalThis.__sagejs_host__ = serializationHost;
+  installGlobal("require", runtimeRequire);
+  installGlobal("__sagejs_runtime_require__", runtimeRequire);
+  installGlobal("__sagejs_host__", serializationHost);
   if (wasmNativeResolver !== undefined) {
-    globalThis.__sagejs_wasm_native_resolver__ = wasmNativeResolver;
+    installGlobal("__sagejs_wasm_native_resolver__", wasmNativeResolver);
   }
-  globalThis.__sagejs_output_write__ = (text) => {
+  installGlobal("__sagejs_output_write__", (text) => {
     outputHandler(String(text));
-  };
-  globalThis.__sagejs_sage_mode__ = true;
+  });
+  installGlobal("__sagejs_sage_mode__", true);
   try {
     globalEvaluate(initialization);
   } catch (error) {
@@ -299,9 +437,9 @@ export async function instantiateSageEvaluator({
         .join("\n");
       error.message = `${error.message}\nBrowser initialization context:\n${context}`;
     }
-    throw error;
+    abort(error);
   }
-  delete globalThis.__sagejs_sage_mode__;
+  globals.restore("__sagejs_sage_mode__");
   const builtinsNamespace = globalThis.ρσ_modules?.builtins;
   if (builtinsNamespace) {
     for (const name of ["compile", "eval", "exec"]) {
@@ -310,28 +448,35 @@ export async function instantiateSageEvaluator({
       }
     }
   }
-  const browserStream = Object.freeze({
+  const stdoutStream = Object.freeze({
     isTTY: false,
     write(value) {
       outputHandler(String(value));
       return true;
     },
   });
-  globalThis.process = Object.freeze({
+  const stderrStream = Object.freeze({
+    isTTY: false,
+    write(value) {
+      errorHandler(String(value));
+      return true;
+    },
+  });
+  installGlobal("process", Object.freeze({
     argv: Object.freeze([]),
     cwd: () => "/",
-    env: Object.freeze(Object.create(null)),
+    env: browserEnvironment.proxy,
     execPath: "",
     platform: "browser",
     versions: Object.freeze(Object.create(null)),
-    stdin: browserStream,
-    stdout: browserStream,
-    stderr: browserStream,
-  });
+    stdin: stdoutStream,
+    stdout: stdoutStream,
+    stderr: stderrStream,
+  }));
   const lazyModuleName = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
   const precompiledFilenameMarker = "__sagejs_precompiled_module_filename__";
   const loadingLazyModules = new Set();
-  globalThis.__sagejs_load_module__ = function loadBrowserModule(name) {
+  installGlobal("__sagejs_load_module__", function loadBrowserModule(name) {
     if (typeof name !== "string" || !lazyModuleName.test(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
     }
@@ -390,14 +535,19 @@ export async function instantiateSageEvaluator({
       throw new Error(`lazy module ${name} did not register itself`);
     }
     return registry[name];
-  };
-  globalEvaluate('var __name__ = "__repl__";');
+  });
+  try {
+    globalEvaluate('var __name__ = "__repl__";');
+  } catch (error) {
+    abort(error);
+  }
 
   async function evaluateNow(
     source,
     {
       filename = "<browser>",
       onOutput = (text) => console.log(text),
+      onError = onOutput,
     } = {},
   ) {
     const javascript = await language.request("compile", {
@@ -405,8 +555,10 @@ export async function instantiateSageEvaluator({
       filename,
     });
     const previousOutputHandler = outputHandler;
+    const previousErrorHandler = errorHandler;
     const saveRequests = [];
     outputHandler = onOutput;
+    errorHandler = onError;
     globalThis.__sagejs_graphics_save_hook__ = (
       graphic,
       filename,
@@ -433,6 +585,7 @@ export async function instantiateSageEvaluator({
       };
     } finally {
       outputHandler = previousOutputHandler;
+      errorHandler = previousErrorHandler;
       delete globalThis.__sagejs_graphics_save_hook__;
     }
   }
@@ -446,6 +599,7 @@ export async function instantiateSageEvaluator({
 
   function terminate() {
     language.terminate();
+    globals.restoreAll();
   }
 
   return Object.freeze({ evaluate, terminate });
