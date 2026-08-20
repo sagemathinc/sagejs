@@ -261,14 +261,21 @@ function createArtifactManifest({ packageRoot, outputDirectory }) {
     }
   }
   capabilities.sort((left, right) => left.id.localeCompare(right.id));
-  const adapterInputs = JSON.parse(readFileSync(
-    join(packageRoot, "toolchain", "adapter-inputs.json"),
+  const ffiClosure = JSON.parse(readFileSync(
+    join(outputDirectory, "ffi-production-closure.json"),
     "utf8",
   ));
+  if (ffiClosure.schema !== "sagejs.ffi/wasm-production-closure-v1") {
+    throw new Error("unsupported generated WebAssembly FFI closure schema");
+  }
   const expectedCapabilities = [];
-  for (const module of Object.values(adapterInputs.modules)) {
-    expectedCapabilities.push(...module.resources.map((id) => `ffi-resource:${module.declaration}:${id}`));
-    expectedCapabilities.push(...module.functions.map((id) => `ffi:${module.declaration}:${id}`));
+  for (const library of ffiClosure.libraries) {
+    expectedCapabilities.push(...library.resources.map(
+      (id) => `ffi-resource:${library.library}:${id}`,
+    ));
+    expectedCapabilities.push(...library.functions.map(
+      (id) => `ffi:${library.library}:${id}`,
+    ));
   }
   assertSameSet(
     Object.values(capabilitySource.modules).flatMap(({ capabilities: ids }) => ids),

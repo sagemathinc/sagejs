@@ -6,12 +6,14 @@
   "lane": "distribution",
   "status": "active",
   "owner": "user",
-  "objective": "Resolve a pinned content-addressed CoWasm/WASI toolchain without ambient sibling discovery, validate generated-adapter inputs, and emit deterministic production module and build receipts",
-  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "objective": "Build the integrated generated, analytic, number-field, curve, algebraic, M4RI, and source-transparent kernel WebAssembly production closure with deterministic authenticated receipts",
+  "base_commit": "b9e34e7767b7104761151a7a41d1c0956006f5a8",
   "claims": [
     "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/scripts/build-compiler-frontend.cjs",
     "packages/flint-wasm/scripts/wasm-toolchain.cjs",
     "packages/flint-wasm/scripts/production-receipt.cjs",
+    "packages/flint-wasm/package.json",
     "packages/flint-wasm/toolchain/",
     "packages/flint-wasm/release/",
     "packages/flint-wasm/test/toolchain-resolution.test.cjs",
@@ -48,14 +50,14 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "Pinned CoWasm/WASI SDK and current native dependency versions behind an explicit content-addressed resolver, defined reviewed adapter and production module contracts, authenticated every deployed runtime asset, enforced finite Wasm memories, and emitted deterministic production manifests/build receipts with exact compiler and bundler source closure.",
+    "summary": "Integrated the all-declared FLINT/M4RI generated FFI closure, analytic, number-field, elliptic-curve, public Dirichlet, lazy algebraic, and source-transparent kernel modules into the pinned production build. The build emits five finite-memory Wasm artifacts, 43 authenticated runtime assets, 284 exact capabilities, and a deterministic manifest/receipt with complete C, compiler, bundle, and generated-kernel source closure.",
     "risks": [
-      "The complete package link needs root commit 394348c3 for the generated number-field cleanup initialization; warning policy was not weakened in this lane.",
-      "The browser bundle needs package-level declarations/install wiring for assert, buffer, events, path-browserify, process, stream-browserify, and util; this shared package manifest edit is left to integration."
+      "The all-declared FLINT closure is 5.00 MiB uncompressed, so the old proof-of-concept 2 MiB test ceiling must be replaced by the reviewed release payload budget.",
+      "Native differential tests require the platform addon to be built in the consuming worktree; browser/Wasm-only specialist tests passed here."
     ],
     "next_steps": [
-      "Integration lane should merge generatedWasmClosure consumption and the analytic/number-field/curve/kernel source and export arrays, fix the generated number-field header warning, add manual capability IDs/artifacts, then rerun the production build and browser release validator.",
-      "Integration package/CI wiring must ship release/*.json plus dist/production-manifest.json and dist/build-receipt.json and sign/attest the content-addressed artifact."
+      "Integration should update the old exact-five-resource assertion to the all-declared 11-resource surface and establish the first measured browser payload baseline.",
+      "Flip receipt-backed FFI, analytic, curve, algebraic, and complete-kernel inventory records to available, then run the mandatory browser parity/release workflows."
     ]
   }
 }

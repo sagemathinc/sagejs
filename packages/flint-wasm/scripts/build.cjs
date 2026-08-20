@@ -1,14 +1,15 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
+const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
+const { generatedWasmClosure } = require("../../../tools/ffi/wasm-closure.cjs");
 const {
-  generatedWasmResourceAdapter,
-} = require("../../../tools/ffi/wasm-adapters.cjs");
+  ellipticLseriesCoreSource,
+} = require("../src/curves/core-source.cjs");
 const {
   resolveToolchain,
 } = require("./wasm-toolchain.cjs");
@@ -47,6 +48,10 @@ const resourceManifestOutput = path.join(
   outputDirectory,
   "ffi-resource-manifest.json",
 );
+const ffiClosureOutput = path.join(
+  outputDirectory,
+  "ffi-production-closure.json",
+);
 const m4riRawOutput = path.join(
   outputDirectory,
   "m4ri-resource.unstripped.wasm",
@@ -64,10 +69,35 @@ const m4riManifestOutput = path.join(
   outputDirectory,
   "m4ri-resource-manifest.json",
 );
+const algebraicRawOutput = path.join(
+  outputDirectory,
+  "flint-algebraic.unstripped.wasm",
+);
+const algebraicOutput = path.join(outputDirectory, "flint-algebraic.wasm");
+const curveCoreOutput = path.join(
+  outputDirectory,
+  "elliptic-lseries-core.c",
+);
+const kernelBuildDirectory = path.join(outputDirectory, "kernel-pack-build");
+const kernelManifestOutput = path.join(
+  outputDirectory,
+  "native-kernels",
+  "index.json",
+);
+const wasmPackLoaderOutput = path.join(outputDirectory, "wasm-pack-loader.mjs");
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const compilerFrontendOutput = path.join(
   outputDirectory,
   "compiler-frontend.mjs",
+);
+const compilerFrontendBuildHelper = path.join(
+  packageRoot,
+  "scripts",
+  "build-compiler-frontend.cjs",
+);
+const compilerFrontendMetafile = path.join(
+  outputDirectory,
+  "compiler-frontend.metafile.json",
 );
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
@@ -121,9 +151,24 @@ const adapterInputsFilename = path.join(
   "adapter-inputs.json",
 );
 const adapterInputs = JSON.parse(fs.readFileSync(adapterInputsFilename, "utf8"));
-if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v1") {
+if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v2" ||
+    adapterInputs.policy !== "all-declared-wasm" ||
+    adapterInputs.modules === null ||
+    typeof adapterInputs.modules !== "object") {
   throw new Error(`unsupported generated-adapter input contract: ${adapterInputsFilename}`);
 }
+const adapterSelections = Object.entries(adapterInputs.modules).map(
+  ([module, entry]) => {
+    if (entry?.declaration !== module ||
+        typeof entry.ownershipDomain !== "string") {
+      throw new Error(`invalid generated-adapter selection ${module}`);
+    }
+    return {
+      library: entry.declaration,
+      ownershipDomain: entry.ownershipDomain,
+    };
+  },
+);
 const productionLayout = JSON.parse(fs.readFileSync(
   path.join(packageRoot, "release", "production-layout.json"),
   "utf8",
@@ -198,20 +243,23 @@ requirePath(
 
 fs.mkdirSync(outputDirectory, { recursive: true });
 
-const flintDeclaration = loadRegistry({ root: repositoryRoot }).byId.get(
+const registry = loadRegistry({ root: repositoryRoot });
+const generatedClosure = generatedWasmClosure(registry, {
+  selections: adapterSelections,
+  strict: true,
+});
+fs.writeFileSync(ffiClosureOutput, generatedClosure.manifestSource);
+
+const flintDeclaration = registry.byId.get(
   "flint",
 );
 if (flintDeclaration === undefined) {
   throw new Error("the generated FLINT FFI declaration is unavailable");
 }
-const flintAdapterInputs = adapterInputs.modules.flint;
-if (flintAdapterInputs?.declaration !== "flint") {
-  throw new Error("the FLINT production adapter input contract is missing");
+const resourceAdapter = generatedClosure.artifacts.get("flint");
+if (resourceAdapter === undefined) {
+  throw new Error("the generated FLINT production closure is empty");
 }
-const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
-  resourceIds: flintAdapterInputs.resources,
-  functionIds: flintAdapterInputs.functions,
-});
 fs.writeFileSync(resourceAdapterSource, resourceAdapter.cSource);
 fs.writeFileSync(
   resourceBackendOutput,
@@ -222,20 +270,16 @@ fs.writeFileSync(
 );
 fs.writeFileSync(resourceManifestOutput, resourceAdapter.manifestSource);
 
-const m4riDeclaration = loadRegistry({ root: repositoryRoot }).byId.get(
+const m4riDeclaration = registry.byId.get(
   "m4ri",
 );
 if (m4riDeclaration === undefined) {
   throw new Error("the generated M4RI FFI declaration is unavailable");
 }
-const m4riAdapterInputs = adapterInputs.modules.m4ri;
-if (m4riAdapterInputs?.declaration !== "m4ri") {
-  throw new Error("the M4RI production adapter input contract is missing");
+const m4riAdapter = generatedClosure.artifacts.get("m4ri");
+if (m4riAdapter === undefined) {
+  throw new Error("the generated M4RI production closure is empty");
 }
-const m4riAdapter = generatedWasmResourceAdapter(m4riDeclaration, {
-  resourceIds: m4riAdapterInputs.resources,
-  functionIds: m4riAdapterInputs.functions,
-});
 fs.writeFileSync(m4riAdapterSource, m4riAdapter.cSource);
 fs.writeFileSync(
   m4riBackendOutput,
@@ -245,6 +289,18 @@ fs.writeFileSync(
     ");\n",
 );
 fs.writeFileSync(m4riManifestOutput, m4riAdapter.manifestSource);
+
+const ellipticLseriesSource = path.join(
+  repositoryRoot,
+  "packages",
+  "flint",
+  "src",
+  "elliptic_lfunction.c",
+);
+fs.writeFileSync(
+  curveCoreOutput,
+  ellipticLseriesCoreSource(fs.readFileSync(ellipticLseriesSource, "utf8")),
+);
 
 const includeArguments = dependencies.flatMap(({ prefix }) => [
   "-isystem",
@@ -260,8 +316,15 @@ const flintLocalIncludeArguments = [
 const flintLinkedSources = [
   path.join(packageRoot, "src", "factor.c"),
   path.join(packageRoot, "src", "modsym.c"),
+  path.join(packageRoot, "src", "analytic.c"),
+  path.join(packageRoot, "src", "dirichlet-group.c"),
+  path.join(packageRoot, "src", "number-field-zeta.c"),
+  path.join(packageRoot, "src", "curves", "elliptic-lseries-adapter.c"),
+  curveCoreOutput,
   resourceAdapterSource,
+  path.join(repositoryRoot, "packages", "flint", "src", "analytic_batch_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "charpoly.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "number_field_zeta_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
   path.join(packageRoot, "src", "wasi-stubs.c"),
@@ -270,6 +333,104 @@ const m4riLocalIncludeArguments = [
   `-I${path.join(repositoryRoot, "packages", "m4ri", "include")}`,
 ];
 const m4riLinkedSources = [m4riAdapterSource];
+const analyticExports = [
+  "sagejs_analytic_input",
+  "sagejs_analytic_input_capacity",
+  "sagejs_analytic_max_input_capacity",
+  "sagejs_analytic_output",
+  "sagejs_analytic_output_capacity",
+  "sagejs_analytic_max_output_capacity",
+  "sagejs_analytic_output_length",
+  "sagejs_analytic_reserve",
+  "sagejs_analytic_release",
+  "sagejs_analytic_execute_request",
+];
+const numberFieldExports = [
+  "sagejs_nf_zeta_residue_begin",
+  "sagejs_nf_zeta_residue_input",
+  "sagejs_nf_zeta_residue_input_words",
+  "sagejs_nf_zeta_residue_output",
+  "sagejs_nf_zeta_residue_output_words",
+  "sagejs_nf_zeta_residue_compute",
+  "sagejs_nf_zeta_residue_clear",
+];
+const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
+const dirichletGroupExports = [...new Set(
+  [...fs.readFileSync(dirichletGroupHostSource, "utf8")
+    .matchAll(/"(sagejs_wasm_dirichlet_(?:group|character)_\w+)"/g)]
+    .map((match) => match[1]),
+)];
+if (dirichletGroupExports.length !== 23) {
+  throw new Error(
+    "the reviewed 23-function public Dirichlet Wasm export closure drifted",
+  );
+}
+const curveExports = [
+  "sagejs_wasm_ec_lseries_begin",
+  "sagejs_wasm_ec_lseries_clear",
+  "sagejs_wasm_ec_lseries_coefficients",
+  "sagejs_wasm_ec_lseries_point_text",
+  "sagejs_wasm_ec_lseries_point_offsets",
+  "sagejs_wasm_ec_lseries_conductor_text",
+  "sagejs_wasm_ec_lseries_compute",
+  "sagejs_wasm_ec_lseries_decimal_bytes",
+  "sagejs_wasm_ec_lseries_decimal_byte_count",
+  "sagejs_wasm_ec_lseries_decimal_offsets",
+  "sagejs_wasm_ec_lseries_decimal_offset_count",
+  "sagejs_wasm_ec_lseries_decimal_field_count",
+  "sagejs_wasm_ec_lseries_plot_values",
+  "sagejs_wasm_ec_lseries_plot_value_count",
+  "sagejs_wasm_ec_lseries_plot_stride",
+  "sagejs_wasm_ec_lseries_diagnostic",
+  "sagejs_wasm_ec_lseries_diagnostic_double",
+];
+const algebraicExports = [
+  "sagejs_wasm_algebraic_input",
+  "sagejs_wasm_algebraic_input_capacity",
+  "sagejs_wasm_algebraic_output",
+  "sagejs_wasm_algebraic_output_capacity",
+  "sagejs_wasm_algebraic_output_length",
+  "sagejs_wasm_algebraic_root_handles",
+  "sagejs_wasm_algebraic_root_multiplicities",
+  "sagejs_wasm_algebraic_result_count",
+  "sagejs_wasm_algebraic_result_handle",
+  "sagejs_wasm_algebraic_result_value",
+  "sagejs_wasm_algebraic_last_status",
+  "sagejs_wasm_algebraic_live_count",
+  "sagejs_wasm_algebraic_initialize",
+  "sagejs_wasm_algebraic_clear",
+  "sagejs_wasm_algebraic_close",
+  "sagejs_wasm_algebraic_from_rational",
+  "sagejs_wasm_algebraic_i",
+  "sagejs_wasm_algebraic_root_of_unity",
+  "sagejs_wasm_algebraic_unary",
+  "sagejs_wasm_algebraic_binary",
+  "sagejs_wasm_algebraic_pow",
+  "sagejs_wasm_algebraic_pow_rational",
+  "sagejs_wasm_algebraic_equal",
+  "sagejs_wasm_algebraic_compare_real",
+  "sagejs_wasm_algebraic_property",
+  "sagejs_wasm_algebraic_polynomial_roots",
+  "sagejs_wasm_algebraic_minpoly",
+  "sagejs_wasm_algebraic_enclosure",
+  "sagejs_wasm_algebraic_format",
+  "sagejs_wasm_algebraic_serialize",
+  "sagejs_wasm_algebraic_deserialize",
+];
+const algebraicLinkedSources = [
+  path.join(packageRoot, "src", "algebraic.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "algebraic_core.c"),
+  path.join(packageRoot, "src", "wasi-stubs.c"),
+];
+const declaredAlgebraicExports = [...fs.readFileSync(
+  algebraicLinkedSources[0],
+  "utf8",
+).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
+  .map((match) => match[1]);
+if (declaredAlgebraicExports.length !== 31 ||
+    declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
+  throw new Error("the reviewed 31-function algebraic Wasm export closure drifted");
+}
 const exportNames = [
   "sagejs_factor_input",
   "sagejs_factor_input_capacity",
@@ -317,9 +478,28 @@ const exportNames = [
   "sagejs_p1_cusp_count",
   "sagejs_p1_cusp_numerator",
   "sagejs_p1_cusp_denominator",
+  ...analyticExports,
+  ...dirichletGroupExports,
+  ...numberFieldExports,
+  ...curveExports,
   ...resourceAdapter.manifest.exports,
 ];
 
+const reuseLinkedArtifacts =
+  process.env.SAGEJS_WASM_REUSE_LINKED_ARTIFACTS === "1";
+let kernelPackReceiptInputs;
+if (reuseLinkedArtifacts) {
+  console.log("Reusing previously linked Wasm artifacts for packaging resume");
+  for (const [module, filename] of [
+    ["flint", output],
+    ["m4ri", m4riOutput],
+    ["algebraic", algebraicOutput],
+  ]) {
+    requirePath(`previously linked ${module} artifact`, filename);
+    verifyWasmMemoryContract(filename, productionModules.get(module).memory);
+  }
+  kernelPackReceiptInputs = buildKernelPacks({ reuseLinkedArtifacts: true });
+} else {
 run(clang, [
   ...toolchain.lock.build.cFlags,
   `--sysroot=${sysroot}`,
@@ -347,6 +527,8 @@ run(clang, [
   "-O2",
   "-isystem",
   path.join(m4riDependency.prefix, "include"),
+  "-isystem",
+  path.join(toolchain.paths.libraries.gmp.prefix, "include"),
   ...m4riLocalIncludeArguments,
   ...m4riLinkedSources,
   `-L${path.join(m4riDependency.prefix, "lib")}`,
@@ -360,6 +542,41 @@ run(clang, [
 run(wasmStrip, ["--strip-all", m4riRawOutput, "-o", m4riOutput]);
 fs.rmSync(m4riRawOutput);
 verifyWasmMemoryContract(m4riOutput, productionModules.get("m4ri").memory);
+run(clang, [
+  ...toolchain.lock.build.cFlags,
+  `--sysroot=${sysroot}`,
+  "-Oz",
+  ...includeArguments,
+  ...flintLocalIncludeArguments,
+  ...algebraicLinkedSources,
+  ...libraryArguments,
+  "-lflint",
+  "-lmpfr",
+  "-lgmp",
+  "-lm",
+  "-lwasi-emulated-signal",
+  ...algebraicExports.map((name) => `-Wl,--export=${name}`),
+  ...toolchain.lock.build.linkFlags,
+  "-o",
+  algebraicRawOutput,
+]);
+run(wasmStrip, ["--strip-all", algebraicRawOutput, "-o", algebraicOutput]);
+fs.rmSync(algebraicRawOutput);
+verifyWasmMemoryContract(
+  algebraicOutput,
+  productionModules.get("algebraic").memory,
+);
+kernelPackReceiptInputs = buildKernelPacks();
+}
+const browserPolyfills = {
+  assert: require.resolve("assert/"),
+  buffer: require.resolve("buffer/"),
+  events: require.resolve("events/"),
+  path: require.resolve("path-browserify"),
+  process: require.resolve("process/browser"),
+  stream: require.resolve("stream-browserify"),
+  util: require.resolve("util/"),
+};
 const wasiRuntimeBuild = esbuild.buildSync({
   absWorkingDir: repositoryRoot,
   entryPoints: [path.join(packageRoot, "src", "wasi-runtime.mjs")],
@@ -369,15 +586,7 @@ const wasiRuntimeBuild = esbuild.buildSync({
   target: ["es2022"],
   outfile: wasiRuntimeOutput,
   inject: [path.join(packageRoot, "src", "node-globals.mjs")],
-  alias: {
-    assert: "assert",
-    buffer: "buffer",
-    events: "events",
-    path: "path-browserify",
-    process: "process",
-    stream: "stream-browserify",
-    util: "util",
-  },
+  alias: browserPolyfills,
   metafile: true,
 });
 const symbolicBackendBuild = esbuild.buildSync({
@@ -404,33 +613,17 @@ const serializationBuild = esbuild.buildSync({
   minify: true,
   metafile: true,
 });
-const compilerFrontendBuild = esbuild.buildSync({
-  absWorkingDir: repositoryRoot,
-  entryPoints: [
-    path.join(packageRoot, "src", "compiler-frontend-entry.ts"),
-  ],
-  bundle: true,
-  format: "esm",
-  platform: "browser",
-  target: ["es2022"],
-  outfile: compilerFrontendOutput,
-  alias: {
-    path: require.resolve("path-browserify", { paths: [packageRoot] }),
-  },
-  // web-tree-sitter contains guarded Node fallbacks. They are unreachable in
-  // a browser worker but must remain unresolved dynamic imports in the bundle.
-  external: ["fs/promises", "module"],
-  plugins: [{
-    name: "sagejs-browser-compiler-resources",
-    setup(build) {
-      build.onResolve(
-        { filter: /^\.\.\/(?:resources|utils)$/ },
-        () => ({ path: compilerResourceShim }),
-      );
-    },
-  }],
-  metafile: true,
-});
+run(process.execPath, [
+  compilerFrontendBuildHelper,
+  path.join(packageRoot, "src", "compiler-frontend-entry.ts"),
+  compilerFrontendOutput,
+  compilerResourceShim,
+  require.resolve("path-browserify", { paths: [packageRoot] }),
+  compilerFrontendMetafile,
+]);
+const compilerFrontendBuild = {
+  metafile: JSON.parse(fs.readFileSync(compilerFrontendMetafile, "utf8")),
+};
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
 for (const filename of [
@@ -456,63 +649,20 @@ function pythonSources(directory) {
   return sources.sort();
 }
 
-function compilerCacheFilename(sourceFilename) {
-  return (
-    sourceFilename
-      .replaceAll("\\", "/")
-      .replace(/[<>:"|?*\x00-\x1f]/g, "-")
-      .replaceAll("/", "-")
-      .replace(/^-+/, "") + ".json"
-  );
-}
-
-function sourceFilenameForModule(name) {
-  const base = path.join(
-    standardLibrarySourceDirectory,
-    ...name.split("."),
-  );
-  for (const filename of [`${base}.py`, path.join(base, "__init__.py")]) {
-    if (fs.existsSync(filename)) return filename;
-  }
-  throw new Error(`source for browser module ${name} does not exist`);
-}
-
 function compileBrowserModuleCache(name) {
   const output = path.join(standardLibraryCacheDirectory, `${name}.json`);
-  const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), "sagejs-browser-module-"),
+  const cacheRoot = path.join(repositoryRoot, "dist", "module-cache");
+  const generated = [
+    path.join(cacheRoot, `${name}.json`),
+    path.join(cacheRoot, `${name.replaceAll(".", "-")}.json`),
+  ].find((filename) => fs.existsSync(filename)) ??
+    path.join(cacheRoot, `${name}.json`);
+  requirePath(
+    `compiled browser module ${name} (run \`pnpm build\` first)`,
+    generated,
   );
-  try {
-    const result = spawnSync(
-      process.execPath,
-      [
-        path.join(repositoryRoot, "bin", "sagejs"),
-        "compile",
-        "--sage",
-        "--omit-baselib",
-        "--cache-dir",
-        temporary,
-      ],
-      {
-        cwd: repositoryRoot,
-        encoding: "utf8",
-        input: `import ${name}\n`,
-        stdio: ["pipe", "ignore", "inherit"],
-      },
-    );
-    if (result.error) throw result.error;
-    if (result.status !== 0) process.exit(result.status ?? 1);
-    const source = sourceFilenameForModule(name);
-    const generated = path.join(
-      temporary,
-      compilerCacheFilename(source),
-    );
-    requirePath(`compiled browser module ${name}`, generated);
-    fs.mkdirSync(standardLibraryCacheDirectory, { recursive: true });
-    fs.copyFileSync(generated, output);
-  } finally {
-    fs.rmSync(temporary, { recursive: true, force: true });
-  }
+  fs.mkdirSync(standardLibraryCacheDirectory, { recursive: true });
+  fs.copyFileSync(generated, output);
 }
 
 for (const name of browserAdditionalModules) {
@@ -556,6 +706,13 @@ fs.copyFileSync(
   plotlyOutput,
 );
 const plotlySource = require.resolve("plotly.js-dist-min/plotly.min.js");
+const wasmPackLoaderSource = path.join(
+  repositoryRoot,
+  "tools",
+  "native-kernel",
+  "wasm-pack-loader.mjs",
+);
+fs.copyFileSync(wasmPackLoaderSource, wasmPackLoaderOutput);
 const runtimeHostClosure = runtimeHostAssets(productionLayout, packageRoot);
 for (const asset of runtimeHostClosure) {
   const destination = path.join(outputDirectory, asset.path);
@@ -590,8 +747,15 @@ const receipt = writeProductionReceipt({
     ...compilerDependencyClosure(m4riLinkedSources, [
       "-isystem",
       path.join(m4riDependency.prefix, "include"),
+      "-isystem",
+      path.join(toolchain.paths.libraries.gmp.prefix, "include"),
       ...m4riLocalIncludeArguments,
     ]),
+    ...compilerDependencyClosure(algebraicLinkedSources, [
+      ...includeArguments,
+      ...flintLocalIncludeArguments,
+    ]),
+    ...kernelPackReceiptInputs,
     ...esbuildInputClosure([
       wasiRuntimeBuild,
       symbolicBackendBuild,
@@ -600,15 +764,19 @@ const receipt = writeProductionReceipt({
     ]),
     compilerSource,
     baselibSource,
+    compilerFrontendBuildHelper,
     ...["web-tree-sitter.wasm", "tree-sitter-python.wasm", "tree-sitter-sage.wasm"]
       .map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
     ...standardLibraryReceiptInputs,
     plotlySource,
+    wasmPackLoaderSource,
     flintDeclaration.filename,
     flintDeclaration.sourceFilename,
     m4riDeclaration.filename,
     m4riDeclaration.sourceFilename,
+    ellipticLseriesSource,
+    require.resolve("../src/curves/core-source.cjs"),
     ...Object.keys(require.cache).filter((filename) =>
       filename.startsWith(path.join(repositoryRoot, "tools", "ffi") + path.sep)
     ),
@@ -620,7 +788,9 @@ function compilerDependencyClosure(sources, arguments_) {
   const files = new Set();
   for (const source of sources) {
     const result = spawnSync(clang, [
-      ...toolchain.lock.build.cFlags,
+      ...toolchain.lock.build.cFlags.filter(
+        (flag) => !flag.startsWith("-mexec-model="),
+      ),
       `--sysroot=${sysroot}`,
       ...arguments_,
       "-MM",
@@ -652,4 +822,174 @@ function esbuildInputClosure(results) {
     }
   }
   return [...files].sort();
+}
+
+function sha256File(filename) {
+  return createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
+}
+
+function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
+  fs.rmSync(kernelBuildDirectory, { recursive: true, force: true });
+  if (!reuseLinkedArtifacts) {
+    fs.rmSync(path.dirname(kernelManifestOutput), {
+      recursive: true,
+      force: true,
+    });
+  }
+  const builder = path.join(
+    repositoryRoot,
+    "tools",
+    "native-kernel",
+    "wasm-production-pack.cjs",
+  );
+  run(process.execPath, [
+    builder,
+    "--emit-only",
+    "--output",
+    kernelBuildDirectory,
+    "--manifest",
+    path.join(repositoryRoot, "architecture", "native-kernels.json"),
+  ]);
+  const generatedIndex = path.join(kernelBuildDirectory, "index.json");
+  const manifest = JSON.parse(fs.readFileSync(generatedIndex, "utf8"));
+  const reviewedCapabilities = JSON.parse(fs.readFileSync(
+    path.join(packageRoot, "release", "production-capabilities.json"),
+    "utf8",
+  ));
+  const generatedSources = [];
+  const compatibilitySource = path.join(
+    kernelBuildDirectory,
+    "wasi-compat.c",
+  );
+  fs.writeFileSync(compatibilitySource, [
+    "#include <stdlib.h>",
+    "__attribute__((weak)) int kill(int pid, int signal)",
+    "{",
+    "    (void) pid;",
+    "    (void) signal;",
+    "    abort();",
+    "}",
+    "",
+  ].join("\n"));
+  generatedSources.push(compatibilitySource);
+  for (const pack of manifest.packs) {
+    if (!new Set(["flint", "gmp"]).has(pack.domain)) {
+      throw new Error(`unsupported production kernel domain ${pack.domain}`);
+    }
+    const kernels = manifest.kernels.filter((kernel) => kernel.domain === pack.domain);
+    const sources = kernels.flatMap((kernel) => {
+      const directory = path.join(
+        kernelBuildDirectory,
+        "sources",
+        kernel.moduleIdentity,
+      );
+      return [
+        path.join(directory, "kernel_core.c"),
+        path.join(directory, "wasm_bridge.c"),
+      ];
+    });
+    const compatibilitySources = pack.domain === "flint"
+      ? [path.join(packageRoot, "src", "wasi-stubs.c")]
+      : [];
+    generatedSources.push(
+      ...sources,
+      ...compatibilitySources,
+      ...kernels.map((kernel) => path.join(
+        kernelBuildDirectory,
+        "sources",
+        kernel.moduleIdentity,
+        "kernel_core.h",
+      )),
+    );
+    const exports = kernels.flatMap((kernel) =>
+      kernel.functions
+        .filter((fn) => fn.status === "compiled-source")
+        .map((fn) => fn.bridge.export)
+    ).sort();
+    const module = productionModules.get(`kernel-${pack.domain}`);
+    const raw = path.join(outputDirectory, `kernel-${pack.domain}.unstripped.wasm`);
+    const output = path.join(outputDirectory, module.artifact);
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    const prefixes = pack.domain === "flint"
+      ? dependencies.map(({ prefix }) => prefix)
+      : [toolchain.paths.libraries.gmp.prefix];
+    const libraries = pack.domain === "flint"
+      ? ["flint", "mpfr", "gmp", "m", "wasi-emulated-signal"]
+      : ["gmp", "m", "wasi-emulated-signal"];
+    if (!reuseLinkedArtifacts) {
+      run(clang, [
+      ...toolchain.lock.build.cFlags,
+      // Whole generated cores intentionally retain alternate lowering helpers
+      // which are not reachable from the reviewed bridge export subset.
+      "-Wno-unused-function",
+      "-Wno-unused-variable",
+      "-Wno-unused-but-set-variable",
+      "-Wno-unused-label",
+      "-Wno-unused-parameter",
+      `--sysroot=${sysroot}`,
+      "-O2",
+      "-D_WASI_EMULATED_SIGNAL",
+      ...prefixes.flatMap((prefix) => ["-isystem", path.join(prefix, "include")]),
+      `-I${path.join(repositoryRoot, "packages", "flint", "include")}`,
+      ...sources,
+      ...compatibilitySources,
+      compatibilitySource,
+      ...prefixes.map((prefix) => `-L${path.join(prefix, "lib")}`),
+      ...libraries.map((library) => `-l${library}`),
+      ...exports.map((name) => `-Wl,--export=${name}`),
+      ...toolchain.lock.build.linkFlags,
+      "-o",
+      raw,
+      ]);
+      run(wasmStrip, ["--strip-all", raw, "-o", output]);
+      fs.rmSync(raw);
+    } else {
+      requirePath(`previously linked kernel-${pack.domain} artifact`, output);
+    }
+    verifyWasmMemoryContract(output, module.memory);
+    Object.assign(pack, {
+      status: "built",
+      asset: path.basename(module.artifact),
+      bytes: fs.statSync(output).size,
+      sha256: sha256File(output),
+      exports,
+    });
+
+    const fullyCompiled = kernels
+      .filter((kernel) =>
+        kernel.functions.length > 0 &&
+        kernel.functions.every((fn) => fn.status === "compiled-source")
+      )
+      .map((kernel) => `kernel:${kernel.id}`)
+      .sort();
+    const receipted = [
+      ...(reviewedCapabilities.modules[`kernel-${pack.domain}`]
+        ?.additionalCapabilities ?? []),
+    ].sort();
+    if (JSON.stringify(fullyCompiled) !== JSON.stringify(receipted)) {
+      throw new Error(
+        `reviewed kernel-${pack.domain} receipt capabilities do not match ` +
+        `the complete compiled pack kernels: expected ${fullyCompiled.join(", ")}; ` +
+        `received ${receipted.join(", ")}`,
+      );
+    }
+  }
+  fs.mkdirSync(path.dirname(kernelManifestOutput), { recursive: true });
+  fs.writeFileSync(kernelManifestOutput, `${JSON.stringify(manifest, null, 2)}\n`);
+  const dependencyProbe = spawnSync(process.execPath, [
+    "-e",
+    `require(${JSON.stringify(builder)});process.stdout.write(JSON.stringify(Object.keys(require.cache)))`,
+  ], { cwd: repositoryRoot, encoding: "utf8" });
+  if (dependencyProbe.error) throw dependencyProbe.error;
+  if (dependencyProbe.status !== 0) {
+    throw new Error(`unable to enumerate kernel generator inputs: ${dependencyProbe.stderr}`);
+  }
+  const generatorInputs = JSON.parse(dependencyProbe.stdout)
+    .filter((filename) => filename.startsWith(`${repositoryRoot}${path.sep}`));
+  return [
+    ...generatedSources,
+    ...generatorInputs,
+    path.join(repositoryRoot, "architecture", "native-kernels.json"),
+    ...manifest.kernels.map((kernel) => path.join(repositoryRoot, kernel.source)),
+  ];
 }

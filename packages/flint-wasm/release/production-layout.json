@@ -22,6 +22,39 @@
         "initialPages": 256,
         "maximumPages": 8192
       }
+    },
+    {
+      "id": "algebraic",
+      "ownershipDomain": "flint-gmp-mpfr-arb-algebraic",
+      "artifact": "flint-algebraic.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 256,
+        "maximumPages": 8192
+      }
+    },
+    {
+      "id": "kernel-flint",
+      "ownershipDomain": "source-kernel-flint",
+      "artifact": "native-kernels/kernel-flint.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 256,
+        "maximumPages": 8192
+      }
+    },
+    {
+      "id": "kernel-gmp",
+      "ownershipDomain": "source-kernel-gmp",
+      "artifact": "native-kernels/kernel-gmp.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 256,
+        "maximumPages": 8192
+      }
     }
   ],
   "hostAssets": [
@@ -32,6 +65,9 @@
     "symbolic-backend.mjs",
     "serialization.mjs",
     "wasi-runtime.mjs",
+    "ffi-production-closure.json",
+    "native-kernels/index.json",
+    "wasm-pack-loader.mjs",
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",
     "tree-sitter-sage.wasm"
