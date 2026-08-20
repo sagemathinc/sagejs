@@ -64,12 +64,14 @@ function latestTreeSitterMemory(observations, contract) {
       ...memory,
       phase: observation.phase,
     })),
-  ).filter((memory) =>
-    memory.initialPages === contract.initialPages &&
-    memory.maximumPages === contract.maximumPages,
-  );
+  ).filter((memory) => memory.initialPages === contract.initialPages);
   assert.ok(matches.length > 0, "WebKit did not instantiate the declared Tree-sitter memory");
   for (const memory of matches) {
+    assert.equal(
+      memory.maximumPages,
+      contract.maximumPages,
+      `Tree-sitter instantiated with a ${memory.maximumPages}-page maximum instead of ${contract.maximumPages}`,
+    );
     assert.equal(memory.shared, false);
     assert.ok(Number.isInteger(memory.currentPages));
     assert.ok(memory.currentPages >= contract.initialPages);
@@ -162,10 +164,10 @@ try {
   await waitForMemoryObservation(
     server,
     (observation) => observation.memories?.some((memory) =>
-      memory.initialPages === contract.initialPages &&
-      memory.maximumPages === contract.maximumPages,
+      memory.initialPages === contract.initialPages
     ),
   );
+  latestTreeSitterMemory(server.memoryObservations, contract);
 
   const paddingLength = LARGE_SOURCE_BYTES - 80;
   const largeSource = `payload = "${"x".repeat(paddingLength)}"\nprint(len(payload))`;
