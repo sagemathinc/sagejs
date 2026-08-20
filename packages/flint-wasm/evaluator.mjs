@@ -13,7 +13,7 @@ import {
 import {
   dumps as serializationDumps,
   loads as serializationLoads,
-  pack as serializationPack,
+  packPython as serializationPack,
   unpack as serializationUnpack,
 } from "./dist/serialization.mjs";
 import { createSagejsCapabilityAPI } from "./dist/wasm-capability-api.mjs";

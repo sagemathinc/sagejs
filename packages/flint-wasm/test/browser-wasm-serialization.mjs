@@ -6,6 +6,7 @@ import {
 } from "./browser-wasm-support.mjs";
 import {
   pack,
+  packPython,
   unpack,
 } from "../dist/serialization.mjs";
 
@@ -48,6 +49,18 @@ try {
     "browser-to-node",
     new Uint8Array([255, 127, 1, 0]),
   ]);
+
+  assert.deepEqual(
+    packPython([1, -2, 3]),
+    packPython([1n, -2n, 3n]),
+  );
+  assert.equal(await page.evaluate(async () => {
+    const serialization = await import("/dist/serialization.mjs");
+    const numbers = serialization.packPython([1, -2, 3]);
+    const bigints = serialization.packPython([1n, -2n, 3n]);
+    return numbers.length === bigints.length &&
+      numbers.every((value, index) => value === bigints[index]);
+  }), true);
 
   await page.waitForFunction(() => window.__sagejsReady !== undefined);
   await page.evaluate(() => window.__sagejsReady);

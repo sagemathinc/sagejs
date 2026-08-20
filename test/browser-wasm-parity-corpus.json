@@ -142,7 +142,7 @@
       "source": "from sagejs_serialization import dumps, loads\nimport hashlib\nR.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nI = O.ideal(2)\nP = O.factor_rational_prime(5)[0][0]\ncertificate = O.maximality_certificate()\ndata = dumps([K, O, I, P, I, P, certificate])\nanswer = loads(data)\nKK, OO, II, PP, II2, PP2, restored_certificate = answer\nprint(hashlib.sha256(data).hexdigest())\nprint(len(data), data[:8] == b'SAGEPK1\\x00', dumps(loads(data)) == data)\nprint(OO.number_field() is KK, II.ring() is OO, PP.ring() is OO)\nprint(II2 is II, PP2 is PP, OO.is_maximal())\nprint(II.basis_matrix() == I.basis_matrix(), II.norm() == I.norm())\nprint(PP.basis_matrix() == P.basis_matrix(), PP.rational_prime(), PP.ramification_index(), PP.residue_class_degree())\nprint(restored_certificate == certificate, OO.maximality_certificate() == certificate, certificate['certified'])",
       "timeout_ms": 60000,
       "expect": {
-        "stdout": "6cea789c69fe30e6c9f6a43faf41aa87d37ef72dd5f8eed66b4a9d2d1913b6a2\n7011 True True\nTrue True True\nTrue True True\nTrue True\nTrue 5 2 1\nTrue True True\n",
+        "stdout": "71cf3e6f0ccfe3bd520208d67dfc7e57c0e2ac02051098f7aab09b2cee696eab\n7233 True True\nTrue True True\nTrue True True\nTrue True\nTrue 5 2 1\nTrue True True\n",
         "repr": ""
       }
     },

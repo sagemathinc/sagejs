@@ -72,6 +72,18 @@ test("serialization v1 preserves graphs, exact integers, and binary blocks", () 
     crypto.createHash("sha256").update(golden).digest("hex"),
     "2b59445078b740f189739a7d239b6ac16864e245f1aafb550723408b9a390e02",
   );
+
+  // Python's small-int optimization is host dependent: portable arithmetic
+  // may produce a Number where a native resource produces a BigInt.  The
+  // Python boundary canonicalizes both without changing the typed JS API.
+  assert.deepEqual(
+    serialization.packPython([1, -2, 3]),
+    serialization.packPython([1n, -2n, 3n]),
+  );
+  assert.notDeepEqual(
+    serialization.pack([1, -2, 3]),
+    serialization.pack([1n, -2n, 3n]),
+  );
 });
 
 test("exact polynomial compact bytes reject noncanonical values", () => {
