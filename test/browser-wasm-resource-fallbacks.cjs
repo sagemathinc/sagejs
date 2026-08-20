@@ -60,3 +60,52 @@ test("integer row selection falls back when the generated selector is absent", a
     await session.close();
   }
 });
+
+test("rational matrix operations fall back independently of resource storage", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate([
+      "import sagejs.runtime as rt",
+      "backend = rt.flint_backend()",
+      "inverse_function = rt.reflect.get(backend, 'ffiFmpqMatrixInv')",
+      "solve_function = rt.reflect.get(backend, 'ffiFmpqMatrixSolve')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpqMatrixInv')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpqMatrixSolve')",
+      "try:",
+      "    polynomial_ring = PolynomialRing(QQ, 'x')",
+      "    x = polynomial_ring.gen()",
+      "    K = NumberField(x^2 - 5, 'a')",
+      "    basis = K.equation_order().basis_matrix()",
+      "    basis_ok = basis.det() == 1 and basis*basis.inverse() == identity_matrix(QQ, 2)",
+      "    large = 2^521 + 17",
+      "    A = matrix(QQ, [[QQ(large, 97), -QQ(13, 2^257 + 93)], [QQ(5, 7), QQ(2^1024 + 3, 11)]])",
+      "    right = matrix(QQ, [[QQ(2^509 + 29, 89)], [-QQ(19, 23)]])",
+      "    inverse = A.inverse()",
+      "    solution = A.solve_right(right)",
+      "    identity_ok = A*inverse == identity_matrix(QQ, 2)",
+      "    solution_ok = A*solution == right",
+      "    singular = matrix(QQ, [[QQ(1, 2), QQ(1, 3)], [1, QQ(2, 3)]])",
+      "    singular_inverse = False",
+      "    try:",
+      "        singular.inverse()",
+      "    except ZeroDivisionError:",
+      "        singular_inverse = True",
+      "    consistent = matrix(QQ, [[QQ(5, 7)], [QQ(10, 7)]])",
+      "    consistent_solution = singular.solve_right(consistent)",
+      "    consistent_ok = singular*consistent_solution == consistent",
+      "    inconsistent = False",
+      "    try:",
+      "        singular.solve_right(vector(QQ, [QQ(5, 7), QQ(11, 7)]))",
+      "    except ValueError:",
+      "        inconsistent = True",
+      "    answer = [basis_ok, identity_ok, solution_ok, singular_inverse, consistent_ok, inconsistent]",
+      "finally:",
+      "    rt.reflect.set(backend, 'ffiFmpqMatrixInv', inverse_function)",
+      "    rt.reflect.set(backend, 'ffiFmpqMatrixSolve', solve_function)",
+      "answer",
+    ].join("\n"));
+    assert.equal(result.repr, "[True, True, True, True, True, True]");
+  } finally {
+    await session.close();
+  }
+});

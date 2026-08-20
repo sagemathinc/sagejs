@@ -67,6 +67,14 @@ class _FmpqMatrixResourceStorage:
         self.denominators: Any = runtime.undefined
 
 
+class _SingularPackedRationalMatrix(Exception):
+    """Signal a mathematically singular packed rational inverse."""
+
+
+class _NonuniquePackedRationalSolve(Exception):
+    """Signal that the square packed solve has no unique solution."""
+
+
 class _M4riMatrixResourceStorage:
     """Own one generated M4RI binary-matrix resource.
 
@@ -129,6 +137,12 @@ def _flint_ffi_module() -> Any:
     if _flint_ffi_module_cache is runtime.undefined:
         _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
     return _flint_ffi_module_cache
+
+
+def _flint_backend_has_function(name: str) -> bool:
+    """Test one optional generated FLINT operation without caching it."""
+    candidate = runtime.reflect.get(runtime.flint_backend(), name)
+    return runtime.jstype(candidate) == "function"
 
 
 def _m4ri_ffi_module() -> Any:
@@ -6526,12 +6540,14 @@ class Matrix(sage.Element):
             raise ArithmeticError("matrix must be square")
         if self._inverse_cache is not runtime.undefined:
             return self._inverse_cache.__copy__()
-        if self._has_fmpq_matrix_resource():
+        if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpqMatrixInv"
+        ):
             try:
                 resource = _flint_ffi_module().fmpq_matrix_inv(
                     self._rational_resource()
                 )
-            except Exception:
+            except ValueError:
                 raise ZeroDivisionError(  # noqa: B904
                     "matrix must be nonsingular"
                 )
@@ -6551,22 +6567,27 @@ class Matrix(sage.Element):
                 output_numerators: Any,
                 output_denominators: Any,
             ) -> None:
-                kernel(
-                    output_numerators,
-                    output_denominators,
-                    source_numerators,
-                    source_denominators,
-                    self.nrows(),
-                )
+                try:
+                    inverted = kernel(
+                        output_numerators,
+                        output_denominators,
+                        source_numerators,
+                        source_denominators,
+                        self.nrows(),
+                    )
+                except ValueError:
+                    raise _SingularPackedRationalMatrix  # noqa: B904
+                if not inverted:
+                    raise _SingularPackedRationalMatrix
 
             try:
                 storage = _run_rational_output(
                     kernel,
                     self.nrows() * self.ncols(),
                     invoke_rational_inverse,
-                    self._rational_capacity() + 1,
+                    (self._rational_capacity() + 1) * max(1, self.nrows()) + 1,
                 )
-            except Exception:
+            except _SingularPackedRationalMatrix:
                 raise ZeroDivisionError(  # noqa: B904
                     "matrix must be nonsingular"
                 )
@@ -6702,6 +6723,8 @@ class Matrix(sage.Element):
             and self._has_fmpz_matrix_resource()
             and right_matrix._has_fmpz_matrix_resource()
             and self.is_square()
+            and _flint_backend_has_function("ffiFmpqMatrixFromFmpz")
+            and _flint_backend_has_function("ffiFmpqMatrixSolve")
         ):
             ffi = _flint_ffi_module()
             rational_left = runtime.undefined
@@ -6743,6 +6766,7 @@ class Matrix(sage.Element):
         if (
             left_matrix._has_fmpq_matrix_resource()
             and right_matrix._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSolve")
         ):
             try:
                 resource = _flint_ffi_module().fmpq_matrix_solve(
@@ -6761,7 +6785,7 @@ class Matrix(sage.Element):
                     right_matrix.ncols(),
                 )
                 return solution.column(0) if vector_result else solution
-            except Exception:
+            except ValueError:
                 raise ValueError(  # noqa: B904
                     "matrix equation has no solutions"
                 )
@@ -6782,26 +6806,35 @@ class Matrix(sage.Element):
                 output_numerators: Any,
                 output_denominators: Any,
             ) -> None:
-                kernel(
-                    output_numerators,
-                    output_denominators,
-                    left_numerators,
-                    left_denominators,
-                    right_numerators,
-                    right_denominators,
-                    left_matrix.nrows(),
-                    right_matrix.ncols(),
-                )
+                try:
+                    solved = kernel(
+                        output_numerators,
+                        output_denominators,
+                        left_numerators,
+                        left_denominators,
+                        right_numerators,
+                        right_denominators,
+                        left_matrix.nrows(),
+                        right_matrix.ncols(),
+                    )
+                except ValueError:
+                    raise _NonuniquePackedRationalSolve  # noqa: B904
+                if not solved:
+                    raise _NonuniquePackedRationalSolve
 
             try:
                 storage = _run_rational_output(
                     kernel,
                     left_matrix.ncols() * right_matrix.ncols(),
                     invoke_rational_solve,
-                    max(
-                        left_matrix._rational_capacity(),
-                        right_matrix._rational_capacity(),
+                    (
+                        max(
+                            left_matrix._rational_capacity(),
+                            right_matrix._rational_capacity(),
+                        )
+                        + 1
                     )
+                    * max(1, left_matrix.nrows())
                     + 1,
                 )
                 solution = MatrixSpace(
@@ -6822,7 +6855,7 @@ class Matrix(sage.Element):
                     right_matrix.ncols(),
                 )
                 return solution.column(0) if vector_result else solution
-            except Exception:
+            except _NonuniquePackedRationalSolve:
                 pass
         if (
             left_matrix._has_m4ri_matrix_resource()
