@@ -209,6 +209,93 @@ function applyRecipeOverrides(cowasmRoot, lock) {
   }
 }
 
+function applyWorkspaceLockRepair(cowasmRoot, lock) {
+  const filename = join(cowasmRoot, "pnpm-lock.yaml");
+  let source = readFileSync(filename, "utf8");
+  const actual = sha256Bytes(source);
+  if (actual !== lock.cowasm.pnpmLockSha256) {
+    throw new Error(
+      `the pinned CoWasm workspace lock digest ${actual} != ${lock.cowasm.pnpmLockSha256}`,
+    );
+  }
+  source = replaceExactly(
+    source,
+    "  python/py-mpmath:\n",
+    "  python/py-meson:\n" +
+      "    devDependencies:\n" +
+      "      '@cowasm/cpython':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../cpython\n" +
+      "      '@cowasm/kernel':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../core/kernel\n\n" +
+      "  python/py-mpmath:\n",
+    "python/py-meson frozen-lock importer",
+  );
+  source = replaceExactly(
+    source,
+    "  python/py-numpy:\n",
+    "  python/py-ninja: {}\n\n  python/py-numpy:\n",
+    "python/py-ninja frozen-lock importer",
+  );
+  source = replaceExactly(
+    source,
+    "  sagemath/combinatorial-designs:\n" +
+      "    devDependencies:\n" +
+      "      '@cowasm/boost-cropped':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../boost-cropped\n",
+    "  sagemath/combinatorial-designs:\n    devDependencies:\n",
+    "sagemath/combinatorial-designs frozen-lock importer",
+  );
+  source = replaceExactly(
+    source,
+    "      '@cowasm/gsl':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../gsl\n" +
+      "      '@cowasm/libpng':\n",
+    "      '@cowasm/gsl':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../gsl\n" +
+      "      '@cowasm/libcxx':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../core/libcxx\n" +
+      "      '@cowasm/libpng':\n",
+    "sagemath/sagelib libcxx frozen-lock dependency",
+  );
+  source = replaceExactly(
+    source,
+    "      '@cowasm/py-numpy':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../python/py-numpy\n" +
+      "      '@cowasm/py-platformdirs':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../python/py-platformdirs\n\n" +
+      "  sagemath/sirocco:\n",
+    "      '@cowasm/py-numpy':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../python/py-numpy\n" +
+      "      '@cowasm/py-packaging':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../python/py-packaging\n" +
+      "      '@cowasm/py-platformdirs':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../../python/py-platformdirs\n" +
+      "      '@cowasm/rw':\n" +
+      "        specifier: workspace:*\n" +
+      "        version: link:../rw\n\n" +
+      "  sagemath/sirocco:\n",
+    "sagemath/sagelib Python and rw frozen-lock dependencies",
+  );
+  const repaired = sha256Bytes(source);
+  if (repaired !== lock.cowasm.preparedPnpmLockSha256) {
+    throw new Error(
+      `the repaired CoWasm workspace lock digest ${repaired} != ${lock.cowasm.preparedPnpmLockSha256}`,
+    );
+  }
+  writeFileSync(filename, source);
+}
+
 function installCowasmWrappers(cowasmRoot, lock) {
   const bin = join(cowasmRoot, "bin");
   mkdirSync(bin, { recursive: true });
@@ -377,6 +464,7 @@ function prepareToolchain({ root = repositoryRoot } = {}) {
         throw new Error(`the locked dependency overrides failed:\n${overriddenProblems.join("\n")}`);
       }
     }
+    applyWorkspaceLockRepair(temporary, lock);
     installCowasmWrappers(temporary, lock);
     for (const [command, ...arguments_] of lock.build.prepareTargets) {
       runChecked(command, arguments_, temporary);

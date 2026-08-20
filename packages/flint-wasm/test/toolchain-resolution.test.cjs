@@ -34,6 +34,9 @@ test("the committed toolchain lock is complete and content addressed", () => {
   const lock = loadToolchainLock();
   assert.equal(lock.schema, "sagejs.wasm-toolchain-lock/v1");
   assert.match(lock.cowasm.revision, /^[0-9a-f]{40}$/);
+  assert.match(lock.cowasm.pnpmLockSha256, /^[0-9a-f]{64}$/);
+  assert.match(lock.cowasm.preparedPnpmLockSha256, /^[0-9a-f]{64}$/);
+  assert.notEqual(lock.cowasm.pnpmLockSha256, lock.cowasm.preparedPnpmLockSha256);
   assert.equal(lock.wasiSdk.version, "33.0");
   assert.equal(lock.libraries.flint.version, "3.6.0");
   assert.equal(lock.libraries.m4ri.version, "20260122");

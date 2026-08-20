@@ -11,10 +11,12 @@
     "cowasm": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "revision"],
+      "required": ["repository", "revision", "pnpmLockSha256", "preparedPnpmLockSha256"],
       "properties": {
         "repository": { "type": "string", "format": "uri" },
-        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "pnpmLockSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "preparedPnpmLockSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "wasiSdk": {

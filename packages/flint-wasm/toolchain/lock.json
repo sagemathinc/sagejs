@@ -3,7 +3,9 @@
   "schema": "sagejs.wasm-toolchain-lock/v1",
   "cowasm": {
     "repository": "https://github.com/sagemathinc/cowasm.git",
-    "revision": "cd512732d002f6e5447143c963dbc59950908266"
+    "revision": "cd512732d002f6e5447143c963dbc59950908266",
+    "pnpmLockSha256": "7ed6cb273173983fbd4753699af8c0fde5977a1e92b5e1cccbf0bfc040f26b38",
+    "preparedPnpmLockSha256": "2503408762c8199fcda78318f0a4c36b61f5dcb277d8d52fc712c0334bc082fd"
   },
   "wasiSdk": {
     "version": "33.0",
