@@ -101,6 +101,42 @@ static double execute_one(
     return first_real(output, output_length);
 }
 
+static double execute_jet(
+    const char *real,
+    uint32_t first_order,
+    uint32_t count,
+    int deflate)
+{
+    uint8_t input[128];
+    uint8_t output[8192];
+    size_t input_length = 0;
+    size_t output_length = 0;
+    sagejs_analytic_request request = {
+        SAGEJS_ANALYTIC_PROTOCOL_VERSION,
+        SAGEJS_ANALYTIC_RIEMANN_ZETA_JET,
+        1,
+        160,
+        0,
+        first_order,
+        count,
+        deflate ? SAGEJS_ANALYTIC_FLAG_DEFLATE : 0,
+        0,
+        0,
+        0
+    };
+    append_component(input, &input_length, real);
+    append_component(input, &input_length, "0");
+    assert(sagejs_analytic_execute(
+        &request,
+        input,
+        input_length,
+        output,
+        sizeof(output),
+        &output_length) == SAGEJS_ANALYTIC_OK);
+    assert(u32(output + 8) == count);
+    return first_real(output, output_length);
+}
+
 int main(void)
 {
     assert(sagejs_analytic_input_capacity() == 0);
@@ -134,12 +170,20 @@ int main(void)
     double completion = execute_one(
         SAGEJS_ANALYTIC_QUADRATIC_COMPLETION_VALUES,
         "2", "0", 0, 0, 5, 0, "1", "0");
+    double zeta_derivative = execute_jet("2", 1, 1, 0);
+    double deflated_at_pole = execute_jet("1", 0, 1, 1);
+    double xi_two = execute_one(
+        SAGEJS_ANALYTIC_RIEMANN_XI_VALUES,
+        "2", "0", 0, 0, 0, 0, NULL, NULL);
 
     assert(fabs(zeta_two - 1.6449340668482264365) < 1e-14);
     assert(fabs(gamma_half - 1.7724538509055160273) < 1e-14);
     assert(fabs(l_two - 0.70621140325974096993) < 1e-14);
     assert(fabs(quadratic - zeta_two * l_two) < 1e-14);
     assert(fabs(completion - 5.0 / (M_PI * M_PI)) < 1e-14);
+    assert(fabs(zeta_derivative - (-0.93754825431584375370)) < 1e-14);
+    assert(fabs(deflated_at_pole - 0.57721566490153286061) < 1e-14);
+    assert(fabs(xi_two - M_PI / 6.0) < 1e-14);
 
     /* The shared core rejects trailing bytes rather than ignoring a host bug. */
     {
