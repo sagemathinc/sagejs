@@ -18,7 +18,10 @@ const source = path.resolve(
   process.env.SAGEJS_WASM_ARTIFACT ??
     path.join(appRoot, '..', '..', 'packages', 'flint-wasm'),
 );
-const destination = path.join(appRoot, 'assets', 'runtime');
+const destination = path.resolve(
+  process.env.SAGEJS_MOBILE_ASSET_DESTINATION ??
+    path.join(appRoot, 'assets', 'runtime'),
+);
 const shell = path.join(appRoot, 'runtime-shell');
 
 const { production, receiptPath } = await verifySource(source);

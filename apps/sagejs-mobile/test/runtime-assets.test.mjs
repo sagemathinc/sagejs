@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
 import {
   HOST_FILES,
@@ -13,6 +15,7 @@ import {
 } from '../scripts/runtime-assets-lib.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
+const execute = promisify(execFile);
 
 test('accepts only a production artifact attested by its exact receipt', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sagejs-mobile-assets-'));
@@ -46,6 +49,60 @@ test('accepts only a production artifact attested by its exact receipt', async (
     await assert.rejects(verifySource(root), /does not match/);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('copies and verifies the complete attested offline closure end to end', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sagejs-mobile-source-'));
+  const destination = await mkdtemp(
+    path.join(os.tmpdir(), 'sagejs-mobile-destination-'),
+  );
+  try {
+    await mkdir(path.join(root, 'dist'), { recursive: true });
+    const bytes = Buffer.from('wasm-fixture');
+    await writeFile(path.join(root, 'dist', 'engine.wasm'), bytes);
+    const artifact = {
+      schema: PRODUCTION_SCHEMA,
+      identity: `sha256:${digest(bytes)}`,
+      layout: { modules: [] },
+      assets: [
+        { path: 'engine.wasm', bytes: bytes.length, sha256: digest(bytes) },
+      ],
+    };
+    await writeFile(
+      path.join(root, 'dist', 'production-manifest.json'),
+      JSON.stringify(artifact),
+    );
+    await writeFile(
+      path.join(root, 'dist', 'build-receipt.json'),
+      JSON.stringify({ schema: RECEIPT_SCHEMA, artifact }),
+    );
+    for (const filename of HOST_FILES) {
+      await writeFile(path.join(root, filename), 'export {};\n');
+    }
+    await execute(process.execPath, ['scripts/prepare-runtime-assets.mjs'], {
+      cwd: new URL('..', import.meta.url),
+      env: {
+        ...process.env,
+        SAGEJS_WASM_ARTIFACT: root,
+        SAGEJS_MOBILE_ASSET_DESTINATION: destination,
+      },
+    });
+    await execute(
+      process.execPath,
+      ['scripts/verify-runtime-assets.mjs', destination],
+      { cwd: new URL('..', import.meta.url) },
+    );
+    const manifest = JSON.parse(
+      await readFile(path.join(destination, 'asset-manifest.json'), 'utf8'),
+    );
+    assert.equal(manifest.productionIdentity, artifact.identity);
+    assert(
+      manifest.assets.some(asset => asset.path === 'sagejs/dist/engine.wasm'),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(destination, { recursive: true, force: true });
   }
 });
 
