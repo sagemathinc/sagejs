@@ -2317,6 +2317,7 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint-wasm/evaluator.mjs",
         "packages/flint/test/elliptic-native.cjs"
       ],
       "declared_ffi": null
