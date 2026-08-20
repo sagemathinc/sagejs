@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Add a real Playwright WebKit memory-pressure, interruption, reset, and recovery gate for the production Sage WebAssembly kernel under the 384 MiB Tree-sitter contract",
-  "base_commit": "7f56e43bc13018344f3cd6df8b8cf51cc46f1068",
+  "base_commit": "b4fa8d1f5eface1475dff43c5acafa3ed31473db",
   "claims": [
     "packages/flint-wasm/test/",
     "packages/flint-wasm/package.json",
