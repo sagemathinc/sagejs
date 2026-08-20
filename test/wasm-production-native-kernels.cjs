@@ -113,6 +113,21 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
   }
 });
 
+test("runtime bootstrap consults a preloaded Wasm resolver before Node lookup", () => {
+  const source = readFileSync(join(root, "tools", "runtime-bootstrap.ts"), "utf8");
+  const resolver = source.indexOf("__sagejs_wasm_native_resolver__");
+  const nodeFallback = source.indexOf(
+    'if (typeof internalRequire !== "function") return null;',
+  );
+  assert.ok(resolver >= 0, "runtime has no WebAssembly native resolver hook");
+  assert.ok(
+    nodeFallback > resolver,
+    "browser resolver must run before the optional Node native path",
+  );
+  assert.match(source, /nativeLogicalSourceKey\(filename\)/);
+  assert.match(source, /\[logicalSourceKey, name\]/);
+});
+
 const clang = process.env.SAGEJS_WASI_CLANG;
 const sysroot = process.env.SAGEJS_WASI_SYSROOT;
 const gmpPrefix = process.env.SAGEJS_WASM_GMP_PREFIX;

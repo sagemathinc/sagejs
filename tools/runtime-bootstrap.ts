@@ -446,7 +446,6 @@ export function runRuntimeBootstrap(
       requestedNativeMode === "dynamic" ||
       (requestedNativeMode === "auto" &&
         process.env.SAGEJS_NATIVE_AUTOLOAD === "0") ||
-      typeof internalRequire !== "function" ||
       typeof filename !== "string" ||
       !filename ||
       typeof name !== "string" ||
@@ -454,6 +453,25 @@ export function runRuntimeBootstrap(
     ) {
       return null;
     }
+    const wasmResolver = Reflect.get(
+      globalThis,
+      "__sagejs_wasm_native_resolver__",
+    );
+    const logicalSourceKey = nativeLogicalSourceKey(filename);
+    if (
+      logicalSourceKey !== undefined &&
+      wasmResolver !== null &&
+      typeof wasmResolver === "object" &&
+      typeof Reflect.get(wasmResolver, "resolve") === "function"
+    ) {
+      const candidate = Reflect.apply(
+        Reflect.get(wasmResolver, "resolve"),
+        wasmResolver,
+        [logicalSourceKey, name],
+      );
+      if (usableNativeCandidate(candidate)) return candidate;
+    }
+    if (typeof internalRequire !== "function") return null;
     const sourcePath = nativeSourcePath(filename);
     const sourceHash = nativeSourceHash(sourcePath);
     if (sourceHash === undefined) return null;
