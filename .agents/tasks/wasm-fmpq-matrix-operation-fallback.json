@@ -4,7 +4,7 @@
   "id": "wasm-fmpq-matrix-operation-fallback",
   "title": "Wasm Fmpq Matrix Operation Fallback",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Route exact rational matrix inverse and solve through packed kernels when optional generated resource operations are absent, preserving singular and consistent-system semantics",
   "base_commit": "2e28f4b0076be9458c9d2db66aac37d827ea17a0",
@@ -44,6 +44,16 @@
       "started_at": "2026-08-20T10:03:45.143Z",
       "commit": "2e28f4b0076be9458c9d2db66aac37d827ea17a0",
       "workspace_fingerprint": "23cd2303a046c28682800255e4935334e12f7b08e8641aaa4a73130b37f89c83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.789,
+      "started_at": "2026-08-20T10:04:42.939Z",
+      "commit": "4660e1fc5a8914a75529f7b7979ff0ab652b242e",
+      "workspace_fingerprint": "7276a4ab907437b15da4c3d9668581a873582cf0fc67745b94a56222e0773629",
       "platform": "linux-x64"
     }
   ],
