@@ -14,7 +14,7 @@ K.zeta_function().coefficients(80)`,
     id: "elliptic-lseries",
     title: "Elliptic curve L-series",
     description: "Evaluate an elliptic-curve L-series at a batch of complex points.",
-    source: `E = EllipticCurve([1, 2, 3, 4, 999])
+    source: `E = EllipticCurve([0, 0, 1, -1, 0])
 L = E.lseries()
 values = L.values([1 + k*I/10 for k in range(30)], digits=6)
 list(zip(range(30), values))`,
@@ -23,7 +23,7 @@ list(zip(range(30), values))`,
     id: "complex-plot",
     title: "Complex L-series plot",
     description: "Plot the phase and magnitude of L(E,s); sampling is automatically batched.",
-    source: `E = EllipticCurve([1, 2, 3, 4, 999])
+    source: `E = EllipticCurve([0, 0, 1, -1, 0])
 L = E.lseries()
 complex_plot(L, (0, 2), (-4, 4), plot_points=100,
              interpolation='nearest')`,
