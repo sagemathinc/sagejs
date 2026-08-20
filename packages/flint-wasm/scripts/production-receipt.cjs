@@ -15,6 +15,9 @@ const {
   canonicalJson,
   toolchainReceiptIdentity,
 } = require("./wasm-toolchain.cjs");
+const {
+  lazyModuleReceiptInputs,
+} = require("../../../scripts/lazy-module-provenance.cjs");
 
 const receiptSchema = "sagejs.wasm-build-receipt/v1";
 const artifactSchema = "sagejs.wasm-production-artifact/v1";
@@ -137,8 +140,10 @@ function filesUnder(root, filename, { ignored = new Set() } = {}) {
 }
 
 function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
+  const lazyInputs = lazyModuleSourceInputs(repositoryRoot, packageRoot);
   const roots = [
     ...sourceInputs,
+    ...lazyInputs,
     join(packageRoot, "scripts", "build.cjs"),
     join(packageRoot, "scripts", "production-receipt.cjs"),
     join(packageRoot, "scripts", "wasm-toolchain.cjs"),
@@ -162,6 +167,22 @@ function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
     bytes += contents.byteLength;
   }
   return { sha256: hash.digest("hex"), files: unique.size, bytes };
+}
+
+function lazyModuleSourceInputs(repositoryRoot, packageRoot) {
+  const candidates = [
+    join(packageRoot, "dist", "lazy-modules.json"),
+    join(repositoryRoot, "dist", "lazy-modules.json"),
+  ];
+  const bundleFilename = candidates.find((filename) => existsSync(filename));
+  if (bundleFilename === undefined) return [];
+  let bundle;
+  try {
+    bundle = JSON.parse(readFileSync(bundleFilename, "utf8"));
+  } catch {
+    throw new Error(`invalid production lazy-module bundle: ${bundleFilename}`);
+  }
+  return lazyModuleReceiptInputs(repositoryRoot, bundle);
 }
 
 function currentGitCommit(repositoryRoot) {
@@ -376,6 +397,7 @@ module.exports = {
   artifactFiles,
   artifactSchema,
   createArtifactManifest,
+  lazyModuleSourceInputs,
   receiptSchema,
   runtimeHostAssets,
   sourceClosure,
