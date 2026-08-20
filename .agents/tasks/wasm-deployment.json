@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-deployment",
+  "title": "Wasm Deployment",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide a fail-closed Cloudflare Pages preview and production deployment path for the receipt-authenticated Sage.js live app, with static contract tests and exact external activation documentation",
+  "base_commit": "2463c68dc34d70ffd0a42c3dc941d924e98ea394",
+  "claims": [
+    ".github/workflows/wasm-deploy-cloudflare.yml",
+    "docs/webassembly-cloudflare-deployment.md",
+    "test/wasm-deployment-workflow.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [
+    "wasm-live-app"
+  ],
+  "references": [
+    "agents/webassembly-production-parity-and-apps-plan.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "static workflow contract tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.689,
+      "started_at": "2026-08-20T05:54:16.836Z",
+      "commit": "2463c68dc34d70ffd0a42c3dc941d924e98ea394",
+      "workspace_fingerprint": "e984db5462c1bd112eb9fa1e55359b02a1661aa3f7f9b816cd197f965d0993f7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a fail-closed, receipt-authenticated Cloudflare Pages workflow for protected preview and production deployments, registered static workflow contract tests, and documented the dedicated-origin threat model and one-time activation procedure. Focused tests, YAML parsing, formatting, and a clean 48-file portable run passed.",
+    "risks": [
+      "Cloudflare credentials and DNS authority were unavailable; app.sagejs.org did not resolve on 2026-08-20, so no remote deployment is claimed.",
+      "A later broad test:changed invocation was interrupted during pnpm build at the coordinator's request to avoid competing with the production reactor build; this temporarily invalidated ignored generated compiler output in only this worktree after the clean portable pass."
+    ],
+    "next_steps": [
+      "Configure the protected GitHub environments, Cloudflare project and custom domain, then run one preview and one production deployment from a successful WebAssembly release run.",
+      "Preserve both new manifest entries when integrating concurrent test/node-test-manifest.cjs changes."
+    ]
+  }
+}
