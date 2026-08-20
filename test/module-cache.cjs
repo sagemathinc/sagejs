@@ -261,9 +261,10 @@ try {
   assert.ok(!materialized.javascript.includes(filenameMarker));
 
   const dynamicProgram = [
-    "namespace = {'input_value': 41}",
-    "exec('answer = input_value + 1', namespace)",
+    "namespace = {'input_value': 41, 'α': 7}",
+    "exec('answer = input_value + 1; beta = α + 1', namespace)",
     "print(namespace['answer'])",
+    "print(namespace['beta'])",
     "",
   ].join("\n");
   for (let index = 0; index < 2; index += 1) {
@@ -272,7 +273,7 @@ try {
         env: { SAGEJS_DYNAMIC_CACHE_DIR: dynamicCache },
         input: dynamicProgram,
       }),
-      "42",
+      "42\n8",
     );
   }
   assert.equal(filesBelow(dynamicCache).length, 1);
