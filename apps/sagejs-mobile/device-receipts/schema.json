@@ -3,26 +3,73 @@
   "$id": "https://sagejs.org/schemas/mobile-device-feasibility-v1.json",
   "title": "Sage.js mobile physical-device feasibility receipt",
   "type": "object",
-  "required": ["schema", "recordedAt", "gitCommit", "artifactIdentity", "device", "checks", "measurements", "testFlight"],
+  "required": [
+    "schema",
+    "recordedAt",
+    "gitCommit",
+    "artifactIdentity",
+    "device",
+    "runtimeEnvironment",
+    "checks",
+    "measurements",
+    "testFlight"
+  ],
   "properties": {
-    "schema": {"const": "sagejs.mobile-device-feasibility/v1"},
-    "recordedAt": {"type": "string", "format": "date-time"},
-    "gitCommit": {"type": "string", "minLength": 40, "maxLength": 64},
-    "artifactIdentity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "schema": { "const": "sagejs.mobile-device-feasibility/v1" },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "gitCommit": { "type": "string", "minLength": 40, "maxLength": 64 },
+    "artifactIdentity": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
     "device": {
       "type": "object",
       "required": ["family", "model", "osVersion", "physical"],
       "properties": {
-        "family": {"enum": ["iphone", "ipad"]},
-        "model": {"type": "string"},
-        "osVersion": {"type": "string"},
-        "physical": {"const": true}
+        "family": { "enum": ["iphone", "ipad"] },
+        "model": { "type": "string" },
+        "osVersion": { "type": "string" },
+        "physical": { "const": true }
       },
       "additionalProperties": false
     },
-    "checks": {"type": "object"},
-    "measurements": {"type": "object"},
-    "testFlight": {"enum": ["not-submitted", "submitted", "approved", "rejected"]}
+    "runtimeEnvironment": {
+      "type": "object",
+      "required": [
+        "status",
+        "assetOrigin",
+        "scheme",
+        "host",
+        "crossOriginIsolated",
+        "sharedArrayBuffer",
+        "workerTopology",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "blocked"] },
+        "assetOrigin": { "enum": ["loopback-http", "unobserved"] },
+        "scheme": { "enum": ["http", "unobserved"] },
+        "host": { "enum": ["127.0.0.1", "unobserved"] },
+        "crossOriginIsolated": { "type": ["boolean", "null"] },
+        "sharedArrayBuffer": { "type": ["boolean", "null"] },
+        "workerTopology": {
+          "type": "object",
+          "required": ["outer", "compiler"],
+          "properties": {
+            "outer": { "enum": ["dedicated-module-worker", "unobserved"] },
+            "compiler": { "enum": ["nested-module-worker", "unobserved"] }
+          },
+          "additionalProperties": false
+        },
+        "evidence": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "checks": { "type": "object" },
+    "measurements": { "type": "object" },
+    "testFlight": {
+      "enum": ["not-submitted", "submitted", "approved", "rejected"]
+    }
   },
   "additionalProperties": false
 }

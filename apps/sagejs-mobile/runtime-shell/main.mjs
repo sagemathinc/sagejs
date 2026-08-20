@@ -75,7 +75,15 @@ async function start() {
   post('runtime.ready', {
     engineVersion: 'bundled',
     assetVersion,
-    workerTopology: 'nested',
+    assetOrigin: 'loopback-http',
+    assetScheme: location.protocol.slice(0, -1),
+    assetHost: location.hostname,
+    crossOriginIsolated: globalThis.crossOriginIsolated === true,
+    sharedArrayBuffer: typeof globalThis.SharedArrayBuffer === 'function',
+    workerTopology: {
+      outer: 'dedicated-module-worker',
+      compiler: 'nested-module-worker',
+    },
     capabilities: ['offline', 'interrupt', 'graphics', 'persistent-session'],
   });
   post('runtime.telemetry', {

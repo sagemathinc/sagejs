@@ -289,9 +289,9 @@ export function SageJSMobileApp() {
               lifecycle={lifecycle}
               onWorksheetChanged={updateSource}
               onShareRequest={onShareRequest}
-              onRuntimeReady={identity => {
+              onRuntimeReady={runtimeEvidence => {
                 setRuntimeReady(true);
-                setRuntimeIdentity(identity);
+                setRuntimeIdentity(runtimeEvidence.assetVersion);
               }}
               onRuntimeError={message => report(new Error(message))}
               onProcessRecovery={() => {

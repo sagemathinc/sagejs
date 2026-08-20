@@ -47,7 +47,15 @@ export interface BridgeMessage<T extends string, P> {
 export interface RuntimeReadyPayload {
   engineVersion: string;
   assetVersion: string;
-  workerTopology: 'nested' | 'sibling' | 'unknown';
+  assetOrigin: 'loopback-http';
+  assetScheme: 'http';
+  assetHost: '127.0.0.1';
+  crossOriginIsolated: boolean;
+  sharedArrayBuffer: boolean;
+  workerTopology: {
+    outer: 'dedicated-module-worker';
+    compiler: 'nested-module-worker';
+  };
   capabilities: string[];
 }
 
@@ -146,13 +154,27 @@ function validPayload(type: string, payload: Record<string, unknown>): boolean {
       hasOnlyKeys(payload, [
         'engineVersion',
         'assetVersion',
+        'assetOrigin',
+        'assetScheme',
+        'assetHost',
+        'crossOriginIsolated',
+        'sharedArrayBuffer',
         'workerTopology',
         'capabilities',
       ]) &&
       isSafeString(payload.engineVersion, 128) &&
       isSafeString(payload.assetVersion, 128) &&
-      ['nested', 'sibling', 'unknown'].includes(
-        String(payload.workerTopology),
+      payload.assetOrigin === 'loopback-http' &&
+      payload.assetScheme === 'http' &&
+      payload.assetHost === '127.0.0.1' &&
+      typeof payload.crossOriginIsolated === 'boolean' &&
+      typeof payload.sharedArrayBuffer === 'boolean' &&
+      isObject(payload.workerTopology) &&
+      hasOnlyKeys(payload.workerTopology, ['outer', 'compiler']) &&
+      payload.workerTopology.outer === 'dedicated-module-worker' &&
+      payload.workerTopology.compiler === 'nested-module-worker' &&
+      !Object.values(payload).some(
+        value => typeof value === 'string' && value.includes('/'),
       ) &&
       Array.isArray(payload.capabilities) &&
       payload.capabilities.length <= 512 &&

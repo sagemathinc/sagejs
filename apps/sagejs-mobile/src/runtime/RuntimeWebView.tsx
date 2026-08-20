@@ -19,6 +19,7 @@ const PortableWebView = WebView as unknown as React.ComponentType<
 import {
   decodeWebMessage,
   encodeNativeMessage,
+  type RuntimeReadyPayload,
   type RuntimeSettings,
   type ShareRequestPayload,
   type WorksheetSnapshot,
@@ -46,7 +47,7 @@ interface Props {
   lifecycle: 'active' | 'inactive' | 'background';
   onWorksheetChanged(source: string, revision: number): void;
   onShareRequest(payload: ShareRequestPayload): void;
-  onRuntimeReady(assetVersion: string): void;
+  onRuntimeReady(payload: RuntimeReadyPayload): void;
   onRuntimeError(message: string): void;
   onProcessRecovery(): void;
 }
@@ -115,7 +116,7 @@ export const RuntimeWebView = forwardRef<RuntimeWebViewHandle, Props>(
         }
         const { message } = result;
         if (message.type === 'runtime.ready') {
-          props.onRuntimeReady(message.payload.assetVersion);
+          props.onRuntimeReady(message.payload);
           post(
             encodeNativeMessage(
               'host.bootstrap',

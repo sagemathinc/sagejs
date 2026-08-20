@@ -1,0 +1,131 @@
+name: Sage.js mobile simulator builds
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/sagejs-mobile/**"
+      - "packages/flint-wasm/**"
+      - ".github/workflows/mobile-simulators.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/sagejs-mobile/**"
+      - "packages/flint-wasm/**"
+      - ".github/workflows/mobile-simulators.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-simulators-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  iphone-ipad:
+    name: Exact runtime on iPhone and iPad simulators
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: toolchain
+        run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-cowasm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/flint-wasm/release/toolchain-lock.json') }}
+      - name: Build and attest the exact browser runtime
+        run: |
+          node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - name: Prepare and independently verify the signed mobile closure
+        run: |
+          pnpm --dir apps/sagejs-mobile install --frozen-lockfile --ignore-workspace
+          pnpm --dir apps/sagejs-mobile assets:prepare
+          pnpm --dir apps/sagejs-mobile assets:verify
+          pnpm --dir apps/sagejs-mobile typecheck
+          pnpm --dir apps/sagejs-mobile test
+          pnpm --dir apps/sagejs-mobile test:contracts
+      - name: Install iOS native dependencies
+        working-directory: apps/sagejs-mobile
+        run: |
+          bundle config set path vendor/bundle
+          bundle install --jobs 4 --retry 3
+          bundle exec pod install --project-directory=ios
+      - id: destinations
+        name: Select installed iPhone and iPad simulator destinations
+        run: |
+          xcrun simctl list devices available -j | node -e '
+            const fs = require("fs");
+            const parsed = JSON.parse(fs.readFileSync(0, "utf8"));
+            const devices = Object.values(parsed.devices).flat();
+            for (const [key, match] of [["iphone", /^iPhone /], ["ipad", /^iPad /]]) {
+              const device = devices.find(value => value.isAvailable && match.test(value.name));
+              if (!device) throw new Error(`no available ${key} simulator`);
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}_id=${device.udid}\n${key}_name=${device.name}\n`);
+            }
+          '
+      - name: Compile exact-asset iPhone simulator application
+        working-directory: apps/sagejs-mobile
+        run: |
+          set -o pipefail
+          mkdir -p build
+          bundle exec xcodebuild \
+            -workspace ios/SageJSMobile.xcworkspace \
+            -scheme SageJSMobile -configuration Release \
+            -destination 'id=${{ steps.destinations.outputs.iphone_id }}' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO build | tee build/iphone-xcodebuild.log
+      - name: Compile exact-asset iPad simulator application
+        working-directory: apps/sagejs-mobile
+        run: |
+          set -o pipefail
+          bundle exec xcodebuild \
+            -workspace ios/SageJSMobile.xcworkspace \
+            -scheme SageJSMobile -configuration Release \
+            -destination 'id=${{ steps.destinations.outputs.ipad_id }}' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO build | tee build/ipad-xcodebuild.log
+      - name: Record exact artifact and simulator destinations
+        env:
+          IPHONE_ID: ${{ steps.destinations.outputs.iphone_id }}
+          IPHONE_NAME: ${{ steps.destinations.outputs.iphone_name }}
+          IPAD_ID: ${{ steps.destinations.outputs.ipad_id }}
+          IPAD_NAME: ${{ steps.destinations.outputs.ipad_name }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('apps/sagejs-mobile/assets/runtime/asset-manifest.json'));
+          const receipt = {
+            schema: 'sagejs.mobile-simulator-build/v1',
+            gitCommit: process.env.GITHUB_SHA,
+            artifactIdentity: manifest.productionIdentity,
+            assetManifestSha256: require('crypto').createHash('sha256')
+              .update(fs.readFileSync('apps/sagejs-mobile/assets/runtime/asset-manifest.json')).digest('hex'),
+            destinations: [
+              { family: 'iphone', id: process.env.IPHONE_ID, name: process.env.IPHONE_NAME },
+              { family: 'ipad', id: process.env.IPAD_ID, name: process.env.IPAD_NAME },
+            ],
+          };
+          fs.writeFileSync('apps/sagejs-mobile/build/simulator-build-receipt.json', `${JSON.stringify(receipt, null, 2)}\n`);
+          NODE
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mobile-simulator-build-receipts
+          path: |
+            apps/sagejs-mobile/build/*-xcodebuild.log
+            apps/sagejs-mobile/build/simulator-build-receipt.json
+          if-no-files-found: warn
