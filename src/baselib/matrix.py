@@ -1435,6 +1435,12 @@ class MatrixSpaceParent(sage.Parent):
             except TypeError:
                 packed_integers = runtime.undefined
             if packed_integers is not runtime.undefined:
+                if not _flint_backend_has_function("ffiFmpqMatrixFromFmpz"):
+                    numerators = runtime.integer_buffer_from_packed_bytes(
+                        packed_integers,
+                        self._rows * self._cols,
+                    )
+                    return self._from_canonical_integer_rationals(numerators)
                 ffi = _flint_ffi_module()
                 region = ffi.FlintByteRegion.from_bytes(packed_integers)
                 integer_resource = runtime.undefined
@@ -1476,6 +1482,35 @@ class MatrixSpaceParent(sage.Parent):
         return self._from_packed_rationals(
             runtime.exact_integer_values_to_packed_bytes(parts)
         )
+
+    def _from_canonical_integer_rationals(self, entries: Any) -> Matrix:
+        """Own trusted integer numerators as packed rationals of denominator one."""
+        if self._base is not sage.QQ:
+            raise TypeError("integer-rational storage requires QQ")
+        count = self._rows * self._cols
+        if _integer_buffer_length(entries) != count:
+            raise ValueError("rational matrix entry count does not match dimensions")
+        return Matrix(
+            self,
+            _PackedRationalStorage(
+                _owned_integer_buffer(entries),
+                runtime.integer_buffer([1 for _entry in range(count)], 1),
+            ),
+        )
+
+    def _from_fmpz_resource_as_rationals(self, resource: Any) -> Matrix:
+        """Copy an integer resource through the available exact promotion route."""
+        if self._base is not sage.QQ:
+            raise TypeError("integer-resource promotion requires QQ")
+        ffi = _flint_ffi_module()
+        if _flint_backend_has_function("ffiFmpqMatrixFromFmpz"):
+            return self._from_fmpq_matrix_resource(ffi.fmpq_matrix_from_fmpz(resource))
+        region = ffi.fmpz_matrix_serialize(resource)
+        entries = runtime.integer_buffer_from_packed_bytes(
+            _packed_uint8_suffix(region.take_bytes(), 24),
+            self._rows * self._cols,
+        )
+        return self._from_canonical_integer_rationals(entries)
 
     def _from_rational_parts(
         self,
@@ -1626,18 +1661,21 @@ class MatrixSpaceParent(sage.Parent):
                 if resource is not runtime.undefined:
                     if self._base is sage.ZZ:
                         return self._from_fmpz_matrix_resource(resource)
-                    ffi = _flint_ffi_module()
                     try:
-                        rational_resource = ffi.fmpq_matrix_from_fmpz(resource)
+                        result = self._from_fmpz_resource_as_rationals(resource)
                     finally:
                         resource.close()
                     _trace_dense_rational_selection(
                         "random_element",
-                        "generated-fmpz-resource-promotion",
+                        (
+                            "generated-fmpz-resource-promotion"
+                            if _flint_backend_has_function("ffiFmpqMatrixFromFmpz")
+                            else "packed-fmpz-denominator-one"
+                        ),
                         self._rows,
                         self._cols,
                     )
-                    return self._from_fmpq_matrix_resource(rational_resource)
+                    return result
         entries = []
         for _index in range(self._rows * self._cols):
             if _random_float() > probability:
@@ -3760,9 +3798,7 @@ class Matrix(sage.Element):
                     base,
                     self.nrows(),
                     self.ncols(),
-                )._from_fmpq_matrix_resource(
-                    _flint_ffi_module().fmpq_matrix_from_fmpz(self._integer_resource())
-                )
+                )._from_fmpz_resource_as_rationals(self._integer_resource())
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if base is sage.ZZ and self.base_ring() is sage.QQ:
             if self._has_packed_rational_storage():
@@ -8561,12 +8597,12 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         finally:
             zero.close()
         try:
-            rational_resource = ffi.fmpq_matrix_from_fmpz(integer_resource)
+            result = MatrixSpace(sage.QQ, size, size)._from_fmpz_resource_as_rationals(
+                integer_resource
+            )
         finally:
             integer_resource.close()
-        return MatrixSpace(sage.QQ, size, size)._from_fmpq_matrix_resource(
-            rational_resource
-        )
+        return result
     if _is_packed_dense_prime_base(base):
         kernel = _dense_prime_kernel_module().dense_prime_field_matrix_identity
         storage = _dense_prime_zeros(kernel, size * size)

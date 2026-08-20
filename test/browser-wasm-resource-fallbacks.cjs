@@ -119,19 +119,30 @@ test("modular-symbol integer matrices use the portable exact ingress", async () 
       "global_object = rt.global_object",
       "saved_process = rt.reflect.get(global_object, 'process')",
       "export_packed = rt.reflect.get(backend, 'zzMatrixExportPacked')",
-      "matrix(ZZ, 1, 1, [1])",
+      "from_fmpz = rt.reflect.get(backend, 'ffiFmpqMatrixFromFmpz')",
+      "fmpq_close = rt.reflect.get(backend, 'ffiFmpqMatrixClose')",
+      "warmup = matrix(QQ, 1, 1, [1])",
       "rt.reflect.deleteProperty(global_object, 'process')",
       "rt.reflect.deleteProperty(backend, 'zzMatrixExportPacked')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpqMatrixFromFmpz')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpqMatrixClose')",
       "try:",
+      "    integer_matrix = matrix(ZZ, 2, 2, [2^130 + 7, -3, 0, 11])",
+      "    rational_matrix = integer_matrix.change_ring(QQ)",
+      "    rational_identity = identity_matrix(QQ, 2)",
+      "    packed_ok = rational_matrix.list() == [2^130 + 7, -3, 0, 11] and rational_identity.list() == [1, 0, 0, 1]",
+      "    rt.reflect.set(backend, 'ffiFmpqMatrixClose', fmpq_close)",
       "    M = ModularSymbols(37, 2)",
       "    C = M.cuspidal_subspace()",
-      "    answer = [M.dimension(), C.dimension(), M.hecke_matrix(2).trace()]",
+      "    answer = [packed_ok, M.dimension(), C.dimension(), M.hecke_matrix(2).trace()]",
       "finally:",
+      "    rt.reflect.set(backend, 'ffiFmpqMatrixFromFmpz', from_fmpz)",
+      "    rt.reflect.set(backend, 'ffiFmpqMatrixClose', fmpq_close)",
       "    rt.reflect.set(backend, 'zzMatrixExportPacked', export_packed)",
       "    rt.reflect.set(global_object, 'process', saved_process)",
       "answer",
     ].join("\n"));
-    assert.equal(result.repr, "[5, 4, -1]");
+    assert.equal(result.repr, "[True, 5, 4, -1]");
   } finally {
     await session.close();
   }
