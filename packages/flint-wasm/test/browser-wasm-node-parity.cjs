@@ -31,7 +31,8 @@ void (async () => {
       const current = {
         id: item.id,
         workflow: item.workflow,
-        required_capabilities: item.requires,
+        required_capability_routes: item.requires,
+        oracle_route: "node-runtime",
         status: "failed",
       };
       receipt.cases.push(current);

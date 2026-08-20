@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-capability-routes",
+  "title": "Typed WebAssembly capability routes",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Distinguish receipt-backed Wasm artifacts, shared runtime JavaScript, and portable fallbacks in browser parity requirements and receipts so route provenance cannot be laundered through a union of capability IDs",
+  "base_commit": "993ddd59b43b0bad20b275f06a6046174cf3d126",
+  "claims": [
+    "packages/flint-wasm/test/browser-wasm-support.mjs",
+    "packages/flint-wasm/test/browser-wasm-parity.mjs",
+    "packages/flint-wasm/test/browser-wasm-node-parity.cjs",
+    "packages/flint-wasm/test/browser-wasm-capability-routes.test.mjs",
+    "test/browser-wasm-parity-corpus.json",
+    "scripts/check-wasm-capabilities.cjs",
+    "test/wasm-capabilities.cjs",
+    "architecture/WASM-CAPABILITIES.md",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/scripts/build.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "receipt-bound production artifact manifest plus reviewed capability report"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/browser-wasm-capability-routes.test.mjs test/wasm-capabilities.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/check-wasm-capabilities.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "status": "passed"
+    }
+  ],
+  "handoff": {
+    "summary": "Browser parity requirements and receipts use exact typed routes with authenticated artifact, checked host-runtime, or checked portable-fallback provenance; the browser release stages the generated checked capability API and report.",
+    "risks": [
+      "The full architecture aggregate needs a normal repository build in a fresh worktree before ffi:check can run."
+    ],
+    "next_steps": [
+      "Integrate the companion compiler-runtime commit that publishes sagejs_capabilities in strict builtins and installs the checked API in Node."
+    ]
+  }
+}

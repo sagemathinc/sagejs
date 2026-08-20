@@ -269,10 +269,32 @@ export function executablePathFor(engine, browserType) {
   return undefined;
 }
 
+export const CAPABILITY_ROUTES = Object.freeze({
+  WASM_ARTIFACT: "receipt-backed-wasm-artifact",
+  SHARED_RUNTIME_JS: "shared-runtime-js",
+  PORTABLE_FALLBACK: "portable-fallback",
+});
+
+const CAPABILITY_ROUTE_VALUES = new Set(Object.values(CAPABILITY_ROUTES));
+
+function validateCapabilityRequirement(requirement, context = "capability requirement") {
+  if (
+    requirement === null ||
+    typeof requirement !== "object" ||
+    Array.isArray(requirement) ||
+    typeof requirement.id !== "string" ||
+    requirement.id.length === 0 ||
+    !CAPABILITY_ROUTE_VALUES.has(requirement.route)
+  ) {
+    throw new Error(`${context} must name an exact reviewed capability ID and route`);
+  }
+  return { id: requirement.id, route: requirement.route };
+}
+
 export async function loadParityCorpus() {
   const filename = path.join(repositoryRoot, "test", "browser-wasm-parity-corpus.json");
   const corpus = JSON.parse(await fs.promises.readFile(filename, "utf8"));
-  if (corpus.schema_version !== 1 || !Array.isArray(corpus.cases)) {
+  if (corpus.schema_version !== 2 || !Array.isArray(corpus.cases)) {
     throw new Error("unsupported browser Wasm parity corpus schema");
   }
   const ids = new Set();
@@ -286,38 +308,133 @@ export async function loadParityCorpus() {
       throw new Error(`case ${item.id} has no workflow name`);
     }
     if (!Array.isArray(item.requires) || item.requires.length === 0) {
-      throw new Error(`case ${item.id} has no exact required capability IDs`);
+      throw new Error(`case ${item.id} has no exact required capability routes`);
+    }
+    const requirements = item.requires.map((requirement, index) =>
+      validateCapabilityRequirement(requirement, `case ${item.id} requirement ${index}`)
+    );
+    if (new Set(requirements.map(({ id }) => id)).size !== requirements.length) {
+      throw new Error(`case ${item.id} contains duplicate capability IDs`);
     }
   }
   return corpus;
 }
 
-export async function loadProductionCapabilityIds() {
-  const filename = path.join(packageRoot, "dist", "production-manifest.json");
-  const manifest = JSON.parse(await fs.promises.readFile(filename, "utf8"));
+function addCapabilityRoute(routes, record) {
+  const key = `${record.id}\0${record.route}`;
+  if (routes.has(key)) {
+    throw new Error(`duplicate production capability route ${record.id} via ${record.route}`);
+  }
+  routes.set(key, Object.freeze({ ...record }));
+}
+
+export function buildProductionCapabilityRoutes(manifest, report) {
   if (
     manifest.schema !== "sagejs.wasm-production-artifact/v1" ||
     !Array.isArray(manifest.capabilities)
   ) {
     throw new Error("production manifest has no reviewed capability closure");
   }
-  const result = new Set(manifest.capabilities.map((item) => item.id));
-  const reportFilename = path.join(
-    repositoryRoot,
-    "architecture",
-    "wasm-capabilities-report.json",
-  );
-  const report = JSON.parse(await fs.promises.readFile(reportFilename, "utf8"));
   if (report.schema !== "sagejs.wasm-capability-report/v1" ||
       !Array.isArray(report.capabilities)) {
     throw new Error("public capability report has no reviewed browser closure");
   }
+  const routes = new Map();
+  const reportById = new Map();
   for (const capability of report.capabilities) {
-    if (capability.status === "available" || capability.status === "fallback") {
-      result.add(capability.id);
+    if (
+      capability === null || typeof capability !== "object" ||
+      typeof capability.id !== "string" || capability.id.length === 0
+    ) {
+      throw new Error("public capability report contains a malformed capability record");
+    }
+    if (reportById.has(capability.id)) {
+      throw new Error(`public capability report contains duplicate ID ${capability.id}`);
+    }
+    reportById.set(capability.id, capability);
+  }
+  for (const capability of manifest.capabilities) {
+    if (
+      capability === null ||
+      typeof capability !== "object" ||
+      typeof capability.id !== "string" || capability.id.length === 0 ||
+      typeof capability.module !== "string" || capability.module.length === 0 ||
+      typeof capability.artifact !== "string" || capability.artifact.length === 0 ||
+      !/^[0-9a-f]{64}$/.test(capability.artifactSha256)
+    ) {
+      throw new Error("production manifest contains malformed capability provenance");
+    }
+    if (reportById.get(capability.id)?.status !== "available") {
+      throw new Error(
+        `production artifact capability ${capability.id} is not reviewed as available`,
+      );
+    }
+    addCapabilityRoute(routes, {
+      id: capability.id,
+      route: CAPABILITY_ROUTES.WASM_ARTIFACT,
+      provenance: "production-artifact-manifest",
+      module: capability.module,
+      artifact: capability.artifact,
+      artifact_sha256: capability.artifactSha256,
+    });
+  }
+  for (const capability of reportById.values()) {
+    if (capability.status === "available" && capability.wasm_module === "host-runtime") {
+      addCapabilityRoute(routes, {
+        id: capability.id,
+        route: CAPABILITY_ROUTES.SHARED_RUNTIME_JS,
+        provenance: "reviewed-public-capability-report",
+        report_status: capability.status,
+        wasm_module: capability.wasm_module,
+      });
+    } else if (
+      capability.status === "fallback" &&
+      capability.disposition === "portable-fallback"
+    ) {
+      addCapabilityRoute(routes, {
+        id: capability.id,
+        route: CAPABILITY_ROUTES.PORTABLE_FALLBACK,
+        provenance: "reviewed-public-capability-report",
+        report_status: capability.status,
+        wasm_module: capability.wasm_module,
+      });
     }
   }
-  return result;
+  return routes;
+}
+
+export async function loadProductionCapabilityRoutes() {
+  const manifestFilename = path.join(packageRoot, "dist", "production-manifest.json");
+  const reportFilename = path.join(repositoryRoot, "architecture", "wasm-capabilities-report.json");
+  const [manifest, report] = await Promise.all([
+    fs.promises.readFile(manifestFilename, "utf8").then(JSON.parse),
+    fs.promises.readFile(reportFilename, "utf8").then(JSON.parse),
+  ]);
+  return buildProductionCapabilityRoutes(manifest, report);
+}
+
+export function resolveCapabilityRequirements(requirements, routes) {
+  if (!Array.isArray(requirements) || !(routes instanceof Map)) {
+    throw new Error("capability route resolution requires reviewed requirements and routes");
+  }
+  const selected = [];
+  const missing = [];
+  for (const [index, rawRequirement] of requirements.entries()) {
+    const requirement = validateCapabilityRequirement(rawRequirement, `requirement ${index}`);
+    const route = routes.get(`${requirement.id}\0${requirement.route}`);
+    if (route) {
+      selected.push(route);
+      continue;
+    }
+    missing.push({
+      ...requirement,
+      available_routes: [...routes.values()]
+        .filter(({ id }) => id === requirement.id)
+        .map(({ route: availableRoute }) => availableRoute)
+        .sort(),
+    });
+  }
+  return { selected, missing };
 }
 
 export function assertParityExpectation(item, result) {

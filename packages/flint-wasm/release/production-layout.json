@@ -86,6 +86,9 @@
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",
     "tree-sitter-sage.wasm"
+    ,
+    "wasm-capability-api.mjs",
+    "wasm-capabilities-report.json"
   ],
   "runtimeHostAssets": {
     "source": ".",

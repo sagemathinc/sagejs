@@ -143,9 +143,14 @@ function validatedWorkflowAliases(manifest, capabilityIds, options = {}) {
   }
 
   const corpus = readJson(path.join(root, path.relative(ROOT, WORKFLOW_CORPUS_PATH)));
-  if (corpus.schema_version !== 1 || !Array.isArray(corpus.cases)) {
+  if (corpus.schema_version !== 2 || !Array.isArray(corpus.cases)) {
     throw new Error("unsupported browser WebAssembly workflow corpus schema");
   }
+  const reviewedRoutes = new Set([
+    "receipt-backed-wasm-artifact",
+    "shared-runtime-js",
+    "portable-fallback",
+  ]);
   const corpusAliases = {};
   for (const item of corpus.cases) {
     const tag = item?.workflow;
@@ -158,7 +163,25 @@ function validatedWorkflowAliases(manifest, capabilityIds, options = {}) {
     if (!Array.isArray(item.requires) || item.requires.length === 0) {
       throw new Error(`browser parity workflow ${tag} has no exact capability requirements`);
     }
-    corpusAliases[tag] = item.requires;
+    const requirements = item.requires.map((requirement) => {
+      if (
+        requirement === null || typeof requirement !== "object" ||
+        Array.isArray(requirement) || typeof requirement.id !== "string" ||
+        requirement.id.length === 0 || !reviewedRoutes.has(requirement.route)
+      ) {
+        throw new Error(`browser parity workflow ${tag} has an invalid capability route`);
+      }
+      return requirement;
+    });
+    const ids = requirements.map(({ id }) => id);
+    if (new Set(ids).size !== ids.length) {
+      throw new Error(`browser parity workflow ${tag} contains duplicate capability IDs`);
+    }
+    const unknown = ids.filter((id) => !capabilityIds.has(id));
+    if (unknown.length) {
+      throw new Error(`browser parity workflow ${tag} contains unknown capabilities: ${unknown.join(", ")}`);
+    }
+    corpusAliases[tag] = ids;
   }
   const aliasTags = Object.keys(normalized);
   const corpusTags = Object.keys(corpusAliases).sort();

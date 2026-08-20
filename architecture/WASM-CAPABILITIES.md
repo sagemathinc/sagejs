@@ -90,6 +90,27 @@ strict Python or every application bundle. The method name
 kernel host can install this checked API in its isolated evaluator and expose
 the same call without embedding manifest data in mathematical source.
 
+## Executable route provenance
+
+A capability ID alone does not prove how a browser provides it. Browser parity
+requirements therefore pair every exact ID with one of three closed routes:
+
+- `receipt-backed-wasm-artifact` requires the exact capability record in the
+  production artifact manifest, including its module, artifact name, and
+  artifact SHA-256;
+- `shared-runtime-js` requires an `available` public report record whose
+  reviewed module is `host-runtime`;
+- `portable-fallback` requires a `fallback` report record with the reviewed
+  `portable-fallback` disposition.
+
+The parity runner resolves the requested `(id, route)` pair, records both the
+required route and selected provenance in its receipt, and fails with
+`missing-capability-route` when only a different route exists. In particular,
+a descriptive report entry—even one marked `available`—cannot manufacture a
+receipt-backed Wasm artifact, and a portable fallback cannot satisfy an
+artifact-required release test. Unknown routes and malformed provenance are
+rejected rather than inferred.
+
 Run the audit directly with:
 
 ```sh
