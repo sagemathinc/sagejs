@@ -17,7 +17,8 @@
     "packages/flint-wasm/test/analytic-browser-parity.mjs",
     "packages/flint-wasm/test/analytic-core-native.c",
     "packages/flint-wasm/test/analytic-public-vectors.json",
-    "packages/flint-wasm/scripts/test-analytic-core.cjs"
+    "packages/flint-wasm/scripts/test-analytic-core.cjs",
+    "packages/flint-wasm/scripts/test-analytic-reactor.mjs"
   ],
   "dependencies": [],
   "references": [
@@ -79,7 +80,7 @@
   "handoff": {
     "summary": "Added a host-neutral versioned packed-decimal Arb/Acb core and bounded grow-on-demand Wasm adapter for Riemann zeta jets/batches, Dirichlet L batches, quadratic Dedekind zeta and completion, Riemann xi, and complex gamma. The browser backend preserves arbitrary-precision decimal values plus accuracy/enclosure diagnostics, matches the existing FLINT provider method signatures, and converts to binary64 only in explicit synchronous tiled plotting. Focused JS and native FLINT tests pass on Linux x64; the exact pushed revision also passed the native core on Linux ARM64 and the JS/backend corpus on native Windows x64.",
     "risks": [
-      "The pinned CoWasm toolchain was still being prepared during implementation, so the final real-reactor compile/browser receipt remains an integration gate rather than being replaced by a fake success.",
+      "The exact sources compile and link in the pinned toolchain and pass all direct parity vectors in a real stripped WASI reactor. The central production build still must select the sources/exports and run the same receipt in Chromium.",
       "The full portable suite passes except for the expected shared architecture classification failures for the four new C/H files; this lane intentionally did not edit central inventories.",
       "Native Windows uses the existing exact FLINT provider fallback until the new shared sources are linked into the production Wasm reactor; the JavaScript transport and validation corpus passes on Windows."
     ],
