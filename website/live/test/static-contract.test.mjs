@@ -20,6 +20,8 @@ test("public shell exposes accessible execution and file controls", async () => 
   assert.match(app, /wasm-capabilities-report\.json/);
   assert.match(app, /record\.resource_limits/);
   assert.match(app, /Fallback:/);
+  assert.match(app, /value\.on\("error"/);
+  assert.match(app, /Ready — recovered session/);
 });
 
 test("Cloudflare policy isolates a deliberately dynamic, credential-free origin", async () => {
