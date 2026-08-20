@@ -23,6 +23,12 @@ Start with:
 - [Plotting](../PLOTTING.md)
 - [Hyperelliptic curves and local Frobenius data](hyperelliptic-curves.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
+- [WebAssembly browser support and capabilities](webassembly-browser-support.md)
+- [Portable Node and browser examples](webassembly-examples.md)
+- [Contributing portable WebAssembly mathematics](webassembly-contributor-guide.md)
+- [Packed ABI and Wasm32 rules](webassembly-packed-abi.md)
+- [Reproducible WebAssembly builds](webassembly-reproducible-builds.md)
+- [WebAssembly production parity release notes](webassembly-production-release-notes.md)
 
 The Markdown sources are intentionally ordinary files: they render on GitHub
 and documentation sites, can be indexed by search engines, and are directly
