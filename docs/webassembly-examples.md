@@ -52,6 +52,12 @@ except TypeError:
     print('immutable')
 ```
 
+Browser parity and performance receipts additionally record the exact runtime
+route, execution target, call count, and copied bytes observed for each
+operation. Node oracle receipts currently mark this telemetry as `unavailable`
+when the Node kernel does not expose a dispatch trace; an unavailable trace is
+never reported as a measured zero.
+
 ## Exact serialization
 
 SagePack is the data-only interchange format used for Node/browser and saved

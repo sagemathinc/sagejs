@@ -8,7 +8,7 @@
       "workflow": "exact-integer-factorization",
       "tier": "routine",
       "requires": [
-        { "id": "runtime:integer_factorization", "route": "shared-runtime-js" }
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "print(2^80 + 17)\nprint(factor(2026))",
       "timeout_ms": 15000,
@@ -23,8 +23,7 @@
       "workflow": "capability-report-api",
       "tier": "routine",
       "requires": [
-        { "id": "runtime:global_object", "route": "shared-runtime-js" },
-        { "id": "runtime:reflect", "route": "shared-runtime-js" }
+        { "id": "specialist:capability-report-api", "route": "shared-runtime-js" }
       ],
       "source": "caps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
       "timeout_ms": 15000,
@@ -105,10 +104,7 @@
       "workflow": "number-field-maximal-order-prime-zeta",
       "tier": "release",
       "requires": [
-        { "id": "kernel:number-field-om-proof-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-round4-state-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-composite-analysis-production", "route": "receipt-backed-wasm-artifact" },
-        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:field-analysis-fixed-point-checker-production", "route": "receipt-backed-wasm-artifact" },
         { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nD = O.factor_rational_prime(11)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(16))",
@@ -184,8 +180,7 @@
       "tier": "release",
       "requires": [
         { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" },
-        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" },
-        { "id": "analytic:quadratic-dedekind-zeta", "route": "receipt-backed-wasm-artifact" }
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nfor z in Z.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
       "timeout_ms": 60000,

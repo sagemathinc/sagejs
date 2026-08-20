@@ -11,7 +11,8 @@
         "analytic:riemann-zeta-batch",
         "elliptic-lseries-plot",
         "elliptic-lseries-values",
-        "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+        "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+        "specialist:integer-factorization-wasm"
       ],
       "capabilities": [
         "ffi-resource:flint:byte_region",

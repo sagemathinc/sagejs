@@ -158,6 +158,15 @@ export function createNumberFieldZetaBackend(instance) {
         outputPointer,
         outputWords,
       ).slice();
+      globalThis.__sagejs_capability_trace__?.(
+        "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+        "receipt-backed-wasm-artifact",
+        {
+          executionTarget: "wasm-artifact",
+          ingressBytes: packedInput.byteLength,
+          egressBytes: output.byteLength,
+        },
+      );
       return Object.freeze({
         degree,
         primeCount,

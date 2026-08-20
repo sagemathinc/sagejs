@@ -17,6 +17,14 @@ test("public elliptic methods capability-check optional eclib/smalljac exports",
   assert.match(source, /if native_function is runtime\.undefined:\n\s+return None/);
   assert.match(source, /exact direct Sage\.js point counter/);
   assert.match(source, /supply root_number\(precomputed=-1 or 1\)/);
+  assert.match(
+    source,
+    /_record_capability_trace\(\s*"elliptic-root-number-semistable", "portable-fallback"/,
+  );
+  assert.match(
+    source,
+    /_record_capability_trace\("elliptic-coefficients-portable", "portable-fallback"\)/,
+  );
 });
 
 test("portable coefficient recurrence and documented root override are public", async () => {

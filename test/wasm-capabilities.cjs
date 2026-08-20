@@ -34,8 +34,8 @@ test("all current Wasm-relevant capability kinds are reviewed", () => {
   assert.equal(counts["declared-ffi-resource"].length, 29);
   assert.equal(counts["production-kernel"].length, 31);
   assert.equal(counts["runtime-intrinsic"].length, 137);
-  assert.equal(counts["specialist-capability"].length, 19);
-  assert.equal(result.capabilities.length, 939);
+  assert.equal(counts["specialist-capability"].length, 21);
+  assert.equal(result.capabilities.length, 941);
   const expectedProductionClosure = Object.values(productionCapabilities.modules)
     .flatMap((module) => module.capabilities)
     .sort();
@@ -259,10 +259,7 @@ test("the checked-in generated report is accepted by the public API", async () =
   assert.deepEqual(
     api.workflow("number-field-maximal-order-prime-zeta").required_capabilities,
     [
-      "kernel:number-field-om-proof-production",
-      "kernel:number-field-round4-state-production",
-      "kernel:number-field-composite-analysis-production",
-      "kernel:number-field-zeta-coefficients-production",
+      "kernel:field-analysis-fixed-point-checker-production",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
     ],
   );

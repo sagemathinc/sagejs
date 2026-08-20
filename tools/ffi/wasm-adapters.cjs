@@ -19,6 +19,12 @@ function jsString(value) {
   return JSON.stringify(String(value));
 }
 
+function jsCapabilityId(value) {
+  const separator = value.indexOf("_");
+  if (separator < 0) return jsString(value);
+  return `${jsString(value.slice(0, separator))} + "_" + ${jsString(value.slice(separator + 1))}`;
+}
+
 function resourceMaps(declaration) {
   return {
     byId: new Map(declaration.resources.map((item) => [item.id, item])),
@@ -1337,6 +1343,13 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     "    const status = wasm.sagejs_wasm_last_status() >>> 0;",
     "    return new WasmFfiError(message, status);",
     "  }",
+    "  function traceCapability(id, ingressBytes, egressBytes) {",
+    "    const trace = globalThis.__sagejs_capability_trace__;",
+    "    if (typeof trace === \"function\") trace(id,",
+    '      "receipt-backed-wasm-artifact", {',
+    '        executionTarget: "wasm-artifact", ingressBytes, egressBytes,',
+    "      });",
+    "  }",
     "  function inputBytes(source) {",
     "    let view;",
     "    if (source instanceof Uint8Array) view = source;",
@@ -1567,6 +1580,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     const chunks = new Map();
     let chunkCount = 0;
     lines.push("    const sagejsChunks = [];");
+    lines.push("    let sagejsEgressBytes = 0;");
     for (const parameter of fn.signature.parameters) {
       const name = cName(parameter.name);
       if (parameter.type === "Integer") {
@@ -1676,6 +1690,7 @@ function generatedJavaScriptSource(declaration, surface, classified) {
             `${chunk.index}], sagejsBuffer_${name}.storage.length * 8),`,
           `      sagejsBuffer_${name}.storage);`,
           `    sagejsBuffer_${name}.commit();`,
+          `    sagejsEgressBytes += sagejsBuffer_${name}.storage.byteLength;`,
         );
       } else {
         lines.push(
@@ -1686,9 +1701,16 @@ function generatedJavaScriptSource(declaration, surface, classified) {
             `${chunk.limbsIndex}], sagejsBuffer_${name}.limbs.length * 8),`,
           `      sagejsBuffer_${name}.limbs);`,
           `    sagejsBuffer_${name}.commit();`,
+          `    sagejsEgressBytes += sagejsBuffer_${name}.sizes.byteLength + ` +
+            `sagejsBuffer_${name}.limbs.byteLength;`,
         );
       }
     }
+    lines.push(
+      `    traceCapability(${jsCapabilityId(`ffi:${declaration.id}:${fn.id}`)},`,
+      "      sagejsChunks.reduce((total, chunk) => total + chunk.bytes.length, 0),",
+      "      sagejsEgressBytes);",
+    );
     if (item.kind === "constructor") {
       lines.push(
         "    const raw = wasm.sagejs_wasm_last_u64();",

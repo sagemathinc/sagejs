@@ -40,6 +40,10 @@ void (async () => {
       try {
         const result = await session.evaluate(item.source);
         current.duration_ms = performance.now() - started;
+        current.instrumentation_status = result.instrumentation
+          ? "observed"
+          : "unavailable";
+        current.instrumentation = result.instrumentation ?? null;
         current.failures = assertParityExpectation(item, result);
         current.status = current.failures.length === 0 ? "passed" : "mismatch";
       } catch (error) {

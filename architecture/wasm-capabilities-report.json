@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "9dcb75f948d1839452bc7aa2a20b79eda523e89e3bd037f9499421ada4fba9db",
+  "source_sha256": "dd62bab9d52fd85e21932674228f9a68a8d92c04f0c7e95c79c517047598b2b6",
   "counts": {
-    "total": 939,
+    "total": 941,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
       "production-kernel": 31,
       "runtime-intrinsic": 137,
-      "specialist-capability": 19
+      "specialist-capability": 21
     },
     "by_disposition": {
       "compiled-source": 31,
       "desktop-only": 14,
       "generated-wasm": 238,
-      "portable-fallback": 623,
-      "shared-core": 33
+      "portable-fallback": 624,
+      "shared-core": 34
     },
     "by_status": {
-      "available": 425,
+      "available": 427,
       "desktop-only": 14,
       "fallback": 485,
       "planned": 15
@@ -28,8 +28,7 @@
   },
   "workflow_aliases": {
     "capability-report-api": [
-      "runtime:global_object",
-      "runtime:reflect"
+      "specialist:capability-report-api"
     ],
     "dirichlet-l-batch": [
       "analytic:dirichlet-l-batch"
@@ -53,7 +52,7 @@
       "algebraic:qqbar-resource-core"
     ],
     "exact-integer-factorization": [
-      "runtime:integer_factorization"
+      "specialist:integer-factorization-wasm"
     ],
     "exact-matrices-and-finite-field-polynomials": [
       "ffi:flint:fmpz_matrix_det",
@@ -75,16 +74,12 @@
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "number-field-maximal-order-prime-zeta": [
-      "kernel:number-field-om-proof-production",
-      "kernel:number-field-round4-state-production",
-      "kernel:number-field-composite-analysis-production",
-      "kernel:number-field-zeta-coefficients-production",
+      "kernel:field-analysis-fixed-point-checker-production",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "quadratic-dedekind-zeta-batch": [
       "analytic:riemann-zeta-batch",
-      "analytic:dirichlet-l-batch",
-      "analytic:quadratic-dedekind-zeta"
+      "analytic:dirichlet-l-batch"
     ],
     "riemann-zeta-batch": [
       "analytic:riemann-zeta-batch"
@@ -11325,6 +11320,18 @@
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "specialist:capability-report-api",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "checked-host-runtime-capability-api",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "sagejs_capabilities"
+      ],
+      "explanation": "The checked immutable WebAssembly capability report and workflow queries are available directly in Sage sessions."
+    },
+    {
       "id": "specialist:eclib",
       "family": "elliptic-curves",
       "disposition": "desktop-only",
@@ -11376,6 +11383,18 @@
         "DiGraph"
       ],
       "explanation": "Graph construction and invariants retain the ordinary implementation when the igraph addon is absent."
+    },
+    {
+      "id": "specialist:integer-factorization-wasm",
+      "family": "exact-arithmetic",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-exact-integer-factorization",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "factor"
+      ],
+      "explanation": "Exact integer factorization is executed by the production FLINT WebAssembly artifact in browsers."
     },
     {
       "id": "specialist:m4ri",

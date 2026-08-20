@@ -540,6 +540,25 @@ export function resolveCapabilityRequirements(requirements, routes) {
   return { selected, missing };
 }
 
+export function unobservedCapabilityRequirements(requirements, trace) {
+  if (!Array.isArray(requirements) || !Array.isArray(trace)) {
+    throw new TypeError("capability route observations must be arrays");
+  }
+  const observed = new Set();
+  for (const record of trace) {
+    if (
+      record === null || typeof record !== "object" ||
+      typeof record.capability_id !== "string" ||
+      typeof record.selected_route !== "string" ||
+      !Number.isSafeInteger(record.call_count) || record.call_count < 1
+    ) {
+      throw new TypeError("malformed runtime capability route observation");
+    }
+    observed.add(`${record.capability_id}\0${record.selected_route}`);
+  }
+  return requirements.filter(({ id, route }) => !observed.has(`${id}\0${route}`));
+}
+
 export function assertParityExpectation(item, result) {
   const failures = [];
   const expected = item.expect;

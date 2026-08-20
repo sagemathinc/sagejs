@@ -118,7 +118,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     } catch {
       throw new TypeError(`${operation} input must be an integer`);
     }
-    writeText(input, operation);
+    return writeText(input, operation);
   }
 
   function writeText(input, operation) {
@@ -136,10 +136,11 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     );
     destination.set(bytes);
     destination[bytes.length] = 0;
+    return bytes.length;
   }
 
   function factor(value) {
-    writeInteger(value, "factor");
+    const ingressBytes = writeInteger(value, "factor");
     const status = instance.exports.sagejs_factor();
     if (status === 1) {
       throw new TypeError("FLINT rejected the integer input");
@@ -156,6 +157,15 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
 
     const encoded = readCString(memory, outputPointer, outputCapacity);
     const result = JSON.parse(encoded);
+    globalThis.__sagejs_capability_trace__?.(
+      "specialist:integer-factorization-wasm",
+      "receipt-backed-wasm-artifact",
+      {
+        executionTarget: "wasm-artifact",
+        ingressBytes,
+        egressBytes: encoder.encode(encoded).length,
+      },
+    );
     return {
       sign: result.sign,
       factors: result.factors.map(([prime, exponent]) => [
@@ -344,6 +354,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     });
     p1Objects.add(value);
     p1Finalizer?.register(value, handle);
+    tracePortableP1("p1List");
     return value;
   }
 
@@ -426,6 +437,14 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
     "dimension",
   ];
 
+  function tracePortableP1(capabilityId) {
+    globalThis.__sagejs_capability_trace__?.(
+      `napi:@sagemath/sagejs-flint:${capabilityId}`,
+      "portable-fallback",
+      { executionTarget: "wasm-artifact" },
+    );
+  }
+
   function p1ListManinPresentationInfo(value) {
     const p1 = p1Object(value);
     const result = {};
@@ -438,6 +457,7 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
       }
       result[presentationNames[field]] = number;
     }
+    tracePortableP1("p1ListManinPresentationInfo");
     return Object.freeze(result);
   }
 
@@ -473,10 +493,12 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
         "weight-2 Hecke index must be a prime fitting in 31 bits",
       );
     }
-    return runMatrixOperation(value, "exact weight-2 Hecke matrix",
+    const result = runMatrixOperation(value, "exact weight-2 Hecke matrix",
       (handle) => instance.exports.sagejs_p1_hecke_matrix(
         handle, Number(prime),
       ));
+    tracePortableP1("p1ListHeckeMatrix");
+    return result;
   }
 
   function p1ListBoundaryData(value) {
@@ -487,12 +509,15 @@ export async function instantiateFlintFactor(source, { algebraicSource } = {}) {
       instance.exports.sagejs_p1_cusp_numerator(index),
       instance.exports.sagejs_p1_cusp_denominator(index),
     ]);
+    tracePortableP1("p1ListBoundaryData");
     return Object.freeze({ matrix, cusps: Object.freeze(cusps) });
   }
 
   function p1ListCuspidalBasis(value) {
-    return runMatrixOperation(value, "exact cuspidal cycle basis",
+    const result = runMatrixOperation(value, "exact cuspidal cycle basis",
       (handle) => instance.exports.sagejs_p1_cuspidal_basis(handle));
+    tracePortableP1("p1ListCuspidalBasis");
+    return result;
   }
 
   function p1ListStarMatrix(value) {
