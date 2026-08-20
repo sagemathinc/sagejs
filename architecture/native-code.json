@@ -123,6 +123,13 @@
       "rationale": "Wasm adapter over the host-neutral P1 and modular-symbol core."
     },
     {
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded Wasm32 buffer ownership and status adapter over the shared fixed-width number-field residue-factor batch core."
+    },
+    {
       "path": "packages/flint-wasm/src/wasi-stubs.c",
       "category": "portability-shim",
       "review_status": "accepted",

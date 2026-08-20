@@ -13,12 +13,12 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 105,
+    "classified-native-file": 106,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
     "runtime-intrinsic": 137,
-    "wasm-export": 62
+    "wasm-export": 69
   },
   "boundaries": [
     {
@@ -8197,6 +8197,14 @@
       "lane": "distribution"
     },
     {
+      "id": "native-file:packages/flint-wasm/src/number-field-zeta.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/flint-wasm/src/wasi-stubs.c",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/wasi-stubs.c",
@@ -10172,6 +10180,69 @@
       "package": "@sagemath/sagejs-flint-wasm",
       "export": "sagejs_next_prime",
       "symbol": "sagejs_next_prime",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_begin",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_begin",
+      "symbol": "sagejs_nf_zeta_residue_begin",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_clear",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_clear",
+      "symbol": "sagejs_nf_zeta_residue_clear",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_compute",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_compute",
+      "symbol": "sagejs_nf_zeta_residue_compute",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_input",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_input",
+      "symbol": "sagejs_nf_zeta_residue_input",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_input_words",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_input_words",
+      "symbol": "sagejs_nf_zeta_residue_input_words",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_output",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_output",
+      "symbol": "sagejs_nf_zeta_residue_output",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_nf_zeta_residue_output_words",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_nf_zeta_residue_output_words",
+      "symbol": "sagejs_nf_zeta_residue_output_words",
       "disposition": "legacy-handwritten-wasm"
     },
     {

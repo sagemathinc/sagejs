@@ -295,6 +295,7 @@ const integration = [
   "test/number-field-ideal-serialization.cjs",
   "test/number-field-zeta-public.cjs",
   "test/number-field-zeta-coefficients.cjs",
+  "test/number-field-zeta-wasm-dispatch.cjs",
   "test/polynomial-ideals.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",

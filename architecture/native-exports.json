@@ -7477,9 +7477,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/number_field_zeta.c",
-        "line": 89,
-        "lines": 180,
-        "sha256": "a3fa5895522b39b41e713c6f975819fb63419224ad98645ce2c00f253246dd8f",
+        "line": 88,
+        "lines": 133,
+        "sha256": "ec93db99fbbf1bf17d185d620f3c946d40887941a77caf480276f9678b3f3140",
         "calls": [
           "_fmpz_vec_clear",
           "_fmpz_vec_init",
@@ -7487,18 +7487,15 @@
           "check_napi",
           "create_uint64_array",
           "fmpz_is_one",
-          "napi_create_array_with_length",
-          "napi_create_bigint_uint64",
           "napi_create_object",
           "napi_create_uint32",
           "napi_get_array_length",
           "napi_get_cb_info",
           "napi_get_element",
           "napi_get_typedarray_info",
-          "napi_get_value_bool",
           "napi_is_array",
-          "napi_set_element",
           "napi_set_named_property",
+          "napi_throw_error",
           "napi_throw_range_error",
           "napi_throw_type_error",
           "sagejs_nf_factor_degrees_batch"
@@ -7516,6 +7513,7 @@
         "Hecke/Oscar"
       ],
       "consumers": [
+        "packages/flint-wasm/test/number-field-zeta.test.mjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
