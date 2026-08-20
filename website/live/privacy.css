@@ -1,0 +1,7 @@
+.document { display: block; max-width: 58rem; }
+.document article { background: var(--panel); border: 1px solid var(--line); border-radius: .9rem; box-shadow: var(--shadow); padding: clamp(1.2rem, 4vw, 3.2rem); }
+.document h1 { font: 700 clamp(2rem, 5vw, 3.3rem)/1.05 Georgia, serif; letter-spacing: -.025em; margin: .5rem 0 1.2rem; }
+.document h2 { font: 700 1.35rem Georgia, serif; margin-top: 2rem; }
+.document p, .document li { line-height: 1.65; }
+.document .lede { color: var(--muted); font-size: 1.15rem; }
+.document code { background: #edf2ed; border-radius: .25rem; padding: .1rem .25rem; }

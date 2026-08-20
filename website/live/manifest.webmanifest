@@ -1,0 +1,13 @@
+{
+  "name": "Sage.js — mathematics locally",
+  "short_name": "Sage.js",
+  "description": "Run Sage mathematics locally with WebAssembly.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfcf7",
+  "theme_color": "#16251f",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
