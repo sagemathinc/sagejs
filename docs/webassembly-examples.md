@@ -36,6 +36,24 @@ print(2^80 + 17)
 print(factor(2026))
 ```
 
+## Capability discovery
+
+The public capability report can be filtered by mathematical family or queried
+by exact workflow name. Returned records are detached and deeply immutable:
+
+```sage test browser-parity=capability-report-api
+caps = sagejs_capabilities()
+nf_caps = sagejs_capabilities('number-fields')
+workflow = sagejs_capabilities(workflow='exact-integer-factorization')
+print(len(caps) >= 900, len(nf_caps) > 0, workflow.available)
+try:
+    caps[0] = None
+except TypeError:
+    print('immutable')
+```
+
+## Exact serialization
+
 SagePack is the data-only interchange format used for Node/browser and saved
 application data:
 
@@ -44,6 +62,34 @@ from sagejs_serialization import dumps, loads
 A = matrix(QQ, [[1/2,2/3],[3/4,4/5]])
 data = dumps(A)
 print(data[:8] == b'SAGEPK1\x00', loads(data) == A, dumps(loads(data)) == data)
+```
+
+## Algebraic numbers
+
+The real and complex algebraic fields use the same certified resource core in
+Node and WebAssembly. Roots retain exact defining data even though `AA` uses a
+compact decimal interval for display:
+
+```sage test browser-parity=exact-algebraic-roots
+R.<x> = QQ[]
+print((x^2 - 2).roots(AA))
+print((x^2 + 1).roots(QQbar))
+a = AA(2).sqrt()
+print(a.minpoly(), a > 1, a < 2)
+```
+
+## Modular symbols
+
+The public modular-symbols implementation has a reviewed portable fallback,
+including construction, cuspidal subspaces, and Hecke operators:
+
+```sage test browser-parity=modular-symbols-weight-two
+M = ModularSymbols(37, 2)
+print(M)
+print(M.dimension())
+C = M.cuspidal_subspace()
+print(C.dimension())
+print(M.hecke_matrix(2).trace())
 ```
 
 ## A quadratic number field
@@ -60,6 +106,21 @@ D = O.factor_rational_prime(11)
 print(K.signature())
 print([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])
 print(K.zeta_function().coefficients(16))
+```
+
+The headline cubic workflow is also bounded and deterministic: it proves the
+maximal order, factors a ramified prime, and computes the first 24 Dedekind-zeta
+coefficients. Larger coefficient bounds belong in the performance suite rather
+than the routine browser gate.
+
+```sage test browser-parity=number-field-cubic-headline
+R.<x> = PolynomialRing(QQ)
+K.<a> = NumberField(x^3 - x - 1)
+O = K.maximal_order()
+D = O.factor_rational_prime(23)
+print(K.signature())
+print([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])
+print(K.zeta_function().coefficients(24))
 ```
 
 ## Batched analytic values
