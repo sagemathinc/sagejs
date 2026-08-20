@@ -68,7 +68,7 @@
       "memory": {
         "pageBytes": 65536,
         "initialPages": 512,
-        "maximumPages": 32768
+        "maximumPages": 6144
       }
     }
   ],

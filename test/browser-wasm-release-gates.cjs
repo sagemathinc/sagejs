@@ -106,6 +106,31 @@ test("grammar modules inherit the authenticated bounded Tree-sitter memory", () 
   }
 });
 
+test("Tree-sitter stays within the mobile WebView memory ceiling", () => {
+  const layout = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        path.join(__dirname, ".."),
+        "packages",
+        "flint-wasm",
+        "release",
+        "production-layout.json",
+      ),
+      "utf8",
+    ),
+  );
+  const treeSitter = layout.importedMemoryDomains.find(
+    (domain) => domain.id === "tree-sitter",
+  );
+  assert.ok(treeSitter, "missing Tree-sitter memory domain");
+  assert.equal(treeSitter.memory.pageBytes, 65_536);
+  assert.ok(
+    treeSitter.memory.maximumPages * treeSitter.memory.pageBytes <=
+      384 * 1024 * 1024,
+    "Tree-sitter exceeds the 384 MiB mobile WebView ceiling",
+  );
+});
+
 test("relative payload gates reject unexplained compressed growth", () => {
   const report = { totals: { gzip_bytes: 106, brotli_bytes: 100 } };
   const baseline = {
