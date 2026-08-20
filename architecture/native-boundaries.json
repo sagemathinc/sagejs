@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 106,
+    "classified-native-file": 110,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
@@ -8157,6 +8157,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/flint-wasm/src/algebraic.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/algebraic.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/flint-wasm/src/analytic.c",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/analytic.c",
@@ -8177,6 +8185,14 @@
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
       "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/dirichlet-group.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/dirichlet-group.c",
+      "disposition": "host-adapter",
       "review_status": "accepted",
       "lane": "distribution"
     },
@@ -8400,6 +8416,22 @@
       "id": "native-file:packages/flint/src/addon.h",
       "kind": "classified-native-file",
       "path": "packages/flint/src/addon.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/algebraic_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/algebraic_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/algebraic_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/algebraic_core.h",
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"

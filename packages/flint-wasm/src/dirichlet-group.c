@@ -1,7 +1,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-#include "dirichlet.h"
+#include <flint/dirichlet.h>
 
 static dirichlet_group_t sagejs_group;
 static int sagejs_group_initialized = 0;

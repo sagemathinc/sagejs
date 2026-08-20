@@ -102,6 +102,13 @@
       "rationale": "Bounded Wasm32 buffer and status adapter over the shared Arb and Acb analytic batch core; all mathematical policy remains in the host-neutral core."
     },
     {
+      "path": "packages/flint-wasm/src/algebraic.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Flat generation-tagged Wasm32 resource adapter over the host-neutral FLINT QQbar core, with copied arbitrary-integer and certified enclosure transport."
+    },
+    {
       "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
       "category": "host-adapter",
       "review_status": "accepted",
@@ -114,6 +121,13 @@
       "review_status": "accepted",
       "lane": "distribution",
       "rationale": "Fixed-width Wasm32 ABI, status codes, and resource limits for the shared elliptic L-series value and plotting core."
+    },
+    {
+      "path": "packages/flint-wasm/src/dirichlet-group.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded stateless Wasm32 projection of mature FLINT Dirichlet group decomposition metadata used to materialize public group objects above the ABI."
     },
     {
       "path": "packages/flint-wasm/src/modsym.c",
@@ -492,6 +506,20 @@
       "review_status": "accepted",
       "lane": "arithmetic-algebra",
       "rationale": "Fixed-width packed ABI and resource limits for the shared Arb and Acb analytic batch core."
+    },
+    {
+      "path": "packages/flint/src/algebraic_core.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral generation-tagged resource core over mature FLINT QQbar operations, exact roots, comparisons, serialization, and certified Arb enclosures."
+    },
+    {
+      "path": "packages/flint/src/algebraic_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width lifecycle, copied-buffer, and exact algebraic-number ABI shared by Node and WebAssembly host adapters."
     },
     {
       "path": "packages/flint/src/modsym_core.c",

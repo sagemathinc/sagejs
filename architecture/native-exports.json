@@ -371,6 +371,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -604,6 +606,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -681,6 +685,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -718,6 +723,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -913,6 +919,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -4688,6 +4695,9 @@
       ],
       "consumers": [
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+        "packages/flint-wasm/scripts/build.cjs",
+        "packages/flint-wasm/scripts/production-receipt.cjs",
+        "packages/flint-wasm/test/production-receipt.test.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs"
@@ -9136,6 +9146,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -9427,6 +9439,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
@@ -9567,6 +9580,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
@@ -10140,6 +10154,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -10209,6 +10224,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -10287,6 +10303,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
@@ -10333,6 +10351,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
@@ -10469,6 +10489,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py"
@@ -10601,6 +10622,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
@@ -10763,6 +10786,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "src/baselib/number_fields.py"
       ],
       "declared_ffi": null
@@ -10833,6 +10858,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -10969,6 +10996,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
@@ -11299,6 +11328,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11453,6 +11483,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11494,6 +11525,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -11787,6 +11819,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py",
         "test/native-kernel.cjs"
@@ -12214,6 +12247,8 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/scripts/wasm-toolchain.cjs",
+        "packages/flint-wasm/test/toolchain-resolution.test.cjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs",
@@ -12732,6 +12767,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -12769,6 +12805,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],

@@ -274,6 +274,7 @@ const integration = [
   "test/wasm-curve-fallbacks.cjs",
   "test/wasm-elliptic-public-fallbacks.cjs",
   "test/wasm-production-native-kernels.cjs",
+  "test/webassembly-docs.cjs",
   "test/doc-examples.cjs",
   "test/elliptic-curves.cjs",
   "test/hyperelliptic-genus3-completion.cjs",
