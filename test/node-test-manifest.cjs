@@ -47,6 +47,8 @@ const unit = [
   "test/architecture-policy.cjs",
   "test/wasm-capabilities.cjs",
   "test/browser-wasm-release-gates.cjs",
+  "test/wasm-deployment-workflow.cjs",
+  "test/wasm-production-native-kernels.cjs",
   "test/generated-classification.cjs",
   "test/gf2-polynomial-packed-core.cjs",
   "test/pnpm-invocation.cjs",
