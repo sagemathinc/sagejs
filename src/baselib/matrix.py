@@ -7423,20 +7423,35 @@ class Matrix(sage.Element):
                 self.ncols(),
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
-            target = _flint_ffi_module().fmpz_matrix_select_rows(
-                self._integer_resource(),
-                _packed_uint64(indices),
-                len(indices),
+            selector = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpzMatrixSelectRows"
             )
+            target_space = MatrixSpace(self.base_ring(), len(indices), self.ncols())
+            if runtime.jstype(selector) == "function":
+                target = _flint_ffi_module().fmpz_matrix_select_rows(
+                    self._integer_resource(),
+                    _packed_uint64(indices),
+                    len(indices),
+                )
+                _trace_dense_integer_selection(
+                    "matrix_from_rows",
+                    "generated-flint-resource",
+                    len(indices),
+                    self.ncols(),
+                )
+                return target_space._from_fmpz_matrix_resource(target)
+            source = self._exact_host_values()
+            selected = []
+            for row in indices:
+                start = row * self.ncols()
+                selected.extend(source[start : start + self.ncols()])
             _trace_dense_integer_selection(
                 "matrix_from_rows",
-                "generated-flint-resource",
+                "exact-host-values",
                 len(indices),
                 self.ncols(),
             )
-            return MatrixSpace(
-                self.base_ring(), len(indices), self.ncols()
-            )._from_fmpz_matrix_resource(target)
+            return target_space._from_integer_values(selected)
         if self._has_nmod_matrix_resource():
             target = _flint_ffi_module().nmod_matrix_select_rows(
                 self._nmod_resource(), _packed_uint64(indices), len(indices)

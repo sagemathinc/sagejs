@@ -90,26 +90,20 @@ def _arbitrary_prime_public_module() -> Any:
 
 
 def _generated_flint_resources_available() -> bool:
-    """Return whether this host can own generated native FLINT resources.
+    """Return whether this host can own arbitrary-prime FLINT resources.
 
-    A native Node process is an explicit capability, not a failed-call
-    heuristic: missing or broken generated bindings must fail loudly there.
-    Browsers and other portable hosts retain the compiler-owned packed path.
+    Resource support is a backend capability rather than a Node/browser host
+    distinction.  Both native and WebAssembly backends expose the same
+    generated lifecycle contract; hosts without it retain the legacy path.
     """
     global _generated_flint_resources_available_cache
     if _generated_flint_resources_available_cache is runtime.undefined:
-        process = runtime.reflect.get(runtime.global_object, "process")
-        versions = (
-            runtime.undefined
-            if process is runtime.undefined
-            else runtime.reflect.get(process, "versions")
+        backend = runtime.flint_backend()
+        create = runtime.reflect.get(backend, "ffiFmpzModPolynomialCreate")
+        close = runtime.reflect.get(backend, "ffiFmpzModPolynomialClose")
+        _generated_flint_resources_available_cache = (
+            runtime.jstype(create) == "function" and runtime.jstype(close) == "function"
         )
-        node = (
-            runtime.undefined
-            if versions is runtime.undefined
-            else runtime.reflect.get(versions, "node")
-        )
-        _generated_flint_resources_available_cache = node is not runtime.undefined
     return bool(_generated_flint_resources_available_cache)
 
 
@@ -2994,13 +2988,17 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "GF_ARB":
-            region = _flint_ffi_module().fmpz_mod_polynomial_format(
-                self._arbitrary_prime_polynomial_resource()
+            formatter = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpzModPolynomialFormat"
             )
-            return _arbitrary_prime_public_module().format_resource_text(
-                bytes(region.take_bytes()).decode("ascii"),
-                self._parent.variable_name(),
-            )
+            if runtime.jstype(formatter) == "function":
+                region = _flint_ffi_module().fmpz_mod_polynomial_format(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+                return _arbitrary_prime_public_module().format_resource_text(
+                    bytes(region.take_bytes()).decode("ascii"),
+                    self._parent.variable_name(),
+                )
         if kind == "GF":
             return runtime.uint64_polynomial_format(
                 self._storage,

@@ -152,6 +152,7 @@ const browserAdditionalModules = [
   "sagejs.kernels.matrix.dense_rational_flint",
   "sagejs.linear_algebra.matrix_subspaces",
   "sagejs.linear_algebra.matrix_subspaces_public",
+  "sagejs.polynomial_algorithms.arbitrary_prime_public",
 ];
 const vendorDirectory = path.join(repositoryRoot, "dist", "vendor");
 const compilerResourceShim = path.join(
