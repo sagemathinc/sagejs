@@ -288,7 +288,7 @@ export class SageSession {
     return this.evaluate(source, options);
   }
 
-  async replaceWorker(error) {
+  async replaceWorker(error, waitForReady = true) {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
     this.worker = undefined;
@@ -300,11 +300,13 @@ export class SageSession {
     worker?.terminate();
     if (this.closed) return;
     this.spawnWorker(true);
-    await this.readyPromise;
+    if (waitForReady) await this.readyPromise;
   }
 
   interrupt() {
-    return this.replaceWorker(new SageSessionInterruptedError());
+    // Acknowledge termination immediately.  The replacement starts now, and
+    // the next evaluation waits for it through `ready()`.
+    return this.replaceWorker(new SageSessionInterruptedError(), false);
   }
 
   reset() {
