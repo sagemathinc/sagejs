@@ -87,6 +87,7 @@ window.__sagejsTest = {
   diagnostics() {
     return {
       cross_origin_isolated: globalThis.crossOriginIsolated,
+      shared_array_buffer: typeof SharedArrayBuffer === "function",
       hardware_concurrency: navigator.hardwareConcurrency,
       user_agent: navigator.userAgent,
       memory: performance.memory ? {

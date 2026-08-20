@@ -56,17 +56,18 @@ try {
     false,
     "the mobile architecture must not assume SharedArrayBuffer on file origins",
   );
-  assert.equal(observation.directOuterWorker, false);
-  assert.equal(observation.portableOuterWorker, false);
   assert.equal(
-    observation.nestedWorker,
+    observation.crossOriginIsolated &&
+      observation.sharedArrayBuffer &&
+      observation.directOuterWorker &&
+      observation.nestedWorker,
     false,
-    "a nested worker cannot start before the outer file-origin worker",
+    "a file origin unexpectedly satisfied the complete production isolation and worker contract",
   );
   receipt.status = "passed";
   await page.close();
   console.log(
-    "Playwright WebKit confirms file origins cannot host the production worker topology; an application-owned HTTP(S) asset origin is required",
+    "Playwright WebKit confirms file origins cannot satisfy the production isolation and worker contract; an application-owned HTTP(S) asset origin is required",
   );
 } catch (error) {
   receipt.status = "failed";

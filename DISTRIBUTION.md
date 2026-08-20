@@ -161,8 +161,8 @@ separate mandatory gates.
 
 A mobile shell must not load the kernel from bundled `file:` URLs. Those URLs
 cannot carry COOP/COEP response headers, are not cross-origin isolated, and
-cannot be treated as if `SharedArrayBuffer` were available. A real WebKit file-origin
-release check exercises both the outer module worker and its nested module
+cannot be treated as if `SharedArrayBuffer` were available. A real WebKit
+file-origin release check exercises both the outer module worker and its nested module
 worker and records the actual isolation and `SharedArrayBuffer` state. The
 release check proves why it is rejected. The mobile host instead serves the
 verified bundle through a narrowly scoped application-owned HTTPS or loopback
