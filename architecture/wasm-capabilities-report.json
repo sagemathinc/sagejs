@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d061c5377006b1bd4cd952da84eeaba65b7465a7a34798c65a496dc1578f0ab6",
+  "source_sha256": "94d9450d2887ac9d29aff82ac3bacadd26272dc2b25a7a3850d8059f40a29d58",
   "counts": {
     "total": 941,
     "by_kind": {
@@ -71,6 +71,10 @@
       "kernel:number-field-composite-analysis-production",
       "kernel:number-field-zeta-coefficients-production",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
+    ],
+    "number-field-ideal-certificate-sagepack": [
+      "kernel:field-analysis-fixed-point-checker-production",
+      "specialist:sagepack"
     ],
     "number-field-maximal-order-prime-zeta": [
       "kernel:field-analysis-fixed-point-checker-production",
