@@ -259,7 +259,8 @@ test("the checked-in generated report is accepted by the public API", async () =
   assert.deepEqual(
     api.workflow("number-field-maximal-order-prime-zeta").required_capabilities,
     [
-      "kernel:field-analysis-fixed-point-checker-production",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:nmod_poly_factor",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
     ],
   );

@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d54e7b8cb82d23c98c6994e32bf8746fcad196380c3f95d9c1763047784b5b06",
+  "source_sha256": "7a965239912e4b2599d25f1563639c6a13add37b449c5b4fb3862d8201bdba48",
   "counts": {
     "total": 941,
     "by_kind": {
@@ -33,19 +33,16 @@
       "analytic:dirichlet-l-batch"
     ],
     "elliptic-lseries-complex-plot": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable",
+      "specialist:integer-factorization-wasm",
       "elliptic-lseries-values",
       "elliptic-lseries-plot"
     ],
     "elliptic-lseries-values": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable",
+      "specialist:integer-factorization-wasm",
       "elliptic-lseries-values"
     ],
     "elliptic-portable-coefficients": [
-      "elliptic-coefficients-portable",
-      "elliptic-root-number-semistable"
+      "specialist:integer-factorization-wasm"
     ],
     "exact-algebraic-roots": [
       "algebraic:qqbar-resource-core"
@@ -74,7 +71,8 @@
       "specialist:sagepack"
     ],
     "number-field-maximal-order-prime-zeta": [
-      "kernel:field-analysis-fixed-point-checker-production",
+      "ffi:flint:fmpz_matrix_hnf",
+      "ffi:flint:nmod_poly_factor",
       "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch"
     ],
     "quadratic-dedekind-zeta-batch": [
