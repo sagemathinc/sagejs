@@ -24,6 +24,11 @@ import hashlib
 import json
 
 from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+from sagejs.number_fields.class_unit_analytic import (
+    AnalyticPrecisionError,
+    saturate_unit_lattice,
+    verify_saturation_evidence,
+)
 from sagejs.number_fields.class_unit_context import (
     PROOF_LABELS,
     ClassUnitGroupContext,
@@ -106,7 +111,85 @@ assert witness.evaluate() == (a + 3) / 2
 assert witness.norm() == 1
 assert witness.principal_ideal(O) == O.ideal(witness.evaluate())
 assert witness.verify_principal_ideal(O.ideal(witness.evaluate()))
-assert len(witness.archimedean_logarithms(100)) == 2
+logarithms = witness.archimedean_logarithms(100)
+assert len(logarithms) == 2
+assert all(logarithm.rigorous for logarithm in logarithms)
+assert all(logarithm.precision_bits == 100 for logarithm in logarithms)
+assert all("outward dyadic" in logarithm.source for logarithm in logarithms)
+
+epsilon = (a + 1) / 2
+square_subgroup = [FactoredNumberFieldElement.from_element(K, epsilon**2)]
+saturation = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=1,
+)
+assert saturation.complete and saturation.saturated and saturation.rigorous
+assert saturation.remaining_index_bound == 1
+assert saturation.index_enlargement == 2
+assert len(saturation.evidence) == 1
+assert saturation.evidence[0].root**2 == epsilon**2
+assert saturation.verify()
+assert verify_saturation_evidence(K, O, square_subgroup, saturation.to_dict())
+tampered_saturation = copy.deepcopy(saturation.to_dict())
+tampered_saturation["evidence"][0]["root_coordinates"][0][0] += 1
+assert not verify_saturation_evidence(K, O, square_subgroup, tampered_saturation)
+
+untrusted_bound = saturate_unit_lattice(
+    K, O, square_subgroup, 2, coordinate_bound=1
+)
+assert not untrusted_bound.complete
+assert untrusted_bound.unresolved_primes == (2,)
+
+failed_closed = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=0,
+    local_rational_primes=(),
+)
+assert not failed_closed.complete
+assert failed_closed.evidence == ()
+
+locally_obstructed = saturate_unit_lattice(
+    K,
+    O,
+    [FactoredNumberFieldElement.from_element(K, epsilon)],
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=1,
+)
+assert locally_obstructed.complete and locally_obstructed.verify()
+assert locally_obstructed.evidence[0].outcome == "saturated"
+assert locally_obstructed.evidence[0].method == (
+    "exact-finite-order-quotient-pth-power-obstruction"
+)
+
+reconstruction_precisions = []
+def adaptive_root_provider(field, order, generators, prime, precision):
+    reconstruction_precisions.append(precision)
+    if precision < 128:
+        raise AnalyticPrecisionError("insufficient root reconstruction precision")
+    return ([1], 0, epsilon)
+
+adaptive_saturation = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    precision_bits=64,
+    maximum_precision_bits=128,
+    candidate_root_provider=adaptive_root_provider,
+)
+assert adaptive_saturation.complete
+assert reconstruction_precisions == [64, 128]
+assert adaptive_saturation.precision_history == (64, 128)
 assert FactoredNumberFieldElement.from_dict(K, witness.to_dict()) == witness
 assert witness * ~witness == FactoredNumberFieldElement(K)
 assert witness**0 == FactoredNumberFieldElement(K)

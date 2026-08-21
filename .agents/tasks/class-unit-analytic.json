@@ -6,11 +6,14 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Audit and improve rigorous unit/regulator and zeta-residue performance, reuse exact splitting and interval work, and strengthen saturation/precision semantics with focused differential benchmarks",
-  "base_commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
+  "objective": "Implement rigorous outward Arb enclosure transport, precision-safe regulator refinement, bounded exact unit p-saturation, and adaptive analytic retry hooks",
+  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
   "claims": [
+    "packages/flint/src/algebraic.c",
     "src/lib/sagejs/number_fields/class_unit_analytic.py",
+    "src/lib/sagejs/number_fields/factored_elements.py",
     "test/number-field-class-unit-analytic.cjs",
+    "test/number-field-class-unit-context.cjs",
     "test/fixtures/number-field-class-unit-analytic.json"
   ],
   "dependencies": [],
@@ -19,13 +22,15 @@
     "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Unit"
   ],
   "architecture": {
-    "strategy": "dynamic-python",
-    "fallback": "same-source",
+    "strategy": "mixed",
+    "fallback": "tested-capability",
     "oracles": [
       "Hecke/Oscar",
       "Sage/PARI"
     ],
-    "exceptions": []
+    "exceptions": [
+      "The existing FLINT Node-API host adapter must export exact Arb dyadic endpoints; ordinary Python consumes that proof boundary and fails closed when the native capability is absent."
+    ]
   },
   "platforms": {
     "linux-x64": "required",
@@ -138,20 +143,40 @@
       "commit": "80c300891aa499311e934e77e6be14bb5ea47c43",
       "workspace_fingerprint": "ec2f60e6386f65ed27d007e32efa2e101ce74ea4470807b411226c3b827b1851",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.633,
+      "started_at": "2026-08-21T09:41:26.040Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "d35a78c190c565e32f4ace5c6e0f0864b4d500aba7085d61d5e3423605696e73",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.067,
+      "started_at": "2026-08-21T09:41:29.293Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "d35a78c190c565e32f4ace5c6e0f0864b4d500aba7085d61d5e3423605696e73",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Audited and optimized the ordinary strict-Python analytic proof layer after the integrated batched splitting work. RealBall arithmetic now rounds directly to dyadic endpoints without normalized-rational temporaries. An explicit field/provider-bound ZetaLogResidueWorkspace reuses authenticated splitting tails, exact aggregated prime-power plans, theorem thresholds, and certified finite-term intervals; the representative discriminant-5 cutoff reduces 1,534 raw contributions to 800 exact nonzero terms. Independent precision attempts are intersected, and regulator/zeta results record attempt counts and widths. Regulator providers must honor requested precision and give consistent refinements. Unit p-saturation evidence now records a doubling precision history, binds the decisive precision to the final attempt, and requires a genuine p-divisible enlargement index for nonmaximal results. Focused quadratic/cubic oracle checks, warm-cache isolation, precision escalation, hR index validation, and strict Pyright all pass.",
+    "summary": "Fixed the regulator refinement precision intersection and replaced decimal midpoint/radius proof transport with exact outward dyadic endpoints obtained from Arb. Added a bounded exact unit p-saturation producer with replayable p-th-root identities, exact maximal-order/unit checks, index-p basis replacement, adaptive reconstruction retry, finite-order-quotient negative obstructions, canonical evidence serialization, and a fail-closed result state. Real quadratic runtime checks cover enlargement, tamper rejection, untrusted bounds, bounded-search incompleteness, local obstruction completion, and doubled-precision retry.",
     "risks": [
       "Rigorous zeta status assumes the caller supplies the actual maximal-order discriminant and a complete exact splitting provider; the function validates prime coverage and every local degree identity but does not independently prove the field/order identity.",
-      "Unit p-saturation remains a verification interface: only evidence whose certificate replay succeeds and whose doubling/decisive-precision metadata is internally consistent becomes rigorous. This lane does not implement the algebraic p-th-root obstruction producer, so an unchecked search remains explicitly unverified.",
-      "The common base had no public RealBall enclosure transport. This module therefore uses exact rational endpoints and mpmath.libmp directed-rounding intervals; future Arb transport can supply the same lower/upper protocol without changing proof states.",
+      "The p-th-root producer is intentionally bounded by an order-coordinate box and candidate cap. Missing roots outside that box never certify saturation; completion then requires exhaustive finite-quotient obstructions for every exponent/torsion target or exhaustion of a rigorously supplied global index.",
+      "Only algebraic logarithm inputs cross the corrected Arb endpoint boundary. Determinant and zeta transcendental evaluation remain explicitly typed exact-rational intervals with mpmath.libmp directed rounding, not Arb balls.",
       "FactoredNumberFieldElement currently exposes only scalar qqbarLogAbsBall calls. The measured strict-Python regulator determinant is already sub-millisecond for the rank-two fixture, while zeta finite-interval evaluation dominated the profile, so this lane did not add an unmeasured algebraic-log batch boundary.",
-      "The lane worktree has no built FLINT addon, so generated Sage.js/native validation could not run locally. Per coordinator direction, this handoff stays active with focused receipts; central integration owns the broad native gate."
+      "The corrected C source passes a direct syntax check against FLINT headers, but the lane's direct addon rebuild is blocked by a pre-existing shared native artifact lacking NTL headers. The package-local native transport test and broad native gate remain for central integration."
     ],
     "next_steps": [
-      "Integration may retain a ZetaLogResidueWorkspace beside the analytic context when independent callers request the same field residue at several tolerances; the workspace rejects degree or provider identity changes.",
-      "Run pnpm test:native in central integration and move this contract to review only after recording that required receipt."
+      "Wire ExactUnitSaturationResult into the class/unit engine using the full rigorous HRIndexValidationResult, retain its canonical evidence payload in map proofs, and replay verify_saturation_record rather than trusting stage labels.",
+      "Rebuild the FLINT addon in central integration, run the claimed top-level context test against the new endpoint payload, then run pnpm test:native before moving this contract to review."
     ]
   }
 }
