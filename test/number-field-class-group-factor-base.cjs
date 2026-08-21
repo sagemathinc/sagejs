@@ -303,3 +303,144 @@ print(json.dumps(results, separators=(",", ":")))
   ]);
   assert.deepEqual(JSON.parse(output), expected);
 });
+
+test("degree 6--10 plans construct and replay only exact eligible prime ideals", () => {
+  const output = run(String.raw`
+import json
+import time
+import sagejs.number_fields.class_group_factor_base as factor_bases
+from sagejs.number_fields.class_group_factor_base import (
+    build_factor_base,
+    factor_base_plan,
+    factor_base_prime_from_dict,
+)
+
+fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+prepared = []
+for case in fixture["high_degree_cases"]:
+    field = NumberField(R(case["polynomial"]), "a")
+    order = field.maximal_order()
+    assert order.degree() == case["degree"]
+    assert list(field.signature()) == case["signature"]
+    assert int(order.discriminant()) == case["discriminant"]
+    equation_polynomial = (
+        factor_bases._prime_ideals._maximal.integral_equation_polynomial(field)
+    )
+    index_squared = abs(int(equation_polynomial.discriminant())) // abs(
+        int(order.discriminant())
+    )
+    assert index_squared == case["equation_index_squared"]
+    prepared.append((case, order))
+
+original_factor = factor_bases._prime_ideals.factor_rational_prime
+original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+factor_calls = []
+prime_ideal_constructions = []
+def tracked_factor(order, prime, *args, **kwargs):
+    factor_calls.append(int(prime))
+    return original_factor(order, prime, *args, **kwargs)
+def tracked_prime_from_ideal(*args, **kwargs):
+    prime_ideal_constructions.append(int(args[1]))
+    return original_prime_from_ideal(*args, **kwargs)
+
+factor_bases._prime_ideals.factor_rational_prime = tracked_factor
+factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+plans_and_records = []
+started = time.perf_counter()
+try:
+    for case, order in prepared:
+        plan = factor_base_plan(order, proof=True, theorem="minkowski")
+        assert plan.bound == case["minkowski_bound"]
+        records = build_factor_base(plan)
+        compact = [
+            {
+                "p": record.rational_prime,
+                "norm": record.norm,
+                "e": record.ramification_index,
+                "f": record.residue_degree,
+            }
+            for record in records
+        ]
+        assert compact == case["factor_base"]
+        assert plan.progress()["eligible_prime_ideals"] == len(records)
+        assert build_factor_base(plan) is records
+        plans_and_records.append((case, plan, records))
+    construction_seconds = time.perf_counter() - started
+    constructions_after_build = len(prime_ideal_constructions)
+
+    cache_started = time.perf_counter()
+    for _case, plan, records in plans_and_records:
+        assert build_factor_base(plan) is records
+    cache_seconds = time.perf_counter() - cache_started
+
+    replay_started = time.perf_counter()
+    for case, plan, records in plans_and_records:
+        exact = case["exact_prime"]
+        record = records[exact["index"]]
+        assert record.rational_prime == exact["p"]
+        assert record.norm == exact["norm"]
+        assert record.ramification_index == exact["e"]
+        assert record.residue_degree == exact["f"]
+        assert record.two_generator["second_generator"] == exact["second_generator"]
+        assert list(record.residue_modulus) == exact["residue_modulus"]
+        restored = factor_base_prime_from_dict(plan.order, record.to_dict())
+        assert restored.to_dict() == record.to_dict()
+    replay_seconds = time.perf_counter() - replay_started
+finally:
+    factor_bases._prime_ideals.factor_rational_prime = original_factor
+    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+
+# Only p=2 in the transformed sextic divides its equation-order index.  The
+# compact scan must use and cache one complete finite-algebra decomposition
+# there.  All 36 eligible p-maximal ideals, including replay, remain selective.
+assert factor_calls == [2]
+assert constructions_after_build == fixture["high_degree_benchmark"]["selected_prime_ideals"]
+assert constructions_after_build < fixture["high_degree_benchmark"]["baseline_materialized_siblings"]
+assert construction_seconds < fixture["high_degree_benchmark"]["maximum_seconds"]
+assert cache_seconds < fixture["high_degree_benchmark"]["warm_cache_maximum_seconds"]
+
+# Independently materialize the complete public decomposition at each oracle
+# prime and require exact HNF equality with the selective fixture record.
+for case, plan, records in plans_and_records:
+    exact = case["exact_prime"]
+    record = records[exact["index"]]
+    full = original_factor(plan.order, exact["p"])
+    matching = [
+        prime_ideal
+        for prime_ideal in full.prime_ideals()
+        if factor_bases._encode_rows(prime_ideal._basis_rows)
+        == record.hnf_fingerprint
+    ]
+    assert len(matching) == 1
+
+print(json.dumps({
+    "construction_seconds": construction_seconds,
+    "replay_seconds": replay_seconds,
+    "cache_seconds": cache_seconds,
+    "selected": constructions_after_build,
+    "baseline_siblings": fixture["high_degree_benchmark"]["baseline_materialized_siblings"],
+}, separators=(",", ":")))
+`);
+
+  const measured = JSON.parse(output);
+  assert.equal(
+    fixture.high_degree_cases.reduce(
+      (total, entry) => total + entry.baseline_materialized_siblings,
+      0,
+    ),
+    fixture.high_degree_benchmark.baseline_materialized_siblings,
+  );
+  assert.equal(
+    measured.selected,
+    fixture.high_degree_benchmark.selected_prime_ideals,
+  );
+  assert.equal(
+    measured.baseline_siblings,
+    fixture.high_degree_benchmark.baseline_materialized_siblings,
+  );
+  assert.ok(
+    measured.construction_seconds < fixture.high_degree_benchmark.maximum_seconds,
+  );
+});
