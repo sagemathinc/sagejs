@@ -6521,8 +6521,8 @@ _PACKED_MOEBIUS_MAX_STOP = 2 * 1024 * 1024
 def _record_moebius_range_acceleration(
     route: str,
     reason: str,
-    boundary_crossings: int,
-    copied_values: int,
+    boundary_crossings: _Int,
+    copied_values: _Int,
 ) -> None:
     record = runtime.object.create(None)
     runtime.reflect.set(record, "route", route)
@@ -6532,7 +6532,7 @@ def _record_moebius_range_acceleration(
     runtime.reflect.set(moebius, "_last_range_acceleration", record)
 
 
-def _packed_moebius_modules() -> tuple[Any, Any]:
+def _packed_moebius_modules() -> Any:
     loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
     if loader is runtime.undefined:
         raise RuntimeError("the packed Möbius kernel loader is unavailable")
@@ -6546,7 +6546,7 @@ def _packed_moebius_modules() -> tuple[Any, Any]:
     )
 
 
-def _packed_moebius_range(stop: int) -> Any:
+def _packed_moebius_range(stop: _Int) -> Any:
     native_module, kernel_module = _packed_moebius_modules()
     kernel = runtime.reflect.get(kernel_module, "packed_moebius_range")
     kernel_int64_zeros = runtime.reflect.get(native_module, "kernel_int64_zeros")
