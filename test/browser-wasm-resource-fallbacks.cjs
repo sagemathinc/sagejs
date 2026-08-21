@@ -253,6 +253,7 @@ test("each optional exact-matrix resource operation has a public fallback", asyn
     ["ffiFmpqMatrixCharpoly", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=str(A.charpoly())=='x^2 - 4/3*x - 1/12'"],
     ["ffiFmpqMatrixMinpoly", "A=matrix(QQ,[[1/2,2/3],[3/4,5/6]])\nanswer=str(A.minpoly())=='x^2 - 4/3*x - 1/12'"],
     ["ffiFmpqMatrixRightKernel", "A=matrix(QQ,[[1/2,1/3,1/5],[1/4,1/7,1/10]])\nK=A.right_kernel_matrix()\nanswer=K.dimensions()==(1,3) and (A*K.transpose()).list()==[0,0]"],
+    ["ffiFmpqMatrixIsZero", "Z=zero_matrix(QQ,2)\nA=matrix(QQ,[[0,0],[0,1/3]])\nanswer=Z.is_zero() and not A.is_zero()"],
   ];
   const session = await createSage();
   try {

@@ -86,6 +86,7 @@
         "ffi:flint:fmpq_matrix",
         "ffi:flint:fmpq_matrix_add_scaled_entry",
         "ffi:flint:fmpq_matrix_copy",
+        "ffi:flint:fmpq_matrix_randbits",
         "ffi:flint:fmpq_matrix_deserialize",
         "ffi:flint:fmpq_matrix_det",
         "ffi:flint:fmpq_matrix_echelon_pivots",

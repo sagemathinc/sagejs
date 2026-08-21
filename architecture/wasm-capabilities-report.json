@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "43a1ba02d94f35644a7ebac30783f03d2045684da6cd41574eafd8cc228ab0be",
+  "source_sha256": "60fcb91f55c9c947c5985747a95e89c7fa5f56c8d574716ca1a2fd249dbc478e",
   "counts": {
     "total": 953,
     "by_kind": {
@@ -15,14 +15,14 @@
     "by_disposition": {
       "compiled-source": 37,
       "desktop-only": 13,
-      "generated-wasm": 301,
-      "portable-fallback": 558,
+      "generated-wasm": 302,
+      "portable-fallback": 557,
       "shared-core": 44
     },
     "by_status": {
-      "available": 514,
+      "available": 515,
       "desktop-only": 13,
-      "fallback": 426
+      "fallback": 425
     }
   },
   "workflow_aliases": {
@@ -1369,14 +1369,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_randbits",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_rank",

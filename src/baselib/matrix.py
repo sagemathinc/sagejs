@@ -3103,7 +3103,9 @@ class Matrix(sage.Element):
 
     def is_zero(self) -> bool:
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
+            if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+                "ffiFmpqMatrixIsZero"
+            ):
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_is_zero(self._rational_resource())
                 )
@@ -9550,11 +9552,10 @@ def random_matrix(
     a square matrix. The common Sage keywords `density`, `x`, `y`, and
     `distribution='uniform'` are supported where meaningful. Full-density
     matrices over `QQ` use FLINT's two-bit rational distribution. A backend
-    with the optional random-resource constructor fills the owned FLINT
-    resource directly; otherwise a receipt-backed packed kernel produces the
-    same bounded nonzero rational domain before copying it into the ordinary
-    resource owner. This intentionally differs from SageMath's bounded default
-    rational distribution.
+    with the random-resource constructor fills the owned FLINT resource
+    directly; otherwise the same bounded nonzero rational domain is built
+    through ordinary packed matrix ingress. This intentionally differs from
+    SageMath's bounded default rational distribution.
 
     ### Examples
 
@@ -9817,20 +9818,6 @@ def random_matrix(
             seed2 = _random_int(0, 4294967295)
             resource = ffi.fmpq_matrix_randbits(rows, cols, 2, seed1, seed2)
         else:
-            packed = _bulk_sparse_random_matrix(
-                sage.QQ,
-                rows,
-                cols,
-                1.0,
-                None,
-                None,
-                None,
-                3,
-                3,
-                True,
-            )
-            if packed is not runtime.undefined:
-                return packed
             values = []
             for _index in range(rows * cols):
                 numerator = _random_int(1, 3)

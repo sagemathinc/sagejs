@@ -3588,7 +3588,7 @@ def fmpq_matrix(rows: uint64, columns: uint64) -> FmpqMatrix: ...
         exception=OverflowError,
         message="rational random matrix parameters are too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_randbits(
     rows: uint64,
