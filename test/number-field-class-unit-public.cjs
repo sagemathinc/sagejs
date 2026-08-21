@@ -88,6 +88,26 @@ print("quadratic-public-ok")
   assert.equal(output, "quadratic-public-ok");
 });
 
+test("public cubic regulators honor rigorous requested precision", () => {
+  const output = runPublic(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x - 1, "b")
+for precision in (100, 200):
+    regulator = K.regulator(precision)
+    assert regulator.rigorous and regulator.full_rank_certified
+    assert regulator.precision_bits >= precision
+    assert regulator.lower < regulator.upper
+result = K.class_unit_group()
+assert result.complete and result.proof_status == "exact-unconditional"
+assert result.unit_group().unit_rank == 1
+assert result.regulator().rigorous
+assert result.regulator().precision_bits >= 100
+print("cubic-regulator-ok")
+`, 180_000);
+  assert.equal(output, "cubic-regulator-ok");
+});
+
 test(
   "public motivating quintic replays conditional and unconditional class maps",
   { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
