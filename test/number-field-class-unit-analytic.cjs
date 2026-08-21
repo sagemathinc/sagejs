@@ -180,6 +180,106 @@ print("unit-lattice-ok")
   assert.equal(output, "unit-lattice-ok");
 });
 
+test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
+  runPython(String.raw`
+def reference_plan(threshold, splitting):
+    ninth = threshold // 9
+    aggregated = {}
+    raw_terms = 0
+    def add(sign, scale, norm, exponent):
+        nonlocal raw_terms
+        raw_terms += 1
+        key = (scale, norm, exponent)
+        aggregated[key] = aggregated.get(key, 0) + sign
+    for prime, factors in splitting.items():
+        for exponent in range(1, module._max_power_strict(prime, threshold) + 1):
+            add(-1, 0, prime, exponent)
+        for _ramification, residue_degree in factors:
+            norm = prime**residue_degree
+            for exponent in range(
+                1, module._max_power_strict(norm, threshold) + 1
+            ):
+                add(1, 0, norm, exponent)
+        if prime < ninth:
+            for exponent in range(
+                1, module._max_power_strict(prime, ninth) + 1
+            ):
+                add(1, 1, prime, exponent)
+            for _ramification, residue_degree in factors:
+                norm = prime**residue_degree
+                for exponent in range(
+                    1, module._max_power_strict(norm, ninth) + 1
+                ):
+                    add(-1, 1, norm, exponent)
+    terms = [
+        (multiplicity, scale, norm, exponent)
+        for (scale, norm, exponent), multiplicity in sorted(aggregated.items())
+        if multiplicity
+    ]
+    return module._BFPrimePowerPlan(threshold, terms, raw_terms)
+
+def reference_finite_term(plan, field):
+    threshold = plan.threshold
+    ninth = threshold // 9
+    sqrt_threshold = field.sqrt_integer(threshold)
+    sqrt_ninth = field.sqrt_integer(ninth)
+    scales = (
+        sqrt_threshold * field.log_integer(threshold),
+        sqrt_ninth * field.log_integer(ninth),
+    )
+    total = RealBall(0, precision_bits=field.precision_bits)
+    log_cache = {}
+    sqrt_cache = {}
+    for multiplicity, scale_index, norm, exponent in plan.terms:
+        summand = module._bf_prime_power_summand(
+            norm,
+            exponent,
+            scales[scale_index],
+            field,
+            log_cache,
+            sqrt_cache,
+        )
+        if multiplicity != 1:
+            summand = summand * RealBall(
+                multiplicity, precision_bits=field.precision_bits
+            )
+        total = total + summand
+    multiplier = RealBall(3, precision_bits=field.precision_bits) / (
+        RealBall(2, precision_bits=field.precision_bits)
+        * sqrt_threshold
+        * field.log_integer(3 * threshold)
+    )
+    return multiplier * total
+
+splitting = {
+    2: ((1, 1), (1, 4)),
+    3: ((1, 2), (1, 3)),
+    5: ((1, 5),),
+    7: ((1, 1), (2, 2)),
+    11: ((1, 1), (1, 1), (1, 3)),
+    13: ((1, 5),),
+}
+threshold = 729
+old_plan = reference_plan(threshold, splitting)
+new_plan = module._build_bf_plan(threshold, splitting)
+assert old_plan.raw_terms == new_plan.raw_terms
+assert old_plan.terms == new_plan.terms
+
+old_finite = reference_finite_term(
+    old_plan, IntervalBallField(128)
+)
+new_finite = module._bf_finite_term(
+    new_plan, IntervalBallField(128)
+)
+assert old_finite.lower == new_finite.lower
+assert old_finite.upper == new_finite.upper
+assert old_finite.precision_bits == new_finite.precision_bits
+assert old_finite.rigorous == new_finite.rigorous
+assert len(new_finite.source) < 512
+assert "mpmath-libmp-directed-rounding" in new_finite.source
+  `);
+});
+
 test("weighted logarithm determinants give certified regulator balls", () => {
   const output = runPython(String.raw`
 quadratic = fixture["fields"][0]

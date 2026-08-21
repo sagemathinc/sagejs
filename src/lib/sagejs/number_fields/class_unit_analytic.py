@@ -2972,14 +2972,21 @@ def _build_bf_plan(
     splitting: dict[int, tuple[tuple[int, int], ...]],
 ) -> _BFPrimePowerPlan:
     ninth = threshold // 9
-    aggregated: dict[tuple[int, int, int], int] = {}
+    aggregated: dict[int, dict[int, dict[int, int]]] = {}
     raw_terms = 0
 
     def add(sign: int, scale: int, norm: int, exponent: int) -> None:
         nonlocal raw_terms
         raw_terms += 1
-        key = (scale, norm, exponent)
-        aggregated[key] = aggregated.get(key, 0) + sign
+        by_norm = aggregated.get(scale)
+        if by_norm is None:
+            by_norm = {}
+            aggregated[scale] = by_norm
+        by_exponent = by_norm.get(norm)
+        if by_exponent is None:
+            by_exponent = {}
+            by_norm[norm] = by_exponent
+        by_exponent[exponent] = by_exponent.get(exponent, 0) + sign
 
     for prime, factors in splitting.items():
         for exponent in range(1, _max_power_strict(prime, threshold) + 1):
@@ -2995,11 +3002,15 @@ def _build_bf_plan(
                 norm = prime**residue_degree
                 for exponent in range(1, _max_power_strict(norm, ninth) + 1):
                     add(-1, 1, norm, exponent)
-    terms = [
-        (multiplicity, scale, norm, exponent)
-        for (scale, norm, exponent), multiplicity in sorted(aggregated.items())
-        if multiplicity
-    ]
+    terms = []
+    for scale in sorted(aggregated):
+        by_norm = aggregated[scale]
+        for norm in sorted(by_norm):
+            by_exponent = by_norm[norm]
+            for exponent in sorted(by_exponent):
+                multiplicity = by_exponent[exponent]
+                if multiplicity:
+                    terms.append((multiplicity, scale, norm, exponent))
     return _BFPrimePowerPlan(threshold, terms, raw_terms)
 
 
@@ -3423,7 +3434,18 @@ def _bf_finite_term(
             summand = summand * RealBall(
                 multiplicity, precision_bits=field.precision_bits
             )
-        total = total + summand
+        precision, rigorous, _source = total._binary_state(summand)
+        total = RealBall._arithmetic_result(
+            total.lower + summand.lower,
+            total.upper + summand.upper,
+            precision_bits=precision,
+            rigorous=rigorous,
+            source=(
+                "belabas-friedman-finite-prime-sum; "
+                "mpmath-libmp-directed-rounding; "
+                "outward-dyadic-arithmetic"
+            ),
+        )
     multiplier = RealBall(3, precision_bits=field.precision_bits) / (
         RealBall(2, precision_bits=field.precision_bits)
         * sqrt_threshold
