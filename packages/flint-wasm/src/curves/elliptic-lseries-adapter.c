@@ -17,7 +17,6 @@
 
 #define SAGEJS_WASM_EC_MAX_POINTS_PER_TILE 10000U
 #define SAGEJS_WASM_EC_MAX_COEFFICIENTS 5000001U
-#define SAGEJS_WASM_EC_MAX_CUTOFF 5000000U
 #define SAGEJS_WASM_EC_MAX_POINT_TEXT (64U * 1024U * 1024U)
 #define SAGEJS_WASM_EC_MAX_COMPONENT_TEXT 8192U
 #define SAGEJS_WASM_EC_MAX_DECIMAL_OUTPUT (128U * 1024U * 1024U)
@@ -35,7 +34,6 @@ typedef struct
     uint32_t work_precision_bits;
     uint32_t output_mode;
     int32_t *coefficients;
-    slong *direct_cutoffs;
     char *point_text;
     uint32_t *point_offsets;
     char *conductor_text;
@@ -65,7 +63,6 @@ void sagejs_wasm_ec_lseries_clear(void)
     free(state.conductor_text);
     free(state.point_offsets);
     free(state.point_text);
-    free(state.direct_cutoffs);
     free(state.coefficients);
     memset(&state, 0, sizeof(state));
 }
@@ -92,7 +89,7 @@ int32_t sagejs_wasm_ec_lseries_begin(
     uint32_t conductor_text_bytes,
     uint32_t target_bits,
     uint32_t refinement_bits,
-    uint32_t planning_precision_bits,
+    uint32_t work_precision_bits,
     uint32_t output_mode)
 {
     sagejs_wasm_ec_lseries_clear();
@@ -104,9 +101,9 @@ int32_t sagejs_wasm_ec_lseries_begin(
         conductor_text_bytes < 1U || conductor_text_bytes > 4096U ||
         target_bits < 16U || target_bits > 4096U ||
         refinement_bits > 256U ||
-        planning_precision_bits < target_bits + refinement_bits ||
-        planning_precision_bits > 8192U ||
-        output_mode > SAGEJS_WASM_EC_OUTPUT_DIRECT_DECIMAL_BALLS ||
+        work_precision_bits < target_bits + refinement_bits ||
+        work_precision_bits > 8192U ||
+        output_mode > SAGEJS_WASM_EC_OUTPUT_PLOT ||
         (output_mode == SAGEJS_WASM_EC_OUTPUT_PLOT && refinement_bits == 0U))
         return SAGEJS_WASM_EC_ADAPTER_INVALID_INPUT;
     state.coefficient_count = coefficient_count;
@@ -115,7 +112,7 @@ int32_t sagejs_wasm_ec_lseries_begin(
     state.conductor_text_bytes = conductor_text_bytes;
     state.target_bits = target_bits;
     state.refinement_bits = refinement_bits;
-    state.work_precision_bits = planning_precision_bits;
+    state.work_precision_bits = work_precision_bits;
     state.output_mode = output_mode;
     if (!allocate_request_buffers())
     {
@@ -123,35 +120,6 @@ int32_t sagejs_wasm_ec_lseries_begin(
         return SAGEJS_WASM_EC_ADAPTER_ALLOCATION_FAILED;
     }
     state.initialized = 1;
-    return SAGEJS_WASM_EC_ADAPTER_OK;
-}
-
-__attribute__((visibility("default")))
-int32_t sagejs_wasm_ec_lseries_direct_begin(
-    uint32_t coefficient_count,
-    uint32_t point_count,
-    uint32_t point_text_bytes,
-    uint32_t conductor_text_bytes,
-    uint32_t target_bits,
-    uint32_t work_precision_bits)
-{
-    int32_t status = sagejs_wasm_ec_lseries_begin(
-        coefficient_count, point_count, point_text_bytes,
-        conductor_text_bytes, target_bits, 0U, work_precision_bits,
-        SAGEJS_WASM_EC_OUTPUT_DIRECT_DECIMAL_BALLS);
-    if (status != SAGEJS_WASM_EC_ADAPTER_OK)
-        return status;
-    if (!checked_count(point_count, sizeof(*state.direct_cutoffs)))
-    {
-        sagejs_wasm_ec_lseries_clear();
-        return SAGEJS_WASM_EC_ADAPTER_RESOURCE_LIMIT;
-    }
-    state.direct_cutoffs = calloc(point_count, sizeof(*state.direct_cutoffs));
-    if (state.direct_cutoffs == NULL)
-    {
-        sagejs_wasm_ec_lseries_clear();
-        return SAGEJS_WASM_EC_ADAPTER_ALLOCATION_FAILED;
-    }
     return SAGEJS_WASM_EC_ADAPTER_OK;
 }
 
@@ -177,12 +145,6 @@ __attribute__((visibility("default")))
 uintptr_t sagejs_wasm_ec_lseries_conductor_text(void)
 {
     return (uintptr_t) state.conductor_text;
-}
-
-__attribute__((visibility("default")))
-uintptr_t sagejs_wasm_ec_lseries_direct_cutoffs(void)
-{
-    return (uintptr_t) state.direct_cutoffs;
 }
 
 static int parse_component(arb_t output, uint32_t begin, uint32_t end)
@@ -378,36 +340,6 @@ static int pack_decimal_output(
     return field == fields;
 }
 
-/* Direct prefixes have no Mellin-grid error terms.  Preserve both Acb balls
- * as ten exact decimal fields per point: completed then raw, each containing
- * re/im midpoint, re/im radius, and relative accuracy bits. */
-static int pack_direct_decimal_output(
-    acb_srcptr completed,
-    acb_srcptr raw)
-{
-    state.decimal_field_count = 10U;
-    const size_t fields =
-        (size_t) state.decimal_field_count * state.point_count;
-    if (fields >= UINT32_MAX || !checked_count(fields + 1U, sizeof(uint32_t)))
-        return 0;
-    state.decimal_offsets = calloc(fields + 1U, sizeof(uint32_t));
-    if (state.decimal_offsets == NULL)
-        return 0;
-    state.decimal_offset_count = (uint32_t) fields + 1U;
-    uint32_t field = 0U;
-    const slong digits =
-        (slong) ceil((double) state.target_bits * 0.30103) + 12;
-    for (uint32_t index = 0; index < state.point_count; ++index)
-    {
-        if (!append_ball(completed + index, digits, &field) ||
-            !append_accuracy(completed + index, &field) ||
-            !append_ball(raw + index, digits, &field) ||
-            !append_accuracy(raw + index, &field))
-            return 0;
-    }
-    return field == fields;
-}
-
 static int pack_plot_output(
     acb_srcptr coarse_raw,
     acb_srcptr fine_raw,
@@ -450,9 +382,7 @@ static int pack_plot_output(
 __attribute__((visibility("default")))
 int32_t sagejs_wasm_ec_lseries_compute(int32_t root_number)
 {
-    if (!state.initialized ||
-        state.output_mode == SAGEJS_WASM_EC_OUTPUT_DIRECT_DECIMAL_BALLS ||
-        (root_number != -1 && root_number != 1))
+    if (!state.initialized || (root_number != -1 && root_number != 1))
         return SAGEJS_WASM_EC_ADAPTER_INVALID_INPUT;
     state.conductor_text[state.conductor_text_bytes] = '\0';
     state.point_text[state.point_text_bytes] = '\0';
@@ -472,30 +402,6 @@ int32_t sagejs_wasm_ec_lseries_compute(int32_t root_number)
         return SAGEJS_WASM_EC_ADAPTER_PARSE_FAILED;
     }
     const slong count = (slong) state.point_count;
-    const slong planning_precision = (slong) state.work_precision_bits;
-    slong selected_work_precision = 0;
-    const int precision_status = sagejs_ec_lseries_work_precision(
-        &selected_work_precision, conductor, points, count,
-        (slong) state.target_bits + (slong) state.refinement_bits,
-        planning_precision);
-    if (precision_status != SAGEJS_EC_LFUNCTION_OK)
-    {
-        _acb_vec_clear(points, count);
-        fmpz_clear(conductor);
-        return precision_status;
-    }
-    /* The planning parse is deliberately bounded and temporary.  Reparse at
-       the exact shared-core selection so no low-precision point ball enters
-       the actual Acb evaluation. */
-    _acb_vec_clear(points, count);
-    state.work_precision_bits = (uint32_t) selected_work_precision;
-    points = _acb_vec_init(count);
-    if (!parse_points(points))
-    {
-        _acb_vec_clear(points, count);
-        fmpz_clear(conductor);
-        return SAGEJS_WASM_EC_ADAPTER_PARSE_FAILED;
-    }
     acb_ptr completed = _acb_vec_init(count);
     acb_ptr raw = _acb_vec_init(count);
     acb_ptr coarse_completed = state.refinement_bits == 0U
@@ -536,53 +442,6 @@ int32_t sagejs_wasm_ec_lseries_compute(int32_t root_number)
     _mag_vec_clear(coefficient_tail, count);
     if (coarse_raw != NULL) _acb_vec_clear(coarse_raw, count);
     if (coarse_completed != NULL) _acb_vec_clear(coarse_completed, count);
-    _acb_vec_clear(raw, count);
-    _acb_vec_clear(completed, count);
-    _acb_vec_clear(points, count);
-    fmpz_clear(conductor);
-    return packed ? status : SAGEJS_WASM_EC_ADAPTER_ALLOCATION_FAILED;
-}
-
-__attribute__((visibility("default")))
-int32_t sagejs_wasm_ec_lseries_direct_compute(void)
-{
-    if (!state.initialized ||
-        state.output_mode != SAGEJS_WASM_EC_OUTPUT_DIRECT_DECIMAL_BALLS ||
-        state.direct_cutoffs == NULL)
-        return SAGEJS_WASM_EC_ADAPTER_INVALID_INPUT;
-    const slong available_cutoff = (slong) state.coefficient_count - 1;
-    for (uint32_t index = 0; index < state.point_count; ++index)
-        if (state.direct_cutoffs[index] < 1 ||
-            state.direct_cutoffs[index] > available_cutoff ||
-            state.direct_cutoffs[index] > (slong) SAGEJS_WASM_EC_MAX_CUTOFF)
-            return SAGEJS_WASM_EC_ADAPTER_INVALID_INPUT;
-
-    state.conductor_text[state.conductor_text_bytes] = '\0';
-    state.point_text[state.point_text_bytes] = '\0';
-    fmpz_t conductor;
-    fmpz_init(conductor);
-    if (fmpz_set_str(conductor, state.conductor_text, 10) != 0 ||
-        fmpz_sgn(conductor) <= 0)
-    {
-        fmpz_clear(conductor);
-        return SAGEJS_WASM_EC_ADAPTER_PARSE_FAILED;
-    }
-    const slong count = (slong) state.point_count;
-    acb_ptr points = _acb_vec_init(count);
-    if (!parse_points(points))
-    {
-        _acb_vec_clear(points, count);
-        fmpz_clear(conductor);
-        return SAGEJS_WASM_EC_ADAPTER_PARSE_FAILED;
-    }
-    acb_ptr completed = _acb_vec_init(count);
-    acb_ptr raw = _acb_vec_init(count);
-    const int status = sagejs_ec_lseries_direct_values_acb(
-        completed, raw, &state.diagnostics, state.coefficients + 1,
-        available_cutoff, conductor, points, state.direct_cutoffs, count,
-        (slong) state.target_bits, (slong) state.work_precision_bits);
-    const int packed = status != SAGEJS_EC_LFUNCTION_OK ||
-        pack_direct_decimal_output(completed, raw);
     _acb_vec_clear(raw, count);
     _acb_vec_clear(completed, count);
     _acb_vec_clear(points, count);

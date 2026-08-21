@@ -21,7 +21,6 @@ function fakeCurveReactor() {
   let decimalFields = 0;
   let plotPointer = 0;
   let plotCount = 0;
-  let directCutoffPointer = 0;
   let clears = 0;
   let smalljac;
   let smalljacClears = 0;
@@ -74,36 +73,6 @@ function fakeCurveReactor() {
     offsets[encoded.length] = position;
   }
 
-  function packDirectDecimals(pointCount) {
-    decimalFields = 10;
-    const values = [];
-    for (let point = 0; point < pointCount; point += 1) {
-      const base = point + 1;
-      values.push(
-        `${base}.125`, `-${base}.25`, "1e-30", "2e-30", "52",
-        `${base}.5`, `-${base}.75`, "3e-30", "4e-30", "51",
-      );
-    }
-    const encoded = values.map((value) => new TextEncoder().encode(value));
-    decimalBytes = encoded.reduce((sum, value) => sum + value.length, 0);
-    decimalPointer = allocate(decimalBytes, 1);
-    decimalOffsets = values.length + 1;
-    decimalOffsetPointer = allocate(decimalOffsets * 4, 4);
-    const bytes = new Uint8Array(memory.buffer, decimalPointer, decimalBytes);
-    const offsets = new Uint32Array(
-      memory.buffer,
-      decimalOffsetPointer,
-      decimalOffsets,
-    );
-    let position = 0;
-    encoded.forEach((value, index) => {
-      offsets[index] = position;
-      bytes.set(value, position);
-      position += value.length;
-    });
-    offsets[encoded.length] = position;
-  }
-
   const exports = {
     memory,
     sagejs_wasm_ec_lseries_begin(
@@ -135,27 +104,6 @@ function fakeCurveReactor() {
       diagnostics[7] = pointCount;
       return 0;
     },
-    sagejs_wasm_ec_lseries_direct_begin(
-      coefficientCount,
-      pointCount,
-      pointTextBytes,
-      conductorTextBytes,
-      precisionBits,
-      workPrecisionBits,
-    ) {
-      const status = exports.sagejs_wasm_ec_lseries_begin(
-        coefficientCount,
-        pointCount,
-        pointTextBytes,
-        conductorTextBytes,
-        precisionBits,
-        0,
-        workPrecisionBits,
-        3,
-      );
-      directCutoffPointer = allocate(pointCount * 4, 4);
-      return status;
-    },
     sagejs_wasm_ec_lseries_clear() {
       clears += 1;
     },
@@ -163,7 +111,6 @@ function fakeCurveReactor() {
     sagejs_wasm_ec_lseries_point_text: () => request.pointPointer,
     sagejs_wasm_ec_lseries_point_offsets: () => request.offsetPointer,
     sagejs_wasm_ec_lseries_conductor_text: () => request.conductorPointer,
-    sagejs_wasm_ec_lseries_direct_cutoffs: () => directCutoffPointer,
     sagejs_wasm_ec_lseries_compute() {
       request.coefficients = Array.from(new Int32Array(
         memory.buffer,
@@ -193,22 +140,6 @@ function fakeCurveReactor() {
         const output = new Float64Array(memory.buffer, plotPointer, plotCount);
         for (let index = 0; index < plotCount; index += 1) output[index] = index / 8;
       }
-      return 0;
-    },
-    sagejs_wasm_ec_lseries_direct_compute() {
-      request.cutoffs = Array.from(new Int32Array(
-        memory.buffer,
-        directCutoffPointer,
-        request.pointCount,
-      ));
-      request.coefficients = Array.from(new Int32Array(
-        memory.buffer,
-        request.coefficientPointer,
-        request.coefficientCount,
-      ));
-      packDirectDecimals(request.pointCount);
-      diagnostics[1] = Math.max(...request.cutoffs);
-      diagnostics[4] = request.cutoffs.reduce((sum, value) => sum + value, 0);
       return 0;
     },
     sagejs_wasm_ec_lseries_diagnostic(index) {
@@ -337,42 +268,12 @@ test("plan mode reports resource metadata without result materialization", () =>
   assert.equal(result.values, undefined);
 });
 
-test("direct Dirichlet prefixes use one copied Wasm batch", () => {
-  const reactor = fakeCurveReactor();
-  const traces = [];
-  const backend = createCurveBackend(reactor.instance, {
-    recordCapability(...args) { traces.push(args); },
-  });
-  const result = backend.ecLseriesDirectValues(
-    430250329n,
-    new Int32Array([0, 1, -2, -3, -2, -1]),
-    [["8", "1"], ["9.5", "-2"]],
-    [5, 3],
-    53,
-  );
-  assert.equal(result.algorithm, "direct");
-  assert.equal(result.pointCount, 2);
-  assert.equal(result.cutoff, 5);
-  assert.equal(result.coefficientTerms, 8);
-  assert.equal(result.values[0].completed.realMidpoint, "1.125");
-  assert.equal(result.values[1].raw.imagMidpoint, "-2.75");
-  assert.deepEqual(reactor.state().request.cutoffs, [5, 3]);
-  assert.deepEqual(
-    reactor.state().request.coefficients,
-    [0, 1, -2, -3, -2, -1],
-  );
-  assert.deepEqual(
-    traces.map(([id, route]) => [id, route]),
-    [["elliptic-lseries-direct-values", "receipt-backed-wasm-artifact"]],
-  );
-});
-
 test("curve capability decisions distinguish shared cores and specialists", () => {
   assert.equal(curveCapabilities["elliptic-lseries-values"].status, "implemented");
   assert.equal(curveCapabilities["elliptic-lseries-plot"].limits.tiled, true);
   assert.equal(
     curveCapabilities["elliptic-lseries-direct-values"].disposition,
-    "shared-core",
+    "portable-fallback",
   );
   assert.equal(
     curveCapabilities["elliptic-root-number-semistable"].status,

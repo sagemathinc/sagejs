@@ -14,7 +14,6 @@ const STATUS = Object.freeze({
 
 const OUTPUT = Object.freeze({ DECIMAL_BALLS: 0, PLAN: 1, PLOT: 2 });
 const MAX_POINTS_PER_TILE = 10_000;
-const MAX_DIRECT_CUTOFF = 5_000_000;
 
 export const curveCapabilities = Object.freeze({
   "elliptic-coefficients-portable": Object.freeze({
@@ -31,13 +30,7 @@ export const curveCapabilities = Object.freeze({
     wasmModule: "flint",
     upstream: "smalljac-4.1.3-ffpoly-1.2.7",
     fallback: "exact-direct-point-count-and-euler-recurrence",
-    limits: Object.freeze({
-      maximumCoefficientBound: 5_000_000,
-      maximumExceptionalDirectPrime: 5_000_000,
-      normalGoodPrimeRoute: "smalljac-wasm-only",
-      exceptionalDirectPointCounting:
-        "only callback-missing bad-reduction primes reported by smalljac",
-    }),
+    limits: Object.freeze({ maximumCoefficientBound: 5_000_000 }),
   }),
   "elliptic-root-number-semistable": Object.freeze({
     family: "elliptic-curves",
@@ -72,15 +65,10 @@ export const curveCapabilities = Object.freeze({
   }),
   "elliptic-lseries-direct-values": Object.freeze({
     family: "elliptic-curves",
-    disposition: "shared-core",
-    status: "implemented",
-    wasmModule: "flint",
+    disposition: "portable-fallback",
+    status: "planned-shared-core",
     fallback: "ordinary-bounded-direct-dirichlet-prefix",
-    limits: Object.freeze({
-      maximumPointsPerTile: MAX_POINTS_PER_TILE,
-      maximumCoefficientCutoff: MAX_DIRECT_CUTOFF,
-      rigorous: false,
-    }),
+    reason: "the first Wasm release prioritizes the moderate Mellin domain",
   }),
   "hyperelliptic-genus3-candidate-scan": Object.freeze({
     family: "hyperelliptic-curves",
@@ -282,17 +270,6 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
   if (smalljacExportCount !== 0 && smalljacExportCount !== smalljacExports.length) {
     throw new TypeError("the curve Wasm smalljac export closure is incomplete");
   }
-  const directExports = [
-    "sagejs_wasm_ec_lseries_direct_begin",
-    "sagejs_wasm_ec_lseries_direct_cutoffs",
-    "sagejs_wasm_ec_lseries_direct_compute",
-  ];
-  const directExportCount = directExports.filter(
-    (name) => typeof exports[name] === "function",
-  ).length;
-  if (directExportCount !== 0 && directExportCount !== directExports.length) {
-    throw new TypeError("the curve Wasm direct L-series export closure is incomplete");
-  }
 
   function smalljacCoefficients(values, boundOrPrime, mode) {
     if (smalljacExportCount === 0) {
@@ -342,131 +319,6 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
     return smalljacCoefficients([a1, a2, a3, a4, a6], bound, 0);
   }
 
-  function ecLseriesDirectValues(
-    conductor,
-    coefficients,
-    points,
-    cutoffs,
-    precisionBits,
-  ) {
-    if (directExportCount !== directExports.length) {
-      throw new TypeError("the curve Wasm direct L-series accelerator is unavailable");
-    }
-    checkedInteger(precisionBits, "precision bits", 16, 4096);
-    if ((!Array.isArray(coefficients) && !(coefficients instanceof Int32Array)) ||
-        coefficients.length < 2 || coefficients.length > MAX_DIRECT_CUTOFF + 1) {
-      throw new TypeError(
-        `coefficients must contain a_0 through a_K with K <= ${MAX_DIRECT_CUTOFF}`,
-      );
-    }
-    if (!Array.isArray(cutoffs) || !Array.isArray(points) ||
-        cutoffs.length !== points.length || points.length < 1 ||
-        points.length > MAX_POINTS_PER_TILE) {
-      throw new RangeError(
-        `direct points and cutoffs must be equal nonempty arrays with at most ${MAX_POINTS_PER_TILE} entries`,
-      );
-    }
-    const coefficientData = Int32Array.from(coefficients, exactCoefficient);
-    const cutoffData = Int32Array.from(cutoffs, (value) => {
-      if (!Number.isInteger(value) || value < 1 ||
-          value > MAX_DIRECT_CUTOFF || value >= coefficientData.length) {
-        throw new RangeError(
-          "each direct cutoff must be positive, within the Wasm limit, and covered by coefficients",
-        );
-      }
-      return value;
-    });
-    const pointData = packedPoints(points);
-    const conductorData = conductorText(conductor);
-    const workPrecisionBits = Math.min(8192, precisionBits + 96);
-    statusName(exports.sagejs_wasm_ec_lseries_direct_begin(
-      coefficientData.length,
-      points.length,
-      pointData.bytes.length,
-      conductorData.length,
-      precisionBits,
-      workPrecisionBits,
-    ));
-    try {
-      new Int32Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_coefficients(),
-        coefficientData.length,
-      ).set(coefficientData);
-      new Uint8Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_point_text(),
-        pointData.bytes.length,
-      ).set(pointData.bytes);
-      new Uint32Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_point_offsets(),
-        pointData.offsets.length,
-      ).set(pointData.offsets);
-      new Uint8Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_conductor_text(),
-        conductorData.length,
-      ).set(conductorData);
-      new Int32Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_direct_cutoffs(),
-        cutoffData.length,
-      ).set(cutoffData);
-      statusName(exports.sagejs_wasm_ec_lseries_direct_compute());
-      const byteCount = exports.sagejs_wasm_ec_lseries_decimal_byte_count();
-      const offsetCount = exports.sagejs_wasm_ec_lseries_decimal_offset_count();
-      const fieldCount = exports.sagejs_wasm_ec_lseries_decimal_field_count();
-      const bytes = new Uint8Array(new Uint8Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_decimal_bytes(),
-        byteCount,
-      ));
-      const offsets = new Uint32Array(new Uint32Array(
-        memory.buffer,
-        exports.sagejs_wasm_ec_lseries_decimal_offsets(),
-        offsetCount,
-      ));
-      if (fieldCount !== 10 || offsets.length !== fieldCount * points.length + 1) {
-        throw new Error("direct elliptic L-series Wasm result has inconsistent offsets");
-      }
-      const fields = Array.from({ length: offsets.length - 1 }, (_, index) =>
-        decoder.decode(bytes.subarray(offsets[index], offsets[index + 1])),
-      );
-      const values = Array.from({ length: points.length }, (_, index) => {
-        const offset = index * fieldCount;
-        return {
-          completed: ball(fields, offset),
-          raw: ball(fields, offset + 5),
-        };
-      });
-      recordCapability(
-        "elliptic-lseries-direct-values",
-        "receipt-backed-wasm-artifact",
-        {
-          executionTarget: "wasm-artifact",
-          ingressBytes: coefficientData.byteLength + cutoffData.byteLength +
-            pointData.bytes.length + pointData.offsets.byteLength +
-            conductorData.length,
-          egressBytes: bytes.byteLength + offsets.byteLength,
-        },
-      );
-      return {
-        status: "ok",
-        algorithm: "direct",
-        rigorous: false,
-        precisionBits,
-        workPrecisionBits,
-        cutoff: diagnostic(1),
-        coefficientTerms: diagnostic(4),
-        pointCount: points.length,
-        values,
-      };
-    } finally {
-      exports.sagejs_wasm_ec_lseries_clear();
-    }
-  }
-
   function diagnostic(index) {
     return numericI64(exports.sagejs_wasm_ec_lseries_diagnostic(index));
   }
@@ -514,9 +366,9 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
     const coefficientData = Int32Array.from(coefficients, exactCoefficient);
     const pointData = packedPoints(points);
     const conductorData = conductorText(conductor);
-    const planningPrecisionBits = Math.min(
+    const workPrecisionBits = Math.min(
       8192,
-      precisionBits + refinementBits + 128,
+      precisionBits + refinementBits + 512,
     );
     const beginStatus = exports.sagejs_wasm_ec_lseries_begin(
       coefficientData.length,
@@ -525,7 +377,7 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
       conductorData.length,
       precisionBits,
       refinementBits,
-      planningPrecisionBits,
+      workPrecisionBits,
       outputMode,
     );
     statusName(beginStatus);
@@ -665,9 +517,6 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
   return Object.freeze({
     ...(smalljacExportCount === smalljacExports.length
       ? { ecApIntegral, ecAnlistIntegral }
-      : {}),
-    ...(directExportCount === directExports.length
-      ? { ecLseriesDirectValues }
       : {}),
     ecLseriesValues,
     curveCapabilities,
