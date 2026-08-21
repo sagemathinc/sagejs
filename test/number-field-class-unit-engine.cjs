@@ -157,7 +157,10 @@ class FakeRelation:
     def __init__(self, row=(4,), certified=True):
         self.row = row
         self.certified = certified
-    def verify(self, order, factor_base, *, reconstructor=None):
+    def verify(
+        self, order, factor_base, *, reconstructor=None, admission_verifier=None
+    ):
+        del admission_verifier
         reconstruction_calls.append(reconstructor)
         return {"certified": self.certified}
 
@@ -782,12 +785,20 @@ class FakeRelation:
     row = (1,)
     def to_dict(self):
         return {"schema": "fake-relation-v1", "row": [1]}
-    def verify(self, order, factor_base, *, reconstructor=None):
+    def verify(
+        self, order, factor_base, *, reconstructor=None, admission_verifier=None
+    ):
+        del admission_verifier
         if reconstructor is None:
             counts["detached_relations"] += 1
         else:
+            reconstruct = (
+                reconstructor
+                if callable(reconstructor)
+                else reconstructor.reconstruct_factor_base_ideal
+            )
             for reconstruction_row in ((1,), (1,), (1,)):
-                reconstructor(reconstruction_row)
+                reconstruct(reconstruction_row)
         counts["relations"] += 1
         return {"certified": tuple(factor_base) == (prime,)}
 

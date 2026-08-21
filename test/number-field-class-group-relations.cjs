@@ -105,6 +105,49 @@ assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
 )
 
+# Live admission receipts bind the collector's exact order and factor-base
+# objects plus the complete canonical record payload.  Public/detached replay
+# receives no verifier and therefore remains cold.
+receipt_before = collector.admission_receipt_diagnostics()
+assert receipt_before["entries"] == len(initial)
+assert receipt_before["entries"] <= receipt_before["max_entries"]
+assert initial[0].record.verify(
+    O,
+    factor_base,
+    reconstructor=collector,
+    admission_verifier=collector,
+)["certified"]
+receipt_hit = collector.admission_receipt_diagnostics()
+assert receipt_hit["requests"] == receipt_before["requests"] + 1
+assert receipt_hit["hits"] == receipt_before["hits"] + 1
+assert not collector.verify_admission_receipt(object(), factor_base, initial[0].record)
+assert not collector.verify_admission_receipt(
+    O, tuple(object() for _prime in factor_base), initial[0].record
+)
+saved_provenance = dict(initial[0].record.provenance)
+initial[0].record.provenance["receipt-mutation"] = True
+assert not collector.verify_admission_receipt(O, factor_base, initial[0].record)
+assert initial[0].record.verify(
+    O,
+    factor_base,
+    reconstructor=collector,
+    admission_verifier=collector,
+)["certified"]
+initial[0].record.provenance = saved_provenance
+
+limited_receipts = ExactRelationCollector(
+    O, factor_base, max_admission_receipts=1
+)
+limited_first = limited_receipts.admit_witness(K(2)).record
+limited_second = limited_receipts.admit_witness(K(4)).record
+limited_diagnostics = limited_receipts.admission_receipt_diagnostics()
+assert limited_diagnostics["entries"] == limited_diagnostics["max_entries"] == 1
+assert limited_diagnostics["evictions"] == 1
+assert not limited_receipts.verify_admission_receipt(
+    O, factor_base, limited_first
+)
+assert limited_receipts.verify_admission_receipt(O, factor_base, limited_second)
+
 serialized = [item.record.to_dict() for item in initial]
 for payload in serialized:
     restored = RelationRecord.from_dict(payload)

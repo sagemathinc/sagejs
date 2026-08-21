@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "relation-admission-receipts",
+  "title": "Relation Admission Receipts",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reuse bounded immutable exact relation admission receipts during live class-generation replay without weakening detached verification",
+  "base_commit": "abf1a593720b4924bd61a94ad992ed25528bbd07",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-group-relations.cjs",
+    "test/number-field-class-unit-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Cold detached replay and live receipt differential on degree-6 and motivating quintic computations"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -44,6 +44,7 @@ AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
 DEFAULT_RANK_PRIME = 2_147_483_647
 DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE = 512
 DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
+DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE = 64
 _U64_MASK = (1 << 64) - 1
 _IDEAL_REDUCTION_STATE_KEYS = {
     "schema",
@@ -771,6 +772,7 @@ class RelationRecord:
         factor_base: Iterable[Any],
         *,
         reconstructor: Any = None,
+        admission_verifier: Any = None,
     ) -> dict[str, Any]:
         """Verify exactly, optionally reusing a live row-to-ideal cache.
 
@@ -780,7 +782,11 @@ class RelationRecord:
         participates in the same exact equality checks.
         """
         return verify_relation_record(
-            order, factor_base, self, reconstructor=reconstructor
+            order,
+            factor_base,
+            self,
+            reconstructor=reconstructor,
+            admission_verifier=admission_verifier,
         )
 
     def replay(self, order: Any, factor_base: Iterable[Any]) -> dict[str, Any]:
@@ -813,6 +819,7 @@ def verify_relation_record(
     record: RelationRecord | dict[str, Any],
     *,
     reconstructor: Any = None,
+    admission_verifier: Any = None,
 ) -> dict[str, Any]:
     failures: list[str] = []
     try:
@@ -822,6 +829,11 @@ def verify_relation_record(
             else RelationRecord.from_dict(record)
         )
         factors = _validate_factor_base(order, factor_base)
+        verify_admission = getattr(admission_verifier, "verify_admission_receipt", None)
+        if callable(verify_admission) and bool(
+            verify_admission(order, factors, relation)
+        ):
+            return {"certified": True, "failures": []}
         reconstruct = _relation_reconstructor(order, factors, reconstructor)
         if relation.field_order != _order_fingerprint(order):
             failures.append("field/order fingerprint mismatch")
@@ -926,6 +938,7 @@ class ExactRelationCollector:
         context: Any = None,
         max_reconstructed_ideals: int = DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE,
         max_factor_powers: int = DEFAULT_FACTOR_POWER_CACHE_SIZE,
+        max_admission_receipts: int = DEFAULT_ADMISSION_RECEIPT_CACHE_SIZE,
     ) -> None:
         self.order = order
         self.factor_base = _validate_factor_base(order, factor_base)
@@ -940,6 +953,67 @@ class ExactRelationCollector:
         self.admissions: list[RelationAdmission] = []
         self.context = context
         self._keys: set[str] = set()
+        self.max_admission_receipts = _checked_nonnegative(
+            max_admission_receipts, "admission receipt cache size"
+        )
+        self._admission_receipts: dict[str, None] = {}
+        self._admission_receipt_statistics = {
+            "requests": 0,
+            "hits": 0,
+            "misses": 0,
+            "evictions": 0,
+        }
+
+    @staticmethod
+    def _admission_receipt_key(
+        relation: RelationRecord, canonical_key: str | None = None
+    ) -> str:
+        payload = relation.canonical_key() if canonical_key is None else canonical_key
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _remember_admission_receipt(
+        self, relation: RelationRecord, *, canonical_key: str | None = None
+    ) -> None:
+        if self.max_admission_receipts == 0:
+            return
+        key = self._admission_receipt_key(relation, canonical_key)
+        if key in self._admission_receipts:
+            return
+        if len(self._admission_receipts) >= self.max_admission_receipts:
+            oldest = next(iter(self._admission_receipts))
+            self._admission_receipts.pop(oldest)
+            self._admission_receipt_statistics["evictions"] += 1
+        self._admission_receipts[key] = None
+
+    def verify_admission_receipt(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        relation: RelationRecord,
+    ) -> bool:
+        """Recognize one unchanged relation checked by this live collector."""
+        self._admission_receipt_statistics["requests"] += 1
+        factors = tuple(factor_base)
+        identities_match = order is self.order and len(factors) == len(self.factor_base)
+        if identities_match:
+            identities_match = all(
+                supplied is retained
+                for supplied, retained in zip(factors, self.factor_base, strict=True)
+            )
+        key = self._admission_receipt_key(relation)
+        if identities_match and key in self._admission_receipts:
+            self._admission_receipt_statistics["hits"] += 1
+            return True
+        self._admission_receipt_statistics["misses"] += 1
+        return False
+
+    def admission_receipt_diagnostics(self) -> dict[str, int]:
+        """Return fixed-capacity live admission-receipt statistics."""
+        return {
+            **self._admission_receipt_statistics,
+            "entries": len(self._admission_receipts),
+            "max_entries": self.max_admission_receipts,
+        }
 
     def reconstruct_factor_base_ideal(self, row: Iterable[int]) -> Any:
         """Reconstruct one row through this collector's bounded exact cache."""
@@ -987,6 +1061,7 @@ class ExactRelationCollector:
             if not callable(add):
                 raise TypeError("the relation context has no add_relation method")
             add(relation)
+        self._remember_admission_receipt(relation, canonical_key=key)
         return admission
 
     def admit_witness(

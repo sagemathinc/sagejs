@@ -708,6 +708,7 @@ class _EngineClassGroup:
                         self._order,
                         self._factor_base,
                         reconstructor=self._relation_reconstructor,
+                        admission_verifier=self._relation_reconstructor,
                     )
                 if replay["certified"] is not True:
                     return False
@@ -1037,6 +1038,8 @@ class ClassUnitGroupEngine:
             "generation_verification_full_replays": 0,
             "generation_reconstruction_calls": 0,
             "generation_reconstruction_cache_hits": 0,
+            "generation_admission_receipt_requests": 0,
+            "generation_admission_receipt_hits": 0,
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
@@ -2234,11 +2237,17 @@ class ClassUnitGroupEngine:
                 reconstruction_diagnostics = getattr(
                     collector, "reconstruction_diagnostics", None
                 )
+                receipt_diagnostics = getattr(
+                    collector, "admission_receipt_diagnostics", None
+                )
                 reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
                 before_reconstruction: Any = (
                     reconstruction_diagnostics()
                     if callable(reconstruction_diagnostics)
                     else None
+                )
+                before_receipts: Any = (
+                    receipt_diagnostics() if callable(receipt_diagnostics) else None
                 )
                 try:
                     for record in collector.records:
@@ -2246,7 +2255,8 @@ class ClassUnitGroupEngine:
                             replay = record.verify(
                                 order,
                                 factor_base,
-                                reconstructor=reconstruct,
+                                reconstructor=collector,
+                                admission_verifier=collector,
                             )
                         else:
                             replay = record.verify(order, factor_base)
@@ -2268,6 +2278,21 @@ class ClassUnitGroupEngine:
                             "generation_reconstruction_cache_hits"
                         ] += int(after_reconstruction.get("row_hits", 0)) - int(
                             before_reconstruction.get("row_hits", 0)
+                        )
+                    after_receipts: Any = (
+                        receipt_diagnostics() if callable(receipt_diagnostics) else None
+                    )
+                    if isinstance(before_receipts, dict) and isinstance(
+                        after_receipts, dict
+                    ):
+                        self._resource_usage[
+                            "generation_admission_receipt_requests"
+                        ] += int(after_receipts.get("requests", 0)) - int(
+                            before_receipts.get("requests", 0)
+                        )
+                        self._resource_usage["generation_admission_receipt_hits"] += (
+                            int(after_receipts.get("hits", 0))
+                            - int(before_receipts.get("hits", 0))
                         )
                 if self._generation_verification_cache_active:
                     self._generation_verification_cache[cache_key] = True
