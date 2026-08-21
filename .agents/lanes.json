@@ -72,7 +72,24 @@
     {
       "id": "combinatorics-groups",
       "description": "Groups, combinatorics, iterators, and discrete structures",
-      "allowed_claims": ["src/baselib/groups.py", "src/baselib/containers.py", "src/baselib/itertools.py"],
+      "allowed_claims": [
+        "architecture/native-kernels.json",
+        "architecture/package-graph.json",
+        "architecture/wasm-capabilities.json",
+        "architecture/wasm-capability-report.json",
+        "architecture/wasm-capabilities-report.json",
+        "packages/flint-wasm/release/production-capabilities.json",
+        "packages/flint-wasm/release/production-kernel-coverage.json",
+        "package.json",
+        "pyrightconfig.json",
+        "src/baselib/groups.py",
+        "src/baselib/containers.py",
+        "src/baselib/graphs.py",
+        "src/baselib/itertools.py",
+        "src/lib/sagejs/kernels/graph/",
+        "test/wasm-capabilities.cjs",
+        "test/wasm-production-native-kernels.cjs"
+      ],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:compiler"]
     },
     {
