@@ -49,10 +49,51 @@
     "pnpm test:baselib:strict",
     "node --test packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/analytic-backend.test.mjs packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs test/wasm-numeric-symbolic-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.55,
+      "started_at": "2026-08-21T01:30:19.008Z",
+      "commit": "f60efcdc550f2421241b6235d5e1220443d248da",
+      "workspace_fingerprint": "b1d6268726b64f9eadbf37d5eff05aecde7189af421d9c7e11dbacc4209d4a18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.844,
+      "started_at": "2026-08-21T01:30:31.676Z",
+      "commit": "f60efcdc550f2421241b6235d5e1220443d248da",
+      "workspace_fingerprint": "b1d6268726b64f9eadbf37d5eff05aecde7189af421d9c7e11dbacc4209d4a18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.905,
+      "started_at": "2026-08-21T01:32:39.370Z",
+      "commit": "f60efcdc550f2421241b6235d5e1220443d248da",
+      "workspace_fingerprint": "b1d6268726b64f9eadbf37d5eff05aecde7189af421d9c7e11dbacc4209d4a18",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Production-complete MPFR-backed RealField and ComplexField resources now replace the browser exact-rational hot path. Mature Acb supplies Ei, complex Bessel I, and zeta zeros. Supported bounded symbolic expressions execute quadrature and bisection as coarse synchronous Wasm calls, while unsupported expressions and arbitrary Python callables retain the explicit portable path. Direct reactor, public Node, authenticated Chromium, lifecycle/stale-handle, timeout/recovery, strict-Python, and benchmark evidence pass against artifact sha256:2fccb60d04536aa9cdfa5dc902d7710d203e66703c580785f02aa3849285519f.",
+    "risks": [
+      "The compact symbolic bytecode deliberately supports only bounded real elementary-expression trees; arbitrary Python callables and unsupported symbolic operators remain portable.",
+      "The adapter owns at most 8191 simultaneous real and 8191 simultaneous complex resources; exhaustion fails closed and ordinary public workloads remain far below the limit.",
+      "Central native-code classification and capability inventories are intentionally left to the integration lane, so architecture:check currently stops only at the unclassified numeric.c adapter."
+    ],
+    "next_steps": [
+      "Classify packages/flint-wasm/src/numeric.c in architecture/native-code.json and architecture/native-audit.json as a host-neutral mixed native adapter: MPFR/Acb resource bridge plus a bounded expression VM required because Wasm cannot call host Python callbacks synchronously.",
+      "Regenerate architecture/native-boundaries.json and architecture/native-exports.json for the 34 sagejs_numeric_* reactor exports.",
+      "Mark the 32 existing napi:@sagemath/sagejs-flint real/complex/zetaZeros capability entries available through the FLINT artifact and add specialist:symbolic-numerical-integral-wasm plus specialist:symbolic-find-root-wasm to architecture/wasm-capabilities.json.",
+      "Add the same 34 IDs to packages/flint-wasm/release/production-capabilities.json under the FLINT artifact additionalCapabilities, regenerate the capability report, and register test/wasm-numeric-symbolic-public.cjs in the central Node test manifest.",
+      "Run pnpm architecture:check after those shared manifest updates."
+    ]
   }
 }
