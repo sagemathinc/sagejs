@@ -55,11 +55,27 @@
       "commit": "972421a1c29cda9f38144fb128c97d7dc3879d08",
       "workspace_fingerprint": "de27206f9a339fab5b9b1caf935288e83e43f8b422f9e8a9182a5b2969823c4c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-kernel-route-instrumentation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.133,
+      "started_at": "2026-08-21T00:46:33.526Z",
+      "commit": "de8282bc3235cacc96f8b2df648d909633c198e7",
+      "workspace_fingerprint": "de27206f9a339fab5b9b1caf935288e83e43f8b422f9e8a9182a5b2969823c4c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replaced the evaluator's five-entry source table with complete route authority derived from the generated production pack index. The loader admits authority only after SHA-256 verification of pack bytes, validates every fully compiled kernel against its pack identity module, and retains the logicalSource-to-kernel capability map in private WeakMap state. Registered adversarial tests prove graph, matrix, polynomial, P1, and number-field observations and reject copied resolvers, mutable manifest relabeling, digest tampering, and unauthenticated precompiled modules.",
+    "risks": [
+      "A WebAssembly.Module supplied directly remains callable but intentionally cannot emit receipt-backed source-kernel telemetry because its original bytes cannot be authenticated by the loader.",
+      "The full production build/browser corpus could not be receipted in this lane after merging current ell-lseries because unrelated hyperelliptic native-audit metrics, lazy __all__ strict errors, and a new unregistered number-field test currently fail aggregate gates."
+    ],
+    "next_steps": [
+      "Integrate b4b1620f and c92487a2 plus follow-ups 8d2eb03b, 972421a1, de8282bc and the final handoff commit, or merge agent/wasm-kernel-route-instrumentation.",
+      "After resolving the aggregate integration blockers, rebuild packages/flint-wasm so dist/wasm-pack-loader.mjs and the production receipt include the new loader, then run the public Chromium/Firefox/WebKit workload corpus and confirm all source-kernel calls appear as fixed kernel:<id> routes."
+    ]
   }
 }
