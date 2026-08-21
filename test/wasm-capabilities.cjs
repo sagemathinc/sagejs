@@ -34,8 +34,8 @@ test("all current Wasm-relevant capability kinds are reviewed", () => {
   assert.equal(counts["declared-ffi-resource"].length, 29);
   assert.equal(counts["production-kernel"].length, 31);
   assert.equal(counts["runtime-intrinsic"].length, 137);
-  assert.equal(counts["specialist-capability"].length, 21);
-  assert.equal(result.capabilities.length, 941);
+  assert.equal(counts["specialist-capability"].length, 22);
+  assert.equal(result.capabilities.length, 942);
   const expectedProductionClosure = Object.values(productionCapabilities.modules)
     .flatMap((module) => module.capabilities)
     .sort();
