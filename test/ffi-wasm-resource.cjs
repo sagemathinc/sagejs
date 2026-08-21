@@ -105,6 +105,10 @@ test("generated Wasm resource selection is explicit and fail-closed", () => {
     scalarGenerated.cSource,
     /sagejs_wasm_wordIsPrime/,
   );
+  assert.doesNotMatch(
+    scalarGenerated.cSource,
+    /static int\s+sagejs_wasm_stage_range/,
+  );
   assert.throws(
     () => generatedWasmResourceAdapter(declaration, {
       resourceIds: ["fmpq_matrix"],
@@ -153,6 +157,15 @@ test("generated Wasm resource selection is explicit and fail-closed", () => {
     boolGenerated.javascriptSource,
     /enabled \? 1 : 0/,
   );
+});
+
+test("generated Wasm route traces retain the declaration library identity", () => {
+  const generated = generatedWasmResourceAdapter(flintDeclaration(), {
+    functionIds,
+    resourceIds: ["dirichlet_group"],
+  });
+  assert.doesNotMatch(generated.javascriptSource, /ffi:undefined:/);
+  assert.match(generated.javascriptSource, /"ffi:flint:dirichlet" \+ "_"/);
 });
 
 test("generated FLINT resource has a real Wasm lifecycle", {

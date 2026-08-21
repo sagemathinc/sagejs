@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-docs",
+  "title": "Wasm Docs",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Document WebAssembly production parity, browser and mobile support, portable architecture rules, reproducible builds, examples, and release capabilities",
+  "base_commit": "2463c68dc34d70ffd0a42c3dc941d924e98ea394",
+  "claims": [
+    "docs/webassembly-browser-support.md",
+    "docs/webassembly-contributor-guide.md",
+    "docs/webassembly-packed-abi.md",
+    "docs/webassembly-reproducible-builds.md",
+    "docs/webassembly-examples.md",
+    "docs/webassembly-production-release-notes.md",
+    "docs/index.md",
+    "test/webassembly-docs.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/webassembly-docs.cjs",
+    "node scripts/check-wasm-capabilities.cjs",
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added the complete WebAssembly production documentation set, linked it from the documentation index, and added a focused source-equality test tying marked Sage fences to the shared Node/browser parity corpus.",
+    "risks": [
+      "Final release integration must keep capability and application claims synchronized with the generated public report and signed deployment/device receipts."
+    ],
+    "next_steps": [
+      "The integration lane should register test/webassembly-docs.cjs in test/node-test-manifest.cjs after resolving its concurrent manifest edits.",
+      "The integration lane may link docs/webassembly-production-release-notes.md from the versioned root RELEASE_NOTES.md when choosing the release version."
+    ]
+  }
+}

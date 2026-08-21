@@ -39,6 +39,24 @@ typedef struct
 } sagejs_ec_lfunction_diagnostics;
 
 /*
+ * Select the working precision for a batch of complex L-values.
+ *
+ * `points` must already have been parsed at `planning_precision`.  The
+ * returned precision includes the target, reciprocal-gamma conversion,
+ * summation, and real-direction growth guards used by the canonical Acb
+ * evaluator.  Keeping this policy in the host-neutral core prevents browser
+ * adapters from replacing it with a large fixed guard that can make
+ * low-precision plots hundreds of bits more expensive than the native path.
+ */
+int sagejs_ec_lseries_work_precision(
+    slong *work_precision,
+    const fmpz_t conductor,
+    acb_srcptr points,
+    slong point_count,
+    slong target_bits,
+    slong planning_precision);
+
+/*
  * Evaluate consecutive central derivatives of the completed L-function.
  *
  * `coefficients` stores a_1 through a_K (there is no a_0 entry).  `output`

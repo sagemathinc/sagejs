@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5125,
-      "bytes": 167505,
+      "lines": 5135,
+      "bytes": 167928,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,7 +23,7 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,117-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a 5,135-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
@@ -46,13 +46,14 @@
     },
     {
       "path": "packages/flint/src/dirichlet.c",
-      "lines": 1270,
-      "bytes": 36655,
+      "lines": 1342,
+      "bytes": 38934,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [
         "Node-API conversion",
         "FLINT Dirichlet group and character calls",
+        "coarse Arb and Acb batches for gamma, Riemann xi, zeta, and Dirichlet values",
         "locally assembled character values and metadata"
       ],
       "rationale": "The FLINT bridge belongs natively, while character-level orchestration is readable mathematical policy. Separate the packed group/character ABI and move orchestration to strict Python as coverage permits.",
@@ -62,8 +63,8 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 3074,
-      "bytes": 116805,
+      "lines": 3100,
+      "bytes": 117995,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [
@@ -221,8 +222,8 @@
     },
     {
       "path": "packages/flint/scripts/portable-smalljac/sagejs_gmp_word.h",
-      "lines": 297,
-      "bytes": 10506,
+      "lines": 322,
+      "bytes": 11509,
       "decision": "retain-bridge",
       "priority": "medium",
       "responsibilities": [
@@ -370,6 +371,108 @@
       "fallback": "Dynamic graph methods provide tested behavior when the native graph capability is absent.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "igraph"],
       "next": "Keep registration separate from ownership adaptation and migrate further igraph calls only through checked declarations."
+    },
+    {
+      "path": "packages/flint-wasm/src/analytic.c",
+      "lines": 159,
+      "bytes": 4460,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded Wasm32 input and output buffer ownership",
+        "fixed-status dispatch into the host-neutral analytic batch core",
+        "allocation release and capacity reporting"
+      ],
+      "rationale": "This is a compact WebAssembly representation adapter with no mathematical policy. It keeps all allocation inside the owning reactor, rejects excessive requests before growth, and shares the actual Arb and Acb operations with the native host.",
+      "fallback": "Existing ordinary Python analytic evaluators and native FLINT adapters retain the same public normalizations when the WebAssembly accelerator is absent.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Keep this adapter flat and generated-status-compatible as additional analytic requests are added to the shared core."
+    },
+    {
+      "path": "packages/flint-wasm/src/numeric.c",
+      "lines": 1311,
+      "bytes": 40997,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded generation-tagged MPFR and complex resource ownership",
+        "decimal ingress and copied numeric output transport",
+        "mature Arb and Acb special-function dispatch",
+        "bounded elementary-expression VM, quadrature, and root iteration"
+      ],
+      "rationale": "The scalar numerical algorithms and special functions delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, and bisection loop are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping this bounded coarse call in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
+      "fallback": "Ordinary Python numerical evaluation remains explicit for unsupported expression trees and arbitrary Python callables.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep the accepted expression language finite and the shared 8192-handle and 100000-iteration ceilings exact; migrate the quadrature and bisection control flow to typed source-transparent kernels when the compiler can own MPFR/Acb resources."
+    },
+    {
+      "path": "packages/flint/src/analytic_batch_core.c",
+      "lines": 554,
+      "bytes": 18709,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "packed decimal parsing and result serialization",
+        "batched Arb and Acb special-function invocation",
+        "accuracy and enclosure diagnostic transport"
+      ],
+      "rationale": "The mathematical implementations are mature FLINT Arb and Acb operations. This host-neutral core amortizes crossings, preserves arbitrary-precision decimal transport, and is shared byte-for-byte by native and WebAssembly witnesses rather than duplicating analytic formulas.",
+      "fallback": "Strict ordinary Python reference evaluators remain available and are compared against native and WebAssembly vectors at the requested precision.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath",
+        "PARI/GP"
+      ],
+      "next": "Preserve one packed ingress and egress per batch and retain explicit precision and allocation caps as the public analytic closure grows."
+    },
+    {
+      "path": "packages/flint/src/multivariate_wasm_core.c",
+      "lines": 325,
+      "bytes": 11126,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "canonical bounded sparse multivariate packet validation",
+        "FLINT fmpz_mpoly resultant invocation",
+        "canonical copied result encoding and deterministic cleanup"
+      ],
+      "rationale": "The mathematical resultant algorithm belongs to mature FLINT. This host-neutral adapter validates a finite exact ZZ domain, enters FLINT once, and returns one canonical caller-owned packet without retaining a pointer or invoking a host callback.",
+      "fallback": "Node may retain its exact FLINT route outside the bounded packet domain; browser workloads fail with an explicit capability limit rather than silently running a heavyweight portable resultant.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep the packet domain finite and ship it only in the lazy exact-algebra specialist with public one-crossing route evidence."
+    },
+    {
+      "path": "packages/flint-wasm/src/multivariate.c",
+      "lines": 68,
+      "bytes": 1761,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded Wasm32 ingress and egress buffer ownership",
+        "stable flat exports over the host-neutral FLINT resultant core",
+        "copy-length and capacity reporting without retained host pointers"
+      ],
+      "rationale": "This file contains only a fixed-size linear-memory adapter around the separately reviewed host-neutral FLINT multivariate core; all polynomial validation and mathematical work remains in that shared core and mature FLINT.",
+      "fallback": "Native Node uses its exact FLINT route; unsupported browser domains fail explicitly rather than selecting a heavyweight portable resultant.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep the six-export surface bounded and preserve one copied ingress and egress per public resultant."
     }
   ]
 }

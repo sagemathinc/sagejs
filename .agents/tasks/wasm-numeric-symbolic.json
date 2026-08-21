@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-numeric-symbolic",
+  "title": "WebAssembly numeric and symbolic fast mathematics",
+  "lane": "numeric-symbolic-wasm",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run bounded RealField and ComplexField arithmetic plus Ei, complex Bessel I, zeta zeros, and representative symbolic numerical integration/root finding through mature MPFR/MPC/Arb/Acb WebAssembly kernels with public route, differential, lifecycle, interrupt, and benchmark evidence",
+  "base_commit": "bd05a3c6481e844d8ac7fb464101afed7ebee38a",
+  "claims": [
+    "src/baselib/real_complex.py",
+    "src/baselib/symbolic.py",
+    "packages/flint/src/analytic_batch_core.c",
+    "packages/flint/src/analytic_batch_core.h",
+    "packages/flint-wasm/src/numeric.c",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/numeric-backend.mjs",
+    "packages/flint-wasm/analytic-backend.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/numeric-backend.test.mjs",
+    "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+    "test/wasm-numeric-symbolic-public.cjs",
+    "bench/wasm-numeric-symbolic.mjs",
+    "bench/wasm-numeric-symbolic.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Native FLINT MPFR/MPC/Arb/Acb addon",
+      "ordinary Sage.js portable implementation with accelerator disabled",
+      "Sage 10 numerical results"
+    ],
+    "exceptions": [
+      "A compact host-neutral C adapter is required to expose mature MPFR/MPC/Arb/Acb resources and coarse bounded batches; mathematical algorithms remain upstream library calls and ordinary Python remains the public fallback"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "node --test packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -95,11 +95,81 @@
       "rationale": "Narrow Wasm ABI over FLINT factorization and primality operations."
     },
     {
+      "path": "packages/flint-wasm/src/analytic.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Bounded Wasm32 buffer and status adapter over the shared Arb and Acb analytic batch core; all mathematical policy remains in the host-neutral core."
+    },
+    {
+      "path": "packages/flint-wasm/src/numeric.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Bounded generation-tagged Wasm32 MPFR/Acb resources plus a finite expression transport. The GK21 and bisection loops are a reviewed compiler-limitation exception because the synchronous reactor cannot invoke host callbacks and source-transparent kernels cannot yet own MPFR/Acb resources."
+    },
+    {
+      "path": "packages/flint-wasm/src/multivariate.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Fixed bounded Wasm32 buffers adapt caller-owned canonical packets to the host-neutral FLINT multivariate resultant core; no mathematical algorithm is implemented in this file."
+    },
+    {
+      "path": "packages/flint-wasm/src/algebraic.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Flat generation-tagged Wasm32 resource adapter over the host-neutral FLINT QQbar core, with copied arbitrary-integer and certified enclosure transport."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Flat bounded Wasm32 transport adapter over the authoritative host-neutral elliptic L-series core, with separate arbitrary-precision and explicitly binary64 plot schemas."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Fixed-width Wasm32 ABI, status codes, and resource limits for the shared elliptic L-series value and plotting core."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded copied-input Wasm32 adapter over the pinned genus-one ffpoly/smalljac coefficient generator; exact Euler recurrence and bad-reduction fallback remain explicit and differentially tested."
+    },
+    {
+      "path": "packages/flint-wasm/src/curves/smalljac-coefficients.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Fixed-width lifecycle, mode, status, and copied-buffer ABI for elliptic coefficient generation in the production Wasm reactor."
+    },
+    {
+      "path": "packages/flint-wasm/src/dirichlet-group.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded stateless Wasm32 projection of mature FLINT Dirichlet group decomposition metadata used to materialize public group objects above the ABI."
+    },
+    {
       "path": "packages/flint-wasm/src/modsym.c",
       "category": "host-adapter",
       "review_status": "accepted",
       "lane": "distribution",
       "rationale": "Wasm adapter over the host-neutral P1 and modular-symbol core."
+    },
+    {
+      "path": "packages/flint-wasm/src/number-field-zeta.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded Wasm32 buffer ownership and status adapter over the shared fixed-width number-field residue-factor batch core."
     },
     {
       "path": "packages/flint-wasm/src/wasi-stubs.c",
@@ -452,6 +522,48 @@
       "rationale": "Declarations for native matrix operations."
     },
     {
+      "path": "packages/flint/src/analytic_batch_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral bounded packed bridge to mature Arb and Acb analytic batch operations shared by native and WebAssembly adapters."
+    },
+    {
+      "path": "packages/flint/src/analytic_batch_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width packed ABI and resource limits for the shared Arb and Acb analytic batch core."
+    },
+    {
+      "path": "packages/flint/src/algebraic_core.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral generation-tagged resource core over mature FLINT QQbar operations, exact roots, comparisons, serialization, and certified Arb enclosures."
+    },
+    {
+      "path": "packages/flint/src/algebraic_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width lifecycle, copied-buffer, and exact algebraic-number ABI shared by Node and WebAssembly host adapters."
+    },
+    {
+      "path": "packages/flint/src/multivariate_wasm_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral bounded canonical packet bridge to mature FLINT fmpz_mpoly resultant computation, with no host callbacks or retained pointers."
+    },
+    {
+      "path": "packages/flint/src/multivariate_wasm_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width packet schema, status codes, and resource limits for the shared multivariate resultant boundary."
+    },
+    {
       "path": "packages/flint/src/modsym_core.c",
       "category": "mathematical-algorithm",
       "review_status": "audited",
@@ -492,6 +604,34 @@
       "review_status": "accepted",
       "lane": "arithmetic-algebra",
       "rationale": "Declarations for number-field factorization."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Bounded Node-API marshalling for packed good-prime factor-degree batches."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API declaration for packed number-field zeta primitives."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta_core.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral batched adapter to mature FLINT finite-field polynomial factorization."
+    },
+    {
+      "path": "packages/flint/src/number_field_zeta_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral ABI for packed good-prime factor degrees."
     },
     {
       "path": "packages/flint/src/p1.c",
@@ -576,6 +716,13 @@
       "review_status": "accepted",
       "lane": "hyperelliptic-curves",
       "rationale": "Standalone cross-platform regression harness for exact genus-2/3 modular streams at the rforest boundary."
+    },
+    {
+      "path": "packages/flint-wasm/test/analytic-core-native.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone native differential and allocation-lifecycle witness for the host-neutral analytic batch core; it is not linked into Sage.js."
     },
     {
       "path": "packages/graph/src/addon.c",

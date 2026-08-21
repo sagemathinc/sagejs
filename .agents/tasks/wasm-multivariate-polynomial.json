@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-multivariate-polynomial",
+  "title": "Bounded multivariate polynomial Wasm core",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile public multivariate GCD/resultant/Groebner workloads and deliver the highest-impact bounded FLINT shared core with exact packed ABI, native/direct-Wasm/public proof evidence, fallback contract, tracing handoff, and benchmark bounds",
+  "base_commit": "f959be9f15ac5ec773410dfa21222368ee5d1133",
+  "claims": [
+    "packages/flint/src/multivariate_wasm_core.c",
+    "packages/flint/src/multivariate_wasm_core.h",
+    "test/wasm-multivariate-polynomial-core.cjs",
+    "bench/wasm-multivariate-polynomial.cjs",
+    "bench/WASM-MULTIVARIATE-POLYNOMIAL.md",
+    "bench/results/wasm-multivariate-polynomial.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "https://flintlib.org/doc/fmpz_mpoly.html"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing public Sage.js native FLINT multivariate API",
+      "Native and disabled/direct packed differential",
+      "Sage-compatible ordinary polynomial identities and normalization"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/wasm-multivariate-polynomial-core.cjs",
+    "node bench/wasm-multivariate-polynomial.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

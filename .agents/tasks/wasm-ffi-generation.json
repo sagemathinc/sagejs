@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-ffi-generation",
+  "title": "Generated Wasm FFI adapters",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Generate production-consumable Wasm FFI adapters and closure manifests for fixed scalars, packed buffers, resources/views, copied-byte transfer, bounded statuses, and memory-growth-safe JavaScript, with focused differential tests",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "tools/ffi/wasm-adapters.cjs",
+    "tools/ffi/wasm-closure.cjs",
+    "test/ffi-wasm-generated-adapters.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FFI.md",
+    "agents/webassembly-production-parity-and-apps-plan.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing dynamic generated FFI wrappers",
+      "actual Wasm execution when the pinned WASI toolchain is available"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.414,
+      "started_at": "2026-08-20T05:21:11.555Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "5b2e99f9aaa48961a264a111996a065d4214ba23c9e8e523bb9161bec5739d6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.333,
+      "started_at": "2026-08-20T05:21:26.748Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "5b2e99f9aaa48961a264a111996a065d4214ba23c9e8e523bb9161bec5739d6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.562,
+      "started_at": "2026-08-20T05:24:19.691Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "9c4d264f19bc4d798eb016229ccc656184b38954012da3c666f7f26cd6510c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.915,
+      "started_at": "2026-08-20T05:25:21.765Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "9c4d264f19bc4d798eb016229ccc656184b38954012da3c666f7f26cd6510c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.342,
+      "started_at": "2026-08-20T05:26:18.561Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "9c4d264f19bc4d798eb016229ccc656184b38954012da3c666f7f26cd6510c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi-wasm-generated-adapters.cjs test/ffi-wasm-resource.cjs test/ffi-wasm-fmpz-resource-core.cjs test/ffi-wasm-fmpq-resource-core.cjs test/ffi-wasm-m4ri-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.75,
+      "started_at": "2026-08-20T05:26:32.396Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "9c4d264f19bc4d798eb016229ccc656184b38954012da3c666f7f26cd6510c54",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated a declaration-derived Wasm32 adapter protocol for fixed scalars, packed uint64 and exact-integer buffers, copied byte transfer, owned resources and borrowed views, generation-tagged handles, transactional ingress/egress, bounded statuses, and memory-growth-safe JavaScript. Added a deterministic production closure generator that consumes sagejs.wasm-adapter-inputs/v1, plus focused tests covering the complete declared closure, actual WebAssembly.Memory growth, transactional failure, exact integers, and stale borrowed handles.",
+    "risks": [
+      "The focused real FLINT Wasm differential test is conditional and skipped on this host because the pinned CoWasm/WASI FLINT SDK and libraries are not built; release CI must execute it with the production toolchain.",
+      "Manual analytic and number-field-zeta shared cores are intentionally outside the declaration-derived closure and must remain explicit reviewed additional capabilities in the distribution manifest."
+    ],
+    "next_steps": [
+      "The distribution/toolchain lane should call generatedWasmClosure(registry, { adapterInputs, strict: true }) and link each returned artifact instead of invoking the single-surface generator directly.",
+      "Run the conditional real-Wasm differential tests in pinned Linux x64 and arm64 release builders, then expose the generated closure hash in the production capability manifest."
+    ]
+  }
+}

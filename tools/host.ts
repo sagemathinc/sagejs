@@ -620,7 +620,7 @@ export class NodeHostAdapter {
         }
         case "serializationPack": {
           const serializer = require("./serialization") as typeof import("./serialization");
-          return { ok: true, value: serializer.pack(args[0]) };
+          return { ok: true, value: serializer.packPython(args[0]) };
         }
         case "serializationUnpack": {
           const serializer = require("./serialization") as typeof import("./serialization");

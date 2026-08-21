@@ -1,0 +1,3080 @@
+{
+  "schema": "sagejs.wasm-workload-dashboard/v1",
+  "status": "failed",
+  "policy_result": {
+    "heavy_workloads": 44,
+    "accelerated_heavy_workloads": 0,
+    "failed_heavy_workloads": 44,
+    "required_browser_engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "accepted_receipts": 0,
+    "rejected_receipts": 0
+  },
+  "input_receipts": {
+    "policy": {
+      "path": "architecture/wasm-workload-policy.json",
+      "sha256": "15bf392fb12cc2a7f7cac2fab62e6e62260a27fb4412516d2a44e59760cb4f62"
+    },
+    "parity_corpus": {
+      "path": "test/browser-wasm-parity-corpus.json",
+      "sha256": "8ae2a374dd99a506236040138edc2c91a2bc281b796a4dba3c9b82607194d687"
+    },
+    "capability_report": {
+      "path": "architecture/wasm-capabilities-report.json",
+      "sha256": "23c9e24ec5001d2255929ad10f763d1f93d79c2e21ef866024f88732c2eed19b"
+    },
+    "kernel_coverage": {
+      "path": "packages/flint-wasm/release/production-kernel-coverage.json",
+      "sha256": "7c05090180d5bbe38e59c4f306ef7d1a05eedcc59669b4b2491fe6aa78f5a47a"
+    },
+    "performance_cases": {
+      "path": "bench/browser-wasm-performance-cases.json",
+      "sha256": "f99d959fe0d115319181094b00c48657881d8fea15d38c0285dc07bda66589fc"
+    },
+    "route_receipts": [],
+    "rejected_route_receipts": [],
+    "source_revisions": []
+  },
+  "source_inventory": {
+    "parity_workloads": 32,
+    "performance_workloads": 20,
+    "capability_counts": {
+      "total": 956,
+      "by_kind": {
+        "declared-ffi-function": 412,
+        "declared-ffi-resource": 29,
+        "napi-export": 316,
+        "production-kernel": 37,
+        "runtime-intrinsic": 137,
+        "specialist-capability": 25
+      },
+      "by_disposition": {
+        "compiled-source": 37,
+        "desktop-only": 14,
+        "generated-wasm": 302,
+        "portable-fallback": 559,
+        "shared-core": 44
+      },
+      "by_status": {
+        "available": 515,
+        "desktop-only": 14,
+        "fallback": 427
+      }
+    },
+    "kernel_coverage_totals": {
+      "registered_kernels": 37,
+      "production_kernels": 30,
+      "compiled_functions": 229,
+      "unsupported_production_functions": 0,
+      "non_production_functions": 30,
+      "same_source_fallback_functions": 30
+    }
+  },
+  "route_classes": {
+    "expected_requirements": {
+      "wasm-library": 89,
+      "wasm-compiled-source": 14,
+      "portable-orchestration": 3,
+      "portable-computation": 0
+    },
+    "observed_calls": {
+      "wasm-library": 0,
+      "wasm-compiled-source": 0,
+      "portable-orchestration": 0,
+      "portable-computation": 0
+    }
+  },
+  "families": {
+    "algebraic-numbers": {
+      "workloads": 3,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
+    },
+    "analytic-functions": {
+      "workloads": 6,
+      "heavy_workloads": 6,
+      "accelerated": 0,
+      "failed": 6,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "combinatorics": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "combinatorics-number-theory": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "dense-binary-matrices": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "dense-prime-matrices": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "elliptic-curves": {
+      "workloads": 3,
+      "heavy_workloads": 3,
+      "accelerated": 0,
+      "failed": 3,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "exact-arithmetic": {
+      "workloads": 3,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 2
+    },
+    "extension-fields": {
+      "workloads": 3,
+      "heavy_workloads": 3,
+      "accelerated": 0,
+      "failed": 3,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "graphs": {
+      "workloads": 4,
+      "heavy_workloads": 4,
+      "accelerated": 0,
+      "failed": 4,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "groups-combinatorics": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "hyperelliptic-curves": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "modular-symbols": {
+      "workloads": 2,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
+    },
+    "multivariate-polynomials": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "number-fields": {
+      "workloads": 4,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 2
+    },
+    "numerical": {
+      "workloads": 4,
+      "heavy_workloads": 4,
+      "accelerated": 0,
+      "failed": 4,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "plotting": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "runtime": {
+      "workloads": 1,
+      "heavy_workloads": 0,
+      "accelerated": 0,
+      "failed": 0,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
+    },
+    "serialization": {
+      "workloads": 1,
+      "heavy_workloads": 0,
+      "accelerated": 0,
+      "failed": 0,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
+    },
+    "sparse-exact-linear-algebra": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    }
+  },
+  "workloads": [
+    {
+      "id": "parity:exact-big-integer",
+      "public_workflow": "exact-integer-factorization",
+      "family": "exact-arithmetic",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:capability-report-api",
+      "public_workflow": "capability-report-api",
+      "family": "runtime",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:capability-report-api",
+          "legacy_route": "shared-runtime-js",
+          "route_class": "portable-orchestration",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "portable-fallback"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:exact-matrix-and-finite-field-polynomial",
+      "public_workflow": "exact-matrices-and-finite-field-polynomials",
+      "family": "exact-arithmetic",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_det",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_hnf",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fmpz_mod_polynomial_gcd",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:sagepack-exact-roundtrip",
+      "public_workflow": "sagepack-exact-roundtrip",
+      "family": "serialization",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:sagepack",
+          "legacy_route": "shared-runtime-js",
+          "route_class": "portable-orchestration",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "portable-fallback"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:exact-algebraic-roots",
+      "public_workflow": "exact-algebraic-roots",
+      "family": "algebraic-numbers",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "algebraic:qqbar-resource-core",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:algebraic-matrix-qqbar",
+      "public_workflow": "algebraic-matrix-qqbar",
+      "family": "algebraic-numbers",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "algebraic:qqbar-resource-core",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:modular-symbols-weight-two",
+      "public_workflow": "modular-symbols-weight-two",
+      "family": "modular-symbols",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1List",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:number-field-maximal-order-prime-zeta",
+      "public_workflow": "number-field-maximal-order-prime-zeta",
+      "family": "number-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_hnf",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:number_field_order_maximal_at_primes",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:graph-components-packed",
+      "public_workflow": "graph-components-packed",
+      "family": "graphs",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-components-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:graph-shortest-paths-packed",
+      "public_workflow": "graph-shortest-paths-packed",
+      "family": "graphs",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-shortest-paths-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:group-permutation-center",
+      "public_workflow": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-permutation-center-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:gf2-matrix-m4ri",
+      "public_workflow": "gf2-matrix-m4ri",
+      "family": "dense-binary-matrices",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:m4ri:matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_solve",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:matrix-combinatorial-invariants",
+      "public_workflow": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-combinatorial-integer-rational-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        },
+        {
+          "capability_id": "kernel:packed-combinatorial-prime-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:matrix-word-prime-flint",
+      "public_workflow": "matrix-word-prime-flint",
+      "family": "dense-prime-matrices",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:nmod_matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rref",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:sparse-integer-right-kernel",
+      "public_workflow": "sparse-integer-right-kernel",
+      "family": "sparse-exact-linear-algebra",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:moebius-range-batch",
+      "public_workflow": "moebius-range-packed",
+      "family": "combinatorics-number-theory",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-moebius-range-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:multivariate-resultant-packed",
+      "public_workflow": "multivariate-resultant-packed",
+      "family": "multivariate-polynomials",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:analytic-gamma-xi-batches",
+      "public_workflow": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:complex-gamma",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "analytic:riemann-xi",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:numeric-realfield-arithmetic",
+      "public_workflow": "numeric-realfield-arithmetic",
+      "family": "numerical",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:realDiv",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:numeric-special-functions",
+      "public_workflow": "numeric-special-functions",
+      "family": "numerical",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:zetaZeros",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:complexEi",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:complexBesselI",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:symbolic-numerical-kernels",
+      "public_workflow": "symbolic-numerical-kernels",
+      "family": "numerical",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:symbolic-numerical-integral-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "specialist:symbolic-find-root-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:extension-field-polynomial-arithmetic",
+      "public_workflow": "extension-field-polynomial-arithmetic",
+      "family": "extension-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fq_context",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_pow",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_polynomial_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_polynomial_pow",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:extension-field-conway-data",
+      "public_workflow": "extension-field-conway-data",
+      "family": "extension-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fq_context",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_pow",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:hyperelliptic-smalljac-local-factors",
+      "public_workflow": "hyperelliptic-smalljac-local-factors",
+      "family": "hyperelliptic-curves",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:smalljac",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:number-field-cubic-headline",
+      "public_workflow": "number-field-cubic-headline",
+      "family": "number-fields",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_hnf",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "kernel:number-field-zeta-coefficients-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:number-field-ideal-certificate-sagepack",
+      "public_workflow": "number-field-ideal-certificate-sagepack",
+      "family": "number-fields",
+      "tier": "routine",
+      "heavy": false,
+      "status": "unmeasured",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:sagepack",
+          "legacy_route": "shared-runtime-js",
+          "route_class": "portable-orchestration",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "portable-fallback"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": []
+    },
+    {
+      "id": "parity:riemann-zeta-batch",
+      "public_workflow": "riemann-zeta-batch",
+      "family": "analytic-functions",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:riemann-zeta-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:dirichlet-l-batch",
+      "public_workflow": "dirichlet-l-batch",
+      "family": "analytic-functions",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:dirichlet-l-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:quadratic-dedekind-zeta-batch",
+      "public_workflow": "quadratic-dedekind-zeta-batch",
+      "family": "analytic-functions",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:riemann-zeta-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "analytic:dirichlet-l-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:elliptic-smalljac-coefficients",
+      "public_workflow": "elliptic-smalljac-coefficients",
+      "family": "elliptic-curves",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-coefficients-smalljac-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:elliptic-lseries-values",
+      "public_workflow": "elliptic-lseries-values",
+      "family": "elliptic-curves",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-coefficients-smalljac-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-values",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:elliptic-lseries-complex-plot",
+      "public_workflow": "elliptic-lseries-complex-plot",
+      "family": "plotting",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-coefficients-smalljac-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-values",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-plot",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:exact-matrix-kernel",
+      "public_workflow": "exact-matrix-kernel",
+      "family": "exact-arithmetic",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_det",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_hnf",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:cubic-number-field-zeta-1000",
+      "public_workflow": "cubic-number-field-zeta-1000",
+      "family": "number-fields",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:number-field-zeta-coefficients-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:modular-symbols-level-1000",
+      "public_workflow": "modular-symbols-level-1000",
+      "family": "modular-symbols",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1List",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:analytic-special-value-batches",
+      "public_workflow": "analytic-special-value-batches",
+      "family": "analytic-functions",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:riemann-zeta-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "analytic:dirichlet-l-batch",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:analytic-gamma-xi-batches",
+      "public_workflow": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "analytic:complex-gamma",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "analytic:riemann-xi",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:numeric-mpfr-symbolic",
+      "public_workflow": "numeric-mpfr-symbolic",
+      "family": "numerical",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:realDiv",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "specialist:symbolic-numerical-integral-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "specialist:symbolic-find-root-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:moebius-range-100000",
+      "public_workflow": "moebius-range-100000",
+      "family": "combinatorics-number-theory",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-moebius-range-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:graph-components-10000",
+      "public_workflow": "graph-components-10000",
+      "family": "graphs",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-components-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:graph-shortest-paths",
+      "public_workflow": "graph-shortest-paths",
+      "family": "graphs",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-shortest-paths-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:group-permutation-center",
+      "public_workflow": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-permutation-center-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:gf2-matrix-384",
+      "public_workflow": "gf2-matrix-384",
+      "family": "dense-binary-matrices",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:m4ri:matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:word-prime-matrix-128",
+      "public_workflow": "word-prime-matrix-128",
+      "family": "dense-prime-matrices",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:nmod_matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rref",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:sparse-integer-right-kernel-192",
+      "public_workflow": "sparse-integer-right-kernel-192",
+      "family": "sparse-exact-linear-algebra",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:matrix-combinatorial-invariants",
+      "public_workflow": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-combinatorial-integer-rational-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        },
+        {
+          "capability_id": "kernel:packed-combinatorial-prime-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:multivariate-resultant-packed",
+      "public_workflow": "multivariate-resultant-packed",
+      "family": "multivariate-polynomials",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:extension-field-polynomial-5632",
+      "public_workflow": "extension-field-polynomial-5632",
+      "family": "extension-fields",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fq_polynomial_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:hyperelliptic-local-factors-100000",
+      "public_workflow": "hyperelliptic-local-factors-100000",
+      "family": "hyperelliptic-curves",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:smalljac",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:algebraic-matrix-8",
+      "public_workflow": "algebraic-matrix-8",
+      "family": "algebraic-numbers",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "algebraic:qqbar-resource-core",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:elliptic-lseries-value-batch",
+      "public_workflow": "elliptic-lseries-value-batch",
+      "family": "elliptic-curves",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-coefficients-smalljac-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-values",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:elliptic-lseries-complex-plot-64",
+      "public_workflow": "elliptic-lseries-complex-plot-64",
+      "family": "plotting",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:integer-factorization-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-coefficients-smalljac-wasm",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-values",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "elliptic-lseries-plot",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    }
+  ]
+}

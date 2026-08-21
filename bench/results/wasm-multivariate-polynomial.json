@@ -1,0 +1,53 @@
+{
+  "schema": "sagejs.benchmark/wasm-multivariate-polynomial-v1",
+  "generatedAt": "2026-08-21T01:11:53.634Z",
+  "baseCommit": "f959be9f15ac5ec773410dfa21222368ee5d1133",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0"
+  },
+  "workload": "3-variable exact resultant, degrees 7 and 6, 120x84 input terms",
+  "publicProfile": {
+    "warmup": "construct once, then odd-count median of immutable public calls",
+    "samples": 11,
+    "gcd": {
+      "medianMs": 0.8099079132080078,
+      "commonTerms": 120,
+      "leftTerms": 560,
+      "rightTerms": 560
+    },
+    "resultant": {
+      "medianMs": 39.231061935424805,
+      "leftTerms": 120,
+      "rightTerms": 84,
+      "outputTerms": 946
+    },
+    "groebner": {
+      "medianMs": 0.1838207244873047,
+      "inputGenerators": 3,
+      "outputGenerators": 3
+    }
+  },
+  "packedNativeCore": {
+    "medianMs": 36.119709,
+    "inputBytes": 4928,
+    "outputBytes": 32192,
+    "boundaryCrossingsPerResultant": 1,
+    "copiedBytesPerResultant": 37120,
+    "outputCapacityBytes": 16777216,
+    "samples": 11
+  },
+  "selection": {
+    "operation": "resultant",
+    "versusGcdRatio": 48.438916691198116,
+    "versusGroebnerRatio": 213.42023346303503
+  },
+  "budgets": {
+    "normalInputBytesMax": 1048576,
+    "normalOutputBytesMax": 16777216,
+    "boundaryCrossingsPerCallMax": 1,
+    "normalWarmBrowserMillisecondsMax": 250,
+    "normalWarmNativeMillisecondsMax": 100
+  }
+}

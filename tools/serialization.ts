@@ -164,15 +164,27 @@ function iterableEntries(value: unknown): [unknown, unknown][] {
   return Array.from(Reflect.apply(entries, value, [])) as [unknown, unknown][];
 }
 
-function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket {
+function encodePacket(
+  value: unknown,
+  transferOwnedBuffers: boolean,
+  canonicalPythonIntegers = false,
+): SagePacket {
   const objects: WireRecord[] = [];
   const buffers: ArrayBuffer[] = [];
   const seen = new Map<object, number>();
   const transferable = new WeakSet<object>();
   const builtinPayloads = new WeakSet<object>();
+  let codecPayloadDepth = 0;
 
   const context: EncodeContext = {
-    encode: encodeValue,
+    encode(value: unknown): WireValue {
+      codecPayloadDepth += 1;
+      try {
+        return encodeValue(value);
+      } finally {
+        codecPayloadDepth -= 1;
+      }
+    },
     buffer(bufferValue) {
       const index = buffers.length;
       const bytes = bufferValue instanceof ArrayBuffer
@@ -220,6 +232,16 @@ function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket
       if (item === Infinity) return { $number: "+infinity" };
       if (item === -Infinity) return { $number: "-infinity" };
       if (Object.is(item, -0)) return { $number: "-0" };
+      // Python integers may be represented by either a JavaScript Number or
+      // BigInt depending on the selected native/portable arithmetic route.
+      // SagePack emitted through the Python API must not expose that host
+      // implementation detail in its canonical bytes.
+      if (
+        canonicalPythonIntegers && codecPayloadDepth === 0 &&
+        Number.isSafeInteger(item)
+      ) {
+        return { $integer: String(item) };
+      }
       return item;
     }
     if (typeof item === "bigint") return { $integer: item.toString(10) };
@@ -314,7 +336,7 @@ function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket
                 if (isPlainObject(payloadValue)) {
                   builtinPayloads.add(payloadValue);
                 }
-                return encodeValue(payloadValue);
+                return context.encode(payloadValue);
               },
             });
           } catch (error) {
@@ -840,8 +862,7 @@ function writeLength(view: DataView, offset: number, value: number): void {
  * fixed header and length table make truncation, trailing bytes, and absurd
  * allocations detectable before decoding any mathematical object.
  */
-export function pack(value: unknown): Uint8Array {
-  const packet = encode(value);
+function packPacket(packet: SagePacket): Uint8Array {
   const metadata = new TextEncoder().encode(portableMetadata(packet));
   if (metadata.byteLength > 0xffff_ffff || packet.buffers.length > 0xffff_ffff) {
     throw new SageSerializationError("SagePack metadata exceeds the v1 limit");
@@ -874,6 +895,21 @@ export function pack(value: unknown): Uint8Array {
     offset += buffer.byteLength;
   }
   return result;
+}
+
+export function pack(value: unknown): Uint8Array {
+  return packPacket(encode(value));
+}
+
+/**
+ * Pack a value crossing the Python `dumps` boundary.
+ *
+ * Small Python integers use JavaScript Numbers on some execution routes and
+ * BigInts on others.  Canonicalize both representations to SagePack integers
+ * while leaving the public JavaScript `pack` API type-preserving.
+ */
+export function packPython(value: unknown): Uint8Array {
+  return packPacket(encodePacket(value, false, true));
 }
 
 /** Load a binary SagePack v1 container without importing or executing code. */

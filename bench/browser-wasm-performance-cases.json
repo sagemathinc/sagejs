@@ -1,0 +1,206 @@
+{
+  "schema": "sagejs.browser-wasm-performance-cases/v1",
+  "description": "A small release-performance profile. These are workloads, not substitutes for the complete browser parity corpus.",
+  "cases": [
+    {
+      "id": "exact-matrix-kernel",
+      "family": "exact-arithmetic",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_det", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "A = matrix(ZZ, 12, 12, lambda i,j: (i+2)*(j+3) + (1 if i == j else 0))\nprint(A.det())\nprint(A.hermite_form()[0,0])",
+      "timeout_ms": 60000
+    },
+    {
+      "id": "cubic-number-field-zeta-1000",
+      "family": "number-fields",
+      "requires": [
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^3-x-1)\nO = K.maximal_order()\ncoefficients = K.zeta_function().coefficients(1000)\nprint(O.discriminant(), len(coefficients), sum(coefficients[:32]))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "modular-symbols-level-1000",
+      "family": "modular-symbols",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "M=ModularSymbols(1000,2)\nC=M.cuspidal_subspace()\nprint(M.dimension(),C.dimension(),M.hecke_matrix(2).trace())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "analytic-special-value-batches",
+      "family": "analytic-functions",
+      "requires": [
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "points = [CC(2, k/8) for k in range(-16,17)]\nR = RiemannZeta(80)\nG = DirichletGroup(5)\nD = G[2].lfunction(80)\nP.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nvalues = R.values(points) + D.values(points) + Z.values(points)\nprint(len(values), float(values[0].real()), float(values[-1].real()))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "requires": [
+        { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "points=[[\"0.5\",(k-64)/16] for k in range(128)]\ngamma_values=complex_gamma_values(points,prec=160)\nxi_values=riemann_xi_values(points,prec=160)\nprint(len(gamma_values),len(xi_values),gamma_values[0].precision(),xi_values[-1].precision())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "numeric-mpfr-symbolic",
+      "family": "numerical",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:realDiv", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=RealField(100)\nx=R(1)/R(3)\nfor k in range(100): x=(x+R(1))/R(3)\nt=var('t')\nvalue=numerical_integral(exp(t^2),1,2,eps_abs=1e-12,eps_rel=1e-12)[0]\nroot=(t^2-2).find_root(1,2)\nprint(x,float(value),float(root))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "moebius-range-100000",
+      "family": "combinatorics-number-theory",
+      "requires": [
+        { "id": "kernel:packed-moebius-range-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "values=moebius.range(100000)\nprint(len(values),sum(values),sum(abs(x) for x in values))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "graph-components-10000",
+      "family": "graphs",
+      "requires": [
+        { "id": "kernel:packed-graph-components-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(10000)\nC=G.connected_components()\nprint(len(C),len(C[0]))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "graph-shortest-paths",
+      "family": "graphs",
+      "requires": [
+        { "id": "kernel:packed-graph-shortest-paths-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(10000)\npath=G.shortest_path(0,5000)\nH=graphs.CycleGraph(512)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][256])",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "requires": [
+        { "id": "kernel:packed-permutation-center-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])\nC=G.center()\nprint(G.order(),C.gens())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "gf2-matrix-384",
+      "family": "dense-binary-matrices",
+      "requires": [
+        { "id": "ffi:m4ri:matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_rank", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "A=matrix(GF(2),384,384,lambda i,j:(i*17+j*31+i*j)%2)\nB=A*A\nprint(B.nrows(),B.ncols(),A.rank(),B.rank())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "word-prime-matrix-128",
+      "family": "dense-prime-matrices",
+      "requires": [
+        { "id": "ffi:flint:nmod_matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rref", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(65537)\nn=128\nL=matrix(F,n,n,lambda i,j:1 if i==j else ((i*17+j*31+1)%65537 if i>j else 0))\nU=matrix(F,n,n,lambda i,j:(i+1) if i==j else ((i*13+j*19+1)%65537 if i<j else 0))\nA=L*U\nR=A.matrix_from_rows(range(96))\nK=R.right_kernel_matrix()\nprint(A.rank(),A.rref()[0,0],K.nrows(),(R*K.transpose()).is_zero())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "sparse-integer-right-kernel-192",
+      "family": "sparse-exact-linear-algebra",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "rows=192\ncolumns=204\nentries=[0 for _ in range(rows*columns)]\nfor row in range(rows):\n entries[row*columns+row]=1\n for shift,value in [(1,-2),(7,3),(19,-1)]:\n  column=row+shift\n  if column<columns: entries[row*columns+column]=value\nA=matrix(ZZ,rows,columns,entries,sparse=True)\nK=A.right_kernel_matrix()\nprint(K.nrows(),K.ncols(),A.rank(),(A*K.transpose()).is_zero())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "requires": [
+        { "id": "kernel:packed-combinatorial-integer-rational-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:packed-combinatorial-prime-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "from sagejs.linear_algebra.combinatorial import matrix_permanent,matrix_minors\nfor base in [ZZ,QQ,GF(7)]:\n A=matrix(base,8,8,[base((i*7+3)%11-5) for i in range(64)])\n B=matrix(base,6,7,[base((i*7+3)%11-5) for i in range(42)])\n print(matrix_permanent(A),len(matrix_minors(B,3)))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "multivariate-resultant-packed",
+      "family": "multivariate-polynomials",
+      "requires": [
+        { "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=PolynomialRing(ZZ,names=('x','y','z'))\nx,y,z=R.gens()\nleft=(x+y+z+1)^7+(x-y+2*z+3)^6+y^5*z\nright=(2*x-y+z+2)^6+(x+2*y-z+1)^5+z^6\nprint(left.resultant(right,x).number_of_terms())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "extension-field-polynomial-5632",
+      "family": "extension-fields",
+      "requires": [
+        { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+3*t+6)\nR.<x>=PolynomialRing(K)\nf=x^1024+(a^2+7*a+11)*x^511+a+19\ng=(x+a+1)^384\nanswer=f\nfor k in range(12): answer=answer*g\nprint(answer.degree(),answer[0],answer[answer.degree()])",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "hyperelliptic-local-factors-100000",
+      "family": "hyperelliptic-curves",
+      "requires": [
+        { "id": "specialist:smalljac", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x>=PolynomialRing(QQ)\nC=HyperellipticCurve(x^5+x+1)\nvalues=C.local_lpolynomials(3,100000,algorithm='smalljac')\nprint(len(values),values[0][0],values[-1][0])",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "algebraic-matrix-8",
+      "family": "algebraic-numbers",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x>=QQ[]\nr=(x^2-2).roots(AA,multiplicities=False)[1]\nM=matrix(AA,8,8,lambda i,j:r if i==j else AA((i+2*j)%5-2))\nprint(M.rank(),M.det(),(M*M).charpoly()[0])",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "elliptic-lseries-value-batch",
+      "family": "elliptic-curves",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npoints = [CC(1, k/8) for k in range(-16,17)]\nvalues = L.values(points, prec=53)\nprint(len(values), float(values[0].real()), float(values[-1].imag()))",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "elliptic-lseries-complex-plot-64",
+      "family": "plotting",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\npicture = complex_plot(L,(0,2),(-4,4),plot_points=64,interpolation='nearest')\nprint(picture._plot_spec_diagnostics[0]['pixel_count'])",
+      "timeout_ms": 240000
+    }
+  ]
+}

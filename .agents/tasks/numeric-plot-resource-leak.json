@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numeric-plot-resource-leak",
+  "title": "Numeric Plot Resource Leak",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prevent elliptic complex plots from retaining bounded Wasm numeric handles across repeated renders",
+  "base_commit": "209fa68039bf76ce9749e47bfe3bde971c47228a",
+  "claims": [
+    "src/baselib/elliptic_curves.py",
+    "test/elliptic-lseries-wasm-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Repeated 64x64 Chromium plot preserves numericLiveCount"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/elliptic-lseries-wasm-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.174,
+      "started_at": "2026-08-21T06:29:21.542Z",
+      "commit": "209fa68039bf76ce9749e47bfe3bde971c47228a",
+      "workspace_fingerprint": "50b7c07be61aaf8d210c4322f38f591ec8aa69f94e5b8de79c968da9f0727be9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

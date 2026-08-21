@@ -10,7 +10,7 @@
     {
       "id": "compiler-runtime",
       "description": "Parser, compiler, runtime, modes, kernels, and language semantics",
-      "allowed_claims": [".agents/lanes.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs_bootstrap.py", "tools/", "bootstrap/"],
+      "allowed_claims": [".agents/lanes.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs_bootstrap.py", "src/lib/sagejs/kernels/arithmetic/", "tools/", "bootstrap/"],
       "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
     },
     {
@@ -44,6 +44,28 @@
       "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
     },
     {
+      "id": "numeric-symbolic-wasm",
+      "description": "Bounded MPFR/MPC/Arb/Acb WebAssembly resources and coarse symbolic numerical kernels",
+      "allowed_claims": [
+        "src/baselib/real_complex.py",
+        "src/baselib/symbolic.py",
+        "packages/flint/src/analytic_batch_core.c",
+        "packages/flint/src/analytic_batch_core.h",
+        "packages/flint-wasm/src/numeric.c",
+        "packages/flint-wasm/index.mjs",
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/analytic-backend.mjs",
+        "packages/flint-wasm/scripts/build.cjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs"
+      ],
+      "required_checks": [
+        "pnpm architecture:check",
+        "pnpm test:baselib:strict",
+        "node --test packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs"
+      ]
+    },
+    {
       "id": "graphics",
       "description": "Two- and three-dimensional graphics and rendering",
       "allowed_claims": [
@@ -72,7 +94,25 @@
     {
       "id": "combinatorics-groups",
       "description": "Groups, combinatorics, iterators, and discrete structures",
-      "allowed_claims": ["src/baselib/groups.py", "src/baselib/containers.py", "src/baselib/itertools.py"],
+      "allowed_claims": [
+        "architecture/native-kernels.json",
+        "architecture/package-graph.json",
+        "architecture/wasm-capabilities.json",
+        "architecture/wasm-capability-report.json",
+        "architecture/wasm-capabilities-report.json",
+        "packages/flint-wasm/release/production-capabilities.json",
+        "packages/flint-wasm/release/production-kernel-coverage.json",
+        "package.json",
+        "pyrightconfig.json",
+        "src/baselib/groups.py",
+        "src/baselib/containers.py",
+        "src/baselib/graphs.py",
+        "src/baselib/itertools.py",
+        "src/lib/sagejs/kernels/graph/",
+        "src/lib/sagejs/kernels/groups/",
+        "test/wasm-capabilities.cjs",
+        "test/wasm-production-native-kernels.cjs"
+      ],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:compiler"]
     },
     {
@@ -107,13 +147,13 @@
     {
       "id": "distribution",
       "description": "Native dependencies, WASM, SEA, installers, CI, and supported platforms",
-      "allowed_claims": ["packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
+      "allowed_claims": ["apps/sagejs-mobile/", "packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
       "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
     },
     {
       "id": "integration",
       "description": "Shared APIs, repository-wide refactors, release integration, and merge coordination",
-      "allowed_claims": [".gitattributes", "AGENTS.md", "ARCHITECTURE.md", "COMPILED-PYTHON.md", "FFI.md", "README.md", "HACKING.md", "TESTING.md", "TODO.md", "PARALLEL-DEVELOPMENT.md", "DISTRIBUTION.md", "architecture/", "bin/", "dispatch/", "ffi/", "licenses/", "src/baselib/matrix.py", "src/baselib/polynomial.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/multiprocessing.py", "src/lib/sagejs/ffi/", "src/lib/sagejs/number_fields/field_analysis_resource.py", "src/lib/sagejs/linear_algebra/", "src/lib/sagejs/polynomial_algorithms/", "src/lib/sagejs/kernels/matrix/", "src/lib/sagejs/kernels/polynomial/", "src/baselib/sagejs/ffi/", "packages/fflas/", "packages/m4ri/", "packages/flint-wasm/", "packages/flint/generated/", "packages/flint/include/sagejs/", "packages/flint/scripts/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", "test/ffi.cjs", "test/node-test-manifest.cjs", "test/parallel-development.cjs", "test/production-native-kernels.cjs", "tools/cache.ts", "tools/cache-lease.ts", "tools/cli.js", "tools/ffi/", "tools/host.ts", "tools/math-dispatch/", "tools/native-compiler.ts", "tools/native-kernel/c-backend.cjs", "tools/native-kernel/compiler.cjs", "tools/native-kernel/ffi-codegen.cjs", "tools/native-kernel/ir.cjs", "tools/native-kernel/prime-field-backend.cjs", "tools/number-field-maximal-order/", "tools/repl.ts", "tools/runtime-bootstrap.ts", "tools/standalone-library.cjs", "tools/task-evaluator.ts", "tools/resources.ts", "tools/python/contract.ts", "tools/serialization.ts", ".agents/", ".github/"],
+      "allowed_claims": [".gitattributes", "AGENTS.md", "ARCHITECTURE.md", "COMPILED-PYTHON.md", "FFI.md", "README.md", "HACKING.md", "TESTING.md", "TODO.md", "PARALLEL-DEVELOPMENT.md", "DISTRIBUTION.md", "architecture/", "bin/", "dispatch/", "ffi/", "licenses/", "src/baselib/matrix.py", "src/baselib/polynomial.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/multiprocessing.py", "src/lib/sagejs/ffi/", "src/lib/sagejs/number_fields/field_analysis_resource.py", "src/lib/sagejs/linear_algebra/", "src/lib/sagejs/polynomial_algorithms/", "src/lib/sagejs/kernels/matrix/", "src/lib/sagejs/kernels/polynomial/", "src/baselib/sagejs/ffi/", "packages/fflas/", "packages/m4ri/", "packages/flint-wasm/", "packages/flint/generated/", "packages/flint/include/sagejs/", "packages/flint/scripts/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", "test/ffi.cjs", "test/node-test-manifest.cjs", "test/parallel-development.cjs", "test/production-native-kernels.cjs", "tools/cache.ts", "tools/cache-lease.ts", "tools/cli.js", "tools/ffi/", "tools/host.ts", "tools/math-dispatch/", "tools/native-compiler.ts", "tools/native-kernel/c-backend.cjs", "tools/native-kernel/compiler.cjs", "tools/native-kernel/ffi-codegen.cjs", "tools/native-kernel/ir.cjs", "tools/native-kernel/prime-field-backend.cjs", "tools/native-kernel/wasm-pack-loader.mjs", "tools/native-kernel/test/wasm-pack-loader.cjs", "tools/number-field-maximal-order/", "tools/repl.ts", "tools/runtime-bootstrap.ts", "tools/standalone-library.cjs", "tools/task-evaluator.ts", "tools/resources.ts", "tools/python/contract.ts", "tools/serialization.ts", ".agents/", ".github/"],
       "required_checks": ["pnpm architecture:check", "pnpm test:portable", "pnpm test:baselib:strict"]
     }
   ]

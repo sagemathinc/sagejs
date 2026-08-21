@@ -132,6 +132,16 @@ function compileComplexNode(tree, variableIndices) {
   }
   const operands = operandTrees.map((operand) =>
     compileComplexNode(operand, variableIndices));
+  if (head === "Complex" && tree.length === 3) {
+    return (variables) => {
+      const real = operands[0](variables);
+      const imaginary = operands[1](variables);
+      if (real[1] !== 0 || imaginary[1] !== 0) {
+        throw new TypeError("Complex parts must be real");
+      }
+      return [real[0], imaginary[0]];
+    };
+  }
   if (head === "Add") {
     return (variables) => {
       let result = [0, 0];

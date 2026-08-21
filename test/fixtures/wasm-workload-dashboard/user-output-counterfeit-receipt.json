@@ -1,0 +1,40 @@
+{
+  "schema": "sagejs.browser-wasm-performance/v2",
+  "runtime": { "kind": "browser-wasm", "engine": "chromium" },
+  "source_revision": "fixture-revision",
+  "workload_identity": "sha256:1761967e790b6f6962e285ea19e8b9527d1eb650290ba7830855b7ed3fc845ae",
+  "diagnostics": {
+    "user_output": {
+      "routes": [
+        {
+          "capability_id": "library:math",
+          "selected_route": "receipt-backed-wasm-artifact",
+          "execution_target": "wasm-artifact",
+          "call_count": 99,
+          "ingress_bytes": 0,
+          "egress_bytes": 0
+        }
+      ]
+    }
+  },
+  "operations": {
+    "heavy-math": {
+      "family": "fixture",
+      "required_capability_routes": [
+        { "id": "library:math", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:compiled-math", "route": "receipt-backed-wasm-artifact" },
+        { "id": "runtime:glue", "route": "shared-runtime-js" }
+      ],
+      "instrumentation": {
+        "warm": {
+          "status": "unavailable",
+          "samples": [],
+          "boundary_crossings": null,
+          "copied_bytes": null,
+          "observed_routes": [],
+          "required_routes": []
+        }
+      }
+    }
+  }
+}

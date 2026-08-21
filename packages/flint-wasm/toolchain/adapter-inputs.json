@@ -1,0 +1,14 @@
+{
+  "schema": "sagejs.wasm-adapter-inputs/v2",
+  "policy": "all-declared-wasm",
+  "modules": {
+    "flint": {
+      "declaration": "flint",
+      "ownershipDomain": "flint-gmp-mpfr-arb"
+    },
+    "m4ri": {
+      "declaration": "m4ri",
+      "ownershipDomain": "m4ri"
+    }
+  }
+}

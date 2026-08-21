@@ -38,7 +38,12 @@ export class SageSession {
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
     standardLibrary = new URL("./dist/stdlib.json", import.meta.url),
+    lazyModules = new URL("./dist/lazy-modules.json", import.meta.url),
+    conwayData = new URL("./dist/conway-polynomials.json", import.meta.url),
+    dynamicPrograms = new URL("./dist/dynamic-programs.json", import.meta.url),
     flint = new URL("./dist/flint-factor.wasm", import.meta.url),
+    algebraic = new URL("./dist/flint-algebraic.wasm", import.meta.url),
+    nativeKernels = new URL("./dist/native-kernels/index.json", import.meta.url),
     m4ri = new URL("./dist/m4ri-resource.wasm", import.meta.url),
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
@@ -46,6 +51,7 @@ export class SageSession {
     treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
     pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
     sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+    capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
     onGraphicsSave,
   } = {}) {
     this.resources = {
@@ -53,7 +59,12 @@ export class SageSession {
       compiler: String(compiler),
       baselib: String(baselib),
       standardLibrary: String(standardLibrary),
+      lazyModules: String(lazyModules),
+      conwayData: String(conwayData),
+      dynamicPrograms: String(dynamicPrograms),
       flint: String(flint),
+      algebraic: String(algebraic),
+      nativeKernels: String(nativeKernels),
       m4ri: String(m4ri),
       symbolic: String(symbolic),
       compilerWorker: String(compilerWorker),
@@ -61,6 +72,7 @@ export class SageSession {
       treeSitterRuntime: String(treeSitterRuntime),
       pythonGrammar: String(pythonGrammar),
       sageGrammar: String(sageGrammar),
+      capabilityReport: String(capabilityReport),
     };
     this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
@@ -101,12 +113,17 @@ export class SageSession {
   spawnWorker(readyPromisePrepared = false) {
     if (!readyPromisePrepared) this.prepareReadyPromise();
     const worker = new Worker(this.resources.worker, { type: "module" });
+    const channel = new MessageChannel();
     this.worker = worker;
+    this.channel = channel.port1;
 
-    worker.onmessage = ({ data }) => {
-      if (worker !== this.worker) return;
+    channel.port1.onmessage = ({ data }) => {
+      if (worker !== this.worker || channel.port1 !== this.channel) return;
+      if (!data || typeof data !== "object" || typeof data.type !== "string") {
+        return;
+      }
       if (data.type === "ready") {
-        if (data.protocol !== 1) {
+        if (data.protocol !== 2) {
           this.readyReject(
             new Error(`unsupported Sage.js worker protocol ${data.protocol}`),
           );
@@ -132,6 +149,12 @@ export class SageSession {
         this.emit("stdout", data.text, { evaluationId: data.id });
         return;
       }
+      if (data.type === "stderr") {
+        pending.errorOutput += data.text;
+        pending.onError?.(data.text);
+        this.emit("stderr", data.text, { evaluationId: data.id });
+        return;
+      }
       if (data.type !== "result") return;
 
       this.pending.delete(data.id);
@@ -150,6 +173,7 @@ export class SageSession {
           return {
             ...result,
             stdout: pending.output,
+            stderr: pending.errorOutput,
           };
         })().then(pending.resolve, pending.reject);
       } else {
@@ -169,20 +193,31 @@ export class SageSession {
       this.emit("error", error);
     };
 
-    worker.postMessage({
-      type: "initialize",
-      compiler: this.resources.compiler,
-      baselib: this.resources.baselib,
-      standardLibrary: this.resources.standardLibrary,
-      flint: this.resources.flint,
-      m4ri: this.resources.m4ri,
-      symbolic: this.resources.symbolic,
-      compilerWorker: this.resources.compilerWorker,
-      compilerFrontend: this.resources.compilerFrontend,
-      treeSitterRuntime: this.resources.treeSitterRuntime,
-      pythonGrammar: this.resources.pythonGrammar,
-      sageGrammar: this.resources.sageGrammar,
-    });
+    channel.port1.start?.();
+    worker.postMessage(
+      {
+        type: "initialize",
+        protocol: 2,
+        compiler: this.resources.compiler,
+        baselib: this.resources.baselib,
+        standardLibrary: this.resources.standardLibrary,
+        lazyModules: this.resources.lazyModules,
+        conwayData: this.resources.conwayData,
+        dynamicPrograms: this.resources.dynamicPrograms,
+        flint: this.resources.flint,
+        algebraic: this.resources.algebraic,
+        nativeKernels: this.resources.nativeKernels,
+        m4ri: this.resources.m4ri,
+        symbolic: this.resources.symbolic,
+        compilerWorker: this.resources.compilerWorker,
+        compilerFrontend: this.resources.compilerFrontend,
+        treeSitterRuntime: this.resources.treeSitterRuntime,
+        pythonGrammar: this.resources.pythonGrammar,
+        sageGrammar: this.resources.sageGrammar,
+        capabilityReport: this.resources.capabilityReport,
+      },
+      [channel.port2],
+    );
   }
 
   rejectPending(error) {
@@ -205,6 +240,7 @@ export class SageSession {
       filename = "<browser>",
       timeout,
       onOutput,
+      onError,
     } = {},
   ) {
     if (this.closed) throw new SageSessionClosedError();
@@ -218,14 +254,16 @@ export class SageSession {
       throw new TypeError("Sage.js timeout must be a positive number");
     }
     await this.ready();
-    const worker = this.worker;
-    if (!worker) throw new SageSessionClosedError();
+    const channel = this.channel;
+    if (!channel) throw new SageSessionClosedError();
     const id = ++this.nextId;
 
     return new Promise((resolve, reject) => {
       const pending = {
         output: "",
+        errorOutput: "",
         onOutput,
+        onError,
         resolve,
         reject,
       };
@@ -240,7 +278,7 @@ export class SageSession {
         }, timeout);
       }
       this.pending.set(id, pending);
-      worker.postMessage({
+      channel.postMessage({
         type: "evaluate",
         id,
         source,
@@ -253,20 +291,25 @@ export class SageSession {
     return this.evaluate(source, options);
   }
 
-  async replaceWorker(error) {
+  async replaceWorker(error, waitForReady = true) {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
     this.worker = undefined;
+    const channel = this.channel;
+    this.channel = undefined;
+    channel?.close();
     this.prepareReadyPromise();
     this.rejectPending(error);
     worker?.terminate();
     if (this.closed) return;
     this.spawnWorker(true);
-    await this.readyPromise;
+    if (waitForReady) await this.readyPromise;
   }
 
   interrupt() {
-    return this.replaceWorker(new SageSessionInterruptedError());
+    // Acknowledge termination immediately.  The replacement starts now, and
+    // the next evaluation waits for it through `ready()`.
+    return this.replaceWorker(new SageSessionInterruptedError(), false);
   }
 
   reset() {
@@ -282,6 +325,9 @@ export class SageSession {
     this.readyReject(error);
     const worker = this.worker;
     this.worker = undefined;
+    const channel = this.channel;
+    this.channel = undefined;
+    channel?.close();
     this.rejectPending(error);
     worker?.terminate();
     this.listeners.clear();

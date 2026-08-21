@@ -1,0 +1,123 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "mobile-loopback-origin",
+  "title": "Mobile verified loopback runtime origin",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Serve receipt-verified bundled Sage.js runtime assets from an application-owned capability-bearing 127.0.0.1 origin on iOS and Android with strict isolation/security headers and lifecycle cleanup",
+  "base_commit": "1d1ec779958978f5d49713157bb707995875201b",
+  "claims": [
+    "apps/sagejs-mobile/android/",
+    "apps/sagejs-mobile/ios/",
+    "apps/sagejs-mobile/src/runtime/",
+    "apps/sagejs-mobile/test/loopback-origin.test.mjs",
+    "apps/sagejs-mobile/test/runtime-assets.test.mjs",
+    "apps/sagejs-mobile/runtime-shell/index.html",
+    "apps/sagejs-mobile/docs/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Native unit tests and TypeScript contract tests for allowlisting, traversal, headers, lifecycle, and WebView navigation"
+    ],
+    "exceptions": [
+      "Swift and Kotlin adapters are platform host primitives required to own a loopback TCP origin without broad third-party native dependencies."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "pnpm --dir apps/sagejs-mobile lint",
+    "pnpm --dir apps/sagejs-mobile typecheck",
+    "pnpm --dir apps/sagejs-mobile test",
+    "pnpm --dir apps/sagejs-mobile test:contracts",
+    "Android testDebugUnitTest assembleDebug -x verifySageRuntime",
+    "Android processReleaseMainManifest -x verifySageRuntime"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.087,
+      "started_at": "2026-08-20T08:19:23.949Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "57022348c7cbbec92464502c4c04e5cf4e00c6ca8cc74f88fcfd74cceb8e4525",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.082,
+      "started_at": "2026-08-20T08:19:26.925Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "57022348c7cbbec92464502c4c04e5cf4e00c6ca8cc74f88fcfd74cceb8e4525",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.12,
+      "started_at": "2026-08-20T08:19:28.906Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "57022348c7cbbec92464502c4c04e5cf4e00c6ca8cc74f88fcfd74cceb8e4525",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env ANDROID_HOME=/home/user/Android/Sdk apps/sagejs-mobile/android/gradlew -p apps/sagejs-mobile/android testDebugUnitTest assembleDebug -x verifySageRuntime --no-daemon",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.482,
+      "started_at": "2026-08-20T08:20:08.421Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "2cfc40959c7d27cb66c3c0e958ef23a06a0049ace3408d70441b0d093611754d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.458,
+      "started_at": "2026-08-20T08:21:47.661Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "6f7d557303441a74c529eba865c677894f22b218257024f69da2c51e41165573",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.146,
+      "started_at": "2026-08-20T08:21:51.151Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "6f7d557303441a74c529eba865c677894f22b218257024f69da2c51e41165573",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "iOS and Android now verify the complete signed mobile/production receipt closure before serving allowlisted assets from an ephemeral 127.0.0.1 port and 256-bit capability path. Both native servers enforce traversal, method, MIME, caching, CSP, COOP/COEP/CORP, no-cookie, lifecycle, and external-bind restrictions; React Native WebView uses only that exact origin and stops it in the background. Android native tests and a full debug APK compile pass.",
+    "risks": [
+      "This Linux host cannot compile the Swift bridge. The Xcode project includes both new source files, but macOS simulator compilation remains required before release.",
+      "The debug Android manifest includes React Native developer permissions; the merged release manifest was separately verified to contain only INTERNET plus AndroidX's app-scoped signature permission and no storage permission."
+    ],
+    "next_steps": [
+      "Add a macOS GitHub Actions job that prepares the exact attested assets, installs pods, and builds both iPhone and iPad simulator destinations.",
+      "Extend the physical-device receipt schema and runtime-ready evidence with URL scheme/host, crossOriginIsolated, SharedArrayBuffer, and outer/nested worker topology, then collect actual iPhone/iPad/TestFlight receipts.",
+      "Run the WebKit memory lane's independent loopback-origin worker/isolation probe against this native policy."
+    ]
+  }
+}

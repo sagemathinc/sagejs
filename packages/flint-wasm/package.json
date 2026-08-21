@@ -5,14 +5,33 @@
   "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
+  "bin": {
+    "sagejs-wasm": "./node-cli.mjs"
+  },
   "exports": {
     ".": "./index.mjs",
+    "./algebraic": "./algebraic.mjs",
+    "./analytic-backend": "./analytic-backend.mjs",
+    "./curve-backend": {
+      "types": "./curve-backend.d.ts",
+      "import": "./curve-backend.mjs",
+      "default": "./curve-backend.mjs"
+    },
+    "./dirichlet-group": "./dirichlet-group.mjs",
     "./evaluator": "./evaluator.mjs",
     "./m4ri": "./m4ri.mjs",
+    "./multivariate-backend": "./multivariate-backend.mjs",
+    "./lazy-modules": "./lazy-modules.mjs",
+    "./number-field-zeta": "./number-field-zeta.mjs",
     "./kernel": {
       "types": "./kernel.d.ts",
       "import": "./kernel.mjs",
       "default": "./kernel.mjs"
+    },
+    "./node": {
+      "types": "./kernel.d.ts",
+      "import": "./node-kernel.mjs",
+      "default": "./node-kernel.mjs"
     },
     "./plotly-renderer": {
       "types": "./plotly-renderer.d.ts",
@@ -22,6 +41,16 @@
   },
   "files": [
     "dist/flint-factor.wasm",
+    "dist/flint-algebraic.wasm",
+    "dist/native-kernels/",
+    "dist/wasm-pack-loader.mjs",
+    "dist/ffi-production-closure.json",
+    "dist/lazy-modules.json",
+    "dist/dynamic-programs.json",
+    "dist/production-kernel-coverage.json",
+    "dist/production-manifest.json",
+    "dist/build-receipt.json",
+    "dist/runtime/",
     "dist/ffi-resource-adapter.c",
     "dist/ffi-resource-backend.mjs",
     "dist/ffi-resource-manifest.json",
@@ -40,13 +69,27 @@
     "dist/symbolic-backend.mjs",
     "dist/serialization.mjs",
     "dist/wasi-runtime.mjs",
+    "release/",
+    "algebraic.mjs",
+    "analytic-backend.mjs",
     "compiler-worker.mjs",
+    "dynamic-compiler.mjs",
+    "curve-backend.d.ts",
+    "curve-backend.mjs",
+    "dirichlet-group.mjs",
     "evaluator.mjs",
     "index.mjs",
     "m4ri.mjs",
+    "multivariate-backend.mjs",
+    "lazy-modules.mjs",
+    "number-field-zeta.mjs",
     "kernel.d.ts",
     "kernel-worker.mjs",
     "kernel.mjs",
+    "node-cli.mjs",
+    "node-kernel.mjs",
+    "node-worker.mjs",
+    "node-worker-bootstrap.mjs",
     "plotly-renderer.d.ts",
     "plotly-renderer.mjs",
     "portable-matrix.mjs",
@@ -57,6 +100,9 @@
     "build": "node scripts/build.cjs",
     "test": "pnpm run build && node --expose-gc --test test/*.test.mjs",
     "test:browser": "pnpm run build && node test/browser-smoke.mjs",
+    "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
+    "test:browser:webkit-memory": "node test/browser-wasm-webkit-memory.mjs",
+    "test:browser-dynamic-code": "pnpm run build && node test/browser-dynamic-code.mjs",
     "test:resource-browser": "pnpm run build && node test/resource-browser-smoke.mjs"
   },
   "dependencies": {

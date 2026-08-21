@@ -10,6 +10,12 @@ function serializeError(error) {
 
 let evaluatorPromise;
 let evaluationTail = Promise.resolve();
+let channel;
+
+function send(message) {
+  if (!channel) throw new Error("Sage.js browser kernel is not connected");
+  channel.postMessage(message);
+}
 
 async function initialize(message) {
   if (evaluatorPromise) {
@@ -19,7 +25,12 @@ async function initialize(message) {
     compiler: message.compiler,
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,
+    lazyModules: message.lazyModules,
+    conwayData: message.conwayData,
+    dynamicPrograms: message.dynamicPrograms,
     flint: message.flint,
+    algebraic: message.algebraic,
+    nativeKernels: message.nativeKernels,
     m4ri: message.m4ri,
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
@@ -27,11 +38,12 @@ async function initialize(message) {
     treeSitterRuntime: message.treeSitterRuntime,
     pythonGrammar: message.pythonGrammar,
     sageGrammar: message.sageGrammar,
+    capabilityReport: message.capabilityReport,
   });
   await evaluatorPromise;
-  self.postMessage({
+  send({
     type: "ready",
-    protocol: 1,
+    protocol: 2,
   });
 }
 
@@ -41,14 +53,21 @@ async function evaluate(message) {
   const result = await evaluator.evaluate(message.source, {
     filename: message.filename,
     onOutput(text) {
-      self.postMessage({
+      send({
         type: "stdout",
         id: message.id,
         text,
       });
     },
+    onError(text) {
+      send({
+        type: "stderr",
+        id: message.id,
+        text,
+      });
+    },
   });
-  self.postMessage({
+  send({
     type: "result",
     id: message.id,
     ok: true,
@@ -56,29 +75,49 @@ async function evaluate(message) {
       repr: result.repr,
       display: result.display,
       saveRequests: result.saveRequests,
+      instrumentation: result.instrumentation,
       durationMs: performance.now() - started,
     },
   });
 }
 
-self.onmessage = ({ data }) => {
-  if (data.type === "initialize") {
-    void initialize(data).catch((error) => {
-      self.postMessage({
-        type: "initialization-error",
+self.onmessage = ({ data, ports }) => {
+  if (
+    channel ||
+    !data ||
+    data.type !== "initialize" ||
+    data.protocol !== 2 ||
+    ports.length !== 1
+  ) {
+    return;
+  }
+  channel = ports[0];
+  self.onmessage = null;
+  channel.onmessage = ({ data: privateData }) => {
+    if (
+      !privateData ||
+      privateData.type !== "evaluate" ||
+      !Number.isSafeInteger(privateData.id) ||
+      privateData.id <= 0 ||
+      typeof privateData.source !== "string" ||
+      typeof privateData.filename !== "string"
+    ) {
+      return;
+    }
+    const run = evaluationTail.then(() => evaluate(privateData));
+    evaluationTail = run.catch((error) => {
+      send({
+        type: "result",
+        id: privateData.id,
+        ok: false,
         error: serializeError(error),
       });
     });
-    return;
-  }
-  if (data.type !== "evaluate") return;
-
-  const run = evaluationTail.then(() => evaluate(data));
-  evaluationTail = run.catch((error) => {
-    self.postMessage({
-      type: "result",
-      id: data.id,
-      ok: false,
+  };
+  channel.start?.();
+  void initialize(data).catch((error) => {
+    send({
+      type: "initialization-error",
       error: serializeError(error),
     });
   });

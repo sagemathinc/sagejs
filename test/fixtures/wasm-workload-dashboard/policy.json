@@ -1,0 +1,27 @@
+{
+  "schema": "sagejs.wasm-workload-policy/v1",
+  "heavy_workloads": {
+    "parity_tiers": ["release"],
+    "performance_cases": true,
+    "required_browser_engines": ["chromium"]
+  },
+  "trusted_telemetry": {
+    "parity_receipt_kind": "sagejs-browser-wasm-parity",
+    "parity_schema_version": 1,
+    "performance_receipt_schema": "sagejs.browser-wasm-performance/v2",
+    "require_matching_workload_identity": true,
+    "require_private_instrumentation": true,
+    "source_revision_policy": "match-if-present"
+  },
+  "portable_route_reviews": [
+    {
+      "workload": "parity:routine-portable",
+      "capability": "portable:math",
+      "classification": "portable-computation",
+      "normal_domain": "the tiny routine correctness example",
+      "heavy_policy": "prohibited",
+      "reason": "This fixture proves that an explicit routine review does not authorize heavyweight portable computation."
+    }
+  ],
+  "default_receipt_directories": []
+}

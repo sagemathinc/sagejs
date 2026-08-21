@@ -1,0 +1,93 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-analytic",
+  "title": "WebAssembly analytic functions vertical slice",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide host-neutral arbitrary-precision Arb/Acb analytic batch ABIs and a WebAssembly backend for Riemann zeta jets/batches, Dirichlet L batches, quadratic Dedekind completion, gamma completion primitives, plotting tiles, and browser parity vectors",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "packages/flint/src/analytic_batch_core.c",
+    "packages/flint/src/analytic_batch_core.h",
+    "packages/flint-wasm/src/analytic.c",
+    "packages/flint-wasm/analytic-backend.mjs",
+    "packages/flint-wasm/test/analytic-backend.test.mjs",
+    "packages/flint-wasm/test/analytic-browser-parity.mjs",
+    "packages/flint-wasm/test/analytic-core-native.c",
+    "packages/flint-wasm/test/analytic-public-vectors.json",
+    "packages/flint-wasm/scripts/test-analytic-core.cjs",
+    "packages/flint-wasm/scripts/test-analytic-reactor.mjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT acb_dirichlet API",
+    "SageMath zeta and Dirichlet L semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT native Node provider and mpmath public references",
+      "Node and browser parity vector digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/analytic-backend.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.2,
+      "started_at": "2026-08-20T05:22:03.578Z",
+      "commit": "c8f84be17f08be66cf103a2a4d1aeb603ee62d0a",
+      "workspace_fingerprint": "4149d12798bae09123c7279e15b508ae5759c57f523c34ee6ea35a58ddbd1bd9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/scripts/test-analytic-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.718,
+      "started_at": "2026-08-20T05:22:09.134Z",
+      "commit": "c8f84be17f08be66cf103a2a4d1aeb603ee62d0a",
+      "workspace_fingerprint": "4149d12798bae09123c7279e15b508ae5759c57f523c34ee6ea35a58ddbd1bd9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 32.211,
+      "started_at": "2026-08-20T05:22:16.049Z",
+      "commit": "c8f84be17f08be66cf103a2a4d1aeb603ee62d0a",
+      "workspace_fingerprint": "4149d12798bae09123c7279e15b508ae5759c57f523c34ee6ea35a58ddbd1bd9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a host-neutral versioned packed-decimal Arb/Acb core and bounded grow-on-demand Wasm adapter for Riemann zeta jets/batches, Dirichlet L batches, quadratic Dedekind zeta and completion, Riemann xi, and complex gamma. The browser backend preserves arbitrary-precision decimal values plus accuracy/enclosure diagnostics, matches the existing FLINT provider method signatures, and converts to binary64 only in explicit synchronous tiled plotting. Focused JS and native FLINT tests pass on Linux x64; the exact pushed revision also passed the native core on Linux ARM64 and the JS/backend corpus on native Windows x64.",
+    "risks": [
+      "The exact sources compile and link in the pinned toolchain and pass all direct parity vectors in a real stripped WASI reactor. The central production build still must select the sources/exports and run the same receipt in Chromium.",
+      "The full portable suite passes except for the expected shared architecture classification failures for the four new C/H files; this lane intentionally did not edit central inventories.",
+      "Native Windows uses the existing exact FLINT provider fallback until the new shared sources are linked into the production Wasm reactor; the JavaScript transport and validation corpus passes on Windows."
+    ],
+    "next_steps": [
+      "Classify analytic_batch_core.c/.h, flint-wasm/src/analytic.c, and the native C test in the central native-code and Wasm capability inventories.",
+      "Link the two implementation sources and declared analytic exports into the generated production FLINT Wasm closure, then run the real reactor and public Chromium vectors.",
+      "Construct createAnalyticWasmBackend with ComplexField serialize/materialize callbacks and a generated Dirichlet-resource-to-modulus resolver, then merge its runtime-compatible methods into the browser FLINT backend."
+    ]
+  }
+}

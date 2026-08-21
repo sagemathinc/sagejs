@@ -2812,6 +2812,7 @@ static inline int sagejs_nf_order_capture_terminal_proof(
     const sagejs_nf_binary_tensor_workspace *binary)
 {
     (void) source;
+    ulong *binary_table_squared = NULL;
     if (proof == NULL || proof->initialized) return 0;
     memset(proof, 0, sizeof(*proof));
     proof->prime = prime;
@@ -2831,7 +2832,6 @@ static inline int sagejs_nf_order_capture_terminal_proof(
         (size_t) degree * (size_t) degree * (size_t) degree;
     if (table_size > SIZE_MAX / sizeof(ulong)) goto fail;
     const ulong *certified_table_squared = NULL;
-    ulong *binary_table_squared = NULL;
     if (binary != NULL && prime == 2)
     {
         binary_table_squared = (ulong *) flint_malloc(

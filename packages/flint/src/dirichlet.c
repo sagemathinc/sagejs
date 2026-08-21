@@ -19,6 +19,7 @@
 #include <flint/qqbar.h>
 
 #include "algebraic.h"
+#include "analytic_batch_core.h"
 #include "dirichlet.h"
 
 #define SAGEJS_DIRICHLET_GROUP_MAGIC UINT64_C(0x534147454A534447)
@@ -122,6 +123,28 @@ static int get_precision(
         return 0;
     }
     *precision = (mpfr_prec_t) result;
+    return 1;
+}
+
+static int get_batch_precision(
+    napi_env env, napi_value value, mpfr_prec_t *precision)
+{
+    napi_valuetype type;
+    double number;
+
+    if (!check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type != napi_number ||
+        !check_napi(env, napi_get_value_double(env, value, &number)))
+        return 0;
+    if (!isfinite(number) || floor(number) != number || number < 16 ||
+        number > (double) SAGEJS_ANALYTIC_MAX_PRECISION_BITS)
+    {
+        napi_throw_range_error(env, NULL,
+            "precision must be an integer between 16 and 1048576 bits");
+        return 0;
+    }
+    *precision = (mpfr_prec_t) number;
     return 1;
 }
 
@@ -1053,6 +1076,13 @@ static int require_complex_array(
             return 0;
         }
         acb_from_complex(result + index, input, precision);
+        if (!acb_is_finite(result + index))
+        {
+            _acb_vec_clear(result, (slong) count);
+            napi_throw_range_error(env, NULL,
+                "points must contain only finite complex values");
+            return 0;
+        }
     }
     *points = result;
     *length = count;
@@ -1097,6 +1127,48 @@ napi_value sagejs_riemann_zeta_values(
         return NULL;
     for (index = 0; index < count; index++)
         acb_dirichlet_zeta(points + index, points + index, precision);
+    answer = complex_array_from_acb(env, points, count, precision);
+    _acb_vec_clear(points, (slong) count);
+    return answer;
+}
+
+napi_value sagejs_complex_gamma_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    mpfr_prec_t precision;
+    acb_ptr points;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !get_batch_precision(env, args[1], &precision) ||
+        !require_complex_array(env, args[0], &points, &count, precision))
+        return NULL;
+    for (index = 0; index < count; index++)
+        acb_gamma(points + index, points + index, precision);
+    answer = complex_array_from_acb(env, points, count, precision);
+    _acb_vec_clear(points, (slong) count);
+    return answer;
+}
+
+napi_value sagejs_riemann_xi_values(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    mpfr_prec_t precision;
+    acb_ptr points;
+    uint32_t count;
+    uint32_t index;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !get_batch_precision(env, args[1], &precision) ||
+        !require_complex_array(env, args[0], &points, &count, precision))
+        return NULL;
+    for (index = 0; index < count; index++)
+        acb_dirichlet_xi(points + index, points + index, precision);
     answer = complex_array_from_acb(env, points, count, precision);
     _acb_vec_clear(points, (slong) count);
     return answer;

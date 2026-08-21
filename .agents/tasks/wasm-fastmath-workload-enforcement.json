@@ -1,0 +1,139 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-workload-enforcement",
+  "title": "WebAssembly workload acceleration enforcement",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate an inspectable workload acceleration dashboard and fail heavy public workflows closed on unreviewed portable computation or missing trusted route telemetry",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "architecture/wasm-workload-policy.schema.json",
+    "architecture/wasm-workload-policy.json",
+    "architecture/wasm-workload-dashboard.json",
+    "architecture/wasm-workload-dashboard.md",
+    "scripts/wasm-workload-dashboard.cjs",
+    "test/wasm-workload-dashboard.cjs",
+    "test/fixtures/wasm-workload-dashboard/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "focused synthetic route receipts and the checked-in browser workload manifests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.515,
+      "started_at": "2026-08-21T00:15:44.753Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bc2efebe91eeb5f2dcf812bc12bcb75535f8a0cf1969da12f83e98142395459a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.482,
+      "started_at": "2026-08-21T00:15:56.102Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bc2efebe91eeb5f2dcf812bc12bcb75535f8a0cf1969da12f83e98142395459a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.228,
+      "started_at": "2026-08-21T00:17:32.784Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bd2e558b52dfaf547a6280c8d62f4115f678acbbbc5c60f12d998a12300a9688",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.993,
+      "started_at": "2026-08-21T00:17:44.184Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bd2e558b52dfaf547a6280c8d62f4115f678acbbbc5c60f12d998a12300a9688",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-workload-dashboard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.163,
+      "started_at": "2026-08-21T00:18:16.365Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bd2e558b52dfaf547a6280c8d62f4115f678acbbbc5c60f12d998a12300a9688",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/wasm-workload-dashboard.cjs --verify-generated",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.053,
+      "started_at": "2026-08-21T00:18:24.531Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "bd2e558b52dfaf547a6280c8d62f4115f678acbbbc5c60f12d998a12300a9688",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.078,
+      "started_at": "2026-08-21T00:19:12.163Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "3993cdf74bffd0c3b2cb910a1920d411d03b4e9ae44651b2c5122ecb4984e713",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.354,
+      "started_at": "2026-08-21T00:19:23.211Z",
+      "commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+      "workspace_fingerprint": "3993cdf74bffd0c3b2cb910a1920d411d03b4e9ae44651b2c5122ecb4984e713",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a strict workload policy/schema, deterministic JSON and Markdown acceleration dashboards, and a receipt consumer that derives public-workflow status from the parity corpus, performance manifest, capability report, production-kernel coverage, and private evaluator telemetry. Heavy workflows fail closed on missing or stale identities, partial or contradictory instrumentation, unavailable kernels, unexpected portable computation, and user-output-only route claims. Focused fixtures cover all four route classes and adversarial receipt cases.",
+    "risks": [
+      "The checked-in dashboard intentionally reports failed until release parity and per-engine performance receipts are placed under .artifacts/wasm-workload-receipts; capability availability alone is not accepted as execution evidence.",
+      "The new host test cannot enter a repository runner tier inside this narrow lane because test/node-test-manifest.cjs is a shared integration file. Consequently pnpm test:changed and pnpm test:portable stop at the manifest completeness test until integration adds the exact entry below."
+    ],
+    "next_steps": [
+      "Add \"test/wasm-workload-dashboard.cjs\" to the unit array in test/node-test-manifest.cjs; portable inherits it automatically.",
+      "Add package scripts: wasm:workload-dashboard = node scripts/wasm-workload-dashboard.cjs --write; architecture:wasm-workloads = node scripts/wasm-workload-dashboard.cjs --verify-generated; wasm:workload-enforce = node scripts/wasm-workload-dashboard.cjs --check. Append pnpm run architecture:wasm-workloads to architecture:check.",
+      "In the release evidence job, write the release parity receipt and Chromium, Firefox, and WebKit performance receipts beneath .artifacts/wasm-workload-receipts, then run pnpm wasm:workload-enforce. Regenerate the checked-in dashboard only when reviewed input manifests or policy change, not from ephemeral receipt output.",
+      "After shared manifest wiring, rerun pnpm test:portable and change this contract from active to review with a fresh passing receipt."
+    ]
+  }
+}

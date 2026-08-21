@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-public-binary-matrix",
+  "title": "Public GF(2) matrix WebAssembly workflows",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public Matrix(GF(2)) rank, solve, right kernel, and multiplication through receipt-backed m4ri-resource.wasm in Node-Wasm and browser evaluators, with exact native, portable-fallback, and direct-Wasm differentials plus a representative benchmark",
+  "base_commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "claims": [
+    "src/baselib/matrix.py",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/m4ri.mjs",
+    "packages/flint-wasm/test/m4ri-public-workflow-support.mjs",
+    "packages/flint-wasm/test/m4ri-public-workflow.test.mjs",
+    "packages/flint-wasm/test/m4ri-public-browser-smoke.mjs",
+    "test/m4ri-public-matrix.cjs",
+    "bench/wasm-m4ri-public.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ffi/m4ri.ffi.py",
+    "packages/flint-wasm/test/m4ri-resource.test.mjs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "native generated sagejs.ffi.m4ri public Matrix workflows",
+      "disabled-native same-source public Matrix fallback",
+      "direct generated m4ri resource WebAssembly adapter"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Public Matrix(GF(2)) rank, solve, right-kernel, and multiplication now emit exact receipt-backed M4RI Wasm route observations in Node and browser evaluators. Added direct generated-Wasm and desktop native/disabled-native differentials plus a 384x384 warm-median benchmark.",
+    "risks": [
+      "The branch predates the integration lane's regenerated native-export inventory, so architecture:check reports that pre-existing inventory drift until rebased or cherry-picked onto the current integration head."
+    ],
+    "next_steps": [
+      "Register the focused Node and browser workflow tests and benchmark in the integration lane's shared manifests.",
+      "Run aggregate browser parity after cherry-picking onto the current integration head."
+    ]
+  }
+}

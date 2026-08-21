@@ -1,0 +1,56 @@
+{
+  "name": "@sagemath/sagejs-mobile",
+  "version": "0.0.1",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "assets:prepare": "node scripts/prepare-runtime-assets.mjs",
+    "assets:verify": "node scripts/verify-runtime-assets.mjs",
+    "ios": "react-native run-ios",
+    "lint": "eslint .",
+    "start": "react-native start",
+    "test": "jest --runInBand",
+    "test:contracts": "node --test test/*.test.mjs",
+    "test:all": "pnpm lint && pnpm test && pnpm test:contracts && pnpm assets:verify",
+    "typecheck": "tsc --noEmit",
+    "device:validate": "node scripts/validate-device-receipt.mjs"
+  },
+  "dependencies": {
+    "@dr.pogodin/react-native-fs": "2.40.0",
+    "@react-native-async-storage/async-storage": "3.1.1",
+    "@react-native-documents/picker": "12.0.2",
+    "react": "19.2.3",
+    "react-native": "0.87.0",
+    "react-native-get-random-values": "2.0.0",
+    "react-native-safe-area-context": "5.9.1",
+    "react-native-webview": "14.0.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/runtime": "^7.25.0",
+    "@react-native-community/cli": "20.2.0",
+    "@react-native-community/cli-platform-android": "20.2.0",
+    "@react-native-community/cli-platform-ios": "20.2.0",
+    "@react-native/babel-preset": "0.87.0",
+    "@react-native/codegen": "0.87.0",
+    "@react-native/eslint-config": "0.87.0",
+    "@react-native/gradle-plugin": "0.87.0",
+    "@react-native/jest-preset": "0.87.0",
+    "@react-native/metro-config": "0.87.0",
+    "@react-native/typescript-config": "0.87.0",
+    "@types/jest": "29.5.14",
+    "@types/react": "^19.2.0",
+    "@types/react-test-renderer": "^19.1.0",
+    "eslint": "^8.19.0",
+    "hermes-compiler": "250829098.0.16",
+    "jest": "^29.6.3",
+    "prettier": "2.8.8",
+    "react-test-renderer": "19.2.3",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  }
+}

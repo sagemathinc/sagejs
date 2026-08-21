@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/wasm-workload-policy-v1.json",
+  "title": "Sage.js WebAssembly public-workload acceleration policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "heavy_workloads",
+    "trusted_telemetry",
+    "portable_route_reviews"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema": { "const": "sagejs.wasm-workload-policy/v1" },
+    "heavy_workloads": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parity_tiers", "performance_cases", "required_browser_engines"],
+      "properties": {
+        "parity_tiers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["routine", "release"] }
+        },
+        "performance_cases": { "type": "boolean" },
+        "required_browser_engines": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["chromium", "firefox", "webkit"] }
+        }
+      }
+    },
+    "trusted_telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "source_revision_policy": { "const": "exact" } },
+            "required": ["source_revision_policy"]
+          },
+          "then": { "required": ["expected_source_revision"] }
+        }
+      ],
+      "required": [
+        "parity_receipt_kind",
+        "parity_schema_version",
+        "performance_receipt_schema",
+        "require_matching_workload_identity",
+        "require_private_instrumentation",
+        "source_revision_policy"
+      ],
+      "properties": {
+        "parity_receipt_kind": { "const": "sagejs-browser-wasm-parity" },
+        "parity_schema_version": { "const": 1 },
+        "performance_receipt_schema": { "const": "sagejs.browser-wasm-performance/v2" },
+        "require_matching_workload_identity": { "const": true },
+        "require_private_instrumentation": { "const": true },
+        "source_revision_policy": { "enum": ["match-if-present", "exact"] },
+        "expected_source_revision": { "type": "string", "minLength": 1 }
+      }
+    },
+    "portable_route_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workload",
+          "capability",
+          "classification",
+          "normal_domain",
+          "heavy_policy",
+          "reason"
+        ],
+        "properties": {
+          "workload": { "type": "string", "pattern": "^(parity|performance):[a-z0-9-]+$" },
+          "capability": { "type": "string", "minLength": 1 },
+          "classification": {
+            "enum": ["portable-orchestration", "portable-computation"]
+          },
+          "normal_domain": { "type": "string", "minLength": 1 },
+          "heavy_policy": { "const": "prohibited" },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "default_receipt_directories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+"
+      }
+    }
+  }
+}

@@ -36,6 +36,10 @@ node bench/number-field-foundations/run.cjs \
   --output bench/results/number-field-foundations-current.json
 ```
 
+The clean post-acceleration comparison and raw samples are recorded in
+`bench/results/number-field-foundations-bae339db-linux-x64.md` and its adjacent
+JSON file.
+
 The general analytic-zeta workload is intentionally excluded from the default
 profile because the readable Sage.js Meijer-G reference currently takes
 minutes.  Use `--include-slow` or select it explicitly to quantify that known

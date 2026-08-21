@@ -20,6 +20,7 @@ const {
 const {
   NATIVE_PACK_ABI_VERSION,
 } = require("./js-backend.cjs");
+const { portableKernelIdentity } = require("./portable-identity.cjs");
 
 const PACK_IDENTITY_SCHEMA = "sagejs.native-pack-identity/v2";
 const PACK_MANIFEST_SCHEMA = "sagejs.native-pack/v2";
@@ -64,17 +65,25 @@ function cDefine(value) {
 function packIdentity(items) {
   const kernels = [...items]
     .sort((left, right) => left.logicalSource.localeCompare(right.logicalSource))
-    .map((item) => ({
-      logicalSource: item.logicalSource,
-      cacheKey: item.cacheKey,
-      moduleIdentity: item.moduleIdentity,
-      sourceHash: item.sourceHash,
-      nativeAbi: item.nativeAbi,
-      foreignInputs: item.foreignInputs.map((input) => ({
-        id: input.id,
-        fingerprint: input.fingerprint,
-      })),
-    }));
+    .map((item) => {
+      const portable = portableKernelIdentity(item);
+      return {
+        logicalSource: item.logicalSource,
+        cacheKey: item.cacheKey,
+        moduleIdentity: item.moduleIdentity,
+        sourceHash: item.sourceHash,
+        abiHash: portable.abiHash,
+        coreHash: portable.coreHash,
+        oracleIdentity: portable.oracleIdentity,
+        portableIdentity: portable.identityHash,
+        nativeAbi: item.nativeAbi,
+        functionDeclarations: portable.functionDeclarations,
+        foreignInputs: item.foreignInputs.map((input) => ({
+          id: input.id,
+          fingerprint: input.fingerprint,
+        })),
+      };
+    });
   const identity = {
     schema: PACK_IDENTITY_SCHEMA,
     builderFingerprint: sha256File(__filename),
@@ -257,14 +266,22 @@ function manifestFor(items, identity, packKey, addonPath) {
       .sort((left, right) =>
         left.logicalSource.localeCompare(right.logicalSource)
       )
-      .map((item) => ({
-        logicalSource: item.logicalSource,
-        cacheKey: item.cacheKey,
-        moduleIdentity: item.moduleIdentity,
-        sourceHash: item.sourceHash,
-        nativeAbi: item.nativeAbi,
-        foreignDeclarations: item.foreignDeclarations,
-      })),
+      .map((item) => {
+        const portable = portableKernelIdentity(item);
+        return {
+          abiHash: portable.abiHash,
+          coreHash: portable.coreHash,
+          oracleIdentity: portable.oracleIdentity,
+          portableIdentity: portable.identityHash,
+          logicalSource: item.logicalSource,
+          cacheKey: item.cacheKey,
+          moduleIdentity: item.moduleIdentity,
+          sourceHash: item.sourceHash,
+          nativeAbi: item.nativeAbi,
+          functionDeclarations: portable.functionDeclarations,
+          foreignDeclarations: item.foreignDeclarations,
+        };
+      }),
   };
 }
 

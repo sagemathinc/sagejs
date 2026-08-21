@@ -42,18 +42,23 @@ diff --git a/cstd.h b/cstd.h
  #include <memory.h>
  #include <math.h>
  
-@@ -64,6 +69,10 @@ static inline unsigned long cstd_seed(void)
+@@ -64,6 +69,14 @@ static inline unsigned long cstd_seed(void)
  {
  	if ( ! _cstd_seed ) {
 +#if defined(_WIN32)
 +		_cstd_seed = ((uint64_t)_getpid() << 32) ^ (uint64_t)time(0);
++#elif defined(__wasi__)
++		/* WASI has no stable host or process identity.  Use a deterministic,
++		   nonzero seed and avoid importing an emulated getpid. */
++		_cstd_seed = UINT64_C(0x534147454a534646);
 +#else
  		_cstd_seed = (((unsigned long)gethostid())<<32) + getpid();		// make sure seed is different in different processes/hosts, even if seeded at (approximately) the same time
++		_cstd_seed *= time(0);
 +#endif
- 		_cstd_seed *= time(0);
+-		_cstd_seed *= time(0);
  	}
  	return _cstd_seed;
-@@ -76,11 +85,11 @@ static inline unsigned long cstd_seed(void)
+@@ -76,11 +89,11 @@ static inline unsigned long cstd_seed(void)
  #define _min(a,b)		((a)<(b)?(a):(b))		// generic min, not safe with side-effects
  
  // Some handy utility functions

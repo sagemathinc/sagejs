@@ -25,6 +25,16 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable, Iterator, Sequence, cast
 
+import sagejs.runtime as runtime
+from sagejs.native import (
+    integer_buffer_values,
+    kernel_integer_zeros,
+    kernel_uint64_buffer,
+)
+from sagejs.number_fields.zeta_coefficient_kernel import (
+    assemble_zeta_coefficients_from_factors,
+)
+
 __all__ = [
     "CoefficientBlock",
     "CompactSplittingRecord",
@@ -179,6 +189,11 @@ def _factor_pair(value: Any) -> tuple[int, int]:
     if isinstance(value, dict):
         e_value = value.get("e", value.get("ramification_index"))
         f_value = value.get("f", value.get("residue_degree"))
+    elif runtime.reflect.has(value, "e") and runtime.reflect.has(value, "f"):
+        # Packed host adapters deliberately return native records to avoid an
+        # object-by-object Python reconstruction at the boundary.
+        e_value = runtime.reflect.get(value, "e")
+        f_value = runtime.reflect.get(value, "f")
     elif hasattr(value, "ramification_index") and hasattr(value, "residue_degree"):
         e_value = value.ramification_index
         f_value = value.residue_degree
@@ -206,6 +221,17 @@ def _record_parts(value: Any) -> tuple[Any, Any, Any]:
         prime = value.get("prime", value.get("p"))
         factors = value.get("factors", value.get("decomposition"))
         return version, prime, factors
+    if runtime.reflect.has(value, "prime") and runtime.reflect.has(value, "factors"):
+        version = (
+            runtime.reflect.get(value, "version")
+            if runtime.reflect.has(value, "version")
+            else 1
+        )
+        return (
+            version,
+            runtime.reflect.get(value, "prime"),
+            runtime.reflect.get(value, "factors"),
+        )
     if hasattr(value, "prime") or hasattr(value, "p"):
         version = getattr(value, "version", 1)
         prime = getattr(value, "prime", getattr(value, "p", None))
@@ -235,7 +261,7 @@ def _compact_record(value: Any, degree: int) -> CompactSplittingRecord:
     if factors_value is None:
         raise SplittingStreamError("a splitting record has no factors")
     try:
-        factors = tuple(_factor_pair(factor) for factor in factors_value)
+        factors = tuple(_factor_pair(factor) for factor in list(factors_value))
     except TypeError as error:
         raise SplittingStreamError("splitting factors must be iterable") from error
     if not factors:
@@ -254,11 +280,14 @@ def _compact_record(value: Any, degree: int) -> CompactSplittingRecord:
 
 
 def _provider_records(provider: Any, start: int, stop: int) -> Iterable[Any]:
-    if callable(provider):
-        return cast(Iterable[Any], provider(start, stop))
     method = getattr(provider, "splitting_records", None)
     if callable(method):
         return cast(Iterable[Any], method(start, stop))
+    # Number-field orders are themselves callable coercion parents.  Prefer
+    # their explicit stream method above before accepting the generic callable
+    # provider protocol.
+    if callable(provider):
+        return cast(Iterable[Any], provider(start, stop))
     raise TypeError(
         "splitting_provider must be callable or define splitting_records(start, stop)"
     )
@@ -399,6 +428,105 @@ def _maximum_prime_exponent(prime: int, bound: int) -> int:
     return exponent
 
 
+def _packed_factor_data(
+    splitting_provider: SplittingProvider | Any,
+    bound: int,
+    degree: int,
+) -> Any | None:
+    method = getattr(splitting_provider, "_zeta_factor_degree_data", None)
+    if not callable(method):
+        return None
+    data = cast(Any, method(2, bound + 1))
+    if data is None:
+        return None
+    packed_degree = _positive_integer(data["degree"], "packed field degree")
+    if packed_degree != degree:
+        raise SplittingStreamError("packed splitting data has the wrong field degree")
+    return data
+
+
+def _coefficients_from_packed_data(
+    data: Any,
+    bound: int,
+    degree: int,
+    maximum_coefficient_bits: int,
+) -> list[int]:
+    # This private hook is produced by the maximal-order splitting module,
+    # which enumerates the complete prime interval before crossing into the
+    # FLINT batch.  FLINT independently checks every supplied prime and every
+    # local degree.  Re-sieving the same interval in interpreted Python was
+    # more expensive than the complete native factorization itself.
+    if (
+        not bool(data.get("completePrimeInterval", False))
+        or _nonnegative_integer(data.get("intervalStart"), "packed interval start") != 2
+        or _nonnegative_integer(data.get("intervalStop"), "packed interval stop")
+        != bound + 1
+        or len(data["primes"]) != len(data["factorCounts"])
+    ):
+        raise SplittingStreamError(
+            "packed splitting data does not contain the expected prime interval"
+        )
+    word_capacity = max(1, (maximum_coefficient_bits + 63) // 64)
+    output = kernel_integer_zeros(
+        assemble_zeta_coefficients_from_factors,
+        bound,
+        word_capacity,
+    )
+    local = kernel_integer_zeros(
+        assemble_zeta_coefficients_from_factors,
+        bound.bit_length() + 1,
+        word_capacity,
+    )
+    counts = kernel_uint64_buffer(
+        assemble_zeta_coefficients_from_factors, data["factorCounts"]
+    )
+    exponents = kernel_uint64_buffer(
+        assemble_zeta_coefficients_from_factors, data["exponents"]
+    )
+    degrees = kernel_uint64_buffer(
+        assemble_zeta_coefficients_from_factors, data["degrees"]
+    )
+    if not assemble_zeta_coefficients_from_factors(
+        output,
+        local,
+        data["packedPrimes"],
+        counts,
+        exponents,
+        degrees,
+        degree,
+    ):
+        raise SplittingStreamError("coefficient assembly rejected packed factors")
+    return [int(value) for value in integer_buffer_values(output)]
+
+
+def _coefficients_from_local_tables(
+    bound: int,
+    local_tables: dict[int, list[int]],
+) -> list[int]:
+    """Assemble a multiplicative function from its prime-power values."""
+    smallest_prime = [0] * (bound + 1)
+    for prime in local_tables:
+        for multiple in range(prime, bound + 1, prime):
+            if smallest_prime[multiple] == 0:
+                smallest_prime[multiple] = prime
+
+    coefficients = [0] * (bound + 1)
+    coefficients[1] = 1
+    for value in range(2, bound + 1):
+        prime = smallest_prime[value]
+        if prime == 0:
+            raise SplittingStreamError(
+                "coefficient construction is missing a rational prime"
+            )
+        reduced = value
+        exponent = 0
+        while reduced % prime == 0:
+            reduced //= prime
+            exponent += 1
+        coefficients[value] = coefficients[reduced] * local_tables[prime][exponent]
+    return coefficients[1:]
+
+
 def zeta_coefficients(
     bound: int,
     *,
@@ -432,10 +560,20 @@ def zeta_coefficients(
             "estimated zeta coefficient storage exceeds the resource limit"
         )
 
-    # Internally retain the natural coefficient index.  The dummy zero entry
-    # is removed at the public boundary below.
-    coefficients = [0] * (bound_value + 1)
-    coefficients[1] = 1
+    packed_data = _packed_factor_data(
+        splitting_provider,
+        bound_value,
+        degree_value,
+    )
+    if packed_data is not None:
+        return _coefficients_from_packed_data(
+            packed_data,
+            bound_value,
+            degree_value,
+            maximum_coefficient_bits,
+        )
+
+    local_tables: dict[int, list[int]] = {}
     records = compact_splitting_records(
         splitting_provider,
         2,
@@ -444,25 +582,12 @@ def zeta_coefficients(
         limits=resource_limits,
     )
     for record in records:
-        prime = record.prime
-        max_exponent = _maximum_prime_exponent(prime, bound_value)
+        max_exponent = _maximum_prime_exponent(record.prime, bound_value)
         residue_degrees = [pair[1] for pair in record.factors]
-        local = local_zeta_coefficients(residue_degrees, max_exponent)
-        prime_power = prime
-        for exponent in range(1, max_exponent + 1):
-            local_coefficient = local[exponent]
-            if local_coefficient:
-                largest_base = bound_value // prime_power
-                for base in range(1, largest_base + 1):
-                    # Before p is processed, every nonzero base is coprime to
-                    # p.  Keep the check explicit: it is cheap and protects
-                    # this invariant if the loop organization changes later.
-                    if base % prime != 0 and coefficients[base]:
-                        coefficients[base * prime_power] = (
-                            coefficients[base] * local_coefficient
-                        )
-            prime_power *= prime
-    return coefficients[1:]
+        local_tables[record.prime] = local_zeta_coefficients(
+            residue_degrees, max_exponent
+        )
+    return _coefficients_from_local_tables(bound_value, local_tables)
 
 
 def coefficient_blocks(

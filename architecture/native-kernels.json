@@ -535,6 +535,94 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-zeta-coefficients-production",
+      "source": "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
+      "functions": ["assemble_zeta_coefficients_from_factors"],
+      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables using arbitrary-precision integer arithmetic",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "magma", "hecke-oscar"],
+      "benchmark": "bench:number-field-foundations",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-moebius-range-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/moebius.py",
+      "functions": ["packed_moebius_range"],
+      "semantic_domain": "one bounded exact linear sieve for the public moebius.range(0, stop) normal heavy case over caller-owned signed and unsigned packed storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "scalar-factorization"],
+      "benchmark": "bench:wasm-arithmetic-hotspots",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-combinatorial-integer-rational-production",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "functions": [
+        "packed_integer_matrix_permanent",
+        "packed_integer_matrix_minors",
+        "packed_rational_matrix_permanent",
+        "packed_rational_matrix_minors"
+      ],
+      "semantic_domain": "batched exact matrix permanents and lexicographically ordered minors over integers and rationals",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "division-free-subset-dp"],
+      "benchmark": "bench:wasm-combinatorial-invariants",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-combinatorial-prime-production",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "functions": [
+        "packed_prime_matrix_permanent",
+        "packed_prime_matrix_minors"
+      ],
+      "semantic_domain": "batched exact matrix permanents and lexicographically ordered minors over word-prime fields",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "division-free-subset-dp"],
+      "benchmark": "bench:wasm-combinatorial-invariants",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-graph-components-production",
+      "source": "src/lib/sagejs/kernels/graph/components.py",
+      "functions": ["packed_graph_components"],
+      "semantic_domain": "batched insertion-order weak connected components over packed directed or undirected multigraph endpoints using a source-transparent CSR traversal",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "portable-edge-scan"],
+      "benchmark": "bench:wasm-graph-components",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-graph-shortest-paths-production",
+      "source": "src/lib/sagejs/kernels/graph/shortest_paths.py",
+      "functions": [
+        "packed_graph_shortest_paths",
+        "packed_graph_all_pairs_distances"
+      ],
+      "semantic_domain": "bounded insertion-order single-source and all-pairs unweighted graph distances over packed directed or undirected multigraph endpoints",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "portable-edge-scan-bfs"],
+      "benchmark": "bench:wasm-graph-shortest-paths",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-permutation-center-production",
+      "source": "src/lib/sagejs/kernels/groups/permutation.py",
+      "functions": ["packed_permutation_center"],
+      "semantic_domain": "bounded breadth-first permutation closure and exact centrality against packed generators for the public degree-8 center workflow",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "portable-permutation-objects"],
+      "benchmark": "bench:wasm-group-computation",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

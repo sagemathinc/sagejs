@@ -24,7 +24,10 @@ async function compile(source) {
  * M4RI resources and handles belong only to this WebAssembly instance. They
  * never share linear memory or an ownership table with the FLINT backend.
  */
-export async function instantiateM4ri(source) {
+export async function instantiateM4ri(
+  source,
+  { recordCapability = () => {} } = {},
+) {
   const module = await compile(source);
   const wasi = createWasiHost();
   const instance = await WebAssembly.instantiate(module, {
@@ -33,7 +36,7 @@ export async function instantiateM4ri(source) {
   wasi.initialize(instance);
 
   const backend = {
-    ...createGeneratedWasmBackend(instance),
+    ...createGeneratedWasmBackend(instance, { recordCapability }),
   };
   Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
     value: () => instance.exports.sagejs_wasm_resource_live_count(),

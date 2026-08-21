@@ -1,0 +1,122 @@
+:root {
+  color-scheme: light dark;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --background: #fbfbf8;
+  --foreground: #20221f;
+  --muted: #5a6159;
+  --surface: #ffffff;
+  --border: #c9cec5;
+  --accent: #25653c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #171916;
+    --foreground: #f0f2ed;
+    --muted: #abb4a8;
+    --surface: #20231f;
+    --border: #4f574d;
+    --accent: #7bd899;
+  }
+}
+
+:root[data-appearance='light'] {
+  color-scheme: light;
+}
+:root[data-appearance='dark'] {
+  color-scheme: dark;
+  --background: #171916;
+  --foreground: #f0f2ed;
+  --muted: #abb4a8;
+  --surface: #20231f;
+  --border: #4f574d;
+  --accent: #7bd899;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+main {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+main {
+  display: grid;
+  grid-template-rows: minmax(12rem, 2fr) auto auto minmax(5rem, 1fr) minmax(
+      0,
+      3fr
+    );
+}
+textarea {
+  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  padding: 1rem;
+  resize: none;
+  width: 100%;
+}
+textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: -3px;
+}
+nav {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+}
+button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  color: inherit;
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.8rem;
+}
+button:focus-visible {
+  outline: 3px solid var(--accent);
+}
+button:disabled {
+  opacity: 0.5;
+}
+#status {
+  color: var(--muted);
+  padding: 0.3rem 1rem 0.7rem;
+}
+#output {
+  border-top: 1px solid var(--border);
+  margin: 0;
+  overflow: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+}
+#display {
+  background: white;
+  color: black;
+  min-height: 0;
+  overflow: auto;
+}
+#display:not(:empty) {
+  border-top: 1px solid var(--border);
+  min-height: 16rem;
+}
+.sr-only {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 214,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
-    "retain-host-adapter": 28,
+    "retain-host-adapter": 31,
     "retain-representation-primitive": 29
   },
   "exports": [
@@ -109,7 +109,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3260,
+        "line": 3261,
         "lines": 18,
         "sha256": "14321bdd4cbe2dac73da67890e6021d179fa25ffc74e6e097a1daab841aa3213",
         "calls": [
@@ -147,7 +147,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4438,
+        "line": 4439,
         "lines": 16,
         "sha256": "409bad240e5f70fbd1c23111062903d0600dfd04efb76c1756539062fb7e87f3",
         "calls": [
@@ -292,6 +292,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -338,6 +339,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/symbolic.py"
       ],
@@ -371,6 +373,9 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -417,6 +422,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -454,6 +460,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -492,9 +499,49 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexGammaValues",
+      "callback": "sagejs_complex_gamma_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1135,
+        "lines": 20,
+        "sha256": "05c498d81c871207cd1ee6726ee2c395a6b24ddd83a8db6b83d10b23cfd4df2c",
+        "calls": [
+          "_acb_vec_clear",
+          "acb_gamma",
+          "complex_array_from_acb",
+          "get_batch_precision",
+          "require_arguments",
+          "require_complex_array"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
+        "packages/flint/test/dirichlet.cjs"
       ],
       "declared_ffi": null
     },
@@ -532,6 +579,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -570,6 +619,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -604,6 +654,9 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -641,6 +694,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -681,6 +735,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -718,6 +774,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -758,6 +816,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -796,6 +856,9 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -835,6 +898,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -867,6 +931,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -913,6 +978,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -1242,7 +1309,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1190,
+        "line": 1262,
         "lines": 81,
         "sha256": "124d1b4382c55bedfeccfc0ce4d01a97a4555afed056d5e8efe642cf72d746d0",
         "calls": [
@@ -1301,7 +1368,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 421,
+        "line": 444,
         "lines": 63,
         "sha256": "5e140823646e51412554293890b03df4fae4feb53ee5ef2fc4f5fe91c142316a",
         "calls": [
@@ -1335,6 +1402,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1350,7 +1419,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 485,
+        "line": 508,
         "lines": 39,
         "sha256": "2eae42487b597c9eea5e6f1f61e219ab348d16a20db81a39aa6dcf2b131050e5",
         "calls": [
@@ -1378,6 +1447,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1393,7 +1464,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 525,
+        "line": 548,
         "lines": 63,
         "sha256": "4f8a0b30b7057857ace6edf6a86cd00be1d2dd61284fded111984453342dd890",
         "calls": [
@@ -1425,6 +1496,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1440,7 +1513,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 657,
+        "line": 680,
         "lines": 78,
         "sha256": "0608f44563cae821da4363d7aa02fba97e004dc2b2a60707e00259bee369c1ed",
         "calls": [
@@ -1491,7 +1564,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 589,
+        "line": 612,
         "lines": 67,
         "sha256": "80c34b3d5c6c73f760b3d99b6de948353b2f9e8bcc6c7c934d55f54350615ab5",
         "calls": [
@@ -1539,7 +1612,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 304,
+        "line": 327,
         "lines": 34,
         "sha256": "b0d49601c2698633b2901227e8743ad900f60b676bbc3d0d5399eb6472b806e7",
         "calls": [
@@ -1564,6 +1637,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/modular.cjs",
         "src/baselib/dirichlet.py"
@@ -1580,7 +1655,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 339,
+        "line": 362,
         "lines": 31,
         "sha256": "6299a9723049540b7b62d5b2d4bcb8b2684c74777820da28d382fed52dbaa448",
         "calls": [
@@ -1616,7 +1691,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 371,
+        "line": 394,
         "lines": 49,
         "sha256": "6745e73241ad63ef2ae3324bddcc9d0ab75fcc445ed7db20cbe3ee961cabdf1a",
         "calls": [
@@ -1642,6 +1717,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/dirichlet-group-browser-smoke.mjs",
+        "packages/flint-wasm/test/dirichlet-group-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1657,7 +1734,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 792,
+        "line": 815,
         "lines": 35,
         "sha256": "094541c91a163d4f8baa4eeeec6ee77d705b3415ea77947e7de8cc166e0c5507",
         "calls": [
@@ -1698,7 +1775,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 736,
+        "line": 759,
         "lines": 55,
         "sha256": "db06cc4774934f688f0dc14adc39012fae56cec3722f8d9033e5a444f797c93e",
         "calls": [
@@ -1743,7 +1820,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 865,
+        "line": 888,
         "lines": 57,
         "sha256": "0895d1bd5622cbc438e15a26710d501b7ab072fa40a0c81ba0160018c57a98df",
         "calls": [
@@ -1779,6 +1856,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -1794,7 +1872,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1105,
+        "line": 1177,
         "lines": 59,
         "sha256": "ca810ce8c1b413ae296974844a7b3860c32ed12e244545bc8c2646d39d6a76b2",
         "calls": [
@@ -1843,7 +1921,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 828,
+        "line": 851,
         "lines": 36,
         "sha256": "67dafcbebf9a8031d54cd39ed84e8067d1b17c8013b08d374e885f9a8a2b0596",
         "calls": [
@@ -1886,7 +1964,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1119,
+        "line": 1120,
         "lines": 199,
         "sha256": "0f2f7766be5948ff4922f75b824da588bb0169377e89ad89ed10d391dfd6d4fa",
         "calls": [
@@ -1923,9 +2001,11 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
+        "packages/flint-wasm/test/smalljac-coefficients.test.mjs",
         "packages/flint/test/elliptic-native.cjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/elliptic_curves.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -1939,7 +2019,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1319,
+        "line": 1320,
         "lines": 45,
         "sha256": "7ff2bfe5aace68744698458dddbe72939b86582798bba58f9fbde815df32bc9a",
         "calls": [
@@ -1969,6 +2049,8 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/smalljac-coefficients.test.mjs",
         "packages/flint/test/elliptic-native.cjs",
         "packages/flint/test/hyperelliptic/smalljac.cjs",
         "packages/flint/test/test.cjs",
@@ -1986,7 +2068,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1662,
+        "line": 1728,
         "lines": 184,
         "sha256": "98ad7c9d6d195026cca472915d1218816d3c3255c221fb6701b4f34038b276eb",
         "calls": [
@@ -2056,7 +2138,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2297,
+        "line": 2323,
         "lines": 166,
         "sha256": "eb581a6624de19d5ef5ccc4775122cb4a03ab51548fde9cda821bbe5c9155d6d",
         "calls": [
@@ -2101,7 +2183,10 @@
         "PARI/GP",
         "upstream eclib"
       ],
-      "consumers": [],
+      "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs"
+      ],
       "declared_ffi": null
     },
     {
@@ -2114,9 +2199,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1847,
-        "lines": 449,
-        "sha256": "cb6e115f15eb1b2cd4e71654c24e3a72207507bf2109fc5b05b1d30eb5fd5df8",
+        "line": 1913,
+        "lines": 409,
+        "sha256": "3897f58f776ff44c1f6254a5c0a5aaf842ba3159d9e62596f6f6f569786ee102",
         "calls": [
           "_acb_vec_clear",
           "_acb_vec_init",
@@ -2139,15 +2224,11 @@
           "check_napi",
           "complex_ball_to_object",
           "decimal_from_arf",
-          "ec_lseries_domain",
           "ec_lseries_packed_plot_to_object",
           "ec_lseries_plan_to_object",
-          "fmax",
           "fmpz_clear",
           "fmpz_get_d",
           "fmpz_init",
-          "isfinite",
-          "log",
           "mag_add",
           "mag_clear",
           "mag_cmp",
@@ -2166,9 +2247,9 @@
           "napi_throw_range_error",
           "napi_throw_type_error",
           "packed_coefficient_view_clear",
-          "raw_conversion_guard_bits",
           "sagejs_ec_lseries_values_acb",
           "sagejs_ec_lseries_values_refined_acb",
+          "sagejs_ec_lseries_work_precision",
           "set_named",
           "set_named_double",
           "set_named_slong",
@@ -2190,7 +2271,10 @@
         "PARI/GP",
         "upstream eclib"
       ],
-      "consumers": [],
+      "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs"
+      ],
       "declared_ffi": null
     },
     {
@@ -2297,6 +2381,7 @@
         "upstream eclib"
       ],
       "consumers": [
+        "packages/flint-wasm/evaluator.mjs",
         "packages/flint/test/elliptic-native.cjs"
       ],
       "declared_ffi": null
@@ -2311,7 +2396,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 443,
+        "line": 444,
         "lines": 147,
         "sha256": "985da1a3ebb425c5702dd92b566396b488c80ab2e885960bb2a145e6d7a87f40",
         "calls": [
@@ -2373,7 +2458,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 723,
+        "line": 724,
         "lines": 103,
         "sha256": "8a62277b2667b8af607f928e9e6b8bc9088f8e63fc30ac16590bb74676dc2fb6",
         "calls": [
@@ -2427,7 +2512,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3279,
+        "line": 3280,
         "lines": 73,
         "sha256": "c581fb3e7f4996c5cb208086a99615c519cd54a83338181f5679eddcaacc8ab0",
         "calls": [
@@ -2487,7 +2572,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3245,
+        "line": 3246,
         "lines": 4,
         "sha256": "0b795ed955bf2a0e66db7f59375bb1f0d7b2ebcb8f774f5920692f5a348707be",
         "calls": [
@@ -2521,7 +2606,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3250,
+        "line": 3251,
         "lines": 4,
         "sha256": "7e505d85d392f22a06cd8fd5d11cef818b488ce0236a7ded5f9938034011dd39",
         "calls": [
@@ -2626,6 +2711,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/evaluator.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/finite_fields.py"
@@ -4362,7 +4448,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3194,
+        "line": 3195,
         "lines": 28,
         "sha256": "dab527d177e239b7f5483b93d5b0dc62c90ee30f493bf485d14202358e9a7573",
         "calls": [
@@ -4389,6 +4475,7 @@
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
+        "test/browser-wasm-resource-fallbacks.cjs",
         "test/native-kernel.cjs"
       ],
       "declared_ffi": "flint:fmpz_gcd"
@@ -4597,7 +4684,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4418,
+        "line": 4419,
         "lines": 5,
         "sha256": "b93b2564514c055d247081ec8990b737afb2b6177ca20e04cb736051d3ccedae",
         "calls": [
@@ -4665,7 +4752,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2862,
+        "line": 2888,
         "lines": 213,
         "sha256": "ee1c40b05db883f70bac9820946ba8bc13c6d782e75307b31bbae25b03794d36",
         "calls": [
@@ -4738,7 +4825,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3175,
+        "line": 3176,
         "lines": 18,
         "sha256": "412f4142bec919fd791f8399cc5ef100d4d949d79efa50400dabcf88eceec761",
         "calls": [
@@ -4759,6 +4846,14 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/dynamic-compiler.mjs",
+        "packages/flint-wasm/node-cli.mjs",
+        "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+        "packages/flint-wasm/scripts/build.cjs",
+        "packages/flint-wasm/scripts/production-receipt.cjs",
+        "packages/flint-wasm/test/browser-wasm-webkit-memory.mjs",
+        "packages/flint-wasm/test/node-cli.test.mjs",
+        "packages/flint-wasm/test/production-receipt.test.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs"
@@ -4775,7 +4870,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1647,
+        "line": 1648,
         "lines": 21,
         "sha256": "24640c96629ab76a2aa6ae105fc16e98702aebec861c5f11e494708a9bd2637e",
         "calls": [
@@ -5130,6 +5225,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/index.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
@@ -5192,6 +5289,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5247,6 +5346,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5296,6 +5397,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/modular.cjs",
@@ -5579,6 +5681,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
@@ -5699,6 +5802,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5892,6 +5997,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -6041,6 +6147,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
@@ -6465,7 +6572,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4412,
+        "line": 4413,
         "lines": 5,
         "sha256": "410eec0af09e0df2e0c095f9e5e525ee8743bb8218e0d58678424fc62bb40f63",
         "calls": [
@@ -6497,7 +6604,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4406,
+        "line": 4407,
         "lines": 5,
         "sha256": "c3d6c929e1876b3e4a0e45cf51f9ebacbf17d2153b156f70e7a8b1b2155bf1d6",
         "calls": [
@@ -6547,6 +6654,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6705,6 +6813,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6766,6 +6875,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6800,6 +6910,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -6947,6 +7058,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -7095,6 +7207,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7128,6 +7241,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7167,6 +7281,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7207,6 +7322,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7291,6 +7407,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7368,6 +7485,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -7477,7 +7595,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4384,
+        "line": 4385,
         "lines": 10,
         "sha256": "e06ff2d4c4953a7b949b3ee2d15670b367fad62213b8a11252009c245399ad89",
         "calls": [
@@ -7509,7 +7627,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1669,
+        "line": 1670,
         "lines": 23,
         "sha256": "ad0a19c28083bc840128280c0464ba93a7659f052c76ccff1714cdd72ec9166a",
         "calls": [
@@ -7535,6 +7653,57 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nfFactorDegreesBatch",
+      "callback": "sagejs_nf_factor_degrees_batch_value",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/number_field_zeta.c",
+        "line": 88,
+        "lines": 133,
+        "sha256": "ec93db99fbbf1bf17d185d620f3c946d40887941a77caf480276f9678b3f3140",
+        "calls": [
+          "_fmpz_vec_clear",
+          "_fmpz_vec_init",
+          "bigint_to_fmpz",
+          "check_napi",
+          "create_uint64_array",
+          "fmpz_is_one",
+          "napi_create_object",
+          "napi_create_uint32",
+          "napi_get_array_length",
+          "napi_get_cb_info",
+          "napi_get_element",
+          "napi_get_typedarray_info",
+          "napi_is_array",
+          "napi_set_named_property",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "sagejs_nf_factor_degrees_batch"
+        ]
+      },
+      "family": "number-field-zeta",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Number-field zeta exports batch exact good-prime factor-degree extraction through mature FLINT polynomial factorization.",
+      "fallback": "Strict Python orchestration uses the public finite-field polynomial factorization path when the packed adapter is unavailable.",
+      "oracles": [
+        "Sage.js dynamic fallback",
+        "SageMath",
+        "Magma",
+        "Hecke/Oscar"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/number-field-zeta.test.mjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -7652,7 +7821,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1738,
+        "line": 1739,
         "lines": 29,
         "sha256": "dd1feb7feb36f6d5539abe184830be836d02626914468a67884471bf72abc985",
         "calls": [
@@ -7694,7 +7863,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2778,
+        "line": 2779,
         "lines": 27,
         "sha256": "272140686be0fa57410a26efbeeeeaf2889191e6748cc05d08ca8c46fc64c1fa",
         "calls": [
@@ -7733,7 +7902,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2677,
+        "line": 2678,
         "lines": 28,
         "sha256": "b35f190537afdc3afd5fe6a557bd5c9dfff149261e589610870adeb977cfe1cd",
         "calls": [
@@ -7770,7 +7939,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1768,
+        "line": 1769,
         "lines": 19,
         "sha256": "30635cf32ab7af8e30952541141402f3d9253ad9cef90e767bdb5bf1e9712dba",
         "calls": [
@@ -7808,7 +7977,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2706,
+        "line": 2707,
         "lines": 19,
         "sha256": "259812fa3092d3466ac3443ef7e59ccb2a2fa8ad6185fa860e78c7cbb1f8ed8c",
         "calls": [
@@ -7844,7 +8013,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2955,
+        "line": 2956,
         "lines": 58,
         "sha256": "8202e939a43d23d800a720242ed181ac3fe98af2228264627c4c48bfe9e3a940",
         "calls": [
@@ -7969,6 +8138,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
@@ -8149,6 +8319,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/modular.py"
@@ -8315,6 +8486,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/modular.py",
@@ -8358,6 +8530,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/modular.py"
@@ -8483,6 +8656,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/modular.py"
@@ -8764,6 +8938,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/modular.py"
@@ -8998,7 +9173,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1978,
+        "line": 1979,
         "lines": 4,
         "sha256": "c26f52404f53b0f76b6c666707f3ec5e1b13bfdb8b4e8c4a10c23ce143090dca",
         "calls": [
@@ -9033,7 +9208,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2433,
+        "line": 2434,
         "lines": 71,
         "sha256": "b44fc6eab8c8451fc6c74847cff354c1c74029db5daeefb3763347227afb0366",
         "calls": [
@@ -9088,7 +9263,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2913,
+        "line": 2914,
         "lines": 41,
         "sha256": "6c6820f5ffa60b06799b84a09ea4ad8da86bcdd2d96896f748d6c959072481a4",
         "calls": [
@@ -9128,7 +9303,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2357,
+        "line": 2358,
         "lines": 23,
         "sha256": "959f61408b67b01eeb90c85deecd2664a832b08667f8eb4b1c8c6d3f309bc87b",
         "calls": [
@@ -9168,7 +9343,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3044,
+        "line": 3045,
         "lines": 130,
         "sha256": "3348b7e82a37d65068b06e219fd388fde9f77b3ca61d983d5df948086c22f622",
         "calls": [
@@ -9210,6 +9385,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -9225,7 +9402,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2864,
+        "line": 2865,
         "lines": 48,
         "sha256": "7a6d9e996b3db5b6ce60a06445083ee5e26a251cce086d4e57c371d01147490f",
         "calls": [
@@ -9274,7 +9451,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2091,
+        "line": 2092,
         "lines": 51,
         "sha256": "196eec07aa9c23ec6acce201195dcec60067fe389cb6676c4d266f8d72e6345f",
         "calls": [
@@ -9318,7 +9495,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2304,
+        "line": 2305,
         "lines": 52,
         "sha256": "c25ca887901768f28b135cd6c6e8c5f64aedfea33949277304ce37650d7ebb13",
         "calls": [
@@ -9364,7 +9541,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1988,
+        "line": 1989,
         "lines": 4,
         "sha256": "c47eae19c1ca0e9732a1d7637be7cad238ecc8f75d6c4dc8390fa051c4c5c6c3",
         "calls": [
@@ -9399,7 +9576,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2143,
+        "line": 2144,
         "lines": 34,
         "sha256": "58deb2882b818398264f50096bd57840bc2f3d19a8eac1b5d385db8a0feef4d3",
         "calls": [
@@ -9439,7 +9616,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1993,
+        "line": 1994,
         "lines": 29,
         "sha256": "92f6e560c707705c7d19ffa6fb355a9c7bcd3ad38a9955eab302c9920007c72d",
         "calls": [
@@ -9477,7 +9654,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2023,
+        "line": 2024,
         "lines": 31,
         "sha256": "2abda6ce4f40c4ce7efe8401eb9ae80205c0f93a40584cd2b2145f98abc2feba",
         "calls": [
@@ -9501,6 +9678,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
@@ -9518,7 +9696,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2178,
+        "line": 2179,
         "lines": 32,
         "sha256": "f37714c385196f3611cbe00f7198c97600dcdf35a0cec17ce37b0508e6dcf692",
         "calls": [
@@ -9557,7 +9735,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2256,
+        "line": 2257,
         "lines": 4,
         "sha256": "fa445f9072d31a48dc3b25c1f4a31c4ab68a8239b209d4738d5ce9daa395077a",
         "calls": [
@@ -9590,7 +9768,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2261,
+        "line": 2262,
         "lines": 4,
         "sha256": "cddeda8ad29aee25e25b0b6f59b23f4d82af0e5a1d5b12849110bbfbc0411cfb",
         "calls": [
@@ -9623,7 +9801,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1983,
+        "line": 1984,
         "lines": 4,
         "sha256": "fdd9987082f9bb620e686791d9f93c16828f3ce8f975d32f2e45d7d158d0f610",
         "calls": [
@@ -9641,6 +9819,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
@@ -9658,7 +9837,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2381,
+        "line": 2382,
         "lines": 51,
         "sha256": "739ed7d05a4fb45fbe3832dd30a5d38074c202a92314fb9ec5eebb55f7ea6953",
         "calls": [
@@ -9704,7 +9883,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2055,
+        "line": 2056,
         "lines": 35,
         "sha256": "541da55195e1e5103937d9a7e7da09177f1d8810f8d3b6ad1fa12086574da10e",
         "calls": [
@@ -9745,7 +9924,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2266,
+        "line": 2267,
         "lines": 37,
         "sha256": "5e3a8eb33e4b87655b6283ec5d536d714fd71588f763beec69312ac72d7d2879",
         "calls": [
@@ -9785,7 +9964,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1693,
+        "line": 1694,
         "lines": 26,
         "sha256": "a2f69bd8b09061483d56eb0db04e41aefa46c422d4aca9fe82337943b6e69203",
         "calls": [
@@ -9824,7 +10003,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3255,
+        "line": 3256,
         "lines": 4,
         "sha256": "5cbe49af6cbdf98e6f071a2d3b8cb33d44499407221a7431dd9ffc3791596e9d",
         "calls": [
@@ -9856,7 +10035,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3498,
+        "line": 3499,
         "lines": 115,
         "sha256": "8a480900935cf1708a8c03416eea753271ec4d1231c856a621dd6cab60104f56",
         "calls": [
@@ -9910,7 +10089,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3477,
+        "line": 3478,
         "lines": 20,
         "sha256": "c3e8f559e18bdebcb00a81d8376d0868899dd67c5fd31b6660b24ac319df8b46",
         "calls": [
@@ -9947,7 +10126,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3614,
+        "line": 3615,
         "lines": 49,
         "sha256": "b2aab653e9648b386786ffe3b3d5d6968007281d0a2e60b39b4fad401c19cf48",
         "calls": [
@@ -9991,7 +10170,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3664,
+        "line": 3665,
         "lines": 44,
         "sha256": "6795ad175fc7972d892557f0e5617a157c451a66b9e04a0e5425b0a0bdd7cc99",
         "calls": [
@@ -10035,7 +10214,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3430,
+        "line": 3431,
         "lines": 46,
         "sha256": "85c6d5a53bbc6c28253f77d487763a2c3c7dc7b524f7ae67d0f73b850228925b",
         "calls": [
@@ -10176,6 +10355,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "src/baselib/number_fields.py"
       ],
       "declared_ffi": null
@@ -10214,6 +10394,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -10283,6 +10464,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -10361,6 +10543,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
@@ -10407,6 +10591,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
         "src/baselib/number_fields.py"
@@ -10543,6 +10731,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py"
@@ -10652,6 +10841,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -10735,6 +10926,9 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
@@ -10897,6 +11091,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "src/baselib/number_fields.py"
       ],
       "declared_ffi": null
@@ -10967,6 +11163,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -11000,6 +11198,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -11103,6 +11303,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
@@ -11119,7 +11323,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2512,
+        "line": 2513,
         "lines": 164,
         "sha256": "e87ec763aefbeafd8f72eca41863f0f52ac7d9ca47838a219b04de3583e1b2df",
         "calls": [
@@ -11264,7 +11468,6 @@
       ],
       "consumers": [
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py",
         "test/higher-weight-hecke-resource.cjs"
       ],
       "declared_ffi": null
@@ -11333,7 +11536,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1529,
+        "line": 1530,
         "lines": 47,
         "sha256": "dff62b78631fc7b15ce5878b3113caf6a4619162ee24e50beb98f16928d3b82d",
         "calls": [
@@ -11378,7 +11581,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1594,
+        "line": 1595,
         "lines": 16,
         "sha256": "8b686b85a5e643558448ded3dad571ce9d6db10f1a9fd8b73a9bd826cd8a7e77",
         "calls": [
@@ -11433,6 +11636,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11465,6 +11670,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11502,6 +11708,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11542,6 +11749,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -11587,6 +11795,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11628,6 +11838,8 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -11662,6 +11874,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11699,6 +11912,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11739,6 +11953,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11776,6 +11991,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11814,6 +12030,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11846,6 +12063,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11882,6 +12100,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11921,6 +12140,9 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py",
         "test/native-kernel.cjs"
@@ -11937,7 +12159,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4315,
+        "line": 4316,
         "lines": 57,
         "sha256": "fafc148f40ec1c88440f20a802db96207ca1c22d7619550e9c750940b3233dee",
         "calls": [
@@ -11985,7 +12207,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4240,
+        "line": 4241,
         "lines": 74,
         "sha256": "498698d66f37a1f227c95bbf14d24545b34efca6ea8188b7af4a050c12da853d",
         "calls": [
@@ -12031,7 +12253,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1165,
+        "line": 1237,
         "lines": 24,
         "sha256": "439bd29f64ef930262117adec4da33a76eac2335ed97fd3c9832cf23a01b89f0",
         "calls": [
@@ -12056,8 +12278,46 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
+      "package": "@sagemath/sagejs-flint",
+      "export": "riemannXiValues",
+      "callback": "sagejs_riemann_xi_values",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/dirichlet.c",
+        "line": 1156,
+        "lines": 20,
+        "sha256": "6ad2a6579b5d990f26365f8903ddeaa10f50537d95248df21fd7440af1971a70",
+        "calls": [
+          "_acb_vec_clear",
+          "acb_dirichlet_xi",
+          "complex_array_from_acb",
+          "get_batch_precision",
+          "require_arguments",
+          "require_complex_array"
+        ]
+      },
+      "family": "dirichlet",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Dirichlet exports mix FLINT group primitives with Sage.js-owned character orchestration and require staged separation.",
+      "fallback": "The strict Python Dirichlet implementation is the semantic fallback for every public operation.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/dirichlet.cjs"
       ],
       "declared_ffi": null
     },
@@ -12071,7 +12331,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 923,
+        "line": 946,
         "lines": 87,
         "sha256": "d58fbee9dd21a8d4823c857b06131f67c5ed3ad057069315e9768be0f0ef9838",
         "calls": [
@@ -12110,6 +12370,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
       ],
@@ -12125,7 +12386,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/dirichlet.c",
-        "line": 1084,
+        "line": 1114,
         "lines": 20,
         "sha256": "53876dc9a8cc26a230a9080bc7ed1cfa0667f724021e38bd0669c6ed883d2100",
         "calls": [
@@ -12148,6 +12409,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/builtins.py"
       ],
@@ -12163,7 +12425,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4074,
+        "line": 4075,
         "lines": 64,
         "sha256": "a41e51b344b4a5ff45a7db414533f373fcaf9f0f2f117edc283d62d7798f5b2b",
         "calls": [
@@ -12208,7 +12470,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3966,
+        "line": 3967,
         "lines": 76,
         "sha256": "35eba215326210b3fd9c80afee726cbc4728b01d0b9360c370ce69e8138d0a4e",
         "calls": [
@@ -12251,7 +12513,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3905,
+        "line": 3906,
         "lines": 60,
         "sha256": "5d02ecbb95d6365c3e56e9c7d8f617ece19dd0d9a01c8cad39c39629b9b3276b",
         "calls": [
@@ -12279,6 +12541,7 @@
         "standalone smalljac and rforest bridges"
       ],
       "consumers": [
+        "packages/flint-wasm/test/hyperelliptic-smalljac.test.mjs",
         "packages/flint/test/hyperelliptic/rforest.cjs",
         "packages/flint/test/hyperelliptic/smalljac.cjs"
       ],
@@ -12294,7 +12557,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4424,
+        "line": 4425,
         "lines": 13,
         "sha256": "ed65b49ad723a350bcb65f2608181df0fd803d87df7d5b9a800780734d134c3b",
         "calls": [
@@ -12327,7 +12590,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4373,
+        "line": 4374,
         "lines": 10,
         "sha256": "89079d7fea4034f172606828b79afe145f22ce4bfbc1f5ba276982f83ec56de1",
         "calls": [
@@ -12345,6 +12608,10 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "packages/flint-wasm/lazy-modules.mjs",
+        "packages/flint-wasm/scripts/build-smalljac-toolchain.cjs",
+        "packages/flint-wasm/scripts/wasm-toolchain.cjs",
+        "packages/flint-wasm/test/toolchain-resolution.test.cjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs",
@@ -12363,7 +12630,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1633,
+        "line": 1634,
         "lines": 13,
         "sha256": "b011668fe96d4a18ec7e25a797515a0dbd48b173167f287b06a9d2a918cda887",
         "calls": [
@@ -12400,7 +12667,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1720,
+        "line": 1721,
         "lines": 17,
         "sha256": "89b5edff657f859c955ae89468c28641e379390734544c5e2ca33f431280eeef",
         "calls": [
@@ -12470,6 +12737,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -12586,7 +12854,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1826,
+        "line": 1827,
         "lines": 29,
         "sha256": "c953693f089cb0686c21d1246ecc354ec5173c39076a49ef0635e6c850b079a6",
         "calls": [
@@ -12626,7 +12894,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1856,
+        "line": 1857,
         "lines": 21,
         "sha256": "ad092e90f431db54928c8b9f95f86072952bf3142e447457567a011a8f809e67",
         "calls": [
@@ -12681,6 +12949,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/index.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs"
       ],
@@ -12734,8 +13003,7 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -12839,7 +13107,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1501,
+        "line": 1502,
         "lines": 27,
         "sha256": "365f7cbe7d51b8cdcc4d7501ee820dcff0ea66ffbbe18ef300bc601b352245b0",
         "calls": [
@@ -12863,6 +13131,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -12879,7 +13148,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1577,
+        "line": 1578,
         "lines": 16,
         "sha256": "f4a8412933fb0416504893ce132edd20559a305e2e86df174cdbcf25684520dd",
         "calls": [
@@ -12900,6 +13169,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -12915,7 +13185,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1788,
+        "line": 1789,
         "lines": 37,
         "sha256": "034ed78b3d3754c530e99187de6fe5d89cbdc01f3b592bdc83a491af84fe12eb",
         "calls": [
@@ -12956,7 +13226,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1611,
+        "line": 1612,
         "lines": 21,
         "sha256": "fb8cb2cd20300f72ee8957a38adc24580905c454e4f60e6bef91fba8bfed7491",
         "calls": [
@@ -12992,7 +13262,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1878,
+        "line": 1879,
         "lines": 36,
         "sha256": "3d4c9f55dd41e1652935fef332a48d8a1eb93ebfcccd10480ff4f99fa0c24657",
         "calls": [

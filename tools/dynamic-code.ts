@@ -255,7 +255,7 @@ export function compileDynamic(
 
 function canSeedName(name: string): boolean {
   return (
-    /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) &&
+    /^[_\p{ID_Start}][\p{ID_Continue}]*$/u.test(name) &&
     !pythonKeywords.has(name) &&
     name !== "__name__" &&
     name !== "__file__"

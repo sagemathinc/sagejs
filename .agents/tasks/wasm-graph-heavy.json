@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-graph-heavy",
+  "title": "Accelerate graph shortest paths in WebAssembly",
+  "lane": "combinatorics-groups",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile public Graph shortest-path, all-pairs, clique, coloring, and isomorphism workloads, then route one or two measured Python-dominant Tier-2 shortest-path workflows through a bounded source-transparent packed WebAssembly kernel with exact fallback, authenticated route evidence, differential and direct/public Node/browser tests, interrupt safety, and a benchmark",
+  "base_commit": "48eb9e843d454758de99e11820a2f3bc1e3482c8",
+  "claims": [
+    "src/baselib/graphs.py",
+    "src/lib/sagejs/kernels/graph/__init__.py",
+    "src/lib/sagejs/kernels/graph/shortest_paths.py",
+    "pyrightconfig.json",
+    "test/wasm-graph-shortest-paths.cjs",
+    "bench/wasm-graph-shortest-paths.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "GenericGraph._shortest_index_data"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:compiler",
+    "SAGEJS_NATIVE_AUTOLOAD=0 node --test --test-reporter=spec test/graphs.cjs",
+    "node --test --test-reporter=spec test/wasm-graph-shortest-paths.cjs",
+    "node bench/wasm-graph-shortest-paths.cjs --json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

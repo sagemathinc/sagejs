@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "precision_bits": 80,
+  "absolute_tolerance": 1e-15,
+  "vectors": [
+    {
+      "id": "riemann-zeta-positive-reals",
+      "capabilities": ["analytic:riemann-zeta-batch"],
+      "source": "R = RiemannZeta(80); R.values([2, 3])",
+      "points": [["2", "0"], ["3", "0"]],
+      "values": [
+        ["1.64493406684822643647241516664602519", "0"],
+        ["1.20205690315959428539973816151144999", "0"]
+      ]
+    },
+    {
+      "id": "quadratic-dirichlet-l-modulus-5",
+      "capabilities": ["analytic:dirichlet-l-batch"],
+      "source": "G = DirichletGroup(5); L = G[2].lfunction(80); L.values([2, 3])",
+      "modulus": "5",
+      "character_index": "2",
+      "points": [["2", "0"], ["3", "0"]],
+      "values": [
+        ["0.706211403259740969931003175762564028", "0"],
+        ["0.854824766648543010235690083538137697", "0"]
+      ]
+    },
+    {
+      "id": "quadratic-dedekind-zeta-discriminant-5",
+      "capabilities": [
+        "analytic:riemann-zeta-batch",
+        "analytic:dirichlet-l-batch",
+        "analytic:quadratic-dedekind-zeta"
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nZ.values([2, 3])",
+      "discriminant": "5",
+      "modulus": "5",
+      "character_index": "2",
+      "points": [["2", "0"], ["3", "0"]],
+      "values": [
+        ["1.16167119561863854975858263633205891", "0"],
+        ["1.02754801174167044812148307053052056", "0"]
+      ]
+    }
+  ]
+}

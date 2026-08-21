@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-analytic-public",
+  "title": "Public WebAssembly gamma and Riemann xi batches",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public complex gamma and Riemann xi heavy batches through the receipt-backed Arb/Acb WebAssembly analytic reactor with native oracle, enclosure tolerance, Node-Wasm/browser route, lifecycle, and benchmark crossing evidence",
+  "base_commit": "f959be9f15ac5ec773410dfa21222368ee5d1133",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/wasm-analytic-public.cjs",
+    "bench/wasm-analytic-public.mjs",
+    "bench/wasm-analytic-public.md"
+  ],
+  "dependencies": [
+    "wasm-analytic",
+    "wasm-numeric-symbolic"
+  ],
+  "references": [
+    "FLINT acb_gamma and acb_dirichlet_xi",
+    "SageMath numerical gamma and Riemann xi semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Native FLINT/Arb/Acb analytic batch core",
+      "Independent mpmath values and exact special values",
+      "Node-Wasm and Chromium execution of the production reactor"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm test:baselib:strict",
+    "node packages/flint-wasm/scripts/test-analytic-core.cjs",
+    "node --test test/wasm-analytic-public.cjs",
+    "node bench/wasm-analytic-public.mjs --check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

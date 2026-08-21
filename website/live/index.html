@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#16251f" />
+    <meta name="description" content="Run Sage mathematics locally in your browser with Sage.js and WebAssembly." />
+    <title>Sage.js — mathematics in your browser</title>
+    <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#source">Skip to the Sage editor</a>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Sage.js browser home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span><strong>Sage.js</strong><small>mathematics, locally</small></span>
+      </a>
+      <div id="kernel-status" class="kernel-status" data-state="loading" role="status">
+        <span class="status-dot" aria-hidden="true"></span><span>Loading kernel</span>
+      </div>
+      <button id="about" class="quiet-button" type="button">Capabilities &amp; privacy</button>
+    </header>
+
+    <main>
+      <section class="workspace-panel" aria-labelledby="workspace-heading">
+        <h1 id="workspace-heading" class="visually-hidden">Sage.js worksheet</h1>
+        <div class="workspace-bar">
+          <label class="title-label" for="worksheet-title">Worksheet</label>
+          <input id="worksheet-title" maxlength="120" autocomplete="off" aria-label="Worksheet title" />
+          <label class="visually-hidden" for="sessions">Saved worksheets</label>
+          <select id="sessions" title="Saved worksheets"></select>
+          <button id="new-session" class="quiet-button" type="button">New</button>
+          <button id="delete-session" class="quiet-button danger" type="button">Delete</button>
+        </div>
+
+        <div class="example-bar">
+          <label for="examples">Try an example</label>
+          <select id="examples">
+            <option value="">Choose number fields, L-series, plots…</option>
+          </select>
+          <span id="example-description"></span>
+        </div>
+
+        <label class="editor-label" for="source">Sage source</label>
+        <textarea id="source" rows="18" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="editor-help"></textarea>
+        <p id="editor-help" class="editor-help">
+          <kbd>Shift</kbd>+<kbd>Enter</kbd> runs the current cell; <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> runs all. Separate cells with <code># %%</code> or a blank line.
+        </p>
+
+        <div class="controls" aria-label="Execution controls">
+          <div class="run-controls">
+            <button class="primary" type="button" data-run="cell" disabled>Run cell</button>
+            <button type="button" data-run="selection" disabled>Run selection</button>
+            <button type="button" data-run="all" disabled>Run all</button>
+          </div>
+          <div class="kernel-controls">
+            <label for="timeout">Time limit</label>
+            <select id="timeout">
+              <option value="5000">5 s</option>
+              <option value="15000" selected>15 s</option>
+              <option value="30000">30 s</option>
+              <option value="60000">60 s</option>
+            </select>
+            <button id="interrupt" class="danger" type="button" disabled>Interrupt</button>
+            <button id="reset" type="button" disabled>Reset kernel</button>
+          </div>
+        </div>
+
+        <details class="file-menu">
+          <summary>Import, export &amp; share</summary>
+          <div>
+            <input id="import-file" type="file" accept=".sage,.py,.sagepack,text/plain,application/octet-stream" hidden />
+            <button id="import" type="button">Import source or SagePack</button>
+            <button id="export-source" type="button">Export .sage</button>
+            <button id="export-sagepack" type="button">Export value as SagePack</button>
+            <button id="share" type="button">Copy source-only share URL</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="results-panel" aria-labelledby="results-heading">
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">Local results</p>
+            <h2 id="results-heading">Output</h2>
+          </div>
+          <button id="clear-output" class="quiet-button" type="button">Clear</button>
+        </div>
+        <p id="diagnostics" class="diagnostics">No evaluations yet. Memory availability is reported honestly when the browser exposes it.</p>
+        <div id="output" aria-live="polite" aria-relevant="additions text"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Your source and mathematics stay on this device. Sage.js has no backend compute server.</p>
+      <a href="./privacy.html">Security, privacy &amp; limits</a>
+      <a href="https://github.com/sagemathinc/sagejs">Source code</a>
+    </footer>
+
+    <p id="live-status" class="visually-hidden" role="status" aria-live="polite">Loading Sage.js.</p>
+
+    <dialog id="about-dialog" aria-labelledby="about-heading">
+      <form method="dialog">
+        <button id="close-about" class="dialog-close" type="button" aria-label="Close">×</button>
+      </form>
+      <p class="eyebrow">Know what is running</p>
+      <h2 id="about-heading">Capabilities &amp; privacy</h2>
+      <p>
+        Sage code is compiled and evaluated in a replaceable Web Worker. FLINT and other mathematical kernels run as WebAssembly. Interrupt, timeout, and output-limit actions terminate the worker and clear its variables.
+      </p>
+      <div id="runtime-facts"></div>
+      <section class="capability-browser" aria-labelledby="capability-heading">
+        <h3 id="capability-heading">Mathematical capability report</h3>
+        <div class="capability-filters">
+          <label for="capability-family">Family</label>
+          <select id="capability-family"><option value="">All families</option></select>
+          <label for="capability-search">Search</label>
+          <input id="capability-search" type="search" placeholder="number fields, matrices…" />
+        </div>
+        <p id="capability-summary"></p>
+        <div class="capability-table-wrap">
+          <table>
+            <caption class="visually-hidden">WebAssembly capability status, fallbacks and limits</caption>
+            <thead><tr><th scope="col">Capability</th><th scope="col">Status</th><th scope="col">Browser behavior</th></tr></thead>
+            <tbody id="capability-records"></tbody>
+          </table>
+        </div>
+      </section>
+      <p class="security-note">
+        This is an execution environment, not a vault. Do not paste secrets. The production application belongs on a dedicated origin with no login cookies or privileged APIs.
+      </p>
+      <p><a href="./privacy.html">Read the complete security and privacy model</a></p>
+    </dialog>
+  </body>
+</html>

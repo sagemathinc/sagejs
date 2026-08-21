@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-artifact-topology",
+  "title": "Wasm fast-math artifact topology",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enforce reproducible lazy specialist dependency receipts and per-specialist compressed delta budgets so large mathematical libraries cannot silently enter the eager Wasm core",
+  "base_commit": "8caf746854a8337da94eee995910c0fce44191ea",
+  "claims": [
+    "packages/flint-wasm/scripts/production-receipt.cjs",
+    "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/test/production-receipt.test.cjs",
+    "packages/flint-wasm/test/lazy-module-receipt.test.cjs",
+    "packages/flint-wasm/test/fixtures/artifact-topology"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Deterministic release receipt fixtures and mutation tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 59.772,
+      "started_at": "2026-08-21T00:23:48.392Z",
+      "commit": "bde962935cd1011a81767455194c20ef14a15d7c",
+      "workspace_fingerprint": "575cc533b7622d7943f8bd24c6e9be5dc6b2d14748763ed7f79259d18fd64227",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Production manifests now authenticate one eager group, release evidence, and five lazy specialist groups with exact asset ownership, dependency closure, source entries, and independently enforced gzip/Brotli delta ceilings. Focused receipt/release mutation tests and architecture checks pass; the real 123.6 MB production artifact passed the topology audit.",
+    "risks": [
+      "The aggregate branch currently fails an unrelated wasm-capabilities mutation assertion after workload/capability integration; pnpm test:portable is recorded as failed until the integration lane repairs that test.",
+      "Existing flint-wasm payload assertions still use the pre-smalljac 6 MB raw limit and must be reconciled with the reviewed per-group compressed budgets."
+    ],
+    "next_steps": [
+      "Rebuild the exact integrated artifact and rerun the three required distribution receipts after the aggregate capability test is repaired.",
+      "Classify every newly staged host asset or specialist binary in artifactTopology; unclassified assets intentionally fail manifest generation."
+    ]
+  }
+}
