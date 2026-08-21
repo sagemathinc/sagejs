@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-relations-g5",
+  "title": "Minkowski LLL relation search",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement archimedean Minkowski-weighted LLL relation search, capability-aware automorphism orbit planning, differential tests, and a representative benchmark without changing exact relation replay",
+  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "test/number-field-class-group-relations.cjs",
+    "test/fixtures/number-field-class-group-relations.json",
+    "bench/number-field-class-group-relations.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Rel_LLL.jl",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Rel_add.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI Minkowski embeddings and LLL",
+      "Hecke/Oscar relation search"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-class-group-relations.cjs",
+    "node bench/number-field-class-group-relations.cjs --check",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_group_relations.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-group-relations.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.222,
+      "started_at": "2026-08-21T09:38:06.363Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "3ea0de740c70cb2981280db65af8b077d62eb38e445bb58e33006c89ca3c9c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.404,
+      "started_at": "2026-08-21T09:43:28.985Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "3ea0de740c70cb2981280db65af8b077d62eb38e445bb58e33006c89ca3c9c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/number-field-class-group-relations.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.126,
+      "started_at": "2026-08-21T09:43:41.163Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "3ea0de740c70cb2981280db65af8b077d62eb38e445bb58e33006c89ca3c9c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_relations.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.589,
+      "started_at": "2026-08-21T09:43:53.352Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "3ea0de740c70cb2981280db65af8b077d62eb38e445bb58e33006c89ca3c9c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.001,
+      "started_at": "2026-08-21T09:43:55.574Z",
+      "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+      "workspace_fingerprint": "3ea0de740c70cb2981280db65af8b077d62eb38e445bb58e33006c89ca3c9c34",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Default bounded relation search now reduces the true canonical Minkowski embedding: real coordinates have weight one, complex representatives contribute sqrt(2)-weighted real and imaginary coordinates, and 128-bit midpoint values are converted directly to fixed-point integers without binary64. Exact LLL tracks a unimodular row transform and applies it to the exact ideal basis; plan verification checks determinant, embedded-row reconstruction, exact-row reconstruction, and ideal membership. Relation admission, serialization, and replay schemas are unchanged. Sage's documented nonreal cubic embedding is a differential oracle, precision-stability and exact transform replay cover a real quadratic, and a representative benchmark covers degrees two and three. Because the repository exposes only abstract Galois-group permutations, a public capability plan explicitly selects independent Minkowski search instead of inventing unverifiable automorphism-derived relations.",
+    "risks": [
+      "Archimedean values are high-precision FLINT midpoints rather than certified Arb enclosures; they select only a unimodular basis transform, while all admitted relations remain exact and replayable.",
+      "Automorphism-orbit derivation remains unavailable until exact field self-maps, ideal images, and authenticated factor-base permutations share a public protocol.",
+      "The focused Linux x64 lane does not exercise required Windows or arm64 hosts; the implementation is ordinary Python and uses no new native dependency."
+    ],
+    "next_steps": [
+      "Integrate the module, focused test/fixture, and benchmark without changing class_unit_groups.py.",
+      "Run central broad gates and platform CI after merge.",
+      "If exact automorphism maps are later added, extend the capability planner and derive each orbit record through the existing exact collector replay path."
+    ]
+  }
+}
