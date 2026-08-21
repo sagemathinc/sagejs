@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from typing import Any, Iterable
 
 import sagejs.runtime as runtime
@@ -36,6 +37,7 @@ ALGORITHMS = (
 
 _SEQUENCE_COMPONENTS = ("factor_base", "relations", "saturation_history")
 _SINGLE_COMPONENTS = (
+    "search_state",
     "matrix_state",
     "class_group_state",
     "unit_state",
@@ -421,6 +423,7 @@ class ClassUnitGroupContext:
         limits: ResourceLimits | None = None,
         factor_base: Iterable[Any] = (),
         relations: Iterable[Any] = (),
+        search_state: Any = None,
         matrix_state: Any = None,
         class_group_state: Any = None,
         unit_state: Any = None,
@@ -462,6 +465,7 @@ class ClassUnitGroupContext:
         self._random_seed = seed
         self.factor_base = tuple(factor_base)
         self.relations = tuple(relations)
+        self.search_state = search_state
         self.matrix_state = matrix_state
         self.class_group_state = class_group_state
         self.unit_state = unit_state
@@ -535,6 +539,16 @@ class ClassUnitGroupContext:
         canonical_component(relation)
         self.relations = self.relations + (relation,)
 
+    def set_relations(self, relations: Iterable[Any]) -> None:
+        values = tuple(relations)
+        for value in values:
+            canonical_component(value)
+        self.relations = values
+
+    def set_search_state(self, state: Any) -> None:
+        canonical_component(state)
+        self.search_state = state
+
     def set_matrix_state(self, state: Any) -> None:
         canonical_component(state)
         self.matrix_state = state
@@ -584,6 +598,7 @@ class ClassUnitGroupContext:
             limits=self.limits,
             factor_base=self.factor_base,
             relations=self.relations,
+            search_state=self.search_state,
             matrix_state=self.matrix_state,
             class_group_state=self.class_group_state,
             unit_state=self.unit_state,
@@ -608,6 +623,7 @@ class ClassUnitGroupContext:
             "random_seed": self.random_seed,
             "factor_base": canonical_component(self.factor_base),
             "relations": canonical_component(self.relations),
+            "search_state": canonical_component(self.search_state),
             "matrix_state": canonical_component(self.matrix_state),
             "class_group_state": canonical_component(self.class_group_state),
             "unit_state": canonical_component(self.unit_state),
@@ -686,6 +702,7 @@ class ClassUnitGroupContext:
             limits=ResourceLimits.from_dict(data["limits"]),
             factor_base=decoded["factor_base"],
             relations=decoded["relations"],
+            search_state=decoded["search_state"],
             matrix_state=decoded["matrix_state"],
             class_group_state=decoded["class_group_state"],
             unit_state=decoded["unit_state"],
@@ -721,15 +738,416 @@ class ClassUnitGroupContext:
     replay = from_dict
 
 
+DEFAULT_MAX_CHECKPOINT_BYTES = 256 * 1024 * 1024
+
+
+class ClassUnitCancellationError(RuntimeError):
+    """Cooperative cancellation observed at a named resumable stage."""
+
+    def __init__(self, stage: str, details: Any = None) -> None:
+        super().__init__("class/unit computation cancelled")
+        self.stage = stage
+        self.details = canonical_component({} if details is None else details)
+
+
+class ClassUnitProgressEvent:
+    """Immutable progress event delivered outside mathematical producers."""
+
+    def __init__(
+        self,
+        sequence: int,
+        stage: str,
+        state: str,
+        details: Any = None,
+    ) -> None:
+        self.sequence = _checked_nonnegative(sequence, "progress sequence")
+        if not isinstance(stage, str) or stage == "":
+            raise TypeError("a progress stage must be a nonempty string")
+        if not isinstance(state, str) or state == "":
+            raise TypeError("a progress state must be a nonempty string")
+        self.stage = stage
+        self.state = state
+        self._details = canonical_component({} if details is None else details)
+        runtime.object.freeze(self)
+
+    @property
+    def details(self) -> Any:
+        return canonical_component(self._details)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sequence": self.sequence,
+            "stage": self.stage,
+            "state": self.state,
+            "details": canonical_component(self.details),
+        }
+
+
+def _checkpoint_byte_limit(value: Any, name: str) -> int:
+    if value is None:
+        return DEFAULT_MAX_CHECKPOINT_BYTES
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(name + " must be a positive integer")
+    return value
+
+
+def _checkpoint_text(payload: dict[str, Any], maximum_bytes: int) -> str:
+    text = _canonical_json(payload)
+    if len(text.encode("utf-8")) > maximum_bytes:
+        raise ValueError("class/unit checkpoint exceeds its byte limit")
+    return text
+
+
+def _write_checkpoint_path(path: str, text: str, content_hash: str) -> None:
+    if path == "":
+        raise ValueError("a checkpoint destination path cannot be empty")
+    temporary = path + ".tmp-" + str(os.getpid()) + "-" + content_hash[:16]
+    try:
+        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+            handle.write("\n")
+            handle.flush()
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+        except Exception:
+            pass
+        raise
+
+
+def save_class_unit_checkpoint(
+    destination: Any,
+    context: ClassUnitGroupContext,
+    *,
+    max_checkpoint_bytes: int | None = None,
+) -> str:
+    """Atomically save a context path or call a duck-typed checkpoint sink.
+
+    A sink object may expose `save(payload)`, or the destination itself may be
+    callable.  Both receive a detached canonical dictionary.  String paths
+    are written through a same-directory temporary file and `os.replace`, so
+    an interrupted write leaves the previous complete checkpoint intact.
+    """
+    if not isinstance(context, ClassUnitGroupContext):
+        raise TypeError("only a ClassUnitGroupContext can be checkpointed")
+    configured_limit = context.limits.get("max_checkpoint_bytes")
+    selected_limit = (
+        configured_limit
+        if max_checkpoint_bytes is None and configured_limit is not None
+        else max_checkpoint_bytes
+    )
+    maximum = _checkpoint_byte_limit(selected_limit, "checkpoint byte limit")
+    payload = context.to_dict()
+    content_hash = payload["content_sha256"]
+    text = _checkpoint_text(payload, maximum)
+    if isinstance(destination, str):
+        _write_checkpoint_path(
+            path=destination,
+            text=text,
+            content_hash=content_hash,
+        )
+    else:
+        save = getattr(destination, "save", None)
+        if callable(save):
+            save(json.loads(text))
+        elif callable(destination):
+            destination(json.loads(text))
+        else:
+            raise TypeError(
+                "a checkpoint destination must be a path, callable, or save(payload) sink"
+            )
+    return content_hash
+
+
+def _read_checkpoint_source(source: Any, maximum_bytes: int) -> dict[str, Any]:
+    raw: Any
+    if isinstance(source, dict):
+        raw = source
+    elif isinstance(source, str):
+        with open(source, "rb") as handle:
+            encoded = handle.read(maximum_bytes + 1)
+        if len(encoded) > maximum_bytes:
+            raise ValueError("class/unit checkpoint exceeds its byte limit")
+        raw = encoded.decode("utf-8")
+    else:
+        load = getattr(source, "load", None)
+        if callable(load):
+            raw = load()
+        elif callable(source):
+            raw = source()
+        else:
+            raise TypeError(
+                "a checkpoint source must be a path, payload, callable, or load() source"
+            )
+    if isinstance(raw, str):
+        if len(raw.encode("utf-8")) > maximum_bytes:
+            raise ValueError("class/unit checkpoint exceeds its byte limit")
+        payload = json.loads(raw)
+    elif isinstance(raw, dict):
+        text = _checkpoint_text(raw, maximum_bytes)
+        payload = json.loads(text)
+    else:
+        raise TypeError("a checkpoint source returned neither text nor a dictionary")
+    if not isinstance(payload, dict):
+        raise TypeError("a class/unit checkpoint must contain a JSON object")
+    return payload
+
+
+def load_class_unit_checkpoint(
+    source: Any,
+    field: Any,
+    order: Any,
+    *,
+    component_decoders: dict[str, Any] | None = None,
+    component_verifiers: dict[str, Any] | None = None,
+    max_checkpoint_bytes: int | None = None,
+) -> ClassUnitGroupContext:
+    """Load, authenticate, decode, and independently verify a checkpoint."""
+    maximum = _checkpoint_byte_limit(max_checkpoint_bytes, "checkpoint byte limit")
+    payload = _read_checkpoint_source(source, maximum)
+    return ClassUnitGroupContext.from_dict(
+        field,
+        order,
+        payload,
+        component_decoders=component_decoders,
+        component_verifiers=component_verifiers,
+    )
+
+
+class ClassUnitCheckpoint:
+    """Duck-typed execution controller for durable class/unit computations.
+
+    The mathematical engine remains independent of files and callback policy.
+    It captures exact producer records here, calls `stage` around expensive
+    work, polls `check_cancelled`, and calls `save` at resumable boundaries.
+    A resumed controller exposes decoded state through its `restore_*` methods.
+    """
+
+    def __init__(
+        self,
+        field: Any,
+        order: Any,
+        proof_state: ClassUnitProofState | None = None,
+        *,
+        algorithm: str | None = None,
+        limits: ResourceLimits | None = None,
+        random_seed: int | None = None,
+        destination: Any = None,
+        resume_from: Any = None,
+        progress: Any = None,
+        cancelled: Any = None,
+        component_decoders: dict[str, Any] | None = None,
+        component_verifiers: dict[str, Any] | None = None,
+        max_checkpoint_bytes: int | None = None,
+    ) -> None:
+        if progress is not None and not callable(progress):
+            raise TypeError("a class/unit progress callback must be callable")
+        if cancelled is not None and not callable(cancelled):
+            raise TypeError("a class/unit cancellation callback must be callable")
+        self._progress = progress
+        self._cancelled = cancelled
+        initial_maximum = max_checkpoint_bytes
+        if initial_maximum is None and limits is not None:
+            initial_maximum = limits.get("max_checkpoint_bytes")
+        self._maximum_bytes = _checkpoint_byte_limit(
+            initial_maximum, "checkpoint byte limit"
+        )
+        self._destination = (
+            resume_from
+            if destination is None and isinstance(resume_from, str)
+            else destination
+        )
+        self._last_saved_hash: str | None = None
+        if resume_from is None:
+            if proof_state is None:
+                raise TypeError("a new class/unit checkpoint needs a proof state")
+            self.context = ClassUnitGroupContext(
+                field,
+                order,
+                proof_state,
+                algorithm="auto" if algorithm is None else algorithm,
+                limits=limits,
+                random_seed=0 if random_seed is None else random_seed,
+            )
+            self.resumed = False
+        else:
+            self.context = load_class_unit_checkpoint(
+                resume_from,
+                field,
+                order,
+                component_decoders=component_decoders,
+                component_verifiers=component_verifiers,
+                max_checkpoint_bytes=self._maximum_bytes,
+            )
+            self.resumed = True
+            if proof_state is not None and (
+                proof_state.stable_hash() != self.context.proof_state.stable_hash()
+            ):
+                raise ValueError("resume proof policy differs from the checkpoint")
+            if algorithm is not None and algorithm != self.context.algorithm:
+                raise ValueError("resume algorithm differs from the checkpoint")
+            if (
+                limits is not None
+                and limits.stable_hash() != self.context.limits.stable_hash()
+            ):
+                raise ValueError("resume resource limits differ from the checkpoint")
+            if random_seed is not None and random_seed != self.context.random_seed:
+                raise ValueError("resume random seed differs from the checkpoint")
+            self._last_saved_hash = self.context.stable_hash()
+        if max_checkpoint_bytes is None:
+            context_maximum = self.context.limits.get("max_checkpoint_bytes")
+            if context_maximum is not None:
+                self._maximum_bytes = _checkpoint_byte_limit(
+                    context_maximum, "checkpoint byte limit"
+                )
+        last_progress = None
+        if isinstance(self.context.diagnostics, dict):
+            last_progress = self.context.diagnostics.get("last_progress")
+        self._progress_sequence = (
+            int(last_progress.get("sequence", -1)) + 1
+            if isinstance(last_progress, dict)
+            else 0
+        )
+
+    def restore_factor_base(self) -> tuple[Any, ...]:
+        return self.context.factor_base
+
+    def restore_relations(self) -> tuple[Any, ...]:
+        return self.context.relations
+
+    def restore_search_state(self) -> Any:
+        return self.context.search_state
+
+    def restore_matrix_state(self) -> Any:
+        return self.context.matrix_state
+
+    def restore_proof_progress(self) -> Any:
+        return self.context.proof_progress
+
+    def capture(self, payload: dict[str, Any]) -> None:
+        """Capture one exact resumable state update from a producer engine."""
+        if not isinstance(payload, dict):
+            raise TypeError("checkpoint capture payload must be a dictionary")
+        allowed = {
+            "factor_base",
+            "relations",
+            "relation",
+            "search_state",
+            "matrix_state",
+            "class_group_state",
+            "unit_state",
+            "analytic_state",
+            "saturation_history",
+            "saturation",
+            "proof_progress",
+            "precision_history",
+            "precision",
+            "diagnostics",
+        }
+        if set(payload) - allowed:
+            raise ValueError("a checkpoint capture payload has unknown fields")
+        if "factor_base" in payload:
+            self.context.set_factor_base(payload["factor_base"])
+        if "relations" in payload:
+            self.context.set_relations(payload["relations"])
+        if "relation" in payload:
+            self.context.add_relation(payload["relation"])
+        if "search_state" in payload:
+            self.context.set_search_state(payload["search_state"])
+        for name, setter_name in (
+            ("matrix_state", "set_matrix_state"),
+            ("class_group_state", "set_class_group_state"),
+            ("unit_state", "set_unit_state"),
+            ("analytic_state", "set_analytic_state"),
+            ("proof_progress", "set_proof_progress"),
+        ):
+            if name in payload:
+                getattr(self.context, setter_name)(payload[name])
+        if "saturation_history" in payload:
+            values = tuple(payload["saturation_history"])
+            for value in values:
+                canonical_component(value)
+            self.context.saturation_history = values
+        if "saturation" in payload:
+            self.context.record_saturation(payload["saturation"])
+        if "precision_history" in payload:
+            self.context.precision_history = _checked_precision_history(
+                payload["precision_history"]
+            )
+        if "precision" in payload:
+            self.context.record_precision(payload["precision"])
+        if "diagnostics" in payload:
+            diagnostics = canonical_component(payload["diagnostics"])
+            if not isinstance(diagnostics, dict):
+                raise TypeError("checkpoint diagnostics must be a dictionary")
+            current = canonical_component(self.context.diagnostics)
+            if not isinstance(current, dict):
+                raise TypeError("context diagnostics must be a dictionary")
+            current.update(diagnostics)
+            self.context.diagnostics = current
+
+    def check_cancelled(self, stage: str = "", details: Any = None) -> None:
+        if self._cancelled is not None and self._cancelled():
+            raise ClassUnitCancellationError(stage, details)
+
+    def stage(
+        self, name: str, state: str, details: Any = None
+    ) -> ClassUnitProgressEvent:
+        """Record and publish one progress transition with cancellation polls."""
+        self.check_cancelled(name, details)
+        event = ClassUnitProgressEvent(
+            self._progress_sequence,
+            name,
+            state,
+            details,
+        )
+        self._progress_sequence += 1
+        current = canonical_component(self.context.diagnostics)
+        if not isinstance(current, dict):
+            raise TypeError("context diagnostics must be a dictionary")
+        current["last_progress"] = event.to_dict()
+        current["progress_events"] = self._progress_sequence
+        self.context.diagnostics = current
+        if self._progress is not None:
+            self._progress(event)
+        self.check_cancelled(name, details)
+        return event
+
+    def save(self, payload: dict[str, Any] | None = None, force: bool = False) -> str:
+        """Capture optional state and durably save a canonical checkpoint."""
+        if payload is not None:
+            self.capture(payload)
+        content_hash = self.context.stable_hash()
+        if self._destination is None:
+            return content_hash
+        if not force and content_hash == self._last_saved_hash:
+            return content_hash
+        saved = save_class_unit_checkpoint(
+            self._destination,
+            self.context,
+            max_checkpoint_bytes=self._maximum_bytes,
+        )
+        self._last_saved_hash = saved
+        return saved
+
+
 __all__ = [
     "ALGORITHMS",
     "CONTEXT_SERIALIZATION_SCHEMA",
+    "ClassUnitCancellationError",
+    "ClassUnitCheckpoint",
     "ClassUnitGroupContext",
+    "ClassUnitProgressEvent",
     "ClassUnitProofState",
+    "DEFAULT_MAX_CHECKPOINT_BYTES",
     "PROOF_LABELS",
     "PROOF_STATE_SERIALIZATION_SCHEMA",
     "RESOURCE_LIMITS_SERIALIZATION_SCHEMA",
     "ResourceLimits",
     "canonical_component",
+    "load_class_unit_checkpoint",
+    "save_class_unit_checkpoint",
     "stable_component_hash",
 ]

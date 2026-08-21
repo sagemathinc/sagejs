@@ -46,6 +46,7 @@ test("exact factor-base bounds and norm streams match Sage/PARI/Magma fixtures",
 
   const output = run(String.raw`
 import json
+import time
 import sagejs.number_fields.class_group_factor_base as factor_bases
 from sagejs.number_fields.class_group_factor_base import (
     bach_bound,
@@ -97,6 +98,7 @@ for case in fixture["cases"]:
     # The other entries remain bound and Sage/PARI/Magma splitting oracles;
     # their complete HNF materialization belongs to relation integration.
     stream_case = case["id"] in (
+        "real-quadratic-index-two",
         "cubic-discriminant-minus23",
         "pure-cubic-minus108",
     )
@@ -144,7 +146,12 @@ except ValueError:
 # Compact splitting data must suppress irrelevant high-degree decompositions:
 # at bound seven this cubic has norm-8 and norm-27 primes over 2 and 3, while
 # only the degree-one primes over 5 and 7 enter the factor base.
-stream_plan = plans["cubic-discriminant-minus23"]
+stream_plan = factor_base_plan(
+    fields["cubic-discriminant-minus23"],
+    proof=False,
+    theorem="bdf",
+    max_bound=10000,
+)
 original_factor = factor_bases._prime_ideals.factor_rational_prime
 factor_calls = []
 def tracked_factor(order, prime, *args, **kwargs):
@@ -156,7 +163,27 @@ try:
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
 assert [record.rational_prime for record in streamed] == [5, 7]
-assert factor_calls == [5, 7]
+assert factor_calls == []
+assert stream_plan.progress()["eligible_prime_ideals"] == 2
+
+# The alternate x^2-5 presentation has equation-order index two.  Its
+# splitting scan performs the required full finite-algebra decomposition only
+# at p=2; construction then reuses that cached certificate while p=5 remains
+# selective Dedekind--Kummer work.
+index_plan = factor_base_plan(
+    fields["real-quadratic-index-two"],
+    proof=False,
+    theorem="bdf",
+    max_bound=10000,
+)
+factor_calls = []
+factor_bases._prime_ideals.factor_rational_prime = tracked_factor
+try:
+    index_records = build_factor_base(index_plan)
+finally:
+    factor_bases._prime_ideals.factor_rational_prime = original_factor
+assert [record.norm for record in index_records] == [4, 5]
+assert factor_calls == [2]
 
 # Preflight caps reject work before allocating any ideal record.
 large_field = fields["quintic-class-c4"]
@@ -173,6 +200,91 @@ try:
 except ValueError:
     pass
 
+# Representative construction benchmark and differential oracle.  Every
+# quintic prime here is on the p-maximal Dedekind--Kummer path, so construction
+# must create exactly the 12 eligible ideals and no irrelevant siblings or
+# complete rational-prime decompositions.  One mixed prime is then compared
+# to the independently verified full public decomposition.
+quintic_case = [
+    case for case in fixture["cases"] if case["id"] == "quintic-class-c4"
+][0]
+quintic_plan = factor_base_plan(
+    large_field,
+    proof=True,
+    theorem="minkowski",
+)
+assert quintic_plan.estimated_rational_primes == 19
+assert quintic_plan.estimated_prime_ideals == 95
+assert quintic_plan.progress()["splitting_scan_complete"] is False
+assert quintic_plan.progress()["materialized_prime_ideals"] == 0
+original_prime_from_ideal = factor_bases._prime_ideals._prime_from_ideal
+factor_calls = []
+prime_ideal_constructions = []
+def tracked_prime_from_ideal(*args, **kwargs):
+    prime_ideal_constructions.append(int(args[1]))
+    return original_prime_from_ideal(*args, **kwargs)
+factor_bases._prime_ideals.factor_rational_prime = tracked_factor
+factor_bases._prime_ideals._prime_from_ideal = tracked_prime_from_ideal
+try:
+    construction_started = time.perf_counter()
+    interrupted_stream = prime_ideal_norm_stream(quintic_plan)
+    first_quintic_record = next(interrupted_stream)
+    partial_progress = quintic_plan.progress()
+    assert partial_progress["splitting_scan_complete"] is True
+    assert partial_progress["factor_base_complete"] is False
+    assert partial_progress["materialized_prime_ideals"] == 1
+    quintic_records = build_factor_base(quintic_plan)
+    construction_seconds = time.perf_counter() - construction_started
+    cache_started = time.perf_counter()
+    cached_records = build_factor_base(quintic_plan)
+    cache_seconds = time.perf_counter() - cache_started
+finally:
+    factor_bases._prime_ideals.factor_rational_prime = original_factor
+    factor_bases._prime_ideals._prime_from_ideal = original_prime_from_ideal
+quintic_compact = [
+    {
+        "p": record.rational_prime,
+        "norm": record.norm,
+        "e": record.ramification_index,
+        "f": record.residue_degree,
+    }
+    for record in quintic_records
+]
+assert quintic_compact == quintic_case["minkowski_factor_base"]
+assert factor_calls == []
+assert len(prime_ideal_constructions) == fixture["benchmark"]["selected_prime_ideals"]
+assert len(prime_ideal_constructions) < fixture["benchmark"]["baseline_materialized_siblings"]
+assert construction_seconds < fixture["benchmark"]["maximum_seconds"]
+assert cache_seconds < fixture["benchmark"]["warm_cache_maximum_seconds"]
+assert cached_records is quintic_records
+assert quintic_records[0] is first_quintic_record
+assert quintic_plan.progress() == {
+    "schema": "sagejs.number-fields/factor-base-progress-v1",
+    "bound": 38,
+    "splitting_scan_complete": True,
+    "factor_base_complete": True,
+    "eligible_rational_primes": 8,
+    "eligible_prime_ideals": 12,
+    "materialized_prime_ideals": 12,
+}
+
+selective_17 = [
+    record for record in quintic_records if record.rational_prime == 17
+]
+full_17 = [
+    prime_ideal
+    for prime_ideal in original_factor(quintic_plan.order, 17).prime_ideals()
+    if 17 ** int(prime_ideal.residue_class_degree()) <= quintic_plan.bound
+]
+assert len(selective_17) == len(full_17) == 1
+assert selective_17[0].hnf_fingerprint == factor_bases._encode_rows(
+    full_17[0]._basis_rows
+)
+restored_17 = factor_base_prime_from_dict(
+    quintic_plan.order, selective_17[0].to_dict()
+)
+assert restored_17.to_dict() == selective_17[0].to_dict()
+
 print(json.dumps(results, separators=(",", ":")))
 `);
 
@@ -181,7 +293,11 @@ print(json.dumps(results, separators=(",", ":")))
     entry.bounds.minkowski,
     entry.bounds.bach,
     entry.bounds.bdf,
-    ["cubic-discriminant-minus23", "pure-cubic-minus108"].includes(entry.id)
+    [
+      "real-quadratic-index-two",
+      "cubic-discriminant-minus23",
+      "pure-cubic-minus108",
+    ].includes(entry.id)
       ? entry.bdf_factor_base.length
       : null,
   ]);

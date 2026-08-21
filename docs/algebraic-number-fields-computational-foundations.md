@@ -10,12 +10,14 @@ calculation: prime decompositions carry replayable certificates, exact ideal
 lattices feed exact zeta coefficients, and those coefficients feed numerical
 analytic continuation.
 
-This chapter is also a guide to the proof boundary.  Exact signatures, ideal
-identities, prime decompositions, coefficients, and the currently supported
-unit and class-group certificates are exact.  Complex values, residues,
-regulators, plots, and the analytic class-number-formula comparison are
-numerical approximations.  General Dedekind-zeta continuation is explicitly
-non-rigorous at present.
+This chapter is also a guide to the proof boundary. Exact signatures, ideal
+identities, prime decompositions, coefficients, units, and completed class and
+unit groups are exact. General Dedekind-zeta continuation, complex values,
+residues, plots, and the analytic class-number-formula comparison are numerical
+approximations and are explicitly non-rigorous at present. In contrast, the
+class/unit engine returns a rigorous ball enclosure for its weighted-log
+regulator. See [Number-field class and unit groups](number-field-class-unit-groups.md)
+for its unconditional and conditional-GRH semantics.
 
 Every fence marked `sage test` is run by the documentation test suite.  The
 larger plotting and general-continuation examples are ordinary executable Sage
@@ -296,14 +298,16 @@ The signature and embedding ordering are exact.  The displayed numerical
 images and logarithms are explicitly marked approximations because the current
 public `QQbar.n` transport does not expose Arb radii.
 
-## Certified units and class groups: the present complete slices
+## Certified units and class groups
 
-The result objects separate a found subgroup from a proved full group.  A
-complete unit result has exact norm and integrality certificates plus an exact
-saturation certificate; an incomplete result never supplies a regulator as if
-its generators were fundamental.
+The public methods `class_unit_group`, `class_group`, `class_number`,
+`unit_group`, `units`, and `regulator` share one exact relation context. Result
+objects distinguish unconditional completion, exact relations whose
+factor-base generation assumes GRH, and resource-limited incomplete searches.
+An incomplete result never supplies a tentative group as a proved answer.
 
-Real quadratic fields are complete through bounded Pell enumeration:
+Real quadratic fields use continued fractions and reduced indefinite forms,
+including the ordinary/narrow distinction:
 
 ```sage test
 U5 = K.unit_group()
@@ -315,50 +319,19 @@ assert 0.48 < R5.value < 0.49
 [U5.generators, R5, K.roots_of_unity()]
 ```
 
-There are also two deliberately small but fully certified cubic vertical
-slices.  For `x^3-x-1` (signature `(1,1)`, unit rank one) and
-`x^3-x^2-2*x+1` (signature `(3,0)`, unit rank two), Sage.js exhausts an exact
-125-element fundamental-box certificate and proves class number one using the
-exact Minkowski bound and certified prime decomposition.
+For general absolute fields, the deterministic Buchmann--Hecke-style engine
+collects exact ideal relations, retains factored principal witnesses, extracts
+units, and validates the combined class/unit index with a rigorous
+Dedekind-zeta residue enclosure. `proof=False` permits a named GRH factor-base
+theorem; `proof=True` additionally replays every prime ideal required by the
+exact Minkowski theorem. Both modes remain explicitly resource bounded.
 
-```sage test
-mixed = NumberField(x^3 - x - 1, "m")
-totally_real = NumberField(x^3 - x^2 - 2*x + 1, "r")
-for F, expected_signature, expected_rank in [
-    (mixed, (1, 1), 1),
-    (totally_real, (3, 0), 2),
-]:
-    units = F.unit_group()
-    classes = F.class_group_result()
-    assert F.signature() == expected_signature
-    assert units.complete and units.unit_rank == expected_rank
-    assert units.verify_completion()
-    assert classes.complete and classes.order() == 1
-    assert classes.certificate.verify(max_elements=1)
-    assert classes.has_principal_element_witnesses
-
-[(mixed.unit_group(), mixed.class_group_result()),
- (totally_real.unit_group(), totally_real.class_group_result())]
-```
-
-Outside the complete domains, the bounded searches say so:
-
-```sage test
-other = NumberField(x^3 - 2, "c")
-bounded_units = other.unit_group(coefficient_bound=1)
-bounded_classes = other.class_group_result()
-assert not bounded_units.complete
-assert bounded_units.proof_status == "incomplete"
-assert not bounded_classes.complete
-assert bounded_classes.proof_status == "incomplete"
-[bounded_units, bounded_classes]
-```
-
-Complete class groups currently include imaginary quadratic fields, degree-one
-fields, and the two cubics above.  Complete roots of unity cover fields with a
-real embedding and imaginary quadratic fields.  Real quadratic unit groups are
-complete.  Higher-degree general unit and class-group algorithms remain
-bounded searches, not hidden conjectural answers.
+The committed acceptance field
+`x^5 + x^3 - x^2 + 4*x + 1` has class group `C4` and unit rank two in both
+proof modes. It is deliberately not a quick documentation example: relation
+search and rigorous analytic validation can take minutes on a developer host.
+See [Number-field class and unit groups](number-field-class-unit-groups.md) for
+proof labels, exact maps, checkpoint/resume controls, and the oracle corpus.
 
 ## The analytic class-number formula
 

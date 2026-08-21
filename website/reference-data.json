@@ -27659,10 +27659,10 @@
         "name": "NumberField",
         "qualified": "NumberField",
         "path": "src/baselib/number_fields.py",
-        "line": 2277,
+        "line": 2546,
         "excerpt": {
-          "start_line": 2265,
-          "text": "        if self._is_tutorial_cubic():\n            return 1\n        if self.degree() == 2:\n            return self._quadratic_backend()[0].class_number()\n        result = self.class_group_result()\n        if result.complete:\n            return int(result.order())\n        raise NotImplementedError(\n            \"the bounded class-group search did not certify a class number\"\n        )\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
+          "start_line": 2534,
+          "text": "            if signature[0] == 2 and signature[1] == 0:\n                return int(self._real_quadratic_backend(algorithm, **limits).order())\n            if len(limits) != 0:\n                raise TypeError(\n                    \"imaginary quadratic forms do not accept resource limits\"\n                )\n            return int(self._quadratic_backend()[0].class_number())\n        return _nf_class_unit_groups_module().class_number(\n            self, proof=proof, algorithm=algorithm, **limits\n        )\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
         }
       },
       "examples": []
@@ -29716,16 +29716,16 @@
         "name": "QuadraticField",
         "qualified": "QuadraticField",
         "path": "src/baselib/number_fields.py",
-        "line": 3399,
+        "line": 3668,
         "excerpt": {
-          "start_line": 3387,
+          "start_line": 3656,
           "text": "        # Split and ramified primes are represented by every first-quadrant\n        # solution a^2+b^2=p.  Ordered pairs give the two conjugate ideals.\n        for real in range(1, coordinate_bound + 1):\n            for imag in range(1, coordinate_bound + 1):\n                norm = real * real + imag * imag\n                if norm > limit:\n                    break\n                if runtime.flint_backend().isPrime(runtime.bigint(norm)):\n                    generators.append(GaussianInteger(self, real, imag))\n        return [GaussianPrimeIdeal(generator) for generator in generators]\n\n\ndef QuadraticField(\n    radicand: Any,\n    names: Any = None,\n) -> QuadraticField_class:\n    r\"\"\"Construct an exact imaginary quadratic field.\n\n    Negative radicands support exact field arithmetic, the maximal order,\n    integral bases, discriminants, and finite ideal class groups.\n\n    ### Examples\n\n    ```sage\n    sage: K.<a> = QuadraticField(-23)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
-          "line": 3411,
+          "line": 3680,
           "source": "K.<a> = QuadraticField(-23)",
           "want": "",
           "tags": [],
@@ -29741,7 +29741,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#44cb607cdf73cfb4-163f9d874bf45bcc",
-          "line": 3412,
+          "line": 3681,
           "source": "K.discriminant()",
           "want": "-23\n",
           "tags": [],
@@ -29757,7 +29757,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
-          "line": 3414,
+          "line": 3683,
           "source": "K.class_group().invariants()",
           "want": "(3,)\n",
           "tags": [],
