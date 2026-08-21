@@ -3,6 +3,7 @@ export const omittedResourceExports = [
   "ffiFmpzMatrixSub",
   "ffiFmpzMatrixNeg",
   "ffiFmpzMatrixScalarMul",
+  "ffiFmpzMatrixIsZero",
   "ffiFmpzMatrixCharpoly",
   "ffiFmpzMatrixMinpoly",
   "ffiFmpzMatrixHnfTransform",
@@ -29,6 +30,7 @@ print((Z + W).list())
 print((Z - W).list())
 print((-Z).list())
 print((Z * (2^130 + 3)).list()[0])
+print(Z.is_zero(), zero_matrix(ZZ, 3, 4).is_zero())
 print(Z.charpoly(), Z.minpoly())
 H, U = Z.hermite_form(transformation=True)
 D, L, R = Z.smith_form()
@@ -52,6 +54,7 @@ export const expectedStdout = [
   "[2, 3, 2, 3, 2, 7, 4, -3, 8]",
   "[-2, -4, -4, -6, -6, -12, -10, -4, -16]",
   "2722258935367507707706996859454145691654",
+  "False True",
   "x^3 - 24*x^2 + 28*x - 48 x^3 - 24*x^2 + 28*x - 48",
   "True True",
   "[9/10, 23/21, 53/44, 107/78]",

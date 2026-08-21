@@ -3125,12 +3125,20 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_integer_storage():
-            result = bool(
-                _flint_ffi_module().fmpz_matrix_is_zero(self._integer_resource())
-            )
+            if _flint_backend_has_function("ffiFmpzMatrixIsZero"):
+                result = bool(
+                    _flint_ffi_module().fmpz_matrix_is_zero(self._integer_resource())
+                )
+                implementation = "generated-flint-resource"
+            else:
+                kernel = _dense_integer_kernel_module().dense_integer_matrix_is_zero
+                result = bool(
+                    kernel(_dense_integer_buffer(kernel, self._integer_entries()))
+                )
+                implementation = _typed_python_implementation(kernel)
             _trace_dense_integer_selection(
                 "is_zero",
-                "generated-flint-resource",
+                implementation,
                 self.nrows(),
                 self.ncols(),
             )
