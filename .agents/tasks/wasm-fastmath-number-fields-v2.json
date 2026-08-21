@@ -42,15 +42,98 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
+    "pnpm test:native",
     "pnpm architecture:check",
     "node --test test/number-field-fastmath-wasm.cjs",
     "node --test test/number-field-maximal-order-engine.cjs test/number-field-maximal-order-selector.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-contracts.cjs test/number-field-zeta-public.cjs test/number-field-zeta-wasm-dispatch.cjs test/number-field-global-arithmetic.cjs test/number-fields.cjs",
     "node scripts/check-package-graph.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.711,
+      "started_at": "2026-08-21T00:41:39.549Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.1,
+      "started_at": "2026-08-21T00:42:08.528Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-fastmath-wasm.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.248,
+      "started_at": "2026-08-21T00:42:20.323Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-engine.cjs test/number-field-maximal-order-selector.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-contracts.cjs test/number-field-zeta-public.cjs test/number-field-zeta-wasm-dispatch.cjs test/number-field-global-arithmetic.cjs test/number-fields.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 28.74,
+      "started_at": "2026-08-21T00:42:29.957Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-fastmath-wasm.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.222,
+      "started_at": "2026-08-21T00:53:34.239Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-maximal-order-engine.cjs test/number-field-maximal-order-selector.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-contracts.cjs test/number-field-zeta-public.cjs test/number-field-zeta-wasm-dispatch.cjs test/number-field-global-arithmetic.cjs test/number-fields.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.057,
+      "started_at": "2026-08-21T00:53:45.086Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-package-graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.12,
+      "started_at": "2026-08-21T00:54:17.123Z",
+      "commit": "d613151f09dc88e52313df5beb1ba259eac94cd5",
+      "workspace_fingerprint": "dbd6583b94753a22cf9d20802d937fcaae97b7d11d6add37e44a8a9e3c4acce6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Normal public cubic maximal-order construction now converts an unavailable compact order resource into one batched generated FLINT Round-2 call for every certified word prime, while preserving exact dynamic fallback and independent maximality certification through a fresh generated replay. The public, direct-generated, and forced-disabled routes agree on exact bases, discriminants, indices, and certificates. The exact production artifact sha256:48a32bf416f0e56519e003f51e3a3aa087d55616a50d95e17f3efb0382aed436 passes the two focused Node-Wasm tests and 37 existing number-field regressions. For the representative cubic index-two workload, the public route measured 61.51 ms warm median versus 208.24 ms with the primitive disabled (3.38x), with 61 versus 354 crossings and 760 versus 12,815 copied bytes. Dedekind-zeta factor-degree batching and source-transparent coefficient assembly were already direct Wasm and required no duplicate implementation.",
+    "risks": [
+      "The compact number_field_order_from_polynomial_resource and authenticated carried-analysis resources remain unavailable in Wasm; the public route deliberately composes the existing lower-level generated Round-2 primitive and independently replays it for certification.",
+      "The explicit algorithm='round2' selector and exceptional arbitrary primes above the word-prime ceiling retain the exact portable implementation; this change accelerates the normal auto/native word-prime route only.",
+      "The number-field-algorithms lazy package is 1,119,968 of 1,120,000 bytes. Concurrent number-field integration may require a reviewed package split or budget adjustment rather than further local compression.",
+      "Runtime receipts in this lane are Linux x64. Other required hosts consume the existing generated FLINT capability or its tested exact fallback and remain integration-CI responsibilities.",
+      "The lane-local aggregate pnpm test:native was stopped at coordinator request after the coherent root build and native FLINT suites passed; the coordinator reports the aggregate checks green on the integrated source. The focused exact-artifact and number-field receipts here are current, but the integrated contract owner must attach the aggregate receipt before advancing this task to review."
+    ],
+    "next_steps": [
+      "Port the variable-size compact order and authenticated field-analysis resource ownership to Wasm so construction and terminal proof can share one packed resource without the independent replay call.",
+      "Decide whether forced algorithm='round2' should select the generated batch when available; retain an explicit way to exercise the dynamic differential oracle.",
+      "Profile and close the separate class-group, unit-group, and ideal-arithmetic workflows in their existing claimed lanes; do not duplicate the already-direct zeta factor and coefficient kernels.",
+      "Keep arbitrary-prime polygon/Buchmann-Lenstra paths exact and portable unless a mature arbitrary-modulus library route is added with its own certificates."
+    ]
   }
 }
