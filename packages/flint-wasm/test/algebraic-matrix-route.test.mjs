@@ -1,13 +1,11 @@
-const assert = require("node:assert/strict");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import test from "node:test";
 
 test("public Node/browser evaluator routes AA matrix arithmetic to algebraic Wasm", async () => {
   // node-kernel installs the Node Worker host around the same kernel.mjs and
-  // distribution assets used by the browser.  This exercises public Sage
+  // distribution assets used by the browser. This exercises public Sage
   // source, rather than calling the algebraic adapter directly.
-  const { createSage } = await import(
-    "../packages/flint-wasm/node-kernel.mjs"
-  );
+  const { createSage } = await import("../node-kernel.mjs");
   const sage = await createSage({ timeout: 30_000 });
   try {
     const result = await sage.evaluate(`
