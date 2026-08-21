@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-number-fields-v2",
+  "title": "Wasm Fastmath Number Fields V2",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile cubic maximal order, ideal, zeta, class, unit, and order workflows; close the highest-impact normal-case portable hot loop through source-transparent number-field kernels with canonical proof semantics and direct-Wasm route evidence",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/maximal_order.py",
+    "src/lib/sagejs/number_fields/maximal_order_engine.py",
+    "src/lib/sagejs/number_fields/maximal_order_certification.py",
+    "src/lib/sagejs/number_fields/maximal_order_contracts.py",
+    "src/lib/sagejs/number_fields/order_resource.py",
+    "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
+    "test/number-field-fastmath-wasm.cjs",
+    "bench/number-field-fastmath-wasm.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sage",
+      "disabled-native Sage.js",
+      "direct generated FLINT Wasm Round-2 primitive",
+      "canonical maximal-order certificate replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "node --test test/number-field-fastmath-wasm.cjs",
+    "node --test test/number-field-maximal-order-engine.cjs test/number-field-maximal-order-selector.cjs test/number-field-analysis-public-hook.cjs test/number-field-maximal-order-contracts.cjs test/number-field-zeta-public.cjs test/number-field-zeta-wasm-dispatch.cjs test/number-field-global-arithmetic.cjs test/number-fields.cjs",
+    "node scripts/check-package-graph.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
