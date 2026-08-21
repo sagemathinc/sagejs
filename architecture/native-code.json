@@ -543,6 +543,20 @@
       "rationale": "Fixed-width lifecycle, copied-buffer, and exact algebraic-number ABI shared by Node and WebAssembly host adapters."
     },
     {
+      "path": "packages/flint/src/multivariate_wasm_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral bounded canonical packet bridge to mature FLINT fmpz_mpoly resultant computation, with no host callbacks or retained pointers."
+    },
+    {
+      "path": "packages/flint/src/multivariate_wasm_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Fixed-width packet schema, status codes, and resource limits for the shared multivariate resultant boundary."
+    },
+    {
       "path": "packages/flint/src/modsym_core.c",
       "category": "mathematical-algorithm",
       "review_status": "audited",

@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 113,
+    "classified-native-file": 115,
     "declared-ffi": 412,
     "declared-ffi-resource": 29,
     "napi-export": 311,
@@ -8675,6 +8675,22 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/multivariate_wasm_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/multivariate_wasm_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/multivariate_wasm_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/multivariate_wasm_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/src/multivariate.c",

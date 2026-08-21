@@ -167,6 +167,7 @@ const integration = [
   "test/exact-matrix-bulk-construction.cjs",
   "test/linear-combinatorial-invariants.cjs",
   "test/wasm-combinatorial-invariants.cjs",
+  "test/wasm-multivariate-polynomial-core.cjs",
   "test/wasm-arithmetic-hotspots.cjs",
   "test/wasm-analytic-public.cjs",
   "test/wasm-numeric-symbolic-public.cjs",
