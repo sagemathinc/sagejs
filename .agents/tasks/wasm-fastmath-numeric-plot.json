@@ -37,10 +37,48 @@
     "pnpm test:native",
     "pnpm bench:elliptic-curves"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.178,
+      "started_at": "2026-08-21T00:22:21.253Z",
+      "commit": "6a1d6e6db82e8d8c9b4e806e20b04e7faedee9a9",
+      "workspace_fingerprint": "0ebfe0207d755f1785c0d7fe93e929a63498c64b0b94c886e3708f43944fc43a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:elliptic-curves",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.089,
+      "started_at": "2026-08-21T00:22:52.814Z",
+      "commit": "6a1d6e6db82e8d8c9b4e806e20b04e7faedee9a9",
+      "workspace_fingerprint": "0ebfe0207d755f1785c0d7fe93e929a63498c64b0b94c886e3708f43944fc43a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-numeric-plot-batching.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.242,
+      "started_at": "2026-08-21T00:35:13.737Z",
+      "commit": "6a1d6e6db82e8d8c9b4e806e20b04e7faedee9a9",
+      "workspace_fingerprint": "0ebfe0207d755f1785c0d7fe93e929a63498c64b0b94c886e3708f43944fc43a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Moved elliptic L-series work-precision planning into the shared FLINT implementation, reused it from native and Wasm adapters, and added a real-browser phase profiler plus focused numerical-contract regressions. The ordinary 64x64 plot now selects domain-sensitive precision instead of a fixed 512-bit guard. Firefox warm plot median fell from 25,601.08 ms to 5,237.28 ms (4.89x); the isolated batch/materialization phase fell from 25,439.70 ms to 4,831.00 ms. Chromium and WebKit full-plot phase medians measured 883.87 ms and 1,221.92 ms. Receipt-backed routes and the release workload's six crossings / 340,603 copied bytes were unchanged.",
+    "risks": [
+      "Firefox remains materially slower than Chromium and WebKit for the same Acb-heavy Wasm computation; phase profiles show this residual is inside native Wasm math, not Python materialization, domain coloring, or rendering.",
+      "The aggregate pnpm test:native run was stopped at integration request after its build and relevant FLINT tests passed (50 pass, 1 platform skip); later unrelated package/performance stages did not finish.",
+      "Integration must regenerate the shared native/FFI audit snapshots for the new planner and direct elliptic L-series exports."
+    ],
+    "next_steps": [
+      "Integrate profiler/regression commits ff4d6ac0 and 96f60fc1; the planner and adapter commits were integrated independently by the root lane.",
+      "Track Firefox's approximately 5.2-second residual as an engine-specific Acb/Wasm optimization rather than reintroducing Python or reducing declared precision."
+    ]
   }
 }
