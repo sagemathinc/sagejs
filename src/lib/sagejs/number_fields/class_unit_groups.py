@@ -623,8 +623,11 @@ class ClassUnitGroupEngine:
             "partial_relations": 0,
             "partial_matches": 0,
             "partial_discards": 0,
+            "unit_log_rank": 0,
+            "unit_rank_target": 0,
         }
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
+        self._relation_unit_log_rank = 0
 
     def _stage(self, name: str, state: str, **details: Any) -> None:
         if name in self._phase_timings and "elapsed_seconds" not in details:
@@ -1033,7 +1036,6 @@ class ClassUnitGroupEngine:
             self._checkpoint_capture({"relations": tuple(collector.records)})
         if isinstance(restored_state, dict):
             restored_state = relations.RelationSearchState.from_dict(restored_state)
-        attempts = 0
         presentation = matrix_module.extract_relation_presentation(
             [record.row for record in collector.records],
             len(factor_base),
@@ -1048,6 +1050,7 @@ class ClassUnitGroupEngine:
             coefficient_bound=coefficient_bound,
             state=restored_state,
         )
+        attempts = int(search.state.ideals_tested)
         # One accepted relation can require seconds of exact ideal arithmetic,
         # so recompute the tiny presentation after each success.  Degree-many
         # redundant dependencies are nevertheless important: the first full
@@ -1055,6 +1058,20 @@ class ClassUnitGroupEngine:
         # and the extra exact relations are what saturate both lattices before
         # the analytic index-one check.
         dependency_target = unit_rank + max(2, int(self.field.degree()))
+        unit_log_rank = self._unit_logarithmic_rank(
+            collector.records, presentation, unit_rank
+        )
+        self._relation_unit_log_rank = unit_log_rank
+        self._resource_usage.update(
+            {
+                "relation_attempts": attempts,
+                "relation_candidates": int(search.state.candidates_tested),
+                "ideals_tested": int(search.state.ideals_tested),
+                "relations": len(collector.records),
+                "unit_log_rank": unit_log_rank,
+                "unit_rank_target": unit_rank,
+            }
+        )
         factor_norms = [int(prime.norm()._numerator) for prime in factor_base]
         largest_factor_norm = max(factor_norms) if factor_norms else 2
         large_prime_bound = (
@@ -1063,6 +1080,7 @@ class ClassUnitGroupEngine:
         while (
             presentation.rank < len(factor_base)
             or len(presentation.dependency_transforms) < dependency_target
+            or unit_log_rank < unit_rank
         ):
             self._check_cancelled()
             if attempts >= self.limits.max_relation_attempts:
@@ -1098,6 +1116,10 @@ class ClassUnitGroupEngine:
                     len(factor_base),
                     require_full_rank=False,
                 )
+                unit_log_rank = self._unit_logarithmic_rank(
+                    collector.records, presentation, unit_rank
+                )
+                self._relation_unit_log_rank = unit_log_rank
             coefficient_bound = min(
                 self.limits.max_coefficient_bound,
                 1 + attempts // max(1, len(factor_base)),
@@ -1109,6 +1131,8 @@ class ClassUnitGroupEngine:
                     "ideals_tested": int(search.state.ideals_tested),
                     "relations": len(collector.records),
                     "partial_relations": len(self._partials),
+                    "unit_log_rank": unit_log_rank,
+                    "unit_rank_target": unit_rank,
                 }
             )
             if len(collector.records) != before:
@@ -1129,17 +1153,27 @@ class ClassUnitGroupEngine:
                 rank=int(presentation.rank),
                 columns=len(factor_base),
                 dependencies=len(presentation.dependency_transforms),
+                unit_log_rank=unit_log_rank,
+                unit_rank_target=unit_rank,
                 search_state=search.state.to_dict(),
             )
         self._phase_finish("relations", started)
+        search_complete = (
+            presentation.rank == len(factor_base)
+            and len(presentation.dependency_transforms) >= dependency_target
+            and unit_log_rank >= unit_rank
+        )
         self._stage(
             "relations",
-            "complete" if presentation.rank == len(factor_base) else "bounded",
+            "complete" if search_complete else "bounded",
             attempts=attempts,
             relations=len(collector.records),
             rank=int(presentation.rank),
             columns=len(factor_base),
             dependencies=len(presentation.dependency_transforms),
+            dependency_target=dependency_target,
+            unit_log_rank=unit_log_rank,
+            unit_rank_target=unit_rank,
             candidates=int(search.state.candidates_tested),
             ideals=int(search.state.ideals_tested),
             partials_retained=len(self._partials),
@@ -1149,6 +1183,18 @@ class ClassUnitGroupEngine:
             search_state=search.state.to_dict(),
         )
         return collector, presentation
+
+    def _unit_logarithmic_rank(
+        self, records: Sequence[Any], presentation: Any, unit_rank: int
+    ) -> int:
+        """Return the observed archimedean rank of exact dependency units."""
+        if unit_rank == 0:
+            return 0
+        logarithms = []
+        for dependency in presentation.dependency_transforms:
+            unit = self._combine(records, dependency)
+            logarithms.append(list(unit.archimedean_logarithms(80)[:-1]))
+        return min(unit_rank, _floating_matrix_rank(logarithms))
 
     def _decode_relation_witness(self, record: Any) -> Any:
         return self.components.relations.FactoredPrincipalWitness.from_dict(
@@ -1355,6 +1401,16 @@ class ClassUnitGroupEngine:
                     invariants=presentation.invariants,
                     diagnostics={"relations": len(collector.records)},
                 )
+            if self._relation_unit_log_rank < unit_rank:
+                return self._incomplete(
+                    "relation search exhausted before full logarithmic unit rank",
+                    invariants=presentation.invariants,
+                    diagnostics={
+                        "relations": len(collector.records),
+                        "unit_log_rank": self._relation_unit_log_rank,
+                        "unit_rank_target": unit_rank,
+                    },
+                )
             units = self._independent_units(collector.records, presentation, unit_rank)
             torsion, regulator, index = self._analytic_index(
                 presentation, units, unit_rank
@@ -1474,6 +1530,44 @@ def _index_combinations(count: int, size: int) -> Iterable[tuple[int, ...]]:
         indices[position] += 1
         for index in range(position + 1, size):
             indices[index] = indices[index - 1] + 1
+
+
+def _floating_matrix_rank(rows: Sequence[Sequence[Any]]) -> int:
+    """Estimate row rank after scale normalization for search steering only."""
+    if not rows:
+        return 0
+    width = len(rows[0])
+    matrix = []
+    for row in rows:
+        if len(row) != width:
+            raise ValueError("logarithm rows have inconsistent widths")
+        values = [_floating_value(value) for value in row]
+        scale = 0.0
+        for value in values:
+            scale = max(scale, abs(value))
+        if scale > 1e-14:
+            matrix.append([value / scale for value in values])
+    rank = 0
+    for column in range(width):
+        pivot = None
+        pivot_size = 0.0
+        for row_index in range(rank, len(matrix)):
+            candidate_size = abs(matrix[row_index][column])
+            if candidate_size > pivot_size:
+                pivot = row_index
+                pivot_size = candidate_size
+        if pivot is None or abs(matrix[pivot][column]) <= 1e-10:
+            continue
+        matrix[rank], matrix[pivot] = matrix[pivot], matrix[rank]
+        pivot_value = matrix[rank][column]
+        for row_index in range(rank + 1, len(matrix)):
+            multiple = matrix[row_index][column] / pivot_value
+            for index in range(column, width):
+                matrix[row_index][index] -= multiple * matrix[rank][index]
+        rank += 1
+        if rank == len(matrix):
+            break
+    return rank
 
 
 def _floating_determinant_absolute(rows: Sequence[Sequence[Any]]) -> float:

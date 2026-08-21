@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement the deterministic small-field class-and-unit vertical slice and adaptive Buchmann-Hecke orchestration, including unconditional motivating quintic C4",
-  "base_commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
+  "base_commit": "5e7508e6ef3c95ba6950e42fc3d226230902389d",
   "claims": [
     "src/lib/sagejs/number_fields/class_unit_groups.py",
     "test/number-field-class-unit-engine.cjs",
@@ -78,16 +78,16 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented the ordinary-Python adaptive class/unit orchestrator and baselib-facing projections. The engine lazily composes exact factor-base planning, authenticated relation collection, persistent deterministic LLL/random-ideal search, FLINT/Python HNF-SNF presentations, exact ideal-class maps, relation-kernel unit recovery, rigorous regulator/zeta hR index validation, and separate unconditional Minkowski versus GRH-conditional terminal states. Specialized exact degree-one and supported cubic routes share one cached context. Focused tests cover complete coupled results, cache reuse, fail-closed missing producers and cancellation, exact C4 SNF ideal-map round trips, resource policies, and the external quintic target metadata.",
+    "summary": "Hardened the ordinary-Python Buchmann-Hecke engine with per-phase timing, bounded resource diagnostics, structured progress, inner-loop cancellation polls, durable checkpoint save/resume hooks, deterministic single-prime and targeted ideal-product LLL scheduling, and a bounded exact one-large-prime partial pool. Relation termination now additionally measures the archimedean rank of exact dependency units and continues deterministically until it reaches the Dirichlet rank; restored searches resume their global ideal-attempt counter. The motivating proof=False quintic now completes with class group C4, logarithmic unit rank 2/2, 19 relations, and rigorous analytic index one. Focused tests cover 13 orchestration, exact partial, checkpoint, progress, resource, adaptive-unit-rank, routing, and C4-map cases.",
     "risks": [
-      "The general component branches and valuation acceleration were intentionally not copied into this lane; the integrated motivating quintic has not yet run against their merged APIs.",
-      "The focused receipt used a sibling worktree executable because this worktree has no optional generated FLINT adapter. pnpm test:native and the full changed-file gate remain integration work.",
-      "Sage/PARI and Magma executables were not provisioned on this host, so the committed fixture records the reviewed target but this lane did not regenerate the external oracle answer or benchmark it."
+      "The motivating proof=False run completed in 111 seconds on this non-benchmark host, versus a prior 44-second incomplete receipt. Stable performance comparison and proof=True timing still belong on bench-1.",
+      "The checkpoint serializes authenticated factor bases, full relations, PRNG search state, and presentations, but intentionally does not serialize unmatched one-large-prime partials; resumption may repeat acceleration work without affecting correctness or determinism of admitted records.",
+      "pnpm test:native, pnpm test:changed, external Sage/PARI and Magma regeneration, and cross-platform receipts remain central integration gates."
     ],
     "next_steps": [
-      "Merge the six declared producer dependencies and valuation acceleration c26e3eba, then run proof=True and proof=False on the discriminant-380452 quintic and tune deterministic relation caps from the recorded stage diagnostics.",
-      "Wire the exported class_unit_context, class_group, class_number, unit_group, units, and regulator projections into the baselib and add class_unit_groups.py to pyrightconfig.json in the integration lane.",
-      "Run the focused test with the integrated local executable, pnpm test:changed, pnpm test:native, architecture gates, Sage/PARI and Magma oracles, and a warm quintic benchmark before changing this contract to review."
+      "Merge the adaptive logarithmic-rank fix, then run the bench-1 quintic runner first with proof=False and then proof=True under its hard timeout; retain the emitted phase/search/resource diagnostics.",
+      "Run pnpm test:changed and pnpm test:native on the integrated native build, plus external Sage/PARI and Magma oracle regeneration for the quintic C4 target.",
+      "Move the contract to review only after the bench-1 and broad native gates are recorded."
     ]
   }
 }
