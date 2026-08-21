@@ -6,6 +6,9 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
+const {
+  generatedWasmResourceAdapter,
+} = require("../../../tools/ffi/wasm-adapters.cjs");
 const { generatedWasmClosure } = require("../../../tools/ffi/wasm-closure.cjs");
 const {
   ellipticLseriesCoreSource,
@@ -89,6 +92,14 @@ const kernelManifestOutput = path.join(
   "index.json",
 );
 const wasmPackLoaderOutput = path.join(outputDirectory, "wasm-pack-loader.mjs");
+const kernelFlintResourceAdapterSource = path.join(
+  outputDirectory,
+  "kernel-flint-resource-adapter.c",
+);
+const kernelFlintResourceBackendOutput = path.join(
+  outputDirectory,
+  "kernel-flint-resource-backend.mjs",
+);
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const compilerFrontendOutput = path.join(
   outputDirectory,
@@ -998,11 +1009,48 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
         path.join(directory, "wasm_bridge.c"),
       ];
     });
+    let ownershipAdapter = null;
+    if ((pack.requiredResourceAdapters?.length ?? 0) !== 0) {
+      if (pack.domain !== "flint") {
+        throw new Error(
+          `unsupported ${pack.domain} kernel resource ownership adapter`,
+        );
+      }
+      const resourceIds = pack.requiredResourceAdapters.map((item) => item.id);
+      const artifact = generatedWasmResourceAdapter(flintDeclaration, {
+        resourceIds,
+        resourceOnly: true,
+      });
+      fs.writeFileSync(kernelFlintResourceAdapterSource, artifact.cSource);
+      fs.writeFileSync(
+        kernelFlintResourceBackendOutput,
+        artifact.javascriptSource +
+          "\nexport const generatedWasmManifest = Object.freeze(" +
+          JSON.stringify(artifact.manifest) +
+          ");\n",
+      );
+      const identity = `generated-ownership:${flintDeclaration.identity}:` +
+        createHash("sha256")
+          .update(JSON.stringify(artifact.manifest))
+          .digest("hex");
+      ownershipAdapter = {
+        identity,
+        sources: [kernelFlintResourceAdapterSource],
+        exports: artifact.manifest.exports,
+        backend: "../kernel-flint-resource-backend.mjs",
+      };
+      pack.identity.ownershipAdapter = { identity };
+      pack.ownershipAdapter = { identity, backend: ownershipAdapter.backend };
+      pack.packKey = createHash("sha256")
+        .update(JSON.stringify(pack.identity))
+        .digest("hex");
+    }
     const compatibilitySources = pack.domain === "flint"
       ? [path.join(packageRoot, "src", "wasi-stubs.c")]
       : [];
     generatedSources.push(
       ...sources,
+      ...(ownershipAdapter?.sources ?? []),
       ...compatibilitySources,
       ...kernels.map((kernel) => path.join(
         kernelBuildDirectory,
@@ -1011,11 +1059,14 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
         "kernel_core.h",
       )),
     );
-    const exports = kernels.flatMap((kernel) =>
+    const exports = [
+      ...kernels.flatMap((kernel) =>
       kernel.functions
         .filter((fn) => fn.status === "compiled-source")
         .map((fn) => fn.bridge.export)
-    ).sort();
+      ),
+      ...(ownershipAdapter?.exports ?? []),
+    ].sort();
     const module = productionModules.get(`kernel-${pack.domain}`);
     const raw = path.join(outputDirectory, `kernel-${pack.domain}.unstripped.wasm`);
     const output = path.join(outputDirectory, module.artifact);
@@ -1042,6 +1093,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
       ...prefixes.flatMap((prefix) => ["-isystem", path.join(prefix, "include")]),
       `-I${path.join(repositoryRoot, "packages", "flint", "include")}`,
       ...sources,
+      ...(ownershipAdapter?.sources ?? []),
       ...compatibilitySources,
       compatibilitySource,
       ...prefixes.map((prefix) => `-L${path.join(prefix, "lib")}`),

@@ -94,6 +94,30 @@ test("production closure includes every currently declared Wasm FFI function", (
   assert.match(flint.cSource, /sagejs_wasm_integer_get/);
   assert.match(flint.cSource, /nmod_mat_init/);
   assert.match(flint.cSource, /sagejs_wasm_stage_range/);
+  assert.match(
+    flint.cSource,
+    /sagejs_wasm_resource_borrow_fmpz_matrix\(uint64_t handle,/,
+  );
+  assert.match(
+    flint.cSource,
+    /sagejs_wasm_resource_adopt_fmpz_matrix\(/,
+  );
+  assert.ok(flint.manifest.exports.includes(
+    "sagejs_wasm_resource_borrow_fmpz_matrix",
+  ));
+  assert.ok(flint.manifest.exports.includes(
+    "sagejs_wasm_resource_adopt_fmpz_matrix",
+  ));
+  const ownershipOnly = generatedWasmResourceAdapter(
+    registry().byId.get("flint"),
+    { resourceIds: ["fmpz_matrix"], resourceOnly: true },
+  );
+  assert.deepEqual(ownershipOnly.manifest.functions, []);
+  assert.deepEqual(ownershipOnly.manifest.resources, ["fmpz_matrix"]);
+  assert.ok(ownershipOnly.manifest.exports.includes(
+    "sagejs_wasm_resource_borrow_fmpz_matrix",
+  ));
+  assert.doesNotMatch(ownershipOnly.cSource, /sagejs_wasm_ffiFmpzMatrixDet/);
 
   const reviewed = generatedWasmClosure(registry(), {
     strict: true,
@@ -113,6 +137,70 @@ test("production closure includes every currently declared Wasm FFI function", (
     "flint-gmp-mpfr-arb");
   assert.deepEqual(reviewed.manifest.libraries[0].functions,
     ["dirichlet_group_init", "dirichlet_group_size"]);
+});
+
+test("generated ownership bridge is branded and bound to one Wasm instance", async () => {
+  const declaration = registry().byId.get("flint");
+  const artifact = generatedWasmResourceAdapter(declaration, {
+    resourceIds: ["fmpz_matrix"],
+    functionIds: ["fmpz_matrix"],
+  });
+  const { directory, module } = await generatedModule(
+    artifact,
+    "wasm-resource-bridge",
+  );
+  try {
+    let closeCalls = 0;
+    const exports = mockStageExports({
+      sagejs_wasm_ffiFmpzMatrixClose: (handle) => {
+        assert.equal(handle, 9n);
+        closeCalls += 1;
+        return 1;
+      },
+    });
+    const instance = { exports };
+    const backend = module.createGeneratedWasmBackend(instance);
+    assert.equal(Object.keys(backend).includes("resourceBridge"), false);
+    const resource = Object.freeze({
+      id: "fmpz_matrix",
+      identity: `resource:${declaration.identity}:fmpz_matrix`,
+      closeExport: "sagejs_wasm_ffiFmpzMatrixClose",
+    });
+    const value = backend.resourceBridge.wrap({
+      instance,
+      resource,
+      handle: 9n,
+    });
+    assert.equal(backend.resourceBridge.unwrap({
+      instance,
+      resource,
+      value,
+    }), 9n);
+    assert.throws(
+      () => backend.resourceBridge.unwrap({
+        instance: { exports },
+        resource,
+        value,
+      }),
+      /another Wasm instance/,
+    );
+    assert.throws(
+      () => backend.resourceBridge.unwrap({
+        instance,
+        resource: { ...resource, identity: "resource:wrong:fmpz_matrix" },
+        value,
+      }),
+      /another Wasm instance/,
+    );
+    backend.ffiFmpzMatrixClose(value);
+    assert.equal(closeCalls, 1);
+    assert.throws(
+      () => backend.resourceBridge.unwrap({ instance, resource, value }),
+      /closed/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("packed uint64 adapters are transactional and memory-growth-safe", async () => {

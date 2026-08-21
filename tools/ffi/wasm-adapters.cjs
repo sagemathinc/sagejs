@@ -48,8 +48,12 @@ function selectWasmResourceSurface(declaration, options = {}) {
   }
   const { byId, byType } = resourceMaps(declaration);
   const selectedIds = new Set(options.resourceIds || []);
-  const requestedFunctions = options.functionIds === undefined
-    ? null : new Set(options.functionIds);
+  if (options.resourceOnly === true && options.functionIds !== undefined) {
+    fail("resourceOnly and functionIds are mutually exclusive");
+  }
+  const requestedFunctions = options.resourceOnly === true
+    ? new Set()
+    : options.functionIds === undefined ? null : new Set(options.functionIds);
   if (selectedIds.size === 0 && requestedFunctions === null) {
     fail("resourceIds or functionIds must select a declared Wasm surface");
   }
@@ -98,7 +102,9 @@ function selectWasmResourceSurface(declaration, options = {}) {
   }
 
   let requested = null;
-  if (options.functionIds !== undefined) {
+  if (options.resourceOnly === true) {
+    requested = new Set();
+  } else if (options.functionIds !== undefined) {
     if (!Array.isArray(options.functionIds) || options.functionIds.length === 0) {
       fail("functionIds must be a nonempty array when supplied");
     }
@@ -124,7 +130,9 @@ function selectWasmResourceSurface(declaration, options = {}) {
       }
     }
   }
-  if (functions.length === 0) fail("the selected Wasm surface is empty");
+  if (functions.length === 0 && options.resourceOnly !== true) {
+    fail("the selected Wasm surface is empty");
+  }
 
   return Object.freeze({
     resources: Object.freeze(
@@ -341,6 +349,8 @@ function resourceNames(resource) {
     reserve: `${stem}_reserve`,
     lookup: `${stem}_lookup`,
     handle: `${stem}_handle`,
+    borrow: `sagejs_wasm_resource_borrow_${cName(resource.id)}`,
+    adopt: `sagejs_wasm_resource_adopt_${cName(resource.id)}`,
     close: resource.dynamic?.close_export === undefined ||
       resource.dynamic.close_export === null
       ? null : `sagejs_wasm_${cName(resource.dynamic.close_export)}`,
@@ -454,6 +464,47 @@ ${invalidate}
         slot->retired = 1;
     else
         slot->generation++;
+    return 1;
+}
+
+SAGEJS_WASM_EXPORT int
+${names.borrow}(uint64_t handle, ${resource.abi_type} **value)
+{
+    sagejs_wasm_last_status_value = SAGEJS_WASM_STATUS_OK;
+    ${names.slot} *slot = ${names.lookup}(handle);
+    if (value == NULL || slot == NULL)
+    {
+        sagejs_wasm_last_status_value = SAGEJS_WASM_STATUS_INVALID_HANDLE;
+        return 0;
+    }
+    *value = &slot->value;
+    return 1;
+}
+
+SAGEJS_WASM_EXPORT int
+${names.adopt}(${resource.abi_type} value, uint64_t *handle)
+{
+    sagejs_wasm_last_status_value = SAGEJS_WASM_STATUS_OK;
+    uint32_t sagejs_index;
+    ${names.slot} *slot;
+    if (handle == NULL)
+    {
+        sagejs_wasm_last_status_value = SAGEJS_WASM_STATUS_INVALID_ARGUMENT;
+        return 0;
+    }
+    if (!${names.reserve}(&sagejs_index, &slot))
+    {
+        sagejs_wasm_last_status_value = SAGEJS_WASM_STATUS_ALLOCATION;
+        return 0;
+    }
+    /* Adoption is a move across generated translation units in this exact
+       Wasm instance.  On failure the caller still owns value; after this
+       copy the caller must not clear its moved-from ABI object. */
+    memset(slot->value, 0, sizeof(slot->value));
+    memcpy(slot->value, value, sizeof(slot->value));
+    slot->live = 1;
+    ${names.live}++;
+    *handle = ${names.handle}(sagejs_index, slot);
     return 1;
 }`;
 }
@@ -1272,7 +1323,7 @@ function jsUint64(parameter, variable, indent) {
 
 function generatedJavaScriptSource(declaration, surface, classified) {
   const resourceIdentities = new Map(surface.resources.map((resource) => [
-    resource.id, `${declaration.identity}:${resource.id}`,
+    resource.id, `resource:${declaration.identity}:${resource.id}`,
   ]));
   const lines = [
     `/* Generated from ${declaration.identity}; do not edit. */`,
@@ -1335,6 +1386,14 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     "  }",
     "  const recordCapability = options.recordCapability ?? (() => {});",
     "  const resourceBrand = Object.freeze(Object.create(null));",
+    "  const ownershipResources = Object.freeze(Object.assign(" +
+      "Object.create(null), " + JSON.stringify(Object.fromEntries(
+        surface.resources.filter((resource) => resource.ownership === "owned")
+          .map((resource) => [resource.id, {
+            identity: resourceIdentities.get(resource.id),
+            closeExport: resourceNames(resource).close,
+          }]),
+      )) + "));",
     "  const finalizer = typeof FinalizationRegistry === \"function\"",
     "    ? new FinalizationRegistry(({ raw, closeExport }) => {",
     "      try { wasm[closeExport](raw); } catch (_) {}",
@@ -1516,6 +1575,33 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     "  }",
     "  const backend = Object.create(null);",
   ];
+
+  lines.push(
+    "  const resourceBridge = Object.freeze({",
+    "    unwrap({ instance: owner, resource, value }) {",
+    "      const protocol = ownershipResources[resource?.id];",
+    "      if (owner !== instance || protocol === undefined ||",
+    "          protocol.identity !== resource?.identity) {",
+    '        throw new TypeError("resource belongs to another Wasm instance");',
+    "      }",
+    "      return resourceState(value, resourceBrand, protocol.identity).raw;",
+    "    },",
+    "    wrap({ instance: owner, resource, handle }) {",
+    "      const protocol = ownershipResources[resource?.id];",
+    "      if (owner !== instance || protocol === undefined ||",
+    "          protocol.identity !== resource?.identity ||",
+    '          typeof handle !== "bigint" || handle === 0n ||',
+    '          typeof wasm[protocol.closeExport] !== "function") {',
+    '        throw new TypeError("invalid same-instance Wasm resource result");',
+    "      }",
+    "      return makeResource(resourceBrand, protocol.identity, handle,",
+    "        protocol.closeExport, finalizer);",
+    "    },",
+    "  });",
+    "  Object.defineProperty(backend, \"resourceBridge\", {",
+    "    value: resourceBridge, enumerable: false,",
+    "  });",
+  );
 
   for (const resource of surface.resources) {
     const names = resourceNames(resource);
@@ -1736,6 +1822,12 @@ function generatedJavaScriptSource(declaration, surface, classified) {
     lines.push("  };");
   }
   lines.push("  return Object.freeze(backend);", "}", "");
+  lines.push(
+    "export function createGeneratedWasmResourceBridge(instance, options = {}) {",
+    "  return createGeneratedWasmBackend(instance, options).resourceBridge;",
+    "}",
+    "",
+  );
   return lines.join("\n");
 }
 
@@ -1756,6 +1848,11 @@ function generatedWasmResourceAdapter(declaration, options = {}) {
     "sagejs_wasm_resource_live_count",
     ...surface.resources.map((resource) => resourceNames(resource).close)
       .filter(Boolean),
+    ...surface.resources.filter((resource) => resource.ownership === "owned")
+      .flatMap((resource) => [
+        resourceNames(resource).borrow,
+        resourceNames(resource).adopt,
+      ]),
     ...surface.resources.flatMap((resource) => [
       resource.host_ingress?.targets.wasm === true
         ? `sagejs_wasm_${cName(resource.host_ingress.dynamic.export)}` : null,

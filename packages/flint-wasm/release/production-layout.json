@@ -85,6 +85,7 @@
     "wasi-runtime.mjs",
     "ffi-production-closure.json",
     "native-kernels/index.json",
+    "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",

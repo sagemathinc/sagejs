@@ -540,6 +540,19 @@ export async function instantiateSageEvaluator({
             initialize: (instance) => wasi.initialize(instance),
           };
         },
+        async resources(pack, instance) {
+          const backendAsset = pack.ownershipAdapter?.backend;
+          if (backendAsset === undefined) return null;
+          const backendUrl = new URL(backendAsset, manifestUrl);
+          const generated = await import(backendUrl);
+          if (typeof generated.createGeneratedWasmBackend !== "function") {
+            throw new Error(
+              `Wasm kernel ownership backend is invalid for ${pack.domain}`,
+            );
+          }
+          return generated.createGeneratedWasmBackend(instance)
+            .resourceBridge;
+        },
       });
       wasmNativeResolver = instrumentWasmNativeResolver(
         wasmNativeResolver,
