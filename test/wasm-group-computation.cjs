@@ -156,6 +156,29 @@ function symmetricEightGenerators() {
   ]);
 }
 
+function disabledNativePublicCenter() {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
+      input: [
+        "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
+        "expected=G._portable_center().gens()",
+        "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
+        "actual=H.center().gens()",
+        "r=H._last_center_acceleration",
+        "print([H.order(),repr(actual)==repr(expected),r.route,r.reason,r.boundaryCrossings,r.work])",
+      ].join("\n"),
+      timeout: 30_000,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim().split("\n")[0];
+}
+
 async function createProxyServer(upstreamOrigin, manifest, outputRoot) {
   const browserSupport = await import(
     "../packages/flint-wasm/test/browser-wasm-support.mjs"
@@ -310,25 +333,12 @@ print("cpython-bounds-ok")
   assert.equal(oracle.stdout.trim(), "cpython-bounds-ok");
 });
 
-test("disabled native execution agrees with the independent public fallback", async () => {
-  const session = await createSage();
-  try {
-    const result = await session.evaluate([
-      "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-      "expected=G._portable_center().gens()",
-      "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-      "actual=H.center().gens()",
-      "r=H._last_center_acceleration",
-      "[H.order(),repr(actual)==repr(expected),r.route,r.reason,r.boundaryCrossings,r.work]",
-    ].join("\n"));
-    assert.equal(
-      result.repr,
-      "[40320, True, 'portable-computation', " +
-        "'compiled-source-unavailable', 0, 1034577]",
-    );
-  } finally {
-    await session.close();
-  }
+test("disabled native execution agrees with the independent public fallback", () => {
+  assert.equal(
+    disabledNativePublicCenter(),
+    "[40320, True, 'portable-computation', " +
+      "'compiled-source-unavailable', 0, 1034577]",
+  );
 });
 
 test("the packed center emits one inspected host-isolated core", async () => {
