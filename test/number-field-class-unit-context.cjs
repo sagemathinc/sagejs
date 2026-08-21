@@ -26,6 +26,9 @@ import json
 from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 from sagejs.number_fields.class_unit_analytic import (
     AnalyticPrecisionError,
+    UnitSaturationIndexCertificate,
+    ZetaLogResidueLimits,
+    certify_unit_saturation_index,
     saturate_unit_lattice,
     verify_saturation_evidence,
 )
@@ -119,12 +122,49 @@ assert all("outward dyadic" in logarithm.source for logarithm in logarithms)
 
 epsilon = (a + 1) / 2
 square_subgroup = [FactoredNumberFieldElement.from_element(K, epsilon**2)]
+generation_evidence = {
+    "schema": "test.complete-factor-base-generation.v1",
+    "class_number": 1,
+    "theorem": "test conditional factor-base theorem",
+}
+def verify_generation(field, order, generators, class_number, evidence, status):
+    return (
+        field is K
+        and order is O
+        and evidence == {
+            "schema": "test.complete-factor-base-generation.v1",
+            "class_number": class_number,
+            "theorem": "test conditional factor-base theorem",
+        }
+        and status in (
+            "exact-unconditional", "exact-relations-conditional-grh"
+        )
+    )
+
+zeta_limits = ZetaLogResidueLimits(
+    maximum_prime_bound=20000,
+    maximum_precision_bits=256,
+)
+square_index_certificate = certify_unit_saturation_index(
+    K,
+    O,
+    square_subgroup,
+    class_number=1,
+    roots_of_unity=2,
+    precision_bits=96,
+    regulator_absolute_tolerance_bits=60,
+    maximum_precision_bits=256,
+    zeta_limits=zeta_limits,
+    generation_evidence=generation_evidence,
+    generation_verifier=verify_generation,
+    proof_status="exact-relations-conditional-grh",
+)
+assert square_index_certificate.index_bound == 2
 saturation = saturate_unit_lattice(
     K,
     O,
     square_subgroup,
-    2,
-    index_bound_is_rigorous=True,
+    square_index_certificate,
     coordinate_bound=1,
 )
 assert saturation.complete and saturation.saturated and saturation.rigorous
@@ -133,10 +173,82 @@ assert saturation.index_enlargement == 2
 assert len(saturation.evidence) == 1
 assert saturation.evidence[0].root**2 == epsilon**2
 assert saturation.verify()
-assert verify_saturation_evidence(K, O, square_subgroup, saturation.to_dict())
+assert saturation.proof_status == "exact-unit-p-saturation-conditional-grh"
 tampered_saturation = copy.deepcopy(saturation.to_dict())
 tampered_saturation["evidence"][0]["root_coordinates"][0][0] += 1
-assert not verify_saturation_evidence(K, O, square_subgroup, tampered_saturation)
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, tampered_saturation,
+    generation_verifier=verify_generation,
+)
+
+for path, mutation in (
+    (("index_bound_is_rigorous",), "false"),
+    (("initial_index_bound",), "2"),
+    (("complete",), 1),
+    (("evidence", 0, "rigorous"), 1),
+    (("evidence", 0, "root_coordinates", 0, 0), 1.0),
+    (("evidence", 0, "root_coordinates", 0, 0), "1"),
+):
+    noncanonical = copy.deepcopy(saturation.to_dict())
+    target = noncanonical
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = mutation
+    assert not verify_saturation_evidence(
+        K, O, square_subgroup, noncanonical,
+        generation_verifier=verify_generation,
+    )
+
+reauthenticated = copy.deepcopy(saturation.to_dict())
+certificate_payload = reauthenticated["global_index_certificate"]
+certificate_payload["analytic_proof"]["hr_index"]["unique_index"] = 3
+certificate_body = dict(certificate_payload)
+certificate_body.pop("content_sha256")
+certificate_payload["content_sha256"] = hashlib.sha256(json.dumps(
+    certificate_body,
+    allow_nan=False,
+    ensure_ascii=True,
+    separators=(",", ":"),
+    sort_keys=True,
+).encode("utf-8")).hexdigest()
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, reauthenticated,
+    generation_verifier=verify_generation,
+)
+
+generation_mutation = copy.deepcopy(saturation.to_dict())
+certificate_payload = generation_mutation["global_index_certificate"]
+certificate_payload["generation_evidence"]["theorem"] = "unverified theorem"
+certificate_body = dict(certificate_payload)
+certificate_body.pop("content_sha256")
+certificate_payload["content_sha256"] = hashlib.sha256(json.dumps(
+    certificate_body,
+    allow_nan=False,
+    ensure_ascii=True,
+    separators=(",", ":"),
+    sort_keys=True,
+).encode("utf-8")).hexdigest()
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, generation_mutation,
+    generation_verifier=verify_generation,
+)
+
+configuration_mutation = copy.deepcopy(saturation.to_dict())
+certificate_payload = configuration_mutation["global_index_certificate"]
+certificate_payload["configuration"]["class_number"] = "1"
+certificate_body = dict(certificate_payload)
+certificate_body.pop("content_sha256")
+certificate_payload["content_sha256"] = hashlib.sha256(json.dumps(
+    certificate_body,
+    allow_nan=False,
+    ensure_ascii=True,
+    separators=(",", ":"),
+    sort_keys=True,
+).encode("utf-8")).hexdigest()
+assert not verify_saturation_evidence(
+    K, O, square_subgroup, configuration_mutation,
+    generation_verifier=verify_generation,
+)
 
 untrusted_bound = saturate_unit_lattice(
     K, O, square_subgroup, 2, coordinate_bound=1
@@ -148,23 +260,38 @@ failed_closed = saturate_unit_lattice(
     K,
     O,
     square_subgroup,
-    2,
-    index_bound_is_rigorous=True,
+    square_index_certificate,
     coordinate_bound=0,
     local_rational_primes=(),
 )
 assert not failed_closed.complete
 assert failed_closed.evidence == ()
 
+full_subgroup = [FactoredNumberFieldElement.from_element(K, epsilon)]
+class_two_evidence = dict(generation_evidence)
+class_two_evidence["class_number"] = 2
+full_index_certificate = certify_unit_saturation_index(
+    K,
+    O,
+    full_subgroup,
+    class_number=2,
+    roots_of_unity=2,
+    precision_bits=96,
+    regulator_absolute_tolerance_bits=60,
+    maximum_precision_bits=256,
+    zeta_limits=zeta_limits,
+    generation_evidence=class_two_evidence,
+    generation_verifier=verify_generation,
+    proof_status="exact-unconditional",
+)
 locally_obstructed = saturate_unit_lattice(
     K,
     O,
-    [FactoredNumberFieldElement.from_element(K, epsilon)],
-    2,
-    index_bound_is_rigorous=True,
+    full_subgroup,
+    full_index_certificate,
     coordinate_bound=1,
 )
-assert locally_obstructed.complete and locally_obstructed.verify()
+assert locally_obstructed.complete
 assert locally_obstructed.evidence[0].outcome == "saturated"
 assert locally_obstructed.evidence[0].method == (
     "exact-finite-order-quotient-pth-power-obstruction"
@@ -181,8 +308,7 @@ adaptive_saturation = saturate_unit_lattice(
     K,
     O,
     square_subgroup,
-    2,
-    index_bound_is_rigorous=True,
+    square_index_certificate,
     precision_bits=64,
     maximum_precision_bits=128,
     candidate_root_provider=adaptive_root_provider,
@@ -190,6 +316,34 @@ adaptive_saturation = saturate_unit_lattice(
 assert adaptive_saturation.complete
 assert reconstruction_precisions == [64, 128]
 assert adaptive_saturation.precision_history == (64, 128)
+
+class FakeTorsion:
+    complete = True
+    elements = (K.one(), epsilon)
+    def verify(self):
+        return True
+try:
+    saturate_unit_lattice(
+        K, O, square_subgroup, square_index_certificate,
+        torsion=FakeTorsion(), coordinate_bound=1,
+    )
+    raise AssertionError("unbound torsion representatives were accepted")
+except AnalyticPrecisionError:
+    raise
+except ArithmeticError:
+    pass
+
+preflight = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    1009,
+    coordinate_bound=1,
+    maximum_target_classes=100,
+    maximum_saturation_work=1000,
+)
+assert not preflight.complete and preflight.evidence == ()
+assert "preflight" in preflight.incomplete_reason
 assert FactoredNumberFieldElement.from_dict(K, witness.to_dict()) == witness
 assert witness * ~witness == FactoredNumberFieldElement(K)
 assert witness**0 == FactoredNumberFieldElement(K)
