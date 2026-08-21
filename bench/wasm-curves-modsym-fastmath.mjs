@@ -27,12 +27,48 @@ try {
     elapsedMilliseconds < 15_000,
     `public direct batch took ${elapsedMilliseconds.toFixed(1)}ms`,
   );
+
+  const modsymSource = [
+    "M = ModularSymbols(1000, 2)",
+    "C = M.cuspidal_subspace()",
+    "T = M.hecke_matrix(2)",
+    "(M.dimension(), C.dimension(), T.trace())",
+  ].join("\n");
+  const modsymStarted = performance.now();
+  const modsymResult = await session.evaluate(modsymSource, {
+    timeout: 30_000,
+  });
+  const modsymElapsedMilliseconds = performance.now() - modsymStarted;
+  assert.match(modsymResult.repr, /^\(301,/);
+  const modsymCapabilities = [
+    "napi:@sagemath/sagejs-flint:p1List",
+    "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+    "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+    "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+    "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+  ];
+  const modsymRoutes = modsymCapabilities.map((capabilityId) => {
+    const route = modsymResult.instrumentation.routes.find(
+      (entry) => entry.capability_id === capabilityId,
+    );
+    assert.equal(route?.selected_route, "receipt-backed-wasm-artifact");
+    assert.equal(route?.execution_target, "wasm-artifact");
+    return route;
+  });
+  assert.ok(
+    modsymElapsedMilliseconds < 15_000,
+    `public level-1000 workflow took ${modsymElapsedMilliseconds.toFixed(1)}ms`,
+  );
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.wasm-curves-modsym-fastmath/v1",
     publicSource: source,
     elapsedMilliseconds,
     result: result.repr,
     directRoute: direct,
+    modsymSource,
+    modsymElapsedMilliseconds,
+    modsymResult: modsymResult.repr,
+    modsymRoutes,
   }, null, 2)}\n`);
 } finally {
   await session.close();

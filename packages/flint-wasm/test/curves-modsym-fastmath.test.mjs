@@ -5,6 +5,7 @@ import test from "node:test";
 
 import { createCurveBackend } from "../curve-backend.mjs";
 import { createWasiHost } from "../dist/wasi-runtime.mjs";
+import { instantiateFlintFactor } from "../index.mjs";
 
 const wasmBytes = await fs.readFile(
   new URL("../dist/flint-factor.wasm", import.meta.url),
@@ -22,6 +23,51 @@ const backend = createCurveBackend(instance, {
 });
 const curve = [1n, 2n, 3n, 4n, 999n];
 const discriminant = 430250329n;
+
+const modsymTraces = [];
+const flint = await instantiateFlintFactor(wasmBytes, {
+  recordCapability(...args) { modsymTraces.push(args); },
+});
+
+test("weight-two P1 workflow is receipt-backed Wasm, never portable math", () => {
+  modsymTraces.length = 0;
+  const started = performance.now();
+  const p1 = flint.p1List(389);
+  const presentation = flint.p1ListManinPresentationInfo(p1);
+  const boundary = flint.p1ListBoundaryData(p1);
+  const cuspidal = flint.p1ListCuspidalBasis(p1);
+  const hecke = flint.p1ListHeckeMatrix(p1, 2n);
+  const elapsed = performance.now() - started;
+
+  assert.equal(flint.p1ListCount(p1), 390);
+  assert.equal(presentation.level, 389);
+  assert.equal(presentation.dimension, 65);
+  assert.equal(hecke.rows, presentation.dimension);
+  assert.equal(hecke.cols, presentation.dimension);
+  assert.equal(boundary.matrix.rows, presentation.dimension);
+  assert.equal(boundary.matrix.cols, boundary.cusps.length);
+  assert.equal(cuspidal.cols, presentation.dimension);
+  assert.ok(elapsed < 10_000, `level-389 workflow took ${elapsed.toFixed(1)}ms`);
+
+  const expectedCapabilities = [
+    "napi:@sagemath/sagejs-flint:p1List",
+    "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+    "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+    "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+    "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+  ];
+  assert.deepEqual(
+    modsymTraces.map(([id]) => id),
+    expectedCapabilities,
+  );
+  for (const [id, route, evidence] of modsymTraces) {
+    assert.ok(expectedCapabilities.includes(id));
+    assert.equal(route, "receipt-backed-wasm-artifact");
+    assert.equal(evidence.executionTarget, "wasm-artifact");
+    assert.ok(evidence.ingressBytes > 0);
+    assert.ok(evidence.egressBytes > 0);
+  }
+});
 
 test("direct elliptic prefixes execute as one receipt-backed Wasm batch", () => {
   const coefficients = backend.ecAnlistIntegral(
