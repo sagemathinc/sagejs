@@ -785,24 +785,19 @@ function pythonSources(directory) {
   return sources.sort();
 }
 
-function compileBrowserModuleCache(name) {
-  const output = path.join(standardLibraryCacheDirectory, `${name}.json`);
-  const cacheRoot = path.join(repositoryRoot, "dist", "module-cache");
-  const generated = [
-    path.join(cacheRoot, `${name}.json`),
-    path.join(cacheRoot, `${name.replaceAll(".", "-")}.json`),
-  ].find((filename) => fs.existsSync(filename)) ??
-    path.join(cacheRoot, `${name}.json`);
+function requireBrowserModuleCache(name) {
+  const generated = path.join(
+    standardLibraryCacheDirectory,
+    `${name.replaceAll(".", "-")}.json`,
+  );
   requirePath(
     `compiled browser module ${name} (run \`pnpm build\` first)`,
     generated,
   );
-  fs.mkdirSync(standardLibraryCacheDirectory, { recursive: true });
-  fs.copyFileSync(generated, output);
 }
 
 for (const name of browserAdditionalModules) {
-  compileBrowserModuleCache(name);
+  requireBrowserModuleCache(name);
 }
 
 const standardLibraryModules = {};
@@ -813,11 +808,11 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   if (components.at(-1) === "__init__") components.pop();
   const name = components.join(".");
   if (!name) continue;
-  const cacheFilename = [
-    path.join(standardLibraryCacheDirectory, `${name}.json`),
-    path.join(standardLibraryCacheDirectory, `${name.replaceAll(".", "-")}.json`),
-  ].find((filename) => fs.existsSync(filename));
-  if (cacheFilename === undefined) continue;
+  const cacheFilename = path.join(
+    standardLibraryCacheDirectory,
+    `${name.replaceAll(".", "-")}.json`,
+  );
+  if (!fs.existsSync(cacheFilename)) continue;
   standardLibraryReceiptInputs.push(filename, cacheFilename);
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
