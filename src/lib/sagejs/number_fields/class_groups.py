@@ -29,6 +29,17 @@ DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES = 64
 DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS = 64
 DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES = 16 * 1024 * 1024
 DEFAULT_CUBIC_MINKOWSKI_MAX_REDUCTION_CANDIDATES = 256
+_CUBIC_MINKOWSKI_REPLAY_MAX_BOUND = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES = 64 * 1024 * 1024
+_CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES = 65536
+_CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE = 4096
+_CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH = 64
+_CUBIC_MINKOWSKI_REPLAY_MAX_NODES = 100000
+_CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES = 65536
+_CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES = 16 * 1024 * 1024
+_CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS = 16384
 
 
 def _canonical_json(value: Any) -> str:
@@ -46,6 +57,99 @@ def _positive_integer(value: Any, name: str) -> int:
     if answer != value or answer < 1:
         raise ValueError(name + " must be a positive exact integer")
     return answer
+
+
+def _cubic_minkowski_payload_within_caps(value: Any) -> bool:
+    state = {"nodes": 0, "string_bytes": 0}
+
+    def visit(node: Any, depth: int) -> bool:
+        if depth > _CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH:
+            return False
+        state["nodes"] += 1
+        if state["nodes"] > _CUBIC_MINKOWSKI_REPLAY_MAX_NODES:
+            return False
+        if node is None or isinstance(node, bool):
+            return True
+        if isinstance(node, int):
+            return abs(node).bit_length() <= _CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS
+        if isinstance(node, str):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+                return False
+            try:
+                if any(0xD800 <= ord(character) <= 0xDFFF for character in node):
+                    return False
+                size = len(node.encode("utf-8"))
+            except (TypeError, ValueError, UnicodeError):
+                return False
+            if size > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+                return False
+            state["string_bytes"] += size
+            return (
+                state["string_bytes"] <= _CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES
+            )
+        if isinstance(node, list):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+                return False
+            return all(visit(item, depth + 1) for item in node)
+        if isinstance(node, dict):
+            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+                return False
+            for key, item in node.items():
+                if not isinstance(key, str) or not visit(key, depth + 1):
+                    return False
+                if not visit(item, depth + 1):
+                    return False
+            return True
+        return False
+
+    return visit(value, 0)
+
+
+def _validate_cubic_minkowski_replay_limits(
+    plan: Any,
+    factor_base: Any,
+    witnesses: Any,
+    candidates_checked: Any,
+    maximum_reduction_candidates: Any,
+) -> None:
+    if not isinstance(plan, dict):
+        raise TypeError("a Minkowski certificate plan must be a dictionary")
+    if not all(
+        isinstance(value, list)
+        for value in (factor_base, witnesses, candidates_checked)
+    ):
+        raise TypeError("Minkowski certificate evidence must use lists")
+    if any(
+        len(value) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE
+        for value in (factor_base, witnesses, candidates_checked)
+    ):
+        raise ValueError("Minkowski certificate evidence exceeds replay limits")
+    reduction_cap = _positive_integer(
+        maximum_reduction_candidates, "maximum reduction candidates"
+    )
+    if reduction_cap > _CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES:
+        raise ValueError("Minkowski reduction cap exceeds the replay limit")
+    caps = plan.get("caps")
+    if not isinstance(caps, dict):
+        raise TypeError("a Minkowski certificate plan must contain exact caps")
+    replay_caps = (
+        ("max_bound", _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND),
+        ("max_rational_primes", _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES),
+        ("max_prime_ideals", _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
+        ("max_memory_bytes", _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
+    )
+    for name, limit in replay_caps:
+        if _positive_integer(caps.get(name), name.replace("_", " ")) > limit:
+            raise ValueError(name.replace("_", " ") + " exceeds the replay limit")
+    tree = {
+        "plan": plan,
+        "factor_base": factor_base,
+        "witnesses": witnesses,
+        "candidates_checked": candidates_checked,
+        "maximum_reduction_candidates": maximum_reduction_candidates,
+    }
+    if not _cubic_minkowski_payload_within_caps(tree):
+        raise ValueError("Minkowski certificate payload exceeds replay limits")
 
 
 class _TrivialClassElement:
@@ -194,6 +298,13 @@ class MinkowskiPrincipalFactorBaseCertificate:
     ) -> None:
         if field.degree() != 3:
             raise ValueError("the bounded Minkowski certificate requires a cubic")
+        _validate_cubic_minkowski_replay_limits(
+            plan,
+            factor_base,
+            witnesses,
+            candidates_checked,
+            maximum_reduction_candidates,
+        )
         cap = _positive_integer(
             maximum_reduction_candidates, "maximum reduction candidates"
         )
@@ -320,6 +431,8 @@ class MinkowskiPrincipalFactorBaseCertificate:
     ) -> MinkowskiPrincipalFactorBaseCertificate:
         if not isinstance(payload, dict):
             raise TypeError("a Minkowski certificate must be a dictionary")
+        if not _cubic_minkowski_payload_within_caps(payload):
+            raise ValueError("Minkowski certificate payload exceeds replay limits")
         expected_keys = {
             "schema",
             "plan",

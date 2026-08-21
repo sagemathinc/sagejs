@@ -182,17 +182,31 @@ def rehash(payload):
         json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
-for mutation in ("bound", "witness", "coverage"):
+for mutation in (
+    "bound",
+    "witness",
+    "coverage",
+    "replay-cap",
+    "oversized-integer",
+    "malformed-string",
+):
     forged = json.loads(json.dumps(payload59))
     if mutation == "bound":
         forged["plan"]["bound"]["bound"] += 1
     elif mutation == "witness":
         forged["witnesses"][0]["factors"][0]["exponent"] = 2
-    else:
+    elif mutation == "coverage":
         forged["factor_base"] = []
         forged["witnesses"] = []
         forged["candidates_checked"] = []
-    rehash(forged)
+    elif mutation == "replay-cap":
+        forged["plan"]["caps"]["max_bound"] = 4097
+    elif mutation == "oversized-integer":
+        forged["witnesses"][0]["factors"][0]["exponent"] = 1 << 16384
+    else:
+        forged["proof_status"] += "\ud800"
+    if mutation != "malformed-string":
+        rehash(forged)
     try:
         MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, forged)
         raise AssertionError("mutated Minkowski evidence passed detached replay")
