@@ -190,6 +190,46 @@
       "commit": "96475ec94ba5b7cb8938acad089c53829429970f",
       "workspace_fingerprint": "8adfd57a77296de6537d7817070ee98e8f70f429b18396d134ebfac7df5cc0eb",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-factor-base.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.574,
+      "started_at": "2026-08-21T10:11:08.662Z",
+      "commit": "adb95526263134dbf2f09bc3044f1aec9805354b",
+      "workspace_fingerprint": "9d9dad77ac800a217ea3c9bbfba89146b5545fc5d895e06aa9eed8f20265a252",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.503,
+      "started_at": "2026-08-21T10:12:19.890Z",
+      "commit": "adb95526263134dbf2f09bc3044f1aec9805354b",
+      "workspace_fingerprint": "9d9dad77ac800a217ea3c9bbfba89146b5545fc5d895e06aa9eed8f20265a252",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.977,
+      "started_at": "2026-08-21T10:12:22.002Z",
+      "commit": "adb95526263134dbf2f09bc3044f1aec9805354b",
+      "workspace_fingerprint": "9d9dad77ac800a217ea3c9bbfba89146b5545fc5d895e06aa9eed8f20265a252",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.1,
+      "started_at": "2026-08-21T10:12:54.174Z",
+      "commit": "adb95526263134dbf2f09bc3044f1aec9805354b",
+      "workspace_fingerprint": "9d9dad77ac800a217ea3c9bbfba89146b5545fc5d895e06aa9eed8f20265a252",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
