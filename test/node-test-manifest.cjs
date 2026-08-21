@@ -63,6 +63,7 @@ const integration = [
   "test/number-field-class-unit-engine.cjs",
   "test/number-field-class-unit-public.cjs",
   "test/number-field-quadratic-class-units.cjs",
+  "test/number-field-quadratic-compact-composition.cjs",
   "test/number-field-quadratic-narrow-relations.cjs",
   "test/number-field-maximal-order-final-evidence/test.cjs",
   "test/number-field-maximal-order-corpus.cjs",
