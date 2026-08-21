@@ -77,6 +77,7 @@
         "architecture/package-graph.json",
         "architecture/wasm-capabilities.json",
         "architecture/wasm-capability-report.json",
+        "architecture/wasm-capabilities-report.json",
         "packages/flint-wasm/release/production-capabilities.json",
         "packages/flint-wasm/release/production-kernel-coverage.json",
         "pyrightconfig.json",
