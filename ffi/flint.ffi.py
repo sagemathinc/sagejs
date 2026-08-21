@@ -3044,7 +3044,7 @@ def fmpz_matrix_snf_transform(
         exception=RuntimeError,
         message="integer matrix right kernel failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_right_kernel(source: FmpzMatrix) -> FmpzMatrix: ...
 
