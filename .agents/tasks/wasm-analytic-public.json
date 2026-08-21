@@ -87,11 +87,38 @@
       "commit": "e564343bb6cbfc29d080009254525655fb5834c7",
       "workspace_fingerprint": "eaee8ac4f469912b2e8fa250c100f3eaeaea4174fd8498fa2a4eb36397959283",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-analytic-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.227,
+      "started_at": "2026-08-21T01:41:35.368Z",
+      "commit": "7b98712d045df0296d3fa3158f626024ce135a36",
+      "workspace_fingerprint": "81a9874e9447d897148f5f8962f05772f1746fc003a14fd1fe6d7834540dc2c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-analytic-public.mjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.99,
+      "started_at": "2026-08-21T01:42:13.908Z",
+      "commit": "7b98712d045df0296d3fa3158f626024ce135a36",
+      "workspace_fingerprint": "81a9874e9447d897148f5f8962f05772f1746fc003a14fd1fe6d7834540dc2c2",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added explicitly numerical public complex_gamma/complex_gamma_values and riemann_xi/riemann_xi_values entry points. Heavy public batches make one receipt-backed Acb reactor call per family and preserve ComplexField precision; the xi API uses Sage.js's existing no-half normalization. The real packed reactor passes exact-value, >=150-bit enclosure, functional-equation, and release checks. Identical public source passes in Node-Wasm and Chromium with private analytic route counts of 2 rather than 256 for the matched scalar control. The recorded 128-point-per-family check reduces analytic crossings 128-fold and runs 1.77x faster.",
+    "risks": [
+      "The public functions are intentionally numerical and do not claim Sage's complete symbolic gamma simplification surface.",
+      "Native Windows continues to use the documented tested-capability fallback until the shared Arb/Acb reactor is distributed there; missing complex-gamma capability raises explicitly.",
+      "Repository-wide integration was not repeated after the coordinator merged unrelated numeric/algebraic lanes; the coordinator confirmed no repeat long build was required because this lane's implementation and shared trace commits were already integrated."
+    ],
+    "next_steps": [
+      "Integrate the final evidence-only normalization and crossing-accounting follow-up after the numeric-resource route instrumentation.",
+      "Retain shared capability, workload, and public-corpus registration in the coordinator lane."
+    ]
   }
 }
