@@ -758,6 +758,255 @@ print("batched")
   assert.equal(output, "batched");
 });
 
+test("useful relation orbits are admitted once and resume deterministically", () => {
+  const output = run(String.raw`
+matrix = __import__(
+    "sagejs.number_fields.class_group_matrix",
+    fromlist=["class_group_matrix"],
+)
+
+plan_builds = 0
+orbit_calls = 0
+orbits_enabled = True
+
+class FakeRecord:
+    def __init__(self, row, algorithm="parent-search"):
+        self.row = tuple(row)
+        self.provenance = {"algorithm": algorithm}
+
+class FakeAdmission:
+    def __init__(self, record):
+        self.record = record
+
+class FakePlan:
+    available = True
+    def __init__(self, useful):
+        self.useful = useful
+    def verify(self):
+        return True
+
+class FakeCollector:
+    def __init__(self, order, factor_base):
+        self.records = []
+        self.factor_base = tuple(factor_base)
+    def add_relation(self, record):
+        self.records.append(record)
+    def admit_automorphism_orbit(self, relation, *, plan=None):
+        global orbit_calls
+        assert plan.available and plan.useful
+        assert relation.provenance["algorithm"] != "quadratic-conjugation-orbit"
+        orbit_calls += 1
+        mapped = tuple(reversed(relation.row))
+        if mapped == relation.row:
+            return None
+        if any(record.row == mapped for record in self.records):
+            raise ValueError("the exact relation record was already admitted")
+        record = FakeRecord(mapped, "quadratic-conjugation-orbit")
+        self.records.append(record)
+        return FakeAdmission(record)
+
+class FakeState:
+    def __init__(
+        self,
+        seed=0,
+        candidates_tested=0,
+        ideals_tested=0,
+        relations_admitted=0,
+    ):
+        self.seed = seed
+        self.candidates_tested = candidates_tested
+        self.ideals_tested = ideals_tested
+        self.relations_admitted = relations_admitted
+    def to_dict(self):
+        return {
+            "seed": self.seed,
+            "candidates_tested": self.candidates_tested,
+            "ideals_tested": self.ideals_tested,
+            "relations_admitted": self.relations_admitted,
+        }
+
+class FakeSearch:
+    def __init__(self, collector, **options):
+        self.collector = collector
+        self.state = options.get("state") or FakeState(options["seed"])
+        self.max_candidates_per_ideal = options["max_candidates_per_ideal"]
+        self.random_terms = options["random_terms"]
+        self.coefficient_bound = options["coefficient_bound"]
+
+class FakeRelations:
+    ExactRelationCollector = FakeCollector
+    LLLRelationSearch = FakeSearch
+    class RelationSearchState:
+        @classmethod
+        def from_dict(cls, payload):
+            return FakeState(
+                payload["seed"],
+                payload["candidates_tested"],
+                payload["ideals_tested"],
+                payload["relations_admitted"],
+            )
+    @staticmethod
+    def initial_rational_prime_relations(collector):
+        return ()
+    @staticmethod
+    def plan_automorphism_orbits(field, factor_base):
+        global plan_builds
+        plan_builds += 1
+        return FakePlan(orbits_enabled)
+
+class FakePrimeNorm:
+    _numerator = 2
+
+class FakePrime:
+    def norm(self):
+        return FakePrimeNorm()
+
+class Components:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = FakeRelations
+    matrix = matrix
+    analytic = object()
+    def missing(self):
+        return ()
+
+class Controller:
+    def __init__(self, relations=(), search_state=None):
+        self.relations = tuple(relations)
+        self.search_state = search_state
+        self.payloads = []
+    def restore_relations(self):
+        return self.relations
+    def restore_search_state(self):
+        return self.search_state
+    def restore_matrix_state(self):
+        return None
+    def capture(self, payload):
+        self.payloads.append(payload)
+        if "relations" in payload:
+            self.relations = tuple(payload["relations"])
+        if "search_state" in payload:
+            state = payload["search_state"]
+            self.search_state = state.to_dict() if hasattr(state, "to_dict") else state
+    def save(self, force=False):
+        return "orbit-checkpoint"
+    def check_cancelled(self, stage="", details=None):
+        return None
+    def stage(self, name, state, details=None):
+        return None
+
+class OrbitProbe(ClassUnitGroupEngine):
+    def _unit_logarithmic_rank(self, records, presentation, unit_rank):
+        return 0
+    def _relation_ideal(self, search, factor_base, attempt, coefficient_bound):
+        return object(), (0, 0), "orbit-probe"
+    def _search_relation_ideal(
+        self,
+        search,
+        ideal,
+        source_row,
+        provenance,
+        large_prime_bound,
+        stop_after=2,
+    ):
+        index = search.state.ideals_tested
+        search.state.ideals_tested += 1
+        search.state.candidates_tested += 1
+        search.state.relations_admitted += 1
+        row = (1, 0) if index % 2 == 0 else (0, 1)
+        search.collector.records.append(FakeRecord(row))
+        return 1
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+factor_base = (FakePrime(), FakePrime())
+limits = ClassUnitEngineLimits(
+    max_relation_attempts=4,
+    max_relations=2,
+    exact_presentation_batch_size=1,
+)
+controller = Controller()
+accelerated = OrbitProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    checkpoint_controller=controller,
+)
+collector, presentation = accelerated._relations(factor_base, 0)
+answer = (presentation.rank, presentation.order, presentation.invariants)
+assert answer == (2, 1, ())
+assert [record.row for record in collector.records] == [(1, 0), (0, 1)]
+assert [record.provenance["algorithm"] for record in collector.records] == [
+    "parent-search",
+    "quadratic-conjugation-orbit",
+]
+assert plan_builds == 1 and orbit_calls == 1
+assert accelerated._resource_usage["automorphism_orbit_plans"] == 1
+assert accelerated._resource_usage["automorphism_orbit_relations"] == 1
+assert accelerated._relation_matrix_accumulator.row_count == 2
+assert accelerated._relation_presentation_policy.last_exact_row_count == 2
+assert accelerated._relation_search_state.relations_admitted == 2
+joint = [
+    payload
+    for payload in controller.payloads
+    if "relations" in payload and "search_state" in payload
+]
+assert len(joint) == 1 and len(joint[0]["relations"]) == 2
+
+# Re-entering with the same factor base neither rebuilds the plan nor expands
+# a relation that was already derived.
+collector, presentation = accelerated._relations(
+    factor_base, 0, collector=collector, presentation=presentation
+)
+assert plan_builds == 1 and orbit_calls == 1
+
+# Independent search reaches the identical exact presentation without orbit
+# acceleration, while requiring a second parent relation.
+orbits_enabled = False
+baseline = OrbitProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+)
+baseline_collector, baseline_presentation = baseline._relations(factor_base, 0)
+assert (
+    baseline_presentation.rank,
+    baseline_presentation.order,
+    baseline_presentation.invariants,
+) == answer
+assert len(baseline_collector.records) == 2
+assert baseline._resource_usage["relation_attempts"] == 2
+assert orbit_calls == 1
+
+# A resumed engine restores both parent and derived records as one prefix and
+# never treats either restored record as newly admitted.
+orbits_enabled = True
+resumed_controller = Controller(controller.relations, controller.search_state)
+resumed = OrbitProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    checkpoint_controller=resumed_controller,
+)
+resumed_collector, resumed_presentation = resumed._relations(factor_base, 0)
+assert (
+    resumed_presentation.rank,
+    resumed_presentation.order,
+    resumed_presentation.invariants,
+) == answer
+assert len(resumed_collector.records) == 2
+assert resumed._resource_usage["automorphism_orbit_relations"] == 0
+assert orbit_calls == 1
+print("orbit-integrated")
+`);
+  assert.equal(output, "orbit-integrated");
+});
+
 test("live generation authority memo detaches after computation", () => {
   const output = run(String.raw`
 counts = {
