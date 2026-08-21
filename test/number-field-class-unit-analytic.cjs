@@ -190,6 +190,25 @@ dyadic = RealBall.dyadic_endpoints("-3", "-4", "5", "-5", precision_bits=80)
 assert dyadic.lower == RationalEndpoint(-3, 16)
 assert dyadic.upper == RationalEndpoint(5, 32)
 
+for numerator, denominator in ((1.5, 1), (True, 1), (1, 2.0), (1, False)):
+    try:
+        RationalEndpoint(numerator, denominator)
+        raise AssertionError("a truncating rational endpoint was accepted")
+    except TypeError:
+        pass
+
+for bad_value in ("01", "+1", "-0", "1.0", True, 1.0):
+    try:
+        RealBall.dyadic_endpoints(bad_value, "0", "1", "0")
+        raise AssertionError("a noncanonical dyadic mantissa was accepted")
+    except (TypeError, ValueError):
+        pass
+    try:
+        RealBall.dyadic_endpoints("0", bad_value, "1", "0")
+        raise AssertionError("a noncanonical dyadic exponent was accepted")
+    except (TypeError, ValueError):
+        pass
+
 def inconsistent_provider(precision):
     if precision == 64:
         return [[RealBall("-0.1", "0.1", precision_bits=precision)]]
