@@ -277,6 +277,23 @@ assert old_finite.precision_bits == new_finite.precision_bits
 assert old_finite.rigorous == new_finite.rigorous
 assert len(new_finite.source) < 512
 assert "mpmath-libmp-directed-rounding" in new_finite.source
+
+certificate = UnitSaturationIndexCertificate(
+    {"field": "focused-provenance-test"},
+    [],
+    {},
+    1,
+    {"finite_term": new_finite.to_dict()},
+    {"generation": "focused-provenance-test"},
+    "exact-relations-conditional-grh",
+)
+mutated = certificate.to_dict()
+mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
+try:
+    UnitSaturationIndexCertificate.from_dict(mutated)
+    raise AssertionError("a finite-term provenance mutation retained authority")
+except AnalyticCertificationError:
+    pass
   `);
 });
 
