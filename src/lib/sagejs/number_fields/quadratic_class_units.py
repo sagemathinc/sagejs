@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import log, sqrt
-from typing import Iterator
+from typing import Any, Iterator
 
 Matrix2 = tuple[tuple[int, int], tuple[int, int]]
 
@@ -25,6 +25,8 @@ _IDENTITY_MATRIX: Matrix2 = ((1, 0), (0, 1))
 # every certificate whose exact comparison uses the archimedean constant.
 _PI_LOWER_NUMERATOR = 103_993
 _PI_LOWER_DENOMINATOR = 33_102
+_DEFAULT_MAX_ENUMERATION_CHECKS = 5_000_000
+_QUADRATIC_ALGORITHMS = ("auto", "quadratic-forms", "minkowski", "buchmann-hecke")
 
 
 def _gcd(left: int, right: int) -> int:
@@ -84,6 +86,8 @@ def _prime_factorization(value: int) -> tuple[tuple[int, int], ...]:
     answer: list[tuple[int, int]] = []
     remaining = value
     prime = 2
+    if remaining < 2**64 and _is_prime_below_2_64(remaining):
+        return ((remaining, 1),)
     while prime * prime <= remaining:
         exponent = 0
         while remaining % prime == 0:
@@ -91,10 +95,57 @@ def _prime_factorization(value: int) -> tuple[tuple[int, int], ...]:
             exponent += 1
         if exponent:
             answer.append((prime, exponent))
+            if remaining < 2**64 and _is_prime_below_2_64(remaining):
+                answer.append((remaining, 1))
+                return tuple(answer)
         prime = 3 if prime == 2 else prime + 2
     if remaining > 1:
         answer.append((remaining, 1))
     return tuple(answer)
+
+
+def _is_prime_below_2_64(value: int) -> bool:
+    """Deterministically test primality for an unsigned 64-bit integer."""
+    if value < 2:
+        return False
+    for prime in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if value % prime == 0:
+            return value == prime
+    odd_part = value - 1
+    shifts = 0
+    while odd_part % 2 == 0:
+        odd_part //= 2
+        shifts += 1
+    # Jim Sinclair's seven-base deterministic Miller--Rabin set for n < 2^64.
+    for witness in (2, 325, 9_375, 28_178, 450_775, 9_780_504, 1_795_265_022):
+        if witness % value == 0:
+            continue
+        residue = pow(witness, odd_part, value)
+        if residue in (1, value - 1):
+            continue
+        for _index in range(shifts - 1):
+            residue = residue * residue % value
+            if residue == value - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def _quadratic_algorithm(algorithm: str, operation: str) -> str:
+    if algorithm not in _QUADRATIC_ALGORITHMS:
+        raise ValueError(
+            "algorithm must be 'auto', 'quadratic-forms', 'minkowski', "
+            "or 'buchmann-hecke'"
+        )
+    if algorithm in ("minkowski", "buchmann-hecke"):
+        raise NotImplementedError(
+            "algorithm='"
+            + algorithm
+            + "' is not available for exact real quadratic "
+            + operation
+        )
+    return "quadratic-forms"
 
 
 def _is_squarefree(value: int) -> bool:
@@ -437,6 +488,7 @@ class RealQuadraticUnitResult:
     certificate: ContinuedFractionUnitCertificate
     algorithm: str = "principal-form-continued-fraction"
     proof_status: str = "exact-unconditional"
+    requested_algorithm: str = "auto"
 
     def verify(self) -> bool:
         return (
@@ -450,10 +502,58 @@ class RealQuadraticUnitResult:
         return self.unit.regulator()
 
 
+class RealQuadraticFieldUnitGroupResult:
+    """Public-field transport of a continued-fraction quadratic unit result."""
+
+    def __init__(
+        self,
+        field: Any,
+        arithmetic: RealQuadraticUnitResult,
+        generator: Any,
+        torsion: Any,
+        certificate: Any,
+    ) -> None:
+        self.field = field
+        self.arithmetic = arithmetic
+        self.torsion = torsion
+        self.generators = (generator,)
+        self.certificates = (certificate,)
+        self.unit_rank = 1
+        self.complete = True
+        self.reason = (
+            "one complete principal reduced-form cycle proves a fundamental unit"
+        )
+        self.search_bound = len(arithmetic.certificate.reduction_forms) + len(
+            arithmetic.certificate.cycle_forms
+        )
+        self.candidates_checked = self.search_bound
+        self.completion_certificate = arithmetic.certificate
+        self.proof_status = "exact-unconditional"
+        self.index_bound = 1
+        self.algorithm = arithmetic.algorithm
+
+    def regulator(self, prec: int = 53) -> Any:
+        from sagejs.number_fields.units import RegulatorResult
+
+        return RegulatorResult(self.arithmetic.regulator(), int(prec), True, 1)
+
+    def verify_completion(self) -> bool:
+        return (
+            self.arithmetic.verify()
+            and self.certificates[0].verify(self.field)
+            and self.torsion.complete
+            and self.torsion.verify()
+        )
+
+
 def real_quadratic_fundamental_unit(
-    discriminant: int, *, max_steps: int = 1_000_000
+    discriminant: int,
+    *,
+    algorithm: str = "auto",
+    max_steps: int = 1_000_000,
 ) -> RealQuadraticUnitResult:
     """Return the fundamental unit using a complete continued-fraction cycle."""
+    _quadratic_algorithm(algorithm, "unit computation")
     _require_real_fundamental_discriminant(discriminant)
     principal = _principal_form(discriminant)
     reduced, reduction_transform, reduction_forms, reduction_quotients = (
@@ -515,16 +615,124 @@ def real_quadratic_fundamental_unit(
         totally_positive,
         unit,
     )
-    return RealQuadraticUnitResult(discriminant, unit, unit.norm, certificate)
+    return RealQuadraticUnitResult(
+        discriminant,
+        unit,
+        unit.norm,
+        certificate,
+        requested_algorithm=algorithm,
+    )
+
+
+def real_quadratic_field_unit_group(
+    field: Any,
+    *,
+    algorithm: str = "auto",
+    max_steps: int = 1_000_000,
+) -> RealQuadraticFieldUnitGroupResult:
+    """Transport the exact continued-fraction result into a public field."""
+    from sagejs.number_fields import units as unit_support
+
+    if field.degree() != 2 or unit_support.exact_signature(field) != (2, 0):
+        raise ValueError("this algorithm requires a real quadratic field")
+    discriminant = int(field.discriminant())
+    arithmetic = real_quadratic_fundamental_unit(
+        discriminant, algorithm=algorithm, max_steps=max_steps
+    )
+    _squarefree, square_root = unit_support._quadratic_square_root_element(field)
+    sqrt_discriminant = square_root if discriminant % 4 == 1 else field(2) * square_root
+    generator = (
+        field(arithmetic.unit.x) + field(arithmetic.unit.y) * sqrt_discriminant
+    ) / 2
+    verified, norm = unit_support.exact_norm_is_unit(field, generator)
+    certificate = unit_support.UnitCertificate(generator, norm, True, verified)
+    if norm != arithmetic.norm or not certificate.verify(field):
+        raise ArithmeticError("quadratic unit transport failed exact verification")
+    torsion = unit_support.roots_of_unity(field)
+    result = RealQuadraticFieldUnitGroupResult(
+        field, arithmetic, generator, torsion, certificate
+    )
+    if not result.verify_completion():
+        raise ArithmeticError("quadratic unit completion certificate replay failed")
+    return result
+
+
+@dataclass(frozen=True)
+class QuadraticClassGroupPlan:
+    """Preflight cost and capability data for exhaustive form enumeration."""
+
+    discriminant: int
+    requested_algorithm: str
+    algorithm: str
+    root_floor: int
+    enumeration_checks: int
+    max_enumeration_checks: int
+    max_reduced_forms: int
+    max_steps: int
+    materializes_all_reduced_forms: bool = True
+    exact_integer_storage: bool = True
+    proof_status: str = "exact-unconditional"
+
+    @property
+    def supported(self) -> bool:
+        return self.enumeration_checks <= self.max_enumeration_checks
+
+    def require_supported(self) -> None:
+        if not self.supported:
+            raise ValueError(
+                "quadratic-forms needs "
+                + str(self.enumeration_checks)
+                + " candidate checks, exceeding max_enumeration_checks="
+                + str(self.max_enumeration_checks)
+                + "; use a future buchmann-hecke backend or raise the explicit cap"
+            )
+
+
+def real_quadratic_class_group_plan(
+    discriminant: int,
+    *,
+    algorithm: str = "auto",
+    max_reduced_forms: int = 1_000_000,
+    max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
+    max_steps: int = 1_000_000,
+) -> QuadraticClassGroupPlan:
+    """Return an exact preflight plan without enumerating or factoring `D`."""
+    selected = _quadratic_algorithm(algorithm, "class groups")
+    if discriminant <= 0:
+        raise ValueError("a positive discriminant is required")
+    if max_reduced_forms < 1:
+        raise ValueError("max_reduced_forms must be positive")
+    if max_enumeration_checks < 1:
+        raise ValueError("max_enumeration_checks must be positive")
+    if max_steps < 1:
+        raise ValueError("max_steps must be positive")
+    root_floor = _isqrt(discriminant)
+    return QuadraticClassGroupPlan(
+        discriminant,
+        algorithm,
+        selected,
+        root_floor,
+        2 * root_floor * root_floor,
+        max_enumeration_checks,
+        max_reduced_forms,
+        max_steps,
+    )
 
 
 def _enumerate_reduced_forms(
     discriminant: int,
     max_reduced_forms: int,
+    max_enumeration_checks: int,
 ) -> tuple[QuadraticForm, ...]:
     if max_reduced_forms < 1:
         raise ValueError("max_reduced_forms must be positive")
     root_floor = _isqrt(discriminant)
+    enumeration_checks = 2 * root_floor * root_floor
+    if enumeration_checks > max_enumeration_checks:
+        raise ValueError(
+            "reduced-form enumeration exceeded max_enumeration_checks="
+            + str(max_enumeration_checks)
+        )
     forms: list[QuadraticForm] = []
     for middle in range(1, root_floor + 1):
         numerator = middle * middle - discriminant
@@ -630,6 +838,46 @@ class QuadraticIdealBasis:
         return self.a
 
 
+def quadratic_form_from_ideal_lattice(
+    discriminant: int,
+    rows: tuple[tuple[int, int], tuple[int, int]],
+) -> QuadraticForm:
+    """Map a primitive integral ideal lattice to its canonical quadratic form.
+
+    The row coordinates are relative to `[1, omega]`, where
+    `omega = (D % 2 + sqrt(D))/2`.  Public number-field adapters should first
+    transport their maximal-order basis to this presentation-independent basis.
+    """
+    _require_real_fundamental_discriminant(discriminant)
+    if len(rows) != 2 or any(len(row) != 2 for row in rows):
+        raise ValueError("a quadratic ideal lattice needs a 2 by 2 basis")
+    row0 = (int(rows[0][0]), int(rows[0][1]))
+    row1 = (int(rows[1][0]), int(rows[1][1]))
+    content = _gcd(_gcd(row0[0], row0[1]), _gcd(row1[0], row1[1]))
+    if content != 1:
+        raise ValueError("the integral ideal lattice must be primitive")
+    determinant = row0[0] * row1[1] - row1[0] * row0[1]
+    leading = abs(determinant)
+    if leading == 0:
+        raise ValueError("the zero ideal has no quadratic form")
+    projection_gcd, left_coefficient, right_coefficient = _extended_gcd(
+        row0[1], row1[1]
+    )
+    if projection_gcd != 1:
+        raise ValueError("a primitive quadratic ideal has no primitive projection")
+    first = left_coefficient * row0[0] + right_coefficient * row1[0]
+    parity = discriminant % 2
+    residue = (-first) % leading
+    middle = 2 * residue - parity
+    numerator = middle * middle - discriminant
+    if numerator % (4 * leading) != 0:
+        raise ValueError("the lattice is not an ideal of the quadratic order")
+    form = QuadraticForm(leading, middle, numerator // (4 * leading))
+    if not form.is_primitive():
+        raise ValueError("the ideal lattice produced an imprimitive form")
+    return form
+
+
 class QuadraticClassElement:
     """An ordinary or narrow ideal class with a canonical form representative."""
 
@@ -721,6 +969,7 @@ class QuadraticClassGroupCertificate:
     orientation_class: QuadraticForm
     invariants: tuple[int, ...]
     unit_norm: int
+    plan: QuadraticClassGroupPlan
     proof_status: str = "exact-unconditional"
     source: str = "primitive reduced indefinite forms and exact ideal composition"
 
@@ -729,8 +978,10 @@ class QuadraticClassGroupCertificate:
             replay = QuadraticClassGroup(
                 self.discriminant,
                 narrow=self.narrow,
-                max_reduced_forms=max(1, len(self.reduced_forms)),
-                max_steps=max(16, 4 * len(self.reduced_forms) + 16),
+                algorithm=self.plan.requested_algorithm,
+                max_reduced_forms=self.plan.max_reduced_forms,
+                max_enumeration_checks=self.plan.max_enumeration_checks,
+                max_steps=self.plan.max_steps,
             )
         except (ValueError, ArithmeticError):
             return False
@@ -745,16 +996,28 @@ class QuadraticClassGroup:
         discriminant: int,
         *,
         narrow: bool = False,
+        algorithm: str = "auto",
         max_reduced_forms: int = 1_000_000,
+        max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
         max_steps: int = 1_000_000,
     ) -> None:
+        self.plan = real_quadratic_class_group_plan(
+            discriminant,
+            algorithm=algorithm,
+            max_reduced_forms=max_reduced_forms,
+            max_enumeration_checks=max_enumeration_checks,
+            max_steps=max_steps,
+        )
+        self.plan.require_supported()
         _require_real_fundamental_discriminant(discriminant)
         self.discriminant = discriminant
         self.narrow = narrow
-        self.algorithm = "reduced-indefinite-form-cycles"
+        self.algorithm = self.plan.algorithm
         self.proof_status = "exact-unconditional"
         self._max_steps = max_steps
-        reduced_forms = _enumerate_reduced_forms(discriminant, max_reduced_forms)
+        reduced_forms = _enumerate_reduced_forms(
+            discriminant, max_reduced_forms, max_enumeration_checks
+        )
         proper_representatives = _sorted_forms(
             [
                 _canonical_proper_form(form, discriminant, max_steps)
@@ -808,6 +1071,7 @@ class QuadraticClassGroup:
             orientation,
             self._invariants,
             unit_norm,
+            self.plan,
         )
 
     def _canonical(self, form: QuadraticForm) -> QuadraticForm:
@@ -1020,21 +1284,29 @@ class RealQuadraticClassUnitContext:
 def real_quadratic_class_unit_context(
     discriminant: int,
     *,
+    algorithm: str = "auto",
     max_reduced_forms: int = 1_000_000,
+    max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
     max_steps: int = 1_000_000,
 ) -> RealQuadraticClassUnitContext:
     """Compute ordinary/narrow classes and units with consistent conventions."""
-    units = real_quadratic_fundamental_unit(discriminant, max_steps=max_steps)
+    units = real_quadratic_fundamental_unit(
+        discriminant, algorithm=algorithm, max_steps=max_steps
+    )
     ordinary = QuadraticClassGroup(
         discriminant,
         narrow=False,
+        algorithm=algorithm,
         max_reduced_forms=max_reduced_forms,
+        max_enumeration_checks=max_enumeration_checks,
         max_steps=max_steps,
     )
     narrow = QuadraticClassGroup(
         discriminant,
         narrow=True,
+        algorithm=algorithm,
         max_reduced_forms=max_reduced_forms,
+        max_enumeration_checks=max_enumeration_checks,
         max_steps=max_steps,
     )
     return RealQuadraticClassUnitContext(
@@ -1050,14 +1322,18 @@ def real_quadratic_class_group(
     discriminant: int,
     *,
     narrow: bool = False,
+    algorithm: str = "auto",
     max_reduced_forms: int = 1_000_000,
+    max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
     max_steps: int = 1_000_000,
 ) -> QuadraticClassGroup:
     """Return the ordinary class group, or the narrow group when requested."""
     return QuadraticClassGroup(
         discriminant,
         narrow=narrow,
+        algorithm=algorithm,
         max_reduced_forms=max_reduced_forms,
+        max_enumeration_checks=max_enumeration_checks,
         max_steps=max_steps,
     )
 
@@ -1068,15 +1344,20 @@ __all__ = [
     "QuadraticClassElement",
     "QuadraticClassGroup",
     "QuadraticClassGroupCertificate",
+    "QuadraticClassGroupPlan",
     "QuadraticForm",
     "QuadraticIdealBasis",
     "QuadraticUnit",
     "RealQuadraticClassUnitContext",
+    "RealQuadraticFieldUnitGroupResult",
     "RealQuadraticUnitResult",
     "exact_minkowski_triviality",
     "is_fundamental_discriminant",
     "quadratic_minkowski_triviality",
+    "quadratic_form_from_ideal_lattice",
     "real_quadratic_class_group",
+    "real_quadratic_class_group_plan",
     "real_quadratic_class_unit_context",
     "real_quadratic_fundamental_unit",
+    "real_quadratic_field_unit_group",
 ]
