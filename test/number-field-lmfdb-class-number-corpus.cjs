@@ -15,7 +15,7 @@ test("pinned LMFDB cubic class-number records are canonical", () => {
   assert.deepEqual(byLabel.get("3.1.59.1").class_group, []);
   assert.equal(byLabel.get("3.1.59.1").class_number, "1");
   assert.deepEqual(byLabel.get("3.1.1083.1").coefficients, ["-12", "-6", "-1", "1"]);
-  assert.deepEqual(byLabel.get("3.1.1083.1").class_group, [3]);
+  assert.deepEqual(byLabel.get("3.1.1083.1").class_group, ["3"]);
   assert.equal(byLabel.get("3.1.1083.1").used_grh, false);
 });
 

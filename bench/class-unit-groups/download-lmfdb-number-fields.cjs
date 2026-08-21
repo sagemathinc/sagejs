@@ -112,7 +112,9 @@ function validateCorpus(corpus) {
     }
     if (
       !Array.isArray(record.class_group) ||
-      record.class_group.some((value) => !Number.isInteger(value) || value < 2)
+      record.class_group.some(
+        (value) => !/^[1-9][0-9]*$/.test(value) || BigInt(value) < 2n,
+      )
     ) {
       throw new Error(`${record.label}: invalid class-group invariants`);
     }
@@ -157,7 +159,9 @@ SELECT row_to_json(record) FROM (
   SELECT label, degree,
          ARRAY(SELECT coefficient::text FROM unnest(coeffs) coefficient) AS coefficients,
          disc_sign, disc_abs::text AS discriminant_absolute, r2,
-         class_number::text AS class_number, class_group,
+         class_number::text AS class_number,
+         ARRAY(SELECT invariant FROM jsonb_array_elements_text(class_group) invariant)
+           AS class_group,
          regulator::text AS regulator, torsion_order, used_grh
     FROM nf_fields
    WHERE degree = ${degree} AND disc_abs <= ${discMax}
