@@ -98,6 +98,7 @@ export async function instantiateFlintFactor(
     algebraicWasi.initialize(algebraicInstance);
     algebraicBackend = createAlgebraicBackend(algebraicInstance, {
       recordCapability,
+      matrixFallback: matrixBackend,
     });
   }
   const numericRepresentationBackend = composeNumericRepresentationBackends(

@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-qqbar-matrix",
+  "title": "Wasm QQbar matrix resources",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run representative public AA/QQbar polynomial-root and matrix workflows through receipt-backed FLINT qqbar/Arb WebAssembly with exact and enclosure differentials, explicit fallback, and a balanced warm benchmark",
+  "base_commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "claims": [
+    "packages/flint/src/algebraic_core.c",
+    "packages/flint/src/algebraic_core.h",
+    "packages/flint-wasm/src/algebraic.c",
+    "packages/flint-wasm/algebraic.mjs",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+    "test/algebraic-wasm-parity.cjs",
+    "test/algebraic-matrix-wasm-route.cjs",
+    "bench/wasm-algebraic-matrix.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT qqbar and gr_mat APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "native @sagemath/sagejs-flint qqbar matrix operations",
+      "portable exact polynomial and matrix computation with algebraic accelerator disabled"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
