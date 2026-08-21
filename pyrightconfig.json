@@ -170,6 +170,7 @@
     "src/lib/sagejs/kernels/__init__.py",
     "src/lib/sagejs/kernels/graph/__init__.py",
     "src/lib/sagejs/kernels/graph/components.py",
+    "src/lib/sagejs/kernels/graph/shortest_paths.py",
     "src/lib/sagejs/kernels/matrix/__init__.py",
     "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
     "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
