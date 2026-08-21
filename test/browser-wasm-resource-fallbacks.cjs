@@ -1,9 +1,84 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync, readdirSync } = require("node:fs");
+const { join, relative } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+function sourceFiles(directory) {
+  const answer = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      answer.push(...sourceFiles(path));
+    } else if (entry.isFile() && path.endsWith(".py")) {
+      answer.push(path);
+    }
+  }
+  return answer;
+}
+
+function collectStrings(value, answer = new Set()) {
+  if (typeof value === "string") {
+    answer.add(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, answer);
+  } else if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectStrings(item, answer);
+  }
+  return answer;
+}
+
+test("public resource constructors cannot assume unshipped Wasm exports", () => {
+  const root = join(__dirname, "..");
+  const schema = JSON.parse(readFileSync(join(root, "ffi/flint.ffi.json"), "utf8"));
+  const production = JSON.parse(
+    readFileSync(
+      join(root, "packages/flint-wasm/release/production-capabilities.json"),
+      "utf8",
+    ),
+  );
+  const productionCapabilities = collectStrings(production);
+  const resourceTypes = new Set(schema.resources.map((resource) => resource.python_name));
+  const candidates = schema.functions.filter((fn) =>
+    fn.targets.wasm === false
+    && fn.signature.return_ownership === "owned"
+    && !fn.signature.parameters.some((parameter) => resourceTypes.has(parameter.type))
+    && !productionCapabilities.has(`ffi:flint:${fn.id}`)
+  );
+  const reviewedNativeOnly = new Set([
+    "fmpz_polynomial:src/lib/sagejs/number_fields/field_analysis_resource.py",
+    "fmpz_polynomial:src/lib/sagejs/number_fields/order_resource.py",
+  ]);
+  const observedNativeOnly = new Set();
+
+  for (const path of sourceFiles(join(root, "src"))) {
+    const source = readFileSync(path, "utf8");
+    const lines = source.split("\n");
+    for (const fn of candidates) {
+      const needle = `.${fn.python_name}(`;
+      for (let index = 0; index < lines.length; index += 1) {
+        if (!lines[index].includes(needle)) continue;
+        const nearby = lines.slice(Math.max(0, index - 12), index + 2).join("\n");
+        if (
+          nearby.includes("_flint_backend_has_function")
+          && nearby.includes(fn.dynamic.export)
+        ) {
+          continue;
+        }
+        const key = `${fn.id}:${relative(root, path)}`;
+        assert.ok(
+          reviewedNativeOnly.has(key),
+          `${key} calls ${fn.dynamic.export}, which is absent from the production Wasm closure, without an explicit capability guard`,
+        );
+        observedNativeOnly.add(key);
+      }
+    }
+  }
+  assert.deepEqual(observedNativeOnly, reviewedNativeOnly);
+});
 
 test("wide-prime polynomial resources follow backend capability without Node", async () => {
   const session = await createSage();
@@ -105,6 +180,57 @@ test("rational matrix operations fall back independently of resource storage", a
       "answer",
     ].join("\n"));
     assert.equal(result.repr, "[True, True, True, True, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("rational random construction falls back when randbits is absent", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate([
+      "import sagejs.runtime as rt",
+      "backend = rt.flint_backend()",
+      "randbits = rt.reflect.get(backend, 'ffiFmpqMatrixRandbits')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpqMatrixRandbits')",
+      "try:",
+      "    set_random_seed(20260821)",
+      "    A = random_matrix(QQ, 2)",
+      "    characteristic = A.charpoly()",
+      "    set_random_seed(20260821)",
+      "    repeat = random_matrix(QQ, 2)",
+      "    bounded = all(1 <= abs(value.numerator()) <= 3 and 1 <= value.denominator() <= 3 for value in A.list())",
+      "    answer = [A == repeat, bounded, characteristic.degree(), characteristic(A).is_zero()]",
+      "finally:",
+      "    if randbits is not rt.undefined:",
+      "        rt.reflect.set(backend, 'ffiFmpqMatrixRandbits', randbits)",
+      "answer",
+    ].join("\n"));
+    assert.equal(result.repr, "[True, True, 2, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("cyclotomic construction falls back when its resource export is absent", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate([
+      "import sagejs.runtime as rt",
+      "backend = rt.flint_backend()",
+      "cyclotomic = rt.reflect.get(backend, 'ffiFmpzPolynomialCyclotomic')",
+      "rt.reflect.deleteProperty(backend, 'ffiFmpzPolynomialCyclotomic')",
+      "try:",
+      "    R = PolynomialRing(ZZ, 'x')",
+      "    x = R.gen()",
+      "    value = R.cyclotomic_polynomial(12)",
+      "    answer = [value == x^4 - x^2 + 1, value(1), value(-1)]",
+      "finally:",
+      "    if cyclotomic is not rt.undefined:",
+      "        rt.reflect.set(backend, 'ffiFmpzPolynomialCyclotomic', cyclotomic)",
+      "answer",
+    ].join("\n"));
+    assert.equal(result.repr, "[True, 1, 1]");
   } finally {
     await session.close();
   }

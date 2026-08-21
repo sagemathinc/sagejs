@@ -87,6 +87,12 @@ def _flint_ffi_module() -> Any:
     return _flint_ffi_module_cache
 
 
+def _flint_backend_has_function(name: str) -> bool:
+    """Return whether the active FLINT backend exports `name`."""
+    candidate = runtime.reflect.get(runtime.flint_backend(), name)
+    return runtime.jstype(candidate) == "function"
+
+
 def _arbitrary_prime_public_module() -> Any:
     """Load stable byte codecs for arbitrary-prime polynomial resources."""
     global _arbitrary_prime_public_module_cache
@@ -3567,8 +3573,10 @@ class PolynomialRingParent(sage.Parent):
         n = int(degree)
         if n < 1:
             raise ValueError("cyclotomic polynomial degree must be positive")
-        if self._base is sage.ZZ and _generated_exact_polynomial_resources_available(
-            sage.ZZ
+        if (
+            self._base is sage.ZZ
+            and _generated_exact_polynomial_resources_available(sage.ZZ)
+            and _flint_backend_has_function("ffiFmpzPolynomialCyclotomic")
         ):
             if n >= (1 << 64):
                 raise OverflowError("cyclotomic polynomial degree is too large")

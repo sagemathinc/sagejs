@@ -9549,9 +9549,12 @@ def random_matrix(
     The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
     a square matrix. The common Sage keywords `density`, `x`, `y`, and
     `distribution='uniform'` are supported where meaningful. Full-density
-    matrices over `QQ` use FLINT's two-bit rational distribution and are
-    constructed directly in their owned FLINT resource. This intentionally
-    differs from SageMath's bounded default rational distribution.
+    matrices over `QQ` use FLINT's two-bit rational distribution. A backend
+    with the optional random-resource constructor fills the owned FLINT
+    resource directly; otherwise a receipt-backed packed kernel produces the
+    same bounded nonzero rational domain before copying it into the ordinary
+    resource owner. This intentionally differs from SageMath's bounded default
+    rational distribution.
 
     ### Examples
 
@@ -9809,10 +9812,39 @@ def random_matrix(
         ffi = _flint_ffi_module()
         if rows * cols == 0:
             resource = ffi.fmpq_matrix(rows, cols)
-        else:
+        elif _flint_backend_has_function("ffiFmpqMatrixRandbits"):
             seed1 = _random_int(0, 4294967295)
             seed2 = _random_int(0, 4294967295)
             resource = ffi.fmpq_matrix_randbits(rows, cols, 2, seed1, seed2)
+        else:
+            packed = _bulk_sparse_random_matrix(
+                sage.QQ,
+                rows,
+                cols,
+                1.0,
+                None,
+                None,
+                None,
+                3,
+                3,
+                True,
+            )
+            if packed is not runtime.undefined:
+                return packed
+            values = []
+            for _index in range(rows * cols):
+                numerator = _random_int(1, 3)
+                if _random_int(0, 1) != 0:
+                    numerator = -numerator
+                denominator = _random_int(1, 3)
+                values.append(sage.QQ(numerator) / sage.QQ(denominator))
+            _trace_dense_rational_selection(
+                "random_matrix",
+                "portable-flint-randbits-semantics",
+                rows,
+                cols,
+            )
+            return matrix(sage.QQ, rows, cols, values)
         _trace_dense_rational_selection(
             "random_matrix",
             "generated-flint-resource",
