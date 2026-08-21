@@ -21,6 +21,7 @@ import time
 
 from sagejs.number_fields.class_group_relations import (
     ExactRelationCollector,
+    FactorBaseIdealReconstructor,
     FactoredPrincipalWitness,
     IdealReductionCancelled,
     IdealReductionResourceLimit,
@@ -63,6 +64,28 @@ actual_factor_base = [
 ]
 assert actual_factor_base == case["factor_base"]
 
+# The reconstruction accelerator is collector-local, bounded, and exactly
+# differential against the uncached public construction for signed rows.
+cached_reconstructor = FactorBaseIdealReconstructor(
+    O, factor_base, max_rows=3, max_powers=2
+)
+cache_rows = ((0, 0), (1, 0), (0, -1), (2, 1), (-1, 2))
+for cache_row in cache_rows:
+    expected = reconstruct_factor_base_ideal(O, factor_base, cache_row)
+    assert cached_reconstructor.reconstruct(cache_row) == expected
+    assert cached_reconstructor.reconstruct(cache_row) == expected
+cache_diagnostics = cached_reconstructor.diagnostics()
+assert cache_diagnostics["row_hits"] >= len(cache_rows)
+assert cache_diagnostics["row_entries"] <= 3
+assert cache_diagnostics["power_entries"] <= 2
+assert cache_diagnostics["retained_ideal_objects"] <= 5
+assert cache_diagnostics["max_retained_ideal_objects"] == 5
+assert cache_diagnostics["row_evictions"] > 0
+assert cache_diagnostics["power_evictions"] > 0
+
+independent_reconstructor = FactorBaseIdealReconstructor(O, factor_base)
+assert independent_reconstructor.diagnostics()["row_requests"] == 0
+
 class Context: pass
 context = Context()
 context.relations = []
@@ -76,6 +99,11 @@ assert [[list(pair) for pair in item.record.sparse_row()] for item in initial] =
     [[0, 1]],
     [[1, 2]],
 ]
+collector_cache = collector.reconstruction_diagnostics()
+assert collector_cache["row_hits"] > 0
+assert collector_cache["retained_ideal_objects"] <= (
+    collector_cache["max_retained_ideal_objects"]
+)
 
 serialized = [item.record.to_dict() for item in initial]
 for payload in serialized:
@@ -397,6 +425,8 @@ print(json.dumps({
     "cubic_embedding": actual_embedding,
     "automorphism_plan": orbit_plan.to_dict(),
     "search_rows": [list(item.record.row) for item in found],
+    "reconstruction_cache": cache_diagnostics,
+    "collector_reconstruction_cache": collector.reconstruction_diagnostics(),
     "replay_ms": replay_ms,
 }, sort_keys=True))
 `;
@@ -415,5 +445,7 @@ test("exact class-group relations admit, replay, mutate, and search deterministi
   assert.deepEqual(report.initial_rows, fixture.golden_ratio.initial_rows);
   assert.deepEqual(report.factor_base, fixture.golden_ratio.factor_base);
   assert.equal(report.rank, fixture.golden_ratio.initial_modular_rank);
+  assert.ok(report.reconstruction_cache.row_hits >= 5);
+  assert.ok(report.collector_reconstruction_cache.row_hits > 0);
   assert.ok(report.replay_ms < fixture.golden_ratio.replay_budget_ms);
 });
