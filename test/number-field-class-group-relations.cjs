@@ -21,6 +21,9 @@ import time
 from sagejs.number_fields.class_group_relations import (
     ExactRelationCollector,
     FactoredPrincipalWitness,
+    IdealReductionCancelled,
+    IdealReductionResourceLimit,
+    IdealReductionState,
     LLLRelationSearch,
     ModularRankScreen,
     RelationNotSmoothError,
@@ -31,6 +34,8 @@ from sagejs.number_fields.class_group_relations import (
     initial_rational_prime_relations,
     minkowski_lll_lattice,
     plan_automorphism_orbits,
+    reconstruct_factor_base_ideal,
+    reduce_ideal_over_base,
     verify_relation_record,
 )
 
@@ -227,6 +232,50 @@ bounded = LLLRelationSearch(
 bounded_elements = bounded.short_elements(O.ideal(1))
 assert not bounded_elements
 assert bounded.last_random_attempts == 8 * (10 - 4)
+
+# A nonprincipal fractional ideal in Q(sqrt(-5)) needs the ramified prime over
+# 2 to represent its class.  Three candidates are insufficient; the immutable
+# cursor resumes at the fourth and the returned principal equality replays.
+reduction_case = fixture["fractional_ideal_reduction"]
+H = NumberField(R(reduction_case["polynomial_low_to_high"]), "b")
+HO = H.maximal_order()
+reduction_base = tuple(
+    HO.factor_rational_prime(reduction_case["factor_base_prime"]).prime_ideals()
+)
+hard_prime = HO.factor_rational_prime(reduction_case["ideal_prime"]).prime_ideals()[0]
+hard_ideal = hard_prime ** reduction_case["ideal_power"]
+try:
+    reduce_ideal_over_base(
+        hard_ideal,
+        reduction_base,
+        max_candidates=reduction_case["first_budget"],
+    )
+    raise AssertionError("the explicit ideal-reduction budget was ignored")
+except IdealReductionResourceLimit as error:
+    reduction_checkpoint = error.state
+assert reduction_checkpoint.candidates_tested == reduction_case["first_budget"]
+checkpoint_payload = reduction_checkpoint.to_dict()
+assert IdealReductionState.from_dict(checkpoint_payload).to_dict() == checkpoint_payload
+resumed_row, resumed_witness = reduce_ideal_over_base(
+    hard_ideal,
+    reduction_base,
+    max_candidates=reduction_case["resume_budget"],
+    checkpoint=checkpoint_payload,
+)
+assert list(resumed_row) == reduction_case["quotient_row"]
+assert str(resumed_witness.evaluate()) == reduction_case["witness"]
+assert resumed_witness.principal_ideal(HO) == (
+    hard_ideal * reconstruct_factor_base_ideal(HO, reduction_base, resumed_row)
+)
+total_row, total_witness = reduce_ideal_over_base(hard_ideal, reduction_base)
+assert total_row == resumed_row
+assert total_witness.evaluate() == resumed_witness.evaluate()
+try:
+    reduce_ideal_over_base(hard_ideal, reduction_base, cancelled=lambda: True)
+    raise AssertionError("ideal reduction ignored cancellation")
+except IdealReductionCancelled as error:
+    assert str(error) == "class/unit computation cancelled"
+    assert error.state.candidates_tested == 0
 
 first_ideal, first_row = search_one.random_factor_base_ideal()
 checkpoint = search_one.state.to_dict()

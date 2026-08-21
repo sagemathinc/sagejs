@@ -37,6 +37,7 @@ RELATION_SCHEMA = "sagejs.number-fields/class-relation-v1"
 WITNESS_SCHEMA = "sagejs.number-fields/factored-principal-witness-v1"
 IDEAL_SCHEMA = "sagejs.number-fields/relation-ideal-v1"
 SEARCH_STATE_SCHEMA = "sagejs.number-fields/relation-search-state-v1"
+IDEAL_REDUCTION_STATE_SCHEMA = "sagejs.number-fields/ideal-reduction-state-v1"
 MINKOWSKI_LATTICE_SCHEMA = "sagejs.number-fields/minkowski-lll-lattice-v1"
 AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
 DEFAULT_RANK_PRIME = 2_147_483_647
@@ -49,6 +50,24 @@ class RelationNotSmoothError(ArithmeticError):
     def __init__(self, message: str, *, ideal: Any = None) -> None:
         super().__init__(message)
         self.ideal = ideal
+
+
+class IdealReductionResourceLimit(RelationNotSmoothError):
+    """An explicitly bounded ideal reduction exhausted its candidate budget."""
+
+    def __init__(self, ideal: Any, state: IdealReductionState) -> None:
+        super().__init__(
+            "bounded ideal reduction exhausted its candidate budget", ideal=ideal
+        )
+        self.state = state
+
+
+class IdealReductionCancelled(RuntimeError):
+    """A resumable adaptive ideal reduction observed cancellation."""
+
+    def __init__(self, state: IdealReductionState) -> None:
+        super().__init__("class/unit computation cancelled")
+        self.state = state
 
 
 def _checked_integer(value: Any, name: str) -> int:
@@ -1260,6 +1279,103 @@ class RelationSearchState:
         )
 
 
+class IdealReductionState:
+    """Immutable cursor for exhaustive ideal-basis coefficient shells."""
+
+    def __init__(
+        self,
+        *,
+        ideal_fingerprint: dict[str, Any],
+        factor_base_fingerprints: Iterable[dict[str, Any]],
+        embedding_precision: int,
+        dimension: int,
+        radius: int = 1,
+        cube_index: int = 0,
+        candidates_tested: int = 0,
+    ) -> None:
+        precision = _checked_integer(embedding_precision, "embedding precision")
+        if precision < 53:
+            raise ValueError("embedding precision must be at least 53 bits")
+        dimension = _checked_integer(dimension, "ideal reduction dimension")
+        if dimension < 1:
+            raise ValueError("ideal reduction dimension must be positive")
+        radius = _checked_integer(radius, "ideal reduction radius")
+        if radius < 1:
+            raise ValueError("ideal reduction radius must be positive")
+        cube_index = _checked_nonnegative(cube_index, "ideal reduction cube index")
+        side = 2 * radius + 1
+        if cube_index >= side**dimension:
+            raise ValueError("ideal reduction cube index is outside its shell cube")
+        self._ideal_fingerprint = _json_value(ideal_fingerprint)
+        self._factor_base_fingerprints = tuple(
+            _json_value(value) for value in factor_base_fingerprints
+        )
+        self.embedding_precision = precision
+        self.dimension = dimension
+        self.radius = radius
+        self.cube_index = cube_index
+        self.candidates_tested = _checked_nonnegative(
+            candidates_tested, "ideal reduction candidate count"
+        )
+        runtime.object.freeze(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": IDEAL_REDUCTION_STATE_SCHEMA,
+            "ideal_fingerprint": _json_value(self._ideal_fingerprint),
+            "factor_base_fingerprints": [
+                _json_value(value) for value in self._factor_base_fingerprints
+            ],
+            "embedding_precision": self.embedding_precision,
+            "dimension": self.dimension,
+            "radius": self.radius,
+            "cube_index": self.cube_index,
+            "candidates_tested": self.candidates_tested,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> IdealReductionState:
+        if payload.get("schema") != IDEAL_REDUCTION_STATE_SCHEMA:
+            raise ValueError("unsupported ideal-reduction state schema")
+        state = cls(
+            ideal_fingerprint=payload["ideal_fingerprint"],
+            factor_base_fingerprints=payload["factor_base_fingerprints"],
+            embedding_precision=payload["embedding_precision"],
+            dimension=payload["dimension"],
+            radius=payload["radius"],
+            cube_index=payload["cube_index"],
+            candidates_tested=payload["candidates_tested"],
+        )
+        if state.to_dict() != payload:
+            raise ValueError("ideal-reduction state is not canonical")
+        return state
+
+    def _advance(self, radius: int, cube_index: int) -> IdealReductionState:
+        return IdealReductionState(
+            ideal_fingerprint=self._ideal_fingerprint,
+            factor_base_fingerprints=self._factor_base_fingerprints,
+            embedding_precision=self.embedding_precision,
+            dimension=self.dimension,
+            radius=radius,
+            cube_index=cube_index,
+            candidates_tested=self.candidates_tested + 1,
+        )
+
+    def _matches(
+        self,
+        ideal_fingerprint: dict[str, Any],
+        factor_base_fingerprints: Iterable[dict[str, Any]],
+        precision: int,
+        dimension: int,
+    ) -> bool:
+        return (
+            self._ideal_fingerprint == ideal_fingerprint
+            and self._factor_base_fingerprints == tuple(factor_base_fingerprints)
+            and self.embedding_precision == precision
+            and self.dimension == dimension
+        )
+
+
 class LLLRelationSearch:
     """Bounded deterministic relation search with replayable PRNG state."""
 
@@ -1458,60 +1574,172 @@ class LLLRelationSearch:
         return tuple(answer)
 
 
+def _shell_coefficients(radius: int, cube_index: int, dimension: int) -> list[int]:
+    side = 2 * radius + 1
+    coefficients = []
+    cursor = cube_index
+    for _coordinate in range(dimension):
+        coefficients.append(cursor % side - radius)
+        cursor //= side
+    return coefficients
+
+
+def _advance_reduction_cursor(
+    state: IdealReductionState,
+) -> tuple[IdealReductionState, list[int] | None]:
+    coefficients = _shell_coefficients(state.radius, state.cube_index, state.dimension)
+    next_index = state.cube_index + 1
+    side = 2 * state.radius + 1
+    if next_index == side**state.dimension:
+        next_radius = state.radius + 1
+        next_index = 0
+    else:
+        next_radius = state.radius
+    if max(abs(value) for value in coefficients) != state.radius:
+        return (
+            IdealReductionState(
+                ideal_fingerprint=state._ideal_fingerprint,
+                factor_base_fingerprints=state._factor_base_fingerprints,
+                embedding_precision=state.embedding_precision,
+                dimension=state.dimension,
+                radius=next_radius,
+                cube_index=next_index,
+                candidates_tested=state.candidates_tested,
+            ),
+            None,
+        )
+    return state._advance(next_radius, next_index), coefficients
+
+
+def _reduction_candidate(
+    ideal: Any,
+    factors: tuple[Any, ...],
+    ideal_row: tuple[int, ...],
+    ideal_norm: Any,
+    element: Any,
+) -> tuple[tuple[int, ...], FactoredPrincipalWitness] | None:
+    quotient_norm = sage.QQ(element.norm()) / ideal_norm
+    if quotient_norm < 0:
+        quotient_norm = -quotient_norm
+    numerator = abs(int(quotient_norm._numerator))
+    denominator = int(quotient_norm._denominator)
+    rational_primes = sorted({int(prime.rational_prime()) for prime in factors})
+    for rational_prime in rational_primes:
+        while numerator % rational_prime == 0:
+            numerator //= rational_prime
+        while denominator % rational_prime == 0:
+            denominator //= rational_prime
+    if numerator != 1 or denominator != 1:
+        return None
+    factored = FactoredPrincipalWitness.from_element(element)
+    principal_row = factor_witness_over_base(factored, factors)
+    row = tuple(
+        principal_exponent - ideal_exponent
+        for principal_exponent, ideal_exponent in zip(
+            principal_row, ideal_row, strict=True
+        )
+    )
+    if _factor_base_row_norm(factors, row) != quotient_norm:
+        return None
+    principal = ideal.ring().ideal(element)
+    reconstructed = reconstruct_factor_base_ideal(ideal.ring(), factors, row)
+    if ideal * reconstructed != principal:
+        raise ArithmeticError("ideal reduction failed exact principal replay")
+    return row, factored
+
+
 def reduce_ideal_over_base(
     ideal: Any,
     factor_base: Iterable[Any],
     *,
     seed: int = 0,
-    max_candidates: int = 128,
+    max_candidates: int | None = None,
+    embedding_precision: int = 128,
+    cancelled: Callable[[], bool] | None = None,
+    checkpoint: IdealReductionState | dict[str, Any] | None = None,
+    checkpoint_callback: Callable[[IdealReductionState], None] | None = None,
 ) -> tuple[tuple[int, ...], FactoredPrincipalWitness]:
-    """Find `(alpha) = ideal * Q` with `Q` smooth over the factor base.
+    """Find `(alpha) = ideal * Q` by exhaustive deterministic shell search.
 
     This is the inverse-map analogue of relation collection.  It permits an
     arbitrary nonzero fractional ideal, even when that ideal itself contains
     primes outside the factor base.  The returned row factors `Q`; therefore
     the ideal's class is the negative of that row.  Exact ideal equality is
     checked before returning the principal witness `alpha`.
+
+    `max_candidates=None` is the total map used by complete class groups.  An
+    integer opts into a bounded operation; exhaustion raises
+    `IdealReductionResourceLimit` with an immutable resumable `state`.  The
+    coefficient shells exhaust the exact ideal lattice, so whenever the factor
+    base generates the complete class group a smooth quotient is eventually
+    found.  Cancellation uses the shared class/unit cancellation message and
+    likewise retains the next untested cursor.
     """
     order = ideal.ring()
     factors = _validate_factor_base(order, factor_base)
     if ideal.is_zero():
         raise ValueError("the zero ideal has no ideal class")
-    collector = ExactRelationCollector(order, factors)
-    search = LLLRelationSearch(
-        collector,
-        seed=seed,
-        max_candidates_per_ideal=_checked_nonnegative(
-            max_candidates, "candidate bound"
-        ),
-        random_terms=min(5, max(1, order.number_field().degree())),
-        coefficient_bound=3,
-    )
+    _checked_integer(seed, "deterministic seed")
+    if max_candidates is not None:
+        max_candidates = _checked_nonnegative(max_candidates, "candidate bound")
+    precision = _checked_integer(embedding_precision, "embedding precision")
+    if precision < 53:
+        raise ValueError("embedding precision must be at least 53 bits")
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    if checkpoint_callback is not None and not callable(checkpoint_callback):
+        raise TypeError("checkpoint callback must be callable")
+    plan = minkowski_lll_lattice(ideal, precision=precision)
+    dimension = len(plan.exact_rows)
+    ideal_fingerprint = _ideal_payload(ideal)
+    factor_fingerprints = tuple(_prime_fingerprint(prime) for prime in factors)
+    if checkpoint is None:
+        state = IdealReductionState(
+            ideal_fingerprint=ideal_fingerprint,
+            factor_base_fingerprints=factor_fingerprints,
+            embedding_precision=precision,
+            dimension=dimension,
+        )
+    else:
+        state = (
+            checkpoint
+            if isinstance(checkpoint, IdealReductionState)
+            else IdealReductionState.from_dict(checkpoint)
+        )
+        if not state._matches(
+            ideal_fingerprint, factor_fingerprints, precision, dimension
+        ):
+            raise ValueError("ideal-reduction checkpoint belongs to another problem")
+    field = ideal.number_field()
+    denominator = sage.QQ(plan.denominator)
+    basis_rows = plan.exact_rows
     ideal_row = tuple(int(ideal.valuation(prime)) for prime in factors)
     ideal_norm = sage.QQ(ideal.norm())
-    for element in search.short_elements(ideal):
-        principal_row = factor_witness_over_base(
-            FactoredPrincipalWitness.from_element(element), factors
-        )
-        row = tuple(
-            principal_exponent - ideal_exponent
-            for principal_exponent, ideal_exponent in zip(
-                principal_row, ideal_row, strict=True
-            )
-        )
-        quotient_norm = sage.QQ(element.norm()) / ideal_norm
-        if quotient_norm < 0:
-            quotient_norm = -quotient_norm
-        if _factor_base_row_norm(factors, row) != quotient_norm:
+    attempted = 0
+    while max_candidates is None or attempted < max_candidates:
+        runtime.check_interrupt()
+        if cancelled is not None and cancelled():
+            raise IdealReductionCancelled(state)
+        state, coefficients = _advance_reduction_cursor(state)
+        if coefficients is None:
             continue
-        principal = order.ideal(element)
-        reconstructed = reconstruct_factor_base_ideal(order, factors, row)
-        if ideal * reconstructed != principal:
-            raise ArithmeticError("ideal reduction failed exact principal replay")
-        return row, FactoredPrincipalWitness.from_element(element)
-    raise RelationNotSmoothError(
-        "bounded ideal reduction found no factor-base-smooth quotient", ideal=ideal
-    )
+        attempted += 1
+        exact_row = [
+            sum(
+                coefficients[basis_index] * basis_rows[basis_index][column]
+                for basis_index in range(dimension)
+            )
+            for column in range(dimension)
+        ]
+        element = _field_element_from_coefficients(
+            field, [sage.QQ(value) / denominator for value in exact_row]
+        )
+        result = _reduction_candidate(ideal, factors, ideal_row, ideal_norm, element)
+        if checkpoint_callback is not None:
+            checkpoint_callback(state)
+        if result is not None:
+            return result
+    raise IdealReductionResourceLimit(ideal, state)
 
 
 __all__ = [
@@ -1519,6 +1747,9 @@ __all__ = [
     "DEFAULT_RANK_PRIME",
     "ExactRelationCollector",
     "FactoredPrincipalWitness",
+    "IdealReductionCancelled",
+    "IdealReductionResourceLimit",
+    "IdealReductionState",
     "LLLRelationSearch",
     "MinkowskiLatticePlan",
     "ModularRankScreen",
