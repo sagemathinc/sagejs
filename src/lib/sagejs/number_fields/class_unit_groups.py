@@ -1026,6 +1026,8 @@ class ClassUnitGroupEngine:
             "generation_verification_calls": 0,
             "generation_verification_cache_hits": 0,
             "generation_verification_full_replays": 0,
+            "generation_reconstruction_calls": 0,
+            "generation_reconstruction_cache_hits": 0,
         }
         self._generation_verification_cache: dict[str, bool] = {}
         self._generation_verification_cache_active = True
@@ -2220,10 +2222,44 @@ class ClassUnitGroupEngine:
                         return False
                 else:
                     return False
-                for record in collector.records:
-                    replay = record.verify(order, factor_base)
-                    if replay["certified"] is not True:
-                        return False
+                reconstruction_diagnostics = getattr(
+                    collector, "reconstruction_diagnostics", None
+                )
+                reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
+                before_reconstruction: Any = (
+                    reconstruction_diagnostics()
+                    if callable(reconstruction_diagnostics)
+                    else None
+                )
+                try:
+                    for record in collector.records:
+                        if callable(reconstruct):
+                            replay = record.verify(
+                                order,
+                                factor_base,
+                                reconstructor=reconstruct,
+                            )
+                        else:
+                            replay = record.verify(order, factor_base)
+                        if replay["certified"] is not True:
+                            return False
+                finally:
+                    after_reconstruction: Any = (
+                        reconstruction_diagnostics()
+                        if callable(reconstruction_diagnostics)
+                        else None
+                    )
+                    if isinstance(before_reconstruction, dict) and isinstance(
+                        after_reconstruction, dict
+                    ):
+                        self._resource_usage["generation_reconstruction_calls"] += int(
+                            after_reconstruction.get("row_requests", 0)
+                        ) - int(before_reconstruction.get("row_requests", 0))
+                        self._resource_usage[
+                            "generation_reconstruction_cache_hits"
+                        ] += int(after_reconstruction.get("row_hits", 0)) - int(
+                            before_reconstruction.get("row_hits", 0)
+                        )
                 if self._generation_verification_cache_active:
                     self._generation_verification_cache[cache_key] = True
                 return True
