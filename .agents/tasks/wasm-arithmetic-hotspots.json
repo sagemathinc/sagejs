@@ -39,8 +39,14 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "The public moebius.range(0, stop) normal heavy case now uses one bounded source-transparent linear-sieve call for 1024 <= stop <= 2097152. CPython/scalar, JavaScript disabled-native, inspected-core, direct Wasm, public Node-Wasm, authenticated fixed-route, malformed-storage, exceptional-bound, and representative benchmark evidence is checked in. At stop=10000 the measured public Node-Wasm median was 51.3 ms versus 601.5 ms for the scalar portable loop, with one crossing and exact digest [10000,-23,6083,[0,1,0,1,-1,1,0,1,1,0]].",
+    "risks": [
+      "The maximum packed case owns 48 MiB across output and workspace; larger and shifted intervals deliberately retain the scalar fallback until a segmented ABI is justified.",
+      "The lane cannot pass architecture:packages until integration assigns the new arithmetic package in the shared package graph."
+    ],
+    "next_steps": [
+      "Integration must add the arithmetic package to pyrightconfig.json and architecture/package-graph.json, register packed-moebius-range-production, add the focused test and benchmark scripts, and add the public moebius-range-batch corpus workflow requiring kernel:packed-moebius-range-production.",
+      "After shared-manifest integration, rerun architecture:check and the aggregate Node-Wasm corpus."
+    ]
   }
 }
