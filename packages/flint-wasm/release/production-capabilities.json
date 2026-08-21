@@ -352,6 +352,7 @@
         "kernel:number-field-discriminant-prefactor-production",
         "kernel:number-field-om-proof-production",
         "kernel:number-field-zeta-coefficients-production",
+        "kernel:packed-graph-components-production",
         "kernel:packed-integer-polynomial-production",
         "kernel:packed-rational-polynomial-production"
       ]

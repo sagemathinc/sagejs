@@ -168,6 +168,8 @@
     "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
     "src/lib/sagejs/polynomial_algorithms/gf2_packed_core.py",
     "src/lib/sagejs/kernels/__init__.py",
+    "src/lib/sagejs/kernels/graph/__init__.py",
+    "src/lib/sagejs/kernels/graph/components.py",
     "src/lib/sagejs/kernels/matrix/__init__.py",
     "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
     "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
