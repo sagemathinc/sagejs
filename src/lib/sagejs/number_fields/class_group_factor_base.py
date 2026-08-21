@@ -912,13 +912,23 @@ def factor_base_prime_from_dict(
     if data.get("schema") != PRIME_RECORD_SCHEMA:
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
-    prime = int(data["prime"])
+    prime = _prime_ideals._normalize_prime(int(data["prime"]))
+    residue_degree = int(data["f"])
+    if residue_degree < 1 or residue_degree > order.degree():
+        raise ValueError("factor-base residue degree is out of range")
     fingerprint = tuple(
         tuple((int(entry[0]), int(entry[1])) for entry in row)
         for row in data["hnf_fingerprint"]
     )
-    decomposition = _prime_ideals.factor_rational_prime(order, prime)
-    for prime_ideal in decomposition.prime_ideals():
+    selected = _selective_dedekind_kummer(order, prime, {residue_degree})
+    if selected is None:
+        decomposition = _prime_ideals.factor_rational_prime(order, prime)
+        candidates = [
+            (prime_ideal, None) for prime_ideal in decomposition.prime_ideals()
+        ]
+    else:
+        candidates = selected
+    for prime_ideal, _producer_generator in candidates:
         if _encode_rows(prime_ideal._basis_rows) == fingerprint:
             two_generator = data.get("two_generator")
             second_generator = None
