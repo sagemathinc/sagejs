@@ -146,6 +146,22 @@ assert list(source_relation.record.quotient_row) == uniformizer_case["quotient_r
 assert list(source_relation.record.row) == uniformizer_case["relation_row"]
 assert source_relation.record.log_precision == 100
 assert source_relation.record.verify(O, factor_base)["certified"]
+
+live_reconstruction_rows = []
+def live_reconstructor(row):
+    live_reconstruction_rows.append(tuple(row))
+    return reconstruct_factor_base_ideal(O, factor_base, row)
+
+cold_verification = source_relation.record.verify(O, factor_base)
+live_verification = source_relation.record.verify(
+    O, factor_base, reconstructor=live_reconstructor
+)
+assert live_verification == cold_verification == {"certified": True, "failures": []}
+assert live_reconstruction_rows == [
+    source_relation.record.source_row,
+    source_relation.record.quotient_row,
+    source_relation.record.row,
+]
 assert factor_ideal_over_base(ramified ** -1, factor_base) == (0, -1)
 
 coefficients = case["nonsmooth_element_coefficients"]

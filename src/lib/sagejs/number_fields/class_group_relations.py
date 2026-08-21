@@ -550,6 +550,24 @@ class FactorBaseIdealReconstructor:
         }
 
 
+def _relation_reconstructor(
+    order: Any, factors: tuple[Any, ...], reconstructor: Any
+) -> Callable[[Iterable[int]], Any]:
+    if reconstructor is None:
+
+        def reconstruct(row: Iterable[int]) -> Any:
+            return reconstruct_factor_base_ideal(order, factors, row)
+
+        return reconstruct
+    for name in ("reconstruct_factor_base_ideal", "reconstruct"):
+        method = getattr(reconstructor, name, None)
+        if callable(method):
+            return method
+    if callable(reconstructor):
+        return reconstructor
+    raise TypeError("relation reconstructor must be callable or expose reconstruct")
+
+
 def factor_ideal_over_base(ideal: Any, factor_base: Iterable[Any]) -> tuple[int, ...]:
     """Return exact factor-base valuations, or reject incomplete smoothness."""
     factors = _validate_factor_base(ideal.ring(), factor_base)
@@ -726,8 +744,23 @@ class RelationRecord:
             provenance=payload["provenance"],
         )
 
-    def verify(self, order: Any, factor_base: Iterable[Any]) -> dict[str, Any]:
-        return verify_relation_record(order, factor_base, self)
+    def verify(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        *,
+        reconstructor: Any = None,
+    ) -> dict[str, Any]:
+        """Verify exactly, optionally reusing a live row-to-ideal cache.
+
+        Detached verification deliberately uses the independent cold
+        reconstruction path.  A live engine may inject a duck-typed callable
+        or object exposing `reconstruct(row)`; every reconstructed ideal still
+        participates in the same exact equality checks.
+        """
+        return verify_relation_record(
+            order, factor_base, self, reconstructor=reconstructor
+        )
 
     def replay(self, order: Any, factor_base: Iterable[Any]) -> dict[str, Any]:
         verification = verify_relation_record(order, factor_base, self)
@@ -754,7 +787,11 @@ class RelationRecord:
 
 
 def verify_relation_record(
-    order: Any, factor_base: Iterable[Any], record: RelationRecord | dict[str, Any]
+    order: Any,
+    factor_base: Iterable[Any],
+    record: RelationRecord | dict[str, Any],
+    *,
+    reconstructor: Any = None,
 ) -> dict[str, Any]:
     failures: list[str] = []
     try:
@@ -764,6 +801,7 @@ def verify_relation_record(
             else RelationRecord.from_dict(record)
         )
         factors = _validate_factor_base(order, factor_base)
+        reconstruct = _relation_reconstructor(order, factors, reconstructor)
         if relation.field_order != _order_fingerprint(order):
             failures.append("field/order fingerprint mismatch")
         expected_factors = tuple(_prime_fingerprint(prime) for prime in factors)
@@ -788,15 +826,9 @@ def verify_relation_record(
         quotient = _ideal_from_payload(order, relation.smooth_quotient)
         if principal != recorded_principal:
             failures.append("factored witness does not generate the recorded ideal")
-        reconstructed_source = reconstruct_factor_base_ideal(
-            order, factors, relation.source_row
-        )
-        reconstructed_quotient = reconstruct_factor_base_ideal(
-            order, factors, relation.quotient_row
-        )
-        reconstructed_principal = reconstruct_factor_base_ideal(
-            order, factors, relation.row
-        )
+        reconstructed_source = reconstruct(relation.source_row)
+        reconstructed_quotient = reconstruct(relation.quotient_row)
+        reconstructed_principal = reconstruct(relation.row)
         if source != reconstructed_source:
             failures.append("source ideal does not match source_row")
         if quotient != reconstructed_quotient:
