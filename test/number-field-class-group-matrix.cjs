@@ -45,6 +45,8 @@ import json
 import time
 
 from sagejs.number_fields.class_group_matrix import (
+    DeferredPresentationPolicy,
+    PresentationDecision,
     RelationMatrixAccumulator,
     RelationMatrixError,
     RelationPresentation,
@@ -157,6 +159,94 @@ before = partial.modular_ranks
 candidates = [[2, 0, 0, 0], [0, 0, 7, 0], [0, 5, 0, 0]]
 assert partial.prioritize(candidates) == [1, 2, 0]
 assert partial.modular_ranks == before
+
+# Production relation collection asks the policy after every admitted row.
+# Modular screening is always incremental, but dense exact extraction happens
+# only on first full rank and at deterministic batch boundaries.
+deferred = RelationMatrixAccumulator(4)
+policy = DeferredPresentationPolicy(4, batch_size=4)
+for row in ([2, 0, 0, 0], [0, 3, 0, 0], [0, 0, 5, 0]):
+    deferred.add_relation(row)
+    update = policy.extract_if_due(deferred, backend='flint')
+    assert not update.extracted
+    assert update.decision.reason == 'awaiting-modular-full-rank'
+assert not policy.decision(deferred, force=True).should_extract
+
+deferred.add_relation([0, 0, 0, 7])
+first = policy.extract_if_due(
+    deferred, required_level='hnf', backend='flint'
+)
+assert first.extracted
+assert first.decision.reason == 'first-full-rank'
+assert first.decision.needs_exact_hnf
+assert not first.decision.needs_exact_snf
+assert policy.extraction_count == 1
+assert policy.last_exact_level == 'snf'
+
+extra_rows = [
+    [2, 3, 0, 0], [0, 3, 5, 0], [0, 0, 5, 7], [4, 6, 0, 0],
+    [2, 0, 5, 0], [0, 6, 0, 7], [4, 0, 0, 7], [2, 3, 5, 7],
+    [6, 3, 0, 0], [0, 9, 5, 0], [2, 0, 10, 0], [0, 3, 0, 14],
+]
+extracted_at = [deferred.row_count]
+for row in extra_rows:
+    deferred.add_relation(row)
+    update = policy.extract_if_due(deferred, backend='flint')
+    if update.extracted:
+        extracted_at.append(deferred.row_count)
+assert extracted_at == [4, 8, 12, 16]
+assert policy.extraction_count == 4
+assert policy.decision(deferred).reason == 'exact-presentation-current'
+direct = deferred.presentation(backend='python', require_full_rank=True)
+assert update.presentation.invariants == direct.invariants
+assert update.presentation.order == direct.order
+
+# A finalization boundary refreshes a stale sub-batch. Decision records and
+# policy state serialize independently of the exact presentation payload.
+deferred.add_relation([2, 6, 10, 14])
+waiting = policy.decision(deferred)
+assert not waiting.should_extract
+assert waiting.reason == 'batching-new-relations'
+assert waiting.pending_rows == 1 and waiting.stale
+assert PresentationDecision.from_dict(waiting.to_dict()).reason == waiting.reason
+
+restored_deferred = RelationMatrixAccumulator.from_dict(deferred.to_dict())
+restored_policy = DeferredPresentationPolicy.from_dict(
+    policy.to_dict(), restored_deferred
+)
+assert restored_policy.verify_against(restored_deferred)
+assert restored_policy.decision(restored_deferred).to_dict() == waiting.to_dict()
+forced = restored_policy.extract_if_due(
+    restored_deferred, force=True, backend='flint'
+)
+assert forced.extracted
+assert forced.decision.reason == 'forced-finalization'
+assert forced.presentation.invariants == deferred.presentation(
+    backend='python', require_full_rank=True
+).invariants
+
+# An HNF-only external extraction can be recorded without pretending SNF maps
+# exist. A later map request signals an exact-level upgrade at the same rows.
+hnf_policy = DeferredPresentationPolicy(4, batch_size=4)
+hnf_policy.note_exact_presentation(
+    deferred, deferred.presentation(backend='python'), extracted_level='hnf'
+)
+upgrade = hnf_policy.decision(deferred, required_level='snf')
+assert upgrade.should_extract and upgrade.needs_exact_snf
+assert upgrade.reason == 'upgrade-to-smith'
+
+# Replay is bound to the exact relation prefix that was last presented.
+corrupted_accumulator = RelationMatrixAccumulator.from_dict(deferred.to_dict())
+corrupted_accumulator.rows[0] = SparseRelationRow(4, [3, 0, 0, 0])
+assert not policy.verify_against(corrupted_accumulator)
+try:
+    DeferredPresentationPolicy.from_dict(
+        policy.to_dict(), corrupted_accumulator
+    )
+except RelationMatrixError:
+    pass
+else:
+    raise AssertionError('policy replay accepted a changed exact prefix')
 
 benchmark = fixture['benchmark']
 state = benchmark['seed']
