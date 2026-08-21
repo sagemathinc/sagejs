@@ -20,6 +20,7 @@
     "./dirichlet-group": "./dirichlet-group.mjs",
     "./evaluator": "./evaluator.mjs",
     "./m4ri": "./m4ri.mjs",
+    "./multivariate-backend": "./multivariate-backend.mjs",
     "./lazy-modules": "./lazy-modules.mjs",
     "./number-field-zeta": "./number-field-zeta.mjs",
     "./kernel": {
@@ -79,6 +80,7 @@
     "evaluator.mjs",
     "index.mjs",
     "m4ri.mjs",
+    "multivariate-backend.mjs",
     "lazy-modules.mjs",
     "number-field-zeta.mjs",
     "kernel.d.ts",

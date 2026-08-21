@@ -3821,7 +3821,16 @@ class MultivariatePolynomialElement(sage.Element):
         other: object,
         variable: Any,
     ) -> MultivariatePolynomialElement:
-        """Return the resultant with respect to one ring generator."""
+        """
+        Return the resultant with respect to one ring generator.
+
+        Native Node uses the exact FLINT object backend. In a WebAssembly
+        host, `ZZ` inputs inside the documented bounded slice use FLINT's
+        packed resultant core and materialize an ordinary element of this
+        parent. Inputs outside that slice raise an explicit capability or
+        resource-limit error; they are never recomputed by a hidden portable
+        resultant implementation.
+        """
         operands = runtime.coercion_model.coercePair(self, other)
         if not isinstance(
             operands.left,

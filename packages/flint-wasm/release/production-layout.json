@@ -89,6 +89,7 @@
           "runtime/kernel.d.ts",
           "runtime/kernel.mjs",
           "runtime/lazy-modules.mjs",
+          "runtime/multivariate-backend.mjs",
           "runtime/node-cli.mjs",
           "runtime/node-kernel.mjs",
           "runtime/node-worker-bootstrap.mjs",
