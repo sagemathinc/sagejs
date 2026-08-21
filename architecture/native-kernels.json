@@ -537,8 +537,11 @@
     {
       "id": "number-field-zeta-coefficients-production",
       "source": "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
-      "functions": ["assemble_zeta_coefficients_from_factors"],
-      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables using arbitrary-precision integer arithmetic",
+      "functions": [
+        "assemble_bf_dyadic_finite_term",
+        "assemble_zeta_coefficients_from_factors"
+      ],
+      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables and exact outward-dyadic Belabas-Friedman finite-sum replay using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "hecke-oscar"],
