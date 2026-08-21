@@ -546,6 +546,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-graph-components-production",
+      "source": "src/lib/sagejs/kernels/graph/components.py",
+      "functions": ["packed_graph_components"],
+      "semantic_domain": "batched insertion-order weak connected components over packed directed or undirected multigraph endpoints using a source-transparent CSR traversal",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "portable-edge-scan"],
+      "benchmark": "bench:wasm-graph-components",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

@@ -1,0 +1,210 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-graph-combinatorics",
+  "title": "Accelerate graph connectivity in WebAssembly",
+  "lane": "combinatorics-groups",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route large Graph and DiGraph connected_components workflows through one batched source-transparent CSR WebAssembly kernel with exact traversal parity, inspected provenance, and explicit fallback evidence",
+  "base_commit": "71bd5e56b811d32bdc8bc7b1e9471bd568bb0380",
+  "claims": [
+    "src/baselib/graphs.py",
+    "src/lib/sagejs/kernels/graph/",
+    "architecture/native-kernels.json",
+    "architecture/package-graph.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/release/production-kernel-coverage.json",
+    "package.json",
+    "pyrightconfig.json",
+    "test/wasm-capabilities.cjs",
+    "test/wasm-production-native-kernels.cjs",
+    "test/wasm-graph-components.cjs",
+    "test/graphs.cjs",
+    "bench/wasm-graph-components.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "GenericGraph.connected_components breadth-first traversal"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --test --test-reporter=spec test/wasm-graph-components.cjs",
+    "node --test --test-reporter=spec test/wasm-capabilities.cjs test/wasm-production-native-kernels.cjs test/graphs.cjs",
+    "node bench/wasm-graph-components.cjs --json"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.812,
+      "started_at": "2026-08-21T00:01:13.470Z",
+      "commit": "fd802b7ae51396c505c252add9da14e925398536",
+      "workspace_fingerprint": "5f1b74164523d4bebd0bfe2076e3c66c136250eed058f81e0c38a3b2d8fdbfc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 165.831,
+      "started_at": "2026-08-21T00:01:40.934Z",
+      "commit": "fd802b7ae51396c505c252add9da14e925398536",
+      "workspace_fingerprint": "b17e947cfc018fac78adc5a032386360a061b999fea4ba6823d8b0f756ec2479",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 18.646,
+      "started_at": "2026-08-21T00:05:37.277Z",
+      "commit": "fd802b7ae51396c505c252add9da14e925398536",
+      "workspace_fingerprint": "b17e947cfc018fac78adc5a032386360a061b999fea4ba6823d8b0f756ec2479",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.925,
+      "started_at": "2026-08-21T00:08:21.258Z",
+      "commit": "998211bfb08790cbf3e536989015f6474aee6580",
+      "workspace_fingerprint": "3f99b36ffb0747099d474aec99767d1186010ee4696503f57ae67a520a3fa3e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.642,
+      "started_at": "2026-08-21T00:09:15.101Z",
+      "commit": "998211bfb08790cbf3e536989015f6474aee6580",
+      "workspace_fingerprint": "3f99b36ffb0747099d474aec99767d1186010ee4696503f57ae67a520a3fa3e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-graph-components.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.894,
+      "started_at": "2026-08-21T00:09:45.115Z",
+      "commit": "998211bfb08790cbf3e536989015f6474aee6580",
+      "workspace_fingerprint": "3f99b36ffb0747099d474aec99767d1186010ee4696503f57ae67a520a3fa3e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-graph-components.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.682,
+      "started_at": "2026-08-21T00:10:00.666Z",
+      "commit": "998211bfb08790cbf3e536989015f6474aee6580",
+      "workspace_fingerprint": "3f99b36ffb0747099d474aec99767d1186010ee4696503f57ae67a520a3fa3e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.24,
+      "started_at": "2026-08-21T00:10:11.051Z",
+      "commit": "998211bfb08790cbf3e536989015f6474aee6580",
+      "workspace_fingerprint": "3f99b36ffb0747099d474aec99767d1186010ee4696503f57ae67a520a3fa3e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.221,
+      "started_at": "2026-08-21T00:16:18.099Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.945,
+      "started_at": "2026-08-21T00:16:29.128Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.425,
+      "started_at": "2026-08-21T00:16:59.257Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-graph-components.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.198,
+      "started_at": "2026-08-21T00:17:55.629Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-capabilities.cjs test/wasm-production-native-kernels.cjs test/graphs.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.437,
+      "started_at": "2026-08-21T00:18:09.998Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-graph-components.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.841,
+      "started_at": "2026-08-21T00:18:30.797Z",
+      "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
+      "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a source-transparent packed CSR connected-components kernel and routed heavy public Graph/DiGraph weak-component traversals through one native/Wasm call while retaining the exact edge-scan oracle and explicit portable route evidence. Exact CPython, JavaScript, inspected-core, public-workflow, real Node-WASI, invalid-input, batching, and performance tests pass; the matched-median benchmark measures a 5.16x same-source speedup and the authenticated public Wasm route reports one crossing.",
+    "risks": [
+      "The 100000 vertex-edge-scan threshold is intentionally conservative and was profiled on sparse cycles; future browser telemetry may justify engine- or density-aware tuning without changing semantics.",
+      "Aggregate Wasm capability and production-kernel registries are shared integration surfaces and may need deterministic regeneration if other fast-math lanes land first."
+    ],
+    "next_steps": [
+      "Merge the explicit graph lane-policy prerequisite before this implementation lane, then reconcile shared registry totals with other lanes.",
+      "Rebuild the flint-wasm production native-kernel packs so the registered graph core is included in the shipped browser assets, and retain the cross-engine browser parity pass in the integration lane."
+    ]
+  }
+}

@@ -23,6 +23,10 @@ from sagejs.ffi.igraph import canonical_permutation as _canonical_permutation
 
 _PLOTLY_MIME = "application/vnd.plotly.v1+json"
 _graph_native_state = {"attempted": False, "backend": None}
+# Below this many legacy edge scans, packing costs more than the work it saves.
+# Above it, the old traversal's repeated full-edge scans are a measured hot
+# loop and the packed O(V + E) kernel is the normal route.
+_PACKED_COMPONENTS_MIN_EDGE_SCANS = 100000
 
 
 class _GraphPositiveInfinity:
@@ -75,6 +79,21 @@ def _native_graph_backend() -> Any:
         except Exception:
             _graph_native_state["backend"] = None
     return _graph_native_state["backend"]
+
+
+def _packed_components_modules() -> tuple[Any, Any]:
+    """Load the native helpers and graph kernel only on a heavy traversal."""
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    if loader is runtime.undefined:
+        raise RuntimeError("the packed graph component kernel loader is unavailable")
+    return (
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.native"]),
+        runtime.reflect.apply(
+            loader,
+            runtime.undefined,
+            ["sagejs.kernels.graph.components"],
+        ),
+    )
 
 
 def _record_get(record: Any, key: str, default_value: Any = None) -> Any:
@@ -666,6 +685,14 @@ class GenericGraph:
         self._weighted = bool(weighted)
         self._name = name
         self._pos = pos
+        self._last_components_acceleration = _native_record(
+            route="not-run",
+            reason="not-run",
+            boundaryCrossings=0,
+            copiedValues=0,
+            vertices=0,
+            edges=0,
+        )
         setattr(self, "name", self.graph_name)  # noqa: B010
         if data is not None:
             self._load_data(data)
@@ -1343,7 +1370,8 @@ class GenericGraph:
                     stack.append(target)
         return iter(answer)
 
-    def connected_components(self, sort: bool = False) -> list[list[Any]]:
+    def _portable_connected_components(self, sort: bool) -> list[list[Any]]:
+        """Exact edge-scan fallback retained as an independent oracle."""
         seen = [False] * self.order()
         answer = []
         for source in range(self.order()):
@@ -1372,6 +1400,144 @@ class GenericGraph:
 
             answer.sort(key=component_key)
         return answer
+
+    def _record_components_acceleration(
+        self,
+        route: str,
+        reason: str,
+        boundary_crossings: int,
+        copied_values: int,
+    ) -> None:
+        self._last_components_acceleration = _native_record(
+            route=route,
+            reason=reason,
+            boundaryCrossings=boundary_crossings,
+            copiedValues=copied_values,
+            vertices=self.order(),
+            edges=len(self._edges),
+        )
+
+    def _packed_connected_components(self, sort: bool) -> list[list[Any]]:
+        vertex_count = self.order()
+        edge_entries = 2 * len(self._edges)
+        native_module, components_module = _packed_components_modules()
+        packed_kernel = runtime.reflect.get(
+            components_module,
+            "packed_graph_components",
+        )
+        kernel_uint64_zeros = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_zeros",
+        )
+        kernel_uint64_buffer = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_buffer",
+        )
+        native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+        workspace_length = 7 * vertex_count + 2 + edge_entries
+        packed_edges = []
+        for edge in self._edges:
+            packed_edges.extend([edge.source, edge.target])
+        traversal = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, vertex_count],
+        )
+        component_offsets = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, vertex_count + 1],
+        )
+        workspace = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, workspace_length],
+        )
+        edge_buffer = runtime.reflect.apply(
+            kernel_uint64_buffer,
+            native_module,
+            [packed_kernel, packed_edges],
+        )
+        component_count = int(
+            runtime.reflect.apply(
+                packed_kernel,
+                components_module,
+                [
+                    traversal,
+                    component_offsets,
+                    edge_buffer,
+                    workspace,
+                    vertex_count,
+                    edge_entries,
+                    1 if self._directed else 0,
+                ],
+            )
+        )
+        if component_count > vertex_count:
+            raise ValueError("packed graph component traversal rejected its input")
+        execution_target = getattr(
+            packed_kernel,
+            "executionTarget",
+            None,
+        )
+        if execution_target == "wasm":
+            route = "wasm-compiled-source"
+            reason = "normal-heavy-case"
+        elif bool(
+            runtime.reflect.apply(
+                native_is_compiled,
+                native_module,
+                [packed_kernel],
+            )
+        ) and bool(getattr(packed_kernel, "nativeAvailable", False)):
+            route = "native-compiled-source"
+            reason = "normal-heavy-case"
+        else:
+            route = "portable-computation"
+            reason = "compiled-source-unavailable"
+        self._record_components_acceleration(
+            route,
+            reason,
+            1 if route != "portable-computation" else 0,
+            (edge_entries + vertex_count + vertex_count + 1 + workspace_length),
+        )
+
+        answer = []
+        for component_index in range(component_count):
+            start = int(component_offsets[component_index])
+            stop = int(component_offsets[component_index + 1])
+            component = [
+                self._vertices[int(traversal[index])] for index in range(start, stop)
+            ]
+            answer.append(_safe_sorted(component) if sort else component)
+        if sort:
+
+            def component_key(component: list[Any]) -> tuple[int, str]:
+                return -len(component), repr(component)
+
+            answer.sort(key=component_key)
+        return answer
+
+    def connected_components(self, sort: bool = False) -> list[list[Any]]:
+        """Return weak components, accelerating large traversals in one batch.
+
+        The normal heavy route packs insertion-order edge indices once and
+        invokes the source-transparent CSR kernel. Small graphs retain the
+        readable edge-scan implementation because marshalling would dominate.
+        If no verified native/Wasm artifact is installed, the same packed
+        Python source runs exactly and `_last_components_acceleration` reports
+        `portable-computation` instead of silently claiming acceleration.
+        """
+        edge_scans = self.order() * len(self._edges)
+        if edge_scans < _PACKED_COMPONENTS_MIN_EDGE_SCANS:
+            self._record_components_acceleration(
+                "portable-computation",
+                "below-packed-threshold",
+                0,
+                0,
+            )
+            return self._portable_connected_components(sort)
+        return self._packed_connected_components(sort)
 
     components = connected_components
 

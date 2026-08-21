@@ -69,6 +69,13 @@
           "test/native-kernel.cjs"
         ]
       },
+      "graph-components-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/graphs.cjs",
+          "test/wasm-graph-components.cjs"
+        ]
+      },
       "native-public-fallback-differential": {
         "differential": true,
         "paths": [
@@ -10770,6 +10777,32 @@
       "reviewed": true,
       "review_note": "All 1 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
       "public_explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-graph-components-production",
+      "kind": "production-kernel",
+      "family": "packed-graph-components",
+      "source": "src/lib/sagejs/kernels/graph/components.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "graph-connected-components"
+      ],
+      "tests": [
+        "graph-components-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The one registered packed CSR traversal is compiled into the receipt-authenticated production source-kernel pack and selected by large public Graph and DiGraph connected-components workflows.",
+      "public_explanation": "Large weak connected-components traversals use one batched source-transparent WebAssembly call; small graphs and missing artifacts retain the exact observable fallback.",
       "compiled_coverage": {
         "compiled_functions": 1,
         "fallback_functions": 0,

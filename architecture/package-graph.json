@@ -329,6 +329,19 @@
       "prefixes": []
     },
     {
+      "id": "graph-native-kernels",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "native-integration", "graph-theory"],
+      "modules": ["sagejs.kernels.graph"],
+      "files": [
+        "src/lib/sagejs/kernels/graph/__init__.py",
+        "src/lib/sagejs/kernels/graph/components.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",

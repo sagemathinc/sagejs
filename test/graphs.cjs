@@ -119,6 +119,42 @@ test("directed graph algorithms and conversions", async () => {
   });
 });
 
+test("large connected components use the packed exact traversal contract", async () => {
+  await withSage(async (session) => {
+    const result = await session.evaluate(
+      [
+        "G = Graph(500, loops=True, multiedges=True)",
+        "G.add_edges([(i,i+1) for i in range(0,199)])",
+        "G.add_edges([(i,i+1) for i in range(250,499)])",
+        "G.add_edges([(5,5), (5,5), (300,301)])",
+        "expected = G._portable_connected_components(False)",
+        "actual = G.connected_components()",
+        "U = DiGraph(500)",
+        "U.add_edges([(i+1,i) for i in range(0,199)])",
+        "U.add_edges([(i,i+1) for i in range(250,499)])",
+        "directed_expected = U._portable_connected_components(False)",
+        "directed_actual = U.connected_components()",
+        "small = graphs.PathGraph(10)",
+        "small.connected_components()",
+        "[actual == expected, directed_actual == directed_expected,",
+        " len(actual), len([c for c in actual if len(c) == 1]),",
+        " max([len(c) for c in actual]),",
+        " G._last_components_acceleration.route,",
+        " G._last_components_acceleration.reason,",
+        " G._last_components_acceleration.copiedValues,",
+        " U._last_components_acceleration.route,",
+        " small._last_components_acceleration.reason]",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "[True, True, 52, 50, 250, 'portable-computation', " +
+        "'compiled-source-unavailable', 6307, 'portable-computation', " +
+        "'below-packed-threshold']",
+    );
+  });
+});
+
 test("named graphs, exact isomorphism, canonical labels, and serialization", async () => {
   await withSage(async (session) => {
     const result = await session.evaluate(

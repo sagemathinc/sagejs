@@ -252,6 +252,7 @@
     "bench:number-field-om-length8": "node bench/number-field-om-length8.cjs",
     "bench:word-prime-krylov": "node bench/word-prime-krylov.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
+    "bench:wasm-graph-components": "node bench/wasm-graph-components.cjs --json",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
     "bench:modular-symbols:checkpoints": "node bench/modsym-checkpoint-pipeline.cjs",
     "bench:modular-symbols:grid": "node bench/explore-modular-symbols.cjs",
