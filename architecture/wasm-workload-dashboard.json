@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 14,
+    "heavy_workloads": 15,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 14,
+    "failed_heavy_workloads": 15,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "45cbab29a5e3a732dd0bbb1994b997e9f98e6264bfe8f689bc28e8572cf91449"
+      "sha256": "4f60661dda58a8e62d171e7b6c49ebd32d5f655ca710dd7ae3d31de286bc0e52"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "565311683aca7a2082e8ba495b0bcd4b14d412289b88c58e70aa0909be21f758"
+      "sha256": "b472db2d00b1689d5641d252eb26486bb469fe9bead9b521f015f0254d89bea9"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -39,7 +39,7 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 17,
+    "parity_workloads": 18,
     "performance_workloads": 5,
     "capability_counts": {
       "total": 943,
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 42,
+      "wasm-library": 46,
       "wasm-compiled-source": 2,
       "portable-orchestration": 3,
       "portable-computation": 0
@@ -101,6 +101,14 @@
       "heavy_workloads": 4,
       "accelerated": 0,
       "failed": 4,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "dense-binary-matrices": {
+      "workloads": 1,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -517,6 +525,80 @@
           "review": null,
           "capability_status": "available",
           "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:gf2-matrix-m4ri",
+      "public_workflow": "gf2-matrix-m4ri",
+      "family": "dense-binary-matrices",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:m4ri:matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:m4ri:matrix_solve",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
         }
       ],
       "engines": {

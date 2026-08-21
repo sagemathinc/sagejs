@@ -131,6 +131,24 @@
       }
     },
     {
+      "id": "gf2-matrix-m4ri",
+      "family": "dense-binary-matrices",
+      "workflow": "gf2-matrix-m4ri",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:m4ri:matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_right_kernel", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_solve", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F = GF(2)\nA = matrix(F, 4, 5, [1,0,1,1,0, 0,1,1,0,1, 1,1,0,1,1, 0,0,1,1,1])\nB = matrix(F, 5, 3, [1,0,1, 0,1,1, 1,1,0, 1,0,0, 0,1,0])\nQ = matrix(F, 3, 3, [1,1,0, 0,1,1, 1,1,1])\nrhs = matrix(F, 3, 1, [1,0,1])\nC = A * B\nK = A.right_kernel_matrix()\nX = Q.solve_right(rhs)\nprint(A.rank())\nprint(C.str().replace('\\n', ';'))\nprint(K.nrows(), K.ncols(), (A * K.transpose()).is_zero())\nprint(X.str().replace('\\n', ';'), Q * X == rhs)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "3\n[1 1 1];[1 1 1];[0 0 0];[0 0 0]\n2 5 True\n[1];[0];[0] True\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "hyperelliptic-smalljac-local-factors",
       "family": "hyperelliptic-curves",
       "workflow": "hyperelliptic-smalljac-local-factors",

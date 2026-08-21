@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c42880d491cf8c871386ac3853ed7ff519cf794316f95f4a6573e0daff0b52d5",
+  "source_sha256": "c66e997381b99a826eea7adcd340dcc777ed160d13bfeaa6c89eaf6ee6d008b3",
   "counts": {
     "total": 943,
     "by_kind": {
@@ -57,6 +57,12 @@
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "gf2-matrix-m4ri": [
+      "ffi:m4ri:matrix_mul",
+      "ffi:m4ri:matrix_rank",
+      "ffi:m4ri:matrix_right_kernel",
+      "ffi:m4ri:matrix_solve"
     ],
     "graph-components-packed": [
       "kernel:packed-graph-components-production"

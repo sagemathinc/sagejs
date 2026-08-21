@@ -314,6 +314,12 @@
     "graph-components-packed": [
       "kernel:packed-graph-components-production"
     ],
+    "gf2-matrix-m4ri": [
+      "ffi:m4ri:matrix_mul",
+      "ffi:m4ri:matrix_rank",
+      "ffi:m4ri:matrix_right_kernel",
+      "ffi:m4ri:matrix_solve"
+    ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
     ],

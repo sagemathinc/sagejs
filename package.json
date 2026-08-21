@@ -279,6 +279,7 @@
     "bench:native:ffi:resource": "node bench/compare-native-ffi-resource.cjs",
     "bench:native:ffi:extension-polynomial": "node bench/extension-polynomial-resources.cjs --check",
     "bench:native:ffi:arbitrary-prime-polynomial": "node bench/arbitrary-prime-polynomial-resources.cjs",
+    "bench:wasm:m4ri-public": "node bench/wasm-m4ri-public.cjs",
     "bench:exact-polynomial-lazy-resource-ingress": "node bench/exact-polynomial-lazy-resource-ingress.cjs",
     "bench:native:ffi:slices": "node bench/compare-native-ffi-slices.cjs",
     "bench:native:polynomial": "node scripts/check-polynomial-budget.cjs",

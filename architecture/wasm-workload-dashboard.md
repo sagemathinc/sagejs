@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/14 accelerated; 14 failed closed.
+Heavy workloads: 0/15 accelerated; 15 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,7 +12,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 42 | 0 |
+| `wasm-library` | 46 | 0 |
 | `wasm-compiled-source` | 2 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
@@ -23,6 +23,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | algebraic-numbers | 1 | 0 | 0 | 0 | 0 | 1 |
 | analytic-functions | 4 | 4 | 0 | 4 | 0 | 0 |
+| dense-binary-matrices | 1 | 1 | 0 | 1 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
 | graphs | 1 | 1 | 0 | 1 | 0 | 0 |
@@ -45,6 +46,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:modular-symbols-weight-two` | modular-symbols | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-maximal-order-prime-zeta` | number-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:graph-components-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:gf2-matrix-m4ri` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:hyperelliptic-smalljac-local-factors` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-ideal-certificate-sagepack` | number-fields | no | unmeasured | `portable-orchestration` | — |

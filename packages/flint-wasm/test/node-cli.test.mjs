@@ -158,12 +158,31 @@ async function fixture() {
   ];
   const layout = { schema: "sagejs.wasm-production-layout/v1", modules: [] };
   const capabilities = [];
+  const topology = {
+    schema: "sagejs.wasm-artifact-topology/v1",
+    eagerGroup: "eager-core",
+    groups: [
+      {
+        id: "eager-core",
+        kind: "eager",
+        dependencies: [],
+        assets: assets.map(({ path }) => path),
+        identity: `sha256:${"e".repeat(64)}`,
+      },
+    ],
+  };
   const manifest = {
     schema: "sagejs.wasm-production-artifact/v1",
-    identity: `sha256:${sha256(canonicalJson({ layout, assets, capabilities }))}`,
+    identity: `sha256:${sha256(canonicalJson({
+      layout,
+      assets,
+      capabilities,
+      topology,
+    }))}`,
     layout,
     assets,
     capabilities,
+    topology,
   };
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
   await writeFile(join(distDirectory, "production-manifest.json"), manifestBytes);

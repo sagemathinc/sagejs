@@ -183,6 +183,7 @@ export async function verifyProductionArtifact({
     layout: manifest.layout,
     assets: manifest.assets,
     capabilities: manifest.capabilities,
+    topology: manifest.topology,
   }))}`;
   if (manifest.identity !== computedIdentity) {
     throw new Error("WebAssembly production artifact identity differs");
