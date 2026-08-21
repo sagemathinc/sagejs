@@ -1,0 +1,2191 @@
+{
+  "schema": "sagejs.wasm-fflas-disposition/v1",
+  "generated_at": "2026-08-21T01:44:03.990Z",
+  "artifact_identity": "sha256:4f987c63ee67c23c9dc55541dc13819d6942483c63b1f9cf705231a8a132c037",
+  "source_revision": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "environment": {
+    "node": "v26.7.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16
+  },
+  "methodology": {
+    "sizes": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "moduli": [
+      97,
+      65537
+    ],
+    "samples": 5,
+    "warmups_per_operation": 1,
+    "statistic": "warm median wall milliseconds",
+    "exactness": "SHA-256 over every canonical product, RREF, and right-nullspace residue",
+    "native_route": "public automatic dispatch to generated FFLAS/FFPACK where its reviewed crossover applies",
+    "wasm_route": "public automatic dispatch to receipt-backed FLINT Wasm boundaries",
+    "reviewed_performance_target": "every warm operation through 512x512 is at most 250 ms and 20x its matched native route"
+  },
+  "reviewed_dispositions": [
+    {
+      "capability": "ffi:fflas:modular_float_available",
+      "wasmCapability": null,
+      "disposition": "desktop-backend-probe-not-a-public-mathematical-operation"
+    },
+    {
+      "capability": "ffi:fflas:modular_float_mul",
+      "wasmCapability": "ffi:flint:nmod_mat_mul",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_float_rank",
+      "wasmCapability": "ffi:flint:nmod_mat_rank",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_float_rref",
+      "wasmCapability": "ffi:flint:nmod_mat_rref",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_float_right_nullspace",
+      "wasmCapability": "ffi:flint:nmod_mat_right_kernel",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_double_available",
+      "wasmCapability": null,
+      "disposition": "desktop-backend-probe-not-a-public-mathematical-operation"
+    },
+    {
+      "capability": "ffi:fflas:modular_double_mul",
+      "wasmCapability": "ffi:flint:nmod_matrix_mul",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_double_rank",
+      "wasmCapability": "ffi:flint:nmod_matrix_rank",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_double_rref",
+      "wasmCapability": "ffi:flint:nmod_matrix_rref",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    },
+    {
+      "capability": "ffi:fflas:modular_double_right_nullspace",
+      "wasmCapability": "ffi:flint:nmod_matrix_right_kernel",
+      "disposition": "desktop-optional-implementation-public-wasm-covered-by-flint"
+    }
+  ],
+  "cases": [
+    {
+      "id": "gf-97-64",
+      "modulus": 97,
+      "size": 64,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.5140304565429688,
+            "nullspace": 0.6039142608642578,
+            "rank": 0.4730224609375,
+            "rref": 0.5028247833251953
+          },
+          "exact_sha256": "14374c02d707c366c995ac2b9dd814758c181abd487cec87b5349f626408cb0d",
+          "routes": {
+            "multiply": [
+              "declared-fflas-adapter",
+              "declared-flint-isolated"
+            ],
+            "rank": [
+              "declared-fflas-adapter"
+            ],
+            "rref": [
+              "declared-fflas-adapter"
+            ],
+            "nullspace": [
+              "declared-fflas-adapter"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 540.0532659999999,
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.8289813995361328,
+            "nullspace": 0.7939338684082031,
+            "rank": 0.4582405090332031,
+            "rref": 0.5407333374023438
+          },
+          "exact_sha256": "14374c02d707c366c995ac2b9dd814758c181abd487cec87b5349f626408cb0d",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 2273280,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 825344,
+                "egress_bytes": 268288
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 196608,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 344064,
+                "egress_bytes": 196608
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 294912,
+                "egress_bytes": 147456
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 545.3950000004843,
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.9450912475585938,
+            "nullspace": 0.9047985076904297,
+            "rank": 0.39505958557128906,
+            "rref": 0.6799697875976562
+          },
+          "exact_sha256": "14374c02d707c366c995ac2b9dd814758c181abd487cec87b5349f626408cb0d",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 2273280,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 825344,
+                "egress_bytes": 268288
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 196608,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 344064,
+                "egress_bytes": 196608
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 294912,
+                "egress_bytes": 147456
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 1.612708719851577,
+            "nullspace": 1.3146466640347414,
+            "rank": 0.96875,
+            "rref": 1.0753911806543386
+          },
+          "browser-chromium": {
+            "mul": 1.8385899814471243,
+            "nullspace": 1.498223450454007,
+            "rank": 0.8351814516129032,
+            "rref": 1.3522996680891417
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 0.8289813995361328,
+              "ratio_to_native": 1.612708719851577,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 0.7939338684082031,
+              "ratio_to_native": 1.3146466640347414,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 0.4582405090332031,
+              "ratio_to_native": 0.96875,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 0.5407333374023438,
+              "ratio_to_native": 1.0753911806543386,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 0.9450912475585938,
+              "ratio_to_native": 1.8385899814471243,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 0.9047985076904297,
+              "ratio_to_native": 1.498223450454007,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 0.39505958557128906,
+              "ratio_to_native": 0.8351814516129032,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 0.6799697875976562,
+              "ratio_to_native": 1.3522996680891417,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-97-128",
+      "modulus": 97,
+      "size": 128,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 0.6470680236816406,
+            "nullspace": 0.8375644683837891,
+            "rank": 0.6072521209716797,
+            "rref": 0.6639957427978516
+          },
+          "exact_sha256": "3827ed60181c9d751357647db8885d69f07f6d921492761f688c5ff950d3d803",
+          "routes": {
+            "multiply": [
+              "declared-fflas-adapter"
+            ],
+            "rank": [
+              "declared-fflas-adapter"
+            ],
+            "rref": [
+              "declared-fflas-adapter"
+            ],
+            "nullspace": [
+              "declared-fflas-adapter"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 994.816785,
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 2.382516860961914,
+            "nullspace": 2.2573471069335938,
+            "rank": 1.2509822845458984,
+            "rref": 1.310586929321289
+          },
+          "exact_sha256": "3827ed60181c9d751357647db8885d69f07f6d921492761f688c5ff950d3d803",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 9093120,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 3301376,
+                "egress_bytes": 1073152
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 786432,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 1376256,
+                "egress_bytes": 786432
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 1179648,
+                "egress_bytes": 589824
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 1016.6550000002608,
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 2.655029296875,
+            "nullspace": 2.5348663330078125,
+            "rank": 1.2748241424560547,
+            "rref": 1.6598701477050781
+          },
+          "exact_sha256": "3827ed60181c9d751357647db8885d69f07f6d921492761f688c5ff950d3d803",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 9093120,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 3301376,
+                "egress_bytes": 1073152
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 786432,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 1376256,
+                "egress_bytes": 786432
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 1179648,
+                "egress_bytes": 589824
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 3.6820191599115697,
+            "nullspace": 2.695132365499573,
+            "rank": 2.060070671378092,
+            "rref": 1.9737881508078994
+          },
+          "browser-chromium": {
+            "mul": 4.103168754605748,
+            "nullspace": 3.026473099914603,
+            "rank": 2.099332548095799,
+            "rref": 2.4998204667863555
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 2.382516860961914,
+              "ratio_to_native": 3.6820191599115697,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 2.2573471069335938,
+              "ratio_to_native": 2.695132365499573,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 1.2509822845458984,
+              "ratio_to_native": 2.060070671378092,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 1.310586929321289,
+              "ratio_to_native": 1.9737881508078994,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 2.655029296875,
+              "ratio_to_native": 4.103168754605748,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 2.5348663330078125,
+              "ratio_to_native": 3.026473099914603,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 1.2748241424560547,
+              "ratio_to_native": 2.099332548095799,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 1.6598701477050781,
+              "ratio_to_native": 2.4998204667863555,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-97-256",
+      "modulus": 97,
+      "size": 256,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 1.3985633850097656,
+            "nullspace": 2.168893814086914,
+            "rank": 1.728057861328125,
+            "rref": 1.6260147094726562
+          },
+          "exact_sha256": "ff8b6fb14fb7457a1eec3915454a6d3412d83aa45d36dc2748d5fea760b16d4e",
+          "routes": {
+            "multiply": [
+              "declared-fflas-adapter"
+            ],
+            "rank": [
+              "declared-fflas-adapter"
+            ],
+            "rref": [
+              "declared-fflas-adapter"
+            ],
+            "nullspace": [
+              "declared-fflas-adapter"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 3423.8491140000006,
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 12.702703475952148,
+            "nullspace": 11.455297470092773,
+            "rank": 6.598949432373047,
+            "rref": 6.049633026123047
+          },
+          "exact_sha256": "ff8b6fb14fb7457a1eec3915454a6d3412d83aa45d36dc2748d5fea760b16d4e",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 36372480,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 13205504,
+                "egress_bytes": 4292608
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 3145728,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 5505024,
+                "egress_bytes": 3145728
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 4718592,
+                "egress_bytes": 2359296
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 3395.385000000708,
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 13.819694519042969,
+            "nullspace": 11.37995719909668,
+            "rank": 6.03485107421875,
+            "rref": 6.684780120849609
+          },
+          "exact_sha256": "ff8b6fb14fb7457a1eec3915454a6d3412d83aa45d36dc2748d5fea760b16d4e",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 36372480,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 13205504,
+                "egress_bytes": 4292608
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 3145728,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 5505024,
+                "egress_bytes": 3145728
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 4718592,
+                "egress_bytes": 2359296
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 9.082679849982952,
+            "nullspace": 5.281631307024294,
+            "rank": 3.818708609271523,
+            "rref": 3.720527859237537
+          },
+          "browser-chromium": {
+            "mul": 9.881350153426526,
+            "nullspace": 5.246894580630977,
+            "rank": 3.492273730684327,
+            "rref": 4.111143695014663
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 12.702703475952148,
+              "ratio_to_native": 9.082679849982952,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 11.455297470092773,
+              "ratio_to_native": 5.281631307024294,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 6.598949432373047,
+              "ratio_to_native": 3.818708609271523,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 6.049633026123047,
+              "ratio_to_native": 3.720527859237537,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 13.819694519042969,
+              "ratio_to_native": 9.881350153426526,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 11.37995719909668,
+              "ratio_to_native": 5.246894580630977,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 6.03485107421875,
+              "ratio_to_native": 3.492273730684327,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 6.684780120849609,
+              "ratio_to_native": 4.111143695014663,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-97-512",
+      "modulus": 97,
+      "size": 512,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 8.324861526489258,
+            "nullspace": 8.65936279296875,
+            "rank": 7.174968719482422,
+            "rref": 5.873203277587891
+          },
+          "exact_sha256": "318a700183872d0ef3f347cc084ab62a3e2f504fa70a0ee420b4575d76db843f",
+          "routes": {
+            "multiply": [
+              "declared-fflas-adapter"
+            ],
+            "rank": [
+              "declared-fflas-adapter"
+            ],
+            "rref": [
+              "declared-fflas-adapter"
+            ],
+            "nullspace": [
+              "declared-fflas-adapter"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 13714.056492999996,
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 80.00874519348145,
+            "nullspace": 68.30191612243652,
+            "rank": 38.2380485534668,
+            "rref": 34.24501419067383
+          },
+          "exact_sha256": "318a700183872d0ef3f347cc084ab62a3e2f504fa70a0ee420b4575d76db843f",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 145489920,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 52822016,
+                "egress_bytes": 17170432
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 12582912,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 22020096,
+                "egress_bytes": 12582912
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 18874368,
+                "egress_bytes": 9437184
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 13836.53000000026,
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 97,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 83.16993713378906,
+            "nullspace": 70.32489776611328,
+            "rank": 38.11979293823242,
+            "rref": 37.90998458862305
+          },
+          "exact_sha256": "318a700183872d0ef3f347cc084ab62a3e2f504fa70a0ee420b4575d76db843f",
+          "instrumentation": {
+            "boundary_crossings": 27,
+            "copied_bytes": 145489920,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_mat_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 52822016,
+                "egress_bytes": 17170432
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 12582912,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 22020096,
+                "egress_bytes": 12582912
+              },
+              {
+                "capability_id": "ffi:flint:nmod_mat_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 18874368,
+                "egress_bytes": 9437184
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 9.61081994443967,
+            "nullspace": 7.887637665198238,
+            "rank": 5.329367980328304,
+            "rref": 5.83072176666396
+          },
+          "browser-chromium": {
+            "mul": 9.990549016238509,
+            "nullspace": 8.12125550660793,
+            "rank": 5.312886289625839,
+            "rref": 6.454737354875376
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 80.00874519348145,
+              "ratio_to_native": 9.61081994443967,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 68.30191612243652,
+              "ratio_to_native": 7.887637665198238,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 38.2380485534668,
+              "ratio_to_native": 5.329367980328304,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 34.24501419067383,
+              "ratio_to_native": 5.83072176666396,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 83.16993713378906,
+              "ratio_to_native": 9.990549016238509,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 70.32489776611328,
+              "ratio_to_native": 8.12125550660793,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 38.11979293823242,
+              "ratio_to_native": 5.312886289625839,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 37.90998458862305,
+              "ratio_to_native": 6.454737354875376,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-65537-64",
+      "modulus": 65537,
+      "size": 64,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.5545616149902344,
+            "nullspace": 0.6163120269775391,
+            "rank": 0.3414154052734375,
+            "rref": 0.4856586456298828
+          },
+          "exact_sha256": "94372ef4366e47e5e1b138dc7b91216d399586a2641b65492d03ad21711871ae",
+          "routes": {
+            "multiply": [
+              "generated-flint-resource"
+            ],
+            "rank": [
+              "generated-flint-resource"
+            ],
+            "rref": [
+              "generated-flint-resource"
+            ],
+            "nullspace": [
+              "generated-flint-resource"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 333.43533500000194,
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.5323886871337891,
+            "nullspace": 0.5514621734619141,
+            "rank": 0.3063678741455078,
+            "rref": 0.37932395935058594
+          },
+          "exact_sha256": "94372ef4366e47e5e1b138dc7b91216d399586a2641b65492d03ad21711871ae",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 653312,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 343.02999999932945,
+          "mathematical": {
+            "nullity": 16,
+            "rank": 64,
+            "wide_rank": 48
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              64,
+              64
+            ],
+            "wide": [
+              48,
+              64
+            ]
+          },
+          "size": 64,
+          "timings_ms": {
+            "mul": 0.49996376037597656,
+            "nullspace": 0.5152225494384766,
+            "rank": 0.26988983154296875,
+            "rref": 0.34499168395996094
+          },
+          "exact_sha256": "94372ef4366e47e5e1b138dc7b91216d399586a2641b65492d03ad21711871ae",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 653312,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 0.9600171969045572,
+            "nullspace": 0.8947775628626693,
+            "rank": 0.8973463687150838,
+            "rref": 0.7810505645557192
+          },
+          "browser-chromium": {
+            "mul": 0.9015477214101462,
+            "nullspace": 0.8359767891682786,
+            "rank": 0.7905027932960894,
+            "rref": 0.7103583701521846
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 0.5323886871337891,
+              "ratio_to_native": 0.9600171969045572,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 0.5514621734619141,
+              "ratio_to_native": 0.8947775628626693,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 0.3063678741455078,
+              "ratio_to_native": 0.8973463687150838,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 0.37932395935058594,
+              "ratio_to_native": 0.7810505645557192,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 0.49996376037597656,
+              "ratio_to_native": 0.9015477214101462,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 0.5152225494384766,
+              "ratio_to_native": 0.8359767891682786,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 0.26988983154296875,
+              "ratio_to_native": 0.7905027932960894,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 0.34499168395996094,
+              "ratio_to_native": 0.7103583701521846,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-65537-128",
+      "modulus": 65537,
+      "size": 128,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 0.6279945373535156,
+            "nullspace": 1.0313987731933594,
+            "rank": 0.7147789001464844,
+            "rref": 0.8122920989990234
+          },
+          "exact_sha256": "b6e981f2120bc07e593e56c7b311eae744785342312277d034cbc477e5c86fc6",
+          "routes": {
+            "multiply": [
+              "generated-flint-resource"
+            ],
+            "rank": [
+              "generated-flint-resource"
+            ],
+            "rref": [
+              "generated-flint-resource"
+            ],
+            "nullspace": [
+              "generated-flint-resource"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 949.6417559999973,
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 2.5992393493652344,
+            "nullspace": 1.6684532165527344,
+            "rank": 1.2094974517822266,
+            "rref": 1.2536048889160156
+          },
+          "exact_sha256": "b6e981f2120bc07e593e56c7b311eae744785342312277d034cbc477e5c86fc6",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 2613248,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 930.6900000004098,
+          "mathematical": {
+            "nullity": 32,
+            "rank": 128,
+            "wide_rank": 96
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              128,
+              128
+            ],
+            "wide": [
+              96,
+              128
+            ]
+          },
+          "size": 128,
+          "timings_ms": {
+            "mul": 2.480030059814453,
+            "nullspace": 1.6300678253173828,
+            "rank": 1.2149810791015625,
+            "rref": 1.2249946594238281
+          },
+          "exact_sha256": "b6e981f2120bc07e593e56c7b311eae744785342312277d034cbc477e5c86fc6",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 2613248,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 4.138952164009112,
+            "nullspace": 1.617660656495608,
+            "rank": 1.6921280853902603,
+            "rref": 1.5432932198415028
+          },
+          "browser-chromium": {
+            "mul": 3.9491268033409264,
+            "nullspace": 1.5804438280166435,
+            "rank": 1.6997998665777185,
+            "rref": 1.5080716172585853
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 2.5992393493652344,
+              "ratio_to_native": 4.138952164009112,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 1.6684532165527344,
+              "ratio_to_native": 1.617660656495608,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 1.2094974517822266,
+              "ratio_to_native": 1.6921280853902603,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 1.2536048889160156,
+              "ratio_to_native": 1.5432932198415028,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 2.480030059814453,
+              "ratio_to_native": 3.9491268033409264,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 1.6300678253173828,
+              "ratio_to_native": 1.5804438280166435,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 1.2149810791015625,
+              "ratio_to_native": 1.6997998665777185,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 1.2249946594238281,
+              "ratio_to_native": 1.5080716172585853,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-65537-256",
+      "modulus": 65537,
+      "size": 256,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 1.48773193359375,
+            "nullspace": 4.041194915771484,
+            "rank": 2.935647964477539,
+            "rref": 2.827167510986328
+          },
+          "exact_sha256": "c4c2b65321e12106713acb695da9637a56d75226e9e79337c12ca5d4ba0031f0",
+          "routes": {
+            "multiply": [
+              "generated-flint-resource"
+            ],
+            "rank": [
+              "generated-flint-resource"
+            ],
+            "rref": [
+              "generated-flint-resource"
+            ],
+            "nullspace": [
+              "generated-flint-resource"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 3610.843265000003,
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 17.179250717163086,
+            "nullspace": 8.79216194152832,
+            "rank": 8.35871696472168,
+            "rref": 7.437944412231445
+          },
+          "exact_sha256": "c4c2b65321e12106713acb695da9637a56d75226e9e79337c12ca5d4ba0031f0",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 10452992,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 3489.2450000001118,
+          "mathematical": {
+            "nullity": 64,
+            "rank": 256,
+            "wide_rank": 192
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              256,
+              256
+            ],
+            "wide": [
+              192,
+              256
+            ]
+          },
+          "size": 256,
+          "timings_ms": {
+            "mul": 16.990184783935547,
+            "nullspace": 8.81505012512207,
+            "rank": 8.50987434387207,
+            "rref": 7.400035858154297
+          },
+          "exact_sha256": "c4c2b65321e12106713acb695da9637a56d75226e9e79337c12ca5d4ba0031f0",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 10452992,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 11.54727564102564,
+            "nullspace": 2.1756342182890855,
+            "rank": 2.847315845041826,
+            "rref": 2.630882104908079
+          },
+          "browser-chromium": {
+            "mul": 11.420192307692307,
+            "nullspace": 2.181297935103245,
+            "rank": 2.898806139852189,
+            "rref": 2.617473435655254
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 17.179250717163086,
+              "ratio_to_native": 11.54727564102564,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 8.79216194152832,
+              "ratio_to_native": 2.1756342182890855,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 8.35871696472168,
+              "ratio_to_native": 2.847315845041826,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 7.437944412231445,
+              "ratio_to_native": 2.630882104908079,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 16.990184783935547,
+              "ratio_to_native": 11.420192307692307,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 8.81505012512207,
+              "ratio_to_native": 2.181297935103245,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 8.50987434387207,
+              "ratio_to_native": 2.898806139852189,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 7.400035858154297,
+              "ratio_to_native": 2.617473435655254,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    },
+    {
+      "id": "gf-65537-512",
+      "modulus": 65537,
+      "size": 512,
+      "records": [
+        {
+          "host": "native-node",
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 8.966684341430664,
+            "nullspace": 24.66440200805664,
+            "rank": 19.59991455078125,
+            "rref": 19.93870735168457
+          },
+          "exact_sha256": "f72e7eca7711729088c13084c5ee45368bb37ac0ef144bd612c752a46b8dc360",
+          "routes": {
+            "multiply": [
+              "generated-flint-resource"
+            ],
+            "rank": [
+              "generated-flint-resource"
+            ],
+            "rref": [
+              "generated-flint-resource"
+            ],
+            "nullspace": [
+              "generated-flint-resource"
+            ]
+          }
+        },
+        {
+          "host": "node-wasm",
+          "wall_ms": 14203.628671999992,
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 121.72269821166992,
+            "nullspace": 60.036420822143555,
+            "rank": 57.85989761352539,
+            "rref": 52.738189697265625
+          },
+          "exact_sha256": "f72e7eca7711729088c13084c5ee45368bb37ac0ef144bd612c752a46b8dc360",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 41811968,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        },
+        {
+          "host": "browser-chromium",
+          "wall_ms": 14177.75,
+          "mathematical": {
+            "nullity": 128,
+            "rank": 512,
+            "wide_rank": 384
+          },
+          "modulus": 65537,
+          "samples": 5,
+          "shape": {
+            "square": [
+              512,
+              512
+            ],
+            "wide": [
+              384,
+              512
+            ]
+          },
+          "size": 512,
+          "timings_ms": {
+            "mul": 117.0649528503418,
+            "nullspace": 59.889793395996094,
+            "rank": 56.81014060974121,
+            "rref": 52.25992202758789
+          },
+          "exact_sha256": "f72e7eca7711729088c13084c5ee45368bb37ac0ef144bd612c752a46b8dc360",
+          "instrumentation": {
+            "boundary_crossings": 207,
+            "copied_bytes": 41811968,
+            "routes": [
+              {
+                "capability_id": "ffi:flint:nmod_matrix_mul",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 9,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rank",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 12,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              },
+              {
+                "capability_id": "ffi:flint:nmod_matrix_rref",
+                "selected_route": "receipt-backed-wasm-artifact",
+                "execution_target": "wasm-artifact",
+                "call_count": 6,
+                "ingress_bytes": 0,
+                "egress_bytes": 0
+              }
+            ]
+          }
+        }
+      ],
+      "comparison": {
+        "exact_match": true,
+        "ratios_to_native": {
+          "node-wasm": {
+            "mul": 13.574995346858465,
+            "nullspace": 2.434132431126148,
+            "rank": 2.952048462436746,
+            "rref": 2.6450154850590106
+          },
+          "browser-chromium": {
+            "mul": 13.055545215241033,
+            "nullspace": 2.42818753020783,
+            "rank": 2.8984891981315686,
+            "rref": 2.6210285905606905
+          }
+        },
+        "performance": {
+          "node-wasm": {
+            "mul": {
+              "milliseconds": 121.72269821166992,
+              "ratio_to_native": 13.574995346858465,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 60.036420822143555,
+              "ratio_to_native": 2.434132431126148,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 57.85989761352539,
+              "ratio_to_native": 2.952048462436746,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 52.738189697265625,
+              "ratio_to_native": 2.6450154850590106,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          },
+          "browser-chromium": {
+            "mul": {
+              "milliseconds": 117.0649528503418,
+              "ratio_to_native": 13.055545215241033,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "nullspace": {
+              "milliseconds": 59.889793395996094,
+              "ratio_to_native": 2.42818753020783,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rank": {
+              "milliseconds": 56.81014060974121,
+              "ratio_to_native": 2.8984891981315686,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            },
+            "rref": {
+              "milliseconds": 52.25992202758789,
+              "ratio_to_native": 2.6210285905606905,
+              "absolute_budget_ms": 250,
+              "ratio_budget": 20,
+              "passed": true
+            }
+          }
+        },
+        "performance_passed": true
+      }
+    }
+  ]
+}

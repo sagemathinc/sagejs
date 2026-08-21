@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fflas-disposition",
+  "title": "FFLAS/FFPACK WebAssembly disposition",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure and review the ten desktop-only FFLAS/FFPACK prime-matrix capabilities against existing FLINT/source-kernel WebAssembly routes; add only a bounded lazy Wasm core if representative public mul/rank/rref/nullspace workloads miss reviewed crossover targets; deliver exact native, Node-Wasm, and browser differential/route benchmarks and a precise disposition",
+  "base_commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "packages/flint-wasm/src/linear-algebra/",
+    "packages/flint-wasm/test/wasm-fflas-disposition.test.mjs",
+    "bench/wasm-fflas-disposition.cjs",
+    "bench/WASM-FFLAS-DISPOSITION.md",
+    "bench/results/wasm-fflas-disposition.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "FFLAS-FFPACK 2.5.0",
+    "agents/webassembly-fast-mathematics-completion-plan.md W2"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "Native public Sage.js dense GF(p) matrices using generated FFLAS/FFPACK and FLINT boundaries",
+      "Exact public matrix results and route receipts from the production Node-Wasm/browser evaluator"
+    ],
+    "exceptions": [
+      "A new host-neutral C/C++ core is permitted only if measurements show the source-transparent and mature FLINT Wasm closures miss representative dense-prime targets; any such core must be a bounded lazy FFLAS/FFPACK adapter, not a new matrix algorithm"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test packages/flint-wasm/test/wasm-fflas-disposition.test.mjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.219,
+      "started_at": "2026-08-21T01:47:04.720Z",
+      "commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+      "workspace_fingerprint": "e597a98f932645eaf56d323fe56dc10f0c160ec61a729e4d3c5870a421fd20a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.128,
+      "started_at": "2026-08-21T01:47:32.615Z",
+      "commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+      "workspace_fingerprint": "e597a98f932645eaf56d323fe56dc10f0c160ec61a729e4d3c5870a421fd20a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/wasm-fflas-disposition.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.659,
+      "started_at": "2026-08-21T01:47:44.641Z",
+      "commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+      "workspace_fingerprint": "e597a98f932645eaf56d323fe56dc10f0c160ec61a729e4d3c5870a421fd20a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.521,
+      "started_at": "2026-08-21T01:52:56.811Z",
+      "commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+      "workspace_fingerprint": "e597a98f932645eaf56d323fe56dc10f0c160ec61a729e4d3c5870a421fd20a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 30.605,
+      "started_at": "2026-08-21T01:53:35.511Z",
+      "commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+      "workspace_fingerprint": "e597a98f932645eaf56d323fe56dc10f0c160ec61a729e4d3c5870a421fd20a4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reviewed all ten desktop-only FFLAS/FFPACK capabilities and rejected a new Wasm port on measured evidence. Public GF(97) and GF(65537) multiplication, rank, canonical RREF, and right nullspace use receipt-backed FLINT Wasm routes, agree exactly across native Node, Node-Wasm, and Chromium, and remain below 250 ms and 20x native through size 512. Enabled authenticated Wasm32 nmod resources for 256 <= p <= 2^32 - 1, covering the complete desktop Modular<double> range while preserving the exact portable fallback above the bound and without a resolver. Added a reproducible matched benchmark, checked-in result, detailed ten-capability disposition, and focused route/boundary regression coverage.",
+    "risks": [
+      "The lane is based on 69381f47 while the integration branch advanced substantially. Repository-wide architecture and strict-baselib checks fail on unrelated stale base inventory/hyperelliptic exports; portable tests reach batch 4 before an unrelated live worktree symlink causes the native-cache safety test to fail.",
+      "The checked-in performance receipt identifies artifact sha256:4f987c63ee67c23c9dc55541dc13819d6942483c63b1f9cf705231a8a132c037 and source revision 69381f47; integration should preserve it as the reviewed measurement rather than presenting a rebuilt artifact as the measured one."
+    ],
+    "next_steps": [
+      "Cherry-pick the implementation/evidence commit onto the integration branch, rebuild the production artifact, and rerun the focused test there.",
+      "Rerun architecture:check, test:portable, and test:baselib:strict on the integrated tree after the unrelated root drift and unsafe external worktree are resolved; then record fresh passing receipts and move this contract to review.",
+      "Do not add FFLAS/Givaro/BLAS to Wasm unless a future public workload outside the recorded envelope misses an explicit product budget and an end-to-end browser prototype demonstrates a win including payload and conversion costs."
+    ]
+  }
+}
