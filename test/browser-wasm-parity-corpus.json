@@ -161,6 +161,21 @@
       }
     },
     {
+      "id": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "workflow": "group-permutation-center",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-permutation-center-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])\nC=G.center()\nprint(G.order())\nprint(C.gens())",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "40320\n((),)\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "gf2-matrix-m4ri",
       "family": "dense-binary-matrices",
       "workflow": "gf2-matrix-m4ri",
@@ -209,6 +224,21 @@
       "timeout_ms": 30000,
       "expect": {
         "stdout": "[50 60];[ 8 10];[58 70]\n2\n[1 0 1 4];[0 1 1 0];[0 0 0 0]\n[    1     0     0 16384];[    0     1 65536 49153]\nTrue\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "sparse-integer-right-kernel",
+      "family": "sparse-exact-linear-algebra",
+      "workflow": "sparse-integer-right-kernel",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "rows=48\ncolumns=56\nentries=[0 for _ in range(rows*columns)]\nfor row in range(rows):\n    entries[row*columns+row]=1\n    for shift,value in [(1,-2),(7,3),(13,-1)]:\n        column=row+shift\n        if column<columns: entries[row*columns+column]=value\nA=matrix(ZZ,rows,columns,entries,sparse=True)\nK=A.right_kernel_matrix()\nprint(K.dimensions(),A.rank())\nprint((A*K.transpose()).is_zero())",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(8, 56) 48\nTrue\n",
         "repr": ""
       }
     },
@@ -317,6 +347,23 @@
       "timeout_ms": 60000,
       "expect": {
         "stdout": "[x^4 + 2*x^3 + 2, True, 1, 256, 85, True, [2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], [2, 2*a, 2*a^3 + 2*a + 1, 1]]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "extension-field-conway-data",
+      "family": "extension-fields",
+      "workflow": "extension-field-conway-data",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_pow", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(3^4,'a')\na=F.gen()\nprint(F)\nprint(F.modulus())\nprint((a+1)^20)",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "Finite Field in a of size 3^4\nx^4 + 2*x^3 + 2\n1\n",
         "repr": ""
       }
     },

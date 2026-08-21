@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 35,
+    "heavy_workloads": 40,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 35,
+    "failed_heavy_workloads": 40,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,54 +20,54 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "39a02355aec4a842bb2bd3ed32bf295b6916e77976c2f70ef93cdfc92724b151"
+      "sha256": "1c4fd35beb4d07aacc63d202a3706e6e8b6646a3f28f2defea2b47c57a3dbd3a"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "3ec4c721c507ac44f58d27549d162d2b629e12900e919f56d2a1b74f1112a7ef"
+      "sha256": "1832e2a383ca332ff08bef1a753488a8859a4f00053238e53298f810145aa489"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "32a26deb7ee3fc2d470c0a7e43e19838a10983b64061caa4fad234d27e41eca4"
+      "sha256": "7c05090180d5bbe38e59c4f306ef7d1a05eedcc59669b4b2491fe6aa78f5a47a"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "f3672ba3ad9ac49baa38525c35b2332a2e5dd5e514540f9f158c6d07aa0a0d9f"
+      "sha256": "4fd54a5ae32ecf552f522b053582ad884223c5c6c7b15862b84a093ca1695339"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 28,
-    "performance_workloads": 15,
+    "parity_workloads": 31,
+    "performance_workloads": 17,
     "capability_counts": {
-      "total": 949,
+      "total": 950,
       "by_kind": {
         "declared-ffi-function": 412,
         "declared-ffi-resource": 29,
         "napi-export": 311,
-        "production-kernel": 36,
+        "production-kernel": 37,
         "runtime-intrinsic": 137,
         "specialist-capability": 24
       },
       "by_disposition": {
-        "compiled-source": 36,
+        "compiled-source": 37,
         "desktop-only": 13,
-        "generated-wasm": 300,
-        "portable-fallback": 557,
+        "generated-wasm": 301,
+        "portable-fallback": 556,
         "shared-core": 43
       },
       "by_status": {
-        "available": 511,
+        "available": 513,
         "desktop-only": 13,
-        "fallback": 425
+        "fallback": 424
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 36,
-      "production_kernels": 29,
-      "compiled_functions": 228,
+      "registered_kernels": 37,
+      "production_kernels": 30,
+      "compiled_functions": 229,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30
@@ -75,8 +75,8 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 78,
-      "wasm-compiled-source": 11,
+      "wasm-library": 83,
+      "wasm-compiled-source": 13,
       "portable-orchestration": 3,
       "portable-computation": 0
     },
@@ -153,10 +153,10 @@
       "unmeasured_or_review_required": 2
     },
     "extension-fields": {
-      "workloads": 2,
-      "heavy_workloads": 2,
+      "workloads": 3,
+      "heavy_workloads": 3,
       "accelerated": 0,
-      "failed": 2,
+      "failed": 3,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -165,6 +165,14 @@
       "heavy_workloads": 4,
       "accelerated": 0,
       "failed": 4,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "groups-combinatorics": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -223,6 +231,14 @@
       "failed": 0,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 1
+    },
+    "sparse-exact-linear-algebra": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
     }
   },
   "workloads": [
@@ -691,6 +707,53 @@
       ]
     },
     {
+      "id": "parity:group-permutation-center",
+      "public_workflow": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-permutation-center-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
       "id": "parity:gf2-matrix-m4ri",
       "public_workflow": "gf2-matrix-m4ri",
       "family": "dense-binary-matrices",
@@ -857,6 +920,53 @@
         },
         {
           "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:sparse-integer-right-kernel",
+      "public_workflow": "sparse-integer-right-kernel",
+      "family": "sparse-exact-linear-algebra",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_right_kernel",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,
@@ -1211,6 +1321,71 @@
         },
         {
           "capability_id": "ffi:flint:fq_polynomial_pow",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:extension-field-conway-data",
+      "public_workflow": "extension-field-conway-data",
+      "family": "extension-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fq_context",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_pow",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,
@@ -2157,6 +2332,53 @@
       ]
     },
     {
+      "id": "performance:group-permutation-center",
+      "public_workflow": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-permutation-center-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
       "id": "performance:gf2-matrix-384",
       "public_workflow": "gf2-matrix-384",
       "family": "dense-binary-matrices",
@@ -2249,6 +2471,53 @@
         },
         {
           "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:sparse-integer-right-kernel-192",
+      "public_workflow": "sparse-integer-right-kernel-192",
+      "family": "sparse-exact-linear-algebra",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fmpz_matrix_right_kernel",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,

@@ -90,6 +90,19 @@
           "test/wasm-graph-shortest-paths.cjs"
         ]
       },
+      "group-computation-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/wasm-group-computation.cjs"
+        ]
+      },
+      "public-sparse-integer-linear-algebra": {
+        "differential": true,
+        "paths": [
+          "test/public-sparse-integer-linear-algebra.cjs",
+          "packages/flint-wasm/test/sparse-integer-linear-algebra.test.mjs"
+        ]
+      },
       "combinatorial-invariants-wasm-differential": {
         "differential": true,
         "paths": [
@@ -362,6 +375,11 @@
       "ffi:flint:fq_polynomial_mul",
       "ffi:flint:fq_polynomial_pow"
     ],
+    "extension-field-conway-data": [
+      "ffi:flint:fq_context",
+      "ffi:flint:fq_element",
+      "ffi:flint:fq_element_pow"
+    ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
     ],
@@ -375,6 +393,9 @@
     ],
     "graph-shortest-paths-packed": [
       "kernel:packed-graph-shortest-paths-production"
+    ],
+    "group-permutation-center": [
+      "kernel:packed-permutation-center-production"
     ],
     "gf2-matrix-m4ri": [
       "ffi:m4ri:matrix_mul",
@@ -435,6 +456,9 @@
     ],
     "sagepack-exact-roundtrip": [
       "specialist:sagepack"
+    ],
+    "sparse-integer-right-kernel": [
+      "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
       "specialist:symbolic-numerical-integral-wasm",
@@ -5039,20 +5063,24 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential",
+        "public-sparse-integer-linear-algebra"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Sparse integer right-kernel computation uses the generated FLINT Wasm boundary and retains the exact ordinary Sage.js implementation when that authenticated capability is unavailable."
     },
     {
       "id": "ffi:flint:fmpz_matrix_scalar_mul",
@@ -11091,6 +11119,32 @@
         "compiled_functions": 2,
         "fallback_functions": 0,
         "total_functions": 2,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-permutation-center-production",
+      "kind": "production-kernel",
+      "family": "packed-permutation-center",
+      "source": "src/lib/sagejs/kernels/groups/permutation.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "PermutationGroup.center"
+      ],
+      "tests": [
+        "group-computation-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
         "production_pack": true,
         "fallback_reasons": []
       }

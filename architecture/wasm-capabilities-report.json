@@ -1,28 +1,28 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3b8189cb4fcfc6de607065a6064fb146bed3f1cfad03d92b38ee6d9f8900a11c",
+  "source_sha256": "c8a45559ef85c52d69f9ecc0dffe5c67354334095b4d9e2cb12a7f5bdd406468",
   "counts": {
-    "total": 949,
+    "total": 950,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
-      "production-kernel": 36,
+      "production-kernel": 37,
       "runtime-intrinsic": 137,
       "specialist-capability": 24
     },
     "by_disposition": {
-      "compiled-source": 36,
+      "compiled-source": 37,
       "desktop-only": 13,
-      "generated-wasm": 300,
-      "portable-fallback": 557,
+      "generated-wasm": 301,
+      "portable-fallback": 556,
       "shared-core": 43
     },
     "by_status": {
-      "available": 511,
+      "available": 513,
       "desktop-only": 13,
-      "fallback": 425
+      "fallback": 424
     }
   },
   "workflow_aliases": {
@@ -65,6 +65,11 @@
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
     ],
+    "extension-field-conway-data": [
+      "ffi:flint:fq_context",
+      "ffi:flint:fq_element",
+      "ffi:flint:fq_element_pow"
+    ],
     "extension-field-polynomial-arithmetic": [
       "ffi:flint:fq_context",
       "ffi:flint:fq_element_mul",
@@ -83,6 +88,9 @@
     ],
     "graph-shortest-paths-packed": [
       "kernel:packed-graph-shortest-paths-production"
+    ],
+    "group-permutation-center": [
+      "kernel:packed-permutation-center-production"
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
@@ -137,6 +145,9 @@
     ],
     "sagepack-exact-roundtrip": [
       "specialist:sagepack"
+    ],
+    "sparse-integer-right-kernel": [
+      "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
       "specialist:symbolic-numerical-integral-wasm",
@@ -2711,14 +2722,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_right_kernel",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "Sparse integer right-kernel computation uses the generated FLINT Wasm boundary and retains the exact ordinary Sage.js implementation when that authenticated capability is unavailable."
     },
     {
       "id": "ffi:flint:fmpz_matrix_scalar_mul",
@@ -5970,6 +5981,18 @@
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "moebius.range"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-permutation-center-production",
+      "family": "packed-permutation-center",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "PermutationGroup.center"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },

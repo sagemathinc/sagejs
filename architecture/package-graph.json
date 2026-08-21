@@ -325,9 +325,26 @@
       "id": "groups-combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 33000,
+      "max_source_bytes": 38000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
       "files": ["src/baselib/groups.py"],
+      "prefixes": []
+    },
+    {
+      "id": "group-native-kernels",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "groups-combinatorics"
+      ],
+      "modules": ["sagejs.kernels.groups"],
+      "files": [
+        "src/lib/sagejs/kernels/groups/__init__.py",
+        "src/lib/sagejs/kernels/groups/permutation.py"
+      ],
       "prefixes": []
     },
     {

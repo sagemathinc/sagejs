@@ -287,6 +287,8 @@
     "bench:wasm-arithmetic-hotspots": "node bench/wasm-arithmetic-hotspots.cjs",
     "bench:wasm-analytic-public": "node bench/wasm-analytic-public.mjs --check",
     "bench:wasm-graph-shortest-paths": "node bench/wasm-graph-shortest-paths.cjs",
+    "bench:wasm-group-computation": "node bench/wasm-group-computation.cjs",
+    "bench:wasm-sparse-integer-linear-algebra": "node bench/wasm-sparse-integer-linear-algebra.cjs",
     "bench:wasm-multivariate-polynomial": "node bench/wasm-multivariate-polynomial.cjs",
     "bench:wasm-numeric-symbolic": "node bench/wasm-numeric-symbolic.mjs",
     "bench:exact-polynomial-lazy-resource-ingress": "node bench/exact-polynomial-lazy-resource-ingress.cjs",

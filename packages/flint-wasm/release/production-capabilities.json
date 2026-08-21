@@ -147,6 +147,7 @@
         "ffi:flint:fmpz_matrix_ncols",
         "ffi:flint:fmpz_matrix_nrows",
         "ffi:flint:fmpz_matrix_prefix_rows",
+        "ffi:flint:fmpz_matrix_right_kernel",
         "ffi:flint:fmpz_matrix_serialize",
         "ffi:flint:fmpz_matrix_set_entry",
         "ffi:flint:fmpz_matrix_swap_columns",
@@ -398,6 +399,7 @@
         "kernel:packed-graph-shortest-paths-production",
         "kernel:packed-integer-polynomial-production",
         "kernel:packed-moebius-range-production",
+        "kernel:packed-permutation-center-production",
         "kernel:packed-rational-polynomial-production"
       ]
     }

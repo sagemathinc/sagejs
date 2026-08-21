@@ -2673,6 +2673,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/evaluator.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/finite_fields.py"

@@ -81,6 +81,15 @@
       "timeout_ms": 180000
     },
     {
+      "id": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "requires": [
+        { "id": "kernel:packed-permutation-center-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])\nC=G.center()\nprint(G.order(),C.gens())",
+      "timeout_ms": 180000
+    },
+    {
       "id": "gf2-matrix-384",
       "family": "dense-binary-matrices",
       "requires": [
@@ -100,6 +109,15 @@
         { "id": "ffi:flint:nmod_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "F=GF(65537)\nn=128\nL=matrix(F,n,n,lambda i,j:1 if i==j else ((i*17+j*31+1)%65537 if i>j else 0))\nU=matrix(F,n,n,lambda i,j:(i+1) if i==j else ((i*13+j*19+1)%65537 if i<j else 0))\nA=L*U\nR=A.matrix_from_rows(range(96))\nK=R.right_kernel_matrix()\nprint(A.rank(),A.rref()[0,0],K.nrows(),(R*K.transpose()).is_zero())",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "sparse-integer-right-kernel-192",
+      "family": "sparse-exact-linear-algebra",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "rows=192\ncolumns=204\nentries=[0 for _ in range(rows*columns)]\nfor row in range(rows):\n entries[row*columns+row]=1\n for shift,value in [(1,-2),(7,3),(19,-1)]:\n  column=row+shift\n  if column<columns: entries[row*columns+column]=value\nA=matrix(ZZ,rows,columns,entries,sparse=True)\nK=A.right_kernel_matrix()\nprint(K.nrows(),K.ncols(),A.rank(),(A*K.transpose()).is_zero())",
       "timeout_ms": 180000
     },
     {

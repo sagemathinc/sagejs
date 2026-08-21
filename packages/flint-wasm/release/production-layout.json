@@ -173,6 +173,20 @@
         }
       },
       {
+        "id": "conway-data",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "conway-polynomials.json",
+          "runtime/conway-data.mjs",
+          "runtime/conway-data-worker.mjs"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 225000,
+          "brotliBytes": 170000
+        }
+      },
+      {
         "id": "plotly",
         "kind": "specialist",
         "dependencies": ["eager-core"],
@@ -204,6 +218,7 @@
     }
   ],
   "hostAssets": [
+    "conway-polynomials.json",
     "compiler.js",
     "compiler-frontend.mjs",
     "baselib.js",
