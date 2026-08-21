@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Route public complex gamma and Riemann xi heavy batches through the receipt-backed Arb/Acb WebAssembly analytic reactor with native oracle, enclosure tolerance, Node-Wasm/browser route, lifecycle, and benchmark crossing evidence",
-  "base_commit": "48c5444a3992dcbf33e3b0074f09992a0f775793",
+  "base_commit": "1603b3ed96417a0b37b201ebaca3e9d98b0431bf",
   "claims": [
     "src/baselib/builtins.py",
     "test/wasm-analytic-public.cjs",
@@ -106,6 +106,26 @@
       "started_at": "2026-08-21T01:42:13.908Z",
       "commit": "7b98712d045df0296d3fa3158f626024ce135a36",
       "workspace_fingerprint": "81a9874e9447d897148f5f8962f05772f1746fc003a14fd1fe6d7834540dc2c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-analytic-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.009,
+      "started_at": "2026-08-21T01:44:29.100Z",
+      "commit": "8a02f82f4c815e433faa97beabb9d111949e3ecf",
+      "workspace_fingerprint": "79c577e3cad8010946fa999e125ebf22515b7323af33876ee4a96682dfde3835",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-analytic-public.mjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.27,
+      "started_at": "2026-08-21T01:45:18.103Z",
+      "commit": "8a02f82f4c815e433faa97beabb9d111949e3ecf",
+      "workspace_fingerprint": "79c577e3cad8010946fa999e125ebf22515b7323af33876ee4a96682dfde3835",
       "platform": "linux-x64"
     }
   ],
