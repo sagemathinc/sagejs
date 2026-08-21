@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.number-fields/quadratic-compact-composition-oracle-v1",
+  "generated": "2026-08-21",
+  "oracles": {
+    "sage_pari": {
+      "version": "SageMath 10.9.post1 / PARI 2.18",
+      "composition_command": "BinaryQF(left) * BinaryQF(right); product.is_equivalent(BinaryQF(expected), proper=True)",
+      "class_group_command": "K.class_group().invariants(); K.narrow_class_group().invariants()"
+    },
+    "magma": {
+      "version": "Magma V2.18-5",
+      "command": "AbelianInvariants(ClassGroup(Integers(QuadraticField(D)))); AbelianInvariants(NarrowClassGroup(Integers(QuadraticField(D))));"
+    }
+  },
+  "composition_cases": [
+    {
+      "kind": "nudupl",
+      "discriminant": 2005,
+      "left": [17, 13, -27],
+      "right": [17, 13, -27],
+      "canonical_result": [9, 31, -29],
+      "sage_reduced_result": [-11, 27, 29],
+      "partial_euclid_steps": 2,
+      "terminal_remainder": 1,
+      "classical_leading_product": 289,
+      "raw_leading": 11,
+      "sage_properly_equivalent": true
+    },
+    {
+      "kind": "nucomp",
+      "discriminant": 2005,
+      "left": [17, 13, -27],
+      "right": [23, 21, -17],
+      "canonical_result": [9, 41, -9],
+      "sage_reduced_result": [-11, 39, 11],
+      "partial_euclid_steps": 1,
+      "terminal_remainder": -2,
+      "classical_leading_product": 391,
+      "raw_leading": 39,
+      "sage_properly_equivalent": true
+    }
+  ],
+  "bigint_nudupl": {
+    "discriminant": "3288378683994531565958328350312044847730264113261",
+    "form": [
+      "1208925819614629174706183",
+      "604462909807314587353093",
+      "-604462909807314587353091"
+    ],
+    "raw_result": [
+      "162389070814544768689300262460074159086551753619",
+      "-201487636602438195784359",
+      "-5"
+    ],
+    "cutoff": "952205001410",
+    "partial_euclid_steps": 1,
+    "terminal_remainder": -1
+  },
+  "class_groups": [
+    {"discriminant": 12, "ordinary": [], "narrow": [2]},
+    {"discriminant": 40, "ordinary": [2], "narrow": [2]},
+    {"discriminant": 60, "ordinary": [2], "narrow": [2, 2]},
+    {"discriminant": 321, "ordinary": [3], "narrow": [6]},
+    {"discriminant": 2005, "ordinary": [4], "narrow": [8]}
+  ]
+}

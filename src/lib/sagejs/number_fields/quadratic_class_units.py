@@ -9,15 +9,18 @@ orientation class.
 
 The reduction conventions are those of Buchmann--Vollmer, Chapter 6.  PARI's
 `Qfb.c` and `buch1.c` were used as algorithmic oracles; no PARI code or runtime
-dependency is included here.  Exhaustive forms are deliberately capability
-bounded: the public adapter routes larger ordinary groups to the shared
-Buchmann--Hecke relation engine.  Narrow groups still require exhaustive real
-forms, because that relation engine currently presents ordinary classes only.
+dependency is included here.  Reduced-form scans are deliberately capability
+bounded.  Class numbers and invariant factors stream those forms instead of
+retaining the full class table; the public adapter can route larger fields to
+the shared Buchmann--Hecke relation engine.  Class composition uses exact
+bigint NUCOMP/NUDUPL, with the product-lattice construction retained as a
+differential oracle.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from math import log, sqrt
 from typing import Any, Iterator
 
@@ -927,13 +930,213 @@ def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
     return (old_remainder, old_left, old_right)
 
 
-def _compose_forms(
+def _exact_quotient(numerator: int, denominator: int, name: str) -> int:
+    if denominator == 0 or numerator % denominator:
+        raise ArithmeticError(name + " is not an exact integer")
+    return numerator // denominator
+
+
+def _symmetric_residue(value: int, modulus: int) -> int:
+    if modulus <= 0:
+        raise ArithmeticError("a compact-composition modulus must be positive")
+    answer = value % modulus
+    alternate = answer - modulus
+    return alternate if abs(alternate) < abs(answer) else answer
+
+
+def _partial_euclid(
+    bound: int, denominator: int, remainder: int
+) -> tuple[int, int, int, int, int]:
+    """Stop the extended Euclidean algorithm once `abs(remainder) <= bound`.
+
+    The returned tuple is `(steps, d, v3, v, v2)` in the notation of Shanks'
+    NUCOMP algorithm.  Python integers make this independent of machine-word
+    width.  Floor division is a valid Euclidean quotient here; every identity
+    used by reconstruction is checked by the exact divisions that follow.
+    """
+    v = 0
+    v2 = 1
+    steps = 0
+    d = denominator
+    v3 = remainder
+    while abs(v3) > bound:
+        quotient, next_remainder = divmod(d, v3)
+        v, v2 = v2, v - quotient * v2
+        d, v3 = v3, next_remainder
+        steps += 1
+    return (steps, d, v3, v, v2)
+
+
+@dataclass(frozen=True)
+class CompactCompositionTrace:
+    """Exact bounds and reconstruction data for one NUCOMP/NUDUPL product."""
+
+    discriminant: int
+    squaring: bool
+    cutoff: int
+    partial_euclid_steps: int
+    terminal_remainder: int
+    classical_leading_product: int
+    raw_leading: int
+    exact_integer_storage: bool = True
+    algorithm: str = "Shanks NUCOMP/NUDUPL"
+
+    @property
+    def compact_branch(self) -> bool:
+        return self.partial_euclid_steps > 0
+
+    def verify_bound(self) -> bool:
+        return (
+            self.cutoff >= 0
+            and abs(self.terminal_remainder) <= self.cutoff
+            and self.classical_leading_product > 0
+            and self.raw_leading > 0
+        )
+
+
+def _compact_cutoff(discriminant: int) -> int:
+    """Return `floor((abs(D)/4)^(1/4))` using exact integer arithmetic."""
+    return _isqrt(_isqrt(abs(discriminant) // 4))
+
+
+def _nudupl_raw(
+    form: QuadraticForm, discriminant: int
+) -> tuple[QuadraticForm, CompactCompositionTrace]:
+    """Return the exact unreduced NUDUPL square of a primitive form."""
+    leading = form.a
+    middle = form.b
+    gcd, u, _unused = _extended_gcd(middle, leading)
+    a = leading
+    b = middle
+    if gcd != 1:
+        a = _exact_quotient(a, gcd, "NUDUPL leading quotient")
+        b = _exact_quotient(b, gcd, "NUDUPL middle quotient")
+    residue = _symmetric_residue(-u * form.c, a)
+    cutoff = _compact_cutoff(discriminant)
+    steps, d, v3, v, v2 = _partial_euclid(cutoff, a, residue)
+    a2 = d * d
+    c2 = v3 * v3
+    if steps == 0:
+        g = _exact_quotient(v3 * b + form.c, d, "NUDUPL g")
+        b2 = form.b
+        v2 = gcd
+        raw_leading = a2
+    else:
+        if steps % 2:
+            v = -v
+            d = -d
+        e = _exact_quotient(form.c * v + b * d, a, "NUDUPL e")
+        g = _exact_quotient(e * v2 - b, v, "NUDUPL compact g")
+        b2 = e * v2 + v * g
+        if gcd != 1:
+            b2 *= gcd
+            v *= gcd
+            v2 *= gcd
+        raw_leading = a2 + e * v
+    raw_middle = b2 + (d + v3) ** 2 - a2 - c2
+    raw_trailing = c2 + g * v2
+    raw = QuadraticForm(raw_leading, raw_middle, raw_trailing)
+    if raw.discriminant() != discriminant or not raw.is_primitive():
+        raise ArithmeticError("NUDUPL reconstruction failed")
+    trace = CompactCompositionTrace(
+        discriminant,
+        True,
+        cutoff,
+        steps,
+        v3,
+        abs(form.a * form.a),
+        abs(raw_leading),
+    )
+    return (raw, trace)
+
+
+def _nucomp_raw(
+    left: QuadraticForm, right: QuadraticForm, discriminant: int
+) -> tuple[QuadraticForm, CompactCompositionTrace]:
+    """Return the exact unreduced Shanks NUCOMP product."""
+    if left == right:
+        return _nudupl_raw(left, discriminant)
+    x, y = left, right
+    if abs(x.a) < abs(y.a):
+        x, y = y, x
+    if x.a <= 0 or y.a <= 0:
+        raise ValueError("NUCOMP expects positive-leading proper representatives")
+    s = (x.b + y.b) // 2
+    n = y.b - s
+    a1 = x.a
+    a2 = y.a
+    d, u, v = _extended_gcd(a2, a1)
+    if d == 1:
+        residue = -u * n
+        d1 = d
+    elif s % d == 0:
+        residue = -u * n
+        d1 = d
+        a1 = _exact_quotient(a1, d1, "NUCOMP a1 content quotient")
+        a2 = _exact_quotient(a2, d1, "NUCOMP a2 content quotient")
+        s = _exact_quotient(s, d1, "NUCOMP middle content quotient")
+    else:
+        d1, u1, _unused = _extended_gcd(s, d)
+        if d1 != 1:
+            a1 = _exact_quotient(a1, d1, "NUCOMP secondary a1 quotient")
+            a2 = _exact_quotient(a2, d1, "NUCOMP secondary a2 quotient")
+            s = _exact_quotient(s, d1, "NUCOMP secondary middle quotient")
+            d = _exact_quotient(d, d1, "NUCOMP gcd quotient")
+        p1 = x.c % d
+        p2 = y.c % d
+        correction = (-u1 * (u * p1 + v * p2)) % d
+        residue = correction * _exact_quotient(a1, d, "NUCOMP residue a1")
+        residue -= u * _exact_quotient(n, d, "NUCOMP residue n")
+    residue = _symmetric_residue(residue, a1)
+    cutoff = _compact_cutoff(discriminant)
+    steps, d, v3, v, v2 = _partial_euclid(cutoff, a1, residue)
+    if steps == 0:
+        g = _exact_quotient(v3 * s + y.c, d, "NUCOMP g")
+        b = a2
+        b2 = y.b
+        v2 = d1
+        raw_leading = d * b
+    else:
+        if steps % 2:
+            v3 = -v3
+            v2 = -v2
+        b = _exact_quotient(a2 * d + n * v, a1, "NUCOMP b")
+        e = _exact_quotient(s * d + y.c * v, a1, "NUCOMP e")
+        q3 = e * v2
+        q4 = q3 - s
+        b2 = q3 + q4
+        g = _exact_quotient(q4, v, "NUCOMP compact g")
+        if d1 != 1:
+            v2 *= d1
+            v *= d1
+            b2 *= d1
+        raw_leading = d * b + e * v
+    q1 = b * v3
+    q2 = q1 + n
+    raw_middle = b2 + (q1 + q2 if steps else 2 * q1)
+    raw_trailing = v3 * _exact_quotient(q2, d, "NUCOMP trailing quotient") + g * v2
+    raw = QuadraticForm(raw_leading, raw_middle, raw_trailing)
+    if raw.discriminant() != discriminant or not raw.is_primitive():
+        raise ArithmeticError("NUCOMP reconstruction failed")
+    trace = CompactCompositionTrace(
+        discriminant,
+        False,
+        cutoff,
+        steps,
+        v3,
+        abs(left.a * right.a),
+        abs(raw_leading),
+    )
+    return (raw, trace)
+
+
+def compose_quadratic_forms_lattice(
     left: QuadraticForm,
     right: QuadraticForm,
     discriminant: int,
     max_steps: int,
 ) -> QuadraticForm:
-    """Compose via the exact product lattice, then reduce canonically."""
+    """Compose via the exact product lattice as a differential oracle."""
     parity = discriminant % 2
     theta_norm = (parity * parity - discriminant) // 4
     left_t = (-left.b - parity) // 2
@@ -973,6 +1176,51 @@ def _compose_forms(
         raise ArithmeticError("a quadratic ideal product has invalid norm")
     raw = QuadraticForm(leading, middle, numerator // (4 * leading))
     return _canonical_proper_form(raw, discriminant, max_steps)
+
+
+def compose_quadratic_forms(
+    left: QuadraticForm,
+    right: QuadraticForm,
+    *,
+    max_steps: int = 1_000_000,
+    with_trace: bool = False,
+) -> Any:
+    """Compose positive-leading real quadratic forms by NUCOMP/NUDUPL.
+
+    The same ordinary Python bigint body is used on every platform.  A trace
+    records the exact fourth-root cutoff and terminal partial-Euclidean
+    remainder; requesting it is intended for certificates and benchmarks.
+    """
+    discriminant = left.discriminant()
+    if right.discriminant() != discriminant or discriminant <= 0:
+        raise ValueError("NUCOMP requires real forms of one discriminant")
+    if not left.is_primitive() or not right.is_primitive():
+        raise ValueError("NUCOMP requires primitive forms")
+    raw, trace = _nucomp_raw(left, right, discriminant)
+    result = _canonical_proper_form(raw, discriminant, max_steps)
+    if not trace.verify_bound():
+        raise ArithmeticError("NUCOMP compact bound verification failed")
+    return (result, trace) if with_trace else result
+
+
+def square_quadratic_form(
+    form: QuadraticForm, *, max_steps: int = 1_000_000, with_trace: bool = False
+) -> Any:
+    """Square one positive-leading real quadratic form by exact NUDUPL."""
+    return compose_quadratic_forms(
+        form, form, max_steps=max_steps, with_trace=with_trace
+    )
+
+
+def _compose_forms(
+    left: QuadraticForm,
+    right: QuadraticForm,
+    discriminant: int,
+    max_steps: int,
+) -> QuadraticForm:
+    if left.discriminant() != discriminant or right.discriminant() != discriminant:
+        raise ValueError("the forms have the wrong discriminant")
+    return compose_quadratic_forms(left, right, max_steps=max_steps)
 
 
 @dataclass(frozen=True)
@@ -1221,21 +1469,36 @@ class QuadraticClassElement:
 
 @dataclass(frozen=True)
 class QuadraticClassGroupCertificate:
-    """Replayable exhaustive reduced-form evidence for a class group."""
+    """Replayable streaming structure evidence with lazy enumeration views."""
 
     discriminant: int
     narrow: bool
-    reduced_forms: tuple[QuadraticForm, ...]
-    proper_representatives: tuple[QuadraticForm, ...]
-    representatives: tuple[QuadraticForm, ...]
+    reduced_forms_checked: int
+    proper_cycles: int
+    structure: QuadraticClassStructureCertificate
     orientation_class: QuadraticForm
     invariants: tuple[int, ...]
     unit_norm: int
     plan: QuadraticClassGroupPlan
+    _group: Any = dataclass_field(compare=False, repr=False)
     proof_status: str = "exact-unconditional"
-    source: str = "primitive reduced indefinite forms and exact ideal composition"
+    source: str = "streamed reduced forms, bounded BSGS, exact SNF, and NUCOMP"
+
+    @property
+    def reduced_forms(self) -> tuple[QuadraticForm, ...]:
+        return self._group._materialized_class_data()[0]
+
+    @property
+    def proper_representatives(self) -> tuple[QuadraticForm, ...]:
+        return self._group._materialized_class_data()[1]
+
+    @property
+    def representatives(self) -> tuple[QuadraticForm, ...]:
+        return self._group._materialized_class_data()[2]
 
     def verify(self) -> bool:
+        if not self.structure.verify():
+            return False
         try:
             replay = QuadraticClassGroup(
                 self.discriminant,
@@ -1320,6 +1583,302 @@ class RealQuadraticClassNumberResult:
         )
 
 
+def _class_form_product(
+    left: QuadraticForm,
+    right: QuadraticForm,
+    discriminant: int,
+    narrow: bool,
+    orientation: QuadraticForm,
+    max_steps: int,
+) -> QuadraticForm:
+    proper = _compose_forms(left, right, discriminant, max_steps)
+    if narrow:
+        return proper
+    paired = _compose_forms(proper, orientation, discriminant, max_steps)
+    return _least_form([proper, paired])
+
+
+def _class_form_power(
+    form: QuadraticForm,
+    exponent: int,
+    identity: QuadraticForm,
+    discriminant: int,
+    narrow: bool,
+    orientation: QuadraticForm,
+    max_steps: int,
+) -> QuadraticForm:
+    if exponent < 0:
+        return _class_form_power(
+            form.conjugate(),
+            -exponent,
+            identity,
+            discriminant,
+            narrow,
+            orientation,
+            max_steps,
+        )
+    answer = identity
+    base = form
+    power = exponent
+    while power:
+        if power % 2:
+            answer = _class_form_product(
+                answer,
+                base,
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+        power //= 2
+        if power:
+            base = _class_form_product(
+                base,
+                base,
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+    return answer
+
+
+def _split_mixed_radices(
+    relative_orders: tuple[int, ...], target: int
+) -> tuple[list[tuple[int, int, int]], list[tuple[int, int, int]]]:
+    """Split mixed-radix exponents into balanced baby and giant factors."""
+    baby: list[tuple[int, int, int]] = []
+    giant: list[tuple[int, int, int]] = []
+    capacity = 1
+    for index, radix in enumerate(relative_orders):
+        if capacity * radix <= target:
+            baby.append((index, 1, radix))
+            capacity *= radix
+            continue
+        if capacity < target:
+            low_radix = min(radix, max(1, target // capacity))
+            baby.append((index, 1, low_radix))
+            capacity *= low_radix
+            high_radix = (radix + low_radix - 1) // low_radix
+            if high_radix > 1:
+                giant.append((index, low_radix, high_radix))
+        else:
+            giant.append((index, 1, radix))
+    return (baby, giant)
+
+
+def _mixed_products(
+    generators: tuple[QuadraticForm, ...],
+    factors: list[tuple[int, int, int]],
+    identity: QuadraticForm,
+    discriminant: int,
+    narrow: bool,
+    orientation: QuadraticForm,
+    max_steps: int,
+    maximum: int,
+) -> list[tuple[QuadraticForm, tuple[int, ...]]]:
+    states = [(identity, (0,) * len(generators))]
+    for index, step, radix in factors:
+        if len(states) * radix > maximum:
+            raise ValueError("quadratic structure BSGS exceeds max_bsgs_table")
+        factor = _class_form_power(
+            generators[index],
+            step,
+            identity,
+            discriminant,
+            narrow,
+            orientation,
+            max_steps,
+        )
+        additions = []
+        power = identity
+        for digit in range(radix):
+            additions.append((power, digit * step))
+            power = _class_form_product(
+                power,
+                factor,
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+        expanded: list[tuple[QuadraticForm, tuple[int, ...]]] = []
+        for state, coordinates in states:
+            for power, exponent in additions:
+                values = list(coordinates)
+                values[index] += exponent
+                expanded.append(
+                    (
+                        _class_form_product(
+                            state,
+                            power,
+                            discriminant,
+                            narrow,
+                            orientation,
+                            max_steps,
+                        ),
+                        tuple(values),
+                    )
+                )
+        states = expanded
+    return states
+
+
+def _subgroup_discrete_log_bsgs(
+    target: QuadraticForm,
+    generators: tuple[QuadraticForm, ...],
+    relative_orders: tuple[int, ...],
+    identity: QuadraticForm,
+    discriminant: int,
+    narrow: bool,
+    orientation: QuadraticForm,
+    max_steps: int,
+    max_bsgs_table: int,
+) -> tuple[tuple[int, ...] | None, int]:
+    subgroup_order = 1
+    for value in relative_orders:
+        subgroup_order *= value
+    if subgroup_order == 1:
+        return ((() if target == identity else None), 1)
+    target_size = _isqrt(subgroup_order) + 1
+    baby_factors, giant_factors = _split_mixed_radices(relative_orders, target_size)
+    baby = _mixed_products(
+        generators,
+        baby_factors,
+        identity,
+        discriminant,
+        narrow,
+        orientation,
+        max_steps,
+        max_bsgs_table,
+    )
+    giant = _mixed_products(
+        generators,
+        giant_factors,
+        identity,
+        discriminant,
+        narrow,
+        orientation,
+        max_steps,
+        max_bsgs_table,
+    )
+    table = {_form_key(form): coordinates for form, coordinates in baby}
+    for giant_form, giant_coordinates in giant:
+        needed = _class_form_product(
+            target,
+            giant_form.conjugate(),
+            discriminant,
+            narrow,
+            orientation,
+            max_steps,
+        )
+        baby_coordinates = table.get(_form_key(needed))
+        if baby_coordinates is None:
+            continue
+        coordinates = tuple(
+            left + right
+            for left, right in zip(baby_coordinates, giant_coordinates, strict=True)
+        )
+        reconstruction = identity
+        for generator, exponent in zip(generators, coordinates, strict=True):
+            reconstruction = _class_form_product(
+                reconstruction,
+                _class_form_power(
+                    generator,
+                    exponent,
+                    identity,
+                    discriminant,
+                    narrow,
+                    orientation,
+                    max_steps,
+                ),
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+        if reconstruction == target:
+            return (coordinates, max(len(baby), len(giant)))
+    return (None, max(len(baby), len(giant)))
+
+
+@dataclass(frozen=True)
+class QuadraticClassStructureCertificate:
+    """Replayable polycyclic relations for a non-materializing class structure."""
+
+    discriminant: int
+    narrow: bool
+    class_number: int
+    reduced_forms_checked: int
+    forms_scanned: int
+    generators: tuple[QuadraticForm, ...]
+    relative_orders: tuple[int, ...]
+    power_relations: tuple[tuple[int, ...], ...]
+    invariants: tuple[int, ...]
+    invariant_generators: tuple[QuadraticForm, ...]
+    max_bsgs_table: int
+    largest_bsgs_table: int
+    max_steps: int
+    requested_algorithm: str
+    max_reduced_forms: int
+    max_enumeration_checks: int
+    proof_status: str = "exact-unconditional"
+    source: str = "streamed reduced forms, bounded BSGS, and exact relation SNF"
+
+    @property
+    def materializes_all_classes(self) -> bool:
+        return False
+
+    def verify(self) -> bool:
+        try:
+            replay = real_quadratic_class_invariants(
+                self.discriminant,
+                narrow=self.narrow,
+                algorithm=self.requested_algorithm,
+                max_reduced_forms=self.max_reduced_forms,
+                max_enumeration_checks=self.max_enumeration_checks,
+                max_bsgs_table=self.max_bsgs_table,
+                max_steps=self.max_steps,
+            )
+        except (ValueError, ArithmeticError):
+            return False
+        return replay.certificate == self
+
+
+class RealQuadraticClassStructureResult:
+    """Invariant factors and generators without a table of every class."""
+
+    def __init__(
+        self,
+        certificate: QuadraticClassStructureCertificate,
+    ) -> None:
+        self.certificate = certificate
+        self.discriminant = certificate.discriminant
+        self.narrow = certificate.narrow
+        self._invariants = certificate.invariants
+        self._generators = certificate.invariant_generators
+        self.proof_status = certificate.proof_status
+        self.algorithm = "streaming-forms-bsgs-snf"
+        self.materializes_all_classes = False
+
+    def invariants(self) -> tuple[int, ...]:
+        return self._invariants
+
+    def generator_forms(self) -> tuple[QuadraticForm, ...]:
+        return self._generators
+
+    def order(self) -> int:
+        answer = 1
+        for value in self._invariants:
+            answer *= value
+        return answer
+
+    cardinality = order
+
+    def verify(self) -> bool:
+        return self.certificate.verify()
+
+
 def real_quadratic_class_number(
     discriminant: int,
     *,
@@ -1391,6 +1950,229 @@ def real_quadratic_class_number(
     )
 
 
+def real_quadratic_class_invariants(
+    discriminant: int,
+    *,
+    narrow: bool = False,
+    algorithm: str = "auto",
+    max_reduced_forms: int = 1_000_000,
+    max_enumeration_checks: int = _DEFAULT_MAX_ENUMERATION_CHECKS,
+    max_steps: int = 1_000_000,
+    max_bsgs_table: int = 100_000,
+) -> RealQuadraticClassStructureResult:
+    """Compute invariant factors without retaining every ideal class.
+
+    The exact class number bounds a polycyclic generator search.  Membership
+    and power relations use balanced mixed-radix baby-step giant-step tables,
+    so retained class forms are bounded by `max_bsgs_table`, not by the class
+    number.  Exact SNF of the resulting logarithmic-size triangular relation
+    matrix gives invariant factors and generator transforms.
+    """
+    if max_bsgs_table < 1:
+        raise ValueError("max_bsgs_table must be positive")
+    count = real_quadratic_class_number(
+        discriminant,
+        narrow=narrow,
+        algorithm=algorithm,
+        max_reduced_forms=max_reduced_forms,
+        max_enumeration_checks=max_enumeration_checks,
+        max_steps=max_steps,
+    )
+    class_number = count.order()
+    principal = _canonical_proper_form(
+        _principal_form(discriminant), discriminant, max_steps
+    )
+    orientation = _canonical_proper_form(
+        _principal_form(discriminant).negated(), discriminant, max_steps
+    )
+    identity = principal if narrow else _least_form([principal, orientation])
+    generators: list[QuadraticForm] = []
+    relative_orders: list[int] = []
+    power_relations: list[tuple[int, ...]] = []
+    subgroup_order = 1
+    forms_scanned = 0
+    largest_bsgs_table = 1
+    for form in _iter_reduced_forms(
+        discriminant, max_reduced_forms, max_enumeration_checks
+    ):
+        if not _is_canonical_proper_form(form, discriminant, max_steps):
+            continue
+        candidate = form
+        if not narrow:
+            candidate = _least_form(
+                [
+                    form,
+                    _compose_forms(form, orientation, discriminant, max_steps),
+                ]
+            )
+            if candidate != form:
+                continue
+        forms_scanned += 1
+        remaining = class_number // subgroup_order
+        relation, table_size = _subgroup_discrete_log_bsgs(
+            candidate,
+            tuple(generators),
+            tuple(relative_orders),
+            identity,
+            discriminant,
+            narrow,
+            orientation,
+            max_steps,
+            max_bsgs_table,
+        )
+        largest_bsgs_table = max(largest_bsgs_table, table_size)
+        if relation is not None:
+            continue
+        relative_order = remaining
+        for prime, _exponent in _prime_factorization(remaining):
+            while relative_order % prime == 0:
+                power = _class_form_power(
+                    candidate,
+                    relative_order // prime,
+                    identity,
+                    discriminant,
+                    narrow,
+                    orientation,
+                    max_steps,
+                )
+                power_relation, table_size = _subgroup_discrete_log_bsgs(
+                    power,
+                    tuple(generators),
+                    tuple(relative_orders),
+                    identity,
+                    discriminant,
+                    narrow,
+                    orientation,
+                    max_steps,
+                    max_bsgs_table,
+                )
+                largest_bsgs_table = max(largest_bsgs_table, table_size)
+                if power_relation is None:
+                    break
+                relative_order //= prime
+        relation, table_size = _subgroup_discrete_log_bsgs(
+            _class_form_power(
+                candidate,
+                relative_order,
+                identity,
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            ),
+            tuple(generators),
+            tuple(relative_orders),
+            identity,
+            discriminant,
+            narrow,
+            orientation,
+            max_steps,
+            max_bsgs_table,
+        )
+        largest_bsgs_table = max(largest_bsgs_table, table_size)
+        if relation is None or relative_order < 2:
+            raise ArithmeticError("quadratic BSGS failed to certify a power relation")
+        generators.append(candidate)
+        relative_orders.append(relative_order)
+        power_relations.append(relation)
+        subgroup_order *= relative_order
+        if subgroup_order == class_number:
+            break
+    if subgroup_order != class_number:
+        raise ArithmeticError(
+            "streamed quadratic forms did not generate the class group"
+        )
+    dimension = len(generators)
+    rows = []
+    for index, relative_order in enumerate(relative_orders):
+        row = [0] * dimension
+        for position, exponent in enumerate(power_relations[index]):
+            row[position] = -exponent
+        row[index] = relative_order
+        rows.append(row)
+    matrix_module = __import__(
+        "sagejs.number_fields.class_group_matrix",
+        fromlist=["extract_relation_presentation"],
+    )
+    presentation = matrix_module.extract_relation_presentation(
+        rows, dimension, require_full_rank=True
+    )
+    if presentation.order != class_number:
+        raise ArithmeticError("quadratic structure presentation has wrong order")
+    invariant_generators = []
+    for transform in presentation.generator_transforms:
+        result = identity
+        for generator, exponent in zip(generators, transform, strict=True):
+            result = _class_form_product(
+                result,
+                _class_form_power(
+                    generator,
+                    int(exponent),
+                    identity,
+                    discriminant,
+                    narrow,
+                    orientation,
+                    max_steps,
+                ),
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+        invariant_generators.append(result)
+    for invariant, generator in zip(
+        presentation.invariants, invariant_generators, strict=True
+    ):
+        if (
+            _class_form_power(
+                generator,
+                invariant,
+                identity,
+                discriminant,
+                narrow,
+                orientation,
+                max_steps,
+            )
+            != identity
+        ):
+            raise ArithmeticError("quadratic invariant generator has wrong order")
+        for prime, _exponent in _prime_factorization(invariant):
+            if (
+                _class_form_power(
+                    generator,
+                    invariant // prime,
+                    identity,
+                    discriminant,
+                    narrow,
+                    orientation,
+                    max_steps,
+                )
+                == identity
+            ):
+                raise ArithmeticError(
+                    "quadratic invariant generator order is not exact"
+                )
+    certificate = QuadraticClassStructureCertificate(
+        discriminant,
+        narrow,
+        class_number,
+        count.certificate.reduced_forms_checked,
+        forms_scanned,
+        tuple(generators),
+        tuple(relative_orders),
+        tuple(power_relations),
+        tuple(presentation.invariants),
+        tuple(invariant_generators),
+        max_bsgs_table,
+        largest_bsgs_table,
+        max_steps,
+        algorithm,
+        max_reduced_forms,
+        max_enumeration_checks,
+    )
+    return RealQuadraticClassStructureResult(certificate)
+
+
 class QuadraticClassGroup:
     """The ordinary or narrow class group of a real quadratic maximal order."""
 
@@ -1412,54 +2194,53 @@ class QuadraticClassGroup:
             max_steps=max_steps,
         )
         self.plan.require_supported()
+        self.plan = QuadraticClassGroupPlan(
+            self.plan.discriminant,
+            self.plan.requested_algorithm,
+            self.plan.algorithm,
+            self.plan.root_floor,
+            self.plan.enumeration_checks,
+            self.plan.max_enumeration_checks,
+            self.plan.max_reduced_forms,
+            self.plan.max_steps,
+            False,
+            self.plan.exact_integer_storage,
+            self.plan.proof_status,
+        )
         _require_real_fundamental_discriminant(discriminant)
         self.discriminant = discriminant
         self.narrow = narrow
         self.algorithm = self.plan.algorithm
         self.proof_status = "exact-unconditional"
         self._max_steps = max_steps
-        reduced_forms = _enumerate_reduced_forms(
-            discriminant, max_reduced_forms, max_enumeration_checks
-        )
-        proper_representatives = _sorted_forms(
-            [
-                _canonical_proper_form(form, discriminant, max_steps)
-                for form in reduced_forms
-            ]
-        )
+        self.materializes_all_classes = False
+        self._reduced_forms: tuple[QuadraticForm, ...] | None = None
+        self._proper_representatives: tuple[QuadraticForm, ...] | None = None
+        self._representatives: tuple[QuadraticForm, ...] | None = None
         principal = _canonical_proper_form(
             _principal_form(discriminant), discriminant, max_steps
         )
         orientation = _canonical_proper_form(
             _principal_form(discriminant).negated(), discriminant, max_steps
         )
-        if principal not in proper_representatives:
-            raise ArithmeticError(
-                "reduced-form enumeration omitted the principal class"
-            )
-        self._proper_representatives = proper_representatives
         self._orientation_class = orientation
         self._identity_form = principal
-        if narrow:
-            representatives = proper_representatives
-        else:
-            representatives = _sorted_forms(
-                [
-                    _least_form(
-                        [
-                            form,
-                            _compose_forms(form, orientation, discriminant, max_steps),
-                        ]
-                    )
-                    for form in proper_representatives
-                ]
-            )
+        if not narrow:
             self._identity_form = _least_form([principal, orientation])
-        self._representatives = representatives
         self._cache: dict[tuple[int, int, int], QuadraticClassElement] = {}
-        invariants, generators = self._compute_structure()
-        self._invariants = tuple(invariants)
-        self._generators = tuple(self._element(form) for form in generators)
+        structure = real_quadratic_class_invariants(
+            discriminant,
+            narrow=narrow,
+            algorithm=algorithm,
+            max_reduced_forms=max_reduced_forms,
+            max_enumeration_checks=max_enumeration_checks,
+            max_steps=max_steps,
+        )
+        self._class_number = structure.order()
+        self._invariants = structure.invariants()
+        self._generators = tuple(
+            self._element(form) for form in structure.generator_forms()
+        )
         unit_norm = real_quadratic_fundamental_unit(
             discriminant, max_steps=max_steps
         ).norm
@@ -1468,14 +2249,77 @@ class QuadraticClassGroup:
         self.certificate = QuadraticClassGroupCertificate(
             discriminant,
             narrow,
-            reduced_forms,
-            proper_representatives,
-            representatives,
+            structure.certificate.reduced_forms_checked,
+            (
+                self._class_number
+                if narrow
+                else self._class_number * (1 if unit_norm == -1 else 2)
+            ),
+            structure.certificate,
             orientation,
             self._invariants,
             unit_norm,
             self.plan,
+            self,
         )
+
+    def _materialized_class_data(
+        self,
+    ) -> tuple[
+        tuple[QuadraticForm, ...],
+        tuple[QuadraticForm, ...],
+        tuple[QuadraticForm, ...],
+    ]:
+        if (
+            self._reduced_forms is not None
+            and self._proper_representatives is not None
+            and self._representatives is not None
+        ):
+            return (
+                self._reduced_forms,
+                self._proper_representatives,
+                self._representatives,
+            )
+        reduced_forms = _enumerate_reduced_forms(
+            self.discriminant,
+            self.plan.max_reduced_forms,
+            self.plan.max_enumeration_checks,
+        )
+        proper_representatives = _sorted_forms(
+            [
+                _canonical_proper_form(form, self.discriminant, self._max_steps)
+                for form in reduced_forms
+            ]
+        )
+        if self._identity_form not in proper_representatives:
+            raise ArithmeticError(
+                "reduced-form enumeration omitted the principal class"
+            )
+        if self.narrow:
+            representatives = proper_representatives
+        else:
+            representatives = _sorted_forms(
+                [
+                    _least_form(
+                        [
+                            form,
+                            _compose_forms(
+                                form,
+                                self._orientation_class,
+                                self.discriminant,
+                                self._max_steps,
+                            ),
+                        ]
+                    )
+                    for form in proper_representatives
+                ]
+            )
+        if len(representatives) != self._class_number:
+            raise ArithmeticError("lazy class enumeration has the wrong order")
+        self._reduced_forms = reduced_forms
+        self._proper_representatives = proper_representatives
+        self._representatives = representatives
+        return (reduced_forms, proper_representatives, representatives)
 
     def _canonical(self, form: QuadraticForm) -> QuadraticForm:
         proper = _canonical_proper_form(form, self.discriminant, self._max_steps)
@@ -1513,7 +2357,7 @@ class QuadraticClassGroup:
         return self._element(self._identity_form)
 
     def order(self) -> int:
-        return len(self._representatives)
+        return self._class_number
 
     cardinality = order
 
@@ -1530,7 +2374,8 @@ class QuadraticClassGroup:
         return len(self._generators)
 
     def list(self) -> list[QuadraticClassElement]:
-        return [self._element(form) for form in self._representatives]
+        representatives = self._materialized_class_data()[2]
+        return [self._element(form) for form in representatives]
 
     def __iter__(self) -> Iterator[QuadraticClassElement]:
         return iter(self.list())
@@ -1540,111 +2385,6 @@ class QuadraticClassGroup:
 
     def orientation_kernel(self) -> QuadraticClassElement:
         return self._element(self._orientation_class)
-
-    def _power_form(self, form: QuadraticForm, exponent: int) -> QuadraticForm:
-        return (self._element(form) ** exponent).form()
-
-    def _element_order(self, form: QuadraticForm) -> int:
-        return self._element(form).order()
-
-    def _subgroup(self, generators: list[QuadraticForm]) -> list[QuadraticForm]:
-        answer = [self._identity_form]
-        frontier = [self._identity_form]
-        while frontier:
-            current = frontier.pop()
-            for generator in generators:
-                candidate = self._multiply(current, generator)
-                if candidate not in answer:
-                    answer.append(candidate)
-                    frontier.append(candidate)
-        return answer
-
-    def _primary_basis(
-        self, prime: int, exponent: int
-    ) -> tuple[list[int], list[QuadraticForm]]:
-        primary_order = prime**exponent
-        projection_power = self.order() // primary_order
-        primary_forms = list(
-            _sorted_forms(
-                [
-                    self._power_form(form, projection_power)
-                    for form in self._representatives
-                ]
-            )
-        )
-        if len(primary_forms) != primary_order:
-            raise ArithmeticError("a primary projection has the wrong order")
-        ranks = [0]
-        for level in range(1, exponent + 1):
-            killed = sum(
-                1
-                for form in primary_forms
-                if self._power_form(form, prime**level) == self._identity_form
-            )
-            rank = 0
-            while killed > 1 and killed % prime == 0:
-                killed //= prime
-                rank += 1
-            if killed != 1:
-                raise ArithmeticError("a primary rank is inconsistent")
-            ranks.append(rank)
-        factors: list[int] = []
-        for level in range(1, exponent + 1):
-            at_least = ranks[level] - ranks[level - 1]
-            next_at_least = ranks[level + 1] - ranks[level] if level < exponent else 0
-            factors.extend([prime**level] * (at_least - next_at_least))
-        selected: list[QuadraticForm] = []
-        subgroup = [self._identity_form]
-        for target_order in reversed(factors):
-            chosen: QuadraticForm | None = None
-            for candidate in primary_forms:
-                if self._element_order(candidate) != target_order:
-                    continue
-                candidate_subgroup = self._subgroup(selected + [candidate])
-                if len(candidate_subgroup) == len(subgroup) * target_order:
-                    chosen = candidate
-                    subgroup = candidate_subgroup
-                    break
-            if chosen is None:
-                raise ArithmeticError("failed to find independent primary generators")
-            selected.append(chosen)
-        if len(subgroup) != primary_order:
-            raise ArithmeticError("primary generators do not span")
-        selected.reverse()
-        return (factors, selected)
-
-    def _compute_structure(self) -> tuple[list[int], list[QuadraticForm]]:
-        if self.order() == 1:
-            return ([], [])
-        for form in self._representatives:
-            if self._element_order(form) == self.order():
-                return ([self.order()], [form])
-        component_orders: list[list[int]] = []
-        component_generators: list[list[QuadraticForm]] = []
-        maximum_rank = 0
-        for prime, exponent in _prime_factorization(self.order()):
-            orders, generators = self._primary_basis(prime, exponent)
-            component_orders.append(orders)
-            component_generators.append(generators)
-            maximum_rank = max(maximum_rank, len(orders))
-        invariants: list[int] = []
-        generators: list[QuadraticForm] = []
-        for position in range(maximum_rank):
-            invariant = 1
-            generator = self._identity_form
-            for index, orders in enumerate(component_orders):
-                offset = maximum_rank - len(orders)
-                if position >= offset:
-                    local_index = position - offset
-                    invariant *= orders[local_index]
-                    generator = self._multiply(
-                        generator, component_generators[index][local_index]
-                    )
-            invariants.append(invariant)
-            generators.append(generator)
-        if len(self._subgroup(generators)) != self.order():
-            raise ArithmeticError("invariant-factor generators do not span")
-        return (invariants, generators)
 
     def verify(self) -> bool:
         return self.certificate.verify()

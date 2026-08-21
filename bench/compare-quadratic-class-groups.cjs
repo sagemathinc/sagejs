@@ -11,6 +11,8 @@ const gp = process.env.PARI_GP || "gp";
 const magma = process.env.MAGMA || "/home/user/bin/magma";
 const json = process.argv.includes("--json");
 const relationGroups = process.argv.includes("--narrow-relations");
+const compactForms = process.argv.includes("--compact-forms");
+const sagejsOnly = process.argv.includes("--sagejs-only");
 const realCase = {
   discriminant: 10000001n,
   classNumber: 1n,
@@ -175,6 +177,69 @@ for D, polynomial in ((12, x*x - 3), (60, x*x - 15)):
     }));
 }
 
+function compactFormResult() {
+  const [executable, arguments_] = sagejsInvocation(["--python", "-"]);
+  const source = `
+from sagejs.number_fields.quadratic_class_units import (
+    QuadraticForm,
+    compose_quadratic_forms,
+    compose_quadratic_forms_lattice,
+    real_quadratic_class_invariants,
+)
+import time
+D = 2005
+left = QuadraticForm(17, 13, -27)
+right = QuadraticForm(23, 21, -17)
+repetitions = 100
+started = time.perf_counter()
+for _ in range(repetitions):
+    compact, trace = compose_quadratic_forms(left, right, with_trace=True)
+compact_seconds = (time.perf_counter() - started) / repetitions
+started = time.perf_counter()
+for _ in range(repetitions):
+    lattice = compose_quadratic_forms_lattice(left, right, D, 1000000)
+lattice_seconds = (time.perf_counter() - started) / repetitions
+started = time.perf_counter()
+structure = real_quadratic_class_invariants(D, narrow=True)
+structure_seconds = time.perf_counter() - started
+assert compact == lattice
+print(
+    "RESULT_COMPACT", compact_seconds, lattice_seconds,
+    trace.classical_leading_product, trace.raw_leading,
+    list(structure.invariants()), structure.certificate.forms_scanned,
+    structure.certificate.largest_bsgs_table, structure_seconds,
+)
+`;
+  const result = spawnSync(executable, arguments_, {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    input: source,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    process.stderr.write(result.stdout || "");
+    process.stderr.write(result.stderr || "");
+    throw new Error("Sage.js compact quadratic benchmark failed");
+  }
+  const match = result.stdout.match(
+    /RESULT_COMPACT\s+([0-9.]+)\s+([0-9.]+)\s+(\d+)\s+(\d+)\s+\[([^\]]*)\]\s+(\d+)\s+(\d+)\s+([0-9.]+)/,
+  );
+  if (!match) throw new Error("compact quadratic benchmark emitted no result");
+  return {
+    discriminant: 2005,
+    compactSeconds: Number(match[1]),
+    latticeSeconds: Number(match[2]),
+    classicalLeadingProduct: match[3],
+    compactRawLeading: match[4],
+    narrowInvariants: match[5].split(",").map((value) => Number(value.trim())),
+    formsScanned: Number(match[6]),
+    largestBsgsTable: Number(match[7]),
+    structureSeconds: Number(match[8]),
+    materializesAllClasses: false,
+  };
+}
+
 function pariResults() {
   const lines = ["default(parisizemax, 1073741824);"];
   for (const testCase of cases) {
@@ -241,7 +306,7 @@ for (const testCase of cases) {
   }
 }
 
-const externals = [
+const externals = sagejsOnly ? [] : [
   {
     runtime: "PARI/GP",
     result: pariResults(),
@@ -294,6 +359,7 @@ realQuadratic.correct =
   !realQuadratic.materializesAllReducedForms;
 correct &&= realQuadratic.correct;
 const narrowRelationGroups = relationGroups ? realRelationGroupResults() : [];
+const compactQuadratic = compactForms ? compactFormResult() : null;
 const expectedNarrowRelations = new Map([
   [12, "2"],
   [60, "2,2"],
@@ -305,12 +371,21 @@ for (const row of narrowRelationGroups) {
     !row.materializesAllClasses;
   correct &&= row.correct;
 }
+if (compactQuadratic) {
+  compactQuadratic.correct =
+    compactQuadratic.narrowInvariants.join(",") === "8" &&
+    compactQuadratic.compactRawLeading <
+      compactQuadratic.classicalLeadingProduct &&
+    !compactQuadratic.materializesAllClasses;
+  correct &&= compactQuadratic.correct;
+}
 
 const report = {
   generatedAt: new Date().toISOString(),
   correct,
   realQuadratic,
   narrowRelationGroups,
+  compactQuadratic,
   rows: rows.map((row) => ({
     ...row,
     discriminant: row.discriminant.toString(),
@@ -369,6 +444,27 @@ if (json) {
       `${(row.seconds * 1000).toFixed(3)} ms`.padStart(12),
       `invariants=[${row.invariants.join(", ")}], ${row.semantics}`,
       row.correct ? "" : "WRONG ANSWER",
+    );
+  }
+  if (compactQuadratic) {
+    console.log(
+      `${compactQuadratic.discriminant} Sage.js NUCOMP`.padEnd(54),
+      `${(compactQuadratic.compactSeconds * 1000).toFixed(3)} ms`.padStart(12),
+      `raw a=${compactQuadratic.compactRawLeading} vs ` +
+        `classical a1*a2=${compactQuadratic.classicalLeadingProduct}`,
+      compactQuadratic.correct ? "" : "WRONG ANSWER",
+    );
+    console.log(
+      `${compactQuadratic.discriminant} lattice oracle`.padEnd(54),
+      `${(compactQuadratic.latticeSeconds * 1000).toFixed(3)} ms`.padStart(12),
+      "exact differential oracle",
+    );
+    console.log(
+      `${compactQuadratic.discriminant} streamed narrow structure`.padEnd(54),
+      `${(compactQuadratic.structureSeconds * 1000).toFixed(3)} ms`.padStart(12),
+      `invariants=[${compactQuadratic.narrowInvariants.join(", ")}], ` +
+        `${compactQuadratic.formsScanned} streamed classes, ` +
+        `largest BSGS table=${compactQuadratic.largestBsgsTable}`,
     );
   }
   console.log(`\ncorrectness: ${correct ? "PASS" : "FAIL"}`);
