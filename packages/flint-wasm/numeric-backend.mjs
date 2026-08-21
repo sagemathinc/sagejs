@@ -597,12 +597,14 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     value = requireResource(value, "real");
     const answer = uint32(exports.sagejs_numeric_real_precision(value.handle));
     if (answer === 0) failure("real precision");
+    trace("realPrecision", 4, 4);
     return answer;
   };
   const complexPrecision = (value) => {
     value = requireResource(value, "complex");
     const answer = uint32(exports.sagejs_numeric_complex_precision(value.handle));
     if (answer === 0) failure("complex precision");
+    trace("complexPrecision", 4, 4);
     return answer;
   };
 

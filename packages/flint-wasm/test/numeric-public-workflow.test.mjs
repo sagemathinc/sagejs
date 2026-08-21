@@ -10,6 +10,47 @@ import { fileURLToPath } from "node:url";
 import { instantiateFlintFactor } from "../index.mjs";
 
 const wasm = new URL("../dist/flint-factor.wasm", import.meta.url);
+const numericNapiIds = [
+  "complexAdd",
+  "complexBesselI",
+  "complexDiv",
+  "complexEi",
+  "complexEqual",
+  "complexFromReals",
+  "complexImag",
+  "complexImagDouble",
+  "complexMul",
+  "complexNeg",
+  "complexPowInt",
+  "complexPrecision",
+  "complexReal",
+  "complexRealDouble",
+  "complexRound",
+  "complexSub",
+  "complexToString",
+  "realAdd",
+  "realDiv",
+  "realEqual",
+  "realFromBigInt",
+  "realFromRational",
+  "realFromString",
+  "realMul",
+  "realNeg",
+  "realPowInt",
+  "realPrecision",
+  "realRound",
+  "realSub",
+  "realToDouble",
+  "realToString",
+  "zetaZeros",
+].map((name) => `napi:@sagemath/sagejs-flint:${name}`).sort();
+
+function assertClose(actual, expected, tolerance = 1e-14) {
+  assert.ok(
+    Math.abs(actual - expected) <= tolerance,
+    `${actual} differs from ${expected}`,
+  );
+}
 
 test("MPFR resources and Acb special functions execute in the production Wasm module", async () => {
   const routes = [];
@@ -27,6 +68,26 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   assert.equal(backend.numericLiveCount(), 0);
   const one = keep(backend.realFromBigInt(1n, 100));
   const three = keep(backend.realFromBigInt(3n, 100));
+  const fiveQuarters = keep(backend.realFromString("1.25", 100));
+  const threeQuarters = keep(backend.realFromRational(3n, 4n, 100));
+  assert.equal(backend.realPrecision(fiveQuarters), 100);
+  assert.equal(
+    backend.realToString(fiveQuarters),
+    "1.2500000000000000000000000000",
+  );
+  assert.equal(backend.realToDouble(threeQuarters), 0.75);
+  assert.equal(
+    backend.realToString(keep(backend.realAdd(fiveQuarters, threeQuarters))),
+    "2.0000000000000000000000000000",
+  );
+  assert.equal(
+    backend.realToString(keep(backend.realSub(fiveQuarters, threeQuarters))),
+    "0.50000000000000000000000000000",
+  );
+  assert.equal(
+    backend.realToString(keep(backend.realMul(three, threeQuarters))),
+    "2.2500000000000000000000000000",
+  );
   const third = keep(backend.realDiv(one, three));
   assert.equal(
     backend.realToString(third),
@@ -34,6 +95,74 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   );
   const rounded = keep(backend.realRound(third, 53));
   assert.equal(backend.realToString(rounded), "0.333333333333333");
+  const negative = keep(backend.realNeg(fiveQuarters));
+  assert.equal(
+    backend.realToString(negative),
+    "-1.2500000000000000000000000000",
+  );
+  const power = keep(backend.realPowInt(three, 3));
+  assert.equal(backend.realToString(power), "27.000000000000000000000000000");
+  assert.equal(backend.realEqual(power, power), true);
+
+  const complex = keep(backend.complexFromReals(fiveQuarters, threeQuarters));
+  assert.equal(backend.complexPrecision(complex), 100);
+  assert.equal(
+    backend.complexToString(complex),
+    "1.2500000000000000000000000000 + " +
+      "0.75000000000000000000000000000*I",
+  );
+  const complexRounded = keep(backend.complexRound(complex, 53));
+  assert.equal(backend.complexPrecision(complexRounded), 53);
+  const realPart = keep(backend.complexReal(complex));
+  const imaginaryPart = keep(backend.complexImag(complex));
+  assert.equal(
+    backend.realToString(realPart),
+    "1.2500000000000000000000000000",
+  );
+  assert.equal(
+    backend.realToString(imaginaryPart),
+    "0.75000000000000000000000000000",
+  );
+  assert.equal(backend.complexRealDouble(complex), 1.25);
+  assert.equal(backend.complexImagDouble(complex), 0.75);
+
+  const minusOne = keep(backend.realNeg(one));
+  const two = keep(backend.realFromBigInt(2n, 100));
+  const other = keep(backend.complexFromReals(two, minusOne));
+  const complexSum = keep(backend.complexAdd(complex, other));
+  assert.equal(
+    backend.complexToString(complexSum),
+    "3.2500000000000000000000000000 - " +
+      "0.25000000000000000000000000000*I",
+  );
+  const complexDifference = keep(backend.complexSub(complex, other));
+  assert.equal(
+    backend.complexToString(complexDifference),
+    "-0.75000000000000000000000000000 + " +
+      "1.7500000000000000000000000000*I",
+  );
+  const complexProduct = keep(backend.complexMul(complex, other));
+  assert.equal(
+    backend.complexToString(complexProduct),
+    "3.2500000000000000000000000000 + " +
+      "0.25000000000000000000000000000*I",
+  );
+  const complexQuotient = keep(backend.complexDiv(complex, other));
+  assertClose(backend.complexRealDouble(complexQuotient), 0.35);
+  assertClose(backend.complexImagDouble(complexQuotient), 0.55);
+  const complexNegative = keep(backend.complexNeg(complex));
+  assert.equal(
+    backend.complexToString(complexNegative),
+    "-1.2500000000000000000000000000 - " +
+      "0.75000000000000000000000000000*I",
+  );
+  const complexPower = keep(backend.complexPowInt(other, 2));
+  assert.equal(
+    backend.complexToString(complexPower),
+    "3.0000000000000000000000000000 - " +
+      "4.0000000000000000000000000000*I",
+  );
+  assert.equal(backend.complexEqual(complexPower, complexPower), true);
 
   const input = keep(backend.complexFromStrings("1", "2", 100));
   const ei = keep(backend.complexEi(input));
@@ -82,11 +211,22 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   assert.throws(() => backend.realToString(one), /live WebAssembly real resource/);
 
   const routeIds = new Set(routes.map(([id]) => id));
+  const productionCapabilities = JSON.parse(await readFile(
+    new URL("../release/production-capabilities.json", import.meta.url),
+    "utf8",
+  ));
+  const promotedNumericIds = productionCapabilities.modules.flint
+    .additionalCapabilities.filter((id) =>
+      /^napi:@sagemath\/sagejs-flint:(?:real[A-Z]|complex[A-Z]|zetaZeros$)/.test(id)
+    ).sort();
+  assert.deepEqual(promotedNumericIds, numericNapiIds);
+  assert.deepEqual(
+    [...routeIds].filter((id) => id.startsWith(
+      "napi:@sagemath/sagejs-flint:",
+    )).sort(),
+    numericNapiIds,
+  );
   for (const id of [
-    "napi:@sagemath/sagejs-flint:realDiv",
-    "napi:@sagemath/sagejs-flint:complexEi",
-    "napi:@sagemath/sagejs-flint:complexBesselI",
-    "napi:@sagemath/sagejs-flint:zetaZeros",
     "specialist:symbolic-numerical-integral-wasm",
     "specialist:symbolic-find-root-wasm",
   ]) {
