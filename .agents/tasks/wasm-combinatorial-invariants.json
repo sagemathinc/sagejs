@@ -40,7 +40,48 @@
     "node bench/wasm-combinatorial-invariants.cjs",
     "pnpm exec pyright src/lib/sagejs/linear_algebra/combinatorial.py src/lib/sagejs/kernels/matrix/combinatorial.py"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/linear-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.31,
+      "started_at": "2026-08-21T01:04:43.722Z",
+      "commit": "4093fcd5588e139281cae026dfb915e4ca68af84",
+      "workspace_fingerprint": "afb828cd19d39aac80c81dea6da32b859fbefde8e3105339273534c20dc57d3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.878,
+      "started_at": "2026-08-21T01:04:52.364Z",
+      "commit": "4093fcd5588e139281cae026dfb915e4ca68af84",
+      "workspace_fingerprint": "afb828cd19d39aac80c81dea6da32b859fbefde8e3105339273534c20dc57d3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.154,
+      "started_at": "2026-08-21T01:05:06.323Z",
+      "commit": "4093fcd5588e139281cae026dfb915e4ca68af84",
+      "workspace_fingerprint": "afb828cd19d39aac80c81dea6da32b859fbefde8e3105339273534c20dc57d3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/linear_algebra/combinatorial.py src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.363,
+      "started_at": "2026-08-21T01:05:17.372Z",
+      "commit": "4093fcd5588e139281cae026dfb915e4ca68af84",
+      "workspace_fingerprint": "afb828cd19d39aac80c81dea6da32b859fbefde8e3105339273534c20dc57d3a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Six source-transparent packed functions compute exact permanents and complete lexicographically ordered minor batches over ZZ, QQ, and word-prime fields. Public heavy workflows preserve max_work, use one authenticated native or Wasm crossing, report route telemetry, and retain the ordinary exact implementation for small, disabled, unsupported, and capacity-exhausting cases. Direct real-Wasm, public-resolver, malformed-shape, differential, and matched benchmark evidence is included.",
     "risks": [
