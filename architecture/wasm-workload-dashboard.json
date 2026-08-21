@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 33,
+    "heavy_workloads": 35,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 33,
+    "failed_heavy_workloads": 35,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "74a4cb3e521b7aca633c741e135acf90d76506b04c71231a99183fd5a147376a"
+      "sha256": "39a02355aec4a842bb2bd3ed32bf295b6916e77976c2f70ef93cdfc92724b151"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "02a52b644685a97c37a6fdb291cbf3aca4d797f444cddfd5d7b054226e392328"
+      "sha256": "3ec4c721c507ac44f58d27549d162d2b629e12900e919f56d2a1b74f1112a7ef"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -32,15 +32,15 @@
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "cddac9d7a0a2e58b4c338781094766d679413d1caa9ffcae6b5b8f48b19ca92a"
+      "sha256": "f3672ba3ad9ac49baa38525c35b2332a2e5dd5e514540f9f158c6d07aa0a0d9f"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 27,
-    "performance_workloads": 14,
+    "parity_workloads": 28,
+    "performance_workloads": 15,
     "capability_counts": {
       "total": 949,
       "by_kind": {
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 70,
+      "wasm-library": 78,
       "wasm-compiled-source": 11,
       "portable-orchestration": 3,
       "portable-computation": 0
@@ -121,6 +121,14 @@
       "unmeasured_or_review_required": 0
     },
     "dense-binary-matrices": {
+      "workloads": 2,
+      "heavy_workloads": 2,
+      "accelerated": 0,
+      "failed": 2,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "dense-prime-matrices": {
       "workloads": 2,
       "heavy_workloads": 2,
       "accelerated": 0,
@@ -781,6 +789,80 @@
           "review": null,
           "capability_status": "available",
           "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:matrix-word-prime-flint",
+      "public_workflow": "matrix-word-prime-flint",
+      "family": "dense-prime-matrices",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:nmod_matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rref",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_right_kernel",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
         }
       ],
       "engines": {
@@ -2093,6 +2175,80 @@
         },
         {
           "capability_id": "ffi:m4ri:matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:word-prime-matrix-128",
+      "public_workflow": "word-prime-matrix-128",
+      "family": "dense-prime-matrices",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:nmod_matrix_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rank",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_rref",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:nmod_matrix_right_kernel",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,

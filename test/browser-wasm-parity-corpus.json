@@ -195,6 +195,24 @@
       }
     },
     {
+      "id": "matrix-word-prime-flint",
+      "family": "dense-prime-matrices",
+      "workflow": "matrix-word-prime-flint",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:nmod_matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rref", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(65537)\nA=matrix(F,3,4,[1,2,3,4,0,1,1,0,1,3,4,4])\nB=matrix(F,4,2,[1,2,3,4,5,6,7,8])\nprint((A*B).str().replace('\\n',';'))\nprint(A.rank())\nprint(A.rref().str().replace('\\n',';'))\nK=A.right_kernel_matrix()\nprint(K.str().replace('\\n',';'))\nprint((A*K.transpose()).is_zero())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[50 60];[ 8 10];[58 70]\n2\n[1 0 1 4];[0 1 1 0];[0 0 0 0]\n[    1     0     0 16384];[    0     1 65536 49153]\nTrue\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "moebius-range-batch",
       "family": "combinatorics-number-theory",
       "workflow": "moebius-range-packed",

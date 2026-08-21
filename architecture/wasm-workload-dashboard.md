@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/33 accelerated; 33 failed closed.
+Heavy workloads: 0/35 accelerated; 35 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,7 +12,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 70 | 0 |
+| `wasm-library` | 78 | 0 |
 | `wasm-compiled-source` | 11 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
@@ -26,6 +26,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | combinatorics-number-theory | 2 | 2 | 0 | 2 | 0 | 0 |
 | dense-binary-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
+| dense-prime-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
 | extension-fields | 2 | 2 | 0 | 2 | 0 | 0 |
@@ -54,6 +55,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:graph-shortest-paths-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:gf2-matrix-m4ri` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:matrix-word-prime-flint` | dense-prime-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:moebius-range-batch` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:analytic-gamma-xi-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:numeric-realfield-arithmetic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
@@ -78,6 +80,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `performance:graph-components-10000` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:graph-shortest-paths` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:gf2-matrix-384` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:word-prime-matrix-128` | dense-prime-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:extension-field-polynomial-5632` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:algebraic-matrix-8` | algebraic-numbers | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

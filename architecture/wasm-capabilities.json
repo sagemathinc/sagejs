@@ -386,6 +386,12 @@
       "kernel:packed-combinatorial-integer-rational-production",
       "kernel:packed-combinatorial-prime-production"
     ],
+    "matrix-word-prime-flint": [
+      "ffi:flint:nmod_matrix_mul",
+      "ffi:flint:nmod_matrix_rank",
+      "ffi:flint:nmod_matrix_rref",
+      "ffi:flint:nmod_matrix_right_kernel"
+    ],
     "moebius-range-packed": [
       "kernel:packed-moebius-range-production"
     ],

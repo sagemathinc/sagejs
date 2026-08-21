@@ -91,6 +91,18 @@
       "timeout_ms": 180000
     },
     {
+      "id": "word-prime-matrix-128",
+      "family": "dense-prime-matrices",
+      "requires": [
+        { "id": "ffi:flint:nmod_matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rref", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(65537)\nn=128\nL=matrix(F,n,n,lambda i,j:1 if i==j else ((i*17+j*31+1)%65537 if i>j else 0))\nU=matrix(F,n,n,lambda i,j:(i+1) if i==j else ((i*13+j*19+1)%65537 if i<j else 0))\nA=L*U\nR=A.matrix_from_rows(range(96))\nK=R.right_kernel_matrix()\nprint(A.rank(),A.rref()[0,0],K.nrows(),(R*K.transpose()).is_zero())",
+      "timeout_ms": 180000
+    },
+    {
       "id": "matrix-combinatorial-invariants",
       "family": "combinatorics",
       "requires": [
@@ -107,7 +119,7 @@
         { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
         { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+t+1)\nR.<x>=PolynomialRing(K)\nf=x^256+(a+1)*x+2\nfor k in range(4): f=f*(x^1024+a+K(k+1))\nprint(f.degree(),f[0],f[f.degree()])",
+      "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+3*t+6)\nR.<x>=PolynomialRing(K)\nf=x^1024+(a^2+7*a+11)*x^511+a+19\ng=(x+a+1)^384\nanswer=f\nfor k in range(12): answer=answer*g\nprint(answer.degree(),answer[0],answer[answer.degree()])",
       "timeout_ms": 240000
     },
     {

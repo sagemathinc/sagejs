@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "0a1677e96b0964704c58731fad4101bbed1717ddf8cf96fc385fcbc1ad42ad24",
+  "source_sha256": "3b8189cb4fcfc6de607065a6064fb146bed3f1cfad03d92b38ee6d9f8900a11c",
   "counts": {
     "total": 949,
     "by_kind": {
@@ -90,6 +90,12 @@
     "matrix-combinatorial-invariants": [
       "kernel:packed-combinatorial-integer-rational-production",
       "kernel:packed-combinatorial-prime-production"
+    ],
+    "matrix-word-prime-flint": [
+      "ffi:flint:nmod_matrix_mul",
+      "ffi:flint:nmod_matrix_rank",
+      "ffi:flint:nmod_matrix_rref",
+      "ffi:flint:nmod_matrix_right_kernel"
     ],
     "modular-symbols-weight-two": [
       "napi:@sagemath/sagejs-flint:p1List",
