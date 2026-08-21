@@ -1002,6 +1002,7 @@ def factor_base_prime_from_dict(
     if data.get("schema") != PRIME_RECORD_SCHEMA:
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
+
     def exact_integer(value: Any, purpose: str) -> int:
         if isinstance(value, (bool, float, str, bytes, bytearray)):
             raise TypeError(purpose + " must be an exact integer")
@@ -1042,10 +1043,13 @@ def factor_base_prime_from_dict(
             two_generator = data.get("two_generator")
             second_generator = None
             if two_generator is not None:
-                if exact_integer(
-                    two_generator.get("rational_prime", 0),
-                    "the two-generator rational prime",
-                ) != prime:
+                if (
+                    exact_integer(
+                        two_generator.get("rational_prime", 0),
+                        "the two-generator rational prime",
+                    )
+                    != prime
+                ):
                     raise ValueError("two-generator metadata has the wrong prime")
                 rows = _prime_ideals._decode_rows([two_generator["second_generator"]])
                 second_generator = _prime_ideals._nf_element_from_row(
