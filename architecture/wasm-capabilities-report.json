@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "96a7dcb50d1a61825f87453cc988e0010ffff6ed728b5fadf34e46c0d0fa06db",
+  "source_sha256": "c9c1bdaf4af6e2b71aa885fe83025952f8c8aee6a5c04b9881fef667cddf652d",
   "counts": {
-    "total": 948,
+    "total": 949,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
-      "production-kernel": 35,
+      "production-kernel": 36,
       "runtime-intrinsic": 137,
       "specialist-capability": 24
     },
     "by_disposition": {
-      "compiled-source": 35,
+      "compiled-source": 36,
       "desktop-only": 13,
       "generated-wasm": 300,
       "portable-fallback": 557,
       "shared-core": 43
     },
     "by_status": {
-      "available": 510,
+      "available": 511,
       "desktop-only": 13,
       "fallback": 425
     }
@@ -80,6 +80,9 @@
     ],
     "graph-components-packed": [
       "kernel:packed-graph-components-production"
+    ],
+    "graph-shortest-paths-packed": [
+      "kernel:packed-graph-shortest-paths-production"
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
@@ -5926,6 +5929,19 @@
         "graph-connected-components"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-graph-shortest-paths-production",
+      "family": "packed-graph-shortest-paths",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "Graph.shortest_path",
+        "Graph.distances_all_pairs"
+      ],
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-integer-polynomial-production",

@@ -598,6 +598,20 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-graph-shortest-paths-production",
+      "source": "src/lib/sagejs/kernels/graph/shortest_paths.py",
+      "functions": [
+        "packed_graph_shortest_paths",
+        "packed_graph_all_pairs_distances"
+      ],
+      "semantic_domain": "bounded insertion-order single-source and all-pairs unweighted graph distances over packed directed or undirected multigraph endpoints",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "portable-edge-scan-bfs"],
+      "benchmark": "bench:wasm-graph-shortest-paths",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

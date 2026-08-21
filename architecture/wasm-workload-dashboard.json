@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 31,
+    "heavy_workloads": 33,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 31,
+    "failed_heavy_workloads": 33,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,54 +20,54 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "6ff33884c7846cc9e7751c32b1c8b6a6d1ef2f4e2a6a16906518164c75cdb20b"
+      "sha256": "74a4cb3e521b7aca633c741e135acf90d76506b04c71231a99183fd5a147376a"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "28da1d8c5200a7a5646745ac518760f97c9e25dd55fd514e9c27e5cd373fac1d"
+      "sha256": "85d6a1f0213f5cdc61f700b686ef976753c1b2af60aab1fc8d4f9866c63375b4"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "a6c961035ab2a1760e17b13b9f81e48d3982c8427c4aabb66402b7d22478cfc7"
+      "sha256": "32a26deb7ee3fc2d470c0a7e43e19838a10983b64061caa4fad234d27e41eca4"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "8505ea57451131c16076c170a377c08ffb85d0b3993215b75b8fcbfd9cc854f6"
+      "sha256": "cddac9d7a0a2e58b4c338781094766d679413d1caa9ffcae6b5b8f48b19ca92a"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 26,
-    "performance_workloads": 13,
+    "parity_workloads": 27,
+    "performance_workloads": 14,
     "capability_counts": {
-      "total": 948,
+      "total": 949,
       "by_kind": {
         "declared-ffi-function": 412,
         "declared-ffi-resource": 29,
         "napi-export": 311,
-        "production-kernel": 35,
+        "production-kernel": 36,
         "runtime-intrinsic": 137,
         "specialist-capability": 24
       },
       "by_disposition": {
-        "compiled-source": 35,
+        "compiled-source": 36,
         "desktop-only": 13,
         "generated-wasm": 300,
         "portable-fallback": 557,
         "shared-core": 43
       },
       "by_status": {
-        "available": 510,
+        "available": 511,
         "desktop-only": 13,
         "fallback": 425
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 35,
-      "production_kernels": 28,
-      "compiled_functions": 226,
+      "registered_kernels": 36,
+      "production_kernels": 29,
+      "compiled_functions": 228,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30
@@ -76,7 +76,7 @@
   "route_classes": {
     "expected_requirements": {
       "wasm-library": 70,
-      "wasm-compiled-source": 9,
+      "wasm-compiled-source": 11,
       "portable-orchestration": 3,
       "portable-computation": 0
     },
@@ -153,10 +153,10 @@
       "unmeasured_or_review_required": 0
     },
     "graphs": {
-      "workloads": 2,
-      "heavy_workloads": 2,
+      "workloads": 4,
+      "heavy_workloads": 4,
       "accelerated": 0,
-      "failed": 2,
+      "failed": 4,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -598,6 +598,53 @@
       "expected_routes": [
         {
           "capability_id": "kernel:packed-graph-components-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:graph-shortest-paths-packed",
+      "public_workflow": "graph-shortest-paths-packed",
+      "family": "graphs",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-shortest-paths-production",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-compiled-source",
           "reviewed": true,
@@ -1943,6 +1990,53 @@
       "expected_routes": [
         {
           "capability_id": "kernel:packed-graph-components-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:graph-shortest-paths",
+      "public_workflow": "graph-shortest-paths",
+      "family": "graphs",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-graph-shortest-paths-production",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-compiled-source",
           "reviewed": true,

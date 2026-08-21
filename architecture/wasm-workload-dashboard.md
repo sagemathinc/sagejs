@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/31 accelerated; 31 failed closed.
+Heavy workloads: 0/33 accelerated; 33 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -13,7 +13,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
 | `wasm-library` | 70 | 0 |
-| `wasm-compiled-source` | 9 | 0 |
+| `wasm-compiled-source` | 11 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
 
@@ -29,7 +29,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
 | extension-fields | 2 | 2 | 0 | 2 | 0 | 0 |
-| graphs | 2 | 2 | 0 | 2 | 0 | 0 |
+| graphs | 4 | 4 | 0 | 4 | 0 | 0 |
 | hyperelliptic-curves | 1 | 1 | 0 | 1 | 0 | 0 |
 | modular-symbols | 1 | 0 | 0 | 0 | 0 | 1 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
@@ -51,6 +51,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:modular-symbols-weight-two` | modular-symbols | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-maximal-order-prime-zeta` | number-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:graph-components-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:graph-shortest-paths-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:gf2-matrix-m4ri` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:moebius-range-batch` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
@@ -75,6 +76,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `performance:numeric-mpfr-symbolic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:moebius-range-100000` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:graph-components-10000` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:graph-shortest-paths` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:gf2-matrix-384` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:extension-field-polynomial-5632` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

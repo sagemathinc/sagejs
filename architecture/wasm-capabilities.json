@@ -76,6 +76,13 @@
           "test/wasm-graph-components.cjs"
         ]
       },
+      "graph-shortest-paths-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/graphs.cjs",
+          "test/wasm-graph-shortest-paths.cjs"
+        ]
+      },
       "combinatorial-invariants-wasm-differential": {
         "differential": true,
         "paths": [
@@ -358,6 +365,9 @@
     ],
     "graph-components-packed": [
       "kernel:packed-graph-components-production"
+    ],
+    "graph-shortest-paths-packed": [
+      "kernel:packed-graph-shortest-paths-production"
     ],
     "gf2-matrix-m4ri": [
       "ffi:m4ri:matrix_mul",
@@ -11041,6 +11051,33 @@
         "compiled_functions": 1,
         "fallback_functions": 0,
         "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-graph-shortest-paths-production",
+      "kind": "production-kernel",
+      "family": "packed-graph-shortest-paths",
+      "source": "src/lib/sagejs/kernels/graph/shortest_paths.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "Graph.shortest_path",
+        "Graph.distances_all_pairs"
+      ],
+      "tests": [
+        "graph-shortest-paths-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 2,
+        "fallback_functions": 0,
+        "total_functions": 2,
         "production_pack": true,
         "fallback_reasons": []
       }

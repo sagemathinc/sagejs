@@ -146,6 +146,21 @@
       }
     },
     {
+      "id": "graph-shortest-paths-packed",
+      "family": "graphs",
+      "workflow": "graph-shortest-paths-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-graph-shortest-paths-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(1000)\npath=G.shortest_path(0,500)\nH=graphs.CycleGraph(120)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][60])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "501 60\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "gf2-matrix-m4ri",
       "family": "dense-binary-matrices",
       "workflow": "gf2-matrix-m4ri",

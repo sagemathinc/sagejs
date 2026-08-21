@@ -352,7 +352,8 @@
       "modules": ["sagejs.kernels.graph"],
       "files": [
         "src/lib/sagejs/kernels/graph/__init__.py",
-        "src/lib/sagejs/kernels/graph/components.py"
+        "src/lib/sagejs/kernels/graph/components.py",
+        "src/lib/sagejs/kernels/graph/shortest_paths.py"
       ],
       "prefixes": []
     },

@@ -57,6 +57,7 @@ const unit = [
   "test/wasm-production-resource-closure.cjs",
   "test/wasm-kernel-route-instrumentation.cjs",
   "test/wasm-graph-components.cjs",
+  "test/wasm-graph-shortest-paths.cjs",
   "test/wasm-numeric-plot-batching.cjs",
   "test/wasm-workload-dashboard.cjs",
   "test/generated-classification.cjs",

@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 35,
-    "production_kernels": 28,
-    "compiled_functions": 226,
+    "registered_kernels": 36,
+    "production_kernels": 29,
+    "compiled_functions": 228,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -252,6 +252,15 @@
       "compiled_functions": 1,
       "fallback_functions": 0,
       "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "packed-graph-shortest-paths-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {

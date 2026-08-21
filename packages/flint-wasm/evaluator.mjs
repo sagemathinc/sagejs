@@ -718,6 +718,26 @@ export async function instantiateSageEvaluator({
   installGlobal("__sagejs_sage_mode__", true);
   try {
     globalEvaluate(initialization);
+    if (wasmNativeResolver !== undefined) {
+      const modules = Reflect.get(globalThis, "ρσ_modules");
+      const builtins = modules?.builtins ?? globalThis;
+      const nativeResolve = (filename, name) => {
+        const normalized = String(filename).replaceAll("\\", "/");
+        const lazyMarker = "/__sagejs_lazy_modules__/";
+        const lazyIndex = normalized.lastIndexOf(lazyMarker);
+        const sourceMarker = "/src/lib/";
+        const sourceIndex = normalized.lastIndexOf(sourceMarker);
+        const logicalSource = lazyIndex >= 0
+          ? normalized.slice(lazyIndex + lazyMarker.length)
+          : sourceIndex >= 0
+            ? normalized.slice(sourceIndex + sourceMarker.length)
+            : normalized.replace(/^\/+/, "");
+        return wasmNativeResolver.resolve(logicalSource, String(name));
+      };
+      if (!Reflect.set(builtins, "__sagejs_native_resolve__", nativeResolve)) {
+        throw new TypeError("browser builtins rejected the authenticated Wasm resolver");
+      }
+    }
   } catch (error) {
     const match = String(error?.stack ?? "").match(/<anonymous>:(\d+):(\d+)/);
     if (match) {

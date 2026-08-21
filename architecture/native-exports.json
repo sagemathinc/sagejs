@@ -292,6 +292,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -374,6 +375,7 @@
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -458,6 +460,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -497,6 +500,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -538,6 +542,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -576,6 +581,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -612,6 +618,7 @@
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -649,6 +656,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -690,6 +698,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -728,6 +737,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -769,6 +779,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -809,6 +820,7 @@
       "consumers": [
         "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -848,6 +860,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -880,6 +893,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11387,6 +11401,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11457,6 +11472,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11544,6 +11560,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11586,6 +11603,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -11620,6 +11638,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11657,6 +11676,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11697,6 +11717,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11734,6 +11755,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],
@@ -11805,6 +11827,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "src/baselib/real_complex.py"
       ],
       "declared_ffi": null
@@ -11841,6 +11864,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
       ],

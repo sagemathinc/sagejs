@@ -72,6 +72,15 @@
       "timeout_ms": 180000
     },
     {
+      "id": "graph-shortest-paths",
+      "family": "graphs",
+      "requires": [
+        { "id": "kernel:packed-graph-shortest-paths-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(10000)\npath=G.shortest_path(0,5000)\nH=graphs.CycleGraph(512)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][256])",
+      "timeout_ms": 180000
+    },
+    {
       "id": "gf2-matrix-384",
       "family": "dense-binary-matrices",
       "requires": [

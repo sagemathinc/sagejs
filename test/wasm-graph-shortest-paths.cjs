@@ -540,33 +540,6 @@ test("real Wasm executes direct and public Node/browser shortest paths", {
         });
         await page.waitForFunction(() => window.__sagejsReady !== undefined);
         await page.evaluate(() => window.__sagejsReady);
-        // The integration lane mirrors this already-installed private resolver
-        // hook into the browser builtins namespace. Stage that shared runtime
-        // wiring separately so the public workload below remains ordinary Sage
-        // source and its fixed capability ID still comes only from the loader's
-        // digest-authenticated WeakMap.
-        const bridge = await page.evaluate(
-          ([source, timeout]) => window.__sagejsTest.evaluate(source, timeout),
-          [[
-            "import builtins",
-            "import sagejs.runtime as runtime",
-            "def _browser_native_resolve(filename,name):",
-            " normalized=str(filename).replace('\\\\','/')",
-            " marker='/__sagejs_lazy_modules__/'",
-            " index=normalized.rfind(marker)",
-            " logical=normalized[index+len(marker):] if index>=0 else normalized",
-            " resolver=runtime.reflect.get(runtime.global_object,'__sagejs_wasm_native_resolver__')",
-            " return runtime.reflect.apply(runtime.reflect.get(resolver,'resolve'),resolver,[logical,str(name)])",
-            "builtins.__sagejs_native_resolve__=_browser_native_resolve",
-            "import sagejs.native as native_module",
-            "def _browser_compiled(function):",
-            " code=getattr(function,'__code__',None)",
-            " return _browser_native_resolve(getattr(code,'co_filename',''),getattr(function,'__name__',''))",
-            "native_module._compiled=_browser_compiled",
-            "getattr(builtins.__sagejs_native_resolve__('/__sagejs_lazy_modules__/sagejs/kernels/graph/shortest_paths.py','packed_graph_shortest_paths'),'executionTarget',None)",
-          ].join("\n"), 120000],
-        );
-        assert.equal(bridge.repr, "'wasm'");
         const result = await page.evaluate(
           ([source, timeout]) => window.__sagejsTest.evaluate(source, timeout),
           [[
