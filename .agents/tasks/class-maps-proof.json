@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-maps-proof",
+  "title": "Class maps and proof certificates",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement abstract class-group presentation/maps, ideal discrete logarithms, principality witnesses, GRH proof labels, unconditional Minkowski proof records, and mutation tests",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "src/lib/sagejs/number_fields/class_group_proof.py",
+    "test/number-field-class-group-maps-proof.cjs",
+    "test/fixtures/number-field-class-group-maps-proof.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Map.jl",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Proof.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Hecke/Oscar",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_maps.py src/lib/sagejs/number_fields/class_group_proof.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.469,
+      "started_at": "2026-08-21T05:06:46.301Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "30665d8e82cf0996cbb9cda483656411ffcc92bb44b4118320d1406a4a4ebf70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.102,
+      "started_at": "2026-08-21T05:06:48.391Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "30665d8e82cf0996cbb9cda483656411ffcc92bb44b4118320d1406a4a4ebf70",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a CPython-parseable IdealClassGroup with Sage-compatible invariant coordinates, generator ideals, multiplicative class elements, bidirectional ideal maps, exact quotient discrete-log witnesses, principality results, and duck-typed ClassUnitGroupContext/RelationPresentation construction. Adds immutable exact proof labels, serialized principal witnesses, externally replayed GRH records, exact-rational unconditional Minkowski prime-stream records, saturation records, and 13 one-field corruption mutations. Focused compiled tests also exercise a genuine nonzero Sage.js fractional ideal.",
+    "risks": [
+      "Public NumberField and NumberFieldIdeal method wiring is outside this lane's claims and remains an integration task.",
+      "Conditional replay intentionally requires context.verify_conditional_grh_record(record); unconditional replay requires the documented field/order fingerprint, exact bound, ideal-fingerprint, and complete Minkowski-prime iterator hooks.",
+      "The broad pnpm test:baselib:strict and pnpm test:native contract gates were deferred to central integration by coordinator direction; focused compiled and standalone strict-Pyright receipts pass."
+    ],
+    "next_steps": [
+      "Adapt ClassUnitGroupContext to expose the documented generator ideals, relation witnesses, ideal_class_log, proof record, theorem/bound, and replay hooks.",
+      "Use RelationPresentation.invariants and verify() from class-matrix commit 5cbd0c2aafaa9af4be84d38c0635a94923c917ab; generator_transforms can recover factor-base ideal products in the integration lane.",
+      "Run the broad strict/native and four-platform gates after all class/unit lanes are merged, then move this contract from active to review."
+    ]
+  }
+}
