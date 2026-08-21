@@ -4,7 +4,7 @@
   "id": "wasm-multivariate-polynomial",
   "title": "Bounded multivariate polynomial Wasm core",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Profile public multivariate GCD/resultant/Groebner workloads and deliver the highest-impact bounded FLINT shared core with exact packed ABI, native/direct-Wasm/public proof evidence, fallback contract, tracing handoff, and benchmark bounds",
   "base_commit": "f959be9f15ac5ec773410dfa21222368ee5d1133",
@@ -43,10 +43,104 @@
     "node --test test/wasm-multivariate-polynomial-core.cjs",
     "node bench/wasm-multivariate-polynomial.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/wasm-multivariate-polynomial-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.793,
+      "started_at": "2026-08-21T01:29:18.655Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "ce744804dbd6962fe1d174b2ebdbcdc8dc857ad179df227c19bc90250712f5d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-multivariate-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.59,
+      "started_at": "2026-08-21T01:29:22.072Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "ce744804dbd6962fe1d174b2ebdbcdc8dc857ad179df227c19bc90250712f5d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.351,
+      "started_at": "2026-08-21T01:29:25.258Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "ce744804dbd6962fe1d174b2ebdbcdc8dc857ad179df227c19bc90250712f5d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1009.906,
+      "started_at": "2026-08-21T01:30:03.365Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "ce744804dbd6962fe1d174b2ebdbcdc8dc857ad179df227c19bc90250712f5d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-multivariate-polynomial-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.722,
+      "started_at": "2026-08-21T01:48:46.083Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "3736f0b0788adafbfc91846fa176207025fa47a14a9ca07fa4ed9af04cbbf25c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-multivariate-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.651,
+      "started_at": "2026-08-21T01:48:49.427Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "3736f0b0788adafbfc91846fa176207025fa47a14a9ca07fa4ed9af04cbbf25c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.229,
+      "started_at": "2026-08-21T01:48:52.701Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "3736f0b0788adafbfc91846fa176207025fa47a14a9ca07fa4ed9af04cbbf25c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 836.188,
+      "started_at": "2026-08-21T01:49:35.851Z",
+      "commit": "f95f95194dc9faf2837b0df6398924be3ec77883",
+      "workspace_fingerprint": "3736f0b0788adafbfc91846fa176207025fa47a14a9ca07fa4ed9af04cbbf25c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Profiled representative supported public 3-variable GCD, resultant, and Groebner workloads and selected exact ZZ resultant as the highest-impact viable route (39.23 ms versus 0.81 ms and 0.18 ms). Added a host-neutral bounded FLINT fmpz_mpoly_resultant packed core with canonical GMP limb transport, deterministic cleanup, explicit status codes, one coarse mathematical crossing, malformed/unsupported/resource separation, a native C differential, a real wasm32-wasip1 execution proof, public Node native/disabled parity, and a checked benchmark/bounds record. The representative packed core takes 4,928 input bytes, returns 32,192 output bytes, and ran in 36.12 ms warm median.",
+    "risks": [
+      "Public polynomial dispatch, the lazy FLINT Wasm artifact adapter, browser-side sparse ZZ materialization, fixed private route recording, build/native-code registries, and the public real-browser proof are intentionally integration-owned and are not changed by this narrow lane; production browser resultant does not use the core until that handoff lands.",
+      "The FLINT call is not cooperatively cancellable once entered. The core therefore fails closed at 256 terms per operand, 512 coefficient bits, elimination degree 8, parameter total degree 8 per term, derived resultant parameter degree 128, 1 MiB ingress, and 16 MiB egress; the browser adapter should retain its worker reset policy.",
+      "Windows uses the existing exact native-addon fallback. The standalone core/direct-Wasm proof ran on Linux x64; integration CI must compile and execute the selected artifact on Linux arm64, macOS arm64, and Windows x64 fallback paths.",
+      "The 100 ms native and 250 ms browser budgets are initial bounded targets. Native Linux is measured, but Chromium, Firefox, and WebKit measurements must be captured after public integration.",
+      "pnpm test:changed completed the repository build but stopped at a pre-existing integration-base package-graph error because src/lib/sagejs/kernels/matrix/combinatorial.py has no package owner. All four task-required validation commands pass, including the full pnpm test:native suite."
+    ],
+    "next_steps": [
+      "Compile multivariate_wasm_core.c into the lazy exact FLINT wasm32-wasip1 artifact and expose the single packed function through the bounded Wasm adapter with a 16 MiB initial output reservation.",
+      "Add only the browser-side sparse ZZ host representation needed to marshal and materialize the public result; keep the actual resultant computation entirely inside FLINT.",
+      "Wire MultivariatePolynomialElement.resultant so supported ZZ inputs select this route while preserving parent, ordering, eliminated-variable, result-normalization, and exact native fallback semantics; unsupported browser inputs must raise the documented capability error.",
+      "Record the private route identifier wasm-library:flint:fmpz-mpoly-resultant-packed-v1 with target wasm32-wasip1, one mathematical call, ingress/egress bytes, crossing count one, and total copied bytes without exporting the tracing constructor.",
+      "Extend Node-Wasm and real-browser public tests with the exact representative source, requiring equality with native, the fixed route, 4,928/32,192-byte accounting, one crossing, no portable computation, and forced-off native fallback/browser capability behavior.",
+      "Classify the new C file as an external-library adapter in architecture/native-code.json, add it to the shared native/Wasm boundary inventory and build registries, then run architecture:check, test:changed, and cross-platform browser receipts at the integrated commit."
+    ]
   }
 }
