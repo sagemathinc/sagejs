@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-conway-data",
+  "title": "Authenticated browser Conway data",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Load supported packaged Conway polynomials through a bounded authenticated browser data route so default public GF(p^n) uses generated fq Wasm in Node-Wasm and Chromium",
+  "base_commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+  "claims": [
+    "packages/flint-wasm/conway-data.mjs",
+    "packages/flint-wasm/conway-data-worker.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs",
+    "packages/flint-wasm/test/conway-data.test.mjs",
+    "packages/flint-wasm/test/conway-data-browser-proof.mjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-fast-mathematics-completion-plan.md",
+    "src/lib/conway_polynomials/conway_polynomials.json"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "desktop Sage.js packaged Conway database and generated fq resource differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "node --test packages/flint-wasm/test/conway-data.test.mjs packages/flint-wasm/test/evaluator-host.test.mjs packages/flint-wasm/test/conway-data-browser-proof.mjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/conway-data.test.mjs packages/flint-wasm/test/evaluator-host.test.mjs packages/flint-wasm/test/conway-data-browser-proof.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.264,
+      "started_at": "2026-08-21T02:03:12.278Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "54dbc1a49fc937a92d071710b4c459e3fe855219945db69655ceea794f6b4884",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 31.586,
+      "started_at": "2026-08-21T02:03:45.099Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "54dbc1a49fc937a92d071710b4c459e3fe855219945db69655ceea794f6b4884",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a bounded SHA-256-authenticated Conway table asset and private lazy worker route, threads it through the public Wasm session, preserves default finite-field behavior and clear unsupported errors, and proves GF(3^4, 'a') reaches receipt-backed generated fq resources in Node-Wasm and Chromium.",
+    "risks": [
+      "The integration lane must classify conway-polynomials.json and runtime/conway-data*.mjs in the production topology before packages/flint-wasm build can publish its receipt.",
+      "The broad changed-files and architecture checks are blocked on inherited duplicate production kernel/native inventory drift outside this lane's claims."
+    ],
+    "next_steps": [
+      "Add conway-polynomials.json to production hostAssets and a bounded lazy topology group; classify the two runtime modules in the reviewed topology.",
+      "Integrate the shared public default-extension-field parity corpus and rerun the full production build after central topology/native-inventory reconciliation."
+    ]
+  }
+}

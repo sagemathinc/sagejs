@@ -49,6 +49,13 @@ const backendOptions = {
     roots: { package: [], taskRuntime: [] },
     modules: {},
   }),
+  createConwayData: () => ({
+    close() {},
+    ready: Promise.resolve(),
+    loadFile() {
+      throw new Error("the mock evaluator has no Conway table");
+    },
+  }),
   fetchCapabilityReport: async () => ({
     ok: true,
     async json() {

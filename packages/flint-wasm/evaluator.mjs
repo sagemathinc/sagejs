@@ -15,10 +15,12 @@ import {
 } from "./lazy-modules.mjs";
 import {
   dumps as serializationDumps,
+  loadsIntegerTupleTable as serializationLoadsIntegerTupleTable,
   loads as serializationLoads,
   packPython as serializationPack,
   unpack as serializationUnpack,
 } from "./dist/serialization.mjs";
+import { createLazyAuthenticatedConwayData } from "./conway-data.mjs";
 import { createSagejsCapabilityAPI } from "./dist/wasm-capability-api.mjs";
 import {
   capabilityTraceInstrumentation,
@@ -372,6 +374,7 @@ export async function instantiateSageEvaluator({
   baselib,
   standardLibrary,
   lazyModules,
+  conwayData = new URL("./dist/conway-polynomials.json", import.meta.url),
   dynamicPrograms = new URL("./dist/dynamic-programs.json", import.meta.url),
   flint,
   algebraic = undefined,
@@ -389,6 +392,7 @@ export async function instantiateSageEvaluator({
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
   fetchLazyModules = fetchLazyModuleBundle,
+  createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
     const response = await fetch(String(url));
     if (!response.ok) {
@@ -405,6 +409,11 @@ export async function instantiateSageEvaluator({
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
   const abort = (error) => {
+    try {
+      conwayDataResource?.close();
+    } catch (cleanupError) {
+      if (error && typeof error === "object") error.cleanupError = cleanupError;
+    }
     try {
       globals.restoreAll();
     } catch (cleanupError) {
@@ -428,6 +437,8 @@ export async function instantiateSageEvaluator({
   };
   let initialization;
   let lazyModuleBundle;
+  let conwayDataReady;
+  let conwayDataResource;
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
@@ -437,9 +448,13 @@ export async function instantiateSageEvaluator({
   let dynamicProgramBundle;
   const useSynchronousCompilerWorker = supportsSynchronousCompilerWorker();
   try {
+    conwayDataResource = createConwayData(conwayData, {
+      WorkerConstructor,
+    });
     [
       initialization,
       lazyModuleBundle,
+      conwayDataReady,
       flintBackend,
       m4riBackend,
       symbolicBackendModule,
@@ -456,6 +471,7 @@ export async function instantiateSageEvaluator({
         sageGrammar: String(sageGrammar),
       }),
       fetchLazyModules(lazyModules),
+      conwayDataResource.ready.then(() => true),
       instantiateFlint(flint, {
         algebraicSource: algebraic,
         recordCapability: (id, route, options) =>
@@ -471,6 +487,26 @@ export async function instantiateSageEvaluator({
         ? Promise.resolve(undefined)
         : fetchDynamicPrograms(dynamicPrograms),
     ]);
+    if (conwayDataReady !== true) {
+      throw new Error("the authenticated Conway data worker did not become ready");
+    }
+    if (
+      typeof flintBackend?.fqContext !== "function" &&
+      flintBackend?.__sagejs_ffi_manifest__?.resources?.includes("fq_context")
+    ) {
+      flintBackend = new Proxy(flintBackend, {
+        get(target, name, receiver) {
+          if (name === "fqContext") {
+            return () => {
+              throw new Error(
+                "Conway polynomial is unavailable in the generated Wasm resource backend",
+              );
+            };
+          }
+          return Reflect.get(target, name, receiver);
+        },
+      });
+    }
     if (!capabilityReportResponse.ok) {
       throw new Error(
         `unable to load WebAssembly capability report (${capabilityReportResponse.status})`,
@@ -652,6 +688,13 @@ export async function instantiateSageEvaluator({
         if (operation === "serializationLoads") {
           const value = serializationLoads(String(args[0]));
           traceSagePack(args, value);
+          return { ok: true, value };
+        }
+        if (operation === "serializationLoadIntegerTupleTable") {
+          const value = conwayDataResource.loadFile(
+            String(args[0]),
+            serializationLoadsIntegerTupleTable,
+          );
           return { ok: true, value };
         }
         if (operation === "serializationPack") {
@@ -861,6 +904,7 @@ export async function instantiateSageEvaluator({
   }
 
   function terminate() {
+    conwayDataResource.close();
     language.terminate();
     globals.restoreAll();
   }
