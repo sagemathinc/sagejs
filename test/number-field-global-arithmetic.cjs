@@ -174,7 +174,6 @@ assert certificate59.principal_relation_witnesses[0].evaluate() == K59.gen() + 1
 payload59 = certificate59.to_dict()
 detached59 = MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, payload59)
 assert detached59.to_dict() == payload59 and detached59.verify()
-
 def rehash(payload):
     body = dict(payload)
     del body["content_sha256"]
@@ -311,4 +310,96 @@ assert not forged_cubic_units.verify_completion()
 print("number-field-global-arithmetic-ok")
 `);
   assert.equal(output, "number-field-global-arithmetic-ok");
+});
+
+test("bounded cubic class numbers replay every quotient p-line", () => {
+  const output = run(String.raw`
+import hashlib
+import json
+from sagejs.number_fields.cubic_class_number import CubicMinkowskiClassNumberCertificate, bounded_cubic_minkowski_class_number
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+
+# A trivial relation quotient proves class number one without p-lines.
+K59 = NumberField(x**3 + 2*x + 1, "c")
+generic59 = bounded_cubic_minkowski_class_number(K59)
+assert generic59.complete and generic59.order() == 1
+assert generic59.certificate.obstructions == []
+assert generic59.certificate.verify()
+
+# The nontrivial quotient is proved exact without units, a regulator, or hR.
+K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
+classes1083 = bounded_cubic_minkowski_class_number(K1083)
+assert classes1083.complete and classes1083.order() == 3
+assert classes1083.proof_status == "exact-unconditional"
+assert classes1083.presentation.invariants == (3,)
+assert classes1083.diagnostics["quotient_order"] == 3
+assert classes1083.diagnostics["projective_lines"] == 1
+assert classes1083.diagnostics["residue_states"] <= 500000
+assert classes1083.diagnostics["relation_search"]["relation_attempts"] > 0
+assert set(classes1083.diagnostics["phase_timings"]) == {
+    "factor_base", "relations", "norm_obstructions", "certificate_encoding", "total"
+}
+certificate1083 = classes1083.certificate
+assert isinstance(certificate1083, CubicMinkowskiClassNumberCertificate)
+assert len(certificate1083.obstructions) == 1
+assert certificate1083.obstructions[0]["modulus"] == 19
+assert certificate1083.verify()
+try:
+    certificate1083.verify(cancelled=lambda: True)
+    raise AssertionError("detached cubic proof replay ignored cancellation")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+caps_copy1083 = certificate1083.caps
+caps_copy1083["max_quotient_order"] = 1
+assert certificate1083.caps["max_quotient_order"] == 4096
+payload1083 = certificate1083.to_dict()
+detached1083 = CubicMinkowskiClassNumberCertificate.from_dict(K1083, payload1083)
+assert detached1083.to_dict() == payload1083 and detached1083.class_number == 3
+
+def rehash(payload):
+    body = dict(payload)
+    del body["content_sha256"]
+    payload["content_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+for mutation in ("norm-form", "coverage", "presentation", "replay-cap"):
+    forged = json.loads(json.dumps(payload1083))
+    if mutation == "norm-form":
+        forged["obstructions"][0]["norm_form_coefficients"][0] += 1
+    elif mutation == "coverage":
+        forged["obstructions"] = []
+    elif mutation == "presentation":
+        forged["presentation"]["smith"][0][0] += 1
+    else:
+        forged["caps"]["max_residue_states"] = 20000001
+    rehash(forged)
+    try:
+        CubicMinkowskiClassNumberCertificate.from_dict(K1083, forged)
+        raise AssertionError("mutated cubic class-number evidence passed replay")
+    except ValueError:
+        pass
+
+quotient_capped1083 = bounded_cubic_minkowski_class_number(
+    K1083, max_quotient_order=2
+)
+assert not quotient_capped1083.complete
+assert quotient_capped1083.presentation.order == 3
+assert "quotient order" in quotient_capped1083.reason
+
+cancel_polls = [0]
+def cancelled1083():
+    cancel_polls[0] += 1
+    return True
+try:
+    bounded_cubic_minkowski_class_number(K1083, cancelled=cancelled1083)
+    raise AssertionError("cubic class-number cancellation was ignored")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+assert cancel_polls[0] == 1
+print("cubic-class-number-p-lines-ok")
+`);
+  assert.equal(output, "cubic-class-number-p-lines-ok");
 });

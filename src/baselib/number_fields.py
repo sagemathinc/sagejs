@@ -106,6 +106,13 @@ def _nf_class_groups_module() -> Any:
     )
 
 
+def _nf_cubic_class_number_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_cubic_class_number_module__",
+        "sagejs.number_fields.cubic_class_number",
+    )
+
+
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -2852,16 +2859,23 @@ class NumberFieldParent(sage.Parent):
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
             artifact = self._bounded_cubic_class_number_artifact
             if artifact is runtime.undefined:
-                artifact = (
-                    _nf_class_groups_module().bounded_cubic_minkowski_class_number_one(
-                        self
-                    )
+                artifact = _nf_cubic_class_number_module().bounded_cubic_minkowski_class_number(
+                    self
                 )
                 if artifact.complete:
                     certificate = artifact.certificate
-                    if certificate is None or not certificate.verify(max_elements=1):
+                    certificate_type = getattr(
+                        _nf_cubic_class_number_module(),
+                        "CubicMinkowskiClassNumberCertificate",
+                        None,
+                    )
+                    if (
+                        certificate_type is None
+                        or type(certificate) is not certificate_type
+                        or certificate.proof_status != "exact-unconditional"
+                    ):
                         raise ArithmeticError(
-                            "cached cubic class-number proof failed exact replay"
+                            "cubic class-number producer returned invalid exact evidence"
                         )
                     self._bounded_cubic_class_number_artifact = artifact
             if artifact.complete:

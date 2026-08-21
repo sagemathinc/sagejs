@@ -181,8 +181,8 @@ print("cubic-regulator-ok")
 
 test("public cubic class number uses cached unconditional Minkowski evidence", () => {
   const output = runPublic(String.raw`
-class_groups_module = __import__(
-    "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+cubic_module = __import__(
+    "sagejs.number_fields.cubic_class_number", fromlist=["cubic_class_number"]
 )
 class_unit_module = __import__(
     "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
@@ -198,20 +198,23 @@ def forbidden(*args, **kwargs):
 class_unit_module.class_number = forbidden
 units_module.bounded_unit_subgroup = forbidden
 analytic_module.regulator_from_factored_units = forbidden
+analytic_module.ZetaLogResidueWorkspace = forbidden
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x**3 + 2*x + 1, "c")
-assert K.class_number(proof=True) == 1
+K = NumberField(x**3 - x**2 - 6*x - 12, "c")
+assert K.class_number(proof=True) == 3
 artifact = K._bounded_cubic_class_number_artifact
 assert artifact.complete
-assert artifact.certificate.arithmetic_certificate.proof_status == "exact-unconditional"
-assert artifact.certificate.arithmetic_certificate.verify()
+assert artifact.proof_status == "exact-unconditional"
+assert artifact.certificate.proof_status == "exact-unconditional"
+assert artifact.certificate.verify()
+assert artifact.diagnostics["quotient_order"] == 3
 
 # The stronger unconditional artifact satisfies proof=False from the field
 # cache even when the producer itself is made unavailable.
-class_groups_module.bounded_cubic_minkowski_class_number_one = forbidden
-assert K.class_number(proof=False) == 1
+cubic_module.bounded_cubic_minkowski_class_number = forbidden
+assert K.class_number(proof=False) == 3
 assert K._bounded_cubic_class_number_artifact is artifact
 
 # Explicit algorithms and resource policies retain the existing coupled
@@ -222,6 +225,18 @@ for options in ({"algorithm": "minkowski"}, {"max_relations": 1}):
         raise AssertionError("an explicit class-number policy bypassed dispatch")
     except AssertionError as error:
         assert "coupled class/unit path" in str(error)
+
+# Bounded noncompletion is only a routing hint: it falls through rather than
+# supplying an upper bound as a class number.
+def incomplete(field):
+    return cubic_module.CubicClassNumberResult(
+        field, False, "forced bounded exhaustion", 1
+    )
+cubic_module.bounded_cubic_minkowski_class_number = incomplete
+class_unit_module.class_number = lambda *args, **kwargs: 7
+K_fallback = NumberField(x**3 + 3*x + 1, "f")
+assert K_fallback.class_number(proof=False) == 7
+assert not hasattr(K_fallback, "_bounded_cubic_class_number_artifact")
 print("cubic-class-number-fast-ok")
 `, 180_000);
   assert.equal(output, "cubic-class-number-fast-ok");

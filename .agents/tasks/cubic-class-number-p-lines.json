@@ -1,0 +1,128 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-class-number-p-lines",
+  "title": "Cubic Class Number P Lines",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a bounded generic cubic class-number-only producer using exact Minkowski relations and replayable modular norm-form injectivity certificates, with honest public fallback and caching",
+  "base_commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "src/lib/sagejs/number_fields/cubic_class_number.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-global-arithmetic.cjs",
+    "test/number-field-class-unit-public.cjs",
+    "test/number-field-class-unit-engine.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact relation, factor-base, presentation, and modular norm-form replay",
+      "Existing coupled class/unit engine fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright src/lib/sagejs/number_fields/cubic_class_number.py src/lib/sagejs/number_fields/class_groups.py src/baselib/number_fields.py",
+    "node --test --test-name-pattern=bounded cubic class numbers replay every quotient p-line test/number-field-global-arithmetic.cjs",
+    "node --test --test-name-pattern=public cubic class number uses cached unconditional Minkowski evidence test/number-field-class-unit-public.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.133,
+      "started_at": "2026-08-21T23:25:40.752Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "7137c588e02808b288e6620be5f8734a2e419b4edf1a8d43c7e9f9ddd86812a7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.557,
+      "started_at": "2026-08-21T23:40:44.141Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "2f9cb163d01be43c639e60c1905091fd11bc0fd7d3c00421d73db1c17555d47a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.672,
+      "started_at": "2026-08-21T23:41:07.575Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "2f9cb163d01be43c639e60c1905091fd11bc0fd7d3c00421d73db1c17555d47a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.584,
+      "started_at": "2026-08-21T23:41:56.209Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "44f56a6ed53826d1194264b1fc9dd3a3c1e1f88713f91bb9c819915005c2e59e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=bounded cubic class numbers replay every quotient p-line test/number-field-global-arithmetic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.549,
+      "started_at": "2026-08-21T23:42:28.816Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "44f56a6ed53826d1194264b1fc9dd3a3c1e1f88713f91bb9c819915005c2e59e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public cubic class number uses cached unconditional Minkowski evidence test/number-field-class-unit-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.331,
+      "started_at": "2026-08-21T23:43:35.688Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "44f56a6ed53826d1194264b1fc9dd3a3c1e1f88713f91bb9c819915005c2e59e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/cubic_class_number.py src/lib/sagejs/number_fields/class_groups.py src/baselib/number_fields.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.095,
+      "started_at": "2026-08-21T23:44:28.781Z",
+      "commit": "01f0bdcc7973e07d000d560674f4ee55dc00627a",
+      "workspace_fingerprint": "8b54d29809de663d12789b0cfa14ea3ab654307bc2d18fcfdd8082a3a618a876",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a strict ordinary cubic_class_number module that constructs a complete unconditional Minkowski factor base, collects rank-only exact relations, and proves the resulting finite presentation injects into the class group by exhaustive modular norm-form obstructions on every projective p-torsion line. The authenticated certificate replays factor-base generation, every relation witness, presentation transforms, ideal reconstruction, norm-form interpolation, and residue coverage under hard tree/work caps and cancellation. NumberField.class_number uses this only for degree-three auto/no-limits calls, caches only successful exact artifacts across both proof modes, and otherwise retains the coupled class/unit fallback. The discriminant -1083 class-number-three target measures 7.45 seconds total (0.97 factor base, 4.66 relations, 0.20 obstruction, 0.07 encoding), without unit, regulator, or analytic workspace calls.",
+    "risks": [
+      "The modular obstruction search is deliberately bounded and may honestly decline other cubic fields even after producing a useful exact relation seed; the current coupled fallback does not yet consume that retained seed.",
+      "The new strict module is 35342 bytes. Its pyrightconfig.json registration is intentionally left to the integration lane because that shared manifest is outside this arithmetic-algebra lane; direct Pyright reports zero errors.",
+      "Broad native/public corpus gates were deferred to central integration as requested; focused source/runtime and strict existing-module gates pass."
+    ],
+    "next_steps": [
+      "Register src/lib/sagejs/number_fields/cubic_class_number.py in pyrightconfig.json and update the central number-field algorithm byte ratchet for the new 35342-byte module.",
+      "Teach the coupled class/unit engine to accept the retained authenticated factor-base/relation seed when bounded p-line obstruction search declines.",
+      "Profile the remaining approximately 1.5 seconds outside named producer phases and the 4.66-second relation phase in a later P7 pass."
+    ]
+  }
+}
