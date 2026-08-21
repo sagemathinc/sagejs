@@ -60,7 +60,9 @@ test("global arithmetic internals preserve exact and incomplete proof states", (
   const output = run(String.raw`
 from sagejs.number_fields.embeddings import archimedean_data, exact_signature
 from sagejs.number_fields.units import RootsOfUnityResult, UnitCertificate, UnitCompletionCertificate, UnitSubgroupResult, bounded_unit_subgroup, certified_small_cubic_unit_group, real_quadratic_unit_group, roots_of_unity
-from sagejs.number_fields.class_groups import analytic_class_number_formula_report, bounded_class_group, certified_small_cubic_class_group
+import hashlib
+import json
+from sagejs.number_fields.class_groups import MinkowskiPrincipalFactorBaseCertificate, analytic_class_number_formula_report, bounded_class_group, bounded_cubic_minkowski_class_number_one, certified_small_cubic_class_group
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -157,6 +159,49 @@ try:
     raise AssertionError("an incomplete search supplied a regulator")
 except ValueError:
     pass
+
+K59 = NumberField(x**3 + 2*x + 1, "c")
+fast59 = bounded_cubic_minkowski_class_number_one(K59)
+assert fast59.complete and fast59.order() == 1
+assert fast59.minkowski_bound == 2
+assert fast59.proof_status == "exact-minkowski-principal-factor-base"
+certificate59 = fast59.certificate.arithmetic_certificate
+assert isinstance(certificate59, MinkowskiPrincipalFactorBaseCertificate)
+assert certificate59.verify()
+assert len(certificate59.factor_base) == len(certificate59.witnesses) == 1
+assert certificate59.candidates_checked == (5,)
+assert certificate59.principal_relation_witnesses[0].evaluate() == K59.gen() + 1
+payload59 = certificate59.to_dict()
+detached59 = MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, payload59)
+assert detached59.to_dict() == payload59 and detached59.verify()
+
+def rehash(payload):
+    body = dict(payload)
+    del body["content_sha256"]
+    payload["content_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+for mutation in ("bound", "witness", "coverage"):
+    forged = json.loads(json.dumps(payload59))
+    if mutation == "bound":
+        forged["plan"]["bound"]["bound"] += 1
+    elif mutation == "witness":
+        forged["witnesses"][0]["factors"][0]["exponent"] = 2
+    else:
+        forged["factor_base"] = []
+        forged["witnesses"] = []
+        forged["candidates_checked"] = []
+    rehash(forged)
+    try:
+        MinkowskiPrincipalFactorBaseCertificate.from_dict(K59, forged)
+        raise AssertionError("mutated Minkowski evidence passed detached replay")
+    except ValueError:
+        pass
+bounded59 = bounded_cubic_minkowski_class_number_one(
+    K59, max_reduction_candidates=1
+)
+assert not bounded59.complete and bounded59.certificate is None
 
 Km = NumberField(x**3 - x - 1, "a")
 units_m = certified_small_cubic_unit_group(Km)

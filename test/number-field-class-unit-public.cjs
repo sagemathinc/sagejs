@@ -179,6 +179,54 @@ print("cubic-regulator-ok")
   assert.equal(output, "cubic-regulator-ok");
 });
 
+test("public cubic class number uses cached unconditional Minkowski evidence", () => {
+  const output = runPublic(String.raw`
+class_groups_module = __import__(
+    "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+)
+class_unit_module = __import__(
+    "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+)
+units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+analytic_module = __import__(
+    "sagejs.number_fields.class_unit_analytic", fromlist=["class_unit_analytic"]
+)
+
+def forbidden(*args, **kwargs):
+    raise AssertionError("the coupled class/unit path was touched")
+
+class_unit_module.class_number = forbidden
+units_module.bounded_unit_subgroup = forbidden
+analytic_module.regulator_from_factored_units = forbidden
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 + 2*x + 1, "c")
+assert K.class_number(proof=True) == 1
+artifact = K._bounded_cubic_class_number_artifact
+assert artifact.complete
+assert artifact.certificate.arithmetic_certificate.proof_status == "exact-unconditional"
+assert artifact.certificate.arithmetic_certificate.verify()
+
+# The stronger unconditional artifact satisfies proof=False from the field
+# cache even when the producer itself is made unavailable.
+class_groups_module.bounded_cubic_minkowski_class_number_one = forbidden
+assert K.class_number(proof=False) == 1
+assert K._bounded_cubic_class_number_artifact is artifact
+
+# Explicit algorithms and resource policies retain the existing coupled
+# dispatch rather than silently consuming the auto/no-limits shortcut.
+for options in ({"algorithm": "minkowski"}, {"max_relations": 1}):
+    try:
+        K.class_number(**options)
+        raise AssertionError("an explicit class-number policy bypassed dispatch")
+    except AssertionError as error:
+        assert "coupled class/unit path" in str(error)
+print("cubic-class-number-fast-ok")
+`, 180_000);
+  assert.equal(output, "cubic-class-number-fast-ok");
+});
+
 test(
   "public motivating quintic replays conditional and unconditional class maps",
   { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
