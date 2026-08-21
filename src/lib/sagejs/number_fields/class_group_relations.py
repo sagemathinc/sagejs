@@ -16,11 +16,12 @@ certificate.  Every admitted relation reconstructs all ideals before it can
 enter a collector.
 
 The bounded short-vector search follows the readable first stage of Hecke's
-`Rel_LLL.jl`: reduce an exact lattice basis, try basis vectors and their
-pairwise sums and differences, then use a deterministic bounded combination
-stream.  The present reduction uses the exact coefficient lattice.  A future
-Minkowski/Arb reducer can be supplied through `basis_reducer` without changing
-relation records or replay.
+`Rel_LLL.jl`: reduce a Minkowski-embedded ideal basis, try basis vectors and
+their pairwise sums and differences, then use a deterministic bounded
+combination stream.  Numerical embeddings select a unimodular transform; that
+transform is applied to exact ideal-coordinate rows before any relation is
+considered.  Floating-point data therefore never enters a relation record or
+its replay.
 """
 
 from __future__ import annotations
@@ -29,11 +30,16 @@ import json
 from typing import Any, Callable, Iterable
 
 import sagejs as sage
+import sagejs.runtime as runtime
+from sagejs.number_fields.embeddings import archimedean_data
 
 RELATION_SCHEMA = "sagejs.number-fields/class-relation-v1"
 WITNESS_SCHEMA = "sagejs.number-fields/factored-principal-witness-v1"
 IDEAL_SCHEMA = "sagejs.number-fields/relation-ideal-v1"
 SEARCH_STATE_SCHEMA = "sagejs.number-fields/relation-search-state-v1"
+IDEAL_REDUCTION_STATE_SCHEMA = "sagejs.number-fields/ideal-reduction-state-v1"
+MINKOWSKI_LATTICE_SCHEMA = "sagejs.number-fields/minkowski-lll-lattice-v1"
+AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
 DEFAULT_RANK_PRIME = 2_147_483_647
 _U64_MASK = (1 << 64) - 1
 
@@ -44,6 +50,24 @@ class RelationNotSmoothError(ArithmeticError):
     def __init__(self, message: str, *, ideal: Any = None) -> None:
         super().__init__(message)
         self.ideal = ideal
+
+
+class IdealReductionResourceLimit(RelationNotSmoothError):
+    """An explicitly bounded ideal reduction exhausted its candidate budget."""
+
+    def __init__(self, ideal: Any, state: IdealReductionState) -> None:
+        super().__init__(
+            "bounded ideal reduction exhausted its candidate budget", ideal=ideal
+        )
+        self.state = state
+
+
+class IdealReductionCancelled(RuntimeError):
+    """A resumable adaptive ideal reduction observed cancellation."""
+
+    def __init__(self, state: IdealReductionState) -> None:
+        super().__init__("class/unit computation cancelled")
+        self.state = state
 
 
 def _checked_integer(value: Any, name: str) -> int:
@@ -847,14 +871,20 @@ def _gram_schmidt(rows: list[list[int]]) -> tuple[list[list[Any]], list[Any]]:
     return mu, norms
 
 
-def exact_lll_reduce(rows: Iterable[Iterable[int]]) -> list[list[int]]:
-    """Return a deterministic exact 3/4-LLL basis for an integer row lattice."""
+def _exact_lll_reduce_with_transform(
+    rows: Iterable[Iterable[int]],
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Return an exact 3/4-LLL basis and its unimodular row transform."""
     basis = [[int(value) for value in row] for row in rows]
     if not basis:
-        return []
+        return ([], [])
     width = len(basis[0])
     if any(len(row) != width for row in basis):
         raise ValueError("LLL input rows must have equal width")
+    transform = [
+        [1 if row == column else 0 for column in range(len(basis))]
+        for row in range(len(basis))
+    ]
     mu, norms = _gram_schmidt(basis)
     index = 1
     while index < len(basis):
@@ -865,6 +895,10 @@ def exact_lll_reduce(rows: Iterable[Iterable[int]]) -> list[list[int]]:
                     value - multiple * basis[previous][column]
                     for column, value in enumerate(basis[index])
                 ]
+                transform[index] = [
+                    value - multiple * transform[previous][column]
+                    for column, value in enumerate(transform[index])
+                ]
                 mu, norms = _gram_schmidt(basis)
         if (
             norms[index]
@@ -873,9 +907,18 @@ def exact_lll_reduce(rows: Iterable[Iterable[int]]) -> list[list[int]]:
             index += 1
         else:
             basis[index], basis[index - 1] = basis[index - 1], basis[index]
+            transform[index], transform[index - 1] = (
+                transform[index - 1],
+                transform[index],
+            )
             mu, norms = _gram_schmidt(basis)
             index = max(1, index - 1)
-    return basis
+    return basis, transform
+
+
+def exact_lll_reduce(rows: Iterable[Iterable[int]]) -> list[list[int]]:
+    """Return a deterministic exact 3/4-LLL basis for an integer row lattice."""
+    return _exact_lll_reduce_with_transform(rows)[0]
 
 
 def _lcm(left: int, right: int) -> int:
@@ -897,6 +940,287 @@ def _integral_lattice_rows(ideal: Any) -> tuple[list[list[int]], int]:
         [[int((value * denominator)._numerator) for value in row] for row in rows],
         denominator,
     )
+
+
+def _decimal_rational(value: Any) -> tuple[int, int]:
+    """Parse a finite FLINT real rendering without passing through binary64."""
+    text = str(value).strip().lower()
+    if text in ("+infinity", "-infinity", "nan"):
+        raise ArithmeticError("a Minkowski coordinate is not finite")
+    exponent = 0
+    if "e" in text:
+        text, exponent_text = text.split("e", 1)
+        exponent = int(exponent_text)
+    sign = -1 if text.startswith("-") else 1
+    if text[:1] in ("+", "-"):
+        text = text[1:]
+    if "." in text:
+        whole, fractional = text.split(".", 1)
+    else:
+        whole, fractional = text, ""
+    if not whole:
+        whole = "0"
+    digits = whole + fractional
+    if not digits.isdigit():
+        raise ArithmeticError("unable to parse a Minkowski coordinate")
+    numerator = sign * int(digits)
+    denominator = 10 ** len(fractional)
+    if exponent >= 0:
+        numerator *= 10**exponent
+    else:
+        denominator *= 10 ** (-exponent)
+    return numerator, denominator
+
+
+def _scaled_real_integer(value: Any, scale_bits: int) -> int:
+    numerator, denominator = _decimal_rational(value)
+    scaled = sage.QQ(numerator * (1 << scale_bits)) / sage.QQ(denominator)
+    return _nearest_integer(scaled)
+
+
+def _real_part(value: Any) -> Any:
+    method = getattr(value, "real", None)
+    return method() if callable(method) else value
+
+
+def _matrix_times_rows(
+    matrix: Iterable[Iterable[int]], rows: Iterable[Iterable[int]]
+) -> list[list[int]]:
+    coefficients = [list(row) for row in matrix]
+    source = [list(row) for row in rows]
+    if not coefficients:
+        return []
+    return [
+        [
+            sum(
+                coefficients[row_index][source_index] * source[source_index][column]
+                for source_index in range(len(source))
+            )
+            for column in range(len(source[0]))
+        ]
+        for row_index in range(len(coefficients))
+    ]
+
+
+def _integer_determinant(rows: Iterable[Iterable[int]]) -> int:
+    """Return the determinant of a square integer matrix by Bareiss elimination."""
+    matrix = [list(row) for row in rows]
+    size = len(matrix)
+    if any(len(row) != size for row in matrix):
+        raise ValueError("determinant input must be square")
+    if size == 0:
+        return 1
+    sign = 1
+    previous_pivot = 1
+    for column in range(size - 1):
+        pivot = column
+        while pivot < size and matrix[pivot][column] == 0:
+            pivot += 1
+        if pivot == size:
+            return 0
+        if pivot != column:
+            matrix[pivot], matrix[column] = matrix[column], matrix[pivot]
+            sign = -sign
+        pivot_value = matrix[column][column]
+        for row in range(column + 1, size):
+            for target in range(column + 1, size):
+                numerator = (
+                    matrix[row][target] * pivot_value
+                    - matrix[row][column] * matrix[column][target]
+                )
+                matrix[row][target] = numerator // previous_pivot
+            matrix[row][column] = 0
+        previous_pivot = pivot_value
+    return sign * matrix[size - 1][size - 1]
+
+
+def _minkowski_integer_rows(
+    ideal: Any, precision: int, scale_bits: int
+) -> tuple[list[list[int]], tuple[int, int]]:
+    field = ideal.number_field()
+    data = archimedean_data(field)
+    signature = data.signature()
+    if signature[0] + 2 * signature[1] != field.degree():
+        raise ArithmeticError("Minkowski embedding dimension is not the field degree")
+    # Construct sqrt(2) in the same arbitrary-precision field as each complex
+    # coordinate.  The decimal has substantially more digits than the public
+    # precision ceiling used below and avoids an accidental binary64 boundary.
+    sqrt_two_decimal = (
+        "1.41421356237309504880168872420969807856967187537694807317667973799"
+        "0732478462107038850387534327641572735013846230912297024924836"
+    )
+    rows: list[list[int]] = []
+    for element in ideal.basis():
+        row: list[int] = []
+        for embedding in data.embeddings:
+            approximation = embedding.approximate(element, precision).value
+            if embedding.kind == "real":
+                row.append(_scaled_real_integer(_real_part(approximation), scale_bits))
+                continue
+            real_method = getattr(approximation, "real", None)
+            imag_method = getattr(approximation, "imag", None)
+            real: Any
+            imag: Any
+            if callable(real_method) and callable(imag_method):
+                real = real_method()
+                imag = imag_method()
+            else:
+                real = approximation
+                imag = approximation.parent()(0)
+            real_field = real.parent()
+            sqrt_two = real_field(sqrt_two_decimal)
+            row.append(_scaled_real_integer(sqrt_two * real, scale_bits))
+            row.append(_scaled_real_integer(sqrt_two * imag, scale_bits))
+        rows.append(row)
+    return rows, signature
+
+
+class MinkowskiLatticePlan:
+    """Numerical lattice choice with an exact ideal-basis transformation."""
+
+    def __init__(
+        self,
+        *,
+        precision: int,
+        scale_bits: int,
+        signature: tuple[int, int],
+        source_embedded_rows: list[list[int]],
+        embedded_rows: list[list[int]],
+        transform: list[list[int]],
+        exact_rows: list[list[int]],
+        denominator: int,
+    ) -> None:
+        self.precision = precision
+        self.scale_bits = scale_bits
+        self.signature = signature
+        self.source_embedded_rows = tuple(tuple(row) for row in source_embedded_rows)
+        self.embedded_rows = tuple(tuple(row) for row in embedded_rows)
+        self.transform = tuple(tuple(row) for row in transform)
+        self.exact_rows = tuple(tuple(row) for row in exact_rows)
+        self.denominator = denominator
+        self.proof_status = "numerical-selector/exact-transform"
+
+    def verify(self, ideal: Any) -> bool:
+        """Recheck the exact transformed basis and ideal membership."""
+        source_rows, denominator = _integral_lattice_rows(ideal)
+        if denominator != self.denominator:
+            return False
+        if abs(_integer_determinant(self.transform)) != 1:
+            return False
+        embedded = _matrix_times_rows(self.transform, self.source_embedded_rows)
+        if embedded != [list(row) for row in self.embedded_rows]:
+            return False
+        transformed = _matrix_times_rows(self.transform, source_rows)
+        if transformed != [list(row) for row in self.exact_rows]:
+            return False
+        field = ideal.number_field()
+        for row in transformed:
+            element = _field_element_from_coefficients(
+                field,
+                [sage.QQ(value) / sage.QQ(denominator) for value in row],
+            )
+            if element not in ideal:
+                return False
+        return True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": MINKOWSKI_LATTICE_SCHEMA,
+            "precision": self.precision,
+            "scale_bits": self.scale_bits,
+            "signature": list(self.signature),
+            "source_embedded_rows": [list(row) for row in self.source_embedded_rows],
+            "embedded_rows": [list(row) for row in self.embedded_rows],
+            "transform": [list(row) for row in self.transform],
+            "exact_rows": [list(row) for row in self.exact_rows],
+            "denominator": self.denominator,
+            "proof_status": self.proof_status,
+        }
+
+
+def minkowski_lll_lattice(
+    ideal: Any, *, precision: int = 128, scale_bits: int | None = None
+) -> MinkowskiLatticePlan:
+    """Reduce an ideal's true Minkowski embedding and retain exact rows.
+
+    Real embeddings contribute one coordinate.  One representative of every
+    complex pair contributes `sqrt(2) Re` and `sqrt(2) Im`, so Euclidean length
+    is the canonical Minkowski length.  Approximate coordinates only choose a
+    unimodular transform; the returned basis is represented exactly.
+    """
+    precision = _checked_integer(precision, "embedding precision")
+    if precision < 53:
+        raise ValueError("embedding precision must be at least 53 bits")
+    if ideal.is_zero():
+        raise ValueError("the zero ideal has no full Minkowski lattice")
+    if scale_bits is None:
+        scale_bits = min(96, precision - 16)
+    scale_bits = _checked_integer(scale_bits, "Minkowski scale")
+    if scale_bits < 24 or scale_bits >= precision:
+        raise ValueError("Minkowski scale must be at least 24 and below precision")
+    embedded_rows, signature = _minkowski_integer_rows(ideal, precision, scale_bits)
+    reduced_embedded, transform = _exact_lll_reduce_with_transform(embedded_rows)
+    source_rows, denominator = _integral_lattice_rows(ideal)
+    exact_rows = _matrix_times_rows(transform, source_rows)
+    plan = MinkowskiLatticePlan(
+        precision=precision,
+        scale_bits=scale_bits,
+        signature=signature,
+        source_embedded_rows=embedded_rows,
+        embedded_rows=reduced_embedded,
+        transform=transform,
+        exact_rows=exact_rows,
+        denominator=denominator,
+    )
+    if not plan.verify(ideal):
+        raise ArithmeticError("Minkowski LLL transform failed exact ideal replay")
+    return plan
+
+
+class AutomorphismOrbitPlan:
+    """Capability report for exact automorphism-derived relation orbits."""
+
+    def __init__(self, field: Any, factor_base: Iterable[Any]) -> None:
+        self.available = False
+        self.strategy = "independent-minkowski-relation-search"
+        self.factor_base_size = len(tuple(factor_base))
+        self.detected = {
+            "field_automorphisms": callable(getattr(field, "automorphisms", None)),
+            "ideal_map": callable(getattr(field, "map_ideal_under_automorphism", None)),
+            "factor_base_permutation": callable(
+                getattr(field, "factor_base_automorphism_permutation", None)
+            ),
+        }
+        self.reason = (
+            "abstract Galois-group permutations do not provide exact field self-maps, "
+            "ideal images, and an authenticated factor-base permutation"
+        )
+
+    def derive(self, relation: Any) -> tuple[()]:
+        raise NotImplementedError(self.reason)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": AUTOMORPHISM_PLAN_SCHEMA,
+            "available": self.available,
+            "strategy": self.strategy,
+            "factor_base_size": self.factor_base_size,
+            "detected": dict(self.detected),
+            "reason": self.reason,
+        }
+
+
+def plan_automorphism_orbits(
+    field: Any, factor_base: Iterable[Any]
+) -> AutomorphismOrbitPlan:
+    """Report whether exact relation orbits can be derived in this runtime.
+
+    The current Galois API describes abstract permutation groups only.  It
+    cannot map a principal witness or prime ideal, so orbit relations would be
+    unverifiable guesses.  This explicit result lets collectors select the
+    independent-search fallback without probing private APIs.
+    """
+    return AutomorphismOrbitPlan(field, factor_base)
 
 
 class RelationSearchState:
@@ -955,6 +1279,103 @@ class RelationSearchState:
         )
 
 
+class IdealReductionState:
+    """Immutable cursor for exhaustive ideal-basis coefficient shells."""
+
+    def __init__(
+        self,
+        *,
+        ideal_fingerprint: dict[str, Any],
+        factor_base_fingerprints: Iterable[dict[str, Any]],
+        embedding_precision: int,
+        dimension: int,
+        radius: int = 1,
+        cube_index: int = 0,
+        candidates_tested: int = 0,
+    ) -> None:
+        precision = _checked_integer(embedding_precision, "embedding precision")
+        if precision < 53:
+            raise ValueError("embedding precision must be at least 53 bits")
+        dimension = _checked_integer(dimension, "ideal reduction dimension")
+        if dimension < 1:
+            raise ValueError("ideal reduction dimension must be positive")
+        radius = _checked_integer(radius, "ideal reduction radius")
+        if radius < 1:
+            raise ValueError("ideal reduction radius must be positive")
+        cube_index = _checked_nonnegative(cube_index, "ideal reduction cube index")
+        side = 2 * radius + 1
+        if cube_index >= side**dimension:
+            raise ValueError("ideal reduction cube index is outside its shell cube")
+        self._ideal_fingerprint = _json_value(ideal_fingerprint)
+        self._factor_base_fingerprints = tuple(
+            _json_value(value) for value in factor_base_fingerprints
+        )
+        self.embedding_precision = precision
+        self.dimension = dimension
+        self.radius = radius
+        self.cube_index = cube_index
+        self.candidates_tested = _checked_nonnegative(
+            candidates_tested, "ideal reduction candidate count"
+        )
+        runtime.object.freeze(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": IDEAL_REDUCTION_STATE_SCHEMA,
+            "ideal_fingerprint": _json_value(self._ideal_fingerprint),
+            "factor_base_fingerprints": [
+                _json_value(value) for value in self._factor_base_fingerprints
+            ],
+            "embedding_precision": self.embedding_precision,
+            "dimension": self.dimension,
+            "radius": self.radius,
+            "cube_index": self.cube_index,
+            "candidates_tested": self.candidates_tested,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> IdealReductionState:
+        if payload.get("schema") != IDEAL_REDUCTION_STATE_SCHEMA:
+            raise ValueError("unsupported ideal-reduction state schema")
+        state = cls(
+            ideal_fingerprint=payload["ideal_fingerprint"],
+            factor_base_fingerprints=payload["factor_base_fingerprints"],
+            embedding_precision=payload["embedding_precision"],
+            dimension=payload["dimension"],
+            radius=payload["radius"],
+            cube_index=payload["cube_index"],
+            candidates_tested=payload["candidates_tested"],
+        )
+        if state.to_dict() != payload:
+            raise ValueError("ideal-reduction state is not canonical")
+        return state
+
+    def _advance(self, radius: int, cube_index: int) -> IdealReductionState:
+        return IdealReductionState(
+            ideal_fingerprint=self._ideal_fingerprint,
+            factor_base_fingerprints=self._factor_base_fingerprints,
+            embedding_precision=self.embedding_precision,
+            dimension=self.dimension,
+            radius=radius,
+            cube_index=cube_index,
+            candidates_tested=self.candidates_tested + 1,
+        )
+
+    def _matches(
+        self,
+        ideal_fingerprint: dict[str, Any],
+        factor_base_fingerprints: Iterable[dict[str, Any]],
+        precision: int,
+        dimension: int,
+    ) -> bool:
+        return (
+            self._ideal_fingerprint == ideal_fingerprint
+            and self._factor_base_fingerprints == tuple(factor_base_fingerprints)
+            and self.embedding_precision == precision
+            and self.dimension == dimension
+        )
+
+
 class LLLRelationSearch:
     """Bounded deterministic relation search with replayable PRNG state."""
 
@@ -966,6 +1387,7 @@ class LLLRelationSearch:
         max_candidates_per_ideal: int = 64,
         random_terms: int = 5,
         coefficient_bound: int = 2,
+        embedding_precision: int = 128,
         basis_reducer: Callable[[Iterable[Iterable[int]]], list[list[int]]]
         | None = None,
         state: RelationSearchState | None = None,
@@ -978,16 +1400,29 @@ class LLLRelationSearch:
         self.coefficient_bound = _checked_nonnegative(
             coefficient_bound, "coefficient bound"
         )
-        self.basis_reducer = (
-            exact_lll_reduce if basis_reducer is None else basis_reducer
+        self.embedding_precision = _checked_integer(
+            embedding_precision, "embedding precision"
         )
+        if self.embedding_precision < 53:
+            raise ValueError("embedding precision must be at least 53 bits")
+        self.basis_reducer = basis_reducer
+        self.last_lattice_plan: MinkowskiLatticePlan | None = None
+        self.last_random_attempts = 0
         self.state = RelationSearchState(seed) if state is None else state
 
     def short_elements(self, ideal: Any) -> tuple[Any, ...]:
         if ideal.ring() is not self.collector.order or ideal.is_zero():
             raise TypeError("short-vector search requires a nonzero ideal of the order")
         integer_rows, denominator = _integral_lattice_rows(ideal)
-        reduced = self.basis_reducer(integer_rows)
+        if self.basis_reducer is None:
+            self.last_lattice_plan = minkowski_lll_lattice(
+                ideal, precision=self.embedding_precision
+            )
+            reduced = [list(row) for row in self.last_lattice_plan.exact_rows]
+            denominator = self.last_lattice_plan.denominator
+        else:
+            self.last_lattice_plan = None
+            reduced = self.basis_reducer(integer_rows)
         coefficient_rows: list[list[int]] = []
         coefficient_rows.extend(reduced)
         for left in range(len(reduced)):
@@ -1000,7 +1435,18 @@ class LLLRelationSearch:
                 coefficient_rows.append(
                     [a - b for a, b in zip(reduced[left], reduced[right], strict=False)]
                 )
-        while len(coefficient_rows) < self.max_candidates_per_ideal and reduced:
+        missing = max(0, self.max_candidates_per_ideal - len(coefficient_rows))
+        random_draw_budget = (
+            8 * missing
+            if reduced and self.random_terms > 0 and self.coefficient_bound > 0
+            else 0
+        )
+        self.last_random_attempts = 0
+        for _draw in range(random_draw_budget):
+            if len(coefficient_rows) >= self.max_candidates_per_ideal:
+                break
+            runtime.check_interrupt()
+            self.last_random_attempts += 1
             candidate = [0 for _ in reduced[0]]
             terms = min(self.random_terms, len(reduced))
             for _term in range(terms):
@@ -1049,7 +1495,12 @@ class LLLRelationSearch:
         for sequence, element in enumerate(self.short_elements(ideal)):
             self.state.candidates_tested += 1
             candidate_provenance = {
-                "algorithm": "exact-coefficient-lll",
+                "algorithm": (
+                    "minkowski-fixed-point-lll"
+                    if self.last_lattice_plan is not None
+                    else "custom-coefficient-lattice-reducer"
+                ),
+                "embedding_precision": self.embedding_precision,
                 "seed": self.state.seed,
                 "ideal_sequence": self.state.ideals_tested - 1,
                 "candidate_sequence": sequence,
@@ -1123,67 +1574,184 @@ class LLLRelationSearch:
         return tuple(answer)
 
 
+def _shell_coefficients(radius: int, cube_index: int, dimension: int) -> list[int]:
+    side = 2 * radius + 1
+    coefficients = []
+    cursor = cube_index
+    for _coordinate in range(dimension):
+        coefficients.append(cursor % side - radius)
+        cursor //= side
+    return coefficients
+
+
+def _advance_reduction_cursor(
+    state: IdealReductionState,
+) -> tuple[IdealReductionState, list[int] | None]:
+    coefficients = _shell_coefficients(state.radius, state.cube_index, state.dimension)
+    next_index = state.cube_index + 1
+    side = 2 * state.radius + 1
+    if next_index == side**state.dimension:
+        next_radius = state.radius + 1
+        next_index = 0
+    else:
+        next_radius = state.radius
+    if max(abs(value) for value in coefficients) != state.radius:
+        return (
+            IdealReductionState(
+                ideal_fingerprint=state._ideal_fingerprint,
+                factor_base_fingerprints=state._factor_base_fingerprints,
+                embedding_precision=state.embedding_precision,
+                dimension=state.dimension,
+                radius=next_radius,
+                cube_index=next_index,
+                candidates_tested=state.candidates_tested,
+            ),
+            None,
+        )
+    return state._advance(next_radius, next_index), coefficients
+
+
+def _reduction_candidate(
+    ideal: Any,
+    factors: tuple[Any, ...],
+    ideal_row: tuple[int, ...],
+    ideal_norm: Any,
+    element: Any,
+) -> tuple[tuple[int, ...], FactoredPrincipalWitness] | None:
+    quotient_norm = sage.QQ(element.norm()) / ideal_norm
+    if quotient_norm < 0:
+        quotient_norm = -quotient_norm
+    numerator = abs(int(quotient_norm._numerator))
+    denominator = int(quotient_norm._denominator)
+    rational_primes = sorted({int(prime.rational_prime()) for prime in factors})
+    for rational_prime in rational_primes:
+        while numerator % rational_prime == 0:
+            numerator //= rational_prime
+        while denominator % rational_prime == 0:
+            denominator //= rational_prime
+    if numerator != 1 or denominator != 1:
+        return None
+    factored = FactoredPrincipalWitness.from_element(element)
+    principal_row = factor_witness_over_base(factored, factors)
+    row = tuple(
+        principal_exponent - ideal_exponent
+        for principal_exponent, ideal_exponent in zip(
+            principal_row, ideal_row, strict=True
+        )
+    )
+    if _factor_base_row_norm(factors, row) != quotient_norm:
+        return None
+    principal = ideal.ring().ideal(element)
+    reconstructed = reconstruct_factor_base_ideal(ideal.ring(), factors, row)
+    if ideal * reconstructed != principal:
+        raise ArithmeticError("ideal reduction failed exact principal replay")
+    return row, factored
+
+
 def reduce_ideal_over_base(
     ideal: Any,
     factor_base: Iterable[Any],
     *,
     seed: int = 0,
-    max_candidates: int = 128,
+    max_candidates: int | None = None,
+    embedding_precision: int = 128,
+    cancelled: Callable[[], bool] | None = None,
+    checkpoint: IdealReductionState | dict[str, Any] | None = None,
+    checkpoint_callback: Callable[[IdealReductionState], None] | None = None,
 ) -> tuple[tuple[int, ...], FactoredPrincipalWitness]:
-    """Find `(alpha) = ideal * Q` with `Q` smooth over the factor base.
+    """Find `(alpha) = ideal * Q` by exhaustive deterministic shell search.
 
     This is the inverse-map analogue of relation collection.  It permits an
     arbitrary nonzero fractional ideal, even when that ideal itself contains
     primes outside the factor base.  The returned row factors `Q`; therefore
     the ideal's class is the negative of that row.  Exact ideal equality is
     checked before returning the principal witness `alpha`.
+
+    `max_candidates=None` is the total map used by complete class groups.  An
+    integer opts into a bounded operation; exhaustion raises
+    `IdealReductionResourceLimit` with an immutable resumable `state`.  The
+    coefficient shells exhaust the exact ideal lattice, so whenever the factor
+    base generates the complete class group a smooth quotient is eventually
+    found.  Cancellation uses the shared class/unit cancellation message and
+    likewise retains the next untested cursor.
     """
     order = ideal.ring()
     factors = _validate_factor_base(order, factor_base)
     if ideal.is_zero():
         raise ValueError("the zero ideal has no ideal class")
-    collector = ExactRelationCollector(order, factors)
-    search = LLLRelationSearch(
-        collector,
-        seed=seed,
-        max_candidates_per_ideal=_checked_nonnegative(
-            max_candidates, "candidate bound"
-        ),
-        random_terms=min(5, max(1, order.number_field().degree())),
-        coefficient_bound=3,
-    )
+    _checked_integer(seed, "deterministic seed")
+    if max_candidates is not None:
+        max_candidates = _checked_nonnegative(max_candidates, "candidate bound")
+    precision = _checked_integer(embedding_precision, "embedding precision")
+    if precision < 53:
+        raise ValueError("embedding precision must be at least 53 bits")
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    if checkpoint_callback is not None and not callable(checkpoint_callback):
+        raise TypeError("checkpoint callback must be callable")
+    plan = minkowski_lll_lattice(ideal, precision=precision)
+    dimension = len(plan.exact_rows)
+    ideal_fingerprint = _ideal_payload(ideal)
+    factor_fingerprints = tuple(_prime_fingerprint(prime) for prime in factors)
+    if checkpoint is None:
+        state = IdealReductionState(
+            ideal_fingerprint=ideal_fingerprint,
+            factor_base_fingerprints=factor_fingerprints,
+            embedding_precision=precision,
+            dimension=dimension,
+        )
+    else:
+        state = (
+            checkpoint
+            if isinstance(checkpoint, IdealReductionState)
+            else IdealReductionState.from_dict(checkpoint)
+        )
+        if not state._matches(
+            ideal_fingerprint, factor_fingerprints, precision, dimension
+        ):
+            raise ValueError("ideal-reduction checkpoint belongs to another problem")
+    field = ideal.number_field()
+    denominator = sage.QQ(plan.denominator)
+    basis_rows = plan.exact_rows
     ideal_row = tuple(int(ideal.valuation(prime)) for prime in factors)
     ideal_norm = sage.QQ(ideal.norm())
-    for element in search.short_elements(ideal):
-        principal_row = factor_witness_over_base(
-            FactoredPrincipalWitness.from_element(element), factors
-        )
-        row = tuple(
-            principal_exponent - ideal_exponent
-            for principal_exponent, ideal_exponent in zip(
-                principal_row, ideal_row, strict=True
-            )
-        )
-        quotient_norm = sage.QQ(element.norm()) / ideal_norm
-        if quotient_norm < 0:
-            quotient_norm = -quotient_norm
-        if _factor_base_row_norm(factors, row) != quotient_norm:
+    attempted = 0
+    while max_candidates is None or attempted < max_candidates:
+        runtime.check_interrupt()
+        if cancelled is not None and cancelled():
+            raise IdealReductionCancelled(state)
+        state, coefficients = _advance_reduction_cursor(state)
+        if coefficients is None:
             continue
-        principal = order.ideal(element)
-        reconstructed = reconstruct_factor_base_ideal(order, factors, row)
-        if ideal * reconstructed != principal:
-            raise ArithmeticError("ideal reduction failed exact principal replay")
-        return row, FactoredPrincipalWitness.from_element(element)
-    raise RelationNotSmoothError(
-        "bounded ideal reduction found no factor-base-smooth quotient", ideal=ideal
-    )
+        attempted += 1
+        exact_row = [
+            sum(
+                coefficients[basis_index] * basis_rows[basis_index][column]
+                for basis_index in range(dimension)
+            )
+            for column in range(dimension)
+        ]
+        element = _field_element_from_coefficients(
+            field, [sage.QQ(value) / denominator for value in exact_row]
+        )
+        result = _reduction_candidate(ideal, factors, ideal_row, ideal_norm, element)
+        if checkpoint_callback is not None:
+            checkpoint_callback(state)
+        if result is not None:
+            return result
+    raise IdealReductionResourceLimit(ideal, state)
 
 
 __all__ = [
+    "AutomorphismOrbitPlan",
     "DEFAULT_RANK_PRIME",
     "ExactRelationCollector",
     "FactoredPrincipalWitness",
+    "IdealReductionCancelled",
+    "IdealReductionResourceLimit",
+    "IdealReductionState",
     "LLLRelationSearch",
+    "MinkowskiLatticePlan",
     "ModularRankScreen",
     "RelationAdmission",
     "RelationNotSmoothError",
@@ -1193,6 +1761,8 @@ __all__ = [
     "factor_ideal_over_base",
     "factor_witness_over_base",
     "initial_rational_prime_relations",
+    "minkowski_lll_lattice",
+    "plan_automorphism_orbits",
     "reduce_ideal_over_base",
     "reconstruct_factor_base_ideal",
     "verify_relation_record",
