@@ -166,7 +166,29 @@ refined = certified_regulator_enclosure(
 )
 assert calls == [64, 128]
 assert refined.precision_history == (64, 128)
+assert refined.precision_bits == 128
 assert len(refined.determinant_widths) == 2
+
+# A narrow high-precision refinement must not be rounded back to the initial
+# precision before taking the determinant.
+precision_calls = []
+def precision_intersection_provider(precision):
+    precision_calls.append(precision)
+    return [[RealBall.midpoint_radius(
+        "0.5", RationalEndpoint(1, 2 ** (precision - 4)),
+        precision_bits=precision,
+    )]]
+precision_refined = certified_regulator_enclosure(
+    precision_intersection_provider, 1, precision_bits=16,
+    absolute_tolerance_bits=40, maximum_precision_bits=128,
+)
+assert precision_calls == [16, 32, 64]
+assert precision_refined.precision_bits == 64
+assert precision_refined.ball.radius() <= RationalEndpoint(1, 2**40)
+
+dyadic = RealBall.dyadic_endpoints("-3", "-4", "5", "-5", precision_bits=80)
+assert dyadic.lower == RationalEndpoint(-3, 16)
+assert dyadic.upper == RationalEndpoint(5, 32)
 
 def inconsistent_provider(precision):
     if precision == 64:
