@@ -4,7 +4,7 @@
   "id": "wasm-fastmath-extension-algebra",
   "title": "Wasm Fastmath Extension Algebra",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Close word-extension and arbitrary-prime polynomial Wasm resource execution with exact public workflows, lifecycle/memory proofs, and no silent expensive fallback",
   "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
@@ -27,6 +27,7 @@
     "packages/flint-wasm/test/fmpq-resource-proof.test.mjs",
     "packages/flint-wasm/release/production-capabilities.json",
     "packages/flint-wasm/release/production-kernel-coverage.json",
+    "test/wasm-capabilities.cjs",
     "test/fixtures/native-ffi-flint-extension/witness.py"
   ],
   "dependencies": [],
@@ -54,10 +55,80 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.194,
+      "started_at": "2026-08-21T00:11:24.478Z",
+      "commit": "4d493a393aaf039cc4c13eacdbf135692a5c0c32",
+      "workspace_fingerprint": "f1568199fb26fe760f0061cb665c1292321768f782dfb269867517268ffc004b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.77,
+      "started_at": "2026-08-21T00:11:35.240Z",
+      "commit": "4d493a393aaf039cc4c13eacdbf135692a5c0c32",
+      "workspace_fingerprint": "f1568199fb26fe760f0061cb665c1292321768f782dfb269867517268ffc004b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 30.998,
+      "started_at": "2026-08-21T00:12:00.902Z",
+      "commit": "4d493a393aaf039cc4c13eacdbf135692a5c0c32",
+      "workspace_fingerprint": "f1568199fb26fe760f0061cb665c1292321768f782dfb269867517268ffc004b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.886,
+      "started_at": "2026-08-21T00:15:59.809Z",
+      "commit": "c24a3f4c1bbe53681f7035eeb22683280e48c022",
+      "workspace_fingerprint": "167313cb6a4b064e0ca512fe988761a44559b980d44a71092af88dfcb7825e4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.816,
+      "started_at": "2026-08-21T00:16:39.930Z",
+      "commit": "c24a3f4c1bbe53681f7035eeb22683280e48c022",
+      "workspace_fingerprint": "167313cb6a4b064e0ca512fe988761a44559b980d44a71092af88dfcb7825e4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.644,
+      "started_at": "2026-08-21T00:17:10.615Z",
+      "commit": "c24a3f4c1bbe53681f7035eeb22683280e48c022",
+      "workspace_fingerprint": "167313cb6a4b064e0ca512fe988761a44559b980d44a71092af88dfcb7825e4e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Enabled receipt-backed fq_context, fq_element, and fq_polynomial resources plus 27 pointer-free FLINT functions in the production WebAssembly closure. Added real-artifact exact arithmetic, cross-context ownership, deterministic cleanup, memory-growth, and 127-bit arbitrary-prime polynomial witnesses. The generated extension-field source wrappers now report the precise ownership-domain adapter boundary instead of a missing Wasm declaration.",
+    "risks": [
+      "fq_element_coordinate and fq_polynomial_coordinate remain native-only because the generated Wasm adapter does not safely marshal nullable returned pointers; the production API uses copied bulk-coordinate byte transfers instead.",
+      "Seven extension-field source wrappers and the arbitrary-prime source wrapper still require a same-module foreign-resource ownership bridge before they can enter the production source-kernel closure, although their mature low-level FLINT resource operations now execute in real Wasm.",
+      "The public GF(p^n) parent has not yet been migrated onto these generated resources, so this lane closes the production FFI substrate rather than claiming end-to-end public parent dispatch.",
+      "The eager raw artifact is now 6.24 MiB and its JavaScript backend is about 364 KiB, within the reviewed raised budgets but still worth integration payload review."
+    ],
+    "next_steps": [
+      "Migrate the public finite-field and polynomial parents to the generated fq resource substrate with exact differential and lifecycle tests.",
+      "Generate a same-module source-to-resource ownership bridge, or retire the redundant source wrappers from the production registry in favor of the generated batch resource ABI.",
+      "Evaluate whether the fq closure should remain eager or move behind a lazy module boundary based on compressed payload and startup measurements."
+    ]
   }
 }
