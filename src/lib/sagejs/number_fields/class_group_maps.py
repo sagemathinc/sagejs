@@ -49,6 +49,19 @@ _SATURATION_SCHEMA = "sagejs.number-fields/class-unit-saturation-v1"
 _CONDITIONAL_EVIDENCE_SCHEMA = (
     "sagejs.number-fields/conditional-class-group-evidence-v1"
 )
+_CONDITIONAL_MAX_BOUND = 100_000
+_CONDITIONAL_MAX_RATIONAL_PRIMES = 1_000_000
+_CONDITIONAL_MAX_FACTOR_BASE = 4_096
+_CONDITIONAL_MAX_RELATIONS = 2_048
+_CONDITIONAL_MAX_MEMORY_BYTES = 512 * 1024 * 1024
+_CONDITIONAL_MAX_PAYLOAD_BYTES = 64 * 1024 * 1024
+_CONDITIONAL_MAX_DEGREE = 256
+_CONDITIONAL_MAX_DEPTH = 64
+_CONDITIONAL_MAX_NODES = 8_000_000
+_CONDITIONAL_MAX_STRING_BYTES = 1 << 16
+_CONDITIONAL_MAX_INTEGER_BITS = 4_096
+_CONDITIONAL_MAX_CONTAINER_LENGTH = 8_192
+_CONDITIONAL_MAX_MATRIX_WORK = 128_000_000
 
 
 def _integer(value: Any, purpose: str) -> int:
@@ -184,6 +197,98 @@ def _authenticated_payload(payload: dict[str, Any]) -> bool:
     return _payload_hash(body) == expected
 
 
+def _cancelled(cancelled: Any) -> bool:
+    return callable(cancelled) and cancelled() is True
+
+
+def _conditional_payload_within_caps(value: Any, cancelled: Any = None) -> bool:
+    """Bound detached JSON before hashing or constructing arithmetic objects."""
+    stack = [(value, 0)]
+    nodes = 0
+    estimated_bytes = 0
+    while stack:
+        if nodes % 1_024 == 0 and _cancelled(cancelled):
+            return False
+        item, depth = stack.pop()
+        nodes += 1
+        if nodes > _CONDITIONAL_MAX_NODES or depth > _CONDITIONAL_MAX_DEPTH:
+            return False
+        estimated_bytes += 16
+        if estimated_bytes > _CONDITIONAL_MAX_PAYLOAD_BYTES:
+            return False
+        if item is None or isinstance(item, bool):
+            continue
+        if isinstance(item, int):
+            bits = item.bit_length()
+            if bits > _CONDITIONAL_MAX_INTEGER_BITS:
+                return False
+            estimated_bytes += max(1, (bits + 7) // 8)
+            continue
+        if isinstance(item, str):
+            size = len(item.encode("utf-8"))
+            if size > _CONDITIONAL_MAX_STRING_BYTES:
+                return False
+            estimated_bytes += size
+            continue
+        if isinstance(item, list):
+            if len(item) > _CONDITIONAL_MAX_CONTAINER_LENGTH:
+                return False
+            stack.extend((entry, depth + 1) for entry in item)
+            continue
+        if isinstance(item, dict):
+            if len(item) > 256 or any(not isinstance(key, str) for key in item):
+                return False
+            stack.extend((key, depth + 1) for key in item)
+            stack.extend((entry, depth + 1) for entry in item.values())
+            continue
+        return False
+    return estimated_bytes <= _CONDITIONAL_MAX_PAYLOAD_BYTES
+
+
+def _conditional_matrix_within_caps(
+    payload: dict[str, Any], relation_count: int, column_count: int
+) -> bool:
+    try:
+        if (
+            _integer(payload.get("columns"), "presentation column count")
+            != column_count
+        ):
+            return False
+        rows = payload.get("rows")
+        if not isinstance(rows, list) or len(rows) != relation_count:
+            return False
+        for row in rows:
+            if (
+                not isinstance(row, dict)
+                or _integer(row.get("columns"), "sparse row width") != column_count
+                or not isinstance(row.get("entries"), list)
+                or len(row["entries"]) > column_count
+            ):
+                return False
+        shapes = {
+            "hnf": (relation_count, column_count),
+            "hnf_left": (relation_count, relation_count),
+            "smith": (relation_count, column_count),
+            "smith_left": (relation_count, relation_count),
+            "smith_right": (column_count, column_count),
+            "smith_right_inverse": (column_count, column_count),
+        }
+        work = 0
+        for name, (row_count, width) in shapes.items():
+            matrix = payload.get(name)
+            work += row_count * width
+            if (
+                work > _CONDITIONAL_MAX_MATRIX_WORK
+                or not isinstance(matrix, list)
+                or len(matrix) != row_count
+                or any(not isinstance(row, list) or len(row) != width for row in matrix)
+            ):
+                return False
+        return True
+    except (TypeError, ValueError, ArithmeticError, AttributeError):
+        return False
+
+
 def _portable_ideal_fingerprint(ideal: Any) -> dict[str, Any]:
     arithmetic = __import__(
         "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
@@ -230,6 +335,44 @@ def _engine_material(engine_group: Any, result: Any) -> tuple[Any, Any]:
     return order, presentation
 
 
+def _conditional_factor_base_plan(
+    order: Any, theorem: str, bound: int
+) -> tuple[Any, Any, dict[str, Any]]:
+    """Rebuild a GRH plan under immutable verifier-owned resource caps."""
+    module = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["build_factor_base", "factor_base_plan"],
+    )
+    degree = _integer(order.degree(), "conditional field degree")
+    if (
+        degree < 1
+        or degree > _CONDITIONAL_MAX_DEGREE
+        or bound < 1
+        or bound > _CONDITIONAL_MAX_BOUND
+    ):
+        raise ArithmeticError("conditional factor-base plan exceeds replay caps")
+    selected_theorem = theorem
+    if "friedman" in theorem.lower():
+        selected_theorem = "bdf"
+    plan = module.factor_base_plan(
+        order,
+        proof=False,
+        theorem=selected_theorem,
+        max_bound=_CONDITIONAL_MAX_BOUND,
+        max_rational_primes=_CONDITIONAL_MAX_RATIONAL_PRIMES,
+        max_prime_ideals=_CONDITIONAL_MAX_FACTOR_BASE,
+        max_memory_bytes=_CONDITIONAL_MAX_MEMORY_BYTES,
+    )
+    plan.require_feasible()
+    if (
+        str(plan.theorem) != theorem
+        or _integer(plan.bound, "conditional theorem bound") != bound
+        or tuple(plan.assumptions) != ("GRH for the Dedekind zeta function",)
+    ):
+        raise ArithmeticError("conditional theorem metadata failed exact replay")
+    return module, plan, _canonical_payload(plan, "conditional factor-base plan")
+
+
 def _producer_conditional_evidence(
     result: Any,
     engine_group: Any,
@@ -259,6 +402,7 @@ def _producer_conditional_evidence(
     relations = tuple(relations)
     if len(relations) != relation_count:
         raise ArithmeticError("conditional relation evidence has the wrong count")
+    _module, _plan, plan_payload = _conditional_factor_base_plan(order, theorem, bound)
     body = {
         "schema": _CONDITIONAL_EVIDENCE_SCHEMA,
         "proof_status": EXACT_RELATIONS_CONDITIONAL_GRH,
@@ -269,6 +413,7 @@ def _producer_conditional_evidence(
         "bound": [bound, 1],
         "assumption": "GRH for the Dedekind zeta function",
         "relation_count": relation_count,
+        "factor_base_plan": plan_payload,
         "factor_base": [
             _canonical_payload(prime, "conditional factor-base prime")
             for prime in factor_base
@@ -281,6 +426,8 @@ def _producer_conditional_evidence(
             presentation, "conditional relation presentation"
         ),
     }
+    if not _conditional_payload_within_caps(body):
+        raise ArithmeticError("conditional relation evidence exceeds replay caps")
     body["content_sha256"] = _payload_hash(body)
     return body
 
@@ -981,11 +1128,31 @@ class IdealClassGroup:
             return payload
         raise TypeError("unknown class-group completeness proof record")
 
-    def verify_proof_payload(self, payload: dict[str, Any]) -> bool:
+    def verify_proof_payload(
+        self, payload: dict[str, Any], *, cancelled: Any = None
+    ) -> bool:
         """Decode and independently replay one serialized completeness proof."""
         try:
+            if _cancelled(cancelled):
+                return False
             schema = payload.get("schema")
             if schema == "sagejs.number-fields.class-group.grh-proof.v1":
+                expected_fields = {
+                    "schema",
+                    "proof_status",
+                    "theorem",
+                    "bound",
+                    "relation_count",
+                    "assumption",
+                    "saturation",
+                    "analytic_index_one",
+                    "conditional_evidence",
+                }
+                if (
+                    not _conditional_payload_within_caps(payload, cancelled)
+                    or set(payload) != expected_fields
+                ):
+                    return False
                 record: Any = ConditionalGRHProofRecord.from_dict(payload)
                 verifier = getattr(
                     self._proof_context,
@@ -994,18 +1161,41 @@ class IdealClassGroup:
                 )
                 if (
                     not callable(verifier)
-                    or verifier(payload, record, self) is not True
+                    or verifier(payload, record, self, cancelled=cancelled) is not True
                 ):
                     return False
             elif schema == "sagejs.number-fields.class-group.minkowski-proof.v1":
+                preflight = getattr(
+                    self._proof_context, "preflight_unconditional_payload", None
+                )
+                if (
+                    not callable(preflight)
+                    or preflight(payload, self, cancelled=cancelled) is not True
+                ):
+                    return False
                 decoder = getattr(self._proof_context, "decode_prime_record", None)
                 if not callable(decoder):
                     return False
-                record = UnconditionalMinkowskiProofRecord.from_dict(payload, decoder)
+                decoded_primes = []
+                for index, raw in enumerate(payload["prime_records"]):
+                    if index % 16 == 0 and _cancelled(cancelled):
+                        return False
+                    decoded_primes.append(decoder(raw))
+                record = UnconditionalMinkowskiProofRecord(
+                    field_order_fingerprint=payload["field_order_fingerprint"],
+                    discriminant=payload["discriminant"],
+                    bound=payload["bound"],
+                    prime_records=decoded_primes,
+                    saturation=SaturationProofRecord.from_dict(payload["saturation"]),
+                    theorem=payload["theorem"],
+                )
                 progress = getattr(
                     self._proof_context, "verify_proof_progress_payload", None
                 )
-                if callable(progress) and progress(payload, record) is not True:
+                if (
+                    callable(progress)
+                    and progress(payload, record, cancelled=cancelled) is not True
+                ):
                     return False
             else:
                 return False
@@ -1121,6 +1311,7 @@ class _EngineProofReplayContext:
         self._proof_progress_payload = proof_progress_payload
         self._dependency_hashes = dependency_hashes
         self._conditional_evidence_payload = conditional_evidence_payload
+        self._conditional_plan_cache: Any = None
 
     def verify_saturation_record(self, record: Any) -> bool:
         if (
@@ -1157,9 +1348,86 @@ class _EngineProofReplayContext:
     def proof_progress_payload(self) -> dict[str, Any]:
         if self._proof_progress_payload is None:
             raise ValueError("the proof has no authenticated partition progress")
+        if not _conditional_payload_within_caps(self._proof_progress_payload):
+            raise ArithmeticError("Minkowski proof progress exceeds replay caps")
         return _canonical_payload(
             self._proof_progress_payload, "Minkowski proof progress"
         )
+
+    def preflight_unconditional_payload(
+        self,
+        payload: Any,
+        group: Any,
+        *,
+        cancelled: Any = None,
+    ) -> bool:
+        try:
+            expected_fields = {
+                "schema",
+                "proof_status",
+                "theorem",
+                "field_order_fingerprint",
+                "discriminant",
+                "bound",
+                "prime_records",
+                "saturation",
+                "proof_progress",
+            }
+            if (
+                not isinstance(payload, dict)
+                or not _conditional_payload_within_caps(payload, cancelled)
+                or set(payload) != expected_fields
+                or self._proof_progress_payload is None
+                or payload.get("proof_progress") != self._proof_progress_payload
+                or _cancelled(cancelled)
+            ):
+                return False
+            degree = _integer(self.order.degree(), "unconditional field degree")
+            bound = payload.get("bound")
+            progress = payload.get("proof_progress")
+            records = payload.get("prime_records")
+            if (
+                degree < 1
+                or degree > _CONDITIONAL_MAX_DEGREE
+                or not isinstance(bound, list)
+                or len(bound) != 2
+                or _integer(bound[0], "Minkowski bound") < 0
+                or _integer(bound[0], "Minkowski bound") > _CONDITIONAL_MAX_BOUND
+                or _integer(bound[1], "Minkowski bound denominator") != 1
+                or not isinstance(progress, dict)
+                or not isinstance(records, list)
+            ):
+                return False
+            fingerprints = progress.get("prime_fingerprints")
+            if (
+                not isinstance(fingerprints, list)
+                or len(fingerprints) > _CONDITIONAL_MAX_FACTOR_BASE
+                or len(records) != len(fingerprints)
+            ):
+                return False
+            coordinate_count = len(tuple(group.invariants()))
+            for index, item in enumerate(records):
+                if index % 32 == 0 and _cancelled(cancelled):
+                    return False
+                if not isinstance(item, dict) or set(item) != {
+                    "ideal",
+                    "fingerprint",
+                    "norm",
+                    "coordinates",
+                    "principal_witness",
+                }:
+                    return False
+                coordinates = item.get("coordinates")
+                if (
+                    not isinstance(item.get("ideal"), dict)
+                    or not isinstance(item.get("principal_witness"), dict)
+                    or not isinstance(coordinates, list)
+                    or len(coordinates) != coordinate_count
+                ):
+                    return False
+            return True
+        except (TypeError, ValueError, ArithmeticError, AttributeError, KeyError):
+            return False
 
     def conditional_evidence_payload(self) -> dict[str, Any]:
         if self._conditional_evidence_payload is None:
@@ -1168,10 +1436,46 @@ class _EngineProofReplayContext:
             self._conditional_evidence_payload, "conditional relation evidence"
         )
 
+    def _conditional_plan_material(
+        self, theorem: str, bound: int, cancelled: Any = None
+    ) -> tuple[dict[str, Any], tuple[Any, ...], list[dict[str, Any]]]:
+        key = (theorem, bound)
+        cached = self._conditional_plan_cache
+        if cached is not None and cached[0] == key:
+            return cached[1], cached[2], cached[3]
+        if _cancelled(cancelled):
+            raise ArithmeticError("conditional proof replay was cancelled")
+        module, plan, plan_payload = _conditional_factor_base_plan(
+            self.order, theorem, bound
+        )
+        records = module.build_factor_base(plan)
+        if _cancelled(cancelled):
+            raise ArithmeticError("conditional proof replay was cancelled")
+        factor_base = tuple(
+            _value(item, ("prime_ideal", "ideal"), None) for item in records
+        )
+        if any(prime is None for prime in factor_base):
+            raise ArithmeticError("a rebuilt factor-base record lost its prime ideal")
+        prime_payloads = [
+            _canonical_payload(prime, "conditional factor-base prime")
+            for prime in factor_base
+        ]
+        self._conditional_plan_cache = (
+            key,
+            plan_payload,
+            factor_base,
+            prime_payloads,
+        )
+        return plan_payload, factor_base, prime_payloads
+
     def _verify_conditional_evidence(
-        self, evidence: Any, record: Any, group: Any
+        self, evidence: Any, record: Any, group: Any, cancelled: Any = None
     ) -> bool:
-        if not isinstance(evidence, dict):
+        if (
+            not isinstance(evidence, dict)
+            or not _conditional_payload_within_caps(evidence, cancelled)
+            or _cancelled(cancelled)
+        ):
             return False
         expected_fields = {
             "schema",
@@ -1181,6 +1485,7 @@ class _EngineProofReplayContext:
             "bound",
             "assumption",
             "relation_count",
+            "factor_base_plan",
             "factor_base",
             "relations",
             "presentation",
@@ -1200,18 +1505,21 @@ class _EngineProofReplayContext:
         ):
             return False
         prime_payloads = evidence.get("factor_base")
+        plan_payload = evidence.get("factor_base_plan")
         relation_payloads = evidence.get("relations")
         presentation_payload = evidence.get("presentation")
         if (
             not isinstance(prime_payloads, list)
+            or not isinstance(plan_payload, dict)
             or not isinstance(relation_payloads, list)
             or not isinstance(presentation_payload, dict)
             or len(relation_payloads) != record.relation_count
+            or len(relation_payloads) > _CONDITIONAL_MAX_RELATIONS
+            or len(prime_payloads) > _CONDITIONAL_MAX_FACTOR_BASE
+            or record.relation_count > _CONDITIONAL_MAX_RELATIONS
         ):
             return False
-        prime_module = __import__(
-            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideal_from_dict"]
-        )
+        column_count = len(prime_payloads)
         relation_module = __import__(
             "sagejs.number_fields.class_group_relations",
             fromlist=["RelationRecord", "reconstruct_factor_base_ideal"],
@@ -1220,13 +1528,28 @@ class _EngineProofReplayContext:
             "sagejs.number_fields.class_group_matrix",
             fromlist=["RelationPresentation"],
         )
-        factor_base = tuple(
-            prime_module.prime_ideal_from_dict(self.order, payload)
-            for payload in prime_payloads
+        rebuilt_plan_payload, factor_base, rebuilt_prime_payloads = (
+            self._conditional_plan_material(
+                record.theorem,
+                _integer(record.bound[0], "conditional factor-base bound"),
+                cancelled,
+            )
         )
-        if any(
-            _canonical_payload(prime, "conditional factor-base prime") != payload
-            for prime, payload in zip(factor_base, prime_payloads, strict=True)
+        if rebuilt_plan_payload != plan_payload:
+            return False
+        if _cancelled(cancelled):
+            return False
+        if rebuilt_prime_payloads != prime_payloads:
+            return False
+        for payload in relation_payloads:
+            if not isinstance(payload, dict):
+                return False
+            for name in ("row", "quotient_row", "source_row", "factor_base"):
+                value = payload.get(name)
+                if not isinstance(value, list) or len(value) != column_count:
+                    return False
+        if not _conditional_matrix_within_caps(
+            presentation_payload, len(relation_payloads), column_count
         ):
             return False
         canonical_primes = tuple(
@@ -1245,11 +1568,11 @@ class _EngineProofReplayContext:
             )
             if rational_prime**residue_degree > bound:
                 return False
-        relations = tuple(
-            relation_module.RelationRecord.from_dict(payload)
-            for payload in relation_payloads
-        )
-        for relation, payload in zip(relations, relation_payloads, strict=True):
+        decoded_relations = []
+        for index, payload in enumerate(relation_payloads):
+            if index % 32 == 0 and _cancelled(cancelled):
+                return False
+            relation = relation_module.RelationRecord.from_dict(payload)
             if relation.to_dict() != payload:
                 return False
             verification = relation.verify(self.order, factor_base)
@@ -1258,9 +1581,15 @@ class _EngineProofReplayContext:
                 or verification.get("certified") is not True
             ):
                 return False
+            decoded_relations.append(relation)
+        relations = tuple(decoded_relations)
+        if _cancelled(cancelled):
+            return False
         presentation = matrix_module.RelationPresentation.from_dict(
             presentation_payload
         )
+        if _cancelled(cancelled):
+            return False
         if (
             presentation.to_dict() != presentation_payload
             or presentation.verify() is not True
@@ -1290,11 +1619,16 @@ class _EngineProofReplayContext:
         return True
 
     def verify_conditional_evidence_payload(
-        self, proof_payload: dict[str, Any], record: Any, group: Any
+        self,
+        proof_payload: dict[str, Any],
+        record: Any,
+        group: Any,
+        *,
+        cancelled: Any = None,
     ) -> bool:
         try:
             return self._verify_conditional_evidence(
-                proof_payload.get("conditional_evidence"), record, group
+                proof_payload.get("conditional_evidence"), record, group, cancelled
             )
         except (
             TypeError,
@@ -1398,10 +1732,16 @@ class _EngineProofReplayContext:
         self,
         proof_payload: dict[str, Any],
         record: UnconditionalMinkowskiProofRecord,
+        *,
+        cancelled: Any = None,
     ) -> bool:
         try:
             progress = proof_payload.get("proof_progress")
             if not isinstance(progress, dict) or self._proof_progress_payload is None:
+                return False
+            if not _conditional_payload_within_caps(progress, cancelled) or _cancelled(
+                cancelled
+            ):
                 return False
             if _canonical_payload(progress, "Minkowski proof progress") != (
                 self._proof_progress_payload
@@ -1434,7 +1774,11 @@ class _EngineProofReplayContext:
                 raw_records
             ):
                 return False
-            for raw, public in zip(raw_records, public_records, strict=True):
+            for index, (raw, public) in enumerate(
+                zip(raw_records, public_records, strict=True)
+            ):
+                if index % 32 == 0 and _cancelled(cancelled):
+                    return False
                 witness = public.get("principal_witness")
                 if (
                     raw.get("ideal") != public.get("ideal")
