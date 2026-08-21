@@ -28,14 +28,17 @@ same packed operation IDs.
 ## Linux x64 check receipt
 
 On Node 26.7.0 with the authenticated
-`sha256:7cd5856f40a6f1a1a34603c8c9209bcbef0784a3c642526f19a4a7aed0e29ae4`
+`sha256:2fccb60d04536aa9cdfa5dc902d7710d203e66703c580785f02aa3849285519f`
 artifact, 128 points per family and two measured samples gave:
 
-| route | median | boundary crossings | copied bytes |
-| --- | ---: | ---: | ---: |
-| two coarse public batches | 51.32 ms | 2 | 29,238 |
-| 256 public scalar calls | 83.59 ms | 256 | 34,318 |
+| route | median | analytic crossings | all instrumented crossings | copied bytes |
+| --- | ---: | ---: | ---: | ---: |
+| two coarse public batches | 52.30 ms | 2 | 2,693 | 116,562 |
+| 256 public scalar calls | 92.53 ms | 256 | 3,328 | 124,436 |
 
-This is a 128-fold crossing reduction and a 1.63-fold median speedup. These
+This is a 128-fold analytic crossing reduction and a 1.77-fold median speedup.
+The total column also includes the now-instrumented numeric-resource ingress,
+materialization, and public result inspection, so it is intentionally larger
+than the two analytic core calls. These
 numbers are the focused `--check` workload, not a claim about every point set
 or precision.

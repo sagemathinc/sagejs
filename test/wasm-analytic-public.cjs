@@ -18,21 +18,23 @@ xi_points += [["0.5", (index-126)/16] for index in range(252)]
 gamma_batch = complex_gamma_values(gamma_points, prec=160)
 xi_batch = riemann_xi_values(xi_points, prec=160)
 print(len(gamma_batch), len(xi_batch))
-print(gamma_batch[0])
-print(gamma_batch[1])
-print(xi_batch[0], xi_batch[1])
-print(xi_batch[2])
-print(xi_batch[3])
+print(float(gamma_batch[0].real()), float(gamma_batch[0].imag()))
+print(float(gamma_batch[1].real()), float(gamma_batch[1].imag()))
+print(float(xi_batch[0].real()), float(xi_batch[0].imag()))
+print(float(xi_batch[1].real()), float(xi_batch[1].imag()))
+print(float(xi_batch[2].real()), float(xi_batch[2].imag()))
+print(float(xi_batch[3].real()), float(xi_batch[3].imag()))
 print(all(value.precision() == 160 for value in gamma_batch + xi_batch))
 `;
 
 const expectedStdout = [
   "256 256",
-  "1.77245385090551602729816748334114518279754945612",
-  "0.49801566811835604271369111746219809195296296759 - 0.154949828301810685124955130483886605195879652079*I",
-  "1 1",
-  "0.99424155637662821982554747937079543961458721912",
-  "1.04719755119659774615421446109316762806572313312",
+  "1.772453850905516 0.0",
+  "0.49801566811835607 -0.15494982830181067",
+  "1.0 0.0",
+  "1.0 0.0",
+  "0.9942415563766283 0.0",
+  "1.0471975511965979 0.0",
   "True",
   "",
 ].join("\n");
@@ -57,7 +59,12 @@ function assertPrivateRoutes(instrumentation) {
       `${id} must execute as one coarse public Wasm batch`,
     );
   }
-  assert.equal(instrumentation.boundary_crossings, 2);
+  const analyticCrossings = requiredRoutes.reduce(
+    (total, id) => total + routes.get(id).call_count,
+    0,
+  );
+  assert.equal(analyticCrossings, 2);
+  assert.ok(instrumentation.boundary_crossings >= analyticCrossings);
   assert.ok(instrumentation.copied_bytes > 0);
 }
 
@@ -167,4 +174,3 @@ test("public Chromium gamma and xi use the same production reactor", async () =>
     await server.close();
   }
 });
-

@@ -73,8 +73,12 @@ for (const id of ["analytic:complex-gamma", "analytic:riemann-xi"]) {
   assert.equal(scalarRoutes.get(id)?.selected_route, "receipt-backed-wasm-artifact");
   assert.equal(scalarRoutes.get(id)?.call_count, count);
 }
-assert.equal(batchRuns.at(-1).instrumentation.boundary_crossings, 2);
-assert.equal(scalarRuns.at(-1).instrumentation.boundary_crossings, 2 * count);
+const batchAnalyticCrossings = ["analytic:complex-gamma", "analytic:riemann-xi"]
+  .reduce((total, id) => total + batchRoutes.get(id).call_count, 0);
+const scalarAnalyticCrossings = ["analytic:complex-gamma", "analytic:riemann-xi"]
+  .reduce((total, id) => total + scalarRoutes.get(id).call_count, 0);
+assert.equal(batchAnalyticCrossings, 2);
+assert.equal(scalarAnalyticCrossings, 2 * count);
 
 const manifest = JSON.parse(await fs.readFile(
   new URL("../packages/flint-wasm/dist/production-manifest.json", import.meta.url),
@@ -102,13 +106,15 @@ const receipt = {
   batch: {
     milliseconds: batchRuns.map((run) => run.milliseconds),
     median_milliseconds: batchMedian,
-    boundary_crossings: 2,
+    analytic_boundary_crossings: batchAnalyticCrossings,
+    total_instrumented_crossings: batchRuns.at(-1).instrumentation.boundary_crossings,
     copied_bytes: batchRuns.at(-1).instrumentation.copied_bytes,
   },
   scalar: {
     milliseconds: scalarRuns.map((run) => run.milliseconds),
     median_milliseconds: scalarMedian,
-    boundary_crossings: 2 * count,
+    analytic_boundary_crossings: scalarAnalyticCrossings,
+    total_instrumented_crossings: scalarRuns.at(-1).instrumentation.boundary_crossings,
     copied_bytes: scalarRuns.at(-1).instrumentation.copied_bytes,
   },
   crossing_reduction: count,
@@ -121,4 +127,3 @@ if (check) {
   assert.ok(receipt.speedup > 1, `expected coarse batches to win: ${JSON.stringify(receipt)}`);
 }
 console.log(JSON.stringify(receipt, null, 2));
-
