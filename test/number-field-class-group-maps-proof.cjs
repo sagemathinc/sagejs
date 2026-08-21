@@ -364,9 +364,18 @@ print("class-group-fractional-ideal-ok")
 test("completed engine results adapt to public witnessed maps and GRH evidence", () => {
   const output = run(String.raw`
 import copy
+import hashlib
+import json
 
 from sagejs.number_fields.class_group_maps import IdealClassGroup, class_group_from_engine_result
 from sagejs.number_fields.class_group_proof import EXACT_RELATIONS_CONDITIONAL_GRH
+
+def seal(payload):
+    body = copy.deepcopy(payload)
+    body.pop("content_sha256", None)
+    text = json.dumps(body, allow_nan=False, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    body["content_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return body
 
 class ToyOrder:
     def ideal(self, value):
@@ -416,6 +425,38 @@ class EngineGroup:
 class Stage:
     def __init__(self, name, state, details): self.name, self.state, self.details = name, state, details
 
+class SaturationProducer:
+    def __init__(self):
+        self.payload = seal({
+            "schema": "sagejs.number-fields/class-unit-saturation-v1",
+            "original_units": ["u0"],
+            "required_primes": [2, 3],
+            "class_primes": [2],
+            "unit_primes": [3],
+            "attempts": [
+                {"schema": "sagejs.number-fields.unit-local-pth-obstruction.v1", "prime": 2, "outcome": "saturated", "method": "exact-local-obstruction", "quotient_targets": [1], "moduli": [2], "cap": 8},
+                {"schema": "sagejs.number-fields.unit-pth-root-certificate.v1", "prime": 3, "outcome": "enlarged", "method": "exact-pth-root-identity", "root_coordinates": [[1, 1]], "exponent_vector": [1], "torsion_exponent": 0, "lattice_index_change": 3, "precision_history": [64, 128]},
+            ],
+            "index_bound": 6,
+            "remaining_index_bound": 1,
+            "index_bound_is_rigorous": True,
+            "index_enlargement": 6,
+            "unresolved_primes": [],
+            "units": [[[1, 1]]],
+            "precision_history": [64, 128],
+            "rigorous": True,
+            "complete": True,
+            "saturated": True,
+            "reason": "exact p-saturation",
+            "status": "exact-unit-p-saturation",
+            "proof_status": "exact-unit-p-saturation",
+            "incomplete_reason": None,
+            "analytic_validation": {"content_sha256": "analytic-hash"},
+        })
+    def to_dict(self): return copy.deepcopy(self.payload)
+    def verify(self, field, order, original_units, analytic_validation=None):
+        return field is ORDER and order is ORDER and tuple(original_units) == ("u0",) and analytic_validation == "analytic-artifact"
+
 class EngineResult:
     complete = True
     proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
@@ -425,8 +466,14 @@ class EngineResult:
         Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
         Stage("proof", "complete", {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH, "exact_relations": 7}),
     )
-    def __init__(self): self._group = EngineGroup()
+    def __init__(self):
+        self._group = EngineGroup()
+        self.saturation_record = SaturationProducer()
+        self.saturation_original_units = ("u0",)
+        self.analytic_validation = "analytic-artifact"
     def class_group(self): return self._group
+    def verify_saturation_record(self, payload):
+        return payload == self.saturation_record.to_dict() and self.saturation_record.verify(ORDER, ORDER, self.saturation_original_units, analytic_validation=self.analytic_validation)
 
 ORDER = ToyOrder()
 C = class_group_from_engine_result(EngineResult())
@@ -450,10 +497,32 @@ except ValueError:
 
 payload = C.proof_payload()
 assert C.verify_proof_payload(payload)
+assert payload["saturation"]["class_primes"] == [2]
+assert payload["saturation"]["unit_primes"] == [3]
+assert payload["saturation"]["index_bound"] == 6
 for key, value in (("theorem", "forged theorem"), ("bound", [47, 1]), ("relation_count", 6), ("analytic_index_one", False)):
     corrupted = copy.deepcopy(payload)
     corrupted[key] = value
     assert not C.verify_proof_payload(corrupted)
+for path, value in (
+    (("saturation", "evidence", "required_primes"), [2]),
+    (("saturation", "evidence", "remaining_index_bound"), 3),
+    (("saturation", "unit_primes"), [5]),
+):
+    corrupted = copy.deepcopy(payload)
+    target = corrupted
+    for part in path[:-1]: target = target[part]
+    target[path[-1]] = value
+    assert not C.verify_proof_payload(corrupted)
+
+bad_saturation = EngineResult()
+bad_saturation.saturation_record.payload["required_primes"] = [2, 5]
+bad_saturation.saturation_record.payload = seal(bad_saturation.saturation_record.payload)
+try:
+    class_group_from_engine_result(bad_saturation)
+    raise AssertionError("reauthenticated incomplete p-saturation was accepted")
+except ArithmeticError:
+    pass
 
 bad_result = EngineResult()
 bad_result._group._presentation.order = 8
@@ -471,19 +540,113 @@ print("engine-class-group-adapter-ok")
 test("unconditional engine evidence replays its independent Minkowski stream", () => {
   const output = run(String.raw`
 import copy
+import hashlib
+import json
 
 from sagejs.number_fields.class_group_maps import class_group_from_engine_result
 from sagejs.number_fields.class_group_proof import EXACT_UNCONDITIONAL
 from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
-from sagejs.number_fields.ideal_arithmetic import ideal_quotient
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "q")
+K = NumberField(x**2 + x + 11, "q")
 O = K.maximal_order()
-generator = K(2) / K(3)
-I = ideal_quotient(O.ideal(2), O.ideal(3))
+generator = K(2)
+I = O.ideal(2)
 witness = FactoredNumberFieldElement.from_element(K, generator)
+
+def seal(payload):
+    body = copy.deepcopy(payload)
+    body.pop("content_sha256", None)
+    text = json.dumps(body, allow_nan=False, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    body["content_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return body
+
+class SaturationProducer:
+    def __init__(self):
+        self.payload = seal({
+            "schema": "sagejs.number-fields/class-unit-saturation-v1",
+            "original_units": ["u0"],
+            "required_primes": [2, 3],
+            "class_primes": [2],
+            "unit_primes": [3],
+            "attempts": [
+                {"schema": "sagejs.number-fields.unit-local-pth-obstruction.v1", "prime": 2, "outcome": "saturated", "method": "exact-local-obstruction", "quotient_targets": [1], "moduli": [2], "cap": 8},
+                {"schema": "sagejs.number-fields.unit-pth-root-certificate.v1", "prime": 3, "outcome": "enlarged", "method": "exact-pth-root-identity", "root_coordinates": [[1, 1]], "exponent_vector": [1], "torsion_exponent": 0, "lattice_index_change": 3, "precision_history": [64, 128]},
+            ],
+            "index_bound": 6,
+            "remaining_index_bound": 1,
+            "index_bound_is_rigorous": True,
+            "index_enlargement": 6,
+            "unresolved_primes": [],
+            "units": [[[1, 1]]],
+            "precision_history": [64, 128],
+            "rigorous": True,
+            "complete": True,
+            "saturated": True,
+            "reason": "exact p-saturation",
+            "status": "exact-unit-p-saturation",
+            "proof_status": "exact-unit-p-saturation",
+            "incomplete_reason": None,
+            "analytic_validation": {"content_sha256": "analytic-hash"},
+        })
+    def to_dict(self): return copy.deepcopy(self.payload)
+    def verify(self, field, order, original_units, analytic_validation=None):
+        return field is K and order is O and tuple(original_units) == ("u0",) and analytic_validation == "analytic-artifact"
+
+SATURATION = SaturationProducer()
+ideal_payload = I.to_dict()
+fingerprint = {
+    "field_order_fingerprint": ideal_payload["field_order_fingerprint"],
+    "basis": ideal_payload["basis"],
+}
+raw_record = {
+    "index": 0,
+    "norm": 4,
+    "coordinates": [],
+    "ideal": ideal_payload,
+    "witness": witness.to_dict(),
+}
+progress_record = seal({
+    "schema": "sagejs.number-fields.minkowski-proof-progress-record.v1",
+    "index": 0,
+    "prime_fingerprint": fingerprint,
+    "evidence": raw_record,
+})
+plan_hash = "4" * 64
+partition0 = seal({
+    "schema": "sagejs.number-fields.minkowski-proof-partition.v1",
+    "plan_sha256": plan_hash,
+    "partition_index": 0,
+    "partition_count": 2,
+    "total_items": 1,
+    "records": [progress_record],
+})
+partition1 = seal({
+    "schema": "sagejs.number-fields.minkowski-proof-partition.v1",
+    "plan_sha256": plan_hash,
+    "partition_index": 1,
+    "partition_count": 2,
+    "total_items": 1,
+    "records": [],
+})
+PROGRESS = seal({
+    "schema": "sagejs.number-fields.minkowski-proof-progress.v1",
+    "theorem": "Minkowski ideal-class theorem",
+    "bound": [4, 1],
+    "prime_fingerprints": [fingerprint],
+    "dependency_hashes": {
+        "relations": "1" * 64,
+        "presentation": "2" * 64,
+        "generators": "3" * 64,
+        "saturation": SATURATION.payload["content_sha256"],
+    },
+    "partition_count": 2,
+    "partitions": [partition0, partition1],
+    "plan_sha256": plan_hash,
+    "complete": True,
+    "completed_items": 1,
+})
 
 class MatrixPresentation:
     invariants = ()
@@ -513,14 +676,22 @@ class EngineResult:
     complete = True
     proof_status = EXACT_UNCONDITIONAL
     algorithm = "minkowski"
-    diagnostics = {"factor_base_bound": 0, "relations": 0, "unconditional_prime_records": ()}
+    diagnostics = {"factor_base_bound": 0, "relations": 0, "unconditional_prime_records": (raw_record,)}
     stages = (
         Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
-        Stage("unconditional-proof", "complete", {"theorem": "Minkowski", "bound": 1, "prime_ideals": 0}),
-        Stage("proof", "complete", {"proof_status": EXACT_UNCONDITIONAL, "minkowski_primes": 0, "exact_relations": 0}),
+        Stage("unconditional-proof", "complete", {"theorem": "Minkowski", "bound": 4, "prime_ideals": 1}),
+        Stage("proof", "complete", {"proof_status": EXACT_UNCONDITIONAL, "minkowski_primes": 1, "exact_relations": 0}),
     )
-    def __init__(self): self._group = EngineGroup()
+    def __init__(self, progress=PROGRESS):
+        self._group = EngineGroup()
+        self.saturation_record = SATURATION
+        self.saturation_original_units = ("u0",)
+        self.analytic_validation = "analytic-artifact"
+        self.proof_progress = progress
+        self.proof_dependency_hashes = dict(progress["dependency_hashes"])
     def class_group(self): return self._group
+    def verify_saturation_record(self, payload):
+        return payload == self.saturation_record.to_dict() and self.saturation_record.verify(K, O, self.saturation_original_units, analytic_validation=self.analytic_validation)
 
 C = class_group_from_engine_result(EngineResult())
 assert C.order() == 1 and C.invariants() == ()
@@ -530,7 +701,9 @@ assert answer and answer.generator.evaluate() == generator and answer.verify(O)
 assert C.is_principal(I, proof=True)
 payload = C.proof_payload()
 assert payload["proof_status"] == EXACT_UNCONDITIONAL
-assert payload["bound"] == [1, 1] and payload["prime_records"] == []
+assert payload["bound"] == [4, 1] and len(payload["prime_records"]) == 1
+assert payload["proof_progress"]["partition_count"] == 2
+assert payload["saturation"]["index_bound"] == 6
 assert C.verify_proof_payload(payload)
 for path, value in (
     (("theorem",), "forged Minkowski theorem"),
@@ -538,12 +711,40 @@ for path, value in (
     (("bound", 0), 2),
     (("field_order_fingerprint", "discriminant"), 2),
     (("saturation", "complete"), False),
+    (("saturation", "evidence", "attempts", 1, "root_coordinates"), [[[9, 1]]]),
+    (("proof_progress", "partitions", 0, "records", 0, "index"), 1),
+    (("proof_progress", "completed_items"), 0),
+    (("proof_progress", "dependency_hashes", "relations"), "9" * 64),
+    (("proof_progress", "dependency_hashes", "saturation"), "forged hash"),
 ):
     corrupted = copy.deepcopy(payload)
     target = corrupted
     for part in path[:-1]: target = target[part]
     target[path[-1]] = value
     assert not C.verify_proof_payload(corrupted)
+
+bad_progress = copy.deepcopy(PROGRESS)
+bad_progress["partitions"][0]["records"][0]["index"] = 1
+bad_progress["partitions"][0]["records"][0] = seal(bad_progress["partitions"][0]["records"][0])
+bad_progress["partitions"][0] = seal(bad_progress["partitions"][0])
+bad_progress = seal(bad_progress)
+try:
+    class_group_from_engine_result(EngineResult(bad_progress))
+    raise AssertionError("reauthenticated non-covering partitions were accepted")
+except (ArithmeticError, ValueError):
+    pass
+
+incomplete_progress = copy.deepcopy(PROGRESS)
+incomplete_progress["complete"] = False
+incomplete_progress["completed_items"] = 0
+incomplete_progress["partitions"][0]["records"] = []
+incomplete_progress["partitions"][0] = seal(incomplete_progress["partitions"][0])
+incomplete_progress = seal(incomplete_progress)
+try:
+    class_group_from_engine_result(EngineResult(incomplete_progress))
+    raise AssertionError("resumable incomplete partitions upgraded proof status")
+except ArithmeticError:
+    pass
 
 print("engine-unconditional-proof-ok")
 `);
