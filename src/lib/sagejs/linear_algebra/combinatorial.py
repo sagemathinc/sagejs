@@ -1,9 +1,11 @@
 """Combinatorial invariants of exact matrices.
 
-The algorithms in this module deliberately depend only on the public matrix
-contract: dimensions, entry access, exact ring arithmetic, matrix selection,
-and determinant. They are therefore correct dynamic fallbacks for every exact
-matrix representation.
+The readable algorithms in this module deliberately depend only on the public
+matrix contract: dimensions, entry access, and exact ring arithmetic. They are
+therefore correct dynamic fallbacks for every exact matrix representation.
+Measured heavy `ZZ`, `QQ`, and word-prime cases pack that same subset recurrence
+into one source-transparent native or WebAssembly call; other rings and forced
+native-disabled execution retain the ordinary implementation.
 
 Both exported operations have exponential output or running time in the worst
 case. Their `max_work` parameter makes that cost visible. The default protects
@@ -430,10 +432,11 @@ def matrix_minors(
     minor is the base-ring one, and a size exceeding either dimension has no
     minors. Negative or non-indexable sizes are rejected.
 
-    The matrix is bulk-read once through its public row-major `list()` view,
-    then every determinant is evaluated by division-free exact ring
-    arithmetic. The implementation never assumes packed, host, or
-    foreign-library storage.
+    The portable path bulk-reads the matrix once through its public row-major
+    `list()` view, then evaluates every determinant with division-free exact
+    ring arithmetic. Measured heavy `ZZ`, `QQ`, and word-prime matrices use the
+    source-transparent packed form of the same recurrence in one call. The
+    public `max_work` check always runs before either route is selected.
     """
     limit = _work_limit(max_work)
     size = _index(k)
@@ -608,7 +611,10 @@ def matrix_permanent(
     The implementation is a column-by-column subset dynamic program. Its
     `n * m * 2^(m-1)` work bound is especially useful for the wide rectangular
     matrices where enumerating all injections or all column subsets is much
-    worse. Arithmetic stays in the matrix base ring throughout.
+    worse. Arithmetic stays exact in the matrix base ring. Measured heavy
+    `ZZ`, `QQ`, and word-prime cases execute the packed source-transparent body
+    in one native or WebAssembly call; small and unsupported cases retain this
+    ordinary source directly.
 
     `algorithm="Ryser"` is accepted for compatibility with Sage's public
     default even though this implementation uses the equivalent subset-DP

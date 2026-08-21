@@ -34,12 +34,23 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node test/linear-combinatorial-invariants.cjs",
+    "node --test test/wasm-combinatorial-invariants.cjs",
+    "node bench/wasm-combinatorial-invariants.cjs",
+    "pnpm exec pyright src/lib/sagejs/linear_algebra/combinatorial.py src/lib/sagejs/kernels/matrix/combinatorial.py"
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Six source-transparent packed functions compute exact permanents and complete lexicographically ordered minor batches over ZZ, QQ, and word-prime fields. Public heavy workflows preserve max_work, use one authenticated native or Wasm crossing, report route telemetry, and retain the ordinary exact implementation for small, disabled, unsupported, and capacity-exhausting cases. Direct real-Wasm, public-resolver, malformed-shape, differential, and matched benchmark evidence is included.",
+    "risks": [
+      "The size-classed synthetic artifacts are 302,867 bytes for GMP-backed ZZ/QQ and 28,316,291 bytes for FLINT-backed prime fields; both are specialists and the FLINT pack must remain lazy rather than joining eager browser startup.",
+      "Native Windows uses the tested same-source fallback until the production source compiler artifact is available on that host."
+    ],
+    "next_steps": [
+      "Integration lane: copy the production descriptor from test/wasm-combinatorial-invariants.cjs into architecture/native-kernels.json.",
+      "Integration lane: register bench:wasm-combinatorial-invariants, add the focused test to the central Node manifest, add the new strict module to pyrightconfig.json, and regenerate capability/kernel receipts.",
+      "Browser distribution lane: classify this module as a lazy FLINT specialist and add its three-domain public route case to the shared Chromium/Firefox/WebKit corpus."
+    ]
   }
 }

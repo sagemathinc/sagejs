@@ -174,10 +174,8 @@ async function main() {
   }
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-wasm-combinatorial-bench-"));
   try {
-    const descriptor = {
-      id: "packed-combinatorial-invariants-production",
+    const commonDescriptor = {
       source: "src/lib/sagejs/kernels/matrix/combinatorial.py",
-      functions,
       semantic_domain: "packed exact combinatorial matrix invariants",
       fallback: "same-source",
       host_isolation: "certified",
@@ -185,17 +183,29 @@ async function main() {
       benchmark: "bench:wasm-combinatorial-invariants",
       platforms: ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"],
     };
+    const descriptors = [
+      {
+        ...commonDescriptor,
+        id: "packed-combinatorial-integer-rational-production",
+        functions: functions.slice(0, 4),
+      },
+      {
+        ...commonDescriptor,
+        id: "packed-combinatorial-prime-production",
+        functions: functions.slice(4),
+      },
+    ];
     const manifestPath = join(temporary, "native-kernels.json");
     writeFileSync(
       manifestPath,
-      `${JSON.stringify({ kernels: [descriptor] }, null, 2)}\n`,
+      `${JSON.stringify({ kernels: descriptors }, null, 2)}\n`,
     );
     const outputRoot = join(temporary, "output");
     const manifest = await buildWasmProductionPacks({
       root,
       manifestPath,
       outputRoot,
-      domains: ["flint"],
+      domains: ["gmp", "flint"],
       emitOnly: false,
       toolchain: selectedToolchain,
     });

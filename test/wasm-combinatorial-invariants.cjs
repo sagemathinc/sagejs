@@ -24,17 +24,16 @@ const {
 } = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
 
-const descriptor = {
-  id: "packed-combinatorial-invariants-production",
+const functions = [
+  "packed_integer_matrix_permanent",
+  "packed_integer_matrix_minors",
+  "packed_rational_matrix_permanent",
+  "packed_rational_matrix_minors",
+  "packed_prime_matrix_permanent",
+  "packed_prime_matrix_minors",
+];
+const commonDescriptor = {
   source: "src/lib/sagejs/kernels/matrix/combinatorial.py",
-  functions: [
-    "packed_integer_matrix_permanent",
-    "packed_integer_matrix_minors",
-    "packed_rational_matrix_permanent",
-    "packed_rational_matrix_minors",
-    "packed_prime_matrix_permanent",
-    "packed_prime_matrix_minors",
-  ],
   semantic_domain:
     "batched exact matrix permanents and lexicographically ordered minors " +
     "over integers, rationals, and word-prime fields",
@@ -44,6 +43,18 @@ const descriptor = {
   benchmark: "bench:wasm-combinatorial-invariants",
   platforms: ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"],
 };
+const descriptors = [
+  {
+    ...commonDescriptor,
+    id: "packed-combinatorial-integer-rational-production",
+    functions: functions.slice(0, 4),
+  },
+  {
+    ...commonDescriptor,
+    id: "packed-combinatorial-prime-production",
+    functions: functions.slice(4),
+  },
+];
 
 function discoverToolchain() {
   const status = resolveToolchain({ root });
@@ -145,7 +156,7 @@ async function syntheticManifest(temporary) {
   const manifestPath = join(temporary, "native-kernels.json");
   writeFileSync(
     manifestPath,
-    `${JSON.stringify({ kernels: [descriptor] }, null, 2)}\n`,
+    `${JSON.stringify({ kernels: descriptors }, null, 2)}\n`,
   );
   return manifestPath;
 }
@@ -192,9 +203,9 @@ output = [91]
 assert not packed_integer_matrix_permanent(output, [1, 2], [0, 0, 0, 0], 2, 2)
 assert output == [91]
 assert not packed_integer_matrix_minors([0], [1, 2, 3, 4], [0, 0], [0, 0], 2, 2, 2)
-prime_output = [77]
+prime_output = [77, 77, 77, 77]
 assert not packed_prime_matrix_minors(prime_output, [0, 1, 2, 7], [0, 0], [0, 0], 2, 2, 1, 7)
-assert prime_output == [77]
+assert prime_output == [77, 77, 77, 77]
 rational_output = [55]
 rational_denominator = [66]
 assert not packed_rational_matrix_permanent(
@@ -214,23 +225,44 @@ print("malformed-ok")
   assert.equal(result.stdout.trim(), "malformed-ok");
 });
 
-test("all six functions emit one isolated production module", async () => {
+test("all six functions emit isolated size-classed production modules", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-combinatorial-inventory-"));
   try {
     const manifestPath = await syntheticManifest(temporary);
     const inventory = await inventoryProductionKernels({ root, manifestPath });
-    assert.equal(inventory.modules.length, 1);
-    const module = inventory.modules[0];
+    assert.equal(inventory.modules.length, 2);
     assert.deepEqual(
-      module.functions.map((item) => [item.name, item.status]),
-      descriptor.functions.map((name) => [name, "compiled-source"]),
+      inventory.modules.flatMap((module) =>
+        module.functions.map((item) => [item.name, item.status])
+      ),
+      functions.map((name) => [name, "compiled-source"]),
     );
-    assert.equal(module.identity.canonicalCore.audit.hostCallbacks, 0);
     assert.deepEqual(
-      module.identity.canonicalCore.audit.nativeDependencies,
-      ["libc", "libm", "GMP", "FLINT"],
+      inventory.modules.map((module) => [
+        module.id,
+        module.domain,
+        module.identity.canonicalCore.audit.nativeDependencies,
+      ]),
+      [
+        [
+          "packed-combinatorial-integer-rational-production",
+          "gmp",
+          ["libc", "libm", "GMP"],
+        ],
+        [
+          "packed-combinatorial-prime-production",
+          "flint",
+          ["libc", "libm", "GMP", "FLINT"],
+        ],
+      ],
     );
-    assert.doesNotMatch(module.identity.canonicalCore.source, /napi_|PyObject|node_api/);
+    for (const module of inventory.modules) {
+      assert.equal(module.identity.canonicalCore.audit.hostCallbacks, 0);
+      assert.doesNotMatch(
+        module.identity.canonicalCore.source,
+        /napi_|PyObject|node_api/,
+      );
+    }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -248,13 +280,13 @@ test("real WebAssembly executes direct and public exact batches", {
       root,
       manifestPath,
       outputRoot,
-      domains: ["flint"],
+      domains: ["gmp", "flint"],
       emitOnly: false,
       toolchain,
     });
     const runtime = await instantiate(manifest, outputRoot);
     const logical = "sagejs/kernels/matrix/combinatorial.py";
-    for (const name of descriptor.functions) {
+    for (const name of functions) {
       const fn = runtime.function(logical, name);
       assert.equal(fn.executionTarget, "wasm");
       assert.equal(fn.sourceTransparent, true);
@@ -274,6 +306,18 @@ test("real WebAssembly executes direct and public exact batches", {
     const states = { values: stateValues, wordCapacity: 16 };
     assert.equal(integerPermanent(output, entries, states, 8n, 8n), true);
     assert.equal(outputValues[0], 3903574n);
+    const rejectedIntegerOutput = [91n];
+    assert.equal(
+      integerPermanent(
+        { values: rejectedIntegerOutput, wordCapacity: 2 },
+        [1n, 2n],
+        { values: [0n, 0n, 0n, 0n], wordCapacity: 2 },
+        2n,
+        2n,
+      ),
+      false,
+    );
+    assert.deepEqual(rejectedIntegerOutput, [91n]);
 
     const primeMinors = runtime.function(logical, "packed_prime_matrix_minors");
     const primeEntries = new BigUint64Array(
@@ -297,6 +341,21 @@ test("real WebAssembly executes direct and public exact batches", {
       true,
     );
     assert.deepEqual(Array.from(primeOutput.slice(0, 5)), [2n, 4n, 4n, 6n, 1n]);
+    const rejectedPrimeOutput = new BigUint64Array([77n, 77n, 77n, 77n]);
+    assert.equal(
+      primeMinors(
+        rejectedPrimeOutput,
+        new BigUint64Array([0n, 1n, 2n, 7n]),
+        new BigUint64Array(2),
+        new BigUint64Array(2),
+        2n,
+        2n,
+        1n,
+        7n,
+      ),
+      false,
+    );
+    assert.deepEqual(Array.from(rejectedPrimeOutput), [77n, 77n, 77n, 77n]);
 
     assert.equal(
       await publicWorkflow(runtime),
@@ -316,7 +375,11 @@ test("real WebAssembly executes direct and public exact batches", {
       route: integerPermanent.executionTarget,
       boundaryCrossingsPerBatch: 1,
       warmMedianMilliseconds: samples[2],
-      wasmBytes: manifest.packs.find((pack) => pack.status === "built").bytes,
+      wasmBytesByDomain: Object.fromEntries(
+        manifest.packs
+          .filter((pack) => pack.status === "built")
+          .map((pack) => [pack.domain, pack.bytes]),
+      ),
     }));
   } finally {
     rmSync(temporary, { recursive: true, force: true });
