@@ -6,6 +6,11 @@ const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
+const {
+  compareRationals,
+  rationalFromText,
+  regulatorWidthIsSmall,
+} = require("../bench/class-unit-groups/run-live-high-degree-sagejs.cjs");
 
 const root = join(__dirname, "..");
 function sagejsInvocation(args) {
@@ -91,6 +96,19 @@ test("offline high-degree corpus records independent exact agreement", () => {
     assert.ok(entry.prime_splitting.length > 0);
   }
   assert.deepEqual(highDegreeFixture.oracle_agreement, ["sage_pari", "magma", "hecke"]);
+});
+
+test("live high-degree harness compares rational regulator endpoints exactly", () => {
+  const target = rationalFromText("0.740631472629114333933568746575");
+  const lower = rationalFromText(
+    "252023830522375276431101801533304089015/340282366920938463463374607431768211456",
+  );
+  const upper = rationalFromText(
+    "252023830522375276431101801533404089015/340282366920938463463374607431768211456",
+  );
+  assert.ok(compareRationals(lower, target) <= 0);
+  assert.ok(compareRationals(target, upper) <= 0);
+  assert.ok(regulatorWidthIsSmall(lower, upper, target));
 });
 
 test("public quadratic class/unit context preserves proof and analytic contracts", () => {

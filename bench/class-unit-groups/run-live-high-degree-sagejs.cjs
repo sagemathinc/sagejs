@@ -199,10 +199,37 @@ function expectedByDegree(fixture) {
   return expected;
 }
 
-function numberFromEndpoint(text) {
-  const value = Number(text);
-  if (!Number.isFinite(value)) throw new Error(`non-numeric regulator endpoint: ${text}`);
-  return value;
+function rationalFromText(text) {
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:\/(\d+))?$/.exec(text);
+  if (!match || (match[3] && match[4])) {
+    throw new Error(`non-rational regulator value: ${text}`);
+  }
+  const sign = match[1] === "-" ? -1n : 1n;
+  if (match[4]) return [sign * BigInt(match[2]), BigInt(match[4])];
+  const fractional = match[3] || "";
+  return [
+    sign * BigInt(`${match[2]}${fractional}`),
+    10n ** BigInt(fractional.length),
+  ];
+}
+
+function compareRationals(left, right) {
+  const difference = left[0] * right[1] - right[0] * left[1];
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0;
+}
+
+function regulatorWidthIsSmall(lower, upper, target) {
+  const differenceNumerator = upper[0] * lower[1] - lower[0] * upper[1];
+  const differenceDenominator = upper[1] * lower[1];
+  if (differenceNumerator < 0n) return false;
+  const scale = 1n << 90n;
+  if (compareRationals(target, [1n, 1n]) <= 0) {
+    return differenceNumerator * scale <= differenceDenominator;
+  }
+  return (
+    differenceNumerator * target[1] * scale <=
+    differenceDenominator * target[0]
+  );
 }
 
 function checkComplete(record, expected, proof) {
@@ -228,11 +255,13 @@ function checkComplete(record, expected, proof) {
   if (!record.regulator.rigorous || !record.regulator.full_rank_certified) {
     failures.push("regulator_certification");
   } else {
-    const lower = numberFromEndpoint(record.regulator.lower);
-    const upper = numberFromEndpoint(record.regulator.upper);
-    const target = Number(expected.regulator_decimal);
-    if (!(lower <= target && target <= upper)) failures.push("regulator_containment");
-    if (!(upper - lower <= Math.max(target, 1) * 2 ** -90)) {
+    const lower = rationalFromText(record.regulator.lower);
+    const upper = rationalFromText(record.regulator.upper);
+    const target = rationalFromText(expected.regulator_decimal);
+    if (compareRationals(lower, target) > 0 || compareRationals(target, upper) > 0) {
+      failures.push("regulator_containment");
+    }
+    if (!regulatorWidthIsSmall(lower, upper, target)) {
       failures.push("regulator_width");
     }
   }
@@ -356,9 +385,13 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
+module.exports = { compareRationals, rationalFromText, regulatorWidthIsSmall };
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.stack || error.message);
+    process.exitCode = 1;
+  }
 }
