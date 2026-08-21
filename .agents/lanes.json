@@ -80,6 +80,7 @@
         "architecture/wasm-capabilities-report.json",
         "packages/flint-wasm/release/production-capabilities.json",
         "packages/flint-wasm/release/production-kernel-coverage.json",
+        "package.json",
         "pyrightconfig.json",
         "src/baselib/groups.py",
         "src/baselib/containers.py",
