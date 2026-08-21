@@ -1164,6 +1164,35 @@ print(observed)
   );
 });
 
+test("empty Minkowski factor bases retain the unit-ideal search path", () => {
+  const output = run(String.raw`
+class ProbeComponents:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = object()
+    matrix = object()
+    analytic = object()
+    def missing(self):
+        return ()
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**2 + 4*x + 1, "a")
+engine = ClassUnitGroupEngine(
+    K,
+    algorithm="minkowski",
+    components=ProbeComponents(),
+)
+ideal, row, strategy = engine._relation_ideal(object(), (), 0, 2)
+assert ideal == K.maximal_order().ideal(1)
+assert row == ()
+assert strategy == "unit-ideal-sweep"
+print("empty-factor-base")
+`);
+  assert.equal(output, "empty-factor-base");
+});
+
 test("public class_group preserves specialized groups without presentations", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
