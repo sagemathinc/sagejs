@@ -590,6 +590,10 @@ for path, value in (
     corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
     assert not C.verify_proof_payload(corrupted), path
 
+corrupted = copy.deepcopy(payload)
+corrupted["conditional_evidence"]["assumption"] = chr(0xD800)
+assert not C.verify_proof_payload(corrupted)
+
 assert not C.verify_proof_payload(payload, cancelled=lambda: True)
 
 bad_saturation = EngineResult()
@@ -809,6 +813,7 @@ for path, value in (
 
 for path, value in (
     (("theorem",), "M" * ((1 << 16) + 1)),
+    (("theorem",), chr(0xD800)),
     (("discriminant",), 1 << 4097),
     (("prime_records",), [payload["prime_records"][0]] * 4097),
     (("proof_progress", "partitions"), [None] * 8193),
