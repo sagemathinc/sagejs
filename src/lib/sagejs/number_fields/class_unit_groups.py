@@ -701,11 +701,14 @@ class _EngineClassGroup:
             if relation_rows != presentation_rows:
                 return False
             for record in self._relations:
-                replay = record.verify(
-                    self._order,
-                    self._factor_base,
-                    reconstructor=self._relation_reconstructor,
-                )
+                if self._relation_reconstructor is None:
+                    replay = record.verify(self._order, self._factor_base)
+                else:
+                    replay = record.verify(
+                        self._order,
+                        self._factor_base,
+                        reconstructor=self._relation_reconstructor,
+                    )
                 if replay["certified"] is not True:
                     return False
             for generator in self._gens:
