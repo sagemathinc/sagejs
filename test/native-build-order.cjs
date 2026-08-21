@@ -23,6 +23,11 @@ const {
   repositoryRoot,
 } = require("../packages/flint/scripts/build.cjs");
 const {
+  installedAddonStatus,
+  manifestRelativePath,
+  reconcileInstalledAddon,
+} = require("../packages/flint/scripts/build-addon.cjs");
+const {
   bootstrapBuildPlan,
   executeBuildPhase,
 } = require("../scripts/bootstrap.cjs");
@@ -159,6 +164,49 @@ test("an initialized checkout keeps addon before FFI without rebuilding the comp
     plan.map(({ pnpmArguments }) => pnpmArguments.at(-1)),
     ["build:deps", "build:addon", "build:ffi"],
   );
+});
+
+test("tracked FLINT C changes reconcile only the direct addon", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-flint-addon-reconcile-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, "src", "algebraic.c");
+  const addon = join(directory, "build", "Release", "sagejs_flint.node");
+  mkdirSync(dirname(source), { recursive: true });
+  mkdirSync(dirname(addon), { recursive: true });
+  writeFileSync(source, "/* algebraic v1 */\n");
+  writeFileSync(addon, "stale addon\n");
+
+  let addonBuilds = 0;
+  const options = {
+    packageRoot: directory,
+    inputPaths: ["src"],
+    environment: {},
+    versions: { modules: "test-abi", napi: "8", node: "test-node" },
+    platform: "linux",
+    arch: "x64",
+    build({ addonPath }) {
+      addonBuilds += 1;
+      writeFileSync(addonPath || addon, `addon build ${addonBuilds}\n`);
+    },
+  };
+
+  assert.equal(reconcileInstalledAddon(options).status, "rebuilt");
+  assert.equal(addonBuilds, 1);
+  assert.equal(reconcileInstalledAddon(options).status, "current");
+  assert.equal(addonBuilds, 1);
+  const firstManifest = JSON.parse(
+    readFileSync(join(directory, manifestRelativePath), "utf8"),
+  );
+
+  writeFileSync(source, "/* algebraic v2 */\n");
+  assert.match(installedAddonStatus(options).reason, /source_hash/);
+  assert.equal(reconcileInstalledAddon(options).status, "rebuilt");
+  assert.equal(addonBuilds, 2);
+  const secondManifest = JSON.parse(
+    readFileSync(join(directory, manifestRelativePath), "utf8"),
+  );
+  assert.notEqual(secondManifest.source_hash, firstManifest.source_hash);
+  assert.equal(installedAddonStatus(options).status, "current");
 });
 
 test("the FLINT composite executes its inspectable plan unchanged", () => {

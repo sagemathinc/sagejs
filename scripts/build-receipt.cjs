@@ -119,6 +119,26 @@ function nativeInputIdentity(root = repositoryRoot) {
       });
     inputs.push({ package: packageName, status: "installed", files });
   }
+  for (const [packageName, names] of Object.entries({
+    flint: ["sagejs_flint.node", "sagejs_flint.manifest.json"],
+    graph: ["sagejs_graph.node"],
+  })) {
+    const directory = join(root, "packages", packageName, "build", "Release");
+    const files = names
+      .map((name) => join(directory, name))
+      .filter((filename) => existsSync(filename))
+      .map((filename) => ({
+        path: relative(root, filename).replaceAll("\\", "/"),
+        bytes: lstatSync(filename).size,
+        sha256: sha256File(filename),
+      }));
+    inputs.push({
+      package: packageName,
+      kind: "direct-addon",
+      status: files.length === 0 ? "absent" : "installed",
+      files,
+    });
+  }
   return inputs;
 }
 

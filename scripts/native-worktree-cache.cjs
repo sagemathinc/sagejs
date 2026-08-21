@@ -487,6 +487,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/flint/src",
         "packages/flint/include",
         "packages/flint/generated/ffi_host.py",
+        "packages/flint/scripts/build-addon.cjs",
         "packages/flint/scripts/native-prefix.cjs",
         "packages/flint/scripts/windows-clang-builtins.cjs",
         "ffi/flint.ffi.py",
@@ -499,6 +500,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
       ],
       requiredAddonOutputs: [
         "packages/flint/build/Release/sagejs_flint.node",
+        "packages/flint/build/Release/sagejs_flint.manifest.json",
         "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
         "packages/flint/build/generated-ffi/manifest.json",
       ],
