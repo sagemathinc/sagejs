@@ -76,6 +76,13 @@
           "test/wasm-graph-components.cjs"
         ]
       },
+      "combinatorial-invariants-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/linear-combinatorial-invariants.cjs",
+          "test/wasm-combinatorial-invariants.cjs"
+        ]
+      },
       "native-public-fallback-differential": {
         "differential": true,
         "paths": [
@@ -319,6 +326,10 @@
       "ffi:m4ri:matrix_rank",
       "ffi:m4ri:matrix_right_kernel",
       "ffi:m4ri:matrix_solve"
+    ],
+    "matrix-combinatorial-invariants": [
+      "kernel:packed-combinatorial-integer-rational-production",
+      "kernel:packed-combinatorial-prime-production"
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
@@ -10873,6 +10884,58 @@
         "compiled_functions": 1,
         "fallback_functions": 0,
         "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-combinatorial-integer-rational-production",
+      "kind": "production-kernel",
+      "family": "packed-combinatorial-integer-rational",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "matrix-combinatorial-invariants"
+      ],
+      "tests": [
+        "combinatorial-invariants-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 4 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 4,
+        "fallback_functions": 0,
+        "total_functions": 4,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-combinatorial-prime-production",
+      "kind": "production-kernel",
+      "family": "packed-combinatorial-prime",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "matrix-combinatorial-invariants"
+      ],
+      "tests": [
+        "combinatorial-invariants-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 2,
+        "fallback_functions": 0,
+        "total_functions": 2,
         "production_pack": true,
         "fallback_reasons": []
       }

@@ -149,6 +149,22 @@
       }
     },
     {
+      "id": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "workflow": "matrix-combinatorial-invariants",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-combinatorial-integer-rational-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:packed-combinatorial-prime-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "from sagejs.linear_algebra.combinatorial import matrix_permanent, matrix_minors\nanswer = []\nfor base in [ZZ, QQ, GF(7)]:\n    A = matrix(base, 8, 8, [base((i*7+3)%11-5) for i in range(64)])\n    B = matrix(base, 6, 7, [base((i*7+3)%11-5) for i in range(42)])\n    answer.append((matrix_permanent(A), len(matrix_minors(B, 3))))\nprint(answer)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[(3903574, 700), (3903574, 700), (3, 700)]\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "hyperelliptic-smalljac-local-factors",
       "family": "hyperelliptic-curves",
       "workflow": "hyperelliptic-smalljac-local-factors",

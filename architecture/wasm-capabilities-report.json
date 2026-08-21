@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c66e997381b99a826eea7adcd340dcc777ed160d13bfeaa6c89eaf6ee6d008b3",
+  "source_sha256": "930dae5aa56b8d1d71ff1d15c5616d45c32d4bf7e6de65faf5841649df5f4861",
   "counts": {
-    "total": 943,
+    "total": 945,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
-      "production-kernel": 32,
+      "production-kernel": 34,
       "runtime-intrinsic": 137,
       "specialist-capability": 22
     },
     "by_disposition": {
-      "compiled-source": 32,
+      "compiled-source": 34,
       "desktop-only": 13,
       "generated-wasm": 268,
       "portable-fallback": 589,
       "shared-core": 41
     },
     "by_status": {
-      "available": 473,
+      "available": 475,
       "desktop-only": 13,
       "fallback": 457
     }
@@ -69,6 +69,10 @@
     ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
+    ],
+    "matrix-combinatorial-invariants": [
+      "kernel:packed-combinatorial-integer-rational-production",
+      "kernel:packed-combinatorial-prime-production"
     ],
     "modular-symbols-weight-two": [
       "napi:@sagemath/sagejs-flint:p1List",
@@ -5857,6 +5861,30 @@
         "packed-binary64"
       ],
       "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
+    },
+    {
+      "id": "kernel:packed-combinatorial-integer-rational-production",
+      "family": "packed-combinatorial-integer-rational",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "matrix-combinatorial-invariants"
+      ],
+      "explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-combinatorial-prime-production",
+      "family": "packed-combinatorial-prime",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "matrix-combinatorial-invariants"
+      ],
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-graph-components-production",

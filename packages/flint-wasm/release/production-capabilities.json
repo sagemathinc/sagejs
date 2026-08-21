@@ -339,6 +339,7 @@
         "kernel:extension-polynomial-flint-production",
         "kernel:number-field-round4-state-production",
         "kernel:p1-heilbronn-production",
+        "kernel:packed-combinatorial-prime-production",
         "kernel:packed-polynomial-flint-production",
         "kernel:packed-prime-polynomial-production",
         "kernel:sparse-random-matrix-production",
@@ -358,6 +359,7 @@
         "kernel:number-field-discriminant-prefactor-production",
         "kernel:number-field-om-proof-production",
         "kernel:number-field-zeta-coefficients-production",
+        "kernel:packed-combinatorial-integer-rational-production",
         "kernel:packed-graph-components-production",
         "kernel:packed-integer-polynomial-production",
         "kernel:packed-rational-polynomial-production"

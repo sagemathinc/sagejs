@@ -35,6 +35,16 @@ const routes = [
     "sagejs/number_fields/zeta_coefficient_kernel.py",
     "route_probe_number_field",
   ],
+  [
+    "packed-combinatorial-integer-rational-production",
+    "sagejs/kernels/matrix/combinatorial.py",
+    "route_probe_combinatorial_exact",
+  ],
+  [
+    "packed-combinatorial-prime-production",
+    "sagejs/kernels/matrix/combinatorial.py",
+    "route_probe_combinatorial_prime",
+  ],
 ];
 
 function manifest() {
@@ -97,7 +107,7 @@ async function runtime(source = manifest()) {
   return { resolver, source };
 }
 
-test("authenticated pack routes observe graph, matrix, polynomial, P1, and number-field kernels", async () => {
+test("authenticated pack routes observe every function across split source packs", async () => {
   const {
     instrumentAuthenticatedWasmKernelResolver,
   } = await import("../wasm-pack-loader.mjs");
