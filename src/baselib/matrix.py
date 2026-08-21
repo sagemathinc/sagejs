@@ -8873,10 +8873,11 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
             integer_resource.close()
         return result
     if base is sage.ZZ or base is sage.QQ:
-        entries = runtime.integer_buffer(
-            [1 if row == col else 0 for row in range(size) for col in range(size)],
-            1,
-        )
+        identity_entries = []
+        for row in range(size):
+            for col in range(size):
+                identity_entries.append(1 if row == col else 0)
+        entries = runtime.integer_buffer(identity_entries, 1)
         parent = MatrixSpace(base, size, size)
         if base is sage.ZZ:
             return parent._from_canonical_integer_entries(entries)
