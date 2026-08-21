@@ -169,6 +169,7 @@ const integration = [
   "test/linear-combinatorial-invariants.cjs",
   "test/wasm-combinatorial-invariants.cjs",
   "test/wasm-multivariate-polynomial-core.cjs",
+  "test/wasm-multivariate-polynomial-public.cjs",
   "test/public-sparse-integer-linear-algebra.cjs",
   "test/wasm-arithmetic-hotspots.cjs",
   "test/wasm-analytic-public.cjs",

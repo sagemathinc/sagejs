@@ -109,6 +109,13 @@
       "rationale": "Bounded generation-tagged Wasm32 MPFR/Acb resources plus a finite expression transport. The GK21 and bisection loops are a reviewed compiler-limitation exception because the synchronous reactor cannot invoke host callbacks and source-transparent kernels cannot yet own MPFR/Acb resources."
     },
     {
+      "path": "packages/flint-wasm/src/multivariate.c",
+      "category": "host-adapter",
+      "review_status": "audited",
+      "lane": "distribution",
+      "rationale": "Fixed bounded Wasm32 buffers adapt caller-owned canonical packets to the host-neutral FLINT multivariate resultant core; no mathematical algorithm is implemented in this file."
+    },
+    {
       "path": "packages/flint-wasm/src/algebraic.c",
       "category": "host-adapter",
       "review_status": "accepted",

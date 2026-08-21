@@ -451,6 +451,27 @@
         "SageMath"
       ],
       "next": "Keep the packet domain finite and ship it only in the lazy exact-algebra specialist with public one-crossing route evidence."
+    },
+    {
+      "path": "packages/flint-wasm/src/multivariate.c",
+      "lines": 68,
+      "bytes": 1761,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "bounded Wasm32 ingress and egress buffer ownership",
+        "stable flat exports over the host-neutral FLINT resultant core",
+        "copy-length and capacity reporting without retained host pointers"
+      ],
+      "rationale": "This file contains only a fixed-size linear-memory adapter around the separately reviewed host-neutral FLINT multivariate core; all polynomial validation and mathematical work remains in that shared core and mature FLINT.",
+      "fallback": "Native Node uses its exact FLINT route; unsupported browser domains fail explicitly rather than selecting a heavyweight portable resultant.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep the six-export surface bounded and preserve one copied ingress and egress per public resultant."
     }
   ]
 }

@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/42 accelerated; 42 failed closed.
+Heavy workloads: 0/44 accelerated; 44 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,7 +12,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 89 | 0 |
+| `wasm-library` | 91 | 0 |
 | `wasm-compiled-source` | 13 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
@@ -34,6 +34,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | groups-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | hyperelliptic-curves | 2 | 2 | 0 | 2 | 0 | 0 |
 | modular-symbols | 2 | 1 | 0 | 1 | 0 | 1 |
+| multivariate-polynomials | 2 | 2 | 0 | 2 | 0 | 0 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
 | numerical | 4 | 4 | 0 | 4 | 0 | 0 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
@@ -61,6 +62,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:matrix-word-prime-flint` | dense-prime-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:sparse-integer-right-kernel` | sparse-exact-linear-algebra | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:moebius-range-batch` | combinatorics-number-theory | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:multivariate-resultant-packed` | multivariate-polynomials | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:analytic-gamma-xi-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:numeric-realfield-arithmetic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:numeric-special-functions` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
@@ -90,6 +92,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `performance:word-prime-matrix-128` | dense-prime-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:sparse-integer-right-kernel-192` | sparse-exact-linear-algebra | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:multivariate-resultant-packed` | multivariate-polynomials | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:extension-field-polynomial-5632` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:hyperelliptic-local-factors-100000` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:algebraic-matrix-8` | algebraic-numbers | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

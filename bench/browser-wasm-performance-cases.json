@@ -144,6 +144,15 @@
       "timeout_ms": 180000
     },
     {
+      "id": "multivariate-resultant-packed",
+      "family": "multivariate-polynomials",
+      "requires": [
+        { "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=PolynomialRing(ZZ,names=('x','y','z'))\nx,y,z=R.gens()\nleft=(x+y+z+1)^7+(x-y+2*z+3)^6+y^5*z\nright=(2*x-y+z+2)^6+(x+2*y-z+1)^5+z^6\nprint(left.resultant(right,x).number_of_terms())",
+      "timeout_ms": 180000
+    },
+    {
       "id": "extension-field-polynomial-5632",
       "family": "extension-fields",
       "requires": [

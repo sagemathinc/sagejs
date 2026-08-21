@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c8a45559ef85c52d69f9ecc0dffe5c67354334095b4d9e2cb12a7f5bdd406468",
+  "source_sha256": "e4a170d899e6cc67503ffe274fc46367c3c9210e3c673cae66682c6d0c7e5ee3",
   "counts": {
-    "total": 950,
+    "total": 951,
     "by_kind": {
       "declared-ffi-function": 412,
       "declared-ffi-resource": 29,
       "napi-export": 311,
       "production-kernel": 37,
       "runtime-intrinsic": 137,
-      "specialist-capability": 24
+      "specialist-capability": 25
     },
     "by_disposition": {
       "compiled-source": 37,
       "desktop-only": 13,
       "generated-wasm": 301,
       "portable-fallback": 556,
-      "shared-core": 43
+      "shared-core": 44
     },
     "by_status": {
-      "available": 513,
+      "available": 514,
       "desktop-only": 13,
       "fallback": 424
     }
@@ -114,6 +114,9 @@
     ],
     "moebius-range-packed": [
       "kernel:packed-moebius-range-production"
+    ],
+    "multivariate-resultant-packed": [
+      "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
     ],
     "number-field-cubic-headline": [
       "ffi:flint:fmpz_matrix_hnf",
@@ -11649,6 +11652,18 @@
         "Python parser"
       ],
       "explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
+    },
+    {
+      "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
+      "family": "multivariate-polynomials",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "exact-native-flint-or-explicit-browser-capability-error",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "MultivariatePolynomialElement.resultant over ZZ"
+      ],
+      "explanation": "Supported exact ZZ multivariate resultants run as one bounded receipt-authenticated FLINT Wasm call; unsupported domains fail explicitly in browsers."
     }
   ]
 }

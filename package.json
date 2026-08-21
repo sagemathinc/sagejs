@@ -290,6 +290,7 @@
     "bench:wasm-group-computation": "node bench/wasm-group-computation.cjs",
     "bench:wasm-sparse-integer-linear-algebra": "node bench/wasm-sparse-integer-linear-algebra.cjs",
     "bench:wasm-multivariate-polynomial": "node bench/wasm-multivariate-polynomial.cjs",
+    "bench:wasm-multivariate-public": "node bench/wasm-multivariate-public.cjs",
     "bench:wasm-numeric-symbolic": "node bench/wasm-numeric-symbolic.mjs",
     "bench:exact-polynomial-lazy-resource-ingress": "node bench/exact-polynomial-lazy-resource-ingress.cjs",
     "bench:native:ffi:slices": "node bench/compare-native-ffi-slices.cjs",

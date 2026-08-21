@@ -6543,6 +6543,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6701,6 +6702,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6762,6 +6764,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -6796,6 +6799,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -6943,6 +6947,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -7091,6 +7096,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7124,6 +7130,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7163,6 +7170,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7203,6 +7211,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7287,6 +7296,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7364,6 +7374,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"

@@ -12,6 +12,7 @@
         "elliptic-coefficients-smalljac-wasm",
         "elliptic-lseries-plot",
         "elliptic-lseries-values",
+        "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
         "napi:@sagemath/sagejs-flint:complexAdd",
         "napi:@sagemath/sagejs-flint:complexBesselI",
         "napi:@sagemath/sagejs-flint:complexDiv",

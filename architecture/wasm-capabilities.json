@@ -124,6 +124,15 @@
           "test/wasm-analytic-public.cjs"
         ]
       },
+      "multivariate-resultant-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/wasm-multivariate-polynomial-core.cjs",
+          "packages/flint-wasm/test/multivariate-backend.test.mjs",
+          "packages/flint-wasm/test/multivariate-public-workflow.test.mjs",
+          "test/wasm-multivariate-polynomial-public.cjs"
+        ]
+      },
       "native-public-fallback-differential": {
         "differential": true,
         "paths": [
@@ -328,6 +337,11 @@
         "id": "specialist:tree-sitter",
         "family": "compiler-frontend",
         "source": "packages/flint-wasm/compiler-worker.mjs"
+      },
+      {
+        "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
+        "family": "multivariate-polynomials",
+        "source": "packages/flint/src/multivariate_wasm_core.c"
       }
     ],
     "production_manifests": [
@@ -415,6 +429,9 @@
     ],
     "moebius-range-packed": [
       "kernel:packed-moebius-range-production"
+    ],
+    "multivariate-resultant-packed": [
+      "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
     ],
     "numeric-realfield-arithmetic": [
       "napi:@sagemath/sagejs-flint:realDiv"
@@ -20221,6 +20238,29 @@
       },
       "public_explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable.",
       "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
+    },
+    {
+      "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
+      "family": "multivariate-polynomials",
+      "source": "packages/flint/src/multivariate_wasm_core.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "exact-native-flint-or-explicit-browser-capability-error",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "MultivariatePolynomialElement.resultant over ZZ"
+      ],
+      "tests": [
+        "multivariate-resultant-wasm-differential"
+      ],
+      "review_note": "The bounded canonical sparse packet enters the mature FLINT fmpz_mpoly resultant once and returns one copied canonical result with no host callbacks.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/scripts/build.cjs"
+      },
+      "public_explanation": "Supported exact ZZ multivariate resultants run as one bounded receipt-authenticated FLINT Wasm call; unsupported domains fail explicitly in browsers.",
+      "shared_core": "packages/flint/src/multivariate_wasm_core.c"
     },
     {
       "id": "specialist:sagepack",
