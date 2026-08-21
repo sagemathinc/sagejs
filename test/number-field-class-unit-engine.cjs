@@ -396,6 +396,123 @@ print("targeted")
   assert.equal(output, "targeted");
 });
 
+test("relation search continues past dependency count until unit log rank is full", () => {
+  const output = run(String.raw`
+class FakeRecord:
+    row = (1,)
+
+class FakeCollector:
+    def __init__(self, order, factor_base):
+        self.order = order
+        self.factor_base = tuple(factor_base)
+        self.records = []
+
+class FakeState:
+    def __init__(self):
+        self.ideals_tested = 0
+        self.candidates_tested = 0
+        self.relations_admitted = 0
+    def to_dict(self):
+        return {
+            "ideals_tested": self.ideals_tested,
+            "candidates_tested": self.candidates_tested,
+            "relations_admitted": self.relations_admitted,
+        }
+
+class FakeSearch:
+    def __init__(self, collector, **options):
+        self.collector = collector
+        self.state = options.get("state") or FakeState()
+        self.max_candidates_per_ideal = options["max_candidates_per_ideal"]
+        self.random_terms = options["random_terms"]
+        self.coefficient_bound = options["coefficient_bound"]
+
+class FakeRelations:
+    ExactRelationCollector = FakeCollector
+    LLLRelationSearch = FakeSearch
+    class RelationSearchState:
+        @classmethod
+        def from_dict(cls, payload):
+            raise AssertionError("no restored state expected")
+    @staticmethod
+    def initial_rational_prime_relations(collector):
+        for _index in range(5):
+            collector.records.append(FakeRecord())
+
+class FakePresentation:
+    def __init__(self, relation_count):
+        self.rank = 1
+        self.order = 1
+        self.invariants = ()
+        self.dependency_transforms = tuple(range(relation_count - 1))
+
+class FakeMatrix:
+    @staticmethod
+    def extract_relation_presentation(rows, columns, require_full_rank=False):
+        assert columns == 1
+        return FakePresentation(len(rows))
+
+class FakePrimeNorm:
+    _numerator = 2
+
+class FakePrime:
+    def norm(self):
+        return FakePrimeNorm()
+
+class Components:
+    context = None
+    factored = None
+    factor_base = object()
+    relations = FakeRelations
+    matrix = FakeMatrix
+    analytic = object()
+    def missing(self):
+        return ()
+
+class AdaptiveProbe(ClassUnitGroupEngine):
+    def _unit_logarithmic_rank(self, records, presentation, unit_rank):
+        return 1 if len(records) == 5 else 2
+    def _relation_ideal(self, search, factor_base, attempt, coefficient_bound):
+        return object(), (1,), "adaptive-probe"
+    def _search_relation_ideal(
+        self,
+        search,
+        ideal,
+        source_row,
+        provenance,
+        large_prime_bound,
+        stop_after=2,
+    ):
+        search.state.ideals_tested += 1
+        search.state.candidates_tested += 1
+        search.state.relations_admitted += 1
+        search.collector.records.append(FakeRecord())
+        return 1
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+engine = AdaptiveProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=ClassUnitEngineLimits(max_relation_attempts=3, max_relations=12),
+)
+collector, presentation = engine._relations((FakePrime(),), 2)
+assert len(presentation.dependency_transforms) == 5
+assert engine._resource_usage["relation_attempts"] == 1
+assert engine._relation_unit_log_rank == 2
+stage = engine.stages[-1]
+assert stage.name == "relations" and stage.state == "complete"
+assert stage.details["unit_log_rank"] == 2
+assert stage.details["unit_rank_target"] == 2
+assert _floating_matrix_rank(((1.0, 2.0), (2.0, 4.0))) == 1
+assert _floating_matrix_rank(((1.0, 2.0), (2.0, 5.0))) == 2
+print("adaptive-unit-rank")
+`);
+  assert.equal(output, "adaptive-unit-rank");
+});
+
 test("explicit Minkowski mode selects an unconditional discovery base", () => {
   const output = run(String.raw`
 class ProbeComponents:
