@@ -13,6 +13,7 @@ function fakeAlgebraicInstance(api) {
   const output = 1_100_000;
   const roots = 2_200_000;
   const multiplicities = roots + 1024;
+  const matrixEntries = multiplicities + 1024;
   let nextHandle = 1;
   let resultHandle = 0;
   let resultValue = 0;
@@ -40,6 +41,7 @@ function fakeAlgebraicInstance(api) {
     sagejs_wasm_algebraic_output_length: () => outputLength,
     sagejs_wasm_algebraic_root_handles: () => roots,
     sagejs_wasm_algebraic_root_multiplicities: () => multiplicities,
+    sagejs_wasm_algebraic_matrix_entry_handles: () => matrixEntries,
     sagejs_wasm_algebraic_result_count: () => resultCount,
     sagejs_wasm_algebraic_result_handle: () => resultHandle,
     sagejs_wasm_algebraic_result_value: () => resultValue,
@@ -111,6 +113,17 @@ function fakeAlgebraicInstance(api) {
       return 0;
     },
     sagejs_wasm_algebraic_deserialize: allocate,
+    sagejs_wasm_algebraic_matrix_live_count: () => 0,
+    sagejs_wasm_algebraic_matrix_close: () => 2,
+    sagejs_wasm_algebraic_matrix_create: () => 7,
+    sagejs_wasm_algebraic_matrix_binary: () => 7,
+    sagejs_wasm_algebraic_matrix_unary: () => 7,
+    sagejs_wasm_algebraic_matrix_scalar_mul: () => 7,
+    sagejs_wasm_algebraic_matrix_entry: () => 7,
+    sagejs_wasm_algebraic_matrix_det: () => 7,
+    sagejs_wasm_algebraic_matrix_rank: () => 7,
+    sagejs_wasm_algebraic_matrix_equal: () => 7,
+    sagejs_wasm_algebraic_matrix_charpoly: () => 7,
   };
   return { exports };
 }

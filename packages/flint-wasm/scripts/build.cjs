@@ -466,6 +466,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_output_length",
   "sagejs_wasm_algebraic_root_handles",
   "sagejs_wasm_algebraic_root_multiplicities",
+  "sagejs_wasm_algebraic_matrix_entry_handles",
   "sagejs_wasm_algebraic_result_count",
   "sagejs_wasm_algebraic_result_handle",
   "sagejs_wasm_algebraic_result_value",
@@ -490,6 +491,17 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_format",
   "sagejs_wasm_algebraic_serialize",
   "sagejs_wasm_algebraic_deserialize",
+  "sagejs_wasm_algebraic_matrix_live_count",
+  "sagejs_wasm_algebraic_matrix_close",
+  "sagejs_wasm_algebraic_matrix_create",
+  "sagejs_wasm_algebraic_matrix_binary",
+  "sagejs_wasm_algebraic_matrix_unary",
+  "sagejs_wasm_algebraic_matrix_scalar_mul",
+  "sagejs_wasm_algebraic_matrix_entry",
+  "sagejs_wasm_algebraic_matrix_det",
+  "sagejs_wasm_algebraic_matrix_rank",
+  "sagejs_wasm_algebraic_matrix_equal",
+  "sagejs_wasm_algebraic_matrix_charpoly",
 ];
 const algebraicLinkedSources = [
   path.join(packageRoot, "src", "algebraic.c"),
@@ -501,9 +513,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 31 ||
+if (declaredAlgebraicExports.length !== 43 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 31-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 43-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",
