@@ -113,6 +113,52 @@ print("quadratic-class-unit-corpus-ok")
   assert.equal(output, "quadratic-class-unit-corpus-ok");
 });
 
+test("real quadratic class numbers stream cycles without group materialization", () => {
+  const cases = JSON.stringify(fixture.cases);
+  const output = runSage(String.raw`
+from sagejs.number_fields.quadratic_class_units import real_quadratic_class_number
+
+cases = ${cases}
+for expected in cases:
+    discriminant = expected["discriminant"]
+    ordinary = real_quadratic_class_number(discriminant)
+    narrow = real_quadratic_class_number(discriminant, narrow=True)
+    expected_ordinary = 1
+    for invariant in expected["ordinary_invariants"]:
+        expected_ordinary *= invariant
+    expected_narrow = 1
+    for invariant in expected["narrow_invariants"]:
+        expected_narrow *= invariant
+    assert ordinary.order() == expected_ordinary
+    assert narrow.order() == expected_narrow
+    assert ordinary.certificate.reduced_forms_checked == expected["reduced_forms"]
+    assert ordinary.certificate.proper_cycles == expected["proper_cycles"]
+    assert not ordinary.materializes_all_reduced_forms
+    assert not ordinary.plan.materializes_all_reduced_forms
+    assert ordinary.proof_status == "exact-unconditional"
+    if discriminant in (12, 60):
+        assert ordinary.certificate.verify()
+        assert narrow.certificate.verify()
+
+# Public class-number requests use the streaming counter and leave the
+# materializing real class-group backend untouched.  Narrow class numbers have
+# the same independent path; requesting the group afterward still supplies its
+# generators and invariant factors.
+x = polygen(QQ, "x")
+field = NumberField(x*x - 15, "a")
+assert field.class_number() == 2
+assert field.narrow_class_number() == 4
+assert field.class_group().invariants() == (2,)
+assert field.narrow_class_group().invariants() == (2, 2)
+
+imaginary = NumberField(x*x + x + 6, "i")
+assert imaginary.narrow_class_number() == imaginary.class_number() == 3
+
+print("quadratic-streaming-class-number-ok")
+`);
+  assert.equal(output, "quadratic-streaming-class-number-ok");
+});
+
 test("exact Minkowski triviality handles alternate field presentations", () => {
   const output = runSage(String.raw`
 from sagejs.number_fields.quadratic_class_units import exact_minkowski_triviality, quadratic_minkowski_triviality, real_quadratic_class_unit_context
@@ -312,7 +358,7 @@ from sagejs.number_fields.quadratic_class_units import is_fundamental_discrimina
 plan = real_quadratic_class_group_plan(2005)
 assert plan.algorithm == "quadratic-forms"
 assert plan.root_floor == 44
-assert plan.enumeration_checks == 3872
+assert plan.enumeration_checks == 484
 assert plan.supported
 assert plan.exact_integer_storage
 assert plan.materializes_all_reduced_forms
@@ -340,7 +386,7 @@ except ValueError:
 for operation in (
     lambda: real_quadratic_fundamental_unit(73, max_steps=19),
     lambda: real_quadratic_class_group(401, narrow=True, max_reduced_forms=37),
-    lambda: real_quadratic_class_group(401, max_enumeration_checks=799),
+    lambda: real_quadratic_class_group(401, max_enumeration_checks=99),
 ):
     try:
         operation()

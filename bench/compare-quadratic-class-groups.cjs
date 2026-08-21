@@ -10,6 +10,11 @@ const flint = require(join(root, "packages", "flint"));
 const gp = process.env.PARI_GP || "gp";
 const magma = process.env.MAGMA || "/home/user/bin/magma";
 const json = process.argv.includes("--json");
+const realCase = {
+  discriminant: 10000001n,
+  classNumber: 1n,
+  narrowClassNumber: 2n,
+};
 
 const cases = [
   { discriminant: -10000019n, classNumber: 1275n, repetitions: 100 },
@@ -72,6 +77,56 @@ function runExternal(command, args, input) {
     });
   }
   return { available: true, rows };
+}
+
+function sagejsInvocation(args) {
+  if (process.env.SAGEJS_TEST_EXECUTABLE) {
+    return [process.env.SAGEJS_TEST_EXECUTABLE, args];
+  }
+  if (process.platform === "win32") {
+    return [process.execPath, [join(root, "bin", "sagejs-source.cjs"), ...args]];
+  }
+  return [join(root, "bin", "sagejs"), args];
+}
+
+function realStreamingResult() {
+  const [executable, arguments_] = sagejsInvocation(["--python", "-"]);
+  const source = `
+from sagejs.number_fields.quadratic_class_units import real_quadratic_class_number
+import time
+D = ${realCase.discriminant}
+started = time.perf_counter()
+ordinary = real_quadratic_class_number(D)
+narrow = real_quadratic_class_number(D, narrow=True)
+seconds = time.perf_counter() - started
+print("RESULT_REAL", ordinary.order(), narrow.order(), ordinary.certificate.reduced_forms_checked, ordinary.plan.enumeration_checks, ordinary.materializes_all_reduced_forms, seconds)
+`;
+  const result = spawnSync(executable, arguments_, {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    input: source,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    process.stderr.write(result.stdout || "");
+    process.stderr.write(result.stderr || "");
+    throw new Error(`Sage.js real quadratic benchmark exited with status ${result.status}`);
+  }
+  const match = result.stdout.match(
+    /RESULT_REAL\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(True|False)\s+([0-9.]+)/,
+  );
+  if (!match) throw new Error("Sage.js real quadratic benchmark emitted no result");
+  return {
+    discriminant: realCase.discriminant.toString(),
+    classNumber: match[1],
+    narrowClassNumber: match[2],
+    reducedFormsChecked: Number(match[3]),
+    preflightChecks: Number(match[4]),
+    materializesAllReducedForms: match[5] === "True",
+    seconds: Number(match[6]),
+    semantics: "exact-unconditional streamed reduced-form cycle count",
+  };
 }
 
 function pariResults() {
@@ -186,9 +241,17 @@ for (const row of rows) {
   row.medianSeconds = median(row.samples);
 }
 
+const realQuadratic = realStreamingResult();
+realQuadratic.correct =
+  BigInt(realQuadratic.classNumber) === realCase.classNumber &&
+  BigInt(realQuadratic.narrowClassNumber) === realCase.narrowClassNumber &&
+  !realQuadratic.materializesAllReducedForms;
+correct &&= realQuadratic.correct;
+
 const report = {
   generatedAt: new Date().toISOString(),
   correct,
+  realQuadratic,
   rows: rows.map((row) => ({
     ...row,
     discriminant: row.discriminant.toString(),
@@ -229,6 +292,18 @@ if (json) {
       `${unavailable.runtime}: unavailable — ${unavailable.reason}`,
     );
   }
+  console.log(
+    `\n${realQuadratic.discriminant} Sage.js real class-number stream`.padEnd(54),
+    `${(realQuadratic.seconds * 1000).toFixed(3)} ms`.padStart(12),
+    realQuadratic.semantics,
+    realQuadratic.correct ? "" : "WRONG ANSWER",
+  );
+  console.log(
+    `  h=${realQuadratic.classNumber}, h+=${realQuadratic.narrowClassNumber}, ` +
+      `${realQuadratic.reducedFormsChecked} reduced forms, ` +
+      `${realQuadratic.preflightChecks} bounded divisor trials, ` +
+      `materializes classes=${realQuadratic.materializesAllReducedForms}`,
+  );
   console.log(`\ncorrectness: ${correct ? "PASS" : "FAIL"}`);
 }
 

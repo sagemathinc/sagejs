@@ -1,0 +1,75 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quadratic-q3-completion",
+  "title": "Large quadratic class-group completion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace bounded exhaustive real-quadratic candidate scanning with an exact compact class-cycle implementation and preserve explicit resource/proof routing",
+  "base_commit": "abf1a593720b4924bd61a94ad992ed25528bbd07",
+  "claims": [
+    "src/lib/sagejs/number_fields/quadratic_class_units.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-quadratic-class-units.cjs",
+    "bench/compare-quadratic-class-groups.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/Qfb.c",
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch1.c"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI exact quadratic class and narrow class groups",
+      "Magma quadratic class groups"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/compare-quadratic-class-groups.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.066,
+      "started_at": "2026-08-21T14:32:03.527Z",
+      "commit": "abf1a593720b4924bd61a94ad992ed25528bbd07",
+      "workspace_fingerprint": "7e520cc8145d8c1be9423e0780a16d9a4b8e8e5f6f5f313a344817413ff45be4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.434,
+      "started_at": "2026-08-21T14:32:25.933Z",
+      "commit": "abf1a593720b4924bd61a94ad992ed25528bbd07",
+      "workspace_fingerprint": "7e520cc8145d8c1be9423e0780a16d9a4b8e8e5f6f5f313a344817413ff45be4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Real quadratic class-number requests now stream an exact divisor-based reduced-form enumeration and count complete rho cycles without constructing invariant factors, generators, subgroup tables, or class lists. The same exact path supplies a public narrow_class_number method. The D=10000001 benchmark returns h=1 and h+=2 from 4408 forms with constant-memory class handling, agreeing with Sage/PARI and Magma.",
+    "risks": [
+      "Full large real quadratic class-group and narrow-class-group invariant factors still materialize representatives inside the bounded quadratic-forms backend; a narrow relation/BSGS backend remains future work.",
+      "The pure Python Sage.js stream is exact but takes about 13.6 seconds for ordinary plus narrow D=10000001 on this Linux x64 host; source-transparent native lowering or modular-root enumeration would be the next performance step.",
+      "The lane-required pnpm test:native and exact-SHA non-Linux platform receipts are intentionally deferred to central integration; no native boundary or dependency changed."
+    ],
+    "next_steps": [
+      "Cherry-pick the coherent implementation commit onto current main and run pnpm test:native plus exact-SHA Windows x64, Linux arm64, and macOS arm64 focused validation.",
+      "Implement a narrow Buchmann--McCurley/BSGS presentation backend before claiming unbounded narrow invariant-factor support."
+    ]
+  }
+}
