@@ -6,7 +6,7 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Extend exact factor-base reliability and selective-construction performance evidence across representative degree 6--10 fields, including mixed splitting and index-dividing primes",
+  "objective": "Make factor-base memory caps coefficient-height-aware and fail closed against actual canonical record limb growth while preserving exact selective construction",
   "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
   "claims": [
     "src/lib/sagejs/number_fields/class_group_factor_base.py",
@@ -150,18 +150,57 @@
       "commit": "37c0e003ee0150a6c03fd471de79b15f43b5ebc0",
       "workspace_fingerprint": "0ea8fd917370667266f950c73ea2686fd44044f3097edd3c15d60d62ab4d8ad0",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-factor-base.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.33,
+      "started_at": "2026-08-21T10:06:53.376Z",
+      "commit": "96475ec94ba5b7cb8938acad089c53829429970f",
+      "workspace_fingerprint": "8adfd57a77296de6537d7817070ee98e8f70f429b18396d134ebfac7df5cc0eb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_factor_base.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.512,
+      "started_at": "2026-08-21T10:08:07.735Z",
+      "commit": "96475ec94ba5b7cb8938acad089c53829429970f",
+      "workspace_fingerprint": "8adfd57a77296de6537d7817070ee98e8f70f429b18396d134ebfac7df5cc0eb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.549,
+      "started_at": "2026-08-21T10:08:09.873Z",
+      "commit": "96475ec94ba5b7cb8938acad089c53829429970f",
+      "workspace_fingerprint": "8adfd57a77296de6537d7817070ee98e8f70f429b18396d134ebfac7df5cc0eb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.375,
+      "started_at": "2026-08-21T10:08:43.113Z",
+      "commit": "96475ec94ba5b7cb8938acad089c53829429970f",
+      "workspace_fingerprint": "8adfd57a77296de6537d7817070ee98e8f70f429b18396d134ebfac7df5cc0eb",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Extends the exact Minkowski factor-base fixture through one field in every degree 6--10, including mixed splitting, ramification, a transformed sextic with equation-index prime 2, canonical exact generators, and independent full-decomposition HNF differentials. The representative sweep constructs 36 eligible ideals instead of 78 full-decomposition siblings in 13.71 seconds, with five selective authenticated replays in 1.96 seconds. Record decoding now uses the selective p-maximal path and retains the certified full fallback at index primes.",
+    "summary": "Adds coefficient-height-aware factor-base preflight and deterministic canonical encoded/limb accounting for every retained record. Exact cumulative bytes are checked before cache insertion, exposed in progress, preserved across resumed streams, and fail closed without retaining the oversized record or its transient selected-prime group. A 262145-bit coefficient in a synthetic degree-two presentation now trips preflight instead of passing the former fixed-size estimate; the degree 2--10 exact differential suite and integrated engine remain green.",
     "risks": [
       "The mandatory arithmetic-algebra pnpm test:native gate remains intentionally pending for central integration; focused factor-base and integrated engine runtime tests, standalone Pyright, and strict-baselib receipts pass on the updated base.",
       "The selective path uses established internal Dedekind--Kummer constructors from prime_ideals.py because this lane cannot change the shared prime-ideal API; a later integration-owned public selective constructor should replace that private coupling.",
-      "The degree 6--10 offline fixture is backed by certified exact Sage.js decomposition differentials; independent Sage/PARI/Magma capture for those same fields is being coordinated in the class-unit oracle lane and is not duplicated in this claimed fixture."
+      "Preflight is deliberately conservative and may reject a plan whose eventual records would be smaller; actual incremental accounting remains authoritative and prevents underestimates from crossing max_memory_bytes."
     ],
     "next_steps": [
       "Integration owns the pending pnpm test:native and broad build/precompile gates.",
-      "Merge the class-unit oracle lane's external degree 6--10 Sage/PARI/Magma timing and invariant corpus when available.",
       "Promote the selective p-maximal constructor into the shared prime-ideal API when that integration-owned surface next changes; the canonical record schema needs no migration."
     ]
   }
