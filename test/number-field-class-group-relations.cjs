@@ -671,8 +671,17 @@ print(json.dumps({
 `;
 
 test("exact class-group relations admit, replay, mutate, and search deterministically", () => {
-  const executable = process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
-  const result = spawnSync(executable, ["--python", "-"], {
+  const configured = process.env.SAGEJS_TEST_EXECUTABLE;
+  const executable =
+    configured ||
+    (process.platform === "win32"
+      ? process.execPath
+      : join(root, "bin", "sagejs"));
+  const arguments_ =
+    process.platform === "win32" && !configured
+      ? [join(root, "bin", "sagejs-source.cjs"), "--python", "-"]
+      : ["--python", "-"];
+  const result = spawnSync(executable, arguments_, {
     cwd: root,
     encoding: "utf8",
     input: source,
