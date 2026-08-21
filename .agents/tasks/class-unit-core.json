@@ -2,15 +2,18 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "class-unit-core",
-  "title": "Class-unit proof-pass checkpoints",
+  "title": "Secure class-unit checkpoint publication",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
-  "objective": "Implement authenticated resumable Minkowski proof records and deterministic parallel partitions with atomic incremental checkpoint and cancellation control",
-  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+  "objective": "Publish class-unit checkpoints through unpredictable exclusively created same-directory files, preserve the descriptor through write and fsync, atomically replace, and sync the parent directory where supported",
+  "base_commit": "e8f6547c355e8eaef51ccf22dc26634460565673",
   "claims": [
     "src/lib/sagejs/number_fields/factored_elements.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
+    "src/lib/os.py",
+    "tools/host.ts",
+    "test/os-module.cjs",
     "test/number-field-class-unit-context.cjs",
     "test/fixtures/number-field-class-unit-context.json"
   ],
@@ -35,8 +38,10 @@
   "validation": [
     "pnpm test:baselib:strict",
     "pnpm test:native",
-    "node --test test/number-field-class-unit-context.cjs",
-    "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py"
+    "node test/os-module.cjs",
+    "node --test --test-name-pattern='checkpoint path writes' test/number-field-class-unit-context.cjs",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_context.py",
+    "python -m py_compile src/lib/os.py src/lib/sagejs/number_fields/class_unit_context.py"
   ],
   "runs": [
     {
@@ -98,22 +103,62 @@
       "commit": "d669b262f4fa2565261ef214f405f6e214a6cbea",
       "workspace_fingerprint": "0ea90ad988b0a5b603e0bf9039b052658690dcfb6db50ce7d08e39094b0e50dc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/os-module.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.454,
+      "started_at": "2026-08-21T10:21:37.744Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=checkpoint path writes test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.11,
+      "started_at": "2026-08-21T10:21:39.804Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.664,
+      "started_at": "2026-08-21T10:21:41.528Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/os.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.082,
+      "started_at": "2026-08-21T10:21:43.814Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added authenticated MinkowskiProofProgressRecord, MinkowskiProofPartition, and MinkowskiProofProgress records for unconditional proof passes. Exact prime fingerprints, rational bounds, theorem, deterministic strided partition assignment, and producer-selected relation/generator/saturation dependency hashes define one stable plan hash. Immutable append/merge operations enforce assigned-prefix coverage; replay authenticates every nested record and partition and supports producer decoders and semantic verifiers. ClassUnitCheckpoint now begins or restores a matching proof plan and atomically checkpoints either one accepted proof prime or a worker partition, saving in a finally boundary so callback-triggered cancellation cannot lose accepted work. The focused regression interrupts after the third accepted prime, resumes exact pending indices, completes three partitions, rejects or exposes prime/relation/generator/saturation/record/coverage mutations, and verifies canonical replay.",
+    "summary": "Replaced predictable pathname-reopened checkpoint temporaries with 128-bit random same-directory candidates created atomically and exclusively at mode 0600. Sage.js now exposes minimal descriptor open/write/fsync/close support through the Node host: exclusive creation maps to `wx`, writes and fsync operate on the original descriptor, short writes are retried, the descriptor closes before atomic replace, and the parent directory is fsynced on supported non-Windows hosts. Collision, pre-created symlink, post-open unlink/symlink replacement, restrictive-mode, cleanup, partial-write, and durability-order regressions cover both the generic os boundary and the class-unit publisher.",
     "risks": [
-      "Hashes authenticate checkpoint consistency rather than origin; mathematical coordinates, witnesses, and saturation claims remain intentionally owned by producer-supplied record verifiers.",
-      "Atomic path replacement protects the previous complete checkpoint, but the helper does not fsync file or directory metadata and does not coordinate concurrent writers to the same destination.",
-      "Parallel workers merge deterministic authenticated prefixes; scheduling and interprocess transport remain engine policy, and divergent evidence for the same assigned index is rejected.",
-      "An authenticated truncated proof plan is valid resumable state with complete=False; callers must never upgrade the proof label until complete is true and producer verification succeeds.",
-      "Broad native and merged-suite gates were deferred to integration at coordinator request; the recorded receipts are the focused Sage.js runtime regression and direct zero-error Pyright check."
+      "The parent-directory fsync is intentionally skipped on Windows and tolerates platform errors that explicitly report the operation unsupported; file-descriptor fsync remains mandatory.",
+      "The descriptor API supports the two combinations needed here (read-only and exclusive writable creation), not the complete CPython os.open flag matrix.",
+      "Atomic publication does not arbitrate multiple legitimate writers targeting the same final checkpoint; the last atomic replacement wins.",
+      "The arithmetic-algebra lane claims were narrowly expanded to shared host/os files with explicit coordinator authorization because genuine same-descriptor safety cannot be implemented in the checkpoint module alone.",
+      "The lane checker still reports the authorized src/lib/os.py and tools/host.ts claims as outside its static arithmetic-algebra allowlist; integration must review those two shared-file changes explicitly.",
+      "Broad native and merged-suite gates were deferred; focused Sage.js host/context runtime regressions, ordinary CPython parsing, and direct zero-error Pyright are recorded."
     ],
     "next_steps": [
-      "Merge the engine lane's high-level proof-plan hooks and exercise cancellation/resume during the real Minkowski prime-ideal loop.",
-      "Bind every uniformly available relation presentation, generator, and saturation digest in dependency_hashes and replay accepted records through the class-group proof verifier.",
-      "Keep conditional and unconditional cache entries separate by forking the immutable proof state only after progress.complete and semantic replay succeed.",
-      "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after the controller and engine commits merge."
+      "Run the full stdlib and class-unit suites on merged main, including native Windows CI for the `wx`/fsync/replace path.",
+      "Consider expanding os.open only when another audited caller needs additional flag combinations; do not silently accept unsupported semantics.",
+      "Retain the descriptor-preserving host operations if the built-in file object is later refactored, because reopening a temp pathname after exclusive creation reintroduces the race."
     ]
   }
 }

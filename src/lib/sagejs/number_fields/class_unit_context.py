@@ -9,6 +9,7 @@ verifiers.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -1353,22 +1354,142 @@ def _checkpoint_text(payload: dict[str, Any], maximum_bytes: int) -> str:
     return text
 
 
-def _write_checkpoint_path(path: str, text: str, content_hash: str) -> None:
+def _sync_not_supported(error: OSError) -> bool:
+    unsupported = {
+        getattr(errno, "EINVAL", -1),
+        getattr(errno, "ENOSYS", -1),
+        getattr(errno, "ENOTSUP", -1),
+        getattr(errno, "EOPNOTSUPP", -1),
+    }
+    return getattr(error, "errno", None) in unsupported
+
+
+def _sync_parent_directory(path: str) -> None:
+    if os.name == "nt":
+        return
+    native_open = getattr(os, "open", None)
+    native_close = getattr(os, "close", None)
+    sync = getattr(os, "fsync", None)
+    read_only = getattr(os, "O_RDONLY", None)
+    if (
+        not callable(native_open)
+        or not callable(native_close)
+        or not callable(sync)
+        or not isinstance(read_only, int)
+    ):
+        return
+    flags = read_only
+    directory_flag = getattr(os, "O_DIRECTORY", 0)
+    close_on_exec = getattr(os, "O_CLOEXEC", 0)
+    if isinstance(directory_flag, int):
+        flags |= directory_flag
+    if isinstance(close_on_exec, int):
+        flags |= close_on_exec
+    directory = os.path.dirname(os.path.abspath(path)) or "."
+    try:
+        descriptor = native_open(directory, flags)
+    except OSError as error:
+        if _sync_not_supported(error):
+            return
+        raise
+    try:
+        try:
+            sync(descriptor)
+        except OSError as error:
+            if not _sync_not_supported(error):
+                raise
+    finally:
+        native_close(descriptor)
+
+
+def _checkpoint_temporary_path(path: str) -> str:
+    directory = os.path.dirname(path) or "."
+    basename = os.path.basename(path)
+    token = os.urandom(16).hex()
+    return os.path.join(directory, "." + basename + ".tmp-" + token)
+
+
+def _open_exclusive_checkpoint(path: str) -> int:
+    native_open = getattr(os, "open", None)
+    write_only = getattr(os, "O_WRONLY", None)
+    create = getattr(os, "O_CREAT", None)
+    exclusive = getattr(os, "O_EXCL", None)
+    if (
+        callable(native_open)
+        and isinstance(write_only, int)
+        and isinstance(create, int)
+        and isinstance(exclusive, int)
+    ):
+        flags = write_only | create | exclusive
+        no_follow = getattr(os, "O_NOFOLLOW", 0)
+        close_on_exec = getattr(os, "O_CLOEXEC", 0)
+        binary = getattr(os, "O_BINARY", 0)
+        for optional_flag in (no_follow, close_on_exec, binary):
+            if isinstance(optional_flag, int):
+                flags |= optional_flag
+        descriptor = native_open(path, flags, 0o600)
+        if isinstance(descriptor, bool) or not isinstance(descriptor, int):
+            raise TypeError("os.open() did not return a file descriptor")
+        return descriptor
+    raise NotImplementedError(
+        "secure checkpoint writes require descriptor-level exclusive creation"
+    )
+
+
+def _write_checkpoint_descriptor(descriptor: int, data: bytes) -> None:
+    write = getattr(os, "write", None)
+    sync = getattr(os, "fsync", None)
+    if not callable(write) or not callable(sync):
+        raise NotImplementedError(
+            "secure checkpoint writes require descriptor write and fsync"
+        )
+    offset = 0
+    while offset < len(data):
+        written = write(descriptor, data[offset:])
+        if isinstance(written, bool) or not isinstance(written, int) or written <= 0:
+            raise OSError(errno.EIO, "checkpoint descriptor write made no progress")
+        if written > len(data) - offset:
+            raise OSError(errno.EIO, "checkpoint descriptor write over-reported bytes")
+        offset += written
+    sync(descriptor)
+
+
+def _write_checkpoint_path(path: str, text: str) -> None:
     if path == "":
         raise ValueError("a checkpoint destination path cannot be empty")
-    temporary = path + ".tmp-" + str(os.getpid()) + "-" + content_hash[:16]
+    temporary = None
+    descriptor = None
     try:
-        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
-            handle.write("\n")
-            handle.flush()
-        os.replace(temporary, path)
-    except Exception:
+        for _attempt in range(128):
+            candidate = _checkpoint_temporary_path(path)
+            try:
+                descriptor = _open_exclusive_checkpoint(candidate)
+            except FileExistsError:
+                continue
+            temporary = candidate
+            break
+        if temporary is None:
+            raise FileExistsError(
+                "could not reserve a unique checkpoint temporary file"
+            )
+        if descriptor is None:
+            raise AssertionError("a reserved checkpoint lost its descriptor")
         try:
-            if os.path.exists(temporary):
-                os.remove(temporary)
-        except Exception:
-            pass
+            _write_checkpoint_descriptor(descriptor, (text + "\n").encode("utf-8"))
+        finally:
+            os.close(descriptor)
+            descriptor = None
+        os.replace(temporary, path)
+        temporary = None
+        _sync_parent_directory(path)
+    except BaseException:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
         raise
 
 
@@ -1398,11 +1519,7 @@ def save_class_unit_checkpoint(
     content_hash = payload["content_sha256"]
     text = _checkpoint_text(payload, maximum)
     if isinstance(destination, str):
-        _write_checkpoint_path(
-            path=destination,
-            text=text,
-            content_hash=content_hash,
-        )
+        _write_checkpoint_path(path=destination, text=text)
     else:
         save = getattr(destination, "save", None)
         if callable(save):
