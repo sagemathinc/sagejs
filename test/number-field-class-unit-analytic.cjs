@@ -73,6 +73,8 @@ evidence = UnitSaturationEvidence(
     method="exact-local-pth-root-obstruction",
     certificate=SaturationCertificate(2),
     rigorous=True,
+    precision_history=[32, 64, 128],
+    decisive_precision_bits=128,
 )
 saturation = validate_unit_saturation(complete, [evidence], required_primes=[2])
 assert saturation.rigorous and saturation.saturated
@@ -85,6 +87,30 @@ unchecked = UnitSaturationEvidence(
     rigorous=False,
 )
 assert not validate_unit_saturation(complete, [unchecked]).rigorous
+stale_precision = UnitSaturationEvidence(
+    5, True, method="exact-local-pth-root-obstruction",
+    certificate=SaturationCertificate(5), rigorous=True,
+    precision_history=[32, 64], decisive_precision_bits=32,
+)
+assert not validate_unit_saturation(complete, [stale_precision]).rigorous
+try:
+    UnitSaturationEvidence(
+        7, True, method="invalid-history",
+        certificate=SaturationCertificate(7), rigorous=True,
+        precision_history=[32, 96], decisive_precision_bits=96,
+    )
+    raise AssertionError("a nondoubling saturation retry was accepted")
+except ValueError:
+    pass
+try:
+    UnitSaturationEvidence(
+        7, False, method="missing-enlargement",
+        certificate=SaturationCertificate(7), rigorous=True,
+        precision_history=[32], decisive_precision_bits=32,
+    )
+    raise AssertionError("nonmaximal evidence omitted its enlargement index")
+except ValueError:
+    pass
 print("unit-lattice-ok")
 `);
   assert.equal(output, "unit-lattice-ok");
@@ -132,7 +158,7 @@ calls = []
 def escalating_provider(precision):
     calls.append(precision)
     if precision == 64:
-        return [[RealBall("-0.1", "0.1", precision_bits=precision)]]
+        return [[RealBall("-1", "1", precision_bits=precision)]]
     return [[RealBall("0.48", "0.49", precision_bits=precision)]]
 refined = certified_regulator_enclosure(
     escalating_provider, 1, precision_bits=64,
@@ -140,6 +166,20 @@ refined = certified_regulator_enclosure(
 )
 assert calls == [64, 128]
 assert refined.precision_history == (64, 128)
+assert len(refined.determinant_widths) == 2
+
+def inconsistent_provider(precision):
+    if precision == 64:
+        return [[RealBall("-0.1", "0.1", precision_bits=precision)]]
+    return [[RealBall("0.48", "0.49", precision_bits=precision)]]
+try:
+    certified_regulator_enclosure(
+        inconsistent_provider, 1, precision_bits=64,
+        absolute_tolerance_bits=5, maximum_precision_bits=128,
+    )
+    raise AssertionError("disjoint refinement balls were accepted")
+except AnalyticCertificationError:
+    pass
 
 try:
     certified_regulator_enclosure([[0.48]], 1)
@@ -213,14 +253,70 @@ regulator = RegulatorEnclosure(
     [120],
     weighted_complex_places=True,
 )
+provider_calls = []
+base_provider = quadratic_provider(5)
+def counted_provider(start, stop):
+    provider_calls.append((start, stop))
+    return base_provider(start, stop)
+workspace = ZetaLogResidueWorkspace(5, 2, counted_provider)
 zeta = zeta_log_residue_bound(
     5,
     2,
-    quadratic_provider(5),
+    counted_provider,
     absolute_error="0.125",
     precision_bits=96,
     limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+    workspace=workspace,
 )
+calls_after_cold = len(provider_calls)
+warm_zeta = zeta_log_residue_bound(
+    5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+    workspace=workspace,
+)
+assert len(provider_calls) == calls_after_cold
+assert warm_zeta.diagnostics["provider_calls"] == 0
+assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
+assert warm_zeta.diagnostics["threshold_cache_hits"] == 1
+assert warm_zeta.diagnostics["finite_term_cache_hits"] == 1
+assert warm_zeta.diagnostics["threshold_bound_evaluations"] == 0
+assert zeta.aggregated_prime_power_terms < zeta.prime_power_terms
+assert zeta.aggregated_prime_power_terms == 800
+assert zeta.prime_power_terms == 1534
+assert warm_zeta.ball.contains(quadratic["logResidue"])
+
+escalating_workspace = ZetaLogResidueWorkspace(5, 2, counted_provider)
+refined_zeta = zeta_log_residue_bound(
+    5, 2, counted_provider, absolute_error="0.05", precision_bits=16,
+    limits=ZetaLogResidueLimits(
+        maximum_prime_bound=100000, maximum_precision_bits=128,
+    ),
+    workspace=escalating_workspace,
+)
+assert refined_zeta.precision_history == (16, 32)
+assert refined_zeta.refinement_attempts == 2
+assert refined_zeta.enclosure_widths[1] < refined_zeta.enclosure_widths[0]
+assert refined_zeta.diagnostics["splitting_cache_hits"] == 1
+
+try:
+    zeta_log_residue_bound(
+        5, 2, quadratic_provider(5), absolute_error="0.125",
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=workspace,
+    )
+    raise AssertionError("a workspace accepted a different provider identity")
+except AnalyticCertificationError:
+    pass
+try:
+    zeta_log_residue_bound(
+        13, 2, counted_provider, absolute_error="0.125",
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=workspace,
+    )
+    raise AssertionError("a workspace accepted a different discriminant")
+except AnalyticCertificationError:
+    pass
 validation = validate_hr_index(
     signature=(2, 0),
     discriminant=5,
