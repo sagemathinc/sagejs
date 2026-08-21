@@ -55,6 +55,7 @@ const unit = [
   "test/wasm-deployment-workflow.cjs",
   "test/wasm-production-native-kernels.cjs",
   "test/wasm-production-resource-closure.cjs",
+  "test/wasm-kernel-route-instrumentation.cjs",
   "test/wasm-graph-components.cjs",
   "test/wasm-numeric-plot-batching.cjs",
   "test/wasm-workload-dashboard.cjs",

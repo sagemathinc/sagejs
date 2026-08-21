@@ -1,6 +1,128 @@
 const PACK_SCHEMA = "sagejs.native-wasm-pack/v1";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+const authenticatedCapabilities = new WeakMap();
+
+function equalStrings(left, right) {
+  return Array.isArray(left) && Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+}
+
+function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
+  const packs = new Map();
+  for (const pack of manifest.packs) {
+    if (pack.status !== "built" || !authenticatedDomains.has(pack.domain)) {
+      continue;
+    }
+    if (packs.has(pack.domain)) {
+      throw new Error(`duplicate authenticated Wasm pack domain ${pack.domain}`);
+    }
+    packs.set(pack.domain, pack);
+  }
+  const capabilities = new Map();
+  for (const kernel of manifest.kernels) {
+    if (kernel.functions.length === 0 || !kernel.functions.every((fn) =>
+      fn.status === "compiled-source" && fn.bridge !== undefined
+    )) continue;
+    if (typeof kernel.id !== "string" ||
+        !/^[a-z][a-z0-9-]*-production$/.test(kernel.id) ||
+        typeof kernel.logicalSource !== "string" ||
+        !kernel.logicalSource.endsWith(".py")) {
+      throw new Error("invalid production source-kernel route metadata");
+    }
+    const pack = packs.get(kernel.domain);
+    const identityModule = pack?.identity?.modules?.find((module) =>
+      module.identityHash === kernel.identityHash
+    );
+    const identityFunctions = kernel.functions.map(({ name }) => name);
+    if (identityModule === undefined ||
+        identityModule.logicalSource !== kernel.logicalSource ||
+        identityModule.sourceHash !== kernel.sourceHash ||
+        identityModule.abiHash !== kernel.abiHash ||
+        identityModule.coreHash !== kernel.coreHash ||
+        identityModule.oracleIdentity !== kernel.oracleIdentity ||
+        !equalStrings(identityModule.functions, identityFunctions) ||
+        !pack.modules.includes(kernel.identityHash)) {
+      throw new Error(
+        `source-kernel route metadata differs from authenticated ${kernel.domain} pack`,
+      );
+    }
+    if (capabilities.has(kernel.logicalSource)) {
+      throw new Error(
+        `duplicate production source-kernel route ${kernel.logicalSource}`,
+      );
+    }
+    capabilities.set(kernel.logicalSource, `kernel:${kernel.id}`);
+  }
+  return capabilities;
+}
+
+/**
+ * Return the fixed capability belonging to a resolver created from
+ * digest-verified production pack bytes.  Manifest-shaped objects and copied
+ * resolvers are deliberately rejected: evaluator telemetry is evidence about
+ * a loader-authenticated instance, not about user-controlled metadata.
+ */
+function authenticatedWasmKernelCapability(resolver, logicalSource) {
+  const capabilities = authenticatedCapabilities.get(resolver);
+  if (capabilities === undefined) {
+    throw new TypeError("Wasm resolver has no authenticated pack identity");
+  }
+  return capabilities.get(logicalSource);
+}
+
+/**
+ * Wrap successful source-kernel calls with an observer whose capability ID is
+ * fixed by the authenticated pack index.  The observer chooses what private
+ * measurements to retain, but cannot choose or override the route identity.
+ */
+export function instrumentAuthenticatedWasmKernelResolver(resolver, observe) {
+  if (typeof observe !== "function") {
+    throw new TypeError("Wasm source-kernel instrumentation requires an observer");
+  }
+  // Fail before returning any wrapper when the caller presents a copied or
+  // manifest-shaped resolver instead of a loader-authenticated instance.
+  authenticatedWasmKernelCapability(resolver, "");
+  const wrapped = new WeakMap();
+  const instrument = (logicalSource, candidate) => {
+    const capabilityId = authenticatedWasmKernelCapability(
+      resolver,
+      logicalSource,
+    );
+    if (capabilityId === undefined || typeof candidate !== "function") {
+      return candidate;
+    }
+    let byCapability = wrapped.get(candidate);
+    if (byCapability === undefined) {
+      byCapability = new Map();
+      wrapped.set(candidate, byCapability);
+    }
+    let result = byCapability.get(capabilityId);
+    if (result !== undefined) return result;
+    result = new Proxy(candidate, {
+      apply(target, thisArgument, arguments_) {
+        const value = Reflect.apply(target, thisArgument, arguments_);
+        observe(capabilityId, arguments_, value);
+        return value;
+      },
+    });
+    byCapability.set(capabilityId, result);
+    return result;
+  };
+  return Object.freeze({
+    ...resolver,
+    resolve(logicalSource, name, expected) {
+      return instrument(
+        logicalSource,
+        resolver.resolve(logicalSource, name, expected),
+      );
+    },
+    function(logicalSource, name) {
+      return instrument(logicalSource, resolver.function(logicalSource, name));
+    },
+  });
+}
 
 function bytesOf(value) {
   if (value instanceof Uint8Array) return value;
@@ -296,6 +418,7 @@ function callable(instance, kernel, fn, resourceBridge) {
 async function instantiateModule(pack, options) {
   let source = await options.load(pack);
   let module;
+  let digestAuthenticated = false;
   if (source instanceof WebAssembly.Module) {
     module = source;
   } else {
@@ -305,18 +428,21 @@ async function instantiateModule(pack, options) {
       if (actual !== pack.sha256) {
         throw new Error(`Wasm pack digest mismatch for ${pack.domain}`);
       }
+      digestAuthenticated = true;
     }
     module = await WebAssembly.compile(bytes);
   }
   const host = await options.host(pack, module);
-  if (host?.instance instanceof WebAssembly.Instance) return host.instance;
+  if (host?.instance instanceof WebAssembly.Instance) {
+    return { instance: host.instance, digestAuthenticated };
+  }
   const imports = host?.imports ?? host ?? {};
   const instance = await WebAssembly.instantiate(module, imports);
   if (typeof host?.initialize === "function") host.initialize(instance);
   else if (typeof instance.exports._initialize === "function") {
     instance.exports._initialize();
   }
-  return instance;
+  return { instance, digestAuthenticated };
 }
 
 export async function instantiateWasmKernelPacks(options) {
@@ -328,10 +454,12 @@ export async function instantiateWasmKernelPacks(options) {
     throw new TypeError("Wasm kernel loading requires load and host callbacks");
   }
   const instances = new Map();
+  const authenticatedDomains = new Set();
   const resourceBridges = new Map();
   for (const pack of manifest.packs.filter((item) => item.status === "built")) {
-    const instance = await instantiateModule(pack, options);
+    const { instance, digestAuthenticated } = await instantiateModule(pack, options);
     instances.set(pack.domain, instance);
+    if (digestAuthenticated) authenticatedDomains.add(pack.domain);
     const configuredResources = options.resources;
     const bridge = typeof configuredResources === "function"
       ? await configuredResources(pack, instance)
@@ -374,7 +502,7 @@ export async function instantiateWasmKernelPacks(options) {
     }
     return result;
   }
-  return Object.freeze({
+  const resolver = Object.freeze({
     manifest,
     domains: Object.freeze(Array.from(instances.keys()).sort()),
     available(logicalSource, name) {
@@ -391,6 +519,11 @@ export async function instantiateWasmKernelPacks(options) {
       return result;
     },
   });
+  authenticatedCapabilities.set(
+    resolver,
+    authenticatedCapabilityIndex(manifest, authenticatedDomains),
+  );
+  return resolver;
 }
 
 export { PACK_SCHEMA };
