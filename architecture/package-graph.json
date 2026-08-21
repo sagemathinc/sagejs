@@ -78,7 +78,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 650000,
+      "max_source_bytes": 670000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -147,6 +147,7 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
         "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",

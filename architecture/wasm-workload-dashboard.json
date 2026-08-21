@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 15,
+    "heavy_workloads": 18,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 15,
+    "failed_heavy_workloads": 18,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,15 +20,15 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "4f60661dda58a8e62d171e7b6c49ebd32d5f655ca710dd7ae3d31de286bc0e52"
+      "sha256": "0b71c092059d292b88ade63586a2ef1a5d687b3d931919ac6caf7c1fc78e5348"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "b472db2d00b1689d5641d252eb26486bb469fe9bead9b521f015f0254d89bea9"
+      "sha256": "657add77d0ce5eac3d95694cf93c08108e15c36c7d948d865525bc32cb77f98f"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "1eb8218eff6ba05ce45b19364c97263ce6dfe51028c88ee1b6e8570b88bbaee0"
+      "sha256": "36a710311cae560923f810dc94c3e7b79f11b9d417cc234c49ba1c92dd4a3a2a"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -39,35 +39,35 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 18,
+    "parity_workloads": 21,
     "performance_workloads": 5,
     "capability_counts": {
-      "total": 943,
+      "total": 945,
       "by_kind": {
         "declared-ffi-function": 412,
         "declared-ffi-resource": 29,
         "napi-export": 311,
-        "production-kernel": 32,
+        "production-kernel": 34,
         "runtime-intrinsic": 137,
         "specialist-capability": 22
       },
       "by_disposition": {
-        "compiled-source": 32,
+        "compiled-source": 34,
         "desktop-only": 13,
         "generated-wasm": 268,
         "portable-fallback": 589,
         "shared-core": 41
       },
       "by_status": {
-        "available": 473,
+        "available": 475,
         "desktop-only": 13,
         "fallback": 457
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 32,
-      "production_kernels": 25,
-      "compiled_functions": 219,
+      "registered_kernels": 34,
+      "production_kernels": 27,
+      "compiled_functions": 225,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30
@@ -75,8 +75,8 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 46,
-      "wasm-compiled-source": 2,
+      "wasm-library": 52,
+      "wasm-compiled-source": 4,
       "portable-orchestration": 3,
       "portable-computation": 0
     },
@@ -89,10 +89,10 @@
   },
   "families": {
     "algebraic-numbers": {
-      "workloads": 1,
-      "heavy_workloads": 0,
+      "workloads": 2,
+      "heavy_workloads": 1,
       "accelerated": 0,
-      "failed": 0,
+      "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 1
     },
@@ -101,6 +101,14 @@
       "heavy_workloads": 4,
       "accelerated": 0,
       "failed": 4,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "combinatorics": {
+      "workloads": 1,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -127,6 +135,14 @@
       "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 2
+    },
+    "extension-fields": {
+      "workloads": 1,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
     },
     "graphs": {
       "workloads": 1,
@@ -375,6 +391,53 @@
       "issues": []
     },
     {
+      "id": "parity:algebraic-matrix-qqbar",
+      "public_workflow": "algebraic-matrix-qqbar",
+      "family": "algebraic-numbers",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "algebraic:qqbar-resource-core",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
       "id": "parity:modular-symbols-weight-two",
       "public_workflow": "modular-symbols-weight-two",
       "family": "modular-symbols",
@@ -593,6 +656,145 @@
         },
         {
           "capability_id": "ffi:m4ri:matrix_solve",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:matrix-combinatorial-invariants",
+      "public_workflow": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-combinatorial-integer-rational-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        },
+        {
+          "capability_id": "kernel:packed-combinatorial-prime-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:extension-field-polynomial-arithmetic",
+      "public_workflow": "extension-field-polynomial-arithmetic",
+      "family": "extension-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "ffi:flint:fq_context",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_element_pow",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_polynomial_mul",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "generated-wasm"
+        },
+        {
+          "capability_id": "ffi:flint:fq_polynomial_pow",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,

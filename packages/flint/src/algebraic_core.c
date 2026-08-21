@@ -10,6 +10,9 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_poly.h>
 #include <flint/fmpz_poly_factor.h>
+#include <flint/gr.h>
+#include <flint/gr_mat.h>
+#include <flint/gr_poly.h>
 #include <flint/qqbar.h>
 
 #define HANDLE_INDEX_BITS UINT32_C(12)
@@ -17,6 +20,9 @@
 #define HANDLE_GENERATION_MASK UINT32_C(0x000fffff)
 #define SERIALIZATION_MAGIC UINT32_C(0x52414251)
 #define SERIALIZATION_VERSION UINT32_C(1)
+#define MATRIX_HANDLE_INDEX_BITS UINT32_C(8)
+#define MATRIX_HANDLE_INDEX_MASK UINT32_C(0x00ff)
+#define MATRIX_HANDLE_GENERATION_MASK UINT32_C(0x00ffffff)
 
 typedef struct
 {
@@ -25,10 +31,22 @@ typedef struct
     qqbar_t value;
 } sagejs_algebraic_slot;
 
+typedef struct
+{
+    uint32_t generation;
+    int active;
+    int real_only;
+    gr_mat_t value;
+} sagejs_algebraic_matrix_slot;
+
 struct sagejs_algebraic_context
 {
     sagejs_algebraic_slot slots[SAGEJS_ALGEBRAIC_MAX_VALUES];
     uint32_t live_count;
+    sagejs_algebraic_matrix_slot matrices[SAGEJS_ALGEBRAIC_MAX_MATRICES];
+    uint32_t matrix_live_count;
+    gr_ctx_t real_context;
+    gr_ctx_t complex_context;
 };
 
 typedef struct
@@ -258,9 +276,98 @@ static int store_value(
     return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
 }
 
+static gr_ctx_struct *matrix_context(
+    sagejs_algebraic_context *context,
+    int real_only)
+{
+    return real_only ? context->real_context : context->complex_context;
+}
+
+static uint32_t make_matrix_handle(uint32_t index, uint32_t generation)
+{
+    return (generation << MATRIX_HANDLE_INDEX_BITS) | (index + 1);
+}
+
+static sagejs_algebraic_matrix_slot *lookup_matrix(
+    sagejs_algebraic_context *context,
+    uint32_t handle)
+{
+    uint32_t encoded_index;
+    uint32_t index;
+    uint32_t generation;
+    sagejs_algebraic_matrix_slot *slot;
+
+    if (context == NULL)
+        return NULL;
+    encoded_index = handle & MATRIX_HANDLE_INDEX_MASK;
+    generation = handle >> MATRIX_HANDLE_INDEX_BITS;
+    if (encoded_index == 0 || generation == 0)
+        return NULL;
+    index = encoded_index - 1;
+    if (index >= SAGEJS_ALGEBRAIC_MAX_MATRICES)
+        return NULL;
+    slot = context->matrices + index;
+    if (!slot->active || slot->generation != generation)
+        return NULL;
+    return slot;
+}
+
+static int valid_matrix_shape(uint32_t rows, uint32_t columns)
+{
+    return rows <= SAGEJS_ALGEBRAIC_MAX_MATRIX_DIMENSION &&
+        columns <= SAGEJS_ALGEBRAIC_MAX_MATRIX_DIMENSION &&
+        (uint64_t) rows * columns <= SAGEJS_ALGEBRAIC_MAX_MATRIX_ENTRIES;
+}
+
+static int reserve_matrix(
+    sagejs_algebraic_context *context,
+    uint32_t rows,
+    uint32_t columns,
+    int real_only,
+    sagejs_algebraic_matrix_slot **result_slot,
+    uint32_t *result_handle)
+{
+    uint32_t index;
+    sagejs_algebraic_matrix_slot *slot;
+
+    if (context == NULL || result_slot == NULL || result_handle == NULL ||
+        !valid_matrix_shape(rows, columns))
+        return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+    for (index = 0; index < SAGEJS_ALGEBRAIC_MAX_MATRICES; index++)
+    {
+        slot = context->matrices + index;
+        if (!slot->active)
+        {
+            slot->generation =
+                (slot->generation + 1) & MATRIX_HANDLE_GENERATION_MASK;
+            if (slot->generation == 0)
+                slot->generation = 1;
+            slot->real_only = real_only != 0;
+            gr_mat_init(
+                slot->value,
+                (slong) rows,
+                (slong) columns,
+                matrix_context(context, slot->real_only));
+            slot->active = 1;
+            context->matrix_live_count++;
+            *result_slot = slot;
+            *result_handle = make_matrix_handle(index, slot->generation);
+            return SAGEJS_ALGEBRAIC_OK;
+        }
+    }
+    return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+}
+
 sagejs_algebraic_context *sagejs_algebraic_context_create(void)
 {
-    return (sagejs_algebraic_context *) calloc(1, sizeof(sagejs_algebraic_context));
+    sagejs_algebraic_context *context =
+        (sagejs_algebraic_context *) calloc(1, sizeof(sagejs_algebraic_context));
+    if (context != NULL)
+    {
+        gr_ctx_init_real_qqbar(context->real_context);
+        gr_ctx_init_complex_qqbar(context->complex_context);
+    }
+    return context;
 }
 
 void sagejs_algebraic_context_destroy(sagejs_algebraic_context *context)
@@ -273,6 +380,14 @@ void sagejs_algebraic_context_destroy(sagejs_algebraic_context *context)
         if (context->slots[index].active)
             qqbar_clear(context->slots[index].value);
     }
+    for (index = 0; index < SAGEJS_ALGEBRAIC_MAX_MATRICES; index++)
+    {
+        sagejs_algebraic_matrix_slot *slot = context->matrices + index;
+        if (slot->active)
+            gr_mat_clear(slot->value, matrix_context(context, slot->real_only));
+    }
+    gr_ctx_clear(context->complex_context);
+    gr_ctx_clear(context->real_context);
     free(context);
 }
 
@@ -973,5 +1088,390 @@ int sagejs_algebraic_deserialize(
     if (roots != NULL)
         _qqbar_vec_clear(roots, degree);
     fmpz_poly_clear(polynomial);
+    return status;
+}
+
+uint32_t sagejs_algebraic_matrix_live_count(
+    const sagejs_algebraic_context *context)
+{
+    return context == NULL ? 0 : context->matrix_live_count;
+}
+
+int sagejs_algebraic_matrix_create(
+    sagejs_algebraic_context *context,
+    uint32_t rows,
+    uint32_t columns,
+    const uint32_t *entry_handles,
+    uint32_t entry_count,
+    int real_only,
+    uint32_t *matrix_handle)
+{
+    sagejs_algebraic_matrix_slot *matrix_slot;
+    gr_ctx_struct *gr_context;
+    uint32_t index;
+    int status;
+
+    if (entry_handles == NULL || matrix_handle == NULL ||
+        (uint64_t) rows * columns != entry_count)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    if (!valid_matrix_shape(rows, columns))
+        return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+    for (index = 0; index < entry_count; index++)
+    {
+        sagejs_algebraic_slot *entry = lookup(context, entry_handles[index]);
+        if (entry == NULL)
+            return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+        if (real_only && !qqbar_is_real(entry->value))
+            return SAGEJS_ALGEBRAIC_NOT_REAL;
+    }
+    status = reserve_matrix(
+        context, rows, columns, real_only, &matrix_slot, matrix_handle);
+    if (status != SAGEJS_ALGEBRAIC_OK)
+        return status;
+    gr_context = matrix_context(context, matrix_slot->real_only);
+    for (index = 0; index < entry_count; index++)
+    {
+        sagejs_algebraic_slot *entry = lookup(context, entry_handles[index]);
+        qqbar_set(
+            (qqbar_ptr) gr_mat_entry_ptr(
+                matrix_slot->value,
+                (slong) (index / columns),
+                (slong) (index % columns),
+                gr_context),
+            entry->value);
+    }
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_close(
+    sagejs_algebraic_context *context,
+    uint32_t matrix_handle)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, matrix_handle);
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    gr_mat_clear(slot->value, matrix_context(context, slot->real_only));
+    slot->active = 0;
+    context->matrix_live_count--;
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_binary(
+    sagejs_algebraic_context *context,
+    uint32_t operation,
+    uint32_t left,
+    uint32_t right,
+    uint32_t *matrix_handle)
+{
+    sagejs_algebraic_matrix_slot *left_slot = lookup_matrix(context, left);
+    sagejs_algebraic_matrix_slot *right_slot = lookup_matrix(context, right);
+    sagejs_algebraic_matrix_slot *result_slot;
+    gr_ctx_struct *gr_context;
+    uint32_t rows;
+    uint32_t columns;
+    int gr_status;
+    int status;
+
+    if (left_slot == NULL || right_slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (left_slot->real_only != right_slot->real_only)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    rows = (uint32_t) left_slot->value->r;
+    if (operation == SAGEJS_ALGEBRAIC_MATRIX_MUL)
+    {
+        if (left_slot->value->c != right_slot->value->r)
+            return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+        columns = (uint32_t) right_slot->value->c;
+    }
+    else
+    {
+        if (left_slot->value->r != right_slot->value->r ||
+            left_slot->value->c != right_slot->value->c)
+            return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+        columns = (uint32_t) left_slot->value->c;
+    }
+    status = reserve_matrix(
+        context, rows, columns, left_slot->real_only,
+        &result_slot, matrix_handle);
+    if (status != SAGEJS_ALGEBRAIC_OK)
+        return status;
+    gr_context = matrix_context(context, left_slot->real_only);
+    switch (operation)
+    {
+        case SAGEJS_ALGEBRAIC_MATRIX_ADD:
+            gr_status = gr_mat_add(
+                result_slot->value, left_slot->value, right_slot->value,
+                gr_context);
+            break;
+        case SAGEJS_ALGEBRAIC_MATRIX_SUB:
+            gr_status = gr_mat_sub(
+                result_slot->value, left_slot->value, right_slot->value,
+                gr_context);
+            break;
+        case SAGEJS_ALGEBRAIC_MATRIX_MUL:
+            gr_status = gr_mat_mul(
+                result_slot->value, left_slot->value, right_slot->value,
+                gr_context);
+            break;
+        default:
+            gr_status = GR_UNABLE;
+            break;
+    }
+    if (gr_status != GR_SUCCESS)
+    {
+        sagejs_algebraic_matrix_close(context, *matrix_handle);
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    }
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_unary(
+    sagejs_algebraic_context *context,
+    uint32_t operation,
+    uint32_t source,
+    uint32_t *matrix_handle)
+{
+    sagejs_algebraic_matrix_slot *source_slot = lookup_matrix(context, source);
+    sagejs_algebraic_matrix_slot *result_slot;
+    gr_ctx_struct *gr_context;
+    uint32_t rows;
+    uint32_t columns;
+    slong rank;
+    int gr_status;
+    int status;
+
+    if (source_slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    rows = (uint32_t) source_slot->value->r;
+    columns = (uint32_t) source_slot->value->c;
+    if (operation == SAGEJS_ALGEBRAIC_MATRIX_TRANSPOSE)
+    {
+        uint32_t temporary = rows;
+        rows = columns;
+        columns = temporary;
+    }
+    if (operation == SAGEJS_ALGEBRAIC_MATRIX_INVERSE && rows != columns)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    status = reserve_matrix(
+        context, rows, columns, source_slot->real_only,
+        &result_slot, matrix_handle);
+    if (status != SAGEJS_ALGEBRAIC_OK)
+        return status;
+    gr_context = matrix_context(context, source_slot->real_only);
+    switch (operation)
+    {
+        case SAGEJS_ALGEBRAIC_MATRIX_NEG:
+            gr_status = gr_mat_neg(result_slot->value, source_slot->value, gr_context);
+            break;
+        case SAGEJS_ALGEBRAIC_MATRIX_TRANSPOSE:
+            gr_status = gr_mat_transpose(
+                result_slot->value, source_slot->value, gr_context);
+            break;
+        case SAGEJS_ALGEBRAIC_MATRIX_RREF:
+            gr_status = gr_mat_rref(
+                &rank, result_slot->value, source_slot->value, gr_context);
+            break;
+        case SAGEJS_ALGEBRAIC_MATRIX_INVERSE:
+            gr_status = gr_mat_inv(
+                result_slot->value, source_slot->value, gr_context);
+            break;
+        default:
+            gr_status = GR_UNABLE;
+            break;
+    }
+    if (gr_status != GR_SUCCESS)
+    {
+        sagejs_algebraic_matrix_close(context, *matrix_handle);
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    }
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_scalar_mul(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t scalar,
+    uint32_t *matrix_handle)
+{
+    sagejs_algebraic_matrix_slot *source_slot = lookup_matrix(context, source);
+    sagejs_algebraic_slot *scalar_slot = lookup(context, scalar);
+    sagejs_algebraic_matrix_slot *result_slot;
+    gr_ctx_struct *gr_context;
+    int status;
+
+    if (source_slot == NULL || scalar_slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (source_slot->real_only && !qqbar_is_real(scalar_slot->value))
+        return SAGEJS_ALGEBRAIC_NOT_REAL;
+    status = reserve_matrix(
+        context,
+        (uint32_t) source_slot->value->r,
+        (uint32_t) source_slot->value->c,
+        source_slot->real_only,
+        &result_slot,
+        matrix_handle);
+    if (status != SAGEJS_ALGEBRAIC_OK)
+        return status;
+    gr_context = matrix_context(context, source_slot->real_only);
+    if (gr_mat_mul_scalar(
+        result_slot->value,
+        source_slot->value,
+        scalar_slot->value,
+        gr_context) != GR_SUCCESS)
+    {
+        sagejs_algebraic_matrix_close(context, *matrix_handle);
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    }
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_entry(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t row,
+    uint32_t column,
+    uint32_t *value_handle)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, source);
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (row >= (uint32_t) slot->value->r || column >= (uint32_t) slot->value->c)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    return store_value(
+        context,
+        (qqbar_srcptr) gr_mat_entry_srcptr(
+            slot->value,
+            (slong) row,
+            (slong) column,
+            matrix_context(context, slot->real_only)),
+        value_handle);
+}
+
+int sagejs_algebraic_matrix_det(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *value_handle)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, source);
+    qqbar_t value;
+    int status;
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (slot->value->r != slot->value->c)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    qqbar_init(value);
+    if (gr_mat_det(
+        value, slot->value, matrix_context(context, slot->real_only)) != GR_SUCCESS)
+        status = SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    else
+        status = store_value(context, value, value_handle);
+    qqbar_clear(value);
+    return status;
+}
+
+int sagejs_algebraic_matrix_rank(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    int32_t *rank)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, source);
+    slong result;
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (rank == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    if (gr_mat_rank(
+        &result, slot->value, matrix_context(context, slot->real_only)) != GR_SUCCESS)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    *rank = (int32_t) result;
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_equal(
+    sagejs_algebraic_context *context,
+    uint32_t left,
+    uint32_t right,
+    int32_t *equal)
+{
+    sagejs_algebraic_matrix_slot *left_slot = lookup_matrix(context, left);
+    sagejs_algebraic_matrix_slot *right_slot = lookup_matrix(context, right);
+    truth_t result;
+    if (left_slot == NULL || right_slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (equal == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    if (left_slot->real_only != right_slot->real_only ||
+        left_slot->value->r != right_slot->value->r ||
+        left_slot->value->c != right_slot->value->c)
+    {
+        *equal = 0;
+        return SAGEJS_ALGEBRAIC_OK;
+    }
+    result = gr_mat_equal(
+        left_slot->value,
+        right_slot->value,
+        matrix_context(context, left_slot->real_only));
+    if (result == T_UNKNOWN)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    *equal = result == T_TRUE ? 1 : 0;
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
+int sagejs_algebraic_matrix_charpoly(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *coefficient_handles,
+    uint32_t capacity,
+    uint32_t *count)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, source);
+    gr_ctx_struct *gr_context;
+    gr_poly_t polynomial;
+    slong length;
+    uint32_t stored = 0;
+    int status = SAGEJS_ALGEBRAIC_OK;
+
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (coefficient_handles == NULL || count == NULL ||
+        slot->value->r != slot->value->c)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    if ((uint64_t) slot->value->r + 1 > capacity)
+        return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+    gr_context = matrix_context(context, slot->real_only);
+    gr_poly_init(polynomial, gr_context);
+    if (gr_mat_charpoly(polynomial, slot->value, gr_context) != GR_SUCCESS)
+    {
+        status = SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+        goto cleanup;
+    }
+    length = gr_poly_length(polynomial, gr_context);
+    if (length < 0 || (uint64_t) length > capacity ||
+        context->live_count + (uint32_t) length > SAGEJS_ALGEBRAIC_MAX_VALUES)
+    {
+        status = SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+        goto cleanup;
+    }
+    for (stored = 0; stored < (uint32_t) length; stored++)
+    {
+        status = store_value(
+            context,
+            (qqbar_srcptr) gr_poly_coeff_srcptr(
+                polynomial, (slong) stored, gr_context),
+            coefficient_handles + stored);
+        if (status != SAGEJS_ALGEBRAIC_OK)
+            goto cleanup_stored;
+    }
+    *count = (uint32_t) length;
+    goto cleanup;
+
+cleanup_stored:
+    while (stored > 0)
+    {
+        stored--;
+        sagejs_algebraic_close(context, coefficient_handles[stored]);
+    }
+cleanup:
+    gr_poly_clear(polynomial, gr_context);
     return status;
 }

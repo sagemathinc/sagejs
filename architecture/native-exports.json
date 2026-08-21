@@ -802,6 +802,7 @@
         "mpmath"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/numeric-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
@@ -5092,6 +5093,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/index.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
@@ -5154,6 +5157,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5209,6 +5214,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5258,6 +5265,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/modular.cjs",
@@ -5541,6 +5549,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
@@ -5661,6 +5670,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -5854,6 +5865,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
@@ -6003,6 +6015,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
@@ -10145,6 +10158,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "src/baselib/number_fields.py"
       ],
       "declared_ffi": null
@@ -10381,6 +10395,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
@@ -10568,6 +10584,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -10652,6 +10670,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
@@ -10922,6 +10941,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/number_fields.py"
       ],
@@ -11026,6 +11047,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/test.cjs",
@@ -12617,6 +12640,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/index.mjs",
+        "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/test.cjs"
       ],

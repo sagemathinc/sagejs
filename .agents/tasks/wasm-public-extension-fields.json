@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-public-extension-fields",
+  "title": "Public Wasm finite extension fields",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public GF(p^n) element and dense univariate polynomial construction, arithmetic, powers, equality, coefficient export, and rendering through generated FLINT fq resources on production WebAssembly, while retaining a tested correct capability fallback and proving representative large workloads never take it",
+  "base_commit": "98e964242e0f116ad0fec5e389c328f97a864477",
+  "claims": [
+    "src/baselib/finite_fields.py",
+    "src/baselib/polynomial.py",
+    "test/wasm-public-extension-fields.cjs",
+    "bench/wasm-public-extension-fields.cjs",
+    "bench/WASM-PUBLIC-EXTENSION-FIELDS.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "Sage GF(p^n) public semantics",
+    "FLINT fq_default and fq_poly"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Sage public GF(p^n) and polynomial results",
+      "existing generated Fq resource differential contracts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

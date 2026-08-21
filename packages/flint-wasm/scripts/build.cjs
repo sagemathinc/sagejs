@@ -379,6 +379,7 @@ const flintLocalIncludeArguments = [
 ];
 const flintLinkedSources = [
   path.join(packageRoot, "src", "factor.c"),
+  path.join(packageRoot, "src", "numeric.c"),
   path.join(packageRoot, "src", "modsym.c"),
   path.join(packageRoot, "src", "analytic.c"),
   path.join(packageRoot, "src", "dirichlet-group.c"),
@@ -419,6 +420,13 @@ const numberFieldExports = [
   "sagejs_nf_zeta_residue_compute",
   "sagejs_nf_zeta_residue_clear",
 ];
+const numericSource = path.join(packageRoot, "src", "numeric.c");
+const numericExports = [...fs.readFileSync(numericSource, "utf8")
+  .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
+  .map((match) => match[1]);
+if (numericExports.length !== 34 || new Set(numericExports).size !== 34) {
+  throw new Error("the reviewed 34-function numeric Wasm export closure drifted");
+}
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(
   [...fs.readFileSync(dirichletGroupHostSource, "utf8")
@@ -482,6 +490,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_output_length",
   "sagejs_wasm_algebraic_root_handles",
   "sagejs_wasm_algebraic_root_multiplicities",
+  "sagejs_wasm_algebraic_matrix_entry_handles",
   "sagejs_wasm_algebraic_result_count",
   "sagejs_wasm_algebraic_result_handle",
   "sagejs_wasm_algebraic_result_value",
@@ -506,6 +515,17 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_format",
   "sagejs_wasm_algebraic_serialize",
   "sagejs_wasm_algebraic_deserialize",
+  "sagejs_wasm_algebraic_matrix_live_count",
+  "sagejs_wasm_algebraic_matrix_close",
+  "sagejs_wasm_algebraic_matrix_create",
+  "sagejs_wasm_algebraic_matrix_binary",
+  "sagejs_wasm_algebraic_matrix_unary",
+  "sagejs_wasm_algebraic_matrix_scalar_mul",
+  "sagejs_wasm_algebraic_matrix_entry",
+  "sagejs_wasm_algebraic_matrix_det",
+  "sagejs_wasm_algebraic_matrix_rank",
+  "sagejs_wasm_algebraic_matrix_equal",
+  "sagejs_wasm_algebraic_matrix_charpoly",
 ];
 const algebraicLinkedSources = [
   path.join(packageRoot, "src", "algebraic.c"),
@@ -517,9 +537,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 31 ||
+if (declaredAlgebraicExports.length !== 43 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 31-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 43-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",
@@ -569,6 +589,7 @@ const exportNames = [
   "sagejs_p1_cusp_numerator",
   "sagejs_p1_cusp_denominator",
   ...analyticExports,
+  ...numericExports,
   ...dirichletGroupExports,
   ...numberFieldExports,
   ...curveExports,

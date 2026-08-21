@@ -10,7 +10,7 @@
     {
       "id": "compiler-runtime",
       "description": "Parser, compiler, runtime, modes, kernels, and language semantics",
-      "allowed_claims": [".agents/lanes.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs_bootstrap.py", "tools/", "bootstrap/"],
+      "allowed_claims": [".agents/lanes.json", "src/ast_types.py", "src/runtime/", "src/tree_sitter/", "src/output/", "src/baselib/builtins.py", "src/baselib/byte_strings.py", "src/baselib/containers.py", "src/baselib/internal.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs_bootstrap.py", "src/lib/sagejs/kernels/arithmetic/", "tools/", "bootstrap/"],
       "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
     },
     {
@@ -109,6 +109,7 @@
         "src/baselib/graphs.py",
         "src/baselib/itertools.py",
         "src/lib/sagejs/kernels/graph/",
+        "src/lib/sagejs/kernels/groups/",
         "test/wasm-capabilities.cjs",
         "test/wasm-production-native-kernels.cjs"
       ],

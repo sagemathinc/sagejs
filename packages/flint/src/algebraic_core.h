@@ -11,6 +11,9 @@ extern "C" {
 #define SAGEJS_ALGEBRAIC_MAX_VALUES UINT32_C(4095)
 #define SAGEJS_ALGEBRAIC_MAX_DEGREE UINT32_C(256)
 #define SAGEJS_ALGEBRAIC_MAX_PACKED_BYTES UINT32_C(1048576)
+#define SAGEJS_ALGEBRAIC_MAX_MATRICES UINT32_C(255)
+#define SAGEJS_ALGEBRAIC_MAX_MATRIX_DIMENSION UINT32_C(128)
+#define SAGEJS_ALGEBRAIC_MAX_MATRIX_ENTRIES UINT32_C(4096)
 
 enum sagejs_algebraic_status
 {
@@ -48,6 +51,21 @@ enum sagejs_algebraic_property
     SAGEJS_ALGEBRAIC_IS_REAL = 1,
     SAGEJS_ALGEBRAIC_IS_RATIONAL = 2,
     SAGEJS_ALGEBRAIC_DEGREE = 3
+};
+
+enum sagejs_algebraic_matrix_binary_operation
+{
+    SAGEJS_ALGEBRAIC_MATRIX_ADD = 1,
+    SAGEJS_ALGEBRAIC_MATRIX_SUB = 2,
+    SAGEJS_ALGEBRAIC_MATRIX_MUL = 3
+};
+
+enum sagejs_algebraic_matrix_unary_operation
+{
+    SAGEJS_ALGEBRAIC_MATRIX_NEG = 1,
+    SAGEJS_ALGEBRAIC_MATRIX_TRANSPOSE = 2,
+    SAGEJS_ALGEBRAIC_MATRIX_RREF = 3,
+    SAGEJS_ALGEBRAIC_MATRIX_INVERSE = 4
 };
 
 typedef struct sagejs_algebraic_context sagejs_algebraic_context;
@@ -165,6 +183,77 @@ int sagejs_algebraic_deserialize(
     const uint8_t *input,
     uint32_t input_length,
     uint32_t *handle);
+
+/*
+ * Bounded dense matrix resources live in the same ownership domain as the
+ * qqbar handles used to construct them.  No foreign pointer or FLINT object
+ * layout crosses this ABI; matrix entries and results are generation-tagged
+ * handles owned by `context`.
+ */
+uint32_t sagejs_algebraic_matrix_live_count(
+    const sagejs_algebraic_context *context);
+
+int sagejs_algebraic_matrix_create(
+    sagejs_algebraic_context *context,
+    uint32_t rows,
+    uint32_t columns,
+    const uint32_t *entry_handles,
+    uint32_t entry_count,
+    int real_only,
+    uint32_t *matrix_handle);
+
+int sagejs_algebraic_matrix_close(
+    sagejs_algebraic_context *context,
+    uint32_t matrix_handle);
+
+int sagejs_algebraic_matrix_binary(
+    sagejs_algebraic_context *context,
+    uint32_t operation,
+    uint32_t left,
+    uint32_t right,
+    uint32_t *matrix_handle);
+
+int sagejs_algebraic_matrix_unary(
+    sagejs_algebraic_context *context,
+    uint32_t operation,
+    uint32_t source,
+    uint32_t *matrix_handle);
+
+int sagejs_algebraic_matrix_scalar_mul(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t scalar,
+    uint32_t *matrix_handle);
+
+int sagejs_algebraic_matrix_entry(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t row,
+    uint32_t column,
+    uint32_t *value_handle);
+
+int sagejs_algebraic_matrix_det(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *value_handle);
+
+int sagejs_algebraic_matrix_rank(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    int32_t *rank);
+
+int sagejs_algebraic_matrix_equal(
+    sagejs_algebraic_context *context,
+    uint32_t left,
+    uint32_t right,
+    int32_t *equal);
+
+int sagejs_algebraic_matrix_charpoly(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *coefficient_handles,
+    uint32_t capacity,
+    uint32_t *count);
 
 #ifdef __cplusplus
 }

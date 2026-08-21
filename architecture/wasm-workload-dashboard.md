@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/15 accelerated; 15 failed closed.
+Heavy workloads: 0/18 accelerated; 18 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,8 +12,8 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 46 | 0 |
-| `wasm-compiled-source` | 2 | 0 |
+| `wasm-library` | 52 | 0 |
+| `wasm-compiled-source` | 4 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
 
@@ -21,11 +21,13 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Family | Workloads | Heavy | Accelerated | Failed | Reviewed fallback | Pending/review |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| algebraic-numbers | 1 | 0 | 0 | 0 | 0 | 1 |
+| algebraic-numbers | 2 | 1 | 0 | 1 | 0 | 1 |
 | analytic-functions | 4 | 4 | 0 | 4 | 0 | 0 |
+| combinatorics | 1 | 1 | 0 | 1 | 0 | 0 |
 | dense-binary-matrices | 1 | 1 | 0 | 1 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
+| extension-fields | 1 | 1 | 0 | 1 | 0 | 0 |
 | graphs | 1 | 1 | 0 | 1 | 0 | 0 |
 | hyperelliptic-curves | 1 | 1 | 0 | 1 | 0 | 0 |
 | modular-symbols | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -43,10 +45,13 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:exact-matrix-and-finite-field-polynomial` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:sagepack-exact-roundtrip` | serialization | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-algebraic-roots` | algebraic-numbers | no | unmeasured | `wasm-library` | — |
+| `parity:algebraic-matrix-qqbar` | algebraic-numbers | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:modular-symbols-weight-two` | modular-symbols | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-maximal-order-prime-zeta` | number-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:graph-components-packed` | graphs | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:gf2-matrix-m4ri` | dense-binary-matrices | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:extension-field-polynomial-arithmetic` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:hyperelliptic-smalljac-local-factors` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library` | — |
 | `parity:number-field-ideal-certificate-sagepack` | number-fields | no | unmeasured | `portable-orchestration` | — |

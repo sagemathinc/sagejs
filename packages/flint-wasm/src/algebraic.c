@@ -12,6 +12,7 @@ static uint8_t input_buffer[BUFFER_CAPACITY];
 static uint8_t output_buffer[BUFFER_CAPACITY];
 static uint32_t root_handles[ROOT_CAPACITY];
 static uint32_t root_multiplicities[ROOT_CAPACITY];
+static uint32_t matrix_entry_handles[SAGEJS_ALGEBRAIC_MAX_MATRIX_ENTRIES];
 static uint32_t output_length = 0;
 static uint32_t result_count = 0;
 static uint32_t result_handle = 0;
@@ -64,6 +65,11 @@ EXPORT uint32_t sagejs_wasm_algebraic_root_handles(void)
 EXPORT uint32_t sagejs_wasm_algebraic_root_multiplicities(void)
 {
     return (uint32_t) (uintptr_t) root_multiplicities;
+}
+
+EXPORT uint32_t sagejs_wasm_algebraic_matrix_entry_handles(void)
+{
+    return (uint32_t) (uintptr_t) matrix_entry_handles;
 }
 
 EXPORT uint32_t sagejs_wasm_algebraic_result_count(void)
@@ -296,5 +302,127 @@ EXPORT int32_t sagejs_wasm_algebraic_deserialize(uint32_t length)
         return last_status = SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
     last_status = sagejs_algebraic_deserialize(
         context, input_buffer, length, &result_handle);
+    return last_status;
+}
+
+EXPORT uint32_t sagejs_wasm_algebraic_matrix_live_count(void)
+{
+    return context == NULL ? 0 : sagejs_algebraic_matrix_live_count(context);
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_close(uint32_t matrix_handle)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_close(context, matrix_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_create(
+    uint32_t rows,
+    uint32_t columns,
+    uint32_t entry_count,
+    uint32_t real_only)
+{
+    if (!ensure_context())
+        return last_status;
+    if (entry_count > SAGEJS_ALGEBRAIC_MAX_MATRIX_ENTRIES)
+        return last_status = SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+    last_status = sagejs_algebraic_matrix_create(
+        context,
+        rows,
+        columns,
+        matrix_entry_handles,
+        entry_count,
+        real_only != 0,
+        &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_binary(
+    uint32_t operation,
+    uint32_t left,
+    uint32_t right)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_binary(
+        context, operation, left, right, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_unary(
+    uint32_t operation,
+    uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_unary(
+        context, operation, source, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_scalar_mul(
+    uint32_t source,
+    uint32_t scalar)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_scalar_mul(
+        context, source, scalar, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_entry(
+    uint32_t source,
+    uint32_t row,
+    uint32_t column)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_entry(
+        context, source, row, column, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_det(uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_det(
+        context, source, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_rank(uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_rank(
+        context, source, &result_value);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_equal(
+    uint32_t left,
+    uint32_t right)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_equal(
+        context, left, right, &result_value);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_charpoly(uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_charpoly(
+        context,
+        source,
+        root_handles,
+        ROOT_CAPACITY,
+        &result_count);
     return last_status;
 }

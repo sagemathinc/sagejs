@@ -49,12 +49,19 @@ function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
         `source-kernel route metadata differs from authenticated ${kernel.domain} pack`,
       );
     }
-    if (capabilities.has(kernel.logicalSource)) {
-      throw new Error(
-        `duplicate production source-kernel route ${kernel.logicalSource}`,
-      );
+    let byFunction = capabilities.get(kernel.logicalSource);
+    if (byFunction === undefined) {
+      byFunction = new Map();
+      capabilities.set(kernel.logicalSource, byFunction);
     }
-    capabilities.set(kernel.logicalSource, `kernel:${kernel.id}`);
+    for (const name of identityFunctions) {
+      if (byFunction.has(name)) {
+        throw new Error(
+          `duplicate production source-kernel route ${kernel.logicalSource}:${name}`,
+        );
+      }
+      byFunction.set(name, `kernel:${kernel.id}`);
+    }
   }
   return capabilities;
 }
@@ -65,12 +72,16 @@ function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
  * resolvers are deliberately rejected: evaluator telemetry is evidence about
  * a loader-authenticated instance, not about user-controlled metadata.
  */
-function authenticatedWasmKernelCapability(resolver, logicalSource) {
+function authenticatedWasmKernelCapabilities(resolver) {
   const capabilities = authenticatedCapabilities.get(resolver);
   if (capabilities === undefined) {
     throw new TypeError("Wasm resolver has no authenticated pack identity");
   }
-  return capabilities.get(logicalSource);
+  return capabilities;
+}
+
+function authenticatedWasmKernelCapability(resolver, logicalSource, name) {
+  return authenticatedWasmKernelCapabilities(resolver).get(logicalSource)?.get(name);
 }
 
 /**
@@ -84,12 +95,13 @@ export function instrumentAuthenticatedWasmKernelResolver(resolver, observe) {
   }
   // Fail before returning any wrapper when the caller presents a copied or
   // manifest-shaped resolver instead of a loader-authenticated instance.
-  authenticatedWasmKernelCapability(resolver, "");
+  authenticatedWasmKernelCapabilities(resolver);
   const wrapped = new WeakMap();
-  const instrument = (logicalSource, candidate) => {
+  const instrument = (logicalSource, name, candidate) => {
     const capabilityId = authenticatedWasmKernelCapability(
       resolver,
       logicalSource,
+      name,
     );
     if (capabilityId === undefined || typeof candidate !== "function") {
       return candidate;
@@ -116,11 +128,16 @@ export function instrumentAuthenticatedWasmKernelResolver(resolver, observe) {
     resolve(logicalSource, name, expected) {
       return instrument(
         logicalSource,
+        name,
         resolver.resolve(logicalSource, name, expected),
       );
     },
     function(logicalSource, name) {
-      return instrument(logicalSource, resolver.function(logicalSource, name));
+      return instrument(
+        logicalSource,
+        name,
+        resolver.function(logicalSource, name),
+      );
     },
   });
 }

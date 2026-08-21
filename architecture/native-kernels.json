@@ -546,6 +546,36 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-combinatorial-integer-rational-production",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "functions": [
+        "packed_integer_matrix_permanent",
+        "packed_integer_matrix_minors",
+        "packed_rational_matrix_permanent",
+        "packed_rational_matrix_minors"
+      ],
+      "semantic_domain": "batched exact matrix permanents and lexicographically ordered minors over integers and rationals",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "division-free-subset-dp"],
+      "benchmark": "bench:wasm-combinatorial-invariants",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-combinatorial-prime-production",
+      "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
+      "functions": [
+        "packed_prime_matrix_permanent",
+        "packed_prime_matrix_minors"
+      ],
+      "semantic_domain": "batched exact matrix permanents and lexicographically ordered minors over word-prime fields",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "division-free-subset-dp"],
+      "benchmark": "bench:wasm-combinatorial-invariants",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-graph-components-production",
       "source": "src/lib/sagejs/kernels/graph/components.py",
       "functions": ["packed_graph_components"],

@@ -24,6 +24,13 @@ const UNARY = Object.freeze({
 
 const BINARY = Object.freeze({ add: 1, sub: 2, mul: 3, div: 4 });
 const PROPERTY = Object.freeze({ real: 1, rational: 2, degree: 3 });
+const MATRIX_BINARY = Object.freeze({ add: 1, sub: 2, mul: 3 });
+const MATRIX_UNARY = Object.freeze({
+  neg: 1,
+  transpose: 2,
+  rref: 3,
+  inverse: 4,
+});
 
 function writeU32(bytes, offset, value) {
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -210,7 +217,10 @@ function formatDyadic(value, precision) {
 }
 
 /** Create the QQbar/AA backend over an instantiated FLINT Wasm module. */
-export function createAlgebraicBackend(instance, { recordCapability = () => {} } = {}) {
+export function createAlgebraicBackend(instance, {
+  recordCapability = () => {},
+  matrixFallback = undefined,
+} = {}) {
   const wasm = instance?.exports ?? instance;
   const memory = wasm?.memory;
   if (!(memory instanceof WebAssembly.Memory)) {
@@ -223,6 +233,9 @@ export function createAlgebraicBackend(instance, { recordCapability = () => {} }
     "binary", "pow", "pow_rational", "equal", "compare_real", "property",
     "polynomial_roots", "minpoly", "enclosure", "format", "serialize",
     "deserialize", "live_count",
+    "matrix_entry_handles", "matrix_live_count", "matrix_close", "matrix_create",
+    "matrix_binary", "matrix_unary", "matrix_scalar_mul", "matrix_entry",
+    "matrix_det", "matrix_rank", "matrix_equal", "matrix_charpoly",
   ];
   for (const name of required) {
     if (typeof wasm[`sagejs_wasm_algebraic_${name}`] !== "function") {
@@ -235,11 +248,19 @@ export function createAlgebraicBackend(instance, { recordCapability = () => {} }
   const rootHandlesPointer = wasm.sagejs_wasm_algebraic_root_handles() >>> 0;
   const rootMultiplicitiesPointer =
     wasm.sagejs_wasm_algebraic_root_multiplicities() >>> 0;
+  const matrixEntryHandlesPointer =
+    wasm.sagejs_wasm_algebraic_matrix_entry_handles() >>> 0;
   const liveObjects = new WeakSet();
+  const liveMatrices = new WeakSet();
   const finalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
     : new FinalizationRegistry((handle) => {
         wasm.sagejs_wasm_algebraic_close(handle);
+      });
+  const matrixFinalizer = typeof FinalizationRegistry === "undefined"
+    ? undefined
+    : new FinalizationRegistry((handle) => {
+        wasm.sagejs_wasm_algebraic_matrix_close(handle);
       });
 
   function check(status, operation) {
@@ -276,6 +297,103 @@ export function createAlgebraicBackend(instance, { recordCapability = () => {} }
       throw new TypeError("expected a live Wasm algebraic number");
     }
     return value.handle;
+  }
+
+  function nativeMatrix(handle, rows, columns, realOnly) {
+    const object = Object.create(null);
+    Object.defineProperties(object, {
+      handle: { value: handle >>> 0 },
+      rows: { value: rows },
+      columns: { value: columns },
+      realOnly: { value: realOnly },
+    });
+    liveMatrices.add(object);
+    matrixFinalizer?.register(object, handle >>> 0, object);
+    return Object.freeze(object);
+  }
+
+  function matrixHandleOf(value) {
+    if (!value || !liveMatrices.has(value)) {
+      throw new TypeError("expected a live Wasm algebraic matrix");
+    }
+    return value.handle;
+  }
+
+  function fallbackMatrix(name, arguments_) {
+    const method = matrixFallback?.[name];
+    if (typeof method !== "function") {
+      throw new TypeError(`matrix backend does not implement ${name}`);
+    }
+    return Reflect.apply(method, matrixFallback, arguments_);
+  }
+
+  function recordMatrix(operation, ingressBytes, egressBytes = 4) {
+    recordCapability(
+      "algebraic:qqbar-resource-core",
+      "receipt-backed-wasm-artifact",
+      {
+        executionTarget: "wasm-artifact",
+        ingressBytes,
+        egressBytes,
+        operation: `qqbar-matrix-${operation}`,
+      },
+    );
+  }
+
+  function matrixResult(
+    status,
+    operation,
+    rows,
+    columns,
+    realOnly,
+    ingressBytes = 4,
+  ) {
+    check(status, `qqbar matrix ${operation}`);
+    recordMatrix(operation, ingressBytes);
+    return nativeMatrix(
+      wasm.sagejs_wasm_algebraic_result_handle() >>> 0,
+      rows,
+      columns,
+      realOnly,
+    );
+  }
+
+  function matrixUnary(name, value) {
+    if (!liveMatrices.has(value)) {
+      return fallbackMatrix(`matrix${name[0].toUpperCase()}${name.slice(1)}`, [value]);
+    }
+    const transpose = name === "transpose";
+    return matrixResult(
+      wasm.sagejs_wasm_algebraic_matrix_unary(
+        MATRIX_UNARY[name], matrixHandleOf(value),
+      ),
+      name,
+      transpose ? value.columns : value.rows,
+      transpose ? value.rows : value.columns,
+      value.realOnly,
+    );
+  }
+
+  function matrixBinary(name, left, right) {
+    const leftIsAlgebraic = liveMatrices.has(left);
+    const rightIsAlgebraic = liveMatrices.has(right);
+    if (!leftIsAlgebraic && !rightIsAlgebraic) {
+      return fallbackMatrix(`matrix${name[0].toUpperCase()}${name.slice(1)}`, [left, right]);
+    }
+    if (!leftIsAlgebraic || !rightIsAlgebraic) {
+      throw new TypeError("cannot mix algebraic and portable matrix resources");
+    }
+    const columns = name === "mul" ? right.columns : left.columns;
+    return matrixResult(
+      wasm.sagejs_wasm_algebraic_matrix_binary(
+        MATRIX_BINARY[name], matrixHandleOf(left), matrixHandleOf(right),
+      ),
+      name,
+      left.rows,
+      columns,
+      left.realOnly,
+      8,
+    );
   }
 
   function resultNative(status, operation) {
@@ -464,6 +582,137 @@ export function createAlgebraicBackend(instance, { recordCapability = () => {} }
         "qqbar deserialize",
       );
     },
+    qqbarMatrix(rows, columns, entries, realOnly = false) {
+      rows = Number(rows);
+      columns = Number(columns);
+      if (!Number.isInteger(rows) || !Number.isInteger(columns) ||
+          rows < 0 || columns < 0 || rows > 128 || columns > 128 ||
+          rows * columns > 4096) {
+        throw new RangeError("algebraic matrix dimensions exceed browser limits");
+      }
+      if (!Array.isArray(entries) || entries.length !== rows * columns) {
+        throw new RangeError("algebraic matrix entry count does not match dimensions");
+      }
+      const handles = entries.map(handleOf);
+      new Uint32Array(
+        memory.buffer,
+        matrixEntryHandlesPointer,
+        handles.length,
+      ).set(handles);
+      const status = wasm.sagejs_wasm_algebraic_matrix_create(
+        rows, columns, handles.length, realOnly ? 1 : 0,
+      );
+      check(status, "qqbar matrix construction");
+      recordMatrix("construct", handles.length * 4);
+      return nativeMatrix(
+        wasm.sagejs_wasm_algebraic_result_handle() >>> 0,
+        rows,
+        columns,
+        Boolean(realOnly),
+      );
+    },
+    matrixAdd(left, right) { return matrixBinary("add", left, right); },
+    matrixSub(left, right) { return matrixBinary("sub", left, right); },
+    matrixMul(left, right) { return matrixBinary("mul", left, right); },
+    matrixNeg(value) { return matrixUnary("neg", value); },
+    matrixTranspose(value) { return matrixUnary("transpose", value); },
+    matrixRref(value) { return matrixUnary("rref", value); },
+    matrixInverse(value) { return matrixUnary("inverse", value); },
+    qqbarMatrixScalarMul(value, scalar) {
+      if (!liveMatrices.has(value)) {
+        return fallbackMatrix("qqbarMatrixScalarMul", [value, scalar]);
+      }
+      return matrixResult(
+        wasm.sagejs_wasm_algebraic_matrix_scalar_mul(
+          matrixHandleOf(value), handleOf(scalar),
+        ),
+        "scalar-mul",
+        value.rows,
+        value.columns,
+        value.realOnly,
+        8,
+      );
+    },
+    matrixEntry(value, row, column) {
+      if (!liveMatrices.has(value)) {
+        return fallbackMatrix("matrixEntry", [value, row, column]);
+      }
+      const result = resultNative(
+        wasm.sagejs_wasm_algebraic_matrix_entry(
+          matrixHandleOf(value), Number(row), Number(column),
+        ),
+        "qqbar matrix entry",
+      );
+      recordMatrix("entry", 12);
+      return result;
+    },
+    matrixDet(value) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixDet", [value]);
+      const result = resultNative(
+        wasm.sagejs_wasm_algebraic_matrix_det(matrixHandleOf(value)),
+        "qqbar matrix determinant",
+      );
+      recordMatrix("determinant", 4);
+      return result;
+    },
+    matrixRank(value) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixRank", [value]);
+      check(
+        wasm.sagejs_wasm_algebraic_matrix_rank(matrixHandleOf(value)),
+        "qqbar matrix rank",
+      );
+      recordMatrix("rank", 4, 4);
+      return wasm.sagejs_wasm_algebraic_result_value();
+    },
+    matrixEqual(left, right) {
+      const leftIsAlgebraic = liveMatrices.has(left);
+      const rightIsAlgebraic = liveMatrices.has(right);
+      if (!leftIsAlgebraic && !rightIsAlgebraic) {
+        return fallbackMatrix("matrixEqual", [left, right]);
+      }
+      if (!leftIsAlgebraic || !rightIsAlgebraic) return false;
+      check(
+        wasm.sagejs_wasm_algebraic_matrix_equal(
+          matrixHandleOf(left), matrixHandleOf(right),
+        ),
+        "qqbar matrix equality",
+      );
+      recordMatrix("equal", 8, 4);
+      return wasm.sagejs_wasm_algebraic_result_value() === 1;
+    },
+    matrixCharpoly(value) {
+      if (!liveMatrices.has(value)) {
+        return fallbackMatrix("matrixCharpoly", [value]);
+      }
+      check(
+        wasm.sagejs_wasm_algebraic_matrix_charpoly(matrixHandleOf(value)),
+        "qqbar matrix characteristic polynomial",
+      );
+      const count = wasm.sagejs_wasm_algebraic_result_count() >>> 0;
+      const handles = new Uint32Array(memory.buffer, rootHandlesPointer, count);
+      const coefficients = Array.from(handles, native);
+      recordMatrix("charpoly", 4, count * 4);
+      return coefficients;
+    },
+    matrixSolve(left, right) {
+      if (!liveMatrices.has(left) && !liveMatrices.has(right)) {
+        return fallbackMatrix("matrixSolve", [left, right]);
+      }
+      if (!liveMatrices.has(left) || !liveMatrices.has(right)) {
+        throw new TypeError("cannot mix algebraic and portable matrix resources");
+      }
+      const inverse = matrixUnary("inverse", left);
+      try {
+        return matrixBinary("mul", inverse, right);
+      } finally {
+        matrixFinalizer?.unregister(inverse);
+        liveMatrices.delete(inverse);
+        check(
+          wasm.sagejs_wasm_algebraic_matrix_close(inverse.handle),
+          "qqbar matrix temporary close",
+        );
+      }
+    },
     qqbarClose(value) {
       const handle = handleOf(value);
       finalizer?.unregister(value);
@@ -513,6 +762,15 @@ export function createAlgebraicBackend(instance, { recordCapability = () => {} }
     __sagejs_algebraic_live_count__() {
       return wasm.sagejs_wasm_algebraic_live_count() >>> 0;
     },
+    __sagejs_algebraic_matrix_live_count__() {
+      return wasm.sagejs_wasm_algebraic_matrix_live_count() >>> 0;
+    },
+    __sagejs_algebraic_matrix_close__(value) {
+      const handle = matrixHandleOf(value);
+      matrixFinalizer?.unregister(value);
+      liveMatrices.delete(value);
+      check(wasm.sagejs_wasm_algebraic_matrix_close(handle), "qqbar matrix close");
+    },
     closeAlgebraicContext() {
       wasm.sagejs_wasm_algebraic_clear();
     },
@@ -524,4 +782,7 @@ export const algebraicResourceLimits = Object.freeze({
   maximumLiveValues: 4095,
   maximumPolynomialDegree: 256,
   maximumPackedBytes: 1_048_576,
+  maximumMatrices: 255,
+  maximumMatrixDimension: 128,
+  maximumMatrixEntries: 4096,
 });

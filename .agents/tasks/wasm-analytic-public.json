@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Route public complex gamma and Riemann xi heavy batches through the receipt-backed Arb/Acb WebAssembly analytic reactor with native oracle, enclosure tolerance, Node-Wasm/browser route, lifecycle, and benchmark crossing evidence",
-  "base_commit": "f959be9f15ac5ec773410dfa21222368ee5d1133",
+  "base_commit": "48c5444a3992dcbf33e3b0074f09992a0f775793",
   "claims": [
     "src/baselib/builtins.py",
     "test/wasm-analytic-public.cjs",

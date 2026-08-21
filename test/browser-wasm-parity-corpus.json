@@ -80,6 +80,21 @@
       }
     },
     {
+      "id": "algebraic-matrix-qqbar",
+      "family": "algebraic-numbers",
+      "workflow": "algebraic-matrix-qqbar",
+      "tier": "release",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nr = (x^2 - 2).roots(AA, multiplicities=False)[1]\nM = matrix(AA, 4, 4, [r,1,0,0, 0,r,1,0, 0,0,r,1, 1,0,0,r])\nprint(M.det())\nprint(M.rank())\nprint((M*M)[0,0])\nprint(M.charpoly()(r))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "3\n4\n2\n-1\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "modular-symbols-weight-two",
       "family": "modular-symbols",
       "workflow": "modular-symbols-weight-two",
@@ -145,6 +160,41 @@
       "timeout_ms": 30000,
       "expect": {
         "stdout": "3\n[1 1 1];[1 1 1];[0 0 0];[0 0 0]\n2 5 True\n[1];[0];[0] True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "workflow": "matrix-combinatorial-invariants",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-combinatorial-integer-rational-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:packed-combinatorial-prime-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "from sagejs.linear_algebra.combinatorial import matrix_permanent, matrix_minors\nanswer = []\nfor base in [ZZ, QQ, GF(7)]:\n    A = matrix(base, 8, 8, [base((i*7+3)%11-5) for i in range(64)])\n    B = matrix(base, 6, 7, [base((i*7+3)%11-5) for i in range(42)])\n    answer.append((matrix_permanent(A), len(matrix_minors(B, 3))))\nprint(answer)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[(3903574, 700), (3903574, 700), (3, 700)]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "extension-field-polynomial-arithmetic",
+      "family": "extension-fields",
+      "workflow": "extension-field-polynomial-arithmetic",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_pow", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_polynomial_pow", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<t> = PolynomialRing(GF(3))\nK.<a> = GF(3^4, modulus=t^4 + 2*t^3 + 2)\nR.<x> = PolynomialRing(K)\nleft = x^160 + (a^3 + 2*a + 1)*x^80 + a + 2\nright = (x + a + 1)^96\nproduct = left * right\npower = (x^5 + a*x + 2)^17\nprint([K.modulus(), a^81 == a, a * (a^-1), product.degree(), power.degree(), product == R(product.list()), [product[0], product[80], product[160], product[256]], [power[0], power[1], power[5], power[85]]])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "[x^4 + 2*x^3 + 2, True, 1, 256, 85, True, [2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], [2, 2*a, 2*a^3 + 2*a + 1, 1]]\n",
         "repr": ""
       }
     },
