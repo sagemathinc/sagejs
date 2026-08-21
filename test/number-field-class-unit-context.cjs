@@ -37,6 +37,7 @@ from sagejs.number_fields.class_unit_analytic import (
     AnalyticPrecisionError,
     UnitSaturationIndexCertificate,
     ZetaLogResidueLimits,
+    ZetaLogResidueWorkspace,
     certify_unit_saturation_index,
     saturate_unit_lattice,
     verify_saturation_evidence,
@@ -155,6 +156,9 @@ zeta_limits = ZetaLogResidueLimits(
     maximum_prime_bound=20000,
     maximum_precision_bits=256,
 )
+analytic_workspace = ZetaLogResidueWorkspace(
+    int(O.discriminant()), int(K.degree()), O.splitting_records,
+)
 square_index_certificate = certify_unit_saturation_index(
     K,
     O,
@@ -165,11 +169,16 @@ square_index_certificate = certify_unit_saturation_index(
     regulator_absolute_tolerance_bits=60,
     maximum_precision_bits=256,
     zeta_limits=zeta_limits,
+    workspace=analytic_workspace,
     generation_evidence=generation_evidence,
     generation_verifier=verify_generation,
     proof_status="exact-relations-conditional-grh",
 )
 assert square_index_certificate.index_bound == 2
+construction_diagnostics = square_index_certificate.workspace_diagnostics()
+assert construction_diagnostics["certificate_construction_calls"] == 1
+assert construction_diagnostics["regulator_calls"] == 1
+assert construction_diagnostics["zeta_residue_calls"] == 1
 saturation = saturate_unit_lattice(
     K,
     O,
@@ -177,6 +186,16 @@ saturation = saturate_unit_lattice(
     square_index_certificate,
     coordinate_bound=1,
 )
+live_replay_diagnostics = square_index_certificate.workspace_diagnostics()
+assert live_replay_diagnostics["certificate_replay_calls"] == 1
+assert live_replay_diagnostics["regulator_cache_hits"] == 1
+assert live_replay_diagnostics["prime_enumeration_cache_hits"] == 1
+assert live_replay_diagnostics["splitting_cache_hits"] == 1
+assert live_replay_diagnostics["finite_term_cache_hits"] == 1
+detached_index_certificate = UnitSaturationIndexCertificate.from_dict(
+    square_index_certificate.to_dict()
+)
+assert detached_index_certificate.workspace_diagnostics() is None
 assert saturation.complete and saturation.saturated and saturation.rigorous
 assert saturation.remaining_index_bound == 1
 assert saturation.index_enlargement == 2
