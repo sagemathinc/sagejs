@@ -6,14 +6,18 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement rigorous outward Arb enclosure transport, precision-safe regulator refinement, bounded exact unit p-saturation, and adaptive analytic retry hooks",
-  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+  "objective": "Accelerate the Belabas-Friedman finite interval with a source-transparent exact dyadic kernel while preserving rigorous proof boundaries and WebAssembly portability",
+  "base_commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
   "claims": [
     "packages/flint/src/algebraic.c",
+    "architecture/native-kernels.json",
     "src/lib/sagejs/number_fields/class_unit_analytic.py",
     "src/lib/sagejs/number_fields/factored_elements.py",
+    "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
     "test/number-field-class-unit-analytic.cjs",
     "test/number-field-class-unit-context.cjs",
+    "test/number-field-zeta-coefficients.cjs",
+    "test/wasm-production-native-kernels.cjs",
     "test/fixtures/number-field-class-unit-analytic.json"
   ],
   "dependencies": [],
@@ -203,23 +207,69 @@
       "commit": "dc0d1aa59803f7bebc634ba3d8edb844e860e6f2",
       "workspace_fingerprint": "27ab7c1234d4fba3060df4a4933869173a58b3a6c803c78a99c340e86fcbc2b6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.218,
+      "started_at": "2026-08-21T22:21:40.416Z",
+      "commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
+      "workspace_fingerprint": "b3b7b1bf54e76f44f89ac9383e3dbdf93947005a19bc58ecba67b529522ffc9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.88,
+      "started_at": "2026-08-21T22:21:42.240Z",
+      "commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
+      "workspace_fingerprint": "b3b7b1bf54e76f44f89ac9383e3dbdf93947005a19bc58ecba67b529522ffc9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm run architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.113,
+      "started_at": "2026-08-21T22:22:17.364Z",
+      "commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
+      "workspace_fingerprint": "b3b7b1bf54e76f44f89ac9383e3dbdf93947005a19bc58ecba67b529522ffc9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=portable identities|generated runtime manifests test/wasm-production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.882,
+      "started_at": "2026-08-21T22:22:20.095Z",
+      "commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
+      "workspace_fingerprint": "b3b7b1bf54e76f44f89ac9383e3dbdf93947005a19bc58ecba67b529522ffc9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.208,
+      "started_at": "2026-08-21T22:24:25.802Z",
+      "commit": "73bf2485afb7409e5e89ae2e5bf66e2fbf76968a",
+      "workspace_fingerprint": "e63a341aaad1013433ddf556fe37f68d482efbdff4ef4ccde44185eb3f9ed60e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a hash-bound UnitSaturationIndexCertificate that binds the maximal-order identity, initial units, class number, complete canonical torsion, analytic hR reconstruction, factor-base/relation-generation evidence, and conditional or unconditional proof status. Exact p-saturation now accepts only that replayable certificate as completion authority; bare integers and HRIndexValidationResult objects remain diagnostic. Replay independently recomputes canonical roots of unity and the analytic proof, invokes the external generation-evidence verifier, strictly decodes every authenticated integer/boolean leaf, reconstructs canonical evidence before comparison, and rejects reauthenticated semantic mutations. Target classes are streamed after checked target/candidate/local-work preflight caps with cancellation polling. RationalEndpoint and native dyadic transport reject booleans, floats, and noncanonical decimal integers. ZetaLogResidueWorkspace now reuses exact-coordinate-keyed regulator enclosures and exact prime, splitting, threshold, prime-power-plan, and finite-interval work across one live engine/certificate computation, with phase timing and hit counters; serialized certificate replay deliberately drops the workspace. On the motivating quintic the analytic reconstruction fell from 49.603 seconds cold to 0.0576 seconds warm, while a fresh detached workspace remained cold at 50.040 seconds.",
+    "summary": "Added a separate source-transparent IntegerBuffer kernel for the exact outward-dyadic arithmetic in the Belabas--Friedman finite term. Directed mpmath/libmp transcendental endpoints and the existing coefficient kernel are unchanged. The host packs exact 2^-p mantissas, invokes one native or Wasm-compatible kernel crossing, reconstructs the same rigorous RealBall provenance, and falls back to the ordinary scalar implementation when the kernel boundary is unavailable or rejects storage. Differential tests compare the complete RealBall.to_dict payload across 64, 96, 128, 160, and 256-bit precision and exercise the unavailable-kernel fallback. For x^3-x^2-6*x-12 at 128 bits, threshold 13455 and 973 aggregated terms, the exact full payload matched while finite-term construction fell from 7.737 seconds scalar to 3.854 seconds packed and analytic-index measured 5.631 seconds versus the prior 8.634-second profile.",
     "risks": [
-      "Rigorous zeta status assumes the caller supplies the actual maximal-order discriminant and a complete exact splitting provider; the function validates prime coverage and every local degree identity but does not independently prove the field/order identity.",
-      "The p-th-root producer is intentionally bounded by an order-coordinate box and candidate cap. Missing roots outside that box never certify saturation; completion then requires exhaustive finite-quotient obstructions for every exponent/torsion target or exhaustion of a rigorously supplied global index.",
-      "Only algebraic logarithm inputs cross the corrected Arb endpoint boundary. Determinant and zeta transcendental evaluation remain explicitly typed exact-rational intervals with mpmath.libmp directed rounding, not Arb balls.",
-      "FactoredNumberFieldElement currently exposes only scalar qqbarLogAbsBall calls. The measured strict-Python regulator determinant is already sub-millisecond for the rank-two fixture, while zeta finite-interval evaluation dominated the profile, so this lane did not add an unmeasured algebraic-log batch boundary.",
-      "A serialized index certificate deliberately needs an application-supplied generation_verifier; its canonical evidence/hash is not treated as self-authenticating. Missing or rejected generation evidence fails closed.",
-      "The bounded producer can prove negative p-saturation only when every exponent/torsion target has an exact finite-quotient obstruction. Otherwise it returns incomplete even after exhausting its coordinate box.",
-      "The focused Q(sqrt(5)) runtime test took 158.9 seconds for two analytic index constructions plus one independent serialized replay; exact splitting and zeta reconstruction dominate. In-process certificates retain only their explicit field-scoped zeta workspace, while serialized replay intentionally starts independently.",
-      "The corrected C source passes a direct syntax check against FLINT headers. This lane's final context receipt borrowed the reconciled linux-x64 addon from the engine-completion worktree because central builds were concurrently replacing their artifacts; broad native/platform gates remain with central integration."
+      "The kernel does not evaluate logarithms or square roots and does not widen the proof boundary: those endpoints remain rigorous exact rationals produced by mpmath.libmp directed rounding.",
+      "Native compilation removes the interval-object arithmetic but not the roughly 3.6 seconds of transcendental endpoint generation, so native and ordinary same-source packed timings are close on this cubic.",
+      "The local WASI GMP toolchain was unavailable, so the production-pack emitter and bridge inventory were validated but the end-to-end Wasm execution test remained environment-skipped.",
+      "Central integration must regenerate packages/flint-wasm/release/production-kernel-coverage.json for the compiled-function count change from 229 to 230 and raise the number-field-global-arithmetic source budget above the measured 911609 bytes."
     ],
     "next_steps": [
-      "Create one ZetaLogResidueWorkspace before the engine analytic-index phase, use its regulator_from_factored_units method, pass it to zeta_log_residue_bound, and pass the same live object to certify_unit_saturation_index; retain the canonical global_index_certificate in map proofs and call verify_saturation_record on replay.",
-      "Run the broad native and platform gates in central integration; no full Arb determinant or zeta migration is claimed by this lane."
+      "Regenerate the production Wasm coverage/capability artifacts after cherry-picking; the expected compiled function count is 230 and the zeta production family has two functions.",
+      "Run the full architecture and production-Wasm gates after the central package-budget and generated-coverage updates."
     ]
   }
 }

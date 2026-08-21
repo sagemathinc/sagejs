@@ -37,7 +37,7 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   assert.equal(inventory.nonProduction.length, 7);
   assert.equal(coverage.totals.registered_kernels, 37);
   assert.equal(coverage.totals.production_kernels, 30);
-  assert.equal(coverage.totals.compiled_functions, 229);
+  assert.equal(coverage.totals.compiled_functions, 230);
   assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -112,7 +112,7 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.registeredKernels, 37);
     assert.equal(manifest.productionKernels, 30);
     assert.equal(manifest.compiledKernelCores, 30);
-    assert.equal(manifest.compiledFunctions, 229);
+    assert.equal(manifest.compiledFunctions, 230);
     assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
@@ -120,9 +120,10 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       kernel.id === "number-field-zeta-coefficients-production"
     );
     assert.ok(zeta.runtime);
-    assert.equal(zeta.functions.length, 1);
-    assert.match(zeta.functions[0].bridge.export,
-      /^sagejs_wasm_call_m_[a-f0-9]{16}_/);
+    assert.equal(zeta.functions.length, 2);
+    assert.ok(zeta.functions.every((fn) =>
+      /^sagejs_wasm_call_m_[a-f0-9]{16}_/.test(fn.bridge.export)
+    ));
     const extension = manifest.kernels.find((kernel) =>
       kernel.id === "extension-polynomial-flint-production"
     );
@@ -247,7 +248,7 @@ from sagejs.native import integer_buffer_values, kernel_integer_buffer, kernel_i
 from sagejs.number_fields.composite_field_analysis import packed_integer_square_root
 from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
 from sagejs.number_fields.round4_state_kernel import packed_round4_padic_characteristic
-from sagejs.number_fields.zeta_coefficient_kernel import assemble_zeta_coefficients_from_factors
+from sagejs.number_fields.zeta_coefficient_kernel import assemble_bf_dyadic_finite_term, assemble_zeta_coefficients_from_factors
 
 def words(buffer):
     return [str(value) for value in integer_buffer_values(buffer)]
@@ -299,12 +300,29 @@ zeta_result = assemble_zeta_coefficients_from_factors(
     ),
     2,
 )
+bf_scale = 1 << 16
+bf_output = kernel_integer_zeros(assemble_bf_dyadic_finite_term, 2, 8)
+bf_result = assemble_bf_dyadic_finite_term(
+    bf_output,
+    kernel_integer_buffer(assemble_bf_dyadic_finite_term, [-1, 0, 2, 1]),
+    kernel_integer_buffer(assemble_bf_dyadic_finite_term, [
+        2 * bf_scale, 2 * bf_scale,
+        bf_scale, bf_scale,
+        3 * bf_scale, 3 * bf_scale,
+        5 * bf_scale, 5 * bf_scale,
+        bf_scale, bf_scale,
+        bf_scale, 2 * bf_scale,
+    ]),
+    1,
+    16,
+)
 
 print(json.dumps({
     "om": [om_result, words(om_workspace)],
     "round4": [round4_result, words(round4_control), words(round4_output)],
     "composite": str(packed_integer_square_root(2**190 + 123456789)),
     "zeta": [zeta_result, words(zeta_output)],
+    "bf": [bf_result, words(bf_output)],
 }))
 `,
     },
@@ -411,6 +429,10 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       "sagejs/number_fields/zeta_coefficient_kernel.py",
       "assemble_zeta_coefficients_from_factors",
     );
+    const bf = runtime.function(
+      "sagejs/number_fields/zeta_coefficient_kernel.py",
+      "assemble_bf_dyadic_finite_term",
+    );
     const zetaOutput = Array(8).fill(0n);
     const zetaResult = zeta(
       zetaOutput,
@@ -421,23 +443,42 @@ test("number-field GMP Wasm cores execute the same exact sources as fallbacks", 
       new BigUint64Array([1n, 0n, 2n, 0n, 1n, 0n, 2n, 0n]),
       2n,
     );
+    const bfScale = 1n << 16n;
+    const bfOutput = [0n, 0n];
+    const bfResult = bf(
+      bfOutput,
+      [-1n, 0n, 2n, 1n],
+      [
+        2n * bfScale, 2n * bfScale,
+        bfScale, bfScale,
+        3n * bfScale, 3n * bfScale,
+        5n * bfScale, 5n * bfScale,
+        bfScale, bfScale,
+        bfScale, 2n * bfScale,
+      ],
+      1n,
+      16n,
+    );
     const actual = {
       om: [omResult, words(omWorkspace)],
       composite: String(squareRoot(value)),
       zeta: [zetaResult, words(zetaOutput)],
+      bf: [bfResult, words(bfOutput)],
     };
     const oracle = numberFieldOracle();
     assert.deepEqual(actual, {
       om: oracle.om,
       composite: oracle.composite,
       zeta: oracle.zeta,
+      bf: oracle.bf,
     });
     assert.deepEqual(actual, {
       om: [true, ["0", "2", "0", "0"]],
       composite: "39614081257132168796771975168",
       zeta: [true, ["1", "1", "0", "1", "1", "0", "0", "1"]],
+      bf: oracle.bf,
     });
-    for (const fn of [maxmin, squareRoot, zeta]) {
+    for (const fn of [maxmin, squareRoot, zeta, bf]) {
       assert.equal(fn.nativeAvailable, true);
       assert.equal(fn.executionTarget, "wasm");
       assert.equal(fn.sourceTransparent, true);
