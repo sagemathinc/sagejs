@@ -217,6 +217,14 @@ bounded59 = bounded_cubic_minkowski_class_number_one(
 )
 assert not bounded59.complete and bounded59.certificate is None
 
+# A nontrivial class group must decline the bounded class-number-one proof
+# quickly and fall through to the general engine; it is never mislabeled as
+# principal because the small exact search was exhausted.
+K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
+bounded1083 = bounded_cubic_minkowski_class_number_one(K1083)
+assert not bounded1083.complete and bounded1083.certificate is None
+assert "principal-generator search exhausted" in bounded1083.reason
+
 Km = NumberField(x**3 - x - 1, "a")
 units_m = certified_small_cubic_unit_group(Km)
 classes_m = certified_small_cubic_class_group(Km)
