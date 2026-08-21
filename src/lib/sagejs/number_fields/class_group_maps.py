@@ -46,6 +46,9 @@ _PROGRESS_SCHEMA = "sagejs.number-fields.minkowski-proof-progress.v1"
 _PARTITION_SCHEMA = "sagejs.number-fields.minkowski-proof-partition.v1"
 _PROGRESS_RECORD_SCHEMA = "sagejs.number-fields.minkowski-proof-progress-record.v1"
 _SATURATION_SCHEMA = "sagejs.number-fields/class-unit-saturation-v1"
+_CONDITIONAL_EVIDENCE_SCHEMA = (
+    "sagejs.number-fields/conditional-class-group-evidence-v1"
+)
 
 
 def _integer(value: Any, purpose: str) -> int:
@@ -225,6 +228,61 @@ def _engine_material(engine_group: Any, result: Any) -> tuple[Any, Any]:
     if presentation is None:
         presentation = getattr(engine_group, "_presentation", None)
     return order, presentation
+
+
+def _producer_conditional_evidence(
+    result: Any,
+    engine_group: Any,
+    order: Any,
+    *,
+    theorem: str,
+    bound: int,
+    relation_count: int,
+) -> dict[str, Any]:
+    """Detach the exact relation lattice used by a conditional result."""
+    factor_base = getattr(result, "conditional_factor_base", None)
+    relations = getattr(result, "conditional_relation_records", None)
+    presentation = getattr(result, "conditional_presentation_evidence", None)
+    # These fallbacks cover engine objects produced before the result-level
+    # adapter fields were attached.  Serialized proof replay never uses them.
+    if factor_base is None:
+        factor_base = getattr(engine_group, "_factor_base", None)
+    if relations is None:
+        relations = getattr(engine_group, "_relations", None)
+    if presentation is None:
+        presentation = getattr(engine_group, "_presentation", None)
+    if factor_base is None or relations is None or presentation is None:
+        raise ArithmeticError(
+            "a conditional engine result has no detached relation evidence"
+        )
+    factor_base = tuple(factor_base)
+    relations = tuple(relations)
+    if len(relations) != relation_count:
+        raise ArithmeticError("conditional relation evidence has the wrong count")
+    body = {
+        "schema": _CONDITIONAL_EVIDENCE_SCHEMA,
+        "proof_status": EXACT_RELATIONS_CONDITIONAL_GRH,
+        "field_order_fingerprint": _portable_ideal_fingerprint(order.ideal(1))[
+            "field_order_fingerprint"
+        ],
+        "theorem": theorem,
+        "bound": [bound, 1],
+        "assumption": "GRH for the Dedekind zeta function",
+        "relation_count": relation_count,
+        "factor_base": [
+            _canonical_payload(prime, "conditional factor-base prime")
+            for prime in factor_base
+        ],
+        "relations": [
+            _canonical_payload(record, "conditional relation record")
+            for record in relations
+        ],
+        "presentation": _canonical_payload(
+            presentation, "conditional relation presentation"
+        ),
+    }
+    body["content_sha256"] = _payload_hash(body)
+    return body
 
 
 def _producer_saturation(result: Any) -> tuple[Any, dict[str, Any]]:
@@ -904,7 +962,14 @@ class IdealClassGroup:
         if self._proof_record is None:
             raise ValueError("the class group has no attached completeness proof")
         if isinstance(self._proof_record, ConditionalGRHProofRecord):
-            return self._proof_record.to_dict()
+            payload = self._proof_record.to_dict()
+            evidence = getattr(
+                self._proof_context, "conditional_evidence_payload", None
+            )
+            if not callable(evidence):
+                raise TypeError("the GRH replay context has no relation evidence")
+            payload["conditional_evidence"] = evidence()
+            return payload
         if isinstance(self._proof_record, UnconditionalMinkowskiProofRecord):
             encoder = getattr(self._proof_context, "encode_prime_record", None)
             if not callable(encoder):
@@ -922,6 +987,16 @@ class IdealClassGroup:
             schema = payload.get("schema")
             if schema == "sagejs.number-fields.class-group.grh-proof.v1":
                 record: Any = ConditionalGRHProofRecord.from_dict(payload)
+                verifier = getattr(
+                    self._proof_context,
+                    "verify_conditional_evidence_payload",
+                    None,
+                )
+                if (
+                    not callable(verifier)
+                    or verifier(payload, record, self) is not True
+                ):
+                    return False
             elif schema == "sagejs.number-fields.class-group.minkowski-proof.v1":
                 decoder = getattr(self._proof_context, "decode_prime_record", None)
                 if not callable(decoder):
@@ -1021,6 +1096,7 @@ class _EngineProofReplayContext:
         proof_progress: Any = None,
         proof_progress_payload: dict[str, Any] | None = None,
         dependency_hashes: dict[str, str] | None = None,
+        conditional_evidence_payload: dict[str, Any] | None = None,
     ) -> None:
         self.result = result
         self.engine_group = engine_group
@@ -1044,6 +1120,7 @@ class _EngineProofReplayContext:
         self._proof_progress = proof_progress
         self._proof_progress_payload = proof_progress_payload
         self._dependency_hashes = dependency_hashes
+        self._conditional_evidence_payload = conditional_evidence_payload
 
     def verify_saturation_record(self, record: Any) -> bool:
         if (
@@ -1083,6 +1160,151 @@ class _EngineProofReplayContext:
         return _canonical_payload(
             self._proof_progress_payload, "Minkowski proof progress"
         )
+
+    def conditional_evidence_payload(self) -> dict[str, Any]:
+        if self._conditional_evidence_payload is None:
+            raise ValueError("the proof has no detached conditional evidence")
+        return _canonical_payload(
+            self._conditional_evidence_payload, "conditional relation evidence"
+        )
+
+    def _verify_conditional_evidence(
+        self, evidence: Any, record: Any, group: Any
+    ) -> bool:
+        if not isinstance(evidence, dict):
+            return False
+        expected_fields = {
+            "schema",
+            "proof_status",
+            "field_order_fingerprint",
+            "theorem",
+            "bound",
+            "assumption",
+            "relation_count",
+            "factor_base",
+            "relations",
+            "presentation",
+            "content_sha256",
+        }
+        if (
+            set(evidence) != expected_fields
+            or evidence.get("schema") != _CONDITIONAL_EVIDENCE_SCHEMA
+            or evidence.get("proof_status") != EXACT_RELATIONS_CONDITIONAL_GRH
+            or not _authenticated_payload(evidence)
+            or evidence.get("field_order_fingerprint") != self.field_order_fingerprint
+            or evidence.get("theorem") != record.theorem
+            or evidence.get("bound") != list(record.bound)
+            or evidence.get("assumption") != record.assumption
+            or _integer(evidence.get("relation_count"), "conditional relation count")
+            != record.relation_count
+        ):
+            return False
+        prime_payloads = evidence.get("factor_base")
+        relation_payloads = evidence.get("relations")
+        presentation_payload = evidence.get("presentation")
+        if (
+            not isinstance(prime_payloads, list)
+            or not isinstance(relation_payloads, list)
+            or not isinstance(presentation_payload, dict)
+            or len(relation_payloads) != record.relation_count
+        ):
+            return False
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideal_from_dict"]
+        )
+        relation_module = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["RelationRecord", "reconstruct_factor_base_ideal"],
+        )
+        matrix_module = __import__(
+            "sagejs.number_fields.class_group_matrix",
+            fromlist=["RelationPresentation"],
+        )
+        factor_base = tuple(
+            prime_module.prime_ideal_from_dict(self.order, payload)
+            for payload in prime_payloads
+        )
+        if any(
+            _canonical_payload(prime, "conditional factor-base prime") != payload
+            for prime, payload in zip(factor_base, prime_payloads, strict=True)
+        ):
+            return False
+        canonical_primes = tuple(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"))
+            for payload in prime_payloads
+        )
+        if len(set(canonical_primes)) != len(canonical_primes):
+            return False
+        bound = _integer(record.bound[0], "conditional factor-base bound")
+        for prime in factor_base:
+            rational_prime = _integer(
+                prime.rational_prime(), "conditional rational prime"
+            )
+            residue_degree = _integer(
+                prime.residue_class_degree(), "conditional residue degree"
+            )
+            if rational_prime**residue_degree > bound:
+                return False
+        relations = tuple(
+            relation_module.RelationRecord.from_dict(payload)
+            for payload in relation_payloads
+        )
+        for relation, payload in zip(relations, relation_payloads, strict=True):
+            if relation.to_dict() != payload:
+                return False
+            verification = relation.verify(self.order, factor_base)
+            if (
+                not isinstance(verification, dict)
+                or verification.get("certified") is not True
+            ):
+                return False
+        presentation = matrix_module.RelationPresentation.from_dict(
+            presentation_payload
+        )
+        if (
+            presentation.to_dict() != presentation_payload
+            or presentation.verify() is not True
+        ):
+            return False
+        rows = tuple(tuple(row.dense()) for row in presentation.relation_rows)
+        if (
+            presentation.column_count != len(factor_base)
+            or rows != tuple(relation.row for relation in relations)
+            or presentation.free_rank != 0
+            or tuple(presentation.invariants) != tuple(group.invariants())
+            or _integer(presentation.order, "conditional presentation order")
+            != _integer(group.order(), "conditional class-group order")
+        ):
+            return False
+        generator_ideals = tuple(group.gens_ideals())
+        if len(presentation.generator_transforms) != len(generator_ideals):
+            return False
+        for transform, ideal in zip(
+            presentation.generator_transforms, generator_ideals, strict=True
+        ):
+            reconstructed = relation_module.reconstruct_factor_base_ideal(
+                self.order, factor_base, transform
+            )
+            if reconstructed != ideal:
+                return False
+        return True
+
+    def verify_conditional_evidence_payload(
+        self, proof_payload: dict[str, Any], record: Any, group: Any
+    ) -> bool:
+        try:
+            return self._verify_conditional_evidence(
+                proof_payload.get("conditional_evidence"), record, group
+            )
+        except (
+            TypeError,
+            ValueError,
+            ArithmeticError,
+            AttributeError,
+            IndexError,
+            KeyError,
+        ):
+            return False
 
     def _progress_records(self, payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
         count = _integer(payload.get("partition_count"), "proof partition count")
@@ -1231,7 +1453,6 @@ class _EngineProofReplayContext:
         diagnostics = self.result.diagnostics
         return (
             self.result.complete is True
-            and self.engine_group.verify() is True
             and proof_stage is not None
             and proof_stage.state == "complete"
             and proof_stage.details.get("proof_status")
@@ -1240,6 +1461,10 @@ class _EngineProofReplayContext:
             and record.bound == (int(diagnostics.get("factor_base_bound")), 1)
             and record.relation_count == int(diagnostics.get("relations"))
             and "GRH" in record.assumption.upper()
+            and self._conditional_evidence_payload is not None
+            and self._verify_conditional_evidence(
+                self._conditional_evidence_payload, record, self.engine_group
+            )
         )
 
     def iter_minkowski_prime_ideals(self) -> Any:
@@ -1375,6 +1600,7 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     proof_progress = None
     progress_payload = None
     dependency_hashes = None
+    conditional_evidence = None
     if proof_status == EXACT_UNCONDITIONAL:
         unconditional_stage = _stage(result, "unconditional-proof")
         if unconditional_stage is None or unconditional_stage.state != "complete":
@@ -1388,6 +1614,15 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         dependency_hashes = _producer_dependency_hashes(result)
     else:
         bound = int(diagnostics.get("factor_base_bound"))
+        if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH:
+            conditional_evidence = _producer_conditional_evidence(
+                result,
+                engine_group,
+                order,
+                theorem=str(engine_group.factor_base_theorem),
+                bound=bound,
+                relation_count=relation_count,
+            )
     replay = _EngineProofReplayContext(
         result,
         engine_group,
@@ -1399,6 +1634,7 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         proof_progress,
         progress_payload,
         dependency_hashes,
+        conditional_evidence,
     )
     if proof_status == EXACT_UNCONDITIONAL:
         if unconditional_stage is None:
