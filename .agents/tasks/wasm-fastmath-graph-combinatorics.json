@@ -194,6 +194,66 @@
       "commit": "18ce328b0726f7143184ebe1b3f7f0a6e51d3013",
       "workspace_fingerprint": "f11033abe52068b22a6a2a217447bd007be36e22c5cda8fd28e79fce760c1f57",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.032,
+      "started_at": "2026-08-21T00:20:07.192Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.727,
+      "started_at": "2026-08-21T00:20:17.463Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.477,
+      "started_at": "2026-08-21T00:20:51.771Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-graph-components.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.156,
+      "started_at": "2026-08-21T00:21:46.703Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/wasm-capabilities.cjs test/wasm-production-native-kernels.cjs test/graphs.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.311,
+      "started_at": "2026-08-21T00:22:00.617Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-graph-components.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.484,
+      "started_at": "2026-08-21T00:22:18.588Z",
+      "commit": "60c881da58a0fb980772096c9abf5d75cc8afdc0",
+      "workspace_fingerprint": "6b64a3a76c1d3365feafa0e5dae43464877489a1eecff84bcae8d6beac3b3524",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
