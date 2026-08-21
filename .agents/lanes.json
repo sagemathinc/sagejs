@@ -44,6 +44,27 @@
       "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
     },
     {
+      "id": "numeric-symbolic-wasm",
+      "description": "Bounded MPFR/MPC/Arb/Acb WebAssembly resources and coarse symbolic numerical kernels",
+      "allowed_claims": [
+        "src/baselib/real_complex.py",
+        "src/baselib/symbolic.py",
+        "packages/flint/src/analytic_batch_core.c",
+        "packages/flint/src/analytic_batch_core.h",
+        "packages/flint-wasm/src/numeric.c",
+        "packages/flint-wasm/numeric-backend.mjs",
+        "packages/flint-wasm/analytic-backend.mjs",
+        "packages/flint-wasm/scripts/build.cjs",
+        "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs"
+      ],
+      "required_checks": [
+        "pnpm architecture:check",
+        "pnpm test:baselib:strict",
+        "node --test packages/flint-wasm/test/numeric-backend.test.mjs packages/flint-wasm/test/numeric-public-workflow.test.mjs"
+      ]
+    },
+    {
       "id": "graphics",
       "description": "Two- and three-dimensional graphics and rendering",
       "allowed_claims": [
