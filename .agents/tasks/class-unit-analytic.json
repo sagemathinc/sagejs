@@ -1,0 +1,87 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-analytic",
+  "title": "Units regulators and hR validation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement unit-lattice extraction/saturation interfaces, rigorous regulator enclosures, rigorous zeta log-residue bounds, and hR index validation with focused tests",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_analytic.py",
+    "test/number-field-class-unit-analytic.cjs",
+    "test/fixtures/number-field-class-unit-analytic.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Zeta.jl",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Unit"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Hecke/Oscar",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-class-unit-analytic.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.358,
+      "started_at": "2026-08-21T05:00:47.600Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "cee69f63dfd458308b3934b86ab70f15dbec7a2c2821b99df06acc35cdb8aebe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.683,
+      "started_at": "2026-08-21T05:00:54.115Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "cee69f63dfd458308b3934b86ab70f15dbec7a2c2821b99df06acc35cdb8aebe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.825,
+      "started_at": "2026-08-21T05:01:55.451Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "cee69f63dfd458308b3934b86ab70f15dbec7a2c2821b99df06acc35cdb8aebe",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary strict-Python analytic proof layer for class/unit computations. Exact relation dependencies replay as integral left kernels with maximal-minor saturation indices and certificate-driven p-saturation states. Exact rational endpoint balls plus mpmath.libmp directed rounding certify weighted-log regulator determinants with precision escalation. A provider-oriented Belabas--Friedman implementation authenticates every splitting type below its theorem-selected cutoff, encloses the finite prime-power sum and complete analytic tail separately, and feeds a rigorous analytic class-number-formula comparison that returns an integer interval for the missing hR index. Focused Sage/PARI fixtures cover real/imaginary quadratic and rank-two cubic data; direct CPython and generated Sage.js witnesses agree.",
+    "risks": [
+      "Rigorous zeta status assumes the caller supplies the actual maximal-order discriminant and a complete exact splitting provider; the function validates prime coverage and every local degree identity but does not independently prove the field/order identity.",
+      "Unit p-saturation is a verification interface: only evidence objects whose verify method succeeds become rigorous. This lane does not implement the algebraic p-th-root obstruction producer, so an unchecked search result remains explicitly unverified.",
+      "The common base had no public RealBall enclosure transport. This module therefore uses exact rational endpoints and mpmath.libmp directed-rounding intervals; future Arb transport can supply the same lower/upper protocol without changing proof states.",
+      "The arithmetic-algebra lane policy requires pnpm test:native before review. Per coordinator direction, this handoff stays active with focused receipts; central integration owns that broad native gate."
+    ],
+    "next_steps": [
+      "Integration should add class_unit_analytic.py to pyrightconfig.json and the focused test to the node test manifest, then expose the selected public APIs.",
+      "Store the result objects directly through ClassUnitGroupContext.set_unit_state/set_analytic_state and mirror their precision/saturation histories using core commit a2269e4e162ff87e2eacc7f9663847588bf499ac.",
+      "Run pnpm test:native in central integration and move this contract to review only after recording that required receipt."
+    ]
+  }
+}
