@@ -65,6 +65,16 @@
       "commit": "de8282bc3235cacc96f8b2df648d909633c198e7",
       "workspace_fingerprint": "de27206f9a339fab5b9b1caf935288e83e43f8b422f9e8a9182a5b2969823c4c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/wasm-kernel-route-instrumentation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.12,
+      "started_at": "2026-08-21T00:46:55.282Z",
+      "commit": "b874f9bd0ebfe8197eae812c70a16cd84b025f1c",
+      "workspace_fingerprint": "de27206f9a339fab5b9b1caf935288e83e43f8b422f9e8a9182a5b2969823c4c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
