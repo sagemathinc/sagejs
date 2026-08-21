@@ -4765,7 +4765,12 @@ class Matrix(sage.Element):
             raise ArithmeticError("matrix must be square")
         if exponent < 0:
             return self.inverse() ** (-exponent)
-        if self._has_fmpz_matrix_resource() and exponent <= 18446744073709551615:
+        if (
+            self._has_fmpz_matrix_resource()
+            and exponent <= 18446744073709551615
+            and _flint_backend_has_function("ffiFmpzMatrixPow")
+            and _flint_backend_has_function("ffiFmpzMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpz_matrix_pow(
                 self._integer_resource(), runtime.normalize_integer(exponent)
             )
@@ -8842,7 +8847,10 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
     size = int(size)
     if size < 0:
         raise ValueError("matrix dimensions must be nonnegative")
-    if base is sage.ZZ:
+    resource_identity = _flint_backend_has_function(
+        "ffiFmpzMatrixPow"
+    ) and _flint_backend_has_function("ffiFmpzMatrixClose")
+    if base is sage.ZZ and resource_identity:
         ffi = _flint_ffi_module()
         zero = ffi.fmpz_matrix(size, size)
         try:
@@ -8850,7 +8858,7 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         finally:
             zero.close()
         return MatrixSpace(sage.ZZ, size, size)._from_fmpz_matrix_resource(resource)
-    if base is sage.QQ:
+    if base is sage.QQ and resource_identity:
         ffi = _flint_ffi_module()
         zero = ffi.fmpz_matrix(size, size)
         try:
@@ -8864,6 +8872,15 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         finally:
             integer_resource.close()
         return result
+    if base is sage.ZZ or base is sage.QQ:
+        entries = runtime.integer_buffer(
+            [1 if row == col else 0 for row in range(size) for col in range(size)],
+            1,
+        )
+        parent = MatrixSpace(base, size, size)
+        if base is sage.ZZ:
+            return parent._from_canonical_integer_entries(entries)
+        return parent._from_canonical_integer_rationals(entries)
     if _is_packed_dense_prime_base(base):
         kernel = _dense_prime_kernel_module().dense_prime_field_matrix_identity
         storage = _dense_prime_zeros(kernel, size * size)
