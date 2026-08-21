@@ -10,12 +10,14 @@ calculation: prime decompositions carry replayable certificates, exact ideal
 lattices feed exact zeta coefficients, and those coefficients feed numerical
 analytic continuation.
 
-This chapter is also a guide to the proof boundary.  Exact signatures, ideal
-identities, prime decompositions, coefficients, and the currently supported
-unit and class-group certificates are exact.  Complex values, residues,
-regulators, plots, and the analytic class-number-formula comparison are
-numerical approximations.  General Dedekind-zeta continuation is explicitly
-non-rigorous at present.
+This chapter is also a guide to the proof boundary. Exact signatures, ideal
+identities, prime decompositions, coefficients, units, and completed class and
+unit groups are exact. General Dedekind-zeta continuation, complex values,
+residues, plots, and the analytic class-number-formula comparison are numerical
+approximations and are explicitly non-rigorous at present. In contrast, the
+class/unit engine returns a rigorous ball enclosure for its weighted-log
+regulator. See [Number-field class and unit groups](number-field-class-unit-groups.md)
+for its unconditional and conditional-GRH semantics.
 
 Every fence marked `sage test` is run by the documentation test suite.  The
 larger plotting and general-continuation examples are ordinary executable Sage

@@ -3,14 +3,22 @@
   "schema_version": 2,
   "id": "class-unit-oracles",
   "title": "Class and unit group oracle corpus",
-  "lane": "arithmetic-algebra",
+  "lane": "documentation-compat",
   "status": "active",
   "owner": "user",
-  "objective": "Build deterministic Sage/PARI, Magma, and optional Hecke oracle corpus and benchmark harness for class groups, units, regulators, maps, and proof modes",
-  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "objective": "Integrate the deterministic class/unit oracle corpus into public acceptance tests and document proof semantics, provenance, capabilities, resource behavior, and benchmark policy",
+  "base_commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
   "claims": [
     "bench/class-unit-groups/",
-    "test/fixtures/number-field-class-unit-oracles.json"
+    "test/fixtures/number-field-class-unit-oracles.json",
+    "test/number-field-class-unit-public.cjs",
+    "test/node-test-manifest.cjs",
+    "docs/number-field-class-unit-groups.md",
+    "docs/algebraic-number-fields-computational-foundations.md",
+    "docs/index.md",
+    "website/capabilities.json",
+    "website/benchmarks.json",
+    "website/competitive-audit.json"
   ],
   "dependencies": [],
   "references": [
@@ -36,86 +44,45 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "pnpm test:baselib:strict",
-    "pnpm test:native",
-    "node --check bench/class-unit-groups/run-oracles.cjs",
-    "/home/user/sagelite/sage -python -m py_compile bench/class-unit-groups/sage_oracle.py",
-    "node bench/class-unit-groups/run-oracles.cjs --tier all --check --require-sage --require-magma"
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node bench/class-unit-groups/run-oracles.cjs --tier quick --check --require-sage --require-magma",
+    "node --test test/number-field-class-unit-public.cjs test/test-manifest.test.cjs test/website.cjs"
   ],
   "runs": [
     {
-      "command": "node --check bench/class-unit-groups/run-oracles.cjs",
+      "command": "node bench/class-unit-groups/run-oracles.cjs --tier quick --check --require-sage --require-magma",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 0.041,
-      "started_at": "2026-08-21T04:41:53.141Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
+      "seconds": 2.078,
+      "started_at": "2026-08-21T08:06:24.865Z",
+      "commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
+      "workspace_fingerprint": "4d9e9b6266ee129921a8100afc50b134f7062e06c8c1ea55348f14f10618ab08",
       "platform": "linux-x64"
     },
     {
-      "command": "/home/user/sagelite/sage -python -m py_compile bench/class-unit-groups/sage_oracle.py",
+      "command": "node --test test/number-field-class-unit-public.cjs test/test-manifest.test.cjs test/website.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 1.036,
-      "started_at": "2026-08-21T04:41:54.916Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node bench/class-unit-groups/run-oracles.cjs --tier all --check --require-sage --require-magma",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 12.62,
-      "started_at": "2026-08-21T04:41:58.161Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 102.41,
-      "started_at": "2026-08-21T04:42:21.673Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm architecture:check",
-      "result": "fail",
-      "exit_code": 1,
-      "seconds": 9.893,
-      "started_at": "2026-08-21T04:44:28.567Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:native",
-      "result": "fail",
-      "exit_code": 143,
-      "seconds": 569.45,
-      "started_at": "2026-08-21T04:44:49.361Z",
-      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
-      "workspace_fingerprint": "5218e1611a9fe982de030a29e2ac83a93c7b1647113ba6e84893184827e3925c",
+      "seconds": 41.043,
+      "started_at": "2026-08-21T08:06:27.573Z",
+      "commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
+      "workspace_fingerprint": "4d9e9b6266ee129921a8100afc50b134f7062e06c8c1ea55348f14f10618ab08",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a network-free 16-field corpus and persistent Sage/PARI plus Magma harness covering degrees 1 through 5, every quartic signature, discriminants, cyclic and repeated-factor class groups, unit ranks 0 through 4, torsion, 100/200-bit Arb regulator intervals, oracle-specific generator ideals, exact ideal class logs, principality witnesses, conditional-GRH and unconditional labels, invalid inputs, alternate and nonmonogenic presentations, a large-unit stress field, and the motivating discriminant-12 quadratic and discriminant-380452 C4 quintic. The pinned normalized baseline retains exact output and one-sample timings; the all-tier self-check reports exact structural agreement across both independent implementation families. A metadata-only pure quintic x^5-1009 records the 231-fold factor-base-bound gap and bounded unconditional failure evidence. README and fixture record directional Sage.js acceptance thresholds.",
+    "summary": "Integrated the committed 16-field Sage/PARI and Magma corpus into the host test manifest and added public conditional/unconditional acceptance coverage. The discriminant-12 quadratic runs in the ordinary suite; the discriminant-380452 C4 quintic runs only with SAGEJS_SLOW_CLASS_UNIT=1 while its normalized target remains checked offline by default. Added user documentation for proof and GRH labels, distinct cache identities, exact ideal maps and principality, factored units, rigorous regulator balls, limits, cancellation, authenticated checkpoints, oracle licensing/provenance, and benchmark methodology. Updated public capability, benchmark, and competitive-audit records from planned to executable evidence. The harness now applies process-group timeout escalation on POSIX hosts.",
     "risks": [
-      "Julia is not installed on the capture host, so Hecke/Oscar is explicitly unavailable and is not counted as a third agreeing implementation family; exact upstream versions and commits are pinned for a future adapter.",
+      "The capture host has no Julia executable. Local Hecke 0.40.0 and Oscar 1.9.0-DEV both require Julia 1.10; the README records a task-scoped JULIA_DEPOT_PATH and exact instantiate/status command. The baseline therefore continues to mark Hecke/Oscar unavailable rather than claiming unrun agreement.",
       "Magma 2.18-5 Cputime is coarse and its retained one-sample timings are historical context, not gates.",
-      "The first broad native validation was terminated by the shared host during a clean build; a retry was stopped at the coordinator's request once focused self-checks passed. The initial architecture check also encountered the absent clean-worktree dist/tools/cli before that build. This lane changes only benchmark, fixture, and task-contract files.",
+      "pnpm docs:check completed its seven-stage build but reported that the generated API reference was already stale relative to origin/main; this lane did not claim or modify docs/reference/api.md. Focused public, manifest, website, syntax, contract, and quick two-oracle checks pass.",
       "The x^5-1009 unconditional Magma computation is metadata-only after an intentional 60-second interruption and is excluded from ordinary tiers."
     ],
     "next_steps": [
-      "Consume the normalized class, map, unit, and regulator projections in the class/unit implementation lanes and enforce the recorded proof labels as distinct cache states.",
-      "Add a Hecke/Oscar adapter only on a host with a pinned Julia environment, then review exact generator-basis changes rather than weakening the two-family checks.",
-      "Run pnpm test:native and architecture:check in the integration lane after its normal build artifacts are available.",
+      "Run SAGEJS_SLOW_CLASS_UNIT=1 node --test test/number-field-class-unit-public.cjs on a dedicated host to record both quintic proof-mode timings without burdening ordinary CI.",
+      "Install Julia 1.10 or newer at the documented task-scoped prefix, instantiate the pinned local Hecke project in the documented depot, add an adapter, and record Julia/Hecke/Nemo/FLINT versions before claiming a third agreement family.",
+      "Regenerate docs/reference/api.md in the lane that owns generated reference output, then rerun pnpm docs:check.",
       "Ratchet the directional warm thresholds only from uncontended five-sample Sage.js implementation measurements."
     ]
   }
