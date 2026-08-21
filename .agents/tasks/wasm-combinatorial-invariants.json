@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-combinatorial-invariants",
+  "title": "Wasm Combinatorial Invariants",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate exact matrix permanent and minors for ZZ, QQ, and small prime fields through coarse source-transparent production WebAssembly kernels, preserving exact fallback and max_work semantics",
+  "base_commit": "d6f18292f3142f16a0515705a452f6b472001976",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/combinatorial.py",
+    "src/lib/sagejs/kernels/matrix/combinatorial.py",
+    "test/wasm-combinatorial-invariants.cjs",
+    "bench/wasm-combinatorial-invariants.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Sage matrix.permanent and matrix.minors differential corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
