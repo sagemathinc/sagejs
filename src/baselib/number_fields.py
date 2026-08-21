@@ -2260,6 +2260,12 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> Any:
+        if algorithm in ("minkowski", "buchmann-hecke"):
+            return _nf_class_unit_groups_module().unit_group(
+                self, proof=proof, algorithm=algorithm, **limits
+            )
+        if algorithm not in ("auto", "quadratic-forms"):
+            raise ValueError("unknown unit-group algorithm: " + str(algorithm))
         if (
             self._unit_group_cache is runtime.undefined
             and proof is None
@@ -2268,8 +2274,16 @@ class NumberFieldParent(sage.Parent):
         ):
             signature = self.signature()
             if self.degree() == 2 and signature[0] == 2 and signature[1] == 0:
-                result = _nf_units_module().real_quadratic_unit_group(self)
+                result = (
+                    _nf_quadratic_class_units_module().real_quadratic_field_unit_group(
+                        self, algorithm=algorithm, **limits
+                    )
+                )
             elif self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
+                if limits:
+                    raise TypeError(
+                        "imaginary quadratic units do not accept resource limits"
+                    )
                 result = _nf_units_module().bounded_unit_subgroup(self)
             else:
                 result = _nf_class_unit_groups_module().unit_group(
@@ -2286,8 +2300,14 @@ class NumberFieldParent(sage.Parent):
             return self._unit_group_cache
         signature = self.signature()
         if self.degree() == 2 and signature[0] == 2 and signature[1] == 0:
-            return _nf_units_module().real_quadratic_unit_group(self)
+            return _nf_quadratic_class_units_module().real_quadratic_field_unit_group(
+                self, algorithm=algorithm, **limits
+            )
         if self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
+            if limits:
+                raise TypeError(
+                    "imaginary quadratic units do not accept resource limits"
+                )
             return _nf_units_module().bounded_unit_subgroup(self)
         return _nf_class_unit_groups_module().unit_group(
             self, proof=proof, algorithm=algorithm, **limits
@@ -2388,24 +2408,40 @@ class NumberFieldParent(sage.Parent):
             ]
         )
 
-    def _real_quadratic_backend(self) -> Any:
+    def _real_quadratic_backend(self, algorithm: str = "auto", **limits: Any) -> Any:
         signature = self.signature()
         if self.degree() != 2 or signature[0] != 2 or signature[1] != 0:
             raise ValueError("a real quadratic backend needs signature (2, 0)")
-        if self._real_quadratic_backend_cache is runtime.undefined:
+        use_cache = algorithm == "auto" and len(limits) == 0
+        if use_cache and self._real_quadratic_backend_cache is runtime.undefined:
             self._real_quadratic_backend_cache = (
                 _nf_quadratic_class_units_module().real_quadratic_class_group(
-                    int(self.discriminant())
+                    int(self.discriminant()), algorithm=algorithm, **limits
                 )
             )
-        return self._real_quadratic_backend_cache
+        if use_cache:
+            return self._real_quadratic_backend_cache
+        return _nf_quadratic_class_units_module().real_quadratic_class_group(
+            int(self.discriminant()), algorithm=algorithm, **limits
+        )
 
     def _real_quadratic_ideal_form(self, ideal: NumberFieldIdeal) -> Any:
         """Return the primitive form representing a real quadratic ideal."""
-        order = self.maximal_order()
+        discriminant = runtime.integer_bigint(self.discriminant())
+        _squarefree, square_root = _nf_units_module()._quadratic_square_root_element(
+            self
+        )
+        sqrt_discriminant = (
+            square_root if discriminant % 4 == 1 else self(2) * square_root
+        )
+        omega = (self(discriminant % 2) + sqrt_discriminant) / 2
+        canonical_basis = _nf_global("matrix")(
+            sage.QQ,
+            [[sage.QQ(1), sage.QQ(0)], list(omega._coefficients)],
+        )
         denominator = runtime.integer_bigint(ideal.denominator())
         integral = denominator * ideal
-        relative = integral.basis_matrix() * order.basis_matrix().inverse()
+        relative = integral.basis_matrix() * canonical_basis.inverse()
         rows = relative.rows()
         entries = []
         for row in rows:
@@ -2421,32 +2457,22 @@ class NumberFieldParent(sage.Parent):
         if content == 0:
             raise ValueError("the zero ideal has no ideal class")
         primitive = integral.__mul__(self(content).inverse())
-        relative = primitive.basis_matrix() * order.basis_matrix().inverse()
+        relative = primitive.basis_matrix() * canonical_basis.inverse()
         rows = relative.rows()
-        row0 = [runtime.integer_bigint(value._numerator) for value in rows[0]]
-        row1 = [runtime.integer_bigint(value._numerator) for value in rows[1]]
-        old_r, r = row0[1], row1[1]
-        old_s, s = runtime.bigint(1), runtime.bigint(0)
-        old_t, t = runtime.bigint(0), runtime.bigint(1)
-        while r != 0:
-            quotient = old_r // r
-            old_r, r = r, old_r - quotient * r
-            old_s, s = s, old_s - quotient * s
-            old_t, t = t, old_t - quotient * t
-        if old_r == -1:
-            old_s, old_t, old_r = -old_s, -old_t, -old_r
-        if old_r != 1:
-            raise ArithmeticError("a primitive quadratic ideal has no primitive row")
-        first = old_s * row0[0] + old_t * row1[0]
-        norm = primitive.norm()
-        if norm._denominator != 1:
-            raise ArithmeticError("a primitive integral ideal has nonintegral norm")
-        a = runtime.integer_bigint(norm._numerator)
-        k = (-first) % a
-        discriminant = runtime.integer_bigint(self.discriminant())
-        b = 2 * k - (1 if discriminant % 4 == 1 else 0)
-        c = (b * b - discriminant) // (4 * a)
-        return (int(a), int(b), int(c))
+        integer_rows = []
+        for row in rows:
+            integer_row = []
+            for value in row:
+                if value._denominator != 1:
+                    raise ArithmeticError(
+                        "a primitive quadratic ideal has nonintegral coordinates"
+                    )
+                integer_row.append(int(value._numerator))
+            integer_rows.append(tuple(integer_row))
+        form = _nf_quadratic_class_units_module().quadratic_form_from_ideal_lattice(
+            int(discriminant), tuple(integer_rows)
+        )
+        return form.coefficients()
 
     def class_group(
         self,
@@ -2462,13 +2488,23 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             result = NumberFieldClassGroup(self)
         elif self.degree() == 2:
-            signature = self.signature()
-            backend = (
-                self._real_quadratic_backend()
-                if signature[0] == 2 and signature[1] == 0
-                else self._quadratic_backend()[0].class_group()
-            )
-            result = NumberFieldClassGroup(self, backend)
+            if algorithm in ("minkowski", "buchmann-hecke"):
+                result = _nf_class_unit_groups_module().class_group(
+                    self, proof=proof, algorithm=algorithm, **limits
+                )
+            else:
+                if algorithm not in ("auto", "quadratic-forms"):
+                    raise ValueError("unknown class-group algorithm: " + str(algorithm))
+                signature = self.signature()
+                if signature[0] == 2 and signature[1] == 0:
+                    backend = self._real_quadratic_backend(algorithm, **limits)
+                else:
+                    if limits:
+                        raise TypeError(
+                            "imaginary quadratic forms do not accept resource limits"
+                        )
+                    backend = self._quadratic_backend()[0].class_group()
+                result = NumberFieldClassGroup(self, backend)
         else:
             result = _nf_class_unit_groups_module().class_group(
                 self, proof=proof, algorithm=algorithm, **limits
@@ -2486,12 +2522,20 @@ class NumberFieldParent(sage.Parent):
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 2:
+            if algorithm in ("minkowski", "buchmann-hecke"):
+                return _nf_class_unit_groups_module().class_number(
+                    self, proof=proof, algorithm=algorithm, **limits
+                )
+            if algorithm not in ("auto", "quadratic-forms"):
+                raise ValueError("unknown class-number algorithm: " + str(algorithm))
             signature = self.signature()
-            return int(
-                self._real_quadratic_backend().order()
-                if signature[0] == 2 and signature[1] == 0
-                else self._quadratic_backend()[0].class_number()
-            )
+            if signature[0] == 2 and signature[1] == 0:
+                return int(self._real_quadratic_backend(algorithm, **limits).order())
+            if limits:
+                raise TypeError(
+                    "imaginary quadratic forms do not accept resource limits"
+                )
+            return int(self._quadratic_backend()[0].class_number())
         return _nf_class_unit_groups_module().class_number(
             self, proof=proof, algorithm=algorithm, **limits
         )
