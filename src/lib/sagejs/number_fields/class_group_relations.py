@@ -1140,6 +1140,26 @@ class ExactRelationCollector:
         # full replay for external or restored records.
         return self._store_verified(record)
 
+    def admit_automorphism_orbit(
+        self,
+        relation: RelationRecord | RelationAdmission | dict[str, Any],
+        *,
+        plan: AutomorphismOrbitPlan | None = None,
+    ) -> RelationAdmission | None:
+        """Admit the exact useful quadratic conjugate of one relation.
+
+        Unsupported fields, incomplete factor-base orbits, and relations fixed
+        by conjugation deterministically produce no derived admission.
+        """
+        orbit = (
+            plan_automorphism_orbits(self.order.number_field(), self.factor_base)
+            if plan is None
+            else plan
+        )
+        if not orbit.available or not orbit.useful:
+            return None
+        return orbit.derive(relation, self)
+
 
 def initial_rational_prime_relations(
     collector: ExactRelationCollector,
@@ -1532,48 +1552,304 @@ def minkowski_lll_lattice(
 
 
 class AutomorphismOrbitPlan:
-    """Capability report for exact automorphism-derived relation orbits."""
+    """Authenticated quadratic conjugation on one exact factor base.
+
+    A plan is available only when the field is quadratic, conjugation preserves
+    the exact maximal order, and every conjugated factor-base prime has one
+    unique match in the same factor base.  This deliberately does not infer an
+    ideal action from an abstract Galois permutation.
+    """
 
     def __init__(self, field: Any, factor_base: Iterable[Any]) -> None:
+        factors = tuple(factor_base)
+        self._field = field
+        self._factor_base = factors
+        self._order = field.maximal_order()
+        defining_coefficients = list(field.defining_polynomial().coefficients())
+        self._quadratic_linear = None
+        if field.degree() == 2:
+            self._quadratic_linear = sage.QQ(defining_coefficients[1]) / sage.QQ(
+                defining_coefficients[2]
+            )
+        if any(prime.ring() is not self._order for prime in factors):
+            raise TypeError("automorphism factor-base ideals belong to another order")
         self.available = False
+        self.useful = False
         self.strategy = "independent-minkowski-relation-search"
-        self.factor_base_size = len(tuple(factor_base))
+        self.factor_base_size = len(factors)
+        self.permutation: tuple[int, ...] = ()
+        self.factor_base_fingerprints = tuple(
+            _prime_fingerprint(prime) for prime in factors
+        )
+        self.image_fingerprints: tuple[dict[str, Any], ...] = ()
         self.detected = {
+            "quadratic_conjugation": field.degree() == 2,
             "field_automorphisms": callable(getattr(field, "automorphisms", None)),
             "ideal_map": callable(getattr(field, "map_ideal_under_automorphism", None)),
-            "factor_base_permutation": callable(
-                getattr(field, "factor_base_automorphism_permutation", None)
-            ),
+            "factor_base_permutation": False,
         }
-        self.reason = (
-            "abstract Galois-group permutations do not provide exact field self-maps, "
-            "ideal images, and an authenticated factor-base permutation"
+        self.reason = ""
+        if field.degree() != 2:
+            self.reason = (
+                "no exact generic field self-map API supplies element images, ideal "
+                "images, and an authenticated factor-base permutation"
+            )
+        else:
+            conjugated_order = self._conjugate_ideal_unchecked(self._order.ideal(1))
+            if conjugated_order != self._order.ideal(1):
+                self.reason = "quadratic conjugation does not preserve the exact order"
+            else:
+                images = tuple(
+                    self._conjugate_ideal_unchecked(prime) for prime in factors
+                )
+                permutation: list[int] = []
+                stable = True
+                for image in images:
+                    matches = [
+                        index for index, prime in enumerate(factors) if image == prime
+                    ]
+                    if len(matches) != 1:
+                        stable = False
+                        break
+                    permutation.append(matches[0])
+                if stable and sorted(permutation) == list(range(len(factors))):
+                    candidate = tuple(permutation)
+                    stable = all(
+                        candidate[candidate[index]] == index
+                        for index in range(len(candidate))
+                    )
+                if not stable:
+                    self.reason = (
+                        "quadratic conjugation does not permute the complete supplied "
+                        "factor base"
+                    )
+                else:
+                    self.available = True
+                    self.permutation = tuple(permutation)
+                    self.image_fingerprints = tuple(
+                        _ideal_payload(image) for image in images
+                    )
+                    self.detected["factor_base_permutation"] = True
+                    self.strategy = "quadratic-conjugation-factor-base-permutation"
+                    self.useful = any(
+                        image != index for index, image in enumerate(self.permutation)
+                    )
+                    if self.useful:
+                        self.reason = (
+                            "exact quadratic conjugation permutes at least one "
+                            "factor-base prime"
+                        )
+                    else:
+                        self.reason = (
+                            "quadratic conjugation fixes every supplied factor-base "
+                            "prime"
+                        )
+        self._content_sha256 = _content_hash(self._dictionary_body())
+
+    def _conjugate_element_unchecked(self, value: Any) -> Any:
+        coefficients = self._field(value).list()
+        linear = self._quadratic_linear
+        if linear is None:
+            raise NotImplementedError("quadratic conjugation needs a degree-two field")
+        return _field_element_from_coefficients(
+            self._field,
+            [coefficients[0] - linear * coefficients[1], -coefficients[1]],
         )
 
-    def derive(self, relation: Any) -> tuple[()]:
-        raise NotImplementedError(self.reason)
+    def _conjugate_ideal_unchecked(self, ideal: Any) -> Any:
+        return self._order.ideal(
+            [self._conjugate_element_unchecked(element) for element in ideal.basis()]
+        )
 
-    def to_dict(self) -> dict[str, Any]:
+    def _require_available(self) -> None:
+        if not self.available:
+            raise NotImplementedError(self.reason)
+
+    def conjugate_element(self, value: Any) -> Any:
+        """Apply the exact nontrivial quadratic field automorphism."""
+        self._require_available()
+        return self._conjugate_element_unchecked(value)
+
+    def conjugate_ideal(self, ideal: Any) -> Any:
+        """Map an ideal after checking its exact retained order."""
+        self._require_available()
+        if ideal.ring() is not self._order:
+            raise TypeError("an automorphism plan cannot map an ideal of another order")
+        return self._conjugate_ideal_unchecked(ideal)
+
+    def permute_row(self, row: Iterable[int]) -> tuple[int, ...]:
+        """Map a factor-base exponent row under the authenticated permutation."""
+        self._require_available()
+        values = tuple(_checked_integer(value, "relation exponent") for value in row)
+        if len(values) != self.factor_base_size:
+            raise ValueError("an automorphism relation row has the wrong width")
+        answer = [0 for _index in values]
+        for index, value in enumerate(values):
+            answer[self.permutation[index]] = value
+        return tuple(answer)
+
+    def verify(self) -> bool:
+        """Replay the plan hash, exact ideal images, and involution."""
+        try:
+            if _content_hash(self._dictionary_body()) != self._content_sha256:
+                return False
+            if not self.available:
+                return True
+            if self._conjugate_ideal_unchecked(
+                self._order.ideal(1)
+            ) != self._order.ideal(1):
+                return False
+            if any(
+                self._conjugate_element_unchecked(
+                    self._conjugate_element_unchecked(element)
+                )
+                != element
+                for element in self._order.basis()
+            ):
+                return False
+            for index, prime in enumerate(self._factor_base):
+                image = self._conjugate_ideal_unchecked(prime)
+                if image != self._factor_base[self.permutation[index]]:
+                    return False
+                if _ideal_payload(image) != self.image_fingerprints[index]:
+                    return False
+            return True
+        except Exception:
+            return False
+
+    def derive(
+        self, relation: Any, collector: ExactRelationCollector | None = None
+    ) -> RelationAdmission | None:
+        """Admit one independently replayed conjugate relation when useful."""
+        self._require_available()
+        if not self.useful:
+            return None
+        if collector is None:
+            raise TypeError("deriving an automorphism relation requires a collector")
+        if (
+            collector.order is not self._order
+            or tuple(_prime_fingerprint(prime) for prime in collector.factor_base)
+            != self.factor_base_fingerprints
+        ):
+            raise ValueError("the collector does not match the automorphism plan")
+        parent = (
+            relation.record if isinstance(relation, RelationAdmission) else relation
+        )
+        parent = (
+            parent
+            if isinstance(parent, RelationRecord)
+            else RelationRecord.from_dict(parent)
+        )
+        verification = parent.verify(self._order, self._factor_base)
+        if verification["certified"] is not True:
+            raise ArithmeticError(
+                "cannot derive from an invalid relation: "
+                + "; ".join(verification["failures"])
+            )
+        mapped_row = self.permute_row(parent.row)
+        if mapped_row == parent.row:
+            return None
+        mapped_source_row = self.permute_row(parent.source_row)
+        mapped_quotient_row = self.permute_row(parent.quotient_row)
+        witness = FactoredPrincipalWitness.from_dict(self._field, parent.witness)
+        mapped_witness = FactoredPrincipalWitness(
+            self._field,
+            [
+                [self._conjugate_element_unchecked(element), exponent]
+                for element, exponent in witness.factors()
+            ],
+        )
+        mapped_source = self._conjugate_ideal_unchecked(
+            _ideal_from_payload(self._order, parent.source_ideal)
+        )
+        admission = collector.admit_witness(
+            mapped_witness,
+            source_ideal=mapped_source,
+            source_row=mapped_source_row,
+            provenance={
+                "algorithm": "quadratic-conjugation-orbit",
+                "parent_relation_sha256": hashlib.sha256(
+                    parent.canonical_key().encode("utf-8")
+                ).hexdigest(),
+                "automorphism_plan_sha256": self._content_sha256,
+            },
+        )
+        derived = admission.record
+        if (
+            derived.row != mapped_row
+            or derived.source_row != mapped_source_row
+            or derived.quotient_row != mapped_quotient_row
+        ):
+            raise ArithmeticError("a conjugate relation did not replay its mapped rows")
+        detached = RelationRecord.from_dict(derived.to_dict())
+        replay = detached.verify(self._order, self._factor_base)
+        if replay["certified"] is not True:
+            raise ArithmeticError(
+                "a conjugate relation failed detached replay: "
+                + "; ".join(replay["failures"])
+            )
+        return admission
+
+    def _dictionary_body(self) -> dict[str, Any]:
         return {
             "schema": AUTOMORPHISM_PLAN_SCHEMA,
             "available": self.available,
+            "useful": self.useful,
             "strategy": self.strategy,
             "factor_base_size": self.factor_base_size,
             "detected": dict(self.detected),
             "reason": self.reason,
+            "permutation": list(self.permutation),
+            "factor_base_fingerprints": list(self.factor_base_fingerprints),
+            "image_fingerprints": list(self.image_fingerprints),
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._dictionary_body()
+        body["content_sha256"] = self._content_sha256
+        return body
+
+    @classmethod
+    def from_dict(
+        cls, field: Any, factor_base: Iterable[Any], payload: dict[str, Any]
+    ) -> AutomorphismOrbitPlan:
+        """Authenticate a serialized plan against freshly replayed exact images."""
+        if not isinstance(payload, dict):
+            raise TypeError("an automorphism plan must be a dictionary")
+        expected_keys = {
+            "schema",
+            "available",
+            "useful",
+            "strategy",
+            "factor_base_size",
+            "detected",
+            "reason",
+            "permutation",
+            "factor_base_fingerprints",
+            "image_fingerprints",
+            "content_sha256",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("an automorphism plan has unexpected fields")
+        if payload.get("schema") != AUTOMORPHISM_PLAN_SCHEMA:
+            raise ValueError("unsupported automorphism-orbit plan schema")
+        content_hash = payload.get("content_sha256")
+        if not isinstance(content_hash, str) or len(content_hash) != 64:
+            raise ValueError("an automorphism plan has an invalid content hash")
+        body = dict(payload)
+        del body["content_sha256"]
+        if _content_hash(body) != content_hash:
+            raise ValueError("automorphism plan content hash mismatch")
+        answer = cls(field, factor_base)
+        if answer.to_dict() != payload or not answer.verify():
+            raise ValueError("automorphism plan exact replay mismatch")
+        return answer
 
 
 def plan_automorphism_orbits(
     field: Any, factor_base: Iterable[Any]
 ) -> AutomorphismOrbitPlan:
-    """Report whether exact relation orbits can be derived in this runtime.
-
-    The current Galois API describes abstract permutation groups only.  It
-    cannot map a principal witness or prime ideal, so orbit relations would be
-    unverifiable guesses.  This explicit result lets collectors select the
-    independent-search fallback without probing private APIs.
-    """
+    """Plan exact quadratic conjugation or report a deterministic fallback."""
     return AutomorphismOrbitPlan(field, factor_base)
 
 
