@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isDeepStrictEqual } = require("node:util");
 const zlib = require("node:zlib");
+const { canonicalJson } = require("./wasm-toolchain.cjs");
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -176,6 +177,62 @@ function validateRelative(filename) {
   }
 }
 
+function payloadGroups(manifest, files) {
+  const topology = manifest.topology;
+  if (topology === undefined) return [];
+  if (topology.schema !== "sagejs.wasm-artifact-topology/v1" ||
+      !Array.isArray(topology.groups) || topology.groups.length === 0) {
+    throw new Error("production manifest has an invalid authenticated artifact topology");
+  }
+  const { identity: topologyIdentity, ...topologyReceipt } = topology;
+  if (topologyIdentity !== `sha256:${sha256(canonicalJson(topologyReceipt))}`) {
+    throw new Error("artifact topology identity differs from its receipt");
+  }
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const owned = new Set();
+  const groups = topology.groups.map((group) => {
+    const { identity: groupIdentity, ...groupReceipt } = group;
+    if (groupIdentity !== `sha256:${sha256(canonicalJson(groupReceipt))}`) {
+      throw new Error(`artifact group ${group.id} identity differs from its receipt`);
+    }
+    if (!Array.isArray(group.assets) || group.assets.length === 0) {
+      throw new Error(`artifact group ${group.id} has no assets`);
+    }
+    const groupFiles = group.assets.map((asset) => {
+      const file = fileByPath.get(asset.path);
+      if (!file) throw new Error(`artifact group ${group.id} names missing file ${asset.path}`);
+      if (owned.has(file.path)) throw new Error(`artifact file ${file.path} belongs to multiple groups`);
+      if (file.sha256 !== asset.sha256 || file.bytes !== asset.bytes) {
+        throw new Error(`artifact group ${group.id} receipt differs for ${asset.path}`);
+      }
+      owned.add(file.path);
+      return file;
+    });
+    const compressed_delta = groupFiles.reduce((totals, file) => ({
+      bytes: totals.bytes + file.bytes,
+      gzip_bytes: totals.gzip_bytes + file.gzip_bytes,
+      brotli_bytes: totals.brotli_bytes + file.brotli_bytes,
+    }), { bytes: 0, gzip_bytes: 0, brotli_bytes: 0 });
+    return {
+      id: group.id,
+      kind: group.kind,
+      dependencies: group.dependencies,
+      dependency_closure: group.dependencyClosure,
+      identity: groupIdentity,
+      files: groupFiles.map(({ path: filename }) => filename),
+      compressed_delta,
+      maximum_compressed_delta: {
+        gzip_bytes: group.maximumCompressedDelta?.gzipBytes,
+        brotli_bytes: group.maximumCompressedDelta?.brotliBytes,
+      },
+    };
+  });
+  for (const file of files) {
+    if (!owned.has(file.path)) throw new Error(`artifact file has no topology group: ${file.path}`);
+  }
+  return groups;
+}
+
 function inspectProductionArtifact(distDirectory) {
   const root = path.resolve(distDirectory);
   const manifestPath = path.join(root, "production-manifest.json");
@@ -250,6 +307,11 @@ function inspectProductionArtifact(distDirectory) {
       }).length,
     };
   });
+  const totals = files.reduce((result, item) => ({
+    bytes: result.bytes + item.bytes,
+    gzip_bytes: result.gzip_bytes + item.gzip_bytes,
+    brotli_bytes: result.brotli_bytes + item.brotli_bytes,
+  }), { bytes: 0, gzip_bytes: 0, brotli_bytes: 0 });
   return {
     schema: "sagejs.browser-wasm-release-artifact/v1",
     production_manifest_sha256: manifestDigest,
@@ -261,12 +323,28 @@ function inspectProductionArtifact(distDirectory) {
       null,
     artifact_identity: buildReceipt.artifact?.identity ?? manifest.identity ?? null,
     files,
-    totals: files.reduce((totals, item) => ({
-      bytes: totals.bytes + item.bytes,
-      gzip_bytes: totals.gzip_bytes + item.gzip_bytes,
-      brotli_bytes: totals.brotli_bytes + item.brotli_bytes,
-    }), { bytes: 0, gzip_bytes: 0, brotli_bytes: 0 }),
+    payload_groups: payloadGroups(manifest, files),
+    totals,
   };
+}
+
+function enforceTopologyBudgets(report) {
+  const failures = [];
+  if (!Array.isArray(report.payload_groups) || report.payload_groups.length === 0) {
+    return ["authenticated artifact topology is absent"];
+  }
+  for (const group of report.payload_groups) {
+    for (const encoding of ["gzip_bytes", "brotli_bytes"]) {
+      const actual = group.compressed_delta?.[encoding];
+      const maximum = group.maximum_compressed_delta?.[encoding];
+      if (!Number.isSafeInteger(maximum) || maximum <= 0) {
+        failures.push(`${group.id} has no positive ${encoding} delta budget`);
+      } else if (actual > maximum) {
+        failures.push(`${group.id} ${encoding} delta ${actual} exceeds ${maximum}`);
+      }
+    }
+  }
+  return failures;
 }
 
 function compareArtifacts(left, right) {
@@ -321,6 +399,10 @@ if (require.main === module) {
   try {
     const dist = argument("--dist") ?? path.resolve(__dirname, "..", "dist");
     const report = inspectProductionArtifact(dist);
+    const topologyFailures = enforceTopologyBudgets(report);
+    if (topologyFailures.length) {
+      throw new Error(`artifact topology budget failed:\n${topologyFailures.join("\n")}`);
+    }
     const compare = argument("--compare");
     if (compare) {
       const differences = compareArtifacts(report, inspectProductionArtifact(compare));
@@ -352,8 +434,10 @@ if (require.main === module) {
 module.exports = {
   compareArtifacts,
   enforceBudget,
+  enforceTopologyBudgets,
   inspectProductionArtifact,
   manifestFileNames,
+  payloadGroups,
   sha256,
   wasmMemories,
 };

@@ -57,6 +57,134 @@
       }
     }
   ],
+  "artifactTopology": {
+    "schema": "sagejs.wasm-artifact-topology/v1",
+    "groups": [
+      {
+        "id": "eager-core",
+        "kind": "eager",
+        "dependencies": [],
+        "assets": [
+          "baselib.js",
+          "compiler-frontend.mjs",
+          "compiler.js",
+          "dynamic-programs.json",
+          "ffi-production-closure.json",
+          "ffi-resource-backend.mjs",
+          "ffi-resource-manifest.json",
+          "flint-factor.wasm",
+          "lazy-modules.json",
+          "native-kernels/index.json",
+          "production-kernel-coverage.json",
+          "runtime/analytic-backend.mjs",
+          "runtime/capability-trace.mjs",
+          "runtime/compiler-worker.mjs",
+          "runtime/curve-backend.d.ts",
+          "runtime/curve-backend.mjs",
+          "runtime/dirichlet-group.mjs",
+          "runtime/dynamic-compiler.mjs",
+          "runtime/evaluator.mjs",
+          "runtime/index.mjs",
+          "runtime/kernel-worker.mjs",
+          "runtime/kernel.d.ts",
+          "runtime/kernel.mjs",
+          "runtime/lazy-modules.mjs",
+          "runtime/node-cli.mjs",
+          "runtime/node-kernel.mjs",
+          "runtime/node-worker-bootstrap.mjs",
+          "runtime/node-worker.mjs",
+          "runtime/number-field-zeta.mjs",
+          "runtime/numeric-backend.mjs",
+          "runtime/portable-matrix.mjs",
+          "runtime/portable-polynomial.mjs",
+          "serialization.mjs",
+          "stdlib.json",
+          "symbolic-backend.mjs",
+          "tree-sitter-python.wasm",
+          "tree-sitter-sage.wasm",
+          "wasi-runtime.mjs",
+          "wasm-capabilities-report.json",
+          "wasm-capability-api.mjs",
+          "wasm-pack-loader.mjs",
+          "web-tree-sitter.wasm"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 12250000,
+          "brotliBytes": 6800000
+        }
+      },
+      {
+        "id": "release-source",
+        "kind": "support",
+        "dependencies": [],
+        "assets": ["ffi-resource-adapter.c"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 35000,
+          "brotliBytes": 30000
+        }
+      },
+      {
+        "id": "algebraic",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["flint-algebraic.wasm", "runtime/algebraic.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 2200000,
+          "brotliBytes": 1800000
+        }
+      },
+      {
+        "id": "m4ri",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "m4ri-resource-adapter.c",
+          "m4ri-resource-backend.mjs",
+          "m4ri-resource-manifest.json",
+          "m4ri-resource.wasm",
+          "runtime/m4ri.mjs"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 75000,
+          "brotliBytes": 60000
+        }
+      },
+      {
+        "id": "compiled-flint",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["native-kernels/kernel-flint.wasm"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 2400000,
+          "brotliBytes": 1900000
+        }
+      },
+      {
+        "id": "compiled-gmp",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["native-kernels/kernel-gmp.wasm"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 500000,
+          "brotliBytes": 320000
+        }
+      },
+      {
+        "id": "plotly",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "plotly.min.js",
+          "runtime/plotly-renderer.d.ts",
+          "runtime/plotly-renderer.mjs"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 1600000,
+          "brotliBytes": 1250000
+        }
+      }
+    ]
+  },
   "importedMemoryDomains": [
     {
       "id": "tree-sitter",
