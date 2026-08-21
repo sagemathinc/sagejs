@@ -432,12 +432,15 @@ if (dirichletGroupExports.length !== 23) {
 }
 const curveExports = [
   "sagejs_wasm_ec_lseries_begin",
+  "sagejs_wasm_ec_lseries_direct_begin",
   "sagejs_wasm_ec_lseries_clear",
   "sagejs_wasm_ec_lseries_coefficients",
   "sagejs_wasm_ec_lseries_point_text",
   "sagejs_wasm_ec_lseries_point_offsets",
   "sagejs_wasm_ec_lseries_conductor_text",
+  "sagejs_wasm_ec_lseries_direct_cutoffs",
   "sagejs_wasm_ec_lseries_compute",
+  "sagejs_wasm_ec_lseries_direct_compute",
   "sagejs_wasm_ec_lseries_decimal_bytes",
   "sagejs_wasm_ec_lseries_decimal_byte_count",
   "sagejs_wasm_ec_lseries_decimal_offsets",
