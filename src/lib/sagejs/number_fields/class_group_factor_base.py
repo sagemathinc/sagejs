@@ -33,7 +33,6 @@ DEFAULT_MAX_BOUND = 1_000_000
 DEFAULT_MAX_RATIONAL_PRIMES = 1_000_000
 DEFAULT_MAX_PRIME_IDEALS = 1_000_000
 DEFAULT_MAX_MEMORY_BYTES = 256 * 1024 * 1024
-DEFAULT_AUTO_MINKOWSKI_MAX_BOUND = 64
 MAX_INTERVAL_BITS = 512
 
 _pi_cache: dict[int, _Interval] = {}
@@ -1197,27 +1196,7 @@ def factor_base_plan(
     order = _as_maximal_order(value)
     selected = theorem.lower()
     if selected == "auto":
-        if proof:
-            selected = "minkowski"
-        else:
-            # The exact Minkowski bound is cheap to compute.  For small bounds
-            # it is also practical enough to give a stronger unconditional
-            # generation theorem while avoiding the substantially dearer BDF
-            # inequality search.  Honor the caller's caps before committing to
-            # the potentially larger unconditional factor base.
-            minkowski = minkowski_bound(order)
-            if minkowski.bound <= DEFAULT_AUTO_MINKOWSKI_MAX_BOUND:
-                unconditional = FactorBasePlan(
-                    order,
-                    minkowski,
-                    max_bound,
-                    max_rational_primes,
-                    max_prime_ideals,
-                    max_memory_bytes,
-                )
-                if unconditional.fits_caps:
-                    return unconditional
-            selected = "grh"
+        selected = "minkowski" if proof else "grh"
     if selected == "minkowski":
         bound_result = minkowski_bound(order)
     elif selected == "bach":
@@ -1384,7 +1363,6 @@ def build_factor_base(plan: FactorBasePlan) -> tuple[FactorBasePrimeRecord, ...]
 
 __all__ = [
     "BOUND_SCHEMA",
-    "DEFAULT_AUTO_MINKOWSKI_MAX_BOUND",
     "PLAN_SCHEMA",
     "PRIME_RECORD_SCHEMA",
     "FactorBaseBound",
