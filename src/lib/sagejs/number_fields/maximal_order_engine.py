@@ -76,7 +76,11 @@ from sagejs.number_fields.maximal_order_contracts import (
     OrderBasis,
     SelectionDecision,
 )
-from sagejs.number_fields.order_resource import native_order_from_polynomial
+from sagejs.number_fields.order_resource import (
+    RESOURCE_COMPLETE,
+    NativeOrderResourceResult,
+    native_order_from_polynomial,
+)
 
 _nf_module = __import__("sagejs._baselib.number_fields", fromlist=["number_fields"])
 NumberFieldOrder = _nf_module.NumberFieldOrder
@@ -356,6 +360,36 @@ def _cache_discriminant_from_basis(
     discriminant = equation_discriminant // square
     order._discriminant_cache = runtime.normalize_integer(discriminant)
     return discriminant
+
+
+def _generated_round2_order_result(
+    equation_order: Any,
+    scale: int,
+    equation_discriminant: int,
+    primes: list[int],
+) -> NativeOrderResourceResult:
+    """Wrap a generated FLINT batch; certification replays it separately."""
+    local_primes = [int(prime) for prime in primes]
+    order = _maximal_order_module().maximal_overorder_native(
+        equation_order, local_primes
+    )
+    basis = _basis_from_order(order, scale)
+    order_discriminant = _cache_discriminant_from_basis(
+        order, basis, equation_discriminant
+    )
+    index = _index_from_discriminants(equation_discriminant, order_discriminant)
+    return NativeOrderResourceResult(
+        RESOURCE_COMPLETE,
+        len(local_primes),
+        len(local_primes),
+        len(local_primes),
+        0,
+        basis,
+        index,
+        equation_discriminant,
+        order_discriminant,
+        0,
+    )
 
 
 def _simple_bl_complete_uses_global_theorem(
@@ -1652,6 +1686,7 @@ class _CertificateAdapter:
         self.authenticated_composite_analysis = authenticated_composite_analysis
         self.authenticated_local_portfolio = authenticated_local_portfolio
         self._native_replay: Any = None
+        self._generated_round2_replay: Any = None
         self._native_replay_loaded = False
         self._candidate: Any = None
         self._authenticated_portfolio_certificate: Any = None
@@ -1862,6 +1897,16 @@ class _CertificateAdapter:
                     )
                 except Exception:
                     self._native_replay = None
+                    if word_primes:
+                        try:
+                            field = candidate.number_field()
+                            self._generated_round2_replay = (
+                                _maximal_order_module().maximal_overorder_native(
+                                    field.equation_order(), word_primes
+                                )
+                            )
+                        except Exception:
+                            self._generated_round2_replay = None
                 self._native_replay_loaded = True
             replay = self._native_replay
             if (
@@ -1872,6 +1917,13 @@ class _CertificateAdapter:
                 == _valuation(order_discriminant, prime)
             ):
                 return True
+            generated_replay = self._generated_round2_replay
+            if generated_replay is not None:
+                generated_discriminant = _exact_integer(generated_replay.discriminant())
+                if _valuation(generated_discriminant, prime) == _valuation(
+                    order_discriminant, prime
+                ):
+                    return True
         field = candidate.number_field()
         if candidate._basis_rows == field.equation_order()._basis_rows:
             return bool(
@@ -2854,12 +2906,7 @@ def compute_maximal_order(
 
     native_fallback_for_parallel = False
     if len(relevant_primes) and algorithm in ("auto", "native"):
-        # The native resource is complete for a batch of certified word
-        # primes, while an arbitrary prime has a separate exact polygon path.
-        # Partitioning at this capability boundary lets the native theorem
-        # discharge every word-prime branch even when a larger component is
-        # present; sending the mixed batch would discard that complete work
-        # and force every word prime back through local selector estimates.
+        # Batch certified word primes; arbitrary primes keep the exact polygon path.
         native_batch_primes = sorted(
             prime
             for prime in relevant_primes
@@ -2881,31 +2928,50 @@ def compute_maximal_order(
         )
         if native_batch_primes:
             try:
-                if _default_field_analysis_applicability(coefficients)["selected"]:
-                    native = native_order_from_polynomial(
-                        coefficients, native_batch_primes
-                    )
-                else:
-                    polynomial = field._integral_equation_polynomial_cache
-                    if polynomial is None:
-                        raise ArithmeticError(
-                            "field-owned integral polynomial resource is unavailable"
+                generated_route = False
+                try:
+                    if _default_field_analysis_applicability(coefficients)["selected"]:
+                        native = native_order_from_polynomial(
+                            coefficients, native_batch_primes
                         )
-                    flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
-                    prime_hints = flint.fmpz_matrix(len(native_batch_primes), 1)
-                    try:
-                        for row, prime in enumerate(native_batch_primes):
-                            flint.fmpz_matrix_set_entry(prime_hints, row, 0, prime)
-                        native, authenticated_native_proof = (
-                            field_analysis_resource.native_carried_round2_order_from_resources(
-                                polynomial._exact_polynomial_resource(),
-                                prime_hints,
-                                coefficients_low_to_high=coefficients,
-                                certified_primes=native_batch_primes,
+                    else:
+                        polynomial = field._integral_equation_polynomial_cache
+                        if polynomial is None:
+                            raise ArithmeticError(
+                                "field-owned integral polynomial resource is unavailable"
                             )
+                        flint = __import__("sagejs.ffi.flint", fromlist=["flint"])
+                        prime_hints = flint.fmpz_matrix(len(native_batch_primes), 1)
+                        try:
+                            for row, prime in enumerate(native_batch_primes):
+                                flint.fmpz_matrix_set_entry(prime_hints, row, 0, prime)
+                            native, authenticated_native_proof = (
+                                field_analysis_resource.native_carried_round2_order_from_resources(
+                                    polynomial._exact_polynomial_resource(),
+                                    prime_hints,
+                                    coefficients_low_to_high=coefficients,
+                                    certified_primes=native_batch_primes,
+                                )
+                            )
+                        finally:
+                            prime_hints.close()
+                except Exception as compact_error:
+                    authenticated_native_proof = None
+                    try:
+                        native = _generated_round2_order_result(
+                            equation_order,
+                            scale,
+                            equation_discriminant,
+                            native_batch_primes,
                         )
-                    finally:
-                        prime_hints.close()
+                    except Exception as primitive_error:
+                        raise primitive_error from compact_error
+                    generated_route = True
+                native_execution_route = (
+                    "generated-round2-primitives"
+                    if generated_route
+                    else "compact-order-resource"
+                )
                 if native.complete:
                     if native.equation_discriminant != equation_discriminant:
                         raise ArithmeticError(
@@ -2979,6 +3045,8 @@ def compute_maximal_order(
                             "authenticated_round2_proof": (
                                 authenticated_native_proof is not None
                             ),
+                            "execution_route": native_execution_route,
+                            "compact_resource_unavailable": generated_route,
                             "proof_schema": (
                                 authenticated_native_proof.proof_schema
                                 if authenticated_native_proof is not None
@@ -2996,6 +3064,7 @@ def compute_maximal_order(
                         {
                             "status": native.status,
                             "fallback_prime": native.fallback_prime,
+                            "execution_route": native_execution_route,
                             "deferred_arbitrary_prime_count": len(
                                 deferred_arbitrary_primes
                             ),
