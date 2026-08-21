@@ -1,9 +1,12 @@
 /*
  * Host-neutral wasm32 MPFR/Acb numeric resources.
  *
- * This adapter contains no numerical algorithms of its own.  It gives the
- * public RealField/ComplexField layer bounded, generation-tagged resources
- * owned by one WebAssembly instance and delegates special functions to Acb.
+ * The public RealField/ComplexField layer uses bounded, generation-tagged
+ * resources owned by one WebAssembly instance, and special functions delegate
+ * to Acb.  As a reviewed architecture exception, this file also contains a
+ * bounded elementary-expression VM, GK21 adaptive quadrature, and bisection
+ * root iteration so supported symbolic workflows cross the Wasm boundary once.
+ * Arbitrary host-language callables remain outside this adapter.
  */
 
 #include <math.h>
@@ -27,9 +30,11 @@
 #define NUMERIC_SLOT_COUNT (UINT32_C(1) << NUMERIC_SLOT_BITS)
 #define NUMERIC_SLOT_MASK (NUMERIC_SLOT_COUNT - UINT32_C(1))
 #define NUMERIC_GENERATION_MASK UINT32_C(0xffff)
+#define NUMERIC_MAX_LIVE_RESOURCES UINT32_C(8192)
 #define NUMERIC_MAX_ZEROS UINT32_C(65536)
 #define NUMERIC_MAX_EXPRESSION_OPS UINT32_C(4096)
 #define NUMERIC_MAX_INTERVALS UINT32_C(100000)
+#define NUMERIC_MAX_ROOT_ITERATIONS UINT32_C(100000)
 
 enum
 {
@@ -105,6 +110,11 @@ static complex_slot *complex_from_handle(uint32_t handle)
 static uint32_t allocate_real(mpfr_prec_t precision, real_slot **result)
 {
     uint32_t searched;
+    if (numeric_live_count >= NUMERIC_MAX_LIVE_RESOURCES)
+    {
+        numeric_status = NUMERIC_RESOURCE_LIMIT;
+        return 0;
+    }
     for (searched = 0; searched < NUMERIC_SLOT_COUNT - 1; searched++)
     {
         uint32_t index = next_real_slot++;
@@ -130,6 +140,11 @@ static uint32_t allocate_real(mpfr_prec_t precision, real_slot **result)
 static uint32_t allocate_complex(mpfr_prec_t precision, complex_slot **result)
 {
     uint32_t searched;
+    if (numeric_live_count >= NUMERIC_MAX_LIVE_RESOURCES)
+    {
+        numeric_status = NUMERIC_RESOURCE_LIMIT;
+        return 0;
+    }
     for (searched = 0; searched < NUMERIC_SLOT_COUNT - 1; searched++)
     {
         uint32_t index = next_complex_slot++;
@@ -1224,7 +1239,7 @@ EXPORT uint32_t sagejs_numeric_symbolic_find_root(
     double right_value;
     uint32_t iteration;
     if (length > NUMERIC_CAPACITY || max_iterations == 0 ||
-        max_iterations > UINT32_C(1000000) || tolerance < 0.0 ||
+        max_iterations > NUMERIC_MAX_ROOT_ITERATIONS || tolerance < 0.0 ||
         !evaluate_expression(length, lower, &left_value) ||
         !evaluate_expression(length, upper, &right_value))
     {

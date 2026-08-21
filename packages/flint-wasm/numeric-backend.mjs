@@ -905,11 +905,19 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     symbolicFindRoot(tree, variable, lower, upper, maxIterations, tolerance) {
       const length = writeExpression(tree, String(variable));
       if (length === undefined) return undefined;
+      maxIterations = Number(maxIterations);
+      if (
+        !Number.isSafeInteger(maxIterations) ||
+        maxIterations < 1 ||
+        maxIterations > 100000
+      ) {
+        throw new RangeError("symbolic find-root maxIterations must be between 1 and 100000");
+      }
       const answer = exports.sagejs_numeric_symbolic_find_root(
         length,
         Number(lower),
         Number(upper),
-        Number(maxIterations),
+        maxIterations,
         Number(tolerance),
       );
       if (answer !== 1) failure("symbolic find root");

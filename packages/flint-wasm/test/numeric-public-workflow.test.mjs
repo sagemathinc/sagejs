@@ -81,6 +81,47 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   assert.equal(backend.numericLiveCount(), 0);
   assert.throws(() => backend.realToString(one), /live WebAssembly real resource/);
 
+  const mixedResources = [];
+  for (let index = 0; index < 4096; index += 1) {
+    mixedResources.push(backend.realFromBigInt(BigInt(index), 64));
+  }
+  for (let index = 0; index < 4096; index += 1) {
+    mixedResources.push(backend.complexFromReals(
+      mixedResources[index],
+      mixedResources[(index + 1) % 4096],
+    ));
+  }
+  assert.equal(backend.numericLiveCount(), 8192);
+  assert.throws(
+    () => backend.realFromBigInt(8192n, 64),
+    /resource limit reached/,
+  );
+  const closedComplex = mixedResources.pop();
+  assert.equal(backend.closeNumericResource(closedComplex), true);
+  const replacement = backend.realFromBigInt(8192n, 64);
+  assert.equal(backend.numericLiveCount(), 8192);
+  assert.throws(
+    () => backend.complexToString(closedComplex),
+    /live WebAssembly complex resource/,
+  );
+  assert.equal(backend.closeNumericResource(replacement), true);
+  for (const resource of mixedResources.reverse()) {
+    assert.equal(backend.closeNumericResource(resource), true);
+  }
+  assert.equal(backend.numericLiveCount(), 0);
+
+  assert.throws(
+    () => backend.symbolicFindRoot(
+      ["Subtract", ["Power", "x", 2], 2],
+      "x",
+      1,
+      2,
+      100001,
+      1e-12,
+    ),
+    /maxIterations must be between 1 and 100000/,
+  );
+
   const routeIds = new Set(routes.map(([id]) => id));
   for (const id of [
     "napi:@sagemath/sagejs-flint:realDiv",
