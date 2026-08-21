@@ -2000,6 +2000,7 @@ class NumberFieldParent(sage.Parent):
         self._real_quadratic_backend_cache = runtime.undefined
         self._real_quadratic_class_number_cache = runtime.undefined
         self._real_quadratic_narrow_class_number_cache = runtime.undefined
+        self._bounded_cubic_class_number_artifact = runtime.undefined
         self._class_group_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
@@ -2844,6 +2845,23 @@ class NumberFieldParent(sage.Parent):
     ) -> int:
         if self._is_tutorial_cubic():
             return 1
+        if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
+            artifact = self._bounded_cubic_class_number_artifact
+            if artifact is runtime.undefined:
+                artifact = (
+                    _nf_class_groups_module().bounded_cubic_minkowski_class_number_one(
+                        self
+                    )
+                )
+                if artifact.complete:
+                    certificate = artifact.certificate
+                    if certificate is None or not certificate.verify(max_elements=1):
+                        raise ArithmeticError(
+                            "cached cubic class-number proof failed exact replay"
+                        )
+                    self._bounded_cubic_class_number_artifact = artifact
+            if artifact.complete:
+                return int(artifact.order())
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":
