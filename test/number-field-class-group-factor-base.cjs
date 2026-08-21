@@ -171,6 +171,79 @@ for path in (
     except (TypeError, ValueError):
         pass
 
+# A tiny-degree presentation with one enormous coefficient must be rejected by
+# preflight even though the former fixed 192 + 32*n^2 formula would report
+# only 640 bytes for its two-record upper estimate.  This synthetic order is
+# sufficient because FactorBasePlan's resource policy reads only canonical
+# presentation data and the already-certified bound record.
+huge_coefficient = 1 << 262144
+class HugeHeightField:
+    _defining_coefficients = (QQ(-huge_coefficient), QQ(0), QQ(1))
+    _integral_equation_scale_cache = ZZ(1)
+class HugeHeightOrder:
+    _basis_rows = (
+        (QQ(1), QQ(0)),
+        (QQ(0), QQ(1)),
+    )
+    def __init__(self):
+        self._field = HugeHeightField()
+    def number_field(self):
+        return self._field
+    def degree(self):
+        return 2
+height_bound = factor_bases.FactorBaseBound(
+    "height-regression",
+    (),
+    2,
+    2,
+    (2, 0),
+    5,
+    0,
+    None,
+)
+height_plan = factor_bases.FactorBasePlan(
+    HugeHeightOrder(),
+    height_bound,
+    2,
+    2,
+    2,
+    1_000_000,
+)
+assert height_plan.presentation_coefficient_bits == 262145
+assert height_plan.estimated_memory_bytes > height_plan.max_memory_bytes
+assert not height_plan.fits_caps and height_plan.cap_failures == ("memory",)
+assert height_plan.to_dict()["estimates"]["presentation_coefficient_bits"] == 262145
+try:
+    height_plan.require_feasible()
+    raise AssertionError("a huge-height plan passed preflight")
+except ValueError:
+    pass
+
+# Dynamic accounting is independently fail-closed if an actual canonical
+# encoding exceeds preflight: the oversized record is never retained, its
+# transient selected-prime group is released, and the checked total stays 0.
+runtime_cap_plan = factor_base_plan(
+    fields["pure-cubic-minus108"],
+    proof=False,
+    theorem="bdf",
+    max_bound=10000,
+)
+original_record_memory = factor_bases._factor_base_record_memory_bytes
+def oversized_record_memory(_record):
+    return runtime_cap_plan.max_memory_bytes + 1
+factor_bases._factor_base_record_memory_bytes = oversized_record_memory
+try:
+    list(prime_ideal_norm_stream(runtime_cap_plan))
+    raise AssertionError("an oversized canonical record was retained")
+except ValueError as error:
+    assert "before retaining record 0" in str(error)
+finally:
+    factor_bases._factor_base_record_memory_bytes = original_record_memory
+assert runtime_cap_plan._record_cache == {}
+assert runtime_cap_plan._record_memory_bytes == {}
+assert runtime_cap_plan._selected_prime_cache == {}
+assert runtime_cap_plan.progress()["retained_memory_bytes"] == 0
+
 # Compact splitting data must suppress irrelevant high-degree decompositions:
 # at bound seven this cubic has norm-8 and norm-27 primes over 2 and 3, while
 # only the degree-one primes over 5 and 7 enter the factor base.
@@ -261,6 +334,7 @@ try:
     assert partial_progress["splitting_scan_complete"] is True
     assert partial_progress["factor_base_complete"] is False
     assert partial_progress["materialized_prime_ideals"] == 1
+    assert 0 < partial_progress["retained_memory_bytes"] <= quintic_plan.max_memory_bytes
     quintic_records = build_factor_base(quintic_plan)
     construction_seconds = time.perf_counter() - construction_started
     cache_started = time.perf_counter()
@@ -286,6 +360,9 @@ assert construction_seconds < fixture["benchmark"]["maximum_seconds"]
 assert cache_seconds < fixture["benchmark"]["warm_cache_maximum_seconds"]
 assert cached_records is quintic_records
 assert quintic_records[0] is first_quintic_record
+assert quintic_plan._retained_memory_bytes == sum(
+    quintic_plan._record_memory_bytes.values()
+)
 assert quintic_plan.progress() == {
     "schema": "sagejs.number-fields/factor-base-progress-v1",
     "bound": 38,
@@ -294,6 +371,11 @@ assert quintic_plan.progress() == {
     "eligible_rational_primes": 8,
     "eligible_prime_ideals": 12,
     "materialized_prime_ideals": 12,
+    "retained_memory_bytes": sum(
+        factor_bases._factor_base_record_memory_bytes(record)
+        for record in quintic_records
+    ),
+    "max_memory_bytes": quintic_plan.max_memory_bytes,
 }
 
 selective_17 = [
