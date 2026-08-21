@@ -6511,10 +6511,114 @@ def moebius(value: Any) -> Any:
     return sign
 
 
+_PACKED_MOEBIUS_MIN_STOP = 1024
+# Three signed/unsigned 64-bit spans consume 48 MiB at this bound.  Larger or
+# shifted intervals retain the scalar fallback until a segmented packed ABI is
+# justified by a public profile.
+_PACKED_MOEBIUS_MAX_STOP = 2 * 1024 * 1024
+
+
+def _record_moebius_range_acceleration(
+    route: str,
+    reason: str,
+    boundary_crossings: int,
+    copied_values: int,
+) -> None:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "route", route)
+    runtime.reflect.set(record, "reason", reason)
+    runtime.reflect.set(record, "boundaryCrossings", boundary_crossings)
+    runtime.reflect.set(record, "copiedValues", copied_values)
+    runtime.reflect.set(moebius, "_last_range_acceleration", record)
+
+
+def _packed_moebius_modules() -> tuple[Any, Any]:
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    if loader is runtime.undefined:
+        raise RuntimeError("the packed Möbius kernel loader is unavailable")
+    return (
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.native"]),
+        runtime.reflect.apply(
+            loader,
+            runtime.undefined,
+            ["sagejs.kernels.arithmetic.moebius"],
+        ),
+    )
+
+
+def _packed_moebius_range(stop: int) -> Any:
+    native_module, kernel_module = _packed_moebius_modules()
+    kernel = runtime.reflect.get(kernel_module, "packed_moebius_range")
+    kernel_int64_zeros = runtime.reflect.get(native_module, "kernel_int64_zeros")
+    kernel_uint64_zeros = runtime.reflect.get(native_module, "kernel_uint64_zeros")
+    native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+    output = runtime.reflect.apply(
+        kernel_int64_zeros,
+        native_module,
+        [kernel, stop],
+    )
+    workspace = runtime.reflect.apply(
+        kernel_uint64_zeros,
+        native_module,
+        [kernel, 2 * stop],
+    )
+    valid = bool(
+        runtime.reflect.apply(
+            kernel,
+            kernel_module,
+            [output, workspace, stop],
+        )
+    )
+    if not valid:
+        raise RuntimeError("packed Möbius range rejected its bounded storage")
+
+    execution_target = getattr(kernel, "executionTarget", None)
+    if execution_target == "wasm":
+        route = "wasm-compiled-source"
+        reason = "normal-heavy-case"
+    elif bool(
+        runtime.reflect.apply(native_is_compiled, native_module, [kernel])
+    ) and bool(getattr(kernel, "nativeAvailable", False)):
+        route = "native-compiled-source"
+        reason = "normal-heavy-case"
+    else:
+        route = "portable-computation"
+        reason = "compiled-source-unavailable"
+    _record_moebius_range_acceleration(
+        route,
+        reason,
+        1 if route != "portable-computation" else 0,
+        3 * stop,
+    )
+    return [int(output[index]) for index in range(stop)]
+
+
 def _moebius_range(start: Any, stop: Any = None) -> Any:
     if stop is None:
         stop = start
         start = 0
+    if runtime.is_exact_integer(start) and runtime.is_exact_integer(stop):
+        start_integer = runtime.integer_bigint(start)
+        stop_integer = runtime.integer_bigint(stop)
+        if (
+            start_integer == runtime.bigint(0)
+            and stop_integer >= runtime.bigint(_PACKED_MOEBIUS_MIN_STOP)
+            and stop_integer <= runtime.bigint(_PACKED_MOEBIUS_MAX_STOP)
+        ):
+            return _packed_moebius_range(runtime.number(stop_integer))
+        reason = (
+            "below-packed-threshold"
+            if start_integer == runtime.bigint(0)
+            and stop_integer >= runtime.bigint(0)
+            and stop_integer < runtime.bigint(_PACKED_MOEBIUS_MIN_STOP)
+            else "exceptional-range"
+        )
+        _record_moebius_range_acceleration(
+            "portable-computation",
+            reason,
+            0,
+            0,
+        )
     return [moebius(value) for value in range(start, stop)]
 
 
