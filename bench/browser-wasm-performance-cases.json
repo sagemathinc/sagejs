@@ -23,6 +23,19 @@
       "timeout_ms": 180000
     },
     {
+      "id": "modular-symbols-level-1000",
+      "family": "modular-symbols",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "M=ModularSymbols(1000,2)\nC=M.cuspidal_subspace()\nprint(M.dimension(),C.dimension(),M.hecke_matrix(2).trace())",
+      "timeout_ms": 180000
+    },
+    {
       "id": "analytic-special-value-batches",
       "family": "analytic-functions",
       "requires": [
@@ -138,6 +151,15 @@
         { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+3*t+6)\nR.<x>=PolynomialRing(K)\nf=x^1024+(a^2+7*a+11)*x^511+a+19\ng=(x+a+1)^384\nanswer=f\nfor k in range(12): answer=answer*g\nprint(answer.degree(),answer[0],answer[answer.degree()])",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "hyperelliptic-local-factors-100000",
+      "family": "hyperelliptic-curves",
+      "requires": [
+        { "id": "specialist:smalljac", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x>=PolynomialRing(QQ)\nC=HyperellipticCurve(x^5+x+1)\nvalues=C.local_lpolynomials(3,100000,algorithm='smalljac')\nprint(len(values),values[0][0],values[-1][0])",
       "timeout_ms": 240000
     },
     {

@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/40 accelerated; 40 failed closed.
+Heavy workloads: 0/42 accelerated; 42 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,7 +12,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 83 | 0 |
+| `wasm-library` | 89 | 0 |
 | `wasm-compiled-source` | 13 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |
@@ -32,8 +32,8 @@ Trusted route receipts: 0; rejected receipts: 0.
 | extension-fields | 3 | 3 | 0 | 3 | 0 | 0 |
 | graphs | 4 | 4 | 0 | 4 | 0 | 0 |
 | groups-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
-| hyperelliptic-curves | 1 | 1 | 0 | 1 | 0 | 0 |
-| modular-symbols | 1 | 0 | 0 | 0 | 0 | 1 |
+| hyperelliptic-curves | 2 | 2 | 0 | 2 | 0 | 0 |
+| modular-symbols | 2 | 1 | 0 | 1 | 0 | 1 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
 | numerical | 4 | 4 | 0 | 4 | 0 | 0 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
@@ -78,6 +78,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:elliptic-lseries-complex-plot` | plotting | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:exact-matrix-kernel` | exact-arithmetic | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:cubic-number-field-zeta-1000` | number-fields | yes | failed | `wasm-compiled-source`, `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:modular-symbols-level-1000` | modular-symbols | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:analytic-special-value-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:analytic-gamma-xi-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:numeric-mpfr-symbolic` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
@@ -90,6 +91,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `performance:sparse-integer-right-kernel-192` | sparse-exact-linear-algebra | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:matrix-combinatorial-invariants` | combinatorics | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:extension-field-polynomial-5632` | extension-fields | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:hyperelliptic-local-factors-100000` | hyperelliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:algebraic-matrix-8` | algebraic-numbers | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:elliptic-lseries-value-batch` | elliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:elliptic-lseries-complex-plot-64` | plotting | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

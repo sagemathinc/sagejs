@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 40,
+    "heavy_workloads": 42,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 40,
+    "failed_heavy_workloads": 42,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -32,7 +32,7 @@
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "4fd54a5ae32ecf552f522b053582ad884223c5c6c7b15862b84a093ca1695339"
+      "sha256": "bf63f3eb67ada386cced5ec220e935cfd4c23f49377ec3db0e974682cfab3331"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
@@ -40,7 +40,7 @@
   },
   "source_inventory": {
     "parity_workloads": 31,
-    "performance_workloads": 17,
+    "performance_workloads": 19,
     "capability_counts": {
       "total": 950,
       "by_kind": {
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 83,
+      "wasm-library": 89,
       "wasm-compiled-source": 13,
       "portable-orchestration": 3,
       "portable-computation": 0
@@ -177,18 +177,18 @@
       "unmeasured_or_review_required": 0
     },
     "hyperelliptic-curves": {
-      "workloads": 1,
-      "heavy_workloads": 1,
+      "workloads": 2,
+      "heavy_workloads": 2,
       "accelerated": 0,
-      "failed": 1,
+      "failed": 2,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
     "modular-symbols": {
-      "workloads": 1,
-      "heavy_workloads": 0,
+      "workloads": 2,
+      "heavy_workloads": 1,
       "accelerated": 0,
-      "failed": 0,
+      "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 1
     },
@@ -2014,6 +2014,89 @@
       ]
     },
     {
+      "id": "performance:modular-symbols-level-1000",
+      "public_workflow": "modular-symbols-level-1000",
+      "family": "modular-symbols",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1List",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
       "id": "performance:analytic-special-value-batches",
       "public_workflow": "analytic-special-value-batches",
       "family": "analytic-functions",
@@ -2636,6 +2719,53 @@
           "review": null,
           "capability_status": "available",
           "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "performance:hyperelliptic-local-factors-100000",
+      "public_workflow": "hyperelliptic-local-factors-100000",
+      "family": "hyperelliptic-curves",
+      "tier": "performance",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "specialist:smalljac",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
         }
       ],
       "engines": {
