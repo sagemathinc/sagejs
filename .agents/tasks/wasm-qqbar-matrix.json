@@ -16,6 +16,7 @@
     "packages/flint-wasm/index.mjs",
     "packages/flint-wasm/scripts/build.cjs",
     "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+    "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
     "test/algebraic-wasm-parity.cjs",
     "test/algebraic-matrix-wasm-route.cjs",
     "bench/wasm-algebraic-matrix.cjs"
