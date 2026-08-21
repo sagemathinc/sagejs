@@ -521,7 +521,10 @@ def _integer_matrix(
     width: int | None = None
     for row in rows:
         converted_row = tuple(int(entry) for entry in row)
-        if any(entry != original for entry, original in zip(converted_row, row)):
+        if any(
+            entry != original
+            for entry, original in zip(converted_row, row, strict=False)
+        ):
             raise TypeError(name + " entries must be exact integers")
         if width is None:
             width = len(converted_row)

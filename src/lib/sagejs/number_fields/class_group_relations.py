@@ -30,7 +30,6 @@ from typing import Any, Callable, Iterable
 
 import sagejs as sage
 
-
 RELATION_SCHEMA = "sagejs.number-fields/class-relation-v1"
 WITNESS_SCHEMA = "sagejs.number-fields/factored-principal-witness-v1"
 IDEAL_SCHEMA = "sagejs.number-fields/relation-ideal-v1"
@@ -316,7 +315,7 @@ def reconstruct_factor_base_ideal(
     if len(factors) != len(exponents):
         raise ValueError("a relation row has the wrong factor-base width")
     answer = order.ideal(1)
-    for prime_ideal, exponent in zip(factors, exponents):
+    for prime_ideal, exponent in zip(factors, exponents, strict=False):
         if exponent:
             answer *= _ideal_power(prime_ideal, exponent)
     return answer
@@ -332,6 +331,40 @@ def factor_ideal_over_base(ideal: Any, factor_base: Iterable[Any]) -> tuple[int,
             "the ideal has support outside the supplied factor base", ideal=ideal
         )
     return row
+
+
+def factor_witness_over_base(
+    witness: FactoredPrincipalWitness, factor_base: Iterable[Any]
+) -> tuple[int, ...]:
+    """Return factor-base valuations of a factored principal witness.
+
+    Computing the valuations on the factors avoids first multiplying a large
+    principal fractional ideal and then repeatedly dividing it by every prime
+    in the factor base.  Exact reconstruction by the caller remains the
+    smoothness certificate, so this is only a faster way to obtain the same
+    candidate row.
+    """
+    factors = tuple(factor_base)
+    if not factors:
+        return ()
+    ideal_module = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+    )
+    row = [0 for _prime in factors]
+    for element, exponent in witness.factors():
+        for index, prime_ideal in enumerate(factors):
+            row[index] += int(exponent) * int(
+                ideal_module.element_valuation(element, prime_ideal)
+            )
+    return tuple(row)
+
+
+def _factor_base_row_norm(factor_base: Iterable[Any], row: Iterable[int]) -> Any:
+    answer = sage.QQ(1)
+    for prime_ideal, exponent in zip(factor_base, row, strict=True):
+        if exponent:
+            answer *= prime_ideal.norm() ** int(exponent)
+    return answer
 
 
 def _factor_positive_integer(value: int) -> list[list[int]]:
@@ -511,7 +544,9 @@ def verify_relation_record(
             failures.append("relation row width mismatch")
         if relation.row != tuple(
             source + quotient
-            for source, quotient in zip(relation.source_row, relation.quotient_row)
+            for source, quotient in zip(
+                relation.source_row, relation.quotient_row, strict=False
+            )
         ):
             failures.append("principal row is not source_row + quotient_row")
 
@@ -632,6 +667,10 @@ class ExactRelationCollector:
             raise ArithmeticError(
                 "relation admission failed: " + "; ".join(verification["failures"])
             )
+        return self._store_verified(relation)
+
+    def _store_verified(self, relation: RelationRecord) -> RelationAdmission:
+        """Store a relation whose exact objects were verified by its producer."""
         key = relation.canonical_key()
         if key in self._keys:
             raise ValueError("the exact relation record was already admitted")
@@ -658,7 +697,6 @@ class ExactRelationCollector:
         provenance: dict[str, Any] | None = None,
     ) -> RelationAdmission:
         factored = _coerce_witness(self.order, witness)
-        principal = factored.principal_ideal(self.order)
         if source_ideal is None:
             source = self.order.ideal(1)
         else:
@@ -667,24 +705,47 @@ class ExactRelationCollector:
                 raise TypeError(
                     "a relation source must be a nonzero ideal of the order"
                 )
-        computed_source_row = factor_ideal_over_base(source, self.factor_base)
-        if (
-            source_row is not None
-            and tuple(int(value) for value in source_row) != computed_source_row
-        ):
-            raise ArithmeticError(
-                "the supplied source row does not reconstruct its ideal"
+        if source_row is None:
+            computed_source_row = factor_ideal_over_base(source, self.factor_base)
+        else:
+            computed_source_row = tuple(int(value) for value in source_row)
+            if (
+                reconstruct_factor_base_ideal(
+                    self.order, self.factor_base, computed_source_row
+                )
+                != source
+            ):
+                raise ArithmeticError(
+                    "the supplied source row does not reconstruct its ideal"
+                )
+        row = factor_witness_over_base(factored, self.factor_base)
+        witness_norm = sage.QQ(factored.norm())
+        if witness_norm < 0:
+            witness_norm = -witness_norm
+        if _factor_base_row_norm(self.factor_base, row) != witness_norm:
+            raise RelationNotSmoothError(
+                "the principal witness norm has support outside the factor base"
             )
-        quotient = principal / source
-        quotient_row = factor_ideal_over_base(quotient, self.factor_base)
-        row = tuple(
-            left + right for left, right in zip(computed_source_row, quotient_row)
+        principal = factored.principal_ideal(self.order)
+        quotient_row = tuple(
+            total - source_exponent
+            for total, source_exponent in zip(row, computed_source_row, strict=False)
         )
-        if (
-            reconstruct_factor_base_ideal(self.order, self.factor_base, row)
-            != principal
-        ):
-            raise ArithmeticError("the combined relation row is not principal")
+        reconstructed_principal = reconstruct_factor_base_ideal(
+            self.order, self.factor_base, row
+        )
+        if reconstructed_principal != principal:
+            raise RelationNotSmoothError(
+                "the principal witness has support outside the supplied factor base",
+                ideal=principal,
+            )
+        quotient = reconstruct_factor_base_ideal(
+            self.order, self.factor_base, quotient_row
+        )
+        if source * quotient != principal:
+            raise ArithmeticError(
+                "the source and quotient do not reconstruct principal"
+            )
         record = RelationRecord(
             row=row,
             quotient_row=quotient_row,
@@ -702,7 +763,12 @@ class ExactRelationCollector:
             log_precision=log_precision,
             provenance=provenance,
         )
-        return self.add_relation(record)
+        # Everything used to construct this record was checked above with
+        # exact ideal equality.  Avoid the public deserialization replay here:
+        # it would refactor the same source, quotient, and principal ideals a
+        # second time.  `add_relation` and `RelationRecord.verify` retain that
+        # full replay for external or restored records.
+        return self._store_verified(record)
 
 
 def initial_rational_prime_relations(
@@ -927,12 +993,12 @@ class LLLRelationSearch:
         for left in range(len(reduced)):
             for right in range(left + 1, len(reduced)):
                 coefficient_rows.append(
-                    [a + b for a, b in zip(reduced[left], reduced[right])]
+                    [a + b for a, b in zip(reduced[left], reduced[right], strict=False)]
                 )
         for left in range(len(reduced)):
             for right in range(left + 1, len(reduced)):
                 coefficient_rows.append(
-                    [a - b for a, b in zip(reduced[left], reduced[right])]
+                    [a - b for a, b in zip(reduced[left], reduced[right], strict=False)]
                 )
         while len(coefficient_rows) < self.max_candidates_per_ideal and reduced:
             candidate = [0 for _ in reduced[0]]
@@ -1057,6 +1123,62 @@ class LLLRelationSearch:
         return tuple(answer)
 
 
+def reduce_ideal_over_base(
+    ideal: Any,
+    factor_base: Iterable[Any],
+    *,
+    seed: int = 0,
+    max_candidates: int = 128,
+) -> tuple[tuple[int, ...], FactoredPrincipalWitness]:
+    """Find `(alpha) = ideal * Q` with `Q` smooth over the factor base.
+
+    This is the inverse-map analogue of relation collection.  It permits an
+    arbitrary nonzero fractional ideal, even when that ideal itself contains
+    primes outside the factor base.  The returned row factors `Q`; therefore
+    the ideal's class is the negative of that row.  Exact ideal equality is
+    checked before returning the principal witness `alpha`.
+    """
+    order = ideal.ring()
+    factors = _validate_factor_base(order, factor_base)
+    if ideal.is_zero():
+        raise ValueError("the zero ideal has no ideal class")
+    collector = ExactRelationCollector(order, factors)
+    search = LLLRelationSearch(
+        collector,
+        seed=seed,
+        max_candidates_per_ideal=_checked_nonnegative(
+            max_candidates, "candidate bound"
+        ),
+        random_terms=min(5, max(1, order.number_field().degree())),
+        coefficient_bound=3,
+    )
+    ideal_row = tuple(int(ideal.valuation(prime)) for prime in factors)
+    ideal_norm = sage.QQ(ideal.norm())
+    for element in search.short_elements(ideal):
+        principal_row = factor_witness_over_base(
+            FactoredPrincipalWitness.from_element(element), factors
+        )
+        row = tuple(
+            principal_exponent - ideal_exponent
+            for principal_exponent, ideal_exponent in zip(
+                principal_row, ideal_row, strict=True
+            )
+        )
+        quotient_norm = sage.QQ(element.norm()) / ideal_norm
+        if quotient_norm < 0:
+            quotient_norm = -quotient_norm
+        if _factor_base_row_norm(factors, row) != quotient_norm:
+            continue
+        principal = order.ideal(element)
+        reconstructed = reconstruct_factor_base_ideal(order, factors, row)
+        if ideal * reconstructed != principal:
+            raise ArithmeticError("ideal reduction failed exact principal replay")
+        return row, FactoredPrincipalWitness.from_element(element)
+    raise RelationNotSmoothError(
+        "bounded ideal reduction found no factor-base-smooth quotient", ideal=ideal
+    )
+
+
 __all__ = [
     "DEFAULT_RANK_PRIME",
     "ExactRelationCollector",
@@ -1069,7 +1191,9 @@ __all__ = [
     "RelationSearchState",
     "exact_lll_reduce",
     "factor_ideal_over_base",
+    "factor_witness_over_base",
     "initial_rational_prime_relations",
+    "reduce_ideal_over_base",
     "reconstruct_factor_base_ideal",
     "verify_relation_record",
 ]

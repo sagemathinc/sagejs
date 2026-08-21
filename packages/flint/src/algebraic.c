@@ -12,8 +12,12 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_vec.h>
 #include <flint/fmpz_poly.h>
+#include <flint/nmod_poly.h>
+#include <flint/nmod_poly_factor.h>
 #include <flint/qqbar.h>
+#include <flint/ulong_extras.h>
 
 #include "algebraic.h"
 
@@ -951,4 +955,196 @@ napi_value sagejs_qqbar_approx(napi_env env, napi_callback_info info)
         MPFR_RNDN);
     acb_clear(enclosure);
     return sagejs_native_wrap_complex(env, result);
+}
+
+static napi_value sagejs_decimal_from_arf(
+    napi_env env, const arf_t value, slong digits)
+{
+    char *text = arf_get_str(value, digits);
+    napi_value result;
+    const int ok = check_napi(env,
+        napi_create_string_utf8(env, text, NAPI_AUTO_LENGTH, &result));
+    flint_free(text);
+    return ok ? result : NULL;
+}
+
+napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info)
+{
+    napi_value args[2], result, midpoint, radius, precision_value;
+    qqbar_srcptr value;
+    double requested;
+    slong precision, digits;
+    acb_t enclosure;
+    arb_t absolute_value, logarithm;
+    arf_t converted_radius;
+
+    if (!require_arguments(env, info, 2, args) ||
+        (value = sagejs_qqbar_unwrap(env, args[0])) == NULL ||
+        !check_napi(env, napi_get_value_double(env, args[1], &requested)))
+        return NULL;
+    if (!isfinite(requested) || requested < 16 ||
+        requested > 1000000 || floor(requested) != requested)
+    {
+        napi_throw_range_error(env, NULL,
+            "precision must be an integer of at least 16 bits");
+        return NULL;
+    }
+    precision = (slong) requested;
+    digits = (slong) ceil((double) precision * 0.30103) + 8;
+    acb_init(enclosure);
+    arb_init(absolute_value);
+    arb_init(logarithm);
+    arf_init(converted_radius);
+    qqbar_get_acb(enclosure, value, precision + 16);
+    acb_abs(absolute_value, enclosure, precision + 16);
+    if (!arb_is_positive(absolute_value))
+    {
+        napi_throw_range_error(env, NULL,
+            "the algebraic number is zero or insufficiently separated from zero");
+        goto failure;
+    }
+    arb_log(logarithm, absolute_value, precision);
+    midpoint = sagejs_decimal_from_arf(env, arb_midref(logarithm), digits);
+    arf_set_mag(converted_radius, arb_radref(logarithm));
+    radius = sagejs_decimal_from_arf(env, converted_radius, digits);
+    if (midpoint == NULL || radius == NULL ||
+        !check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_int64(env, precision, &precision_value)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "midpoint", midpoint)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "radius", radius)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "precisionBits", precision_value)))
+        goto failure;
+    acb_clear(enclosure);
+    arb_clear(absolute_value);
+    arb_clear(logarithm);
+    arf_clear(converted_radius);
+    return result;
+
+failure:
+    acb_clear(enclosure);
+    arb_clear(absolute_value);
+    arb_clear(logarithm);
+    arf_clear(converted_radius);
+    return NULL;
+}
+
+napi_value sagejs_number_field_splitting_types(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2], result, item, factor_list, pair, value;
+    uint32_t coefficient_count, prime_count, coefficient_index, prime_index;
+    fmpz *coefficients = NULL;
+    double prime_double;
+    ulong prime;
+    slong factor_index;
+    nmod_poly_t polynomial;
+    nmod_poly_factor_t factorization;
+    int polynomial_initialized = 0, factorization_initialized = 0;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !check_napi(env,
+            napi_get_array_length(env, args[0], &coefficient_count)) ||
+        !check_napi(env, napi_get_array_length(env, args[1], &prime_count)))
+        return NULL;
+    if (coefficient_count < 2)
+    {
+        napi_throw_range_error(env, NULL,
+            "a number-field polynomial needs at least two coefficients");
+        return NULL;
+    }
+    coefficients = _fmpz_vec_init((slong) coefficient_count);
+    for (coefficient_index = 0;
+         coefficient_index < coefficient_count;
+         coefficient_index++)
+    {
+        if (!check_napi(env,
+                napi_get_element(env, args[0], coefficient_index, &item)) ||
+            !bigint_to_fmpz(env, item, coefficients + coefficient_index))
+            goto failure;
+    }
+    if (!check_napi(env, napi_create_array_with_length(env, prime_count, &result)))
+        goto failure;
+    for (prime_index = 0; prime_index < prime_count; prime_index++)
+    {
+        if (!check_napi(env,
+                napi_get_element(env, args[1], prime_index, &item)) ||
+            !check_napi(env,
+                napi_get_value_double(env, item, &prime_double)))
+            goto failure;
+        if (!isfinite(prime_double) || prime_double < 2 ||
+            prime_double > (double) UWORD_MAX || floor(prime_double) != prime_double)
+        {
+            napi_throw_range_error(env, NULL,
+                "splitting primes must be positive machine-word integers");
+            goto failure;
+        }
+        prime = (ulong) prime_double;
+        if (!n_is_prime(prime))
+        {
+            napi_throw_range_error(env, NULL,
+                "splitting input contains a composite integer");
+            goto failure;
+        }
+        nmod_poly_init(polynomial, prime);
+        polynomial_initialized = 1;
+        for (coefficient_index = 0;
+             coefficient_index < coefficient_count;
+             coefficient_index++)
+            nmod_poly_set_coeff_ui(
+                polynomial,
+                (slong) coefficient_index,
+                fmpz_fdiv_ui(coefficients + coefficient_index, prime));
+        if (nmod_poly_degree(polynomial) != (slong) coefficient_count - 1)
+        {
+            napi_throw_range_error(env, NULL,
+                "the number-field polynomial must remain monic modulo every prime");
+            goto failure;
+        }
+        nmod_poly_factor_init(factorization);
+        factorization_initialized = 1;
+        (void) nmod_poly_factor(factorization, polynomial);
+        if (!check_napi(env,
+                napi_create_array_with_length(
+                    env, (uint32_t) factorization->num, &factor_list)))
+            goto failure;
+        for (factor_index = 0; factor_index < factorization->num; factor_index++)
+        {
+            if (!check_napi(env, napi_create_array_with_length(env, 2, &pair)) ||
+                !check_napi(env,
+                    napi_create_int64(
+                        env, factorization->exp[factor_index], &value)) ||
+                !check_napi(env, napi_set_element(env, pair, 0, value)) ||
+                !check_napi(env,
+                    napi_create_int64(
+                        env,
+                        nmod_poly_degree(factorization->p + factor_index),
+                        &value)) ||
+                !check_napi(env, napi_set_element(env, pair, 1, value)) ||
+                !check_napi(env,
+                    napi_set_element(
+                        env, factor_list, (uint32_t) factor_index, pair)))
+                goto failure;
+        }
+        if (!check_napi(env,
+                napi_set_element(env, result, prime_index, factor_list)))
+            goto failure;
+        nmod_poly_factor_clear(factorization);
+        factorization_initialized = 0;
+        nmod_poly_clear(polynomial);
+        polynomial_initialized = 0;
+    }
+    _fmpz_vec_clear(coefficients, (slong) coefficient_count);
+    return result;
+
+failure:
+    if (factorization_initialized)
+        nmod_poly_factor_clear(factorization);
+    if (polynomial_initialized)
+        nmod_poly_clear(polynomial);
+    if (coefficients != NULL)
+        _fmpz_vec_clear(coefficients, (slong) coefficient_count);
+    return NULL;
 }

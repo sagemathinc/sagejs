@@ -240,19 +240,39 @@ class FactoredNumberFieldElement:
         except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
             return False
 
-    def archimedean_logarithms(self, prec: int = 53) -> tuple[float, ...]:
-        """Return weighted log absolute values without expanding the product."""
+    def archimedean_logarithms(self, prec: int = 53) -> tuple[Any, ...]:
+        """Return rigorous weighted log-absolute-value balls factor by factor."""
         if isinstance(prec, bool) or not isinstance(prec, int) or prec < 2:
             raise ValueError("archimedean precision must be an integer at least 2")
         embedding_module = __import__(
             "sagejs.number_fields.embeddings", fromlist=["embeddings"]
         )
+        analytic_module = __import__(
+            "sagejs.number_fields.class_unit_analytic",
+            fromlist=["class_unit_analytic"],
+        )
         data = embedding_module.archimedean_data(self._field)
-        result = [0.0 for _embedding in data.embeddings]
+        result = [
+            analytic_module.RealBall(0, precision_bits=prec)
+            for _embedding in data.embeddings
+        ]
         for factor, exponent in self._factors:
-            image = data.logarithmic_image(factor, prec)
-            for index in range(len(result)):
-                result[index] += exponent * image[index]
+            for index, embedding in enumerate(data.embeddings):
+                algebraic = embedding(factor)
+                enclosure = runtime.flint_backend().qqbarLogAbsBall(
+                    algebraic._native, prec
+                )
+                ball = analytic_module.RealBall.midpoint_radius(
+                    enclosure["midpoint"],
+                    enclosure["radius"],
+                    precision_bits=int(enclosure["precisionBits"]),
+                    rigorous=True,
+                    source="FLINT qqbar/Arb logarithmic embedding",
+                )
+                weight = exponent * int(embedding.log_weight)
+                result[index] = result[index] + ball * analytic_module.RealBall(
+                    weight, precision_bits=prec
+                )
         return tuple(result)
 
     logarithmic_image = archimedean_logarithms
@@ -320,7 +340,7 @@ class FactoredNumberFieldElement:
         return all(
             left_exponent == right_exponent and left_factor == right_factor
             for (left_factor, left_exponent), (right_factor, right_exponent) in zip(
-                self._factors, other._factors
+                self._factors, other._factors, strict=False
             )
         )
 

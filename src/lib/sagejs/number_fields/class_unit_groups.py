@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable, Sequence
 
-
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
@@ -153,6 +152,7 @@ class UnitGroupComputation:
         complete: bool,
         regulator: Any = None,
         reason: str = "",
+        proof_status: str | None = None,
     ) -> None:
         self.torsion = torsion
         self.generators = tuple(generators)
@@ -161,7 +161,9 @@ class UnitGroupComputation:
         self.regulator_enclosure = regulator
         self.reason = reason
         self.proof_status = (
-            EXACT_UNCONDITIONAL if self.complete else INCOMPLETE_RESOURCE_LIMIT
+            (EXACT_UNCONDITIONAL if proof_status is None else proof_status)
+            if self.complete
+            else INCOMPLETE_RESOURCE_LIMIT
         )
 
     def gens(self) -> tuple[Any, ...]:
@@ -190,7 +192,9 @@ class _EngineClassElement:
 
     def order(self) -> int:
         answer = 1
-        for coordinate, modulus in zip(self._coordinates, self._parent._invariants):
+        for coordinate, modulus in zip(
+            self._coordinates, self._parent._invariants, strict=False
+        ):
             if coordinate:
                 common = _gcd(coordinate, modulus)
                 answer = _lcm(answer, modulus // common)
@@ -209,7 +213,9 @@ class _EngineClassElement:
             self._parent,
             [
                 left + right
-                for left, right in zip(self._coordinates, other._coordinates)
+                for left, right in zip(
+                    self._coordinates, other._coordinates, strict=False
+                )
             ],
         )
 
@@ -257,6 +263,8 @@ class _EngineClassGroup:
         relation_records: Iterable[Any],
         combine_relations: Callable[[Sequence[int]], Any],
         factor_over_base: Callable[[Any, Iterable[Any]], Sequence[int]],
+        reduce_over_base: Callable[[Any, Iterable[Any]], Any],
+        combine_reduction_witness: Callable[[Any, Any], Any],
         proof_status: str,
         theorem: str,
     ) -> None:
@@ -272,6 +280,8 @@ class _EngineClassGroup:
         self._relations = tuple(relation_records)
         self._combine_relations = combine_relations
         self._factor_over_base = factor_over_base
+        self._reduce_over_base = reduce_over_base
+        self._combine_reduction_witness = combine_reduction_witness
         self.proof_status = proof_status
         self.factor_base_theorem = theorem
         self._gens = tuple(
@@ -308,7 +318,9 @@ class _EngineClassGroup:
     def representative_ideal(self, coordinates: Iterable[int]) -> Any:
         element = _EngineClassElement(self, coordinates)
         answer = self._order.ideal(1)
-        for coordinate, ideal in zip(element.coordinates(), self._generator_ideals):
+        for coordinate, ideal in zip(
+            element.coordinates(), self._generator_ideals, strict=False
+        ):
             if coordinate:
                 answer *= _ideal_power(ideal, coordinate)
         return answer
@@ -331,9 +343,16 @@ class _EngineClassGroup:
         return tuple(coefficients)
 
     def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
-        row = tuple(
-            int(value) for value in self._factor_over_base(ideal, self._factor_base)
-        )
+        reduction_witness = None
+        try:
+            row = tuple(
+                int(value) for value in self._factor_over_base(ideal, self._factor_base)
+            )
+        except ArithmeticError:
+            quotient_row, reduction_witness = self._reduce_over_base(
+                ideal, self._factor_base
+            )
+            row = tuple(-int(value) for value in quotient_row)
         coordinates = tuple(self._presentation.class_coordinates(row))
         reduced = tuple(self._presentation.lift_class_coordinates(coordinates))
         delta_values = []
@@ -341,6 +360,8 @@ class _EngineClassGroup:
             delta_values.append(row[index] - reduced[index])
         delta = tuple(delta_values)
         witness = self._combine_relations(self._relation_coefficients(delta))
+        if reduction_witness is not None:
+            witness = self._combine_reduction_witness(witness, reduction_witness)
         return coordinates, witness
 
     def __call__(self, ideal: Any) -> _EngineClassElement:
@@ -554,12 +575,14 @@ class ClassUnitGroupEngine:
             tentative_invariants=classes.invariants(),
         )
 
-    def _factor_base(self) -> tuple[Any, tuple[Any, ...]]:
+    def _factor_base(
+        self, *, proof: bool, record_stage: bool = True
+    ) -> tuple[Any, tuple[Any, ...]]:
         module = self.components.factor_base
         plan = module.factor_base_plan(
             self.order,
-            proof=self.proof,
-            theorem=("minkowski" if self.proof else "auto"),
+            proof=proof,
+            theorem=("minkowski" if proof else "auto"),
             max_bound=self.limits.max_factor_base_bound,
             max_prime_ideals=self.limits.max_factor_base_size,
             max_memory_bytes=self.limits.max_memory_bytes,
@@ -569,15 +592,51 @@ class ClassUnitGroupEngine:
         primes = tuple(_value(record, ("prime_ideal", "ideal")) for record in records)
         if any(prime is None for prime in primes):
             raise TypeError("factor-base records do not expose exact prime ideals")
-        self._stage(
-            "factor-base",
-            "complete",
-            theorem=plan.theorem,
-            assumptions=list(plan.assumptions),
-            bound=int(plan.bound),
-            size=len(primes),
-        )
+        if record_stage:
+            self._stage(
+                "factor-base",
+                "complete",
+                theorem=plan.theorem,
+                assumptions=list(plan.assumptions),
+                bound=int(plan.bound),
+                size=len(primes),
+            )
         return plan, primes
+
+    def _unconditional_proof_pass(self, group: Any) -> tuple[Any, ...]:
+        plan, proof_primes = self._factor_base(proof=True, record_stage=False)
+        if tuple(plan.assumptions):
+            raise ArithmeticError("the Minkowski proof pass recorded an assumption")
+        records = []
+        for index, prime_ideal in enumerate(proof_primes):
+            self._check_cancelled()
+            coordinates, witness = group.discrete_log(prime_ideal)
+            representative = group.representative_ideal(coordinates)
+            quotient = prime_ideal / representative
+            if witness.principal_ideal(self.order) != quotient:
+                raise ArithmeticError(
+                    "a Minkowski proof-prime discrete log failed principal replay"
+                )
+            norm = prime_ideal.norm()
+            if norm._denominator != 1:
+                raise ArithmeticError("a proof-prime ideal has nonintegral norm")
+            records.append(
+                {
+                    "index": index,
+                    "norm": int(norm._numerator),
+                    "coordinates": tuple(int(value) for value in coordinates),
+                    "ideal": prime_ideal.to_dict(),
+                    "witness": witness.to_dict(),
+                }
+            )
+        self._stage(
+            "unconditional-proof",
+            "complete",
+            theorem=str(plan.theorem),
+            bound=int(plan.bound),
+            prime_ideals=len(records),
+        )
+        return tuple(records)
 
     def _relations(
         self, factor_base: tuple[Any, ...], unit_rank: int
@@ -597,10 +656,16 @@ class ClassUnitGroupEngine:
         search = relations.LLLRelationSearch(
             collector,
             seed=self.seed,
-            max_candidates_per_ideal=8,
-            random_terms=3,
+            max_candidates_per_ideal=min(8, self.limits.max_candidates_per_ideal),
+            random_terms=min(3, self.limits.max_random_terms),
             coefficient_bound=coefficient_bound,
         )
+        # One accepted relation can require seconds of exact ideal arithmetic,
+        # so recompute the tiny presentation after each success.  Degree-many
+        # redundant dependencies are nevertheless important: the first full
+        # rank presentation can still describe a strict class/unit overgroup,
+        # and the extra exact relations are what saturate both lattices before
+        # the analytic index-one check.
         dependency_target = unit_rank + max(2, int(self.field.degree()))
         while (
             presentation.rank < len(factor_base)
@@ -660,7 +725,7 @@ class ClassUnitGroupEngine:
 
     def _combine(self, records: Sequence[Any], coefficients: Sequence[int]) -> Any:
         factors = []
-        for record, coefficient in zip(records, coefficients):
+        for record, coefficient in zip(records, coefficients, strict=False):
             if coefficient == 0:
                 continue
             witness = self._decode_relation_witness(record)
@@ -677,28 +742,44 @@ class ClassUnitGroupEngine:
     ) -> tuple[Any, ...]:
         if unit_rank == 0:
             return ()
-        embedding_module = _optional_module("sagejs.number_fields.embeddings")
-        if embedding_module is None:
-            return ()
-        data = embedding_module.archimedean_data(self.field)
-        rows: list[list[float]] = []
-        units: list[Any] = []
-        rank = 0
+        if not presentation.verify():
+            raise ArithmeticError("the relation presentation failed exact replay")
+        candidates: list[Any] = []
+        logarithms: list[list[Any]] = []
         for dependency in presentation.dependency_transforms:
             unit = self._combine(records, dependency)
-            if unit.principal_ideal(self.order) != self.order.ideal(1):
+            candidates.append(unit)
+            logarithms.append(list(unit.archimedean_logarithms(80)[:-1]))
+
+        # A basis of the exact relation kernel can map to a highly nonreduced
+        # generating set of the rank-r unit lattice.  Taking the first r
+        # independent images may therefore introduce a large artificial unit
+        # index.  Among the bounded dependency set, choose the full-rank subset
+        # with smallest logarithmic covolume; the subsequent rigorous hR check
+        # is still the authority that certifies index one.
+        best: tuple[int, ...] = ()
+        best_volume: float | None = None
+        checked = 0
+        for indices in _index_combinations(len(candidates), unit_rank):
+            checked += 1
+            if checked > 50_000:
+                break
+            volume = _floating_determinant_absolute(
+                [logarithms[index] for index in indices]
+            )
+            if volume <= 1e-12:
+                continue
+            if best_volume is None or volume < best_volume:
+                best = indices
+                best_volume = volume
+        if not best:
+            return ()
+        units = tuple(candidates[index] for index in best)
+        one = self.order.ideal(1)
+        for unit in units:
+            if unit.principal_ideal(self.order) != one:
                 raise ArithmeticError("a relation dependency is not an exact unit")
-            value = unit.evaluate()
-            logs = list(data.logarithmic_image(value, 80)[:-1])
-            candidate = rows + [logs]
-            next_rank = _floating_rank(candidate)
-            if next_rank > rank:
-                rows.append(logs)
-                units.append(unit)
-                rank = next_rank
-                if rank == unit_rank:
-                    break
-        return tuple(units)
+        return units
 
     def _analytic_index(
         self, presentation: Any, units: tuple[Any, ...], unit_rank: int
@@ -775,6 +856,14 @@ class ClassUnitGroupEngine:
             collector.records,
             lambda coefficients: self._combine(collector.records, coefficients),
             self.components.relations.factor_ideal_over_base,
+            self.components.relations.reduce_ideal_over_base,
+            lambda relation_witness, reduction_witness: (
+                self.components.factored.FactoredNumberFieldElement(
+                    self.field,
+                    list(relation_witness.factors())
+                    + list(reduction_witness.factors()),
+                )
+            ),
             proof_status,
             theorem,
         )
@@ -796,7 +885,10 @@ class ClassUnitGroupEngine:
             embedding_module = _optional_module("sagejs.number_fields.embeddings")
             signature = embedding_module.exact_signature(self.field)
             unit_rank = int(signature[0] + signature[1] - 1)
-            plan, factor_base = self._factor_base()
+            # Relation discovery uses the much smaller BDF factor base.  A
+            # proof=True request is upgraded afterward by expressing every
+            # Minkowski-required prime ideal in this exact presentation.
+            plan, factor_base = self._factor_base(proof=False)
             collector, presentation = self._relations(factor_base, unit_rank)
             if presentation.rank != len(factor_base) or presentation.order is None:
                 return self._incomplete(
@@ -815,6 +907,7 @@ class ClassUnitGroupEngine:
                 complete=bool(index.index_one),
                 regulator=regulator,
                 reason="rigorous hR index-one validation",
+                proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
             )
             if not index.index_one:
                 return self._incomplete(
@@ -822,25 +915,28 @@ class ClassUnitGroupEngine:
                     invariants=presentation.invariants,
                     unit_group=unit_group,
                 )
-            proof_status = (
-                EXACT_UNCONDITIONAL if self.proof else EXACT_RELATIONS_CONDITIONAL_GRH
-            )
-            if self.proof and tuple(plan.assumptions):
-                raise ArithmeticError("an unconditional run selected an assumed bound")
-            if not self.proof and not tuple(plan.assumptions):
+            if not tuple(plan.assumptions):
                 raise ArithmeticError("a conditional run did not record its assumption")
             group = self._class_group(
                 factor_base,
                 collector,
                 presentation,
-                proof_status,
+                EXACT_RELATIONS_CONDITIONAL_GRH,
                 str(plan.theorem),
             )
+            proof_records: tuple[Any, ...] = ()
+            proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+            if self.proof:
+                proof_records = self._unconditional_proof_pass(group)
+                proof_status = EXACT_UNCONDITIONAL
+                group.proof_status = proof_status
+                group.factor_base_theorem = "Minkowski ideal-class theorem"
+                unit_group.proof_status = proof_status
             self._stage(
                 "proof",
                 "complete",
                 proof_status=proof_status,
-                minkowski_primes=(len(factor_base) if self.proof else 0),
+                minkowski_primes=len(proof_records),
                 exact_relations=len(collector.records),
             )
             self._stage("terminal", "complete", class_number=group.order())
@@ -858,6 +954,7 @@ class ClassUnitGroupEngine:
                     "factor_base_bound": int(plan.bound),
                     "factor_base_size": len(factor_base),
                     "relations": len(collector.records),
+                    "unconditional_prime_records": proof_records,
                 },
             )
         except RuntimeError as error:
@@ -868,33 +965,53 @@ class ClassUnitGroupEngine:
             return self._incomplete(str(error))
 
 
-def _floating_rank(rows: Sequence[Sequence[float]], tolerance: float = 1e-10) -> int:
-    if not rows:
-        return 0
-    matrix = [list(float(value) for value in row) for row in rows]
-    row_count = len(matrix)
-    column_count = len(matrix[0])
-    rank = 0
-    for column in range(column_count):
-        pivot = rank
-        while pivot < row_count and abs(matrix[pivot][column]) <= tolerance:
-            pivot += 1
-        if pivot == row_count:
-            continue
-        matrix[rank], matrix[pivot] = matrix[pivot], matrix[rank]
-        value = matrix[rank][column]
-        for index in range(column, column_count):
-            matrix[rank][index] /= value
-        for row in range(row_count):
-            if row == rank:
-                continue
-            multiple = matrix[row][column]
-            for index in range(column, column_count):
-                matrix[row][index] -= multiple * matrix[rank][index]
-        rank += 1
-        if rank == row_count:
-            break
-    return rank
+def _floating_value(value: Any) -> float:
+    midpoint: Any = getattr(value, "midpoint", None)
+    selected: Any = midpoint() if callable(midpoint) else value
+    return float(selected)
+
+
+def _index_combinations(count: int, size: int) -> Iterable[tuple[int, ...]]:
+    if size < 0 or size > count:
+        return
+    if size == 0:
+        yield ()
+        return
+    indices = list(range(size))
+    while True:
+        yield tuple(indices)
+        position = size - 1
+        while position >= 0 and indices[position] == count - size + position:
+            position -= 1
+        if position < 0:
+            return
+        indices[position] += 1
+        for index in range(position + 1, size):
+            indices[index] = indices[index - 1] + 1
+
+
+def _floating_determinant_absolute(rows: Sequence[Sequence[Any]]) -> float:
+    size = len(rows)
+    if size == 0:
+        return 1.0
+    if any(len(row) != size for row in rows):
+        return 0.0
+    matrix = [[_floating_value(value) for value in row] for row in rows]
+    determinant = 1.0
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda row: abs(matrix[row][column]))
+        if abs(matrix[pivot][column]) <= 1e-14:
+            return 0.0
+        if pivot != column:
+            matrix[column], matrix[pivot] = matrix[pivot], matrix[column]
+            determinant = -determinant
+        value = matrix[column][column]
+        determinant *= value
+        for row in range(column + 1, size):
+            multiple = matrix[row][column] / value
+            for index in range(column + 1, size):
+                matrix[row][index] -= multiple * matrix[column][index]
+    return abs(determinant)
 
 
 def compute_class_unit_group(
@@ -970,7 +1087,7 @@ def class_unit_context(
     if use_cache:
         if not isinstance(cache, dict):
             cache = {}
-            setattr(field, "_class_unit_engine_cache", cache)
+            field._class_unit_engine_cache = cache
         cache[cache_key] = result
     return result
 
@@ -1035,13 +1152,26 @@ def regulator(
 ) -> Any:
     """Return the regulator result under a requested `prec`-bit policy."""
     precision = _positive(prec, "regulator precision")
-    if "precision_bits" not in limits:
-        limits["precision_bits"] = precision
-    if "max_precision_bits" not in limits:
-        limits["max_precision_bits"] = max(1_024, precision)
-    return class_unit_context(
-        field, proof=proof, algorithm=algorithm, **limits
-    ).regulator()
+    result = class_unit_context(field, proof=proof, algorithm=algorithm, **limits)
+    current = result.regulator()
+    if int(current.precision_bits) >= precision:
+        return current
+    unit_result = result.unit_group()
+    cache = getattr(unit_result, "_regulator_precision_cache", None)
+    if not isinstance(cache, dict):
+        cache = {int(current.precision_bits): current}
+        unit_result._regulator_precision_cache = cache
+    if precision not in cache:
+        analytic = _optional_module("sagejs.number_fields.class_unit_analytic")
+        if analytic is None:
+            raise ImportError("the class/unit analytic module is unavailable")
+        cache[precision] = analytic.regulator_from_factored_units(
+            result.units(),
+            unit_rank=int(unit_result.unit_rank),
+            precision_bits=precision,
+            maximum_precision_bits=max(1_024, precision),
+        )
+    return cache[precision]
 
 
 __all__ = [

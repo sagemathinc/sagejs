@@ -106,6 +106,20 @@ def _nf_class_groups_module() -> Any:
     )
 
 
+def _nf_class_unit_groups_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_class_unit_groups_module__",
+        "sagejs.number_fields.class_unit_groups",
+    )
+
+
+def _nf_quadratic_class_units_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_quadratic_class_units_module__",
+        "sagejs.number_fields.quadratic_class_units",
+    )
+
+
 def _nf_complex_result(value: Any, precision: int) -> Any:
     field = _nf_global("ComplexField")(precision)
     if hasattr(value, "_native"):
@@ -818,7 +832,7 @@ class NumberFieldGaloisGroup:
 
 @runtime.lightweight_math_class
 class NumberFieldClassGroupElement(sage.Element):
-    """An imaginary-quadratic ideal class in a general field presentation."""
+    """A quadratic ideal class in the original field presentation."""
 
     def __init__(
         self,
@@ -876,9 +890,24 @@ class NumberFieldClassGroupElement(sage.Element):
         return self._parent._field.maximal_order().ideal(generators)
 
     def _mapped_generators(self) -> list[NumberFieldElement]:
+        ideal = self._element.ideal()
+        if hasattr(ideal, "doubled_coefficients"):
+            discriminant = int(ideal.discriminant)
+            _squarefree, square_root = (
+                _nf_units_module()._quadratic_square_root_element(self._parent._field)
+            )
+            sqrt_discriminant = (
+                square_root
+                if discriminant % 4 == 1
+                else self._parent._field(2) * square_root
+            )
+            return [
+                self._parent._field(ideal.a),
+                (-self._parent._field(ideal.b) + sqrt_discriminant) / 2,
+            ]
         return [
             self._parent._field._from_quadratic_backend(value)
-            for value in self._element.ideal().gens_reduced()
+            for value in ideal.gens_reduced()
         ]
 
     def form(self) -> Any:
@@ -958,6 +987,25 @@ class NumberFieldClassGroup:
         if index < 0 or index >= len(generators):
             raise IndexError("class-group generator index out of range")
         return generators[index]
+
+    def __call__(self, value: Any) -> NumberFieldClassGroupElement:
+        if isinstance(value, NumberFieldClassGroupElement):
+            if value._parent is not self:
+                raise TypeError("the ideal class belongs to another group")
+            return value
+        if not isinstance(value, NumberFieldIdeal):
+            return self._wrap(self._group(value))
+        if value.ring() is not self._field.maximal_order():
+            raise TypeError("the ideal belongs to a different maximal order")
+        if not hasattr(self._group.one().ideal(), "doubled_coefficients"):
+            raise NotImplementedError(
+                "ideal coercion is not implemented for this quadratic backend"
+            )
+        coefficients = self._field._real_quadratic_ideal_form(value)
+        form = _nf_quadratic_class_units_module().QuadraticForm(
+            coefficients[0], coefficients[1], coefficients[2]
+        )
+        return self._wrap(self._group(form))
 
     def number_field(self) -> NumberFieldParent:
         return self._field
@@ -1538,6 +1586,30 @@ class NumberFieldIdeal:
     def factor(self) -> Any:
         return _nf_ideal_arithmetic_module().factor_integral_ideal(self)
 
+    def ideal_class_log(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        group = self._field.class_group(proof=proof, algorithm=algorithm, **limits)
+        discrete_log = getattr(group, "discrete_log", None)
+        if callable(discrete_log):
+            return discrete_log(self)
+        return group(self)
+
+    def is_principal(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> bool:
+        group = self._field.class_group(proof=proof, algorithm=algorithm, **limits)
+        decide = getattr(group, "is_principal", None)
+        if callable(decide):
+            return bool(decide(self, proof=True if proof is None else bool(proof)))
+        return bool(group(self).is_one())
+
     def denominator(self) -> Any:
         return _nf_ideal_arithmetic_module().integrality_denominator(self)
 
@@ -1824,11 +1896,11 @@ class NumberFieldOrder(sage.Parent):
     def ideal_from_dict(self, data: dict[str, Any]) -> NumberFieldIdeal:
         return _nf_ideal_arithmetic_module().ideal_from_dict(self, data)
 
-    def class_group(self) -> Any:
-        return self._field.class_group()
+    def class_group(self, *args: Any, **kwargs: Any) -> Any:
+        return self._field.class_group(*args, **kwargs)
 
-    def class_number(self) -> int:
-        return self._field.class_number()
+    def class_number(self, *args: Any, **kwargs: Any) -> int:
+        return self._field.class_number(*args, **kwargs)
 
     def __repr__(self) -> str:
         label = "Maximal Order" if self.is_maximal() else "Order"
@@ -1901,11 +1973,13 @@ class NumberFieldParent(sage.Parent):
         self._integral_equation_scale_cache = None
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
+        self._real_quadratic_backend_cache = runtime.undefined
         self._class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
         self._archimedean_data_cache = runtime.undefined
         self._unit_group_cache = runtime.undefined
         self._global_class_group_cache = runtime.undefined
+        self._class_unit_engine_cache: dict[Any, Any] = {}
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 
@@ -2152,15 +2226,24 @@ class NumberFieldParent(sage.Parent):
         )
         return NumberFieldGaloisGroup(self, data[0], data[1], data[2], data[3])
 
-    def units(self) -> "tuple[Any, ...]":
+    def units(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> "tuple[Any, ...]":
         if self._is_tutorial_cubic():
             generator = self.gen()
             unit = self(-3) * generator**2 - self(13) * generator - self(13)
             return runtime.math_tuple([unit])
-        result = self.unit_group()
+        result = self.unit_group(proof=proof, algorithm=algorithm, **limits)
         if not result.complete:
             raise NotImplementedError(result.reason)
-        return runtime.math_tuple(list(result.generators))
+        generators = []
+        for generator in result.generators:
+            evaluate = getattr(generator, "evaluate", None)
+            generators.append(evaluate() if callable(evaluate) else generator)
+        return runtime.math_tuple(generators)
 
     def roots_of_unity(self) -> Any:
         return _nf_units_module().roots_of_unity(self)
@@ -2171,23 +2254,74 @@ class NumberFieldParent(sage.Parent):
             raise NotImplementedError(result.reason)
         return int(result.order)
 
-    def unit_group(self, coefficient_bound: Any = 4) -> Any:
-        if self._unit_group_cache is runtime.undefined:
+    def unit_group(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        if (
+            self._unit_group_cache is runtime.undefined
+            and proof is None
+            and algorithm == "auto"
+            and len(limits) == 0
+        ):
             signature = self.signature()
-            if self.degree() == 2 and signature == (2, 0):
+            if self.degree() == 2 and signature[0] == 2 and signature[1] == 0:
                 result = _nf_units_module().real_quadratic_unit_group(self)
+            elif self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
+                result = _nf_units_module().bounded_unit_subgroup(self)
             else:
-                result = _nf_units_module().bounded_unit_subgroup(
-                    self, coefficient_bound=int(coefficient_bound)
+                result = _nf_class_unit_groups_module().unit_group(
+                    self, proof=proof, algorithm=algorithm, **limits
                 )
             self._unit_group_cache = result
-        return self._unit_group_cache
+            return result
+        if (
+            self._unit_group_cache is not runtime.undefined
+            and proof is None
+            and algorithm == "auto"
+            and len(limits) == 0
+        ):
+            return self._unit_group_cache
+        signature = self.signature()
+        if self.degree() == 2 and signature[0] == 2 and signature[1] == 0:
+            return _nf_units_module().real_quadratic_unit_group(self)
+        if self.degree() == 2 and signature[0] == 0 and signature[1] == 1:
+            return _nf_units_module().bounded_unit_subgroup(self)
+        return _nf_class_unit_groups_module().unit_group(
+            self, proof=proof, algorithm=algorithm, **limits
+        )
 
-    def regulator(self, prec: Any = 53) -> Any:
-        result = self.unit_group()
+    def regulator(
+        self,
+        prec: Any = 53,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        if self.degree() > 2:
+            return _nf_class_unit_groups_module().regulator(
+                self,
+                prec=int(prec),
+                proof=proof,
+                algorithm=algorithm,
+                **limits,
+            )
+        result = self.unit_group(proof=proof, algorithm=algorithm, **limits)
         if not result.complete:
             raise NotImplementedError(result.reason)
         return result.regulator(int(prec))
+
+    def class_unit_group(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        return _nf_class_unit_groups_module().class_unit_context(
+            self, proof=proof, algorithm=algorithm, **limits
+        )
 
     def class_group_result(self) -> Any:
         if self._global_class_group_cache is runtime.undefined:
@@ -2254,34 +2388,112 @@ class NumberFieldParent(sage.Parent):
             ]
         )
 
-    def class_group(self) -> NumberFieldClassGroup:
-        if self._class_group_cache is runtime.undefined:
-            if self._is_tutorial_cubic():
-                self._class_group_cache = NumberFieldClassGroup(self)
-            elif self.degree() == 2:
-                backend = self._quadratic_backend()[0]
-                self._class_group_cache = NumberFieldClassGroup(
-                    self, backend.class_group()
+    def _real_quadratic_backend(self) -> Any:
+        signature = self.signature()
+        if self.degree() != 2 or signature[0] != 2 or signature[1] != 0:
+            raise ValueError("a real quadratic backend needs signature (2, 0)")
+        if self._real_quadratic_backend_cache is runtime.undefined:
+            self._real_quadratic_backend_cache = (
+                _nf_quadratic_class_units_module().real_quadratic_class_group(
+                    int(self.discriminant())
                 )
-            else:
-                result = self.class_group_result()
-                if not result.complete:
-                    raise NotImplementedError(
-                        "the bounded class-group search did not certify completeness"
-                    )
-                self._class_group_cache = result.group
-        return self._class_group_cache
+            )
+        return self._real_quadratic_backend_cache
 
-    def class_number(self) -> int:
+    def _real_quadratic_ideal_form(self, ideal: NumberFieldIdeal) -> Any:
+        """Return the primitive form representing a real quadratic ideal."""
+        order = self.maximal_order()
+        denominator = runtime.integer_bigint(ideal.denominator())
+        integral = denominator * ideal
+        relative = integral.basis_matrix() * order.basis_matrix().inverse()
+        rows = relative.rows()
+        entries = []
+        for row in rows:
+            for entry in row:
+                if entry._denominator != 1:
+                    raise ArithmeticError("failed to clear an ideal denominator")
+                entries.append(runtime.integer_bigint(entry._numerator))
+        content = runtime.bigint(0)
+        for entry in entries:
+            content = runtime.bigint_gcd(content, entry)
+        if content < 0:
+            content = -content
+        if content == 0:
+            raise ValueError("the zero ideal has no ideal class")
+        primitive = integral.__mul__(self(content).inverse())
+        relative = primitive.basis_matrix() * order.basis_matrix().inverse()
+        rows = relative.rows()
+        row0 = [runtime.integer_bigint(value._numerator) for value in rows[0]]
+        row1 = [runtime.integer_bigint(value._numerator) for value in rows[1]]
+        old_r, r = row0[1], row1[1]
+        old_s, s = runtime.bigint(1), runtime.bigint(0)
+        old_t, t = runtime.bigint(0), runtime.bigint(1)
+        while r != 0:
+            quotient = old_r // r
+            old_r, r = r, old_r - quotient * r
+            old_s, s = s, old_s - quotient * s
+            old_t, t = t, old_t - quotient * t
+        if old_r == -1:
+            old_s, old_t, old_r = -old_s, -old_t, -old_r
+        if old_r != 1:
+            raise ArithmeticError("a primitive quadratic ideal has no primitive row")
+        first = old_s * row0[0] + old_t * row1[0]
+        norm = primitive.norm()
+        if norm._denominator != 1:
+            raise ArithmeticError("a primitive integral ideal has nonintegral norm")
+        a = runtime.integer_bigint(norm._numerator)
+        k = (-first) % a
+        discriminant = runtime.integer_bigint(self.discriminant())
+        b = 2 * k - (1 if discriminant % 4 == 1 else 0)
+        c = (b * b - discriminant) // (4 * a)
+        return (int(a), int(b), int(c))
+
+    def class_group(
+        self,
+        proof: Any = None,
+        names: str = "c",
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> Any:
+        del names
+        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if use_cache and self._class_group_cache is not runtime.undefined:
+            return self._class_group_cache
+        if self._is_tutorial_cubic():
+            result = NumberFieldClassGroup(self)
+        elif self.degree() == 2:
+            signature = self.signature()
+            backend = (
+                self._real_quadratic_backend()
+                if signature[0] == 2 and signature[1] == 0
+                else self._quadratic_backend()[0].class_group()
+            )
+            result = NumberFieldClassGroup(self, backend)
+        else:
+            result = _nf_class_unit_groups_module().class_group(
+                self, proof=proof, algorithm=algorithm, **limits
+            )
+        if use_cache:
+            self._class_group_cache = result
+        return result
+
+    def class_number(
+        self,
+        proof: Any = None,
+        algorithm: str = "auto",
+        **limits: Any,
+    ) -> int:
         if self._is_tutorial_cubic():
             return 1
         if self.degree() == 2:
-            return self._quadratic_backend()[0].class_number()
-        result = self.class_group_result()
-        if result.complete:
-            return int(result.order())
-        raise NotImplementedError(
-            "the bounded class-group search did not certify a class number"
+            signature = self.signature()
+            return int(
+                self._real_quadratic_backend().order()
+                if signature[0] == 2 and signature[1] == 0
+                else self._quadratic_backend()[0].class_number()
+            )
+        return _nf_class_unit_groups_module().class_number(
+            self, proof=proof, algorithm=algorithm, **limits
         )
 
 

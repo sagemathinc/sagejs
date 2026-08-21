@@ -347,7 +347,12 @@ class IdealClassElement:
     def __mul__(self, other: Any) -> Any:
         self._same_parent(other)
         return self._parent.from_coordinates(
-            [left + right for left, right in zip(self._coordinates, other._coordinates)]
+            [
+                left + right
+                for left, right in zip(
+                    self._coordinates, other._coordinates, strict=False
+                )
+            ]
         )
 
     def __truediv__(self, other: Any) -> Any:
@@ -372,7 +377,9 @@ class IdealClassElement:
 
     def order(self) -> int:
         answer = 1
-        for value, modulus in zip(self._coordinates, self._parent.invariants()):
+        for value, modulus in zip(
+            self._coordinates, self._parent.invariants(), strict=False
+        ):
             component = modulus // _gcd(modulus, value)
             answer = answer // _gcd(answer, component) * component
         return answer
@@ -467,7 +474,9 @@ class IdealClassGroup:
             _nonzero_ideal(ideal, order)
         witnesses = tuple(
             _coerce_principal_witness(_ideal_power(ideal, invariant), witness)
-            for invariant, ideal, witness in zip(values, ideals, raw_witnesses)
+            for invariant, ideal, witness in zip(
+                values, ideals, raw_witnesses, strict=False
+            )
         )
         self._order = order
         self._invariants = values
@@ -617,7 +626,9 @@ class IdealClassGroup:
     def representative_ideal(self, coordinates: Any) -> Any:
         element = IdealClassElement(self, coordinates)
         answer = self._order.ideal(1)
-        for coordinate, ideal in zip(element.coordinates(), self._generator_ideals):
+        for coordinate, ideal in zip(
+            element.coordinates(), self._generator_ideals, strict=False
+        ):
             if coordinate:
                 answer = answer * _ideal_power(ideal, coordinate)
         return answer
@@ -680,6 +691,7 @@ class IdealClassGroup:
                 self._invariants,
                 self._generator_ideals,
                 self._relation_witnesses,
+                strict=False,
             ):
                 if witness.ideal != _ideal_power(ideal, invariant):
                     return False

@@ -170,6 +170,8 @@ C = _EngineClassGroup(
     (object(),),
     lambda coefficients: tuple(coefficients),
     lambda ideal, factor_base: (ideal.exponent,),
+    lambda ideal, factor_base: ((-ideal.exponent,), object()),
+    lambda relation_witness, reduction_witness: relation_witness,
     EXACT_UNCONDITIONAL,
     "Minkowski",
 )

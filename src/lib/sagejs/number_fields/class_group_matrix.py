@@ -31,7 +31,6 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Sequence
 
-
 DEFAULT_SCREEN_PRIMES = (46337, 65521, 65519)
 ACCUMULATOR_SCHEMA = "sagejs.number-fields/class-relation-matrix-v1"
 PRESENTATION_SCHEMA = "sagejs.number-fields/class-relation-presentation-v1"
@@ -267,7 +266,7 @@ class ModularPivotScreen:
         sparse = SparseRelationRow(self.column_count, row)
         increases: list[bool] = []
         pivots: list[int | None] = []
-        for prime, basis in zip(self.primes, self._bases):
+        for prime, basis in zip(self.primes, self._bases, strict=False):
             _, pivot = self._reduce(sparse, prime, basis)
             increases.append(pivot is not None)
             pivots.append(pivot)
@@ -282,7 +281,7 @@ class ModularPivotScreen:
         sparse = SparseRelationRow(self.column_count, row)
         increases: list[bool] = []
         pivots: list[int | None] = []
-        for prime, basis in zip(self.primes, self._bases):
+        for prime, basis in zip(self.primes, self._bases, strict=False):
             reduced, pivot = self._reduce(sparse, prime, basis)
             if pivot is not None:
                 basis[pivot] = reduced
@@ -335,7 +334,9 @@ class ModularPivotScreen:
 class RelationInsertion:
     """Storage and modular-screen result for one admitted exact relation."""
 
-    def __init__(self, index: int, row: SparseRelationRow, modular: ModularInsertion):
+    def __init__(
+        self, index: int, row: SparseRelationRow, modular: ModularInsertion
+    ) -> None:
         self.index = index
         self.row = row
         self.modular = modular
@@ -514,7 +515,9 @@ class RelationMatrixAccumulator:
         if len(rows) != len(witness_keys) or len(rows) != len(provenance):
             raise RelationMatrixError("relation-matrix side data has the wrong length")
         answer = cls(value["columns"], value["primes"])
-        for row, witness_key, metadata in zip(rows, witness_keys, provenance):
+        for row, witness_key, metadata in zip(
+            rows, witness_keys, provenance, strict=False
+        ):
             sparse = SparseRelationRow.from_dict(row)
             answer.add_relation(
                 sparse, witness_key=witness_key, provenance=_json_value(metadata)
@@ -557,7 +560,7 @@ def _row_vector_multiply(
         raise RelationMatrixError("coordinate vector has the wrong length")
     columns = len(matrix[0]) if matrix else 0
     answer = [0] * columns
-    for row, coefficient in zip(matrix, vector):
+    for row, coefficient in zip(matrix, vector, strict=False):
         if coefficient:
             for column in range(columns):
                 answer[column] += coefficient * row[column]
@@ -646,12 +649,18 @@ def _combine_rows(
 ) -> None:
     old_first = list(matrix[first])
     old_second = list(matrix[second])
-    matrix[first] = [a * x + b * y for x, y in zip(old_first, old_second)]
-    matrix[second] = [c * x + d * y for x, y in zip(old_first, old_second)]
+    matrix[first] = [a * x + b * y for x, y in zip(old_first, old_second, strict=False)]
+    matrix[second] = [
+        c * x + d * y for x, y in zip(old_first, old_second, strict=False)
+    ]
     old_first = list(transform[first])
     old_second = list(transform[second])
-    transform[first] = [a * x + b * y for x, y in zip(old_first, old_second)]
-    transform[second] = [c * x + d * y for x, y in zip(old_first, old_second)]
+    transform[first] = [
+        a * x + b * y for x, y in zip(old_first, old_second, strict=False)
+    ]
+    transform[second] = [
+        c * x + d * y for x, y in zip(old_first, old_second, strict=False)
+    ]
 
 
 def _combine_columns(
@@ -720,11 +729,15 @@ def _python_hnf_transform(
             if quotient:
                 matrix[row] = [
                     value - quotient * pivot_value
-                    for value, pivot_value in zip(matrix[row], matrix[pivot_row])
+                    for value, pivot_value in zip(
+                        matrix[row], matrix[pivot_row], strict=False
+                    )
                 ]
                 transform[row] = [
                     value - quotient * pivot_value
-                    for value, pivot_value in zip(transform[row], transform[pivot_row])
+                    for value, pivot_value in zip(
+                        transform[row], transform[pivot_row], strict=False
+                    )
                 ]
         pivot_row += 1
         if pivot_row == row_count:
@@ -779,11 +792,15 @@ def _python_snf_transform(
                     quotient = entry // pivot
                     matrix[row] = [
                         value - quotient * pivot_value
-                        for value, pivot_value in zip(matrix[row], matrix[pivot_index])
+                        for value, pivot_value in zip(
+                            matrix[row], matrix[pivot_index], strict=False
+                        )
                     ]
                     left[row] = [
                         value - quotient * pivot_value
-                        for value, pivot_value in zip(left[row], left[pivot_index])
+                        for value, pivot_value in zip(
+                            left[row], left[pivot_index], strict=False
+                        )
                     ]
                     changed = True
                     continue
@@ -839,10 +856,12 @@ def _python_snf_transform(
                 break
             row, _ = bad
             matrix[pivot_index] = [
-                value + extra for value, extra in zip(matrix[pivot_index], matrix[row])
+                value + extra
+                for value, extra in zip(matrix[pivot_index], matrix[row], strict=False)
             ]
             left[pivot_index] = [
-                value + extra for value, extra in zip(left[pivot_index], left[row])
+                value + extra
+                for value, extra in zip(left[pivot_index], left[row], strict=False)
             ]
         if matrix[pivot_index][pivot_index] < 0:
             matrix[pivot_index] = [-value for value in matrix[pivot_index]]
@@ -888,7 +907,7 @@ def _checked_matrix(
     if not isinstance(value, (list, tuple)) or len(value) != rows:
         raise RelationMatrixError(label + " has the wrong row count")
     answer: list[tuple[int, ...]] = []
-    for row_index, row in enumerate(value):
+    for row in value:
         if not isinstance(row, (list, tuple)) or len(row) != columns:
             raise RelationMatrixError(label + " has the wrong column count")
         answer.append(tuple(_integer(entry, label + " entry") for entry in row))
@@ -981,7 +1000,7 @@ class RelationPresentation:
         if len(checked) != len(self.generator_positions):
             raise RelationMatrixError("class coordinate vector has the wrong length")
         smith = [0] * self.column_count
-        for position, value in zip(self.generator_positions, checked):
+        for position, value in zip(self.generator_positions, checked, strict=False):
             if position < self.rank:
                 value %= self.diagonal[position]
             smith[position] = value
@@ -1135,6 +1154,11 @@ def extract_relation_presentation(
     sparse_rows = tuple(SparseRelationRow(columns, row) for row in materialized)
     source = [row.dense() for row in sparse_rows]
     selected = backend
+    hnf: list[list[int]] = []
+    hnf_left: list[list[int]] = []
+    smith: list[list[int]] = []
+    smith_left: list[list[int]] = []
+    smith_right: list[list[int]] = []
     if backend in ("auto", "flint") and source:
         try:
             hnf, hnf_left, smith, smith_left, smith_right = _flint_forms(

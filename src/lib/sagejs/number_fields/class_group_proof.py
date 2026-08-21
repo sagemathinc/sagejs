@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
@@ -485,17 +484,17 @@ class UnconditionalMinkowskiProofRecord:
         try:
             if proof_label(presentation.proof_status) != self.proof_status:
                 return False
-            fingerprint = getattr(context, "field_order_fingerprint")
+            fingerprint = context.field_order_fingerprint
             if callable(fingerprint):
                 fingerprint = fingerprint()
             if fingerprint != self._field_order_fingerprint:
                 return False
-            discriminant = getattr(context, "discriminant")
+            discriminant = context.discriminant
             if callable(discriminant):
                 discriminant = discriminant()
             if _as_integer(discriminant, "context discriminant") != self._discriminant:
                 return False
-            if _exact_bound(getattr(context, "minkowski_bound")) != self._bound:
+            if _exact_bound(context.minkowski_bound) != self._bound:
                 return False
             if not self._saturation.verify(context):
                 return False
