@@ -96,7 +96,14 @@ test("the production artifact manifest is deterministic and uses dist-relative f
     assert.equal(first.topology.eagerGroup, "eager-core");
     assert.deepEqual(
       first.topology.groups.filter(({ kind }) => kind === "specialist").map(({ id }) => id),
-      ["algebraic", "m4ri", "compiled-flint", "compiled-gmp", "plotly"],
+      [
+        "algebraic",
+        "m4ri",
+        "compiled-flint",
+        "compiled-gmp",
+        "conway-data",
+        "plotly",
+      ],
     );
     assert.ok(first.topology.groups.every(({ identity }) => /^sha256:[0-9a-f]{64}$/.test(identity)));
     assert.ok(first.capabilities.every(({ artifactSha256 }) => /^[0-9a-f]{64}$/.test(artifactSha256)));

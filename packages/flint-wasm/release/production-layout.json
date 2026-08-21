@@ -179,8 +179,8 @@
         "dependencies": ["eager-core"],
         "assets": [
           "conway-polynomials.json",
-          "runtime/conway-data.mjs",
-          "runtime/conway-data-worker.mjs"
+          "runtime/conway-data-worker.mjs",
+          "runtime/conway-data.mjs"
         ],
         "maximumCompressedDelta": {
           "gzipBytes": 225000,
