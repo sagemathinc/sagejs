@@ -716,6 +716,10 @@ for path, value in (
     (("proof_progress", "completed_items"), 0),
     (("proof_progress", "dependency_hashes", "relations"), "9" * 64),
     (("proof_progress", "dependency_hashes", "saturation"), "forged hash"),
+    (("bound", 0), True),
+    (("prime_records", 0, "coordinates", 0), True),
+    (("proof_progress", "partition_count"), True),
+    (("proof_progress", "completed_items"), True),
 ):
     corrupted = copy.deepcopy(payload)
     target = corrupted

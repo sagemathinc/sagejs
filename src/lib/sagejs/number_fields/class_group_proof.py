@@ -55,6 +55,8 @@ def proof_label(value: Any) -> str:
 
 
 def _as_integer(value: Any, purpose: str) -> int:
+    if isinstance(value, bool):
+        raise TypeError(purpose + " must be an exact integer")
     try:
         answer = int(value)
     except (TypeError, ValueError, OverflowError) as error:

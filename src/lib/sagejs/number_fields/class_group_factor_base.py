@@ -912,12 +912,31 @@ def factor_base_prime_from_dict(
     if data.get("schema") != PRIME_RECORD_SCHEMA:
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
-    prime = _prime_ideals._normalize_prime(int(data["prime"]))
-    residue_degree = int(data["f"])
+    def exact_integer(value: Any, purpose: str) -> int:
+        if isinstance(value, bool):
+            raise TypeError(purpose + " must be an exact integer")
+        try:
+            answer = int(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise TypeError(purpose + " must be an exact integer") from error
+        if answer != value:
+            raise TypeError(purpose + " must be an exact integer")
+        return answer
+
+    prime = _prime_ideals._normalize_prime(
+        exact_integer(data["prime"], "the factor-base rational prime")
+    )
+    residue_degree = exact_integer(data["f"], "the factor-base residue degree")
     if residue_degree < 1 or residue_degree > order.degree():
         raise ValueError("factor-base residue degree is out of range")
     fingerprint = tuple(
-        tuple((int(entry[0]), int(entry[1])) for entry in row)
+        tuple(
+            (
+                exact_integer(entry[0], "an HNF numerator"),
+                exact_integer(entry[1], "an HNF denominator"),
+            )
+            for entry in row
+        )
         for row in data["hnf_fingerprint"]
     )
     selected = _selective_dedekind_kummer(order, prime, {residue_degree})
@@ -933,7 +952,10 @@ def factor_base_prime_from_dict(
             two_generator = data.get("two_generator")
             second_generator = None
             if two_generator is not None:
-                if int(two_generator.get("rational_prime", 0)) != prime:
+                if exact_integer(
+                    two_generator.get("rational_prime", 0),
+                    "the two-generator rational prime",
+                ) != prime:
                     raise ValueError("two-generator metadata has the wrong prime")
                 rows = _prime_ideals._decode_rows([two_generator["second_generator"]])
                 second_generator = _prime_ideals._nf_element_from_row(
@@ -944,7 +966,7 @@ def factor_base_prime_from_dict(
                         "two-generator metadata does not reproduce the prime ideal"
                     )
             record = FactorBasePrimeRecord(
-                int(data["index"]),
+                exact_integer(data["index"], "the factor-base index"),
                 prime_ideal,
                 second_generator=second_generator,
             )

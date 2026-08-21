@@ -142,6 +142,17 @@ try:
     raise AssertionError("a corrupted norm passed factor-base authentication")
 except ValueError:
     pass
+for path in (("f",), ("index",), ("hnf_fingerprint", 0, 0, 0)):
+    corrupt = pure_records[0].to_dict()
+    target = corrupt
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = True
+    try:
+        factor_base_prime_from_dict(pure_plan.order, corrupt)
+        raise AssertionError("a boolean integer passed factor-base authentication")
+    except (TypeError, ValueError):
+        pass
 
 # Compact splitting data must suppress irrelevant high-degree decompositions:
 # at bound seven this cubic has norm-8 and norm-27 primes over 2 and 3, while
