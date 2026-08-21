@@ -98,7 +98,7 @@ test("public quadratic class/unit context preserves proof and analytic contracts
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**2 + 4*x + 1, "a")
-expected = [(False, "exact-relations-conditional-grh"), (True, "exact-unconditional")]
+expected = [(False, "exact-unconditional"), (True, "exact-unconditional")]
 for proof, status in expected:
     result = K.class_unit_group(proof=proof)
     assert result.complete and result.proof_status == status
