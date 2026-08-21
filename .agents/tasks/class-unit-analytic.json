@@ -163,20 +163,43 @@
       "commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
       "workspace_fingerprint": "d35a78c190c565e32f4ace5c6e0f0864b4d500aba7085d61d5e3423605696e73",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-analytic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.645,
+      "started_at": "2026-08-21T10:21:25.532Z",
+      "commit": "360ad8f230629f28bb4af85331abbcf3def8e6e6",
+      "workspace_fingerprint": "ec0ead80bf49a04c4c083b1431b90eeebb25eaf12d8d86557e8e8549ecbc7164",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_analytic.py src/lib/sagejs/number_fields/factored_elements.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.354,
+      "started_at": "2026-08-21T10:21:28.803Z",
+      "commit": "360ad8f230629f28bb4af85331abbcf3def8e6e6",
+      "workspace_fingerprint": "ec0ead80bf49a04c4c083b1431b90eeebb25eaf12d8d86557e8e8549ecbc7164",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Fixed the regulator refinement precision intersection and replaced decimal midpoint/radius proof transport with exact outward dyadic endpoints obtained from Arb. Added a bounded exact unit p-saturation producer with replayable p-th-root identities, exact maximal-order/unit checks, index-p basis replacement, adaptive reconstruction retry, finite-order-quotient negative obstructions, canonical evidence serialization, and a fail-closed result state. Real quadratic runtime checks cover enlargement, tamper rejection, untrusted bounds, bounded-search incompleteness, local obstruction completion, and doubled-precision retry.",
+    "summary": "Added a hash-bound UnitSaturationIndexCertificate that binds the maximal-order identity, initial units, class number, complete canonical torsion, analytic hR reconstruction, factor-base/relation-generation evidence, and conditional or unconditional proof status. Exact p-saturation now accepts only that replayable certificate as completion authority; bare integers and HRIndexValidationResult objects remain diagnostic. Replay independently recomputes canonical roots of unity and the analytic proof, invokes the external generation-evidence verifier, strictly decodes every authenticated integer/boolean leaf, reconstructs canonical evidence before comparison, and rejects reauthenticated semantic mutations. Target classes are streamed after checked target/candidate/local-work preflight caps with cancellation polling. RationalEndpoint and native dyadic transport reject booleans, floats, and noncanonical decimal integers. The real Q(sqrt(5)) context covers exact index-two enlargement, local obstruction, adaptive retry, conditional propagation, torsion mutation, hash-preserving proof mutations, noncanonical scalar mutations, and large-prime preflight.",
     "risks": [
       "Rigorous zeta status assumes the caller supplies the actual maximal-order discriminant and a complete exact splitting provider; the function validates prime coverage and every local degree identity but does not independently prove the field/order identity.",
       "The p-th-root producer is intentionally bounded by an order-coordinate box and candidate cap. Missing roots outside that box never certify saturation; completion then requires exhaustive finite-quotient obstructions for every exponent/torsion target or exhaustion of a rigorously supplied global index.",
       "Only algebraic logarithm inputs cross the corrected Arb endpoint boundary. Determinant and zeta transcendental evaluation remain explicitly typed exact-rational intervals with mpmath.libmp directed rounding, not Arb balls.",
       "FactoredNumberFieldElement currently exposes only scalar qqbarLogAbsBall calls. The measured strict-Python regulator determinant is already sub-millisecond for the rank-two fixture, while zeta finite-interval evaluation dominated the profile, so this lane did not add an unmeasured algebraic-log batch boundary.",
-      "The corrected C source passes a direct syntax check against FLINT headers, but the lane's direct addon rebuild is blocked by a pre-existing shared native artifact lacking NTL headers. The package-local native transport test and broad native gate remain for central integration."
+      "A serialized index certificate deliberately needs an application-supplied generation_verifier; its canonical evidence/hash is not treated as self-authenticating. Missing or rejected generation evidence fails closed.",
+      "The bounded producer can prove negative p-saturation only when every exponent/torsion target has an exact finite-quotient obstruction. Otherwise it returns incomplete even after exhausting its coordinate box.",
+      "The focused Q(sqrt(5)) runtime test took 138.7 seconds for two analytic index constructions plus one independent serialized replay; exact splitting and zeta reconstruction dominate. In-process certificates retain only their explicit field-scoped zeta workspace, while serialized replay intentionally starts independently.",
+      "The corrected C source passes a direct syntax check against FLINT headers. This lane's final context receipt borrowed the reconciled linux-x64 addon from the engine-completion worktree because central builds were concurrently replacing their artifacts; broad native/platform gates remain with central integration."
     ],
     "next_steps": [
-      "Wire ExactUnitSaturationResult into the class/unit engine using the full rigorous HRIndexValidationResult, retain its canonical evidence payload in map proofs, and replay verify_saturation_record rather than trusting stage labels.",
-      "Rebuild the FLINT addon in central integration, run the claimed top-level context test against the new endpoint payload, then run pnpm test:native before moving this contract to review."
+      "Wire certify_unit_saturation_index and ExactUnitSaturationResult into the class/unit engine, passing the full factor-base/relation proof payload and verifier; retain the canonical global_index_certificate in map proofs and call verify_saturation_record on replay.",
+      "Run the broad native and platform gates in central integration; no full Arb determinant or zeta migration is claimed by this lane."
     ]
   }
 }
