@@ -153,6 +153,23 @@ for path in (("f",), ("index",), ("hnf_fingerprint", 0, 0, 0)):
         raise AssertionError("a boolean integer passed factor-base authentication")
     except (TypeError, ValueError):
         pass
+for path in (
+    ("e",),
+    ("norm",),
+    ("valuation_metadata", "rational_prime_valuation"),
+    ("residue_modulus", 0),
+    ("two_generator", "second_generator", 0, 0),
+):
+    corrupt = pure_records[0].to_dict()
+    target = corrupt
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = True if target[path[-1]] == 1 else float(target[path[-1]])
+    try:
+        factor_base_prime_from_dict(pure_plan.order, corrupt)
+        raise AssertionError("a noncanonical number passed factor-base authentication")
+    except (TypeError, ValueError):
+        pass
 
 # Compact splitting data must suppress irrelevant high-degree decompositions:
 # at bound seven this cubic has norm-8 and norm-27 primes over 2 and 3, while

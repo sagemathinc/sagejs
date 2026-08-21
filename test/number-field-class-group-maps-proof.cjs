@@ -720,6 +720,9 @@ for path, value in (
     (("prime_records", 0, "coordinates", 0), True),
     (("proof_progress", "partition_count"), True),
     (("proof_progress", "completed_items"), True),
+    (("bound", 0), 4.0),
+    (("prime_records", 0, "coordinates", 0), 0.0),
+    (("proof_progress", "partition_count"), 2.0),
 ):
     corrupted = copy.deepcopy(payload)
     target = corrupted

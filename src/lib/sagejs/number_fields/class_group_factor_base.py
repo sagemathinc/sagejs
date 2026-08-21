@@ -15,6 +15,7 @@ above the requested bound.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Iterator
 
 import sagejs.runtime as runtime
@@ -913,7 +914,7 @@ def factor_base_prime_from_dict(
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
     def exact_integer(value: Any, purpose: str) -> int:
-        if isinstance(value, bool):
+        if isinstance(value, (bool, float, str, bytes, bytearray)):
             raise TypeError(purpose + " must be an exact integer")
         try:
             answer = int(value)
@@ -970,7 +971,11 @@ def factor_base_prime_from_dict(
                 prime_ideal,
                 second_generator=second_generator,
             )
-            if record.to_dict() != data:
+            canonical_record = json.dumps(
+                record.to_dict(), sort_keys=True, separators=(",", ":")
+            )
+            canonical_input = json.dumps(data, sort_keys=True, separators=(",", ":"))
+            if canonical_record != canonical_input:
                 raise ValueError("factor-base prime metadata failed authentication")
             return record
     raise ValueError("factor-base fingerprint is not a prime above the stated p")

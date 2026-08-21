@@ -49,7 +49,7 @@ _SATURATION_SCHEMA = "sagejs.number-fields/class-unit-saturation-v1"
 
 
 def _integer(value: Any, purpose: str) -> int:
-    if isinstance(value, bool):
+    if isinstance(value, (bool, float, str, bytes, bytearray)):
         raise TypeError(purpose + " must be an exact integer")
     try:
         answer = int(value)
