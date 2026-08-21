@@ -3,8 +3,8 @@
   "sources": {
     "sage_pari": {
       "system": "SageMath 10.9 / PARI",
-      "command": "K.<a> = NumberField(x^2-x-1); K.factor(2); K.factor(5); (3*a+1).norm()",
-      "result": "2 is inert, 5 is ramified, Norm(3*a+1)=-5"
+      "command": "K.<a> = NumberField(x^2-x-1); K.factor(2); K.factor(5); K.factor(11); (3*a+1).norm(); (4*a+1).norm()",
+      "result": "2 is inert, 5 is ramified, 11 splits, Norm(3*a+1)=-5, and Norm(4*a+1)=-11"
     },
     "hecke_oscar": {
       "system": "Hecke/Oscar relation semantics",
@@ -35,6 +35,14 @@
     },
     "nonsmooth_element_coefficients": [3, 1],
     "nonsmooth_norm": 11,
+    "quadratic_conjugation": {
+      "split_prime": 11,
+      "permutation": [1, 0],
+      "parent_row": [1, 0],
+      "derived_row": [0, 1],
+      "parent_element_coefficients": [1, 4],
+      "conjugate_element_coefficients": [5, -4]
+    },
     "minkowski_transform": [[1, 0], [-1, 1]],
     "minkowski_exact_rows": [[1, 0], [-1, 1]],
     "short_element_prefix": ["1", "a - 1", "a", "-a + 2"],
