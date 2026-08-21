@@ -14,6 +14,24 @@ const STATUS = Object.freeze({
 
 const OUTPUT = Object.freeze({ DECIMAL_BALLS: 0, PLAN: 1, PLOT: 2 });
 const MAX_POINTS_PER_TILE = 10_000;
+const SMALLJAC_LPOLY_MAX_PRIME = 4_294_967_295n;
+const SMALLJAC_LPOLY_MAX_INTERVAL_VALUES = 131_071n;
+const SMALLJAC_LPOLY_STATUS = Object.freeze({
+  OK: 0,
+  TRUNCATED: 1,
+  UNAVAILABLE: -1,
+  INVALID_ARGUMENT: -2,
+  PARSE_ERROR: -3,
+  UNSUPPORTED_CURVE: -4,
+  SINGULAR_CURVE: -5,
+  INVALID_INTERVAL: -6,
+  ALLOCATION_FAILED: -7,
+  CALLBACK_CANCELLED: -8,
+  COEFFICIENT_RANGE: -9,
+  INTERNAL_ERROR: -10,
+  ROW_GOOD: 0,
+  ROW_BAD_REDUCTION: 1,
+});
 
 export const curveCapabilities = Object.freeze({
   "elliptic-coefficients-portable": Object.freeze({
@@ -86,10 +104,17 @@ export const curveCapabilities = Object.freeze({
   }),
   "smalljac-local-factors": Object.freeze({
     family: "hyperelliptic-curves",
-    disposition: "desktop-only",
-    status: "specialist-external-library",
-    reason: "the first smalljac Wasm closure is deliberately genus one only",
+    disposition: "shared-core",
+    status: "implemented",
+    wasmModule: "flint",
+    upstream: "smalljac-4.1.3-ffpoly-1.2.7",
     fallback: "exact-bounded-exhaustive-frobenius",
+    limits: Object.freeze({
+      fullLpolynomialGenus: Object.freeze([2]),
+      maximumPrime: SMALLJAC_LPOLY_MAX_PRIME,
+      maximumIntervalValues: SMALLJAC_LPOLY_MAX_INTERVAL_VALUES,
+      normalization: "det(1-T*Frob)",
+    }),
   }),
   "rforest-genus3": Object.freeze({
     family: "hyperelliptic-curves",
@@ -134,6 +159,48 @@ function smalljacStatus(status) {
     [-6]: "elliptic coefficient exceeds Int32 storage",
   };
   throw new RangeError(names[status] ?? `Wasm smalljac failed with status ${status}`);
+}
+
+function smalljacLpolyStatusName(status) {
+  const names = {
+    [SMALLJAC_LPOLY_STATUS.OK]: "ok",
+    [SMALLJAC_LPOLY_STATUS.TRUNCATED]: "truncated",
+    [SMALLJAC_LPOLY_STATUS.UNAVAILABLE]: "unavailable",
+    [SMALLJAC_LPOLY_STATUS.INVALID_ARGUMENT]: "invalid-argument",
+    [SMALLJAC_LPOLY_STATUS.PARSE_ERROR]: "parse-error",
+    [SMALLJAC_LPOLY_STATUS.UNSUPPORTED_CURVE]: "unsupported-curve",
+    [SMALLJAC_LPOLY_STATUS.SINGULAR_CURVE]: "singular-curve",
+    [SMALLJAC_LPOLY_STATUS.INVALID_INTERVAL]: "invalid-interval",
+    [SMALLJAC_LPOLY_STATUS.ALLOCATION_FAILED]: "allocation-failed",
+    [SMALLJAC_LPOLY_STATUS.CALLBACK_CANCELLED]: "callback-cancelled",
+    [SMALLJAC_LPOLY_STATUS.COEFFICIENT_RANGE]: "coefficient-range",
+    [SMALLJAC_LPOLY_STATUS.INTERNAL_ERROR]: "internal-error",
+  };
+  return names[status] ?? "unknown";
+}
+
+function exactSmalljacCurveText(value) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new TypeError("a smalljac curve must be a nonempty string");
+  }
+  const bytes = encoder.encode(value);
+  if (bytes.length > 64 * 1024) {
+    throw new RangeError("smalljac curve text exceeds the Wasm input limit");
+  }
+  return bytes;
+}
+
+function exactUnsignedBigint(value, name) {
+  let result;
+  try {
+    result = typeof value === "bigint" ? value : BigInt(value);
+  } catch {
+    throw new TypeError(`${name} must be an exact nonnegative integer`);
+  }
+  if (result < 0n || (typeof value === "number" && !Number.isSafeInteger(value))) {
+    throw new RangeError(`${name} must be an exact nonnegative integer`);
+  }
+  return result;
 }
 
 function exactCurveText(values) {
@@ -269,6 +336,163 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
   ).length;
   if (smalljacExportCount !== 0 && smalljacExportCount !== smalljacExports.length) {
     throw new TypeError("the curve Wasm smalljac export closure is incomplete");
+  }
+  const smalljacLpolyExports = [
+    "sagejs_wasm_smalljac_lpoly_begin",
+    "sagejs_wasm_smalljac_lpoly_curve_text",
+    "sagejs_wasm_smalljac_lpoly_primes",
+    "sagejs_wasm_smalljac_lpoly_good",
+    "sagejs_wasm_smalljac_lpoly_coefficient_counts",
+    "sagejs_wasm_smalljac_lpoly_coefficients",
+    "sagejs_wasm_smalljac_lpoly_row_status",
+    "sagejs_wasm_smalljac_lpoly_row_count",
+    "sagejs_wasm_smalljac_lpoly_required_rows",
+    "sagejs_wasm_smalljac_lpoly_genus",
+    "sagejs_wasm_smalljac_lpoly_truncated",
+    "sagejs_wasm_smalljac_lpoly_upstream_status",
+    "sagejs_wasm_smalljac_lpoly_backend_version",
+    "sagejs_wasm_smalljac_lpoly_backend_version_bytes",
+    "sagejs_wasm_smalljac_lpoly_compute",
+    "sagejs_wasm_smalljac_lpoly_clear",
+  ];
+  const smalljacLpolyExportCount = smalljacLpolyExports.filter(
+    (name) => typeof exports[name] === "function",
+  ).length;
+  if (smalljacLpolyExportCount !== 0 &&
+      smalljacLpolyExportCount !== smalljacLpolyExports.length) {
+    throw new TypeError("the curve Wasm genus-2 smalljac export closure is incomplete");
+  }
+
+  function smalljacBackendVersion() {
+    const bytes = Number(
+      exports.sagejs_wasm_smalljac_lpoly_backend_version_bytes(),
+    ) >>> 0;
+    return decoder.decode(new Uint8Array(
+      memory.buffer,
+      Number(exports.sagejs_wasm_smalljac_lpoly_backend_version()) >>> 0,
+      bytes,
+    ));
+  }
+
+  function smalljacCapabilities() {
+    return {
+      available: smalljacLpolyExportCount === smalljacLpolyExports.length,
+      backendVersion: smalljacLpolyExportCount === smalljacLpolyExports.length
+        ? smalljacBackendVersion()
+        : "unavailable",
+      normalization: "det(1-T*Frob)",
+      maxGenus: 2,
+      fullLpolynomialGenus: [2],
+      groupStructureGenus: [],
+      groupRequiresOddDegree: true,
+      primeUpperBounds: {
+        lpolynomial: SMALLJAC_LPOLY_MAX_PRIME,
+        groupStructure: 0n,
+      },
+      statuses: { ...SMALLJAC_LPOLY_STATUS },
+    };
+  }
+
+  function smalljacLpolyBatch(curve, start, stop, options = undefined) {
+    if (smalljacLpolyExportCount !== smalljacLpolyExports.length) {
+      throw new TypeError("the curve Wasm genus-2 smalljac accelerator is unavailable");
+    }
+    const curveText = exactSmalljacCurveText(curve);
+    const first = exactUnsignedBigint(start, "smalljac interval start");
+    const last = exactUnsignedBigint(stop, "smalljac interval stop");
+    if (first < 2n || last < first || last > SMALLJAC_LPOLY_MAX_PRIME) {
+      throw new RangeError("smalljac needs a supported nonempty prime interval");
+    }
+    if (last - first + 1n > SMALLJAC_LPOLY_MAX_INTERVAL_VALUES) {
+      throw new RangeError("smalljac interval exceeds one bounded Wasm chunk");
+    }
+    if (options !== undefined &&
+        (options === null || typeof options !== "object")) {
+      throw new TypeError("smalljac options must be an object");
+    }
+    const maximumRows = options?.maxRows === undefined
+      ? 0
+      : Number(exactUnsignedBigint(options.maxRows, "smalljac maxRows"));
+    checkedInteger(maximumRows, "smalljac maxRows", 0, 131_071);
+    const beginStatus = Number(exports.sagejs_wasm_smalljac_lpoly_begin(
+      curveText.byteLength,
+      first,
+      last,
+      maximumRows,
+    ));
+    if (beginStatus !== SMALLJAC_LPOLY_STATUS.OK) {
+      throw new RangeError(
+        `Wasm smalljac batch setup failed with status ${smalljacLpolyStatusName(beginStatus)}`,
+      );
+    }
+    try {
+      new Uint8Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_curve_text()) >>> 0,
+        curveText.byteLength,
+      ).set(curveText);
+      const status = Number(exports.sagejs_wasm_smalljac_lpoly_compute());
+      const rowCount = Number(exports.sagejs_wasm_smalljac_lpoly_row_count()) >>> 0;
+      const requiredRows = Number(
+        exports.sagejs_wasm_smalljac_lpoly_required_rows(),
+      ) >>> 0;
+      const primes = new BigUint64Array(new BigUint64Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_primes()) >>> 0,
+        rowCount,
+      ));
+      const good = new Uint8Array(new Uint8Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_good()) >>> 0,
+        rowCount,
+      ));
+      const coefficientCounts = new Uint8Array(new Uint8Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_coefficient_counts()) >>> 0,
+        rowCount,
+      ));
+      const coefficients = new BigInt64Array(new BigInt64Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_coefficients()) >>> 0,
+        rowCount * 2,
+      ));
+      const rowStatus = new Int32Array(new Int32Array(
+        memory.buffer,
+        Number(exports.sagejs_wasm_smalljac_lpoly_row_status()) >>> 0,
+        rowCount,
+      ));
+      const result = {
+        status,
+        statusName: smalljacLpolyStatusName(status),
+        upstreamStatus: exports.sagejs_wasm_smalljac_lpoly_upstream_status(),
+        genus: Number(exports.sagejs_wasm_smalljac_lpoly_genus()) >>> 0,
+        rowCount,
+        requiredRows,
+        truncated: Boolean(exports.sagejs_wasm_smalljac_lpoly_truncated()),
+        backendVersion: smalljacBackendVersion(),
+        normalization: "det(1-T*Frob)",
+        primes,
+        good,
+        coefficientCounts,
+        coefficients,
+        rowStatus,
+      };
+      if (status === SMALLJAC_LPOLY_STATUS.OK ||
+          status === SMALLJAC_LPOLY_STATUS.TRUNCATED) {
+        recordCapability("smalljac-local-factors", "receipt-backed-wasm-artifact", {
+          executionTarget: "wasm-artifact",
+          ingressBytes: curveText.byteLength + 20,
+          egressBytes: primes.byteLength + good.byteLength +
+            coefficientCounts.byteLength + coefficients.byteLength +
+            rowStatus.byteLength,
+          rowCount,
+          requiredRows,
+        });
+      }
+      return result;
+    } finally {
+      exports.sagejs_wasm_smalljac_lpoly_clear();
+    }
   }
 
   function smalljacCoefficients(values, boundOrPrime, mode) {
@@ -517,6 +741,9 @@ export function createCurveBackend(instance, { recordCapability = () => {} } = {
   return Object.freeze({
     ...(smalljacExportCount === smalljacExports.length
       ? { ecApIntegral, ecAnlistIntegral }
+      : {}),
+    ...(smalljacLpolyExportCount === smalljacLpolyExports.length
+      ? { smalljacCapabilities, smalljacLpolyBatch }
       : {}),
     ecLseriesValues,
     curveCapabilities,

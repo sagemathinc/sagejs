@@ -23,6 +23,8 @@
 #define SAGEJS_WASM_SMALLJAC_MAX_CURVE_TEXT (64U * 1024U)
 #define SAGEJS_WASM_SMALLJAC_MAX_ANLIST_BOUND 5000000U
 #define SAGEJS_WASM_SMALLJAC_MAX_DIRECT_PRIME 5000000U
+#define SAGEJS_WASM_SMALLJAC_LPOLY_MAX_INTERVAL_VALUES 131071U
+#define SAGEJS_WASM_SMALLJAC_LPOLY_MAX_PRIME UINT64_C(4294967295)
 
 typedef struct
 {
@@ -46,6 +48,30 @@ typedef struct
 } sagejs_wasm_smalljac_callback_state;
 
 static sagejs_wasm_smalljac_state state;
+
+typedef struct
+{
+    char *curve_text;
+    uint64_t *primes;
+    uint8_t *good;
+    uint8_t *coefficient_counts;
+    int64_t *coefficients;
+    int32_t *row_status;
+    uint32_t curve_text_bytes;
+    uint32_t capacity;
+    uint32_t row_count;
+    uint32_t required_rows;
+    uint32_t genus;
+    uint32_t truncated;
+    uint64_t start;
+    uint64_t stop;
+    int64_t upstream_status;
+    int32_t status;
+    int callback_failed;
+    int initialized;
+} sagejs_wasm_smalljac_lpoly_state;
+
+static sagejs_wasm_smalljac_lpoly_state lpoly_state;
 
 void sagejs_wasm_smalljac_clear(void)
 {
@@ -457,4 +483,254 @@ int32_t sagejs_wasm_smalljac_compute(void)
     for (index = 0; index < 5; index++)
         mpz_clear(coefficients[index]);
     return result;
+}
+
+void sagejs_wasm_smalljac_lpoly_clear(void)
+{
+    free(lpoly_state.row_status);
+    free(lpoly_state.coefficients);
+    free(lpoly_state.coefficient_counts);
+    free(lpoly_state.good);
+    free(lpoly_state.primes);
+    free(lpoly_state.curve_text);
+    memset(&lpoly_state, 0, sizeof(lpoly_state));
+}
+
+static int32_t map_lpoly_upstream_error(int64_t status)
+{
+    switch (status)
+    {
+        case SMALLJAC_PARSE_ERROR:
+            return SAGEJS_WASM_SMALLJAC_LPOLY_PARSE_ERROR;
+        case SMALLJAC_UNSUPPORTED_CURVE:
+        case SMALLJAC_WRONG_GENUS:
+            return SAGEJS_WASM_SMALLJAC_LPOLY_UNSUPPORTED_CURVE;
+        case SMALLJAC_SINGULAR_CURVE:
+            return SAGEJS_WASM_SMALLJAC_LPOLY_SINGULAR_CURVE;
+        case SMALLJAC_INVALID_INTERVAL:
+        case SMALLJAC_INVALID_PP:
+            return SAGEJS_WASM_SMALLJAC_LPOLY_INVALID_INTERVAL;
+        default:
+            return SAGEJS_WASM_SMALLJAC_LPOLY_INTERNAL_ERROR;
+    }
+}
+
+int32_t sagejs_wasm_smalljac_lpoly_begin(
+    uint32_t curve_text_bytes,
+    uint64_t start,
+    uint64_t stop,
+    uint32_t maximum_rows)
+{
+    uint64_t interval_values;
+    uint32_t capacity;
+
+    sagejs_wasm_smalljac_lpoly_clear();
+    if (curve_text_bytes == 0U ||
+        curve_text_bytes > SAGEJS_WASM_SMALLJAC_MAX_CURVE_TEXT ||
+        start < 2U || stop < start ||
+        stop > SAGEJS_WASM_SMALLJAC_LPOLY_MAX_PRIME)
+        return SAGEJS_WASM_SMALLJAC_LPOLY_INVALID_ARGUMENT;
+    interval_values = stop - start + 1U;
+    if (interval_values > SAGEJS_WASM_SMALLJAC_LPOLY_MAX_INTERVAL_VALUES)
+        return SAGEJS_WASM_SMALLJAC_LPOLY_INVALID_INTERVAL;
+    capacity = (uint32_t) interval_values;
+    if (maximum_rows != 0U && maximum_rows < capacity)
+        capacity = maximum_rows;
+
+    lpoly_state.curve_text = malloc((size_t) curve_text_bytes + 1U);
+    if (capacity != 0U)
+    {
+        lpoly_state.primes = calloc(capacity, sizeof(*lpoly_state.primes));
+        lpoly_state.good = calloc(capacity, sizeof(*lpoly_state.good));
+        lpoly_state.coefficient_counts = calloc(
+            capacity, sizeof(*lpoly_state.coefficient_counts));
+        lpoly_state.coefficients = calloc(
+            (size_t) capacity * 2U, sizeof(*lpoly_state.coefficients));
+        lpoly_state.row_status = calloc(
+            capacity, sizeof(*lpoly_state.row_status));
+    }
+    if (lpoly_state.curve_text == NULL ||
+        (capacity != 0U &&
+            (lpoly_state.primes == NULL || lpoly_state.good == NULL ||
+             lpoly_state.coefficient_counts == NULL ||
+             lpoly_state.coefficients == NULL ||
+             lpoly_state.row_status == NULL)))
+    {
+        sagejs_wasm_smalljac_lpoly_clear();
+        return SAGEJS_WASM_SMALLJAC_LPOLY_ALLOCATION_FAILED;
+    }
+    lpoly_state.curve_text_bytes = curve_text_bytes;
+    lpoly_state.capacity = capacity;
+    lpoly_state.start = start;
+    lpoly_state.stop = stop;
+    lpoly_state.status = SAGEJS_WASM_SMALLJAC_LPOLY_OK;
+    lpoly_state.initialized = 1;
+    return SAGEJS_WASM_SMALLJAC_LPOLY_OK;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_curve_text(void)
+{
+    return (uintptr_t) lpoly_state.curve_text;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_primes(void)
+{
+    return (uintptr_t) lpoly_state.primes;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_good(void)
+{
+    return (uintptr_t) lpoly_state.good;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_coefficient_counts(void)
+{
+    return (uintptr_t) lpoly_state.coefficient_counts;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_coefficients(void)
+{
+    return (uintptr_t) lpoly_state.coefficients;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_row_status(void)
+{
+    return (uintptr_t) lpoly_state.row_status;
+}
+
+uint32_t sagejs_wasm_smalljac_lpoly_row_count(void)
+{
+    return lpoly_state.row_count;
+}
+
+uint32_t sagejs_wasm_smalljac_lpoly_required_rows(void)
+{
+    return lpoly_state.required_rows;
+}
+
+uint32_t sagejs_wasm_smalljac_lpoly_genus(void)
+{
+    return lpoly_state.genus;
+}
+
+uint32_t sagejs_wasm_smalljac_lpoly_truncated(void)
+{
+    return lpoly_state.truncated;
+}
+
+int64_t sagejs_wasm_smalljac_lpoly_upstream_status(void)
+{
+    return lpoly_state.upstream_status;
+}
+
+uintptr_t sagejs_wasm_smalljac_lpoly_backend_version(void)
+{
+    return (uintptr_t) SMALLJAC_VERSION_STRING;
+}
+
+uint32_t sagejs_wasm_smalljac_lpoly_backend_version_bytes(void)
+{
+    return (uint32_t) (sizeof(SMALLJAC_VERSION_STRING) - 1U);
+}
+
+static int lpoly_callback(
+    smalljac_curve_t curve,
+    uint64_t prime,
+    int good,
+    int64_t coefficients[],
+    int count,
+    void *argument)
+{
+    sagejs_wasm_smalljac_lpoly_state *context = argument;
+    uint32_t index;
+    (void) curve;
+
+    if (context->required_rows == UINT32_MAX)
+    {
+        context->callback_failed = 1;
+        context->status = SAGEJS_WASM_SMALLJAC_LPOLY_INTERNAL_ERROR;
+        return 0;
+    }
+    context->required_rows += 1U;
+    if (context->row_count >= context->capacity)
+    {
+        context->truncated = 1U;
+        return 1;
+    }
+    index = context->row_count++;
+    context->primes[index] = prime;
+    context->good[index] = good ? 1U : 0U;
+    context->row_status[index] = good
+        ? SAGEJS_WASM_SMALLJAC_ROW_GOOD
+        : SAGEJS_WASM_SMALLJAC_ROW_BAD_REDUCTION;
+    if (!good)
+        return 1;
+    if (coefficients == NULL || count != 2)
+    {
+        context->callback_failed = 1;
+        context->status = SAGEJS_WASM_SMALLJAC_LPOLY_INTERNAL_ERROR;
+        return 0;
+    }
+    if (coefficients[0] < INT64_C(-262144) ||
+        coefficients[0] > INT64_C(262144) ||
+        coefficients[1] < -(INT64_C(6) * (int64_t) prime) ||
+        coefficients[1] > INT64_C(6) * (int64_t) prime)
+    {
+        context->callback_failed = 1;
+        context->status = SAGEJS_WASM_SMALLJAC_LPOLY_COEFFICIENT_RANGE;
+        return 0;
+    }
+    context->coefficient_counts[index] = 2U;
+    context->coefficients[2U * index] = coefficients[0];
+    context->coefficients[2U * index + 1U] = coefficients[1];
+    return 1;
+}
+
+int32_t sagejs_wasm_smalljac_lpoly_compute(void)
+{
+    smalljac_curve_t curve;
+    int error = 0;
+    int64_t status;
+
+    if (!lpoly_state.initialized || lpoly_state.curve_text == NULL)
+        return SAGEJS_WASM_SMALLJAC_LPOLY_INVALID_ARGUMENT;
+    lpoly_state.curve_text[lpoly_state.curve_text_bytes] = '\0';
+    curve = smalljac_curve_init(lpoly_state.curve_text, &error);
+    if (curve == NULL || error != 0)
+    {
+        lpoly_state.upstream_status = error;
+        lpoly_state.status = error == 0
+            ? SAGEJS_WASM_SMALLJAC_LPOLY_PARSE_ERROR
+            : map_lpoly_upstream_error(error);
+        if (curve != NULL)
+            smalljac_curve_clear(curve);
+        return lpoly_state.status;
+    }
+    lpoly_state.genus = (uint32_t) smalljac_curve_genus(curve);
+    if (lpoly_state.genus != 2U)
+    {
+        lpoly_state.status = SAGEJS_WASM_SMALLJAC_LPOLY_UNSUPPORTED_CURVE;
+        smalljac_curve_clear(curve);
+        return lpoly_state.status;
+    }
+
+    /* The Wasm reactor is single-threaded and owns its ffpoly globals, so no
+       host mutex or callback is required inside the isolated kernel. */
+    status = smalljac_Lpolys(
+        curve, lpoly_state.start, lpoly_state.stop, 0,
+        lpoly_callback, &lpoly_state);
+    lpoly_state.upstream_status = status;
+    smalljac_curve_clear(curve);
+    if (lpoly_state.callback_failed)
+    {
+        if (lpoly_state.status == SAGEJS_WASM_SMALLJAC_LPOLY_OK)
+            lpoly_state.status = SAGEJS_WASM_SMALLJAC_LPOLY_CALLBACK_CANCELLED;
+    }
+    else if (status < 0)
+        lpoly_state.status = map_lpoly_upstream_error(status);
+    else
+        lpoly_state.status = lpoly_state.truncated
+            ? SAGEJS_WASM_SMALLJAC_LPOLY_TRUNCATED
+            : SAGEJS_WASM_SMALLJAC_LPOLY_OK;
+    return lpoly_state.status;
 }

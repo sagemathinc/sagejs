@@ -42,6 +42,38 @@ export interface EllipticLseriesResult {
   packedStride?: 5;
 }
 
+export interface SmalljacCapabilities {
+  available: boolean;
+  backendVersion: string;
+  normalization: "det(1-T*Frob)";
+  maxGenus: 2;
+  fullLpolynomialGenus: [2];
+  groupStructureGenus: [];
+  groupRequiresOddDegree: true;
+  primeUpperBounds: {
+    lpolynomial: bigint;
+    groupStructure: 0n;
+  };
+  statuses: Readonly<Record<string, number>>;
+}
+
+export interface SmalljacLpolyBatch {
+  status: number;
+  statusName: string;
+  upstreamStatus: bigint;
+  genus: number;
+  rowCount: number;
+  requiredRows: number;
+  truncated: boolean;
+  backendVersion: string;
+  normalization: "det(1-T*Frob)";
+  primes: BigUint64Array;
+  good: Uint8Array;
+  coefficientCounts: Uint8Array;
+  coefficients: BigInt64Array;
+  rowStatus: Int32Array;
+}
+
 export declare const curveCapabilities: Readonly<Record<string, Readonly<{
   family: string;
   disposition: string;
@@ -70,6 +102,13 @@ export declare function createCurveBackend(
     discriminant: bigint | number,
     bound: bigint | number,
   ): Int32Array;
+  smalljacCapabilities?(): SmalljacCapabilities;
+  smalljacLpolyBatch?(
+    curve: string,
+    start: bigint | number,
+    stop: bigint | number,
+    options?: { maxRows?: bigint | number },
+  ): SmalljacLpolyBatch;
   ecLseriesValues(
     conductor: bigint | string | number,
     rootNumber: -1 | 1,

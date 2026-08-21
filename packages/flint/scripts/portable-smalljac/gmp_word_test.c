@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#define SAGEJS_GMP_FORCE_NARROW_LONG 1
 #include "sagejs_gmp_word.h"
 
 int main(void) {
