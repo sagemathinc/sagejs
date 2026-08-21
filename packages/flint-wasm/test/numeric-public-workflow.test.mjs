@@ -82,8 +82,8 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
     "napi:@sagemath/sagejs-flint:complexEi",
     "napi:@sagemath/sagejs-flint:complexBesselI",
     "napi:@sagemath/sagejs-flint:zetaZeros",
-    "napi:@sagemath/sagejs-flint:symbolicNumericalIntegral",
-    "napi:@sagemath/sagejs-flint:symbolicFindRoot",
+    "specialist:symbolic-numerical-integral-wasm",
+    "specialist:symbolic-find-root-wasm",
   ]) {
     assert.ok(routeIds.has(id), `missing route ${id}`);
   }

@@ -169,7 +169,11 @@ test("passes fixed-width Dirichlet and discriminant values as WebAssembly i64", 
 test("matches existing FLINT backend scalar and batch method signatures", () => {
   const fake = fakeInstance();
   const groupResource = Object.freeze({ handle: 17 });
+  const routes = [];
   const backend = createAnalyticWasmBackend(fake.instance, {
+    recordCapability(...record) {
+      routes.push(record);
+    },
     resolveDirichletModulus(group) {
       assert.equal(group, groupResource);
       return 5n;
@@ -181,6 +185,15 @@ test("matches existing FLINT backend scalar and batch method signatures", () => 
   assert.equal(value.precisionBits, 144);
   assert.equal(fake.state().lastArguments[8], 5n);
   assert.equal(backend.riemannXiStandardValue([2, 0], 144).precisionBits, 144);
+  backend.complexGammaValues([[0.5, 0]], 144);
+  assert.deepEqual(
+    routes.map(([capabilityId, selectedRoute]) => [capabilityId, selectedRoute]),
+    [
+      ["analytic:dirichlet-l-batch", "receipt-backed-wasm-artifact"],
+      ["analytic:riemann-xi", "receipt-backed-wasm-artifact"],
+      ["analytic:complex-gamma", "receipt-backed-wasm-artifact"],
+    ],
+  );
 });
 
 test("binary64 conversion is explicit and confined to tiled plot output", async () => {
