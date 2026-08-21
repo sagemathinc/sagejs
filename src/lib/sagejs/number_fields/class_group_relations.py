@@ -26,6 +26,7 @@ its replay.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any, Callable, Iterable
 
@@ -42,6 +43,26 @@ MINKOWSKI_LATTICE_SCHEMA = "sagejs.number-fields/minkowski-lll-lattice-v1"
 AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
 DEFAULT_RANK_PRIME = 2_147_483_647
 _U64_MASK = (1 << 64) - 1
+_IDEAL_REDUCTION_STATE_KEYS = {
+    "schema",
+    "ideal_fingerprint",
+    "factor_base_fingerprints",
+    "embedding_precision",
+    "dimension",
+    "radius",
+    "cube_index",
+    "candidates_tested",
+    "content_sha256",
+}
+MAX_IDEAL_REDUCTION_DIMENSION = 64
+MAX_IDEAL_REDUCTION_PRECISION = 4096
+MAX_IDEAL_REDUCTION_RADIUS_BITS = 31
+MAX_IDEAL_REDUCTION_INTEGER_BITS = 4096
+MAX_IDEAL_REDUCTION_WORK_BITS = 1024
+MAX_IDEAL_REDUCTION_JSON_NODES = 100_000
+MAX_IDEAL_REDUCTION_JSON_CHARACTERS = 1_000_000
+MAX_IDEAL_REDUCTION_REPLAY_CANDIDATES = 4096
+MAX_IDEAL_REDUCTION_REPLAY_CURSOR_STEPS = 65_536
 
 
 class RelationNotSmoothError(ArithmeticError):
@@ -96,6 +117,95 @@ def _json_value(value: Any, path: str = "$") -> Any:
             answer[key] = _json_value(item, path + "." + key)
         return answer
     raise TypeError(path + " is not JSON-safe")
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def _content_hash(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _validate_bounded_json(value: Any) -> None:
+    """Reject oversized or noncanonical checkpoint component trees pre-hash."""
+    remaining = MAX_IDEAL_REDUCTION_JSON_NODES
+    remaining_characters = MAX_IDEAL_REDUCTION_JSON_CHARACTERS
+    stack = [value]
+    while stack:
+        remaining -= 1
+        if remaining < 0:
+            raise ValueError("ideal-reduction checkpoint metadata is too large")
+        item = stack.pop()
+        if item is None or isinstance(item, bool):
+            continue
+        if isinstance(item, str):
+            remaining_characters -= len(item)
+            if remaining_characters < 0:
+                raise ValueError("ideal-reduction checkpoint metadata is too large")
+            continue
+        if isinstance(item, int):
+            if abs(item).bit_length() > MAX_IDEAL_REDUCTION_INTEGER_BITS:
+                raise ValueError("ideal-reduction checkpoint integer is too large")
+            continue
+        if isinstance(item, list):
+            stack.extend(item)
+            continue
+        if isinstance(item, dict):
+            for key, nested in item.items():
+                if not isinstance(key, str):
+                    raise TypeError("ideal-reduction checkpoint keys must be strings")
+                remaining_characters -= len(key)
+                if remaining_characters < 0:
+                    raise ValueError("ideal-reduction checkpoint metadata is too large")
+                stack.append(nested)
+            continue
+        raise TypeError("ideal-reduction checkpoint metadata is not exact JSON")
+
+
+def _checked_bounded_cursor_integer(
+    value: Any, name: str, *, positive: bool = False
+) -> int:
+    answer = _checked_integer(value, name)
+    if answer < 1 if positive else answer < 0:
+        qualifier = "positive" if positive else "nonnegative"
+        raise ValueError(name + " must be " + qualifier)
+    if abs(answer).bit_length() > MAX_IDEAL_REDUCTION_INTEGER_BITS:
+        raise ValueError(name + " exceeds the checkpoint integer limit")
+    return answer
+
+
+def _count_inner_cube_prefix(side: int, dimension: int, limit: int) -> int:
+    """Count base-`side` vectors below `limit` with every digit interior."""
+    digits = [0] * dimension
+    cursor = limit
+    for index in range(dimension):
+        digits[index] = cursor % side
+        cursor //= side
+    allowed = side - 2
+    answer = 0
+    for position in range(dimension - 1, -1, -1):
+        digit = digits[position]
+        smaller_allowed = min(max(digit - 1, 0), allowed)
+        answer += smaller_allowed * allowed**position
+        if digit < 1 or digit > side - 2:
+            break
+    return answer
+
+
+def _expected_reduction_candidates(radius: int, cube_index: int, dimension: int) -> int:
+    inner_side = 2 * radius - 1
+    completed = inner_side**dimension - 1
+    current_shell = cube_index - _count_inner_cube_prefix(
+        2 * radius + 1, dimension, cube_index
+    )
+    return completed + current_shell
 
 
 def _rational_pair(value: Any) -> list[int]:
@@ -1293,34 +1403,57 @@ class IdealReductionState:
         cube_index: int = 0,
         candidates_tested: int = 0,
     ) -> None:
-        precision = _checked_integer(embedding_precision, "embedding precision")
-        if precision < 53:
-            raise ValueError("embedding precision must be at least 53 bits")
-        dimension = _checked_integer(dimension, "ideal reduction dimension")
-        if dimension < 1:
-            raise ValueError("ideal reduction dimension must be positive")
-        radius = _checked_integer(radius, "ideal reduction radius")
-        if radius < 1:
-            raise ValueError("ideal reduction radius must be positive")
-        cube_index = _checked_nonnegative(cube_index, "ideal reduction cube index")
+        if not isinstance(ideal_fingerprint, dict):
+            raise TypeError("ideal-reduction ideal fingerprint must be a dictionary")
+        factor_values = tuple(factor_base_fingerprints)
+        if any(not isinstance(value, dict) for value in factor_values):
+            raise TypeError("ideal-reduction factor fingerprints must be dictionaries")
+        _validate_bounded_json(ideal_fingerprint)
+        _validate_bounded_json(list(factor_values))
+        precision = _checked_bounded_cursor_integer(
+            embedding_precision, "embedding precision", positive=True
+        )
+        if precision < 53 or precision > MAX_IDEAL_REDUCTION_PRECISION:
+            raise ValueError("embedding precision is outside the checkpoint limit")
+        dimension = _checked_bounded_cursor_integer(
+            dimension, "ideal reduction dimension", positive=True
+        )
+        if dimension > MAX_IDEAL_REDUCTION_DIMENSION:
+            raise ValueError("ideal reduction dimension exceeds the checkpoint limit")
+        radius = _checked_bounded_cursor_integer(
+            radius, "ideal reduction radius", positive=True
+        )
+        if radius.bit_length() > MAX_IDEAL_REDUCTION_RADIUS_BITS:
+            raise ValueError("ideal reduction radius exceeds the checkpoint limit")
+        cube_index = _checked_bounded_cursor_integer(
+            cube_index, "ideal reduction cube index"
+        )
+        candidates_tested = _checked_bounded_cursor_integer(
+            candidates_tested, "ideal reduction candidate count"
+        )
         side = 2 * radius + 1
+        if side.bit_length() * dimension > MAX_IDEAL_REDUCTION_WORK_BITS:
+            raise ValueError("ideal reduction shell exceeds the checkpoint work limit")
         if cube_index >= side**dimension:
             raise ValueError("ideal reduction cube index is outside its shell cube")
+        expected_candidates = _expected_reduction_candidates(
+            radius, cube_index, dimension
+        )
+        if candidates_tested != expected_candidates:
+            raise ValueError("ideal reduction cursor skips or repeats shell candidates")
         self._ideal_fingerprint = _json_value(ideal_fingerprint)
         self._factor_base_fingerprints = tuple(
-            _json_value(value) for value in factor_base_fingerprints
+            _json_value(value) for value in factor_values
         )
         self.embedding_precision = precision
         self.dimension = dimension
         self.radius = radius
         self.cube_index = cube_index
-        self.candidates_tested = _checked_nonnegative(
-            candidates_tested, "ideal reduction candidate count"
-        )
+        self.candidates_tested = candidates_tested
         runtime.object.freeze(self)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        body = {
             "schema": IDEAL_REDUCTION_STATE_SCHEMA,
             "ideal_fingerprint": _json_value(self._ideal_fingerprint),
             "factor_base_fingerprints": [
@@ -1332,11 +1465,48 @@ class IdealReductionState:
             "cube_index": self.cube_index,
             "candidates_tested": self.candidates_tested,
         }
+        body["content_sha256"] = _content_hash(body)
+        return body
+
+    def stable_hash(self) -> str:
+        return self.to_dict()["content_sha256"]
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> IdealReductionState:
+        if not isinstance(payload, dict):
+            raise TypeError("ideal-reduction state must be a dictionary")
+        if (
+            len(payload) != len(_IDEAL_REDUCTION_STATE_KEYS)
+            or set(payload) != _IDEAL_REDUCTION_STATE_KEYS
+        ):
+            raise ValueError("ideal-reduction state has unexpected or missing keys")
         if payload.get("schema") != IDEAL_REDUCTION_STATE_SCHEMA:
             raise ValueError("unsupported ideal-reduction state schema")
+        if not isinstance(payload["ideal_fingerprint"], dict):
+            raise TypeError("ideal-reduction ideal fingerprint must be a dictionary")
+        if not isinstance(payload["factor_base_fingerprints"], list):
+            raise TypeError("ideal-reduction factor fingerprints must be a list")
+        expected_hash = payload["content_sha256"]
+        if (
+            not isinstance(expected_hash, str)
+            or len(expected_hash) != 64
+            or any(character not in "0123456789abcdef" for character in expected_hash)
+        ):
+            raise ValueError("ideal-reduction state has an invalid content hash")
+        for name in (
+            "embedding_precision",
+            "dimension",
+            "radius",
+            "cube_index",
+            "candidates_tested",
+        ):
+            _checked_bounded_cursor_integer(payload[name], name)
+        _validate_bounded_json(payload["ideal_fingerprint"])
+        _validate_bounded_json(payload["factor_base_fingerprints"])
+        body = dict(payload)
+        del body["content_sha256"]
+        if _content_hash(body) != expected_hash:
+            raise ValueError("ideal-reduction state content hash mismatch")
         state = cls(
             ideal_fingerprint=payload["ideal_fingerprint"],
             factor_base_fingerprints=payload["factor_base_fingerprints"],
@@ -1648,6 +1818,66 @@ def _reduction_candidate(
     return row, factored
 
 
+def _reduction_element(
+    field: Any,
+    basis_rows: tuple[tuple[int, ...], ...],
+    denominator: Any,
+    coefficients: list[int],
+) -> Any:
+    dimension = len(basis_rows)
+    exact_row = [
+        sum(
+            coefficients[basis_index] * basis_rows[basis_index][column]
+            for basis_index in range(dimension)
+        )
+        for column in range(dimension)
+    ]
+    return _field_element_from_coefficients(
+        field, [sage.QQ(value) / denominator for value in exact_row]
+    )
+
+
+def _verify_reduction_checkpoint(
+    target: IdealReductionState,
+    ideal: Any,
+    factors: tuple[Any, ...],
+    ideal_row: tuple[int, ...],
+    ideal_norm: Any,
+    field: Any,
+    basis_rows: tuple[tuple[int, ...], ...],
+    denominator: Any,
+) -> None:
+    """Replay a bounded cursor prefix and reject skipped successful elements."""
+    if target.candidates_tested > MAX_IDEAL_REDUCTION_REPLAY_CANDIDATES:
+        raise ValueError("ideal-reduction checkpoint exceeds the replay work limit")
+    cursor = IdealReductionState(
+        ideal_fingerprint=target._ideal_fingerprint,
+        factor_base_fingerprints=target._factor_base_fingerprints,
+        embedding_precision=target.embedding_precision,
+        dimension=target.dimension,
+    )
+    steps = 0
+    while cursor.radius != target.radius or cursor.cube_index != target.cube_index:
+        steps += 1
+        if steps > MAX_IDEAL_REDUCTION_REPLAY_CURSOR_STEPS:
+            raise ValueError("ideal-reduction checkpoint exceeds the cursor work limit")
+        cursor, coefficients = _advance_reduction_cursor(cursor)
+        if cursor.candidates_tested > target.candidates_tested:
+            raise ValueError("ideal-reduction checkpoint cursor is inconsistent")
+        if coefficients is None:
+            continue
+        element = _reduction_element(field, basis_rows, denominator, coefficients)
+        if (
+            _reduction_candidate(ideal, factors, ideal_row, ideal_norm, element)
+            is not None
+        ):
+            raise ValueError(
+                "ideal-reduction checkpoint skipped a successful candidate"
+            )
+    if cursor.candidates_tested != target.candidates_tested:
+        raise ValueError("ideal-reduction checkpoint candidate count is inconsistent")
+
+
 def reduce_ideal_over_base(
     ideal: Any,
     factor_base: Iterable[Any],
@@ -1683,14 +1913,21 @@ def reduce_ideal_over_base(
     if max_candidates is not None:
         max_candidates = _checked_nonnegative(max_candidates, "candidate bound")
     precision = _checked_integer(embedding_precision, "embedding precision")
-    if precision < 53:
-        raise ValueError("embedding precision must be at least 53 bits")
+    if precision < 53 or precision > MAX_IDEAL_REDUCTION_PRECISION:
+        raise ValueError("embedding precision is outside the ideal-reduction limit")
+    field_dimension = _checked_integer(
+        ideal.number_field().degree(), "ideal reduction dimension"
+    )
+    if field_dimension < 1 or field_dimension > MAX_IDEAL_REDUCTION_DIMENSION:
+        raise ValueError("ideal reduction dimension exceeds the resource limit")
     if cancelled is not None and not callable(cancelled):
         raise TypeError("cancelled must be callable")
     if checkpoint_callback is not None and not callable(checkpoint_callback):
         raise TypeError("checkpoint callback must be callable")
     plan = minkowski_lll_lattice(ideal, precision=precision)
     dimension = len(plan.exact_rows)
+    if dimension != field_dimension:
+        raise ArithmeticError("ideal reduction basis has the wrong dimension")
     ideal_fingerprint = _ideal_payload(ideal)
     factor_fingerprints = tuple(_prime_fingerprint(prime) for prime in factors)
     if checkpoint is None:
@@ -1715,6 +1952,17 @@ def reduce_ideal_over_base(
     basis_rows = plan.exact_rows
     ideal_row = tuple(int(ideal.valuation(prime)) for prime in factors)
     ideal_norm = sage.QQ(ideal.norm())
+    if checkpoint is not None:
+        _verify_reduction_checkpoint(
+            state,
+            ideal,
+            factors,
+            ideal_row,
+            ideal_norm,
+            field,
+            basis_rows,
+            denominator,
+        )
     attempted = 0
     while max_candidates is None or attempted < max_candidates:
         runtime.check_interrupt()
@@ -1724,16 +1972,7 @@ def reduce_ideal_over_base(
         if coefficients is None:
             continue
         attempted += 1
-        exact_row = [
-            sum(
-                coefficients[basis_index] * basis_rows[basis_index][column]
-                for basis_index in range(dimension)
-            )
-            for column in range(dimension)
-        ]
-        element = _field_element_from_coefficients(
-            field, [sage.QQ(value) / denominator for value in exact_row]
-        )
+        element = _reduction_element(field, basis_rows, denominator, coefficients)
         result = _reduction_candidate(ideal, factors, ideal_row, ideal_norm, element)
         if checkpoint_callback is not None:
             checkpoint_callback(state)
