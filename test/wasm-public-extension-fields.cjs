@@ -25,16 +25,21 @@ power = (x^5 + a*x + 2)^17
     a^81 == a,
     a != 0,
     a * (a^-1),
+    ((a + 1) / (a + 2)) * (a + 2) == a + 1,
+    (a + 2) - (a + 1) == 1,
+    -a + a == 0,
     product.degree(),
     power.degree(),
     product == R(product.list()),
+    product - right + right == product,
+    -power + power == 0,
     [product[0], product[80], product[160], product[256]],
     [power[0], power[1], power[5], power[85]],
 ]
 `;
 
 const expected =
-  "[x^4 + 2*x^3 + 2, True, True, 1, 256, 85, True, " +
+  "[x^4 + 2*x^3 + 2, True, True, 1, True, True, True, 256, 85, True, True, True, " +
   "[2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], " +
   "[2, 2*a, 2*a^3 + 2*a + 1, 1]]";
 
@@ -54,11 +59,18 @@ test("public GF(p^n) elements and dense polynomials agree in native and Wasm", a
     const required = new Set([
       "ffi:flint:fq_context",
       "ffi:flint:fq_element",
+      "ffi:flint:fq_element_add",
+      "ffi:flint:fq_element_inverse",
       "ffi:flint:fq_element_mul",
+      "ffi:flint:fq_element_neg",
       "ffi:flint:fq_element_pow",
+      "ffi:flint:fq_element_sub",
       "ffi:flint:fq_polynomial",
+      "ffi:flint:fq_polynomial_add",
       "ffi:flint:fq_polynomial_mul",
+      "ffi:flint:fq_polynomial_neg",
       "ffi:flint:fq_polynomial_pow",
+      "ffi:flint:fq_polynomial_sub",
     ]);
     for (const route of routes) {
       if (route.capability_id.startsWith("ffi:flint:fq_")) {
