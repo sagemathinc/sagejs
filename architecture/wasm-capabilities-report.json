@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c9c1bdaf4af6e2b71aa885fe83025952f8c8aee6a5c04b9881fef667cddf652d",
+  "source_sha256": "0a1677e96b0964704c58731fad4101bbed1717ddf8cf96fc385fcbc1ad42ad24",
   "counts": {
     "total": 949,
     "by_kind": {
@@ -11483,7 +11483,7 @@
       "public_consumers": [
         "Matrix(GF(p))"
       ],
-      "explanation": "The optional BLAS-backed desktop accelerator is not linked into browsers; typed source kernels remain exact."
+      "explanation": "Browsers use the measured receipt-backed FLINT nmod matrix kernels instead of shipping the optional desktop FFLAS, Givaro, and BLAS stack."
     },
     {
       "id": "specialist:flint-arb-gmp-stack",

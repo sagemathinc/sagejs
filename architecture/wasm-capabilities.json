@@ -55,6 +55,13 @@
           "test/ffi-wasm-fmpq-resource-core.cjs"
         ]
       },
+      "fflas-wasm-disposition": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/wasm-fflas-disposition.test.mjs",
+          "bench/wasm-fflas-disposition.cjs"
+        ]
+      },
       "m4ri-wasm-resource-differential": {
         "differential": true,
         "paths": [
@@ -20039,12 +20046,12 @@
         "Matrix(GF(p))"
       ],
       "tests": [
-        "production-kernel-differential"
+        "fflas-wasm-disposition"
       ],
-      "review_note": "The optional BLAS-backed desktop accelerator is not linked into browsers; typed source kernels remain exact.",
+      "review_note": "A matched public crossover study through 512x512 proves that receipt-backed FLINT nmod packed/resource kernels remain exact, interactive, and within the reviewed 250 ms and 20x native limits, so shipping a separate FFLAS, Givaro, and BLAS Wasm payload is not justified.",
       "kind": "specialist-capability",
       "reviewed": true,
-      "public_explanation": "The optional BLAS-backed desktop accelerator is not linked into browsers; typed source kernels remain exact."
+      "public_explanation": "Browsers use the measured receipt-backed FLINT nmod matrix kernels instead of shipping the optional desktop FFLAS, Givaro, and BLAS stack."
     },
     {
       "id": "specialist:flint-arb-gmp-stack",

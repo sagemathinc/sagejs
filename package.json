@@ -282,6 +282,7 @@
     "bench:wasm:m4ri-public": "node bench/wasm-m4ri-public.cjs",
     "bench:wasm-combinatorial-invariants": "node bench/wasm-combinatorial-invariants.cjs",
     "bench:wasm-extension-fields": "node bench/wasm-public-extension-fields.cjs",
+    "bench:wasm-fflas-disposition": "node bench/wasm-fflas-disposition.cjs --check",
     "bench:wasm-algebraic-matrix": "node bench/wasm-algebraic-matrix.cjs --check",
     "bench:wasm-arithmetic-hotspots": "node bench/wasm-arithmetic-hotspots.cjs",
     "bench:wasm-analytic-public": "node bench/wasm-analytic-public.mjs --check",
