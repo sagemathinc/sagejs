@@ -61,7 +61,14 @@ _CONDITIONAL_MAX_NODES = 8_000_000
 _CONDITIONAL_MAX_STRING_BYTES = 1 << 16
 _CONDITIONAL_MAX_INTEGER_BITS = 4_096
 _CONDITIONAL_MAX_CONTAINER_LENGTH = 8_192
-_CONDITIONAL_MAX_MATRIX_WORK = 128_000_000
+_CONDITIONAL_MAX_MATRIX_ENTRIES = 2_000_000
+_CONDITIONAL_MAX_MATRIX_ARITHMETIC_WORK = 100_000_000
+_CONDITIONAL_MAX_MATRIX_INTEGER_BITS = 1_024
+_CONDITIONAL_MAX_IDEAL_EXPONENT = 4_096
+_CONDITIONAL_MAX_IDEAL_ROW_WORK = 262_144
+_CONDITIONAL_MAX_IDEAL_REPLAY_WORK = 4_000_000
+_CONDITIONAL_MAX_WITNESS_EXPONENT = 256
+_CONDITIONAL_MAX_WITNESS_WORK = 4_096
 
 
 def _integer(value: Any, purpose: str) -> int:
@@ -270,6 +277,20 @@ def _conditional_matrix_within_caps(
                 or len(row["entries"]) > column_count
             ):
                 return False
+            seen_columns: set[int] = set()
+            for entry in row["entries"]:
+                if not isinstance(entry, list) or len(entry) != 2:
+                    return False
+                column = _integer(entry[0], "sparse row column")
+                value = _integer(entry[1], "sparse row entry")
+                if (
+                    column < 0
+                    or column >= column_count
+                    or column in seen_columns
+                    or abs(value) > _CONDITIONAL_MAX_IDEAL_EXPONENT
+                ):
+                    return False
+                seen_columns.add(column)
         shapes = {
             "hnf": (relation_count, column_count),
             "hnf_left": (relation_count, relation_count),
@@ -278,20 +299,55 @@ def _conditional_matrix_within_caps(
             "smith_right": (column_count, column_count),
             "smith_right_inverse": (column_count, column_count),
         }
-        work = 0
+        entries = 0
+        integer_bit_work = 0
         for name, (row_count, width) in shapes.items():
             matrix = payload.get(name)
-            work += row_count * width
+            entries += row_count * width
             if (
-                work > _CONDITIONAL_MAX_MATRIX_WORK
+                entries > _CONDITIONAL_MAX_MATRIX_ENTRIES
                 or not isinstance(matrix, list)
                 or len(matrix) != row_count
                 or any(not isinstance(row, list) or len(row) != width for row in matrix)
             ):
                 return False
+            for row in matrix:
+                for value in row:
+                    integer = _integer(value, name + " matrix entry")
+                    bits = abs(integer).bit_length()
+                    if bits > _CONDITIONAL_MAX_MATRIX_INTEGER_BITS:
+                        return False
+                    integer_bit_work += max(1, bits)
+                    if integer_bit_work > _CONDITIONAL_MAX_PAYLOAD_BYTES * 8:
+                        return False
+        arithmetic_work = (
+            4 * relation_count * relation_count * max(1, column_count)
+            + 2 * relation_count * column_count * column_count
+            + 2 * relation_count * relation_count * relation_count
+            + 4 * column_count * column_count * column_count
+        )
+        if arithmetic_work > _CONDITIONAL_MAX_MATRIX_ARITHMETIC_WORK:
+            return False
         return True
     except (TypeError, ValueError, ArithmeticError, AttributeError):
         return False
+
+
+def _conditional_ideal_row_work(
+    row: Any, norm_bit_costs: tuple[int, ...]
+) -> int | None:
+    """Bound ideal exponentiation before constructing any ideal powers."""
+    if not isinstance(row, (list, tuple)) or len(row) != len(norm_bit_costs):
+        return None
+    work = 0
+    for value, cost in zip(row, norm_bit_costs, strict=True):
+        exponent = _integer(value, "conditional ideal exponent")
+        if abs(exponent) > _CONDITIONAL_MAX_IDEAL_EXPONENT:
+            return None
+        work += abs(exponent) * cost
+        if work > _CONDITIONAL_MAX_IDEAL_ROW_WORK:
+            return None
+    return work
 
 
 def _portable_ideal_fingerprint(ideal: Any) -> dict[str, Any]:
@@ -1568,6 +1624,7 @@ class _EngineProofReplayContext:
         if len(set(canonical_primes)) != len(canonical_primes):
             return False
         bound = _integer(record.bound[0], "conditional factor-base bound")
+        norm_bit_costs: list[int] = []
         for prime in factor_base:
             rational_prime = _integer(
                 prime.rational_prime(), "conditional rational prime"
@@ -1575,8 +1632,41 @@ class _EngineProofReplayContext:
             residue_degree = _integer(
                 prime.residue_class_degree(), "conditional residue degree"
             )
-            if rational_prime**residue_degree > bound:
+            prime_norm = rational_prime**residue_degree
+            if prime_norm > bound:
                 return False
+            norm_bit_costs.append(max(1, prime_norm.bit_length()))
+        ideal_replay_work = 0
+        witness_replay_work = 0
+        exact_norm_costs = tuple(norm_bit_costs)
+        for payload in relation_payloads:
+            for name in ("source_row", "quotient_row", "row"):
+                row_work = _conditional_ideal_row_work(
+                    payload.get(name), exact_norm_costs
+                )
+                if row_work is None:
+                    return False
+                ideal_replay_work += row_work
+                if ideal_replay_work > _CONDITIONAL_MAX_IDEAL_REPLAY_WORK:
+                    return False
+            witness = payload.get("witness")
+            factors = witness.get("factors") if isinstance(witness, dict) else None
+            if not isinstance(factors, list):
+                return False
+            for factor in factors:
+                if not isinstance(factor, dict) or set(factor) != {
+                    "element",
+                    "exponent",
+                }:
+                    return False
+                exponent = _integer(
+                    factor.get("exponent"), "conditional witness exponent"
+                )
+                if abs(exponent) > _CONDITIONAL_MAX_WITNESS_EXPONENT:
+                    return False
+                witness_replay_work += abs(exponent)
+                if witness_replay_work > _CONDITIONAL_MAX_WITNESS_WORK:
+                    return False
         # This cache belongs only to this detached replay.  It does not trust
         # or inherit the engine collector, and every cached ideal is still
         # checked against the independently decoded relation witnesses below.
@@ -1628,6 +1718,12 @@ class _EngineProofReplayContext:
         for transform, ideal in zip(
             presentation.generator_transforms, generator_ideals, strict=True
         ):
+            row_work = _conditional_ideal_row_work(transform, exact_norm_costs)
+            if row_work is None:
+                return False
+            ideal_replay_work += row_work
+            if ideal_replay_work > _CONDITIONAL_MAX_IDEAL_REPLAY_WORK:
+                return False
             reconstructed = reconstructor.reconstruct(transform)
             if reconstructed != ideal:
                 return False

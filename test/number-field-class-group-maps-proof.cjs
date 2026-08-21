@@ -552,9 +552,12 @@ for path, mutate in (
     (("relation_count",), lambda _value: True),
     (("factor_base", 0, "f"), lambda value: value + 1),
     (("relations", 0, "row", 0), lambda value: value + 1),
+    (("relations", 0, "row", 0), lambda _value: 1 << 100),
     (("relations", 0, "witness", "factors", 0, "exponent"), lambda value: value + 1),
+    (("relations", 0, "witness", "factors", 0, "exponent"), lambda _value: 1 << 100),
     (("presentation", "smith", 0, 0), lambda value: value + 1),
     (("presentation", "smith_right", 0, 0), lambda value: value + 1),
+    (("presentation", "smith_right", 0, 0), lambda _value: 1 << 2048),
 ):
     corrupted = copy.deepcopy(payload)
     target = corrupted["conditional_evidence"]
