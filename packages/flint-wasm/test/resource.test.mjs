@@ -21,11 +21,11 @@ function liveResources() {
 
 test("loads the generated resource backend through the public package", () => {
   assert.ok(
-    wasm.byteLength <= 5_300_000,
+    wasm.byteLength <= 6_600_000,
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
   assert.ok(
-    resourceBackend.byteLength <= 300_000,
+    resourceBackend.byteLength <= 380_000,
     `generated resource backend grew to ${resourceBackend.byteLength} bytes`,
   );
   assert.ok(
@@ -47,6 +47,9 @@ test("loads the generated resource backend through the public package", () => {
     "fmpz_mod_polynomial",
     "fmpz_mod_polynomial_division_result",
     "fmpz_mod_polynomial_xgcd_result",
+    "fq_context",
+    "fq_element",
+    "fq_polynomial",
     "dirichlet_group",
   ]);
   assert.equal(liveResources(), 0n);

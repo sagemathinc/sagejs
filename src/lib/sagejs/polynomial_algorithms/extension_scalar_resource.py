@@ -24,10 +24,13 @@ context identity.  Equal descriptors constructed independently therefore
 serialize identically, while live arithmetic still requires the exact same
 field object and ultimately the exact same retained foreign context.
 
-The generated Fq declarations are currently native-only and thread-affine.
-Importing this module is portable, but constructing the forced field fails
-loudly when the generated FLINT adapter is unavailable.  Public finite fields
-continue to use their existing tested backend until the later migration lane.
+The generated Fq declarations are available in both native adapters and the
+receipt-backed FLINT Wasm ownership domain.  They remain thread-affine: one
+evaluator worker serializes construction, arithmetic, export, and close for a
+context family.  Importing this module is portable, but constructing the
+forced field fails loudly when the generated FLINT adapter is unavailable.
+Public finite fields continue to use their existing tested backend until the
+separate public-parent migration lane.
 """
 
 from __future__ import annotations

@@ -62,6 +62,9 @@ test("runs a generated dense rational matrix resource slice", () => {
     "fmpz_mod_polynomial",
     "fmpz_mod_polynomial_division_result",
     "fmpz_mod_polynomial_xgcd_result",
+    "fq_context",
+    "fq_element",
+    "fq_polynomial",
     "dirichlet_group",
   ]);
   assert.equal(liveResources(), 0n);
