@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-group-computation",
+  "title": "Bounded finite-group Wasm computation",
+  "lane": "combinatorics-groups",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile finite-group public workloads and accelerate one representative heavy permutation-group computation through a bounded source-transparent packed Wasm kernel with exact fallback, differential, route, Node/browser, and benchmark evidence",
+  "base_commit": "3b1c9090f012e8b2a32837f0afc02b428707e02c",
+  "claims": [
+    "src/baselib/groups.py",
+    "src/lib/sagejs/kernels/groups/",
+    "test/wasm-group-computation.cjs",
+    "bench/wasm-group-computation.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "agents/webassembly-fast-mathematics-completion-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "direct generated Wasm execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:compiler",
+    "node --test --test-reporter=spec test/wasm-group-computation.cjs",
+    "node bench/wasm-group-computation.cjs --json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds a bounded source-transparent packed kernel for the cold degree-8 public permutation-group center workflow, exact portable fallback and route evidence, direct Wasm and public Node/browser proofs, and a representative benchmark.",
+    "risks": [
+      "The real-browser proof requires the shared production Python package graph and native-kernel manifest to include sagejs.kernels.groups.permutation; those shared integration files are intentionally owned by the root lane.",
+      "test:baselib:strict inherits unrelated builtins.py type errors from the base commit."
+    ],
+    "next_steps": [
+      "Register packed_permutation_center in the shared native manifest and precompiled Python package graph, regenerate production assets, then run the full browser proof.",
+      "Add the public S8 center example and exact route record to the shared acceptance corpus."
+    ]
+  }
+}

@@ -26,6 +26,31 @@ class PositiveInfinity:
 _positive_infinity = PositiveInfinity()
 
 
+_PACKED_PERMUTATION_CENTER_DEGREE = 8
+_PACKED_PERMUTATION_CENTER_MAX_GENERATORS = 4
+_PACKED_PERMUTATION_CENTER_ELEMENT_CAPACITY = 40320
+_PACKED_PERMUTATION_CENTER_HASH_SLOTS = 131071
+_PACKED_PERMUTATION_CENTER_MAX_WORK = 12000000
+
+
+def _native_record(**values: Any) -> Any:
+    answer = runtime.object.create(None)
+    for key in runtime.object.keys(values):
+        runtime.reflect.set(answer, key, runtime.reflect.get(values, key))
+    return answer
+
+
+def _packed_permutation_center_modules() -> tuple[Any, Any]:
+    """Load packed-buffer helpers and the finite-group kernel on demand."""
+    return (
+        __import__("sagejs.native", fromlist=["native"]),
+        __import__(
+            "sagejs.kernels.groups.permutation",
+            fromlist=["packed_permutation_center"],
+        ),
+    )
+
+
 def _permutation_key(mapping: list[int]) -> str:
     return ",".join([str(value) for value in mapping])
 
@@ -357,6 +382,46 @@ class PermutationGroupParent(sage.Parent):
         return True
 
     def center(self) -> PermutationSubgroup:
+        """Return the center with a bounded packed route for cold degree 8 groups.
+
+        The representative heavy domain is a group of degree 8 with two to
+        four generators whose closure has at most 40320 elements.  One packed
+        call computes both the breadth-first closure and central indices with
+        a fixed 12000000-coordinate work ceiling.  Every rejected shape,
+        capacity, or work bound uses the exact portable implementation and is
+        reported through `_last_center_acceleration`.
+        """
+        if (
+            self._elements_mappings is runtime.undefined
+            and self._degree == _PACKED_PERMUTATION_CENTER_DEGREE
+            and len(self._generator_mappings) >= 2
+            and len(self._generator_mappings)
+            <= _PACKED_PERMUTATION_CENTER_MAX_GENERATORS
+        ):
+            return self._packed_center()
+        self._last_center_acceleration = _native_record(
+            route="portable-computation",
+            reason=(
+                "closure-already-materialized"
+                if self._elements_mappings is not runtime.undefined
+                else "outside-reviewed-packed-domain"
+            ),
+            boundaryCrossings=0,
+            copiedValues=0,
+            degree=self._degree,
+            generators=len(self._generator_mappings),
+            elements=(
+                len(self._elements_mappings)
+                if self._elements_mappings is not runtime.undefined
+                else 0
+            ),
+            work=0,
+            maxWork=_PACKED_PERMUTATION_CENTER_MAX_WORK,
+        )
+        return self._portable_center()
+
+    def _portable_center(self) -> PermutationSubgroup:
+        """Exact object-level center computation retained as an oracle."""
         central = []
         for mapping in self._enumerate_mappings():
             is_central = True
@@ -368,8 +433,154 @@ class PermutationGroupParent(sage.Parent):
                     break
             if is_central:
                 central.append(self._element(mapping))
-        if len(central) == 1:
-            return PermutationSubgroup(self, central)
+        return PermutationSubgroup(self, central)
+
+    def _packed_center(self) -> PermutationSubgroup:
+        """Compute a cold closure and its center through one packed boundary."""
+        degree = self._degree
+        generator_count = len(self._generator_mappings)
+        capacity = _PACKED_PERMUTATION_CENTER_ELEMENT_CAPACITY
+        try:
+            native_module, group_module = _packed_permutation_center_modules()
+        except Exception:
+            self._last_center_acceleration = _native_record(
+                route="portable-computation",
+                reason="packed-kernel-unavailable",
+                boundaryCrossings=0,
+                copiedValues=0,
+                degree=degree,
+                generators=generator_count,
+                elements=0,
+                work=0,
+                maxWork=_PACKED_PERMUTATION_CENTER_MAX_WORK,
+            )
+            return self._portable_center()
+
+        packed_kernel = runtime.reflect.get(
+            group_module,
+            "packed_permutation_center",
+        )
+        kernel_uint64_zeros = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_zeros",
+        )
+        kernel_uint64_buffer = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_buffer",
+        )
+        native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+        packed_generators = []
+        for generator in self._generator_mappings:
+            packed_generators.extend(generator)
+        elements = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, capacity * degree],
+        )
+        center_indices = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, capacity],
+        )
+        hash_table = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, _PACKED_PERMUTATION_CENTER_HASH_SLOTS],
+        )
+        status = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [packed_kernel, 4],
+        )
+        generator_buffer = runtime.reflect.apply(
+            kernel_uint64_buffer,
+            native_module,
+            [packed_kernel, packed_generators],
+        )
+        code = int(
+            runtime.reflect.apply(
+                packed_kernel,
+                group_module,
+                [
+                    elements,
+                    center_indices,
+                    generator_buffer,
+                    hash_table,
+                    status,
+                    degree,
+                    generator_count,
+                    capacity,
+                    _PACKED_PERMUTATION_CENTER_MAX_WORK,
+                ],
+            )
+        )
+        work = int(status[3])
+        if code != 0 or int(status[0]) != 0:
+            reason = (
+                "packed-work-bound"
+                if code == 2
+                else "packed-element-bound"
+                if code == 3
+                else "packed-input-rejected"
+            )
+            self._last_center_acceleration = _native_record(
+                route="portable-computation",
+                reason=reason,
+                boundaryCrossings=0,
+                copiedValues=0,
+                degree=degree,
+                generators=generator_count,
+                elements=int(status[1]),
+                work=work,
+                maxWork=_PACKED_PERMUTATION_CENTER_MAX_WORK,
+            )
+            return self._portable_center()
+
+        element_count = int(status[1])
+        center_count = int(status[2])
+        mappings = []
+        for element_index in range(element_count):
+            start = element_index * degree
+            mappings.append([int(elements[start + point]) for point in range(degree)])
+        self._elements_mappings = mappings
+        central = [
+            self._element(mappings[int(center_indices[index])])
+            for index in range(center_count)
+        ]
+        execution_target = getattr(packed_kernel, "executionTarget", None)
+        if execution_target == "wasm":
+            route = "wasm-compiled-source"
+            reason = "normal-heavy-case"
+        elif bool(
+            runtime.reflect.apply(
+                native_is_compiled,
+                native_module,
+                [packed_kernel],
+            )
+        ) and bool(getattr(packed_kernel, "nativeAvailable", False)):
+            route = "native-compiled-source"
+            reason = "normal-heavy-case"
+        else:
+            route = "portable-computation"
+            reason = "compiled-source-unavailable"
+        copied_values = (
+            len(packed_generators)
+            + capacity * degree
+            + capacity
+            + _PACKED_PERMUTATION_CENTER_HASH_SLOTS
+            + 4
+        )
+        self._last_center_acceleration = _native_record(
+            route=route,
+            reason=reason,
+            boundaryCrossings=1 if route != "portable-computation" else 0,
+            copiedValues=copied_values,
+            degree=degree,
+            generators=generator_count,
+            elements=element_count,
+            work=work,
+            maxWork=_PACKED_PERMUTATION_CENTER_MAX_WORK,
+        )
         return PermutationSubgroup(self, central)
 
     def random_element(self) -> PermutationGroupElement:
