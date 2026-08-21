@@ -42,6 +42,21 @@ export interface EllipticLseriesResult {
   packedStride?: 5;
 }
 
+export interface EllipticDirectLseriesResult {
+  status: "ok";
+  algorithm: "direct";
+  rigorous: false;
+  precisionBits: number;
+  workPrecisionBits: number;
+  cutoff: number;
+  coefficientTerms: number;
+  pointCount: number;
+  values: Array<{
+    completed: ComplexBallRecord;
+    raw: ComplexBallRecord;
+  }>;
+}
+
 export declare const curveCapabilities: Readonly<Record<string, Readonly<{
   family: string;
   disposition: string;
@@ -70,6 +85,13 @@ export declare function createCurveBackend(
     discriminant: bigint | number,
     bound: bigint | number,
   ): Int32Array;
+  ecLseriesDirectValues?(
+    conductor: bigint | string | number,
+    coefficients: Array<number | bigint> | Int32Array,
+    points: Array<[string, string]>,
+    cutoffs: number[],
+    precisionBits: number,
+  ): EllipticDirectLseriesResult;
   ecLseriesValues(
     conductor: bigint | string | number,
     rootNumber: -1 | 1,
