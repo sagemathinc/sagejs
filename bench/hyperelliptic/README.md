@@ -114,6 +114,24 @@ The checked-in Linux x64 receipt is
 15% gate. Exact public polynomial materialization is intentionally reported as
 a separate cost rather than hidden inside the foreign-library boundary.
 
+### Wasm smalljac differential benchmark
+
+After `pnpm build:wasm` and the native FLINT package build, compare the same
+pinned genus-2 source closure through the native and Wasm packed adapters:
+
+```bash
+node bench/hyperelliptic/wasm-smalljac-benchmark.mjs 100000 3 \
+  > bench/hyperelliptic/wasm-smalljac-benchmark.json
+```
+
+The harness warms both reactors, performs one smalljac traversal per sample,
+and requires a byte-exact digest match over primes, good flags, coefficient
+counts, both signed coefficients, and row statuses. Its JSON receipt also
+records the content-addressed Wasm artifact, timings, copied-byte route
+evidence, normalization, and native/Wasm ratio. Bounds are limited to one
+131071-value Wasm request; production calls cover larger intervals through the
+public bounded chunk iterator.
+
 The output path is intentionally not prescribed or checked in: benchmark
 receipts are meaningful only with their host identity. This harness is an
 oracle-cost baseline, including exhaustive counts and group-structure checks;
