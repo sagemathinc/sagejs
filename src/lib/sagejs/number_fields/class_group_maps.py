@@ -28,6 +28,11 @@ from typing import Any
 from sagejs.number_fields.class_group_proof import (
     COMPLETE_PROOF_LABELS,
     EXACT_RELATIONS_CONDITIONAL_GRH,
+    EXACT_UNCONDITIONAL,
+    ConditionalGRHProofRecord,
+    MinkowskiPrimeClassRecord,
+    SaturationProofRecord,
+    UnconditionalMinkowskiProofRecord,
     proof_label,
 )
 
@@ -112,6 +117,59 @@ def _principal_ideal(generator: Any, order: Any) -> Any:
             except TypeError:
                 return constructor(order)
     return order.ideal(generator)
+
+
+def _stage(result: Any, name: str) -> Any:
+    for stage in getattr(result, "stages", ()):
+        if getattr(stage, "name", None) == name:
+            return stage
+    return None
+
+
+def _portable_ideal_fingerprint(ideal: Any) -> dict[str, Any]:
+    arithmetic = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
+    )
+    payload = arithmetic.serialize_ideal(ideal)
+    return {
+        "field_order_fingerprint": payload["field_order_fingerprint"],
+        "basis": payload["basis"],
+    }
+
+
+def _decode_factored_generator(field: Any, payload: dict[str, Any]) -> Any:
+    factored = __import__(
+        "sagejs.number_fields.factored_elements",
+        fromlist=["FactoredNumberFieldElement"],
+    )
+    schema = payload.get("schema")
+    if schema == getattr(factored, "SERIALIZATION_SCHEMA", None):
+        return factored.FactoredNumberFieldElement.from_dict(field, payload)
+    relations = __import__(
+        "sagejs.number_fields.class_group_relations",
+        fromlist=["FactoredPrincipalWitness"],
+    )
+    return relations.FactoredPrincipalWitness.from_dict(field, payload)
+
+
+def _engine_material(engine_group: Any, result: Any) -> tuple[Any, Any]:
+    """Read the public adapter surface, with the current engine as fallback."""
+    order = _value(engine_group, ("ideal_order", "number_field_order"), None)
+    if order is None:
+        order = getattr(engine_group, "_order", None)
+    if order is None:
+        field = getattr(result, "field", None)
+        maximal_order = getattr(field, "maximal_order", None)
+        if callable(maximal_order):
+            order = maximal_order()
+    presentation = _value(
+        engine_group,
+        ("presentation", "relation_presentation", "class_group_presentation"),
+        None,
+    )
+    if presentation is None:
+        presentation = getattr(engine_group, "_presentation", None)
+    return order, presentation
 
 
 class PrincipalIdealWitness:
@@ -583,6 +641,10 @@ class IdealClassGroup:
     def relation_count(self) -> int | None:
         return self._relation_count
 
+    @property
+    def proof_record(self) -> Any:
+        return self._proof_record
+
     def ideal_order(self) -> Any:
         return self._order
 
@@ -679,8 +741,43 @@ class IdealClassGroup:
             return PrincipalityResult(False, None, self._proof_status)
         return PrincipalityResult(True, result.principal_witness, self._proof_status)
 
-    def is_principal(self, ideal: Any) -> bool:
+    def is_principal(self, ideal: Any, proof: Any = True) -> bool:
+        requested = True if proof is None else bool(proof)
+        if requested and self._proof_status != EXACT_UNCONDITIONAL:
+            raise ValueError(
+                "proof=True requires an unconditionally complete class group"
+            )
         return bool(self.principality(ideal))
+
+    def proof_payload(self) -> dict[str, Any]:
+        """Serialize the attached conditional or unconditional proof record."""
+        if self._proof_record is None:
+            raise ValueError("the class group has no attached completeness proof")
+        if isinstance(self._proof_record, ConditionalGRHProofRecord):
+            return self._proof_record.to_dict()
+        if isinstance(self._proof_record, UnconditionalMinkowskiProofRecord):
+            encoder = getattr(self._proof_context, "encode_prime_record", None)
+            if not callable(encoder):
+                raise TypeError("the Minkowski replay context has no prime encoder")
+            return self._proof_record.to_dict(encoder)
+        raise TypeError("unknown class-group completeness proof record")
+
+    def verify_proof_payload(self, payload: dict[str, Any]) -> bool:
+        """Decode and independently replay one serialized completeness proof."""
+        try:
+            schema = payload.get("schema")
+            if schema == "sagejs.number-fields.class-group.grh-proof.v1":
+                record: Any = ConditionalGRHProofRecord.from_dict(payload)
+            elif schema == "sagejs.number-fields.class-group.minkowski-proof.v1":
+                decoder = getattr(self._proof_context, "decode_prime_record", None)
+                if not callable(decoder):
+                    return False
+                record = UnconditionalMinkowskiProofRecord.from_dict(payload, decoder)
+            else:
+                return False
+            return record.verify(self, self._proof_context) is True
+        except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
+            return False
 
     def map(self) -> IdealClassMap:
         return self._map
@@ -713,10 +810,16 @@ class IdealClassGroup:
         if answer is not True:
             return False
         invariants = _value(evidence, ("invariants", "invariant_factors"), None)
-        return (
-            invariants is None
-            or tuple(int(value) for value in invariants) == self._invariants
-        )
+        if (
+            invariants is not None
+            and tuple(int(value) for value in invariants) != self._invariants
+        ):
+            return False
+        presentation_order = _value(evidence, ("order",), None)
+        if presentation_order is not None and int(presentation_order) != self.order():
+            return False
+        free_rank = _value(evidence, ("free_rank",), None)
+        return free_rank is None or int(free_rank) == 0
 
     def verify(self) -> bool:
         try:
@@ -744,6 +847,271 @@ def class_group_from_context(context: Any) -> IdealClassGroup:
     return IdealClassGroup.from_context(context)
 
 
+class _EngineProofReplayContext:
+    """Independent replay hooks for one completed engine result."""
+
+    def __init__(
+        self,
+        result: Any,
+        engine_group: Any,
+        order: Any,
+        saturation: SaturationProofRecord,
+        bound: int,
+    ) -> None:
+        self.result = result
+        self.engine_group = engine_group
+        self.order = order
+        self.field = order.number_field()
+        try:
+            arithmetic = __import__(
+                "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
+            )
+            identity_payload = arithmetic.serialize_ideal(order.ideal(1))
+            self.field_order_fingerprint = identity_payload["field_order_fingerprint"]
+        except (AttributeError, TypeError, ValueError, KeyError):
+            self.field_order_fingerprint = _value(
+                order, ("field_order_fingerprint",), None
+            )
+        self.discriminant = int(order.discriminant())
+        self.minkowski_bound = (int(bound), 1)
+        self.saturation_record = saturation
+
+    def verify_saturation_record(self, record: Any) -> bool:
+        if record.to_dict() != self.saturation_record.to_dict():
+            return False
+        analytic = _stage(self.result, "analytic-index")
+        return (
+            record.complete
+            and record.index_bound == 1
+            and analytic is not None
+            and analytic.state == "complete"
+            and analytic.details.get("rigorous") is True
+            and int(analytic.details.get("lower_index", 0)) == 1
+            and int(analytic.details.get("upper_index", 0)) == 1
+        )
+
+    def verify_conditional_grh_record(self, record: Any) -> bool:
+        proof_stage = _stage(self.result, "proof")
+        diagnostics = self.result.diagnostics
+        return (
+            self.result.complete is True
+            and self.engine_group.verify() is True
+            and proof_stage is not None
+            and proof_stage.state == "complete"
+            and proof_stage.details.get("proof_status")
+            == EXACT_RELATIONS_CONDITIONAL_GRH
+            and record.theorem == self.engine_group.factor_base_theorem
+            and record.bound == (int(diagnostics.get("factor_base_bound")), 1)
+            and record.relation_count == int(diagnostics.get("relations"))
+            and "GRH" in record.assumption.upper()
+        )
+
+    def iter_minkowski_prime_ideals(self) -> Any:
+        factor_base = __import__(
+            "sagejs.number_fields.class_group_factor_base",
+            fromlist=["factor_base_plan"],
+        )
+        bound = self.minkowski_bound[0]
+        plan = factor_base.factor_base_plan(
+            self.order,
+            proof=True,
+            theorem="minkowski",
+            max_bound=max(1, bound),
+            max_rational_primes=max(1, bound),
+            max_prime_ideals=max(1, int(self.order.degree()) * max(1, bound)),
+        )
+        for record in factor_base.prime_ideal_norm_stream(plan):
+            yield record.prime_ideal
+
+    def ideal_fingerprint(self, ideal: Any) -> dict[str, Any]:
+        return _portable_ideal_fingerprint(ideal)
+
+    def encode_ideal(self, ideal: Any) -> dict[str, Any]:
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
+        )
+        return arithmetic.serialize_ideal(ideal)
+
+    def decode_ideal(self, payload: dict[str, Any]) -> Any:
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_from_dict"]
+        )
+        return arithmetic.ideal_from_dict(self.order, payload)
+
+    def encode_witness(self, witness: PrincipalIdealWitness) -> dict[str, Any]:
+        return witness.to_dict(self.encode_ideal, self.encode_generator)
+
+    def encode_generator(self, value: Any) -> dict[str, Any]:
+        payload: Any = value.to_dict()
+        if not isinstance(payload, dict):
+            raise TypeError("a factored generator did not serialize to a dictionary")
+        return payload
+
+    def decode_generator(self, value: dict[str, Any]) -> Any:
+        return _decode_factored_generator(self.field, value)
+
+    def decode_witness(
+        self, payload: dict[str, Any], _ideal: Any
+    ) -> PrincipalIdealWitness:
+        return PrincipalIdealWitness.from_dict(
+            payload,
+            self.decode_ideal,
+            self.decode_generator,
+        )
+
+    def encode_prime_record(self, record: MinkowskiPrimeClassRecord) -> dict[str, Any]:
+        return record.to_dict(self.encode_ideal, self.encode_witness)
+
+    def decode_prime_record(self, payload: dict[str, Any]) -> MinkowskiPrimeClassRecord:
+        return MinkowskiPrimeClassRecord.from_dict(
+            payload, self.decode_ideal, self.decode_witness
+        )
+
+
+def _engine_unconditional_records(
+    engine_group: Any,
+    replay: _EngineProofReplayContext,
+    raw_records: Any,
+) -> tuple[MinkowskiPrimeClassRecord, ...]:
+    answer = []
+    for raw in raw_records:
+        ideal = replay.decode_ideal(raw["ideal"])
+        coordinates = tuple(int(value) for value in raw["coordinates"])
+        representative = engine_group.representative_ideal(coordinates)
+        quotient = _ideal_quotient(ideal, representative)
+        generator = _decode_factored_generator(replay.field, raw["witness"])
+        witness = PrincipalIdealWitness(
+            quotient,
+            generator,
+            source="unconditional Minkowski proof-prime discrete log",
+        )
+        answer.append(
+            MinkowskiPrimeClassRecord(
+                ideal,
+                replay.ideal_fingerprint(ideal),
+                raw["norm"],
+                coordinates,
+                witness,
+            )
+        )
+    return tuple(answer)
+
+
+def class_group_from_engine_result(result: Any) -> IdealClassGroup:
+    """Adapt one complete class/unit engine result to the public map contract."""
+    if getattr(result, "complete", None) is not True:
+        raise ValueError("an incomplete engine result has no public class group")
+    engine_group = result.class_group()
+    if isinstance(engine_group, IdealClassGroup):
+        return engine_group
+    order, presentation = _engine_material(engine_group, result)
+    if order is None or presentation is None:
+        raise TypeError("the engine class group has no exact presentation material")
+    invariants = tuple(int(value) for value in engine_group.invariants())
+    generator_ideals = tuple(engine_group.gens_ideals())
+    relation_witnesses = []
+    for invariant, ideal in zip(invariants, generator_ideals, strict=False):
+        relation_ideal = _ideal_power(ideal, invariant)
+        coordinates, generator = engine_group.discrete_log(relation_ideal)
+        if any(int(value) for value in coordinates):
+            raise ArithmeticError("an engine generator has the wrong claimed order")
+        relation_witnesses.append(
+            PrincipalIdealWitness(
+                relation_ideal,
+                generator,
+                source="engine Smith-generator order relation",
+            )
+        )
+    proof_status = proof_label(result.proof_status)
+    proof_stage = _stage(result, "proof")
+    if proof_stage is None or proof_stage.state != "complete":
+        raise ArithmeticError("the engine result has no completed proof stage")
+    diagnostics = result.diagnostics
+    relation_count = int(diagnostics.get("relations"))
+    if int(proof_stage.details.get("exact_relations", -1)) != relation_count:
+        raise ArithmeticError("the proof stage has the wrong exact relation count")
+    analytic = _stage(result, "analytic-index")
+    saturation = SaturationProofRecord(
+        (),
+        (),
+        index_bound=1,
+        complete=(
+            analytic is not None
+            and analytic.state == "complete"
+            and analytic.details.get("rigorous") is True
+            and int(analytic.details.get("lower_index", 0)) == 1
+            and int(analytic.details.get("upper_index", 0)) == 1
+        ),
+        evidence="rigorous hR index-one enclosure",
+    )
+    unconditional_stage = None
+    if proof_status == EXACT_UNCONDITIONAL:
+        unconditional_stage = _stage(result, "unconditional-proof")
+        if unconditional_stage is None or unconditional_stage.state != "complete":
+            raise ArithmeticError(
+                "an unconditional engine result has no completed Minkowski stage"
+            )
+        if "Minkowski" not in str(unconditional_stage.details.get("theorem")):
+            raise ArithmeticError("the unconditional stage does not name Minkowski")
+        bound = int(unconditional_stage.details.get("bound"))
+    else:
+        bound = int(diagnostics.get("factor_base_bound"))
+    replay = _EngineProofReplayContext(result, engine_group, order, saturation, bound)
+    if proof_status == EXACT_UNCONDITIONAL:
+        if unconditional_stage is None:
+            raise ArithmeticError("the unconditional proof stage disappeared")
+        raw_prime_records = diagnostics.get("unconditional_prime_records", ())
+        if int(unconditional_stage.details.get("prime_ideals", -1)) != len(
+            raw_prime_records
+        ) or int(proof_stage.details.get("minkowski_primes", -1)) != len(
+            raw_prime_records
+        ):
+            raise ArithmeticError("the proof stages have the wrong Minkowski count")
+        prime_records = _engine_unconditional_records(
+            engine_group,
+            replay,
+            raw_prime_records,
+        )
+        proof_record: Any = UnconditionalMinkowskiProofRecord(
+            field_order_fingerprint=replay.field_order_fingerprint,
+            discriminant=replay.discriminant,
+            bound=(bound, 1),
+            prime_records=prime_records,
+            saturation=saturation,
+        )
+        theorem = "Minkowski ideal-class theorem"
+    elif proof_status == EXACT_RELATIONS_CONDITIONAL_GRH:
+        theorem = str(engine_group.factor_base_theorem)
+        proof_record = ConditionalGRHProofRecord(
+            theorem,
+            (bound, 1),
+            relation_count=relation_count,
+            assumption="GRH for the Dedekind zeta function",
+            saturation=saturation,
+            analytic_index_one=True,
+        )
+    else:
+        raise ValueError("an incomplete proof label cannot expose a class group")
+    answer = IdealClassGroup(
+        order,
+        invariants,
+        generator_ideals,
+        tuple(relation_witnesses),
+        engine_group.discrete_log,
+        proof_status=proof_status,
+        algorithm=str(result.algorithm),
+        factor_base_theorem=theorem,
+        factor_base_bound=(bound, 1),
+        presentation_evidence=presentation,
+        proof_record=proof_record,
+        proof_context=replay,
+        relation_count=relation_count,
+    )
+    if not answer.verify():
+        raise ArithmeticError("the adapted public class group failed proof replay")
+    return answer
+
+
 __all__ = [
     "IdealClassDiscreteLog",
     "IdealClassElement",
@@ -751,5 +1119,6 @@ __all__ = [
     "IdealClassMap",
     "PrincipalIdealWitness",
     "PrincipalityResult",
+    "class_group_from_engine_result",
     "class_group_from_context",
 ]

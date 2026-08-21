@@ -360,3 +360,192 @@ print("class-group-fractional-ideal-ok")
 `);
   assert.equal(output, "class-group-fractional-ideal-ok");
 });
+
+test("completed engine results adapt to public witnessed maps and GRH evidence", () => {
+  const output = run(String.raw`
+import copy
+
+from sagejs.number_fields.class_group_maps import IdealClassGroup, class_group_from_engine_result
+from sagejs.number_fields.class_group_proof import EXACT_RELATIONS_CONDITIONAL_GRH
+
+class ToyOrder:
+    def ideal(self, value):
+        if value == 1: return ToyIdeal(self, 0, 0)
+        if isinstance(value, ToyFactored): return value.principal_ideal(self)
+        raise TypeError("unknown toy generator")
+    def number_field(self): return self
+    def discriminant(self): return -23
+    def degree(self): return 2
+
+class ToyIdeal:
+    def __init__(self, order, class_exponent, scalar_exponent):
+        self._order, self.class_exponent, self.scalar_exponent = order, class_exponent, scalar_exponent
+    def ring(self): return self._order
+    def is_zero(self): return False
+    def __mul__(self, other): return ToyIdeal(self._order, self.class_exponent + other.class_exponent, self.scalar_exponent + other.scalar_exponent)
+    def __truediv__(self, other): return ToyIdeal(self._order, self.class_exponent - other.class_exponent, self.scalar_exponent - other.scalar_exponent)
+    def __pow__(self, exponent): return ToyIdeal(self._order, self.class_exponent * exponent, self.scalar_exponent * exponent)
+    def __eq__(self, other): return isinstance(other, ToyIdeal) and other._order is self._order and (other.class_exponent, other.scalar_exponent) == (self.class_exponent, self.scalar_exponent)
+
+class ToyFactored:
+    def __init__(self, a, b): self.a, self.b = a, b
+    def factors(self): return (("g", self.a), ("s", self.b))
+    def principal_ideal(self, order=None): return ToyIdeal(ORDER if order is None else order, self.a, self.b)
+    def verify_principal_ideal(self, ideal): return self.principal_ideal(ideal.ring()) == ideal
+
+class MatrixPresentation:
+    invariants = (4,)
+    order = 4
+    free_rank = 0
+    def verify(self, *_args): return True
+
+class EngineGroup:
+    proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+    factor_base_theorem = "Bach"
+    _presentation = MatrixPresentation()
+    def __init__(self): self._order = ORDER
+    def invariants(self): return (4,)
+    def gens_ideals(self): return (ToyIdeal(ORDER, 1, 0),)
+    def representative_ideal(self, coordinates): return ToyIdeal(ORDER, coordinates[0] % 4, 0)
+    def discrete_log(self, ideal):
+        coordinate = ideal.class_exponent % 4
+        quotient = ideal / self.representative_ideal((coordinate,))
+        return ((coordinate,), ToyFactored(quotient.class_exponent, quotient.scalar_exponent))
+    def verify(self): return self._presentation.verify()
+
+class Stage:
+    def __init__(self, name, state, details): self.name, self.state, self.details = name, state, details
+
+class EngineResult:
+    complete = True
+    proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+    algorithm = "buchmann-hecke"
+    diagnostics = {"factor_base_bound": 48, "relations": 7}
+    stages = (
+        Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
+        Stage("proof", "complete", {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH, "exact_relations": 7}),
+    )
+    def __init__(self): self._group = EngineGroup()
+    def class_group(self): return self._group
+
+ORDER = ToyOrder()
+C = class_group_from_engine_result(EngineResult())
+assert isinstance(C, IdealClassGroup)
+assert C.invariants() == (4,) and C.order() == 4
+assert C.gen().ideal() == ToyIdeal(ORDER, 1, 0)
+assert C.gen().order() == 4 and (C.gen()**4).is_one()
+assert C(C.gen().ideal()) == C.gen()
+arbitrary = ToyIdeal(ORDER, 9, 3)
+assert C(arbitrary) == C.gen()
+assert C.discrete_log(arbitrary).principal_witness.verify(ORDER)
+assert not C.is_principal(arbitrary, proof=False)
+principal = ToyIdeal(ORDER, 8, 3)
+answer = C.principality(principal)
+assert answer and answer.generator.factors() == (("g", 8), ("s", 3))
+try:
+    C.is_principal(principal, proof=True)
+    raise AssertionError("a GRH-conditional group answered proof=True")
+except ValueError:
+    pass
+
+payload = C.proof_payload()
+assert C.verify_proof_payload(payload)
+for key, value in (("theorem", "forged theorem"), ("bound", [47, 1]), ("relation_count", 6), ("analytic_index_one", False)):
+    corrupted = copy.deepcopy(payload)
+    corrupted[key] = value
+    assert not C.verify_proof_payload(corrupted)
+
+bad_result = EngineResult()
+bad_result._group._presentation.order = 8
+try:
+    class_group_from_engine_result(bad_result)
+    raise AssertionError("a presentation with the wrong order was accepted")
+except ArithmeticError:
+    pass
+
+print("engine-class-group-adapter-ok")
+`);
+  assert.equal(output, "engine-class-group-adapter-ok");
+});
+
+test("unconditional engine evidence replays its independent Minkowski stream", () => {
+  const output = run(String.raw`
+import copy
+
+from sagejs.number_fields.class_group_maps import class_group_from_engine_result
+from sagejs.number_fields.class_group_proof import EXACT_UNCONDITIONAL
+from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+from sagejs.number_fields.ideal_arithmetic import ideal_quotient
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "q")
+O = K.maximal_order()
+generator = K(2) / K(3)
+I = ideal_quotient(O.ideal(2), O.ideal(3))
+witness = FactoredNumberFieldElement.from_element(K, generator)
+
+class MatrixPresentation:
+    invariants = ()
+    order = 1
+    free_rank = 0
+    def verify(self, *_args): return True
+
+class EngineGroup:
+    proof_status = EXACT_UNCONDITIONAL
+    factor_base_theorem = "Minkowski ideal-class theorem"
+    _presentation = MatrixPresentation()
+    def __init__(self): self._order = O
+    def invariants(self): return ()
+    def gens_ideals(self): return ()
+    def representative_ideal(self, coordinates):
+        assert tuple(coordinates) == ()
+        return O.ideal(1)
+    def discrete_log(self, ideal):
+        assert ideal == I
+        return ((), witness)
+    def verify(self): return True
+
+class Stage:
+    def __init__(self, name, state, details): self.name, self.state, self.details = name, state, details
+
+class EngineResult:
+    complete = True
+    proof_status = EXACT_UNCONDITIONAL
+    algorithm = "minkowski"
+    diagnostics = {"factor_base_bound": 0, "relations": 0, "unconditional_prime_records": ()}
+    stages = (
+        Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
+        Stage("unconditional-proof", "complete", {"theorem": "Minkowski", "bound": 1, "prime_ideals": 0}),
+        Stage("proof", "complete", {"proof_status": EXACT_UNCONDITIONAL, "minkowski_primes": 0, "exact_relations": 0}),
+    )
+    def __init__(self): self._group = EngineGroup()
+    def class_group(self): return self._group
+
+C = class_group_from_engine_result(EngineResult())
+assert C.order() == 1 and C.invariants() == ()
+assert C(I).is_one()
+answer = C.principality(I)
+assert answer and answer.generator.evaluate() == generator and answer.verify(O)
+assert C.is_principal(I, proof=True)
+payload = C.proof_payload()
+assert payload["proof_status"] == EXACT_UNCONDITIONAL
+assert payload["bound"] == [1, 1] and payload["prime_records"] == []
+assert C.verify_proof_payload(payload)
+for path, value in (
+    (("theorem",), "forged Minkowski theorem"),
+    (("discriminant",), 2),
+    (("bound", 0), 2),
+    (("field_order_fingerprint", "discriminant"), 2),
+    (("saturation", "complete"), False),
+):
+    corrupted = copy.deepcopy(payload)
+    target = corrupted
+    for part in path[:-1]: target = target[part]
+    target[path[-1]] = value
+    assert not C.verify_proof_payload(corrupted)
+
+print("engine-unconditional-proof-ok")
+`);
+  assert.equal(output, "engine-unconditional-proof-ok");
+});
