@@ -110,6 +110,38 @@ def _content_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _saturation_diagnostic_summary(record: Any) -> dict[str, Any]:
+    """Return fixed-shape status without duplicating authenticated proof data."""
+    certificate = getattr(record, "_analytic_certificate", None)
+    workspace_diagnostics = getattr(certificate, "workspace_diagnostics", None)
+    raw_counters: Any = (
+        workspace_diagnostics() if callable(workspace_diagnostics) else None
+    )
+    counters: dict[str, int] = {}
+    if isinstance(raw_counters, dict):
+        for name in (
+            "provider_calls",
+            "regulator_cache_hits",
+            "finite_term_cache_hits",
+            "certificate_construction_calls",
+            "certificate_replay_calls",
+        ):
+            value = raw_counters.get(name)
+            if isinstance(value, int) and not isinstance(value, bool):
+                counters[name] = int(value)
+    complete = bool(getattr(record, "complete", False))
+    return {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete" if complete else "bounded",
+        "complete": complete,
+        "rigorous": bool(getattr(record, "rigorous", False)),
+        "index_bound": int(getattr(record, "index_bound", 1)),
+        "remaining_index_bound": int(getattr(record, "remaining_index_bound", 1)),
+        "content_sha256": str(getattr(record, "content_sha256", "")),
+        "certificate_workspace": counters,
+    }
+
+
 def _value(owner: Any, names: Sequence[str], default: Any = None) -> Any:
     for name in names:
         if hasattr(owner, name):
@@ -2704,7 +2736,7 @@ class ClassUnitGroupEngine:
                     invariants=presentation.invariants,
                     unit_group=unit_group,
                     diagnostics={
-                        "saturation_record": saturation_record.to_dict(),
+                        "saturation": _saturation_diagnostic_summary(saturation_record),
                     },
                 )
             group = self._class_group(
@@ -2758,7 +2790,7 @@ class ClassUnitGroupEngine:
                         "factor_base_size": len(factor_base),
                         "relations": len(collector.records),
                         "unconditional_prime_records": proof_records,
-                        "saturation_record": saturation_record.to_dict(),
+                        "saturation": _saturation_diagnostic_summary(saturation_record),
                         "proof_dependency_hashes": dict(self._proof_dependency_hashes),
                         "proof_progress": (
                             None
