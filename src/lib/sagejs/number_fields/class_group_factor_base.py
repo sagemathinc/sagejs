@@ -15,6 +15,7 @@ above the requested bound.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Iterator
 
 import sagejs.runtime as runtime
@@ -830,6 +831,95 @@ def _encode_element(value: Any) -> tuple[tuple[int, int], ...]:
     )
 
 
+def _integer_limb_bytes(value: int) -> int:
+    """Return the exact signed-magnitude payload bytes for one integer."""
+    return max(1, (abs(int(value)).bit_length() + 7) // 8)
+
+
+def _length_prefix_bytes(value: int) -> int:
+    """Return the bytes in an unsigned base-128 length prefix."""
+    return max(1, (int(value).bit_length() + 6) // 7)
+
+
+def _canonical_encoded_bytes(value: Any) -> int:
+    """Size one canonical tree using tagged lengths and integer limbs.
+
+    This deliberately avoids decimal conversion, whose temporary text can be
+    much larger than a coefficient's retained binary limbs.  The accounting
+    is deterministic across Python and JavaScript runtimes.
+    """
+    if value is None or isinstance(value, bool):
+        return 1
+    if isinstance(value, int):
+        limbs = _integer_limb_bytes(value)
+        return 2 + _length_prefix_bytes(limbs) + limbs
+    if isinstance(value, str):
+        payload = len(value.encode("utf-8"))
+        return 1 + _length_prefix_bytes(payload) + payload
+    if isinstance(value, (list, tuple)):
+        return (
+            1
+            + _length_prefix_bytes(len(value))
+            + sum(_canonical_encoded_bytes(entry) for entry in value)
+        )
+    if isinstance(value, dict):
+        return (
+            1
+            + _length_prefix_bytes(len(value))
+            + sum(
+                _canonical_encoded_bytes(key) + _canonical_encoded_bytes(entry)
+                for key, entry in sorted(value.items())
+            )
+        )
+    raise TypeError("unsupported canonical factor-base value: " + type(value).__name__)
+
+
+def _coefficient_height_bits(order: Any, bound_result: FactorBaseBound) -> int:
+    """Measure the exact input-presentation height used by preflight."""
+    field = order.number_field()
+    coefficients = getattr(field, "_defining_coefficients", None)
+    if coefficients is None:
+        coefficients = _prime_ideals._maximal.integral_equation_polynomial(field).list()
+    values = list(coefficients)
+    for row in getattr(order, "_basis_rows", ()):
+        values.extend(row)
+    scale = getattr(field, "_integral_equation_scale_cache", None)
+    if scale is not None:
+        values.append(scale)
+    maximum = max(
+        1,
+        abs(int(bound_result.discriminant)).bit_length(),
+        int(bound_result.bound).bit_length(),
+    )
+    for value in values:
+        numerator = int(getattr(value, "_numerator", value))
+        denominator = int(getattr(value, "_denominator", 1))
+        maximum = max(
+            maximum,
+            abs(numerator).bit_length(),
+            abs(denominator).bit_length(),
+        )
+    return maximum
+
+
+def _preflight_record_bytes(degree: int, coefficient_bits: int, bound: int) -> int:
+    """Conservatively price one encoded record from presentation height."""
+    prime_bits = max(1, int(bound).bit_length())
+    growth_bits = (
+        degree * degree * (coefficient_bits + prime_bits + max(1, degree.bit_length()))
+    )
+    rational_limb_bytes = 2 * max(1, (growth_bits + 7) // 8)
+    encoded_slots = degree * degree + degree + 8
+    return 192 + 32 * degree * degree + encoded_slots * rational_limb_bytes
+
+
+def _factor_base_record_memory_bytes(record: Any) -> int:
+    """Return checked retained bytes for one actual canonical record."""
+    degree = record.prime_ideal.ring().degree()
+    structural_bytes = 192 + 32 * degree * degree
+    return structural_bytes + _canonical_encoded_bytes(record.to_dict())
+
+
 def _two_generator_data(prime_ideal: Any) -> dict[str, Any] | None:
     order = prime_ideal.ring()
     prime = int(prime_ideal.rational_prime())
@@ -912,18 +1002,54 @@ def factor_base_prime_from_dict(
     if data.get("schema") != PRIME_RECORD_SCHEMA:
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
-    prime = int(data["prime"])
+
+    def exact_integer(value: Any, purpose: str) -> int:
+        if isinstance(value, (bool, float, str, bytes, bytearray)):
+            raise TypeError(purpose + " must be an exact integer")
+        try:
+            answer = int(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise TypeError(purpose + " must be an exact integer") from error
+        if answer != value:
+            raise TypeError(purpose + " must be an exact integer")
+        return answer
+
+    prime = _prime_ideals._normalize_prime(
+        exact_integer(data["prime"], "the factor-base rational prime")
+    )
+    residue_degree = exact_integer(data["f"], "the factor-base residue degree")
+    if residue_degree < 1 or residue_degree > order.degree():
+        raise ValueError("factor-base residue degree is out of range")
     fingerprint = tuple(
-        tuple((int(entry[0]), int(entry[1])) for entry in row)
+        tuple(
+            (
+                exact_integer(entry[0], "an HNF numerator"),
+                exact_integer(entry[1], "an HNF denominator"),
+            )
+            for entry in row
+        )
         for row in data["hnf_fingerprint"]
     )
-    decomposition = _prime_ideals.factor_rational_prime(order, prime)
-    for prime_ideal in decomposition.prime_ideals():
+    selected = _selective_dedekind_kummer(order, prime, {residue_degree})
+    if selected is None:
+        decomposition = _prime_ideals.factor_rational_prime(order, prime)
+        candidates = [
+            (prime_ideal, None) for prime_ideal in decomposition.prime_ideals()
+        ]
+    else:
+        candidates = selected
+    for prime_ideal, _producer_generator in candidates:
         if _encode_rows(prime_ideal._basis_rows) == fingerprint:
             two_generator = data.get("two_generator")
             second_generator = None
             if two_generator is not None:
-                if int(two_generator.get("rational_prime", 0)) != prime:
+                if (
+                    exact_integer(
+                        two_generator.get("rational_prime", 0),
+                        "the two-generator rational prime",
+                    )
+                    != prime
+                ):
                     raise ValueError("two-generator metadata has the wrong prime")
                 rows = _prime_ideals._decode_rows([two_generator["second_generator"]])
                 second_generator = _prime_ideals._nf_element_from_row(
@@ -934,11 +1060,15 @@ def factor_base_prime_from_dict(
                         "two-generator metadata does not reproduce the prime ideal"
                     )
             record = FactorBasePrimeRecord(
-                int(data["index"]),
+                exact_integer(data["index"], "the factor-base index"),
                 prime_ideal,
                 second_generator=second_generator,
             )
-            if record.to_dict() != data:
+            canonical_record = json.dumps(
+                record.to_dict(), sort_keys=True, separators=(",", ":")
+            )
+            canonical_input = json.dumps(data, sort_keys=True, separators=(",", ":"))
+            if canonical_record != canonical_input:
                 raise ValueError("factor-base prime metadata failed authentication")
             return record
     raise ValueError("factor-base fingerprint is not a prime above the stated p")
@@ -970,6 +1100,8 @@ class FactorBasePlan:
         self._factor_base_cache: Any = None
         self._selected_prime_cache: dict[int, dict[int, list[tuple[Any, Any]]]] = {}
         self._record_cache: dict[tuple[int, int, int, int], Any] = {}
+        self._record_memory_bytes: dict[tuple[int, int, int, int], int] = {}
+        self._retained_memory_bytes = 0
         maximum_degree = 0 if self.bound < 2 else self.bound.bit_length() - 1
         self.degree_filters = tuple(range(1, min(self.degree, maximum_degree) + 1))
         # There is one even prime and every other rational prime is odd.  This
@@ -977,8 +1109,15 @@ class FactorBasePlan:
         # halves the former all-integers estimate without a sieve allocation.
         self.estimated_rational_primes = 0 if self.bound < 2 else (self.bound + 1) // 2
         self.estimated_prime_ideals = self.degree * self.estimated_rational_primes
-        bytes_per_record = 192 + 32 * self.degree * self.degree
-        self.estimated_memory_bytes = self.estimated_prime_ideals * bytes_per_record
+        self.presentation_coefficient_bits = _coefficient_height_bits(
+            order, bound_result
+        )
+        self.estimated_record_bytes = _preflight_record_bytes(
+            self.degree, self.presentation_coefficient_bits, self.bound
+        )
+        self.estimated_memory_bytes = (
+            self.estimated_prime_ideals * self.estimated_record_bytes
+        )
         failures = []
         if self.bound > self.max_bound:
             failures.append("bound")
@@ -1005,6 +1144,8 @@ class FactorBasePlan:
             "estimates": {
                 "rational_primes_upper_bound": self.estimated_rational_primes,
                 "prime_ideals_upper_bound": self.estimated_prime_ideals,
+                "presentation_coefficient_bits": self.presentation_coefficient_bits,
+                "record_bytes_upper_bound": self.estimated_record_bytes,
                 "memory_bytes_upper_bound": self.estimated_memory_bytes,
             },
             "caps": {
@@ -1036,6 +1177,8 @@ class FactorBasePlan:
             "materialized_prime_ideals": (
                 len(factor_base) if factor_base is not None else len(self._record_cache)
             ),
+            "retained_memory_bytes": self._retained_memory_bytes,
+            "max_memory_bytes": self.max_memory_bytes,
         }
 
 
@@ -1191,7 +1334,21 @@ def prime_ideal_norm_stream(plan: FactorBasePlan) -> Iterator[FactorBasePrimeRec
         )
         if record.norm != descriptor[0]:
             raise ArithmeticError("factor-base norm descriptor failed replay")
+        record_bytes = _factor_base_record_memory_bytes(record)
+        remaining_bytes = plan.max_memory_bytes - plan._retained_memory_bytes
+        if record_bytes > remaining_bytes:
+            # Do not retain the new record or the just-materialized prime
+            # group.  Earlier authenticated records remain resumable and are
+            # already within the checked cap.
+            grouped.pop(prime, None)
+            raise ValueError(
+                "factor-base records exceed max_memory_bytes before retaining "
+                + "record "
+                + str(index)
+            )
         plan._record_cache[descriptor] = record
+        plan._record_memory_bytes[descriptor] = record_bytes
+        plan._retained_memory_bytes += record_bytes
         yield record
 
 
@@ -1200,9 +1357,6 @@ def build_factor_base(plan: FactorBasePlan) -> tuple[FactorBasePrimeRecord, ...]
     if plan._factor_base_cache is not None:
         return plan._factor_base_cache
     records = tuple(prime_ideal_norm_stream(plan))
-    estimated_record_bytes = 192 + 32 * plan.degree * plan.degree
-    if len(records) * estimated_record_bytes > plan.max_memory_bytes:
-        raise ValueError("exact factor-base records exceed max_memory_bytes")
     plan._factor_base_cache = records
     return records
 

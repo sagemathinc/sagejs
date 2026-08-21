@@ -262,12 +262,29 @@ class FactoredNumberFieldElement:
                 enclosure = runtime.flint_backend().qqbarLogAbsBall(
                     algebraic._native, prec
                 )
-                ball = analytic_module.RealBall.midpoint_radius(
-                    enclosure["midpoint"],
-                    enclosure["radius"],
-                    precision_bits=int(enclosure["precisionBits"]),
+                try:
+                    endpoint_encoding = enclosure["endpointEncoding"]
+                    lower_mantissa = enclosure["lowerMantissa"]
+                    lower_exponent = enclosure["lowerExponent"]
+                    upper_mantissa = enclosure["upperMantissa"]
+                    upper_exponent = enclosure["upperExponent"]
+                    precision_bits = enclosure["precisionBits"]
+                except (KeyError, TypeError) as error:
+                    raise ArithmeticError(
+                        "FLINT returned an incomplete logarithm enclosure"
+                    ) from error
+                if endpoint_encoding != "mantissa-times-two-power":
+                    raise ArithmeticError(
+                        "FLINT did not return exact outward dyadic endpoints"
+                    )
+                ball = analytic_module.RealBall.dyadic_endpoints(
+                    lower_mantissa,
+                    lower_exponent,
+                    upper_mantissa,
+                    upper_exponent,
+                    precision_bits=int(precision_bits),
                     rigorous=True,
-                    source="FLINT qqbar/Arb logarithmic embedding",
+                    source="FLINT qqbar/Arb outward dyadic logarithmic embedding",
                 )
                 weight = exponent * int(embedding.log_weight)
                 result[index] = result[index] + ball * analytic_module.RealBall(

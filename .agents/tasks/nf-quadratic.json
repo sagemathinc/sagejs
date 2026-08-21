@@ -6,10 +6,11 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Audit and close integrated quadratic public-routing gaps, including alternate presentations, ideal maps, algorithm validation, imaginary-route regression coverage, and honest large-discriminant capability bounds",
-  "base_commit": "2927be79ed98f5fb6c2514a4a744e5ca34daee6b",
+  "objective": "Complete public quadratic routing with Minkowski triviality certificates, narrow class groups, rigorous regulators, imaginary ideal maps, and benchmarked Buchmann-Hecke crossover policies",
+  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
   "claims": [
     "src/lib/sagejs/number_fields/quadratic_class_units.py",
+    "src/baselib/number_fields.py",
     "test/number-field-quadratic-class-units.cjs",
     "test/fixtures/number-field-quadratic-class-units.json"
   ],
@@ -33,7 +34,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/number-field-quadratic-class-units.cjs",
     "pnpm test:baselib:strict",
+    "node --expose-gc packages/flint/test/test.cjs",
     "pnpm test:native"
   ],
   "runs": [
@@ -76,22 +79,52 @@
       "commit": "b8b3a498a7e73b0e85f977fdb11786a7720ed304",
       "workspace_fingerprint": "a6290400ed2eb643d11725b8721275828a130aeaae2c0837cf90b3d7a7f89503",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-quadratic-class-units.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.652,
+      "started_at": "2026-08-21T10:15:48.723Z",
+      "commit": "67e4f0f9ae5b132c025a40fc07a318e93a605ec8",
+      "workspace_fingerprint": "6f06a190a26ea7161641e4978227b5c8b35d37364f23656d3c6dcc6fe689d28e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.853,
+      "started_at": "2026-08-21T10:16:08.417Z",
+      "commit": "67e4f0f9ae5b132c025a40fc07a318e93a605ec8",
+      "workspace_fingerprint": "6f06a190a26ea7161641e4978227b5c8b35d37364f23656d3c6dcc6fe689d28e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc packages/flint/test/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.143,
+      "started_at": "2026-08-21T10:16:40.994Z",
+      "commit": "67e4f0f9ae5b132c025a40fc07a318e93a605ec8",
+      "workspace_fingerprint": "6f06a190a26ea7161641e4978227b5c8b35d37364f23656d3c6dcc6fe689d28e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Audited the integrated degree-two routes and extended the strict quadratic backend with Sage-compatible algorithm validation, a presentation-independent canonical ideal-lattice map, a public-field continued-fraction unit adapter, an exact preflight cost plan, a default 5,000,000-candidate enumeration cap, and deterministic unsigned-64-bit primality acceleration. Focused public coverage now preserves the imaginary D=-23 route under two presentations, checks real D=60 standard/translated presentations and ideal maps, transports D=12 units exactly, and verifies a fundamental discriminant above signed 64-bit range is represented exactly but rejected before infeasible exhaustive enumeration. The focused suite and strict 208-module gate pass on linux-x64.",
+    "summary": "Completed the public degree-two routes on main 786fb703. Ordinary class_group/class_number now use an exact Minkowski-bound short circuit for D=12 and the imaginary D=-3/-4 cases, with a replayable certificate and no factor-base or reduced-form materialization. NumberField.narrow_class_group exposes exact real quadratic narrow groups and returns the ordinary group for imaginary fields. Real quadratic regulator(prec) now returns the shared rigorous Arb-backed RegulatorEnclosure at the requested arbitrary precision rather than the old binary64 wrapper. The canonical ideal-lattice inverse map now covers imaginary integral, inverse, and scalar-fractional ideals under standard and translated presentations. Inspectable routing plans keep certified imaginary FLINT forms through the measured |D|=1,000,000,007 pilot and real forms through the exact 5,000,000-candidate resource cap; larger ordinary auto requests select the shared Buchmann-Hecke relation engine, while forced form requests fail preflight. Focused public tests, strict 208-module checks, and the relevant native FLINT qqbar/Arb test pass on linux-x64.",
     "risks": [
-      "The quadratic-forms class-group algorithm remains exhaustive O(D), materializes every reduced form, and defaults to max_enumeration_checks=5,000,000. It now fails before enumeration when the exact candidate estimate exceeds the cap; buchmann-hecke and minkowski are recognized but explicitly unavailable.",
-      "Deterministic primality acceleration removes the signed-word restriction through unsigned 64-bit inputs. Fundamental-discriminant validation beyond that range remains exact trial division and can be slow; a mature arbitrary-precision factoring backend is still needed for uniformly fast huge unit computations.",
-      "The shared public baselib has not been edited in this lane. Its real class-group inverse ideal map still computes coordinates in the defining maximal-order basis, so translated presentations need the supplied canonical-basis routing patch; imaginary-backend inverse ideal coercion remains explicitly unsupported.",
-      "The offline Magma command is recorded but no Magma executable was available in this workspace; the committed numerical corpus was executed against SageMath 10.9.post30/PARI 2.18.1.",
+      "Large real narrow class groups remain explicitly limited to exhaustive reduced forms and the default 5,000,000 candidate checks. The shared Buchmann-Hecke engine presents ordinary classes only, so exceeding the narrow cap returns an inspectable unsupported plan and fails before work; no narrow relation backend is claimed.",
+      "Specialized real quadratic forms still materialize all reduced forms and do not implement compact real NUCOMP. This is not an ordinary large-discriminant completion blocker because auto routes beyond the cap to Buchmann-Hecke, but users explicitly forcing quadratic-forms are capability-bounded.",
+      "The rigorous public regulator depends on the existing native FLINT qqbar/Arb adapter. Its focused native test passes here, but platforms without that optional adapter do not have an arbitrary-precision dynamic fallback in this lane.",
+      "Fundamental-discriminant validation beyond unsigned 64-bit range remains exact trial division and can be slow; the class-group auto route itself avoids exhaustive forms, but enormous real unit computations still need a mature arbitrary-precision factoring backend for uniformly fast validation.",
+      "QuadraticClassRoutingPlan.proof_status certifies the deterministic routing/cap decision, not the eventual proof label of a Buchmann-Hecke result. The general engine retains ownership of unconditional versus GRH-conditional proof semantics.",
       "Only linux-x64 was executed in this lane; native Windows x64, Linux arm64, and macOS arm64 validation remains a central integration responsibility."
     ],
     "next_steps": [
-      "Integration lane should route real quadratic unit_group to real_quadratic_field_unit_group and forward algorithm/max_steps; route real class_group/class_number algorithm and resource limits to real_quadratic_class_group while retaining the existing imaginary backend.",
-      "Integration lane should express ideals in the canonical [1, (D%2+sqrt(D))/2] basis and call quadratic_form_from_ideal_lattice. This changes translated D=60 ideal (2, a) from the invalid form (2,0,-8) to (2,2,-7).",
-      "Run pnpm test:changed, pnpm test:native, and exact-revision four-platform CI after merging all number-field lanes. The local test:changed attempt was stopped during generated-runtime stage 4 after focused and strict gates passed; an earlier build passed stages 1-6 but native-kernel publication did not finish promptly.",
-      "Oracle lane may replace the recorded Magma command metadata with an executed Magma receipt when a licensed executable is available."
+      "Run pnpm test:changed, the complete pnpm test:native matrix, and exact-revision four-platform CI after integration. Local builds repeatedly passed stages 1-6; stage 7 native-kernel publication was stopped after it did not finish promptly, while the focused packages/flint exact-algebra test passed.",
+      "If large narrow quadratic groups become a product requirement, extend the general relation engine with oriented/narrow presentations rather than raising the exhaustive cap.",
+      "If environments without native FLINT must support high-precision regulators, add a rigorously rounded dynamic transcendental fallback and differential-test it against Arb."
     ]
   }
 }

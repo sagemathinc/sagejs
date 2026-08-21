@@ -2,13 +2,16 @@
 
 The context is intentionally representation-neutral.  Producer lanes may put
 ordinary JSON-safe records or objects exposing `to_dict()` into its component
-slots.  Checkpoints detach and canonically serialize those records, authenticate
-the complete payload, and can replay them through caller-supplied decoders and
-verifiers.
+slots. Checkpoints detach and canonically serialize those records, bind the
+complete payload with a content-integrity hash, and can replay them through
+caller-supplied decoders and verifiers. The unkeyed hash detects corruption;
+mathematical component replay, not the hash, is the trust boundary for
+untrusted checkpoints.
 """
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -20,6 +23,11 @@ from sagejs.number_fields.factored_elements import field_fingerprint
 CONTEXT_SERIALIZATION_SCHEMA = "sagejs.number-fields.class-unit-context.v1"
 PROOF_STATE_SERIALIZATION_SCHEMA = "sagejs.number-fields.class-unit-proof-state.v1"
 RESOURCE_LIMITS_SERIALIZATION_SCHEMA = "sagejs.number-fields.class-unit-limits.v1"
+MINKOWSKI_PROGRESS_RECORD_SCHEMA = (
+    "sagejs.number-fields.minkowski-proof-progress-record.v1"
+)
+MINKOWSKI_PROOF_PARTITION_SCHEMA = "sagejs.number-fields.minkowski-proof-partition.v1"
+MINKOWSKI_PROOF_PROGRESS_SCHEMA = "sagejs.number-fields.minkowski-proof-progress.v1"
 
 PROOF_LABELS = (
     "exact-unconditional",
@@ -635,7 +643,7 @@ class ClassUnitGroupContext:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a deterministic authenticated checkpoint."""
+        """Return a deterministic content-integrity-bound checkpoint."""
         body = self._body_dict()
         body["content_sha256"] = _content_hash(body)
         return body
@@ -783,6 +791,556 @@ class ClassUnitProgressEvent:
         }
 
 
+def _checked_sha256(value: Any, purpose: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(purpose + " must be a lowercase SHA-256 digest")
+    if any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(purpose + " must be a lowercase SHA-256 digest")
+    return value
+
+
+def _checked_exact_bound(value: Any) -> tuple[int, int]:
+    if isinstance(value, (list, tuple)):
+        if len(value) != 2:
+            raise ValueError("an exact Minkowski bound must be a rational pair")
+        numerator = value[0]
+        denominator = value[1]
+    else:
+        numerator = value
+        denominator = 1
+    if (
+        isinstance(numerator, bool)
+        or not isinstance(numerator, int)
+        or isinstance(denominator, bool)
+        or not isinstance(denominator, int)
+    ):
+        raise TypeError("an exact Minkowski bound must contain integers")
+    if numerator < 0 or denominator < 1:
+        raise ValueError("an exact Minkowski bound must be nonnegative")
+    left = numerator
+    right = denominator
+    while right:
+        left, right = right, left % right
+    divisor = abs(left)
+    return (numerator // divisor, denominator // divisor)
+
+
+def _checked_dependency_hashes(value: Any) -> dict[str, str]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise TypeError("Minkowski proof dependency hashes must be a dictionary")
+    answer: dict[str, str] = {}
+    for name in sorted(value):
+        if not isinstance(name, str) or name == "":
+            raise TypeError("Minkowski proof dependency names must be nonempty strings")
+        answer[name] = _checked_sha256(
+            value[name], "Minkowski proof dependency " + name
+        )
+    return answer
+
+
+def _proof_record_index(record: Any) -> int:
+    index = getattr(record, "index", None)
+    if callable(index):
+        index = index()
+    if index is None:
+        payload = canonical_component(record)
+        if not isinstance(payload, dict):
+            raise TypeError("a Minkowski proof record must serialize to a dictionary")
+        index = payload.get("index")
+    return _checked_nonnegative(index, "Minkowski proof record index")
+
+
+class MinkowskiProofProgressRecord:
+    """Authenticated evidence for one prime in a Minkowski proof stream."""
+
+    def __init__(self, index: int, prime_fingerprint: Any, evidence: Any) -> None:
+        self.index = _checked_nonnegative(index, "Minkowski proof record index")
+        self._prime_fingerprint = canonical_component(prime_fingerprint)
+        self._evidence = evidence
+        canonical_component(evidence)
+        runtime.object.freeze(self)
+
+    @property
+    def prime_fingerprint(self) -> Any:
+        return canonical_component(self._prime_fingerprint)
+
+    @property
+    def evidence(self) -> Any:
+        return self._evidence
+
+    def _body_dict(self) -> dict[str, Any]:
+        return {
+            "schema": MINKOWSKI_PROGRESS_RECORD_SCHEMA,
+            "index": self.index,
+            "prime_fingerprint": canonical_component(self._prime_fingerprint),
+            "evidence": canonical_component(self._evidence),
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._body_dict()
+        body["content_sha256"] = _content_hash(body)
+        return body
+
+    def stable_hash(self) -> str:
+        return self.to_dict()["content_sha256"]
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        evidence_decoder: Any = None,
+        evidence_verifier: Any = None,
+    ) -> MinkowskiProofProgressRecord:
+        if not isinstance(data, dict):
+            raise TypeError("a Minkowski proof record must be a dictionary")
+        if data.get("schema") != MINKOWSKI_PROGRESS_RECORD_SCHEMA:
+            raise ValueError("unsupported Minkowski proof record schema")
+        body = dict(data)
+        expected = body.pop("content_sha256", None)
+        if not isinstance(expected, str) or _content_hash(body) != expected:
+            raise ValueError("Minkowski proof record content hash mismatch")
+        if evidence_decoder is not None and not callable(evidence_decoder):
+            raise TypeError("a Minkowski evidence decoder must be callable")
+        evidence = data.get("evidence")
+        if evidence_decoder is not None:
+            evidence = evidence_decoder(evidence)
+        answer = cls(data["index"], data.get("prime_fingerprint"), evidence)
+        if answer.to_dict() != data:
+            raise ValueError("a Minkowski proof record is not canonically encoded")
+        if evidence_verifier is not None:
+            if not callable(evidence_verifier):
+                raise TypeError("a Minkowski evidence verifier must be callable")
+            if (
+                evidence_verifier(
+                    answer.evidence,
+                    answer.index,
+                    answer.prime_fingerprint,
+                )
+                is not True
+            ):
+                raise ValueError("Minkowski proof-record evidence verification failed")
+        return answer
+
+
+class MinkowskiProofPartition:
+    """One immutable resumable prefix of a deterministic proof partition."""
+
+    def __init__(
+        self,
+        plan_sha256: str,
+        partition_index: int,
+        partition_count: int,
+        total_items: int,
+        records: Iterable[Any] = (),
+    ) -> None:
+        self.plan_sha256 = _checked_sha256(plan_sha256, "Minkowski proof plan hash")
+        checked_count = _checked_positive_optional(
+            partition_count, "Minkowski proof partition count"
+        )
+        if checked_count is None:
+            raise AssertionError("a proof partition count cannot be None")
+        self.partition_count: int = checked_count
+        self.partition_index = _checked_nonnegative(
+            partition_index, "Minkowski proof partition index"
+        )
+        if self.partition_index >= self.partition_count:
+            raise ValueError("a Minkowski proof partition index is out of range")
+        self.total_items = _checked_nonnegative(
+            total_items, "Minkowski proof item count"
+        )
+        values = tuple(records)
+        assigned = tuple(
+            range(self.partition_index, self.total_items, self.partition_count)
+        )
+        if len(values) > len(assigned):
+            raise ValueError("a Minkowski proof partition has too many records")
+        for position, record in enumerate(values):
+            canonical_component(record)
+            if _proof_record_index(record) != assigned[position]:
+                raise ValueError(
+                    "Minkowski proof records must be the assigned prefix in order"
+                )
+        self._records = values
+        self._assigned_indices = assigned
+        runtime.object.freeze(self)
+
+    @property
+    def records(self) -> tuple[Any, ...]:
+        return self._records
+
+    @property
+    def assigned_indices(self) -> tuple[int, ...]:
+        return self._assigned_indices
+
+    @property
+    def pending_indices(self) -> tuple[int, ...]:
+        return self._assigned_indices[len(self._records) :]
+
+    @property
+    def complete(self) -> bool:
+        return len(self._records) == len(self._assigned_indices)
+
+    def append(self, record: Any) -> MinkowskiProofPartition:
+        if self.complete:
+            raise ValueError("a complete Minkowski proof partition cannot grow")
+        if _proof_record_index(record) != self.pending_indices[0]:
+            raise ValueError("a Minkowski proof record is not the next assigned item")
+        return MinkowskiProofPartition(
+            self.plan_sha256,
+            self.partition_index,
+            self.partition_count,
+            self.total_items,
+            self._records + (record,),
+        )
+
+    def merge(self, other: MinkowskiProofPartition) -> MinkowskiProofPartition:
+        if not isinstance(other, MinkowskiProofPartition):
+            raise TypeError("only Minkowski proof partitions can be merged")
+        identity = (
+            self.plan_sha256,
+            self.partition_index,
+            self.partition_count,
+            self.total_items,
+        )
+        other_identity = (
+            other.plan_sha256,
+            other.partition_index,
+            other.partition_count,
+            other.total_items,
+        )
+        if identity != other_identity:
+            raise ValueError("Minkowski proof partitions belong to different plans")
+        overlap = min(len(self._records), len(other._records))
+        for index in range(overlap):
+            if canonical_component(self._records[index]) != canonical_component(
+                other._records[index]
+            ):
+                raise ValueError("Minkowski proof partitions diverge on one record")
+        return self if len(self._records) >= len(other._records) else other
+
+    def _body_dict(self) -> dict[str, Any]:
+        return {
+            "schema": MINKOWSKI_PROOF_PARTITION_SCHEMA,
+            "plan_sha256": self.plan_sha256,
+            "partition_index": self.partition_index,
+            "partition_count": self.partition_count,
+            "total_items": self.total_items,
+            "records": canonical_component(self._records),
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._body_dict()
+        body["content_sha256"] = _content_hash(body)
+        return body
+
+    def stable_hash(self) -> str:
+        return self.to_dict()["content_sha256"]
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        record_decoder: Any = None,
+    ) -> MinkowskiProofPartition:
+        if not isinstance(data, dict):
+            raise TypeError("a Minkowski proof partition must be a dictionary")
+        if data.get("schema") != MINKOWSKI_PROOF_PARTITION_SCHEMA:
+            raise ValueError("unsupported Minkowski proof partition schema")
+        body = dict(data)
+        expected = body.pop("content_sha256", None)
+        if not isinstance(expected, str) or _content_hash(body) != expected:
+            raise ValueError("Minkowski proof partition content hash mismatch")
+        if record_decoder is not None and not callable(record_decoder):
+            raise TypeError("a Minkowski proof-record decoder must be callable")
+        raw_records = data.get("records")
+        if not isinstance(raw_records, list):
+            raise TypeError("Minkowski proof partition records must be a list")
+        records = [
+            value if record_decoder is None else record_decoder(value)
+            for value in raw_records
+        ]
+        answer = cls(
+            data["plan_sha256"],
+            data["partition_index"],
+            data["partition_count"],
+            data["total_items"],
+            records,
+        )
+        if answer.to_dict() != data:
+            raise ValueError("a Minkowski proof partition is not canonically encoded")
+        return answer
+
+
+class MinkowskiProofProgress:
+    """Authenticated deterministic coverage of a parallel Minkowski proof."""
+
+    def __init__(
+        self,
+        bound: Any,
+        prime_fingerprints: Iterable[Any],
+        *,
+        partition_count: int = 1,
+        theorem: str = "Minkowski ideal-class theorem",
+        dependency_hashes: dict[str, str] | None = None,
+        partitions: Iterable[MinkowskiProofPartition] | None = None,
+    ) -> None:
+        if not isinstance(theorem, str) or "Minkowski" not in theorem:
+            raise ValueError("a Minkowski proof plan must name its theorem")
+        count = _checked_positive_optional(
+            partition_count, "Minkowski proof partition count"
+        )
+        if count is None:
+            raise AssertionError("a proof partition count cannot be None")
+        fingerprints = canonical_component(tuple(prime_fingerprints))
+        if not isinstance(fingerprints, list):
+            raise AssertionError("canonical fingerprints must be a list")
+        self.theorem = theorem
+        self.bound = _checked_exact_bound(bound)
+        self.partition_count = count
+        self._prime_fingerprints = fingerprints
+        self._dependency_hashes = _checked_dependency_hashes(dependency_hashes)
+        self.plan_sha256 = _content_hash(self._plan_dict())
+        if partitions is None:
+            partition_values = tuple(
+                MinkowskiProofPartition(
+                    self.plan_sha256,
+                    index,
+                    self.partition_count,
+                    len(self._prime_fingerprints),
+                )
+                for index in range(self.partition_count)
+            )
+        else:
+            partition_values = tuple(partitions)
+        if len(partition_values) != self.partition_count:
+            raise ValueError("a Minkowski proof plan lost a partition")
+        for index, partition in enumerate(partition_values):
+            if not isinstance(partition, MinkowskiProofPartition):
+                raise TypeError("Minkowski proof partitions have the wrong type")
+            if (
+                partition.plan_sha256 != self.plan_sha256
+                or partition.partition_index != index
+                or partition.partition_count != self.partition_count
+                or partition.total_items != len(self._prime_fingerprints)
+            ):
+                raise ValueError("a Minkowski proof partition has stale plan metadata")
+            for record in partition.records:
+                record_index = _proof_record_index(record)
+                record_fingerprint = getattr(record, "prime_fingerprint", None)
+                if callable(record_fingerprint):
+                    record_fingerprint = record_fingerprint()
+                if record_fingerprint is not None and canonical_component(
+                    record_fingerprint
+                ) != canonical_component(self._prime_fingerprints[record_index]):
+                    raise ValueError("a proof record belongs to another prime ideal")
+        self._partitions = partition_values
+        runtime.object.freeze(self)
+
+    @classmethod
+    def create(
+        cls,
+        bound: Any,
+        prime_fingerprints: Iterable[Any],
+        *,
+        partition_count: int = 1,
+        theorem: str = "Minkowski ideal-class theorem",
+        dependency_hashes: dict[str, str] | None = None,
+    ) -> MinkowskiProofProgress:
+        return cls(
+            bound,
+            prime_fingerprints,
+            partition_count=partition_count,
+            theorem=theorem,
+            dependency_hashes=dependency_hashes,
+        )
+
+    @property
+    def prime_fingerprints(self) -> tuple[Any, ...]:
+        return tuple(canonical_component(self._prime_fingerprints))
+
+    @property
+    def dependency_hashes(self) -> dict[str, str]:
+        return dict(self._dependency_hashes)
+
+    @property
+    def partitions(self) -> tuple[MinkowskiProofPartition, ...]:
+        return self._partitions
+
+    @property
+    def completed_items(self) -> int:
+        return sum(len(partition.records) for partition in self._partitions)
+
+    @property
+    def total_items(self) -> int:
+        return len(self._prime_fingerprints)
+
+    @property
+    def complete(self) -> bool:
+        return all(partition.complete for partition in self._partitions)
+
+    def pending_indices(self, partition_index: int | None = None) -> tuple[int, ...]:
+        if partition_index is None:
+            values: list[int] = []
+            for partition in self._partitions:
+                values.extend(partition.pending_indices)
+            return tuple(sorted(values))
+        index = _checked_nonnegative(partition_index, "Minkowski proof partition index")
+        if index >= self.partition_count:
+            raise ValueError("a Minkowski proof partition index is out of range")
+        return self._partitions[index].pending_indices
+
+    def record(self, index: int, record: Any) -> MinkowskiProofProgress:
+        record_index = _proof_record_index(record)
+        checked_index = _checked_nonnegative(index, "Minkowski proof record index")
+        if record_index != checked_index or checked_index >= self.total_items:
+            raise ValueError("a Minkowski proof record has the wrong global index")
+        partition_index = checked_index % self.partition_count
+        partitions = list(self._partitions)
+        partitions[partition_index] = partitions[partition_index].append(record)
+        return MinkowskiProofProgress(
+            self.bound,
+            self._prime_fingerprints,
+            partition_count=self.partition_count,
+            theorem=self.theorem,
+            dependency_hashes=self._dependency_hashes,
+            partitions=partitions,
+        )
+
+    def merge_partition(
+        self, partition: MinkowskiProofPartition
+    ) -> MinkowskiProofProgress:
+        if not isinstance(partition, MinkowskiProofPartition):
+            raise TypeError("only a Minkowski proof partition can be merged")
+        if partition.partition_index >= self.partition_count:
+            raise ValueError("a Minkowski proof partition index is out of range")
+        partitions = list(self._partitions)
+        partitions[partition.partition_index] = partitions[
+            partition.partition_index
+        ].merge(partition)
+        return MinkowskiProofProgress(
+            self.bound,
+            self._prime_fingerprints,
+            partition_count=self.partition_count,
+            theorem=self.theorem,
+            dependency_hashes=self._dependency_hashes,
+            partitions=partitions,
+        )
+
+    def merge(self, other: MinkowskiProofProgress) -> MinkowskiProofProgress:
+        if not isinstance(other, MinkowskiProofProgress):
+            raise TypeError("only Minkowski proof progress records can be merged")
+        if self.plan_sha256 != other.plan_sha256:
+            raise ValueError("Minkowski proof progress belongs to another plan")
+        answer = self
+        for partition in other.partitions:
+            answer = answer.merge_partition(partition)
+        return answer
+
+    def _plan_dict(self) -> dict[str, Any]:
+        return {
+            "theorem": self.theorem,
+            "bound": list(self.bound),
+            "prime_fingerprints": canonical_component(self._prime_fingerprints),
+            "dependency_hashes": dict(self._dependency_hashes),
+            "partition_count": self.partition_count,
+        }
+
+    def matches_plan(
+        self,
+        bound: Any,
+        prime_fingerprints: Iterable[Any],
+        *,
+        partition_count: int = 1,
+        theorem: str = "Minkowski ideal-class theorem",
+        dependency_hashes: dict[str, str] | None = None,
+    ) -> bool:
+        try:
+            expected = MinkowskiProofProgress.create(
+                bound,
+                prime_fingerprints,
+                partition_count=partition_count,
+                theorem=theorem,
+                dependency_hashes=dependency_hashes,
+            )
+            return self.plan_sha256 == expected.plan_sha256
+        except (TypeError, ValueError):
+            return False
+
+    def verify_records(self, record_verifier: Any) -> bool:
+        if not callable(record_verifier):
+            raise TypeError("a Minkowski proof-record verifier must be callable")
+        for partition in self._partitions:
+            for record in partition.records:
+                index = _proof_record_index(record)
+                if (
+                    record_verifier(
+                        record,
+                        index,
+                        canonical_component(self._prime_fingerprints[index]),
+                    )
+                    is not True
+                ):
+                    return False
+        return True
+
+    def _body_dict(self) -> dict[str, Any]:
+        body = {
+            "schema": MINKOWSKI_PROOF_PROGRESS_SCHEMA,
+            **self._plan_dict(),
+            "plan_sha256": self.plan_sha256,
+            "partitions": [partition.to_dict() for partition in self._partitions],
+            "completed_items": self.completed_items,
+            "complete": self.complete,
+        }
+        return body
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._body_dict()
+        body["content_sha256"] = _content_hash(body)
+        return body
+
+    def stable_hash(self) -> str:
+        return self.to_dict()["content_sha256"]
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        record_decoder: Any = None,
+        record_verifier: Any = None,
+    ) -> MinkowskiProofProgress:
+        if not isinstance(data, dict):
+            raise TypeError("Minkowski proof progress must be a dictionary")
+        if data.get("schema") != MINKOWSKI_PROOF_PROGRESS_SCHEMA:
+            raise ValueError("unsupported Minkowski proof-progress schema")
+        body = dict(data)
+        expected = body.pop("content_sha256", None)
+        if not isinstance(expected, str) or _content_hash(body) != expected:
+            raise ValueError("Minkowski proof-progress content hash mismatch")
+        raw_partitions = data.get("partitions")
+        if not isinstance(raw_partitions, list):
+            raise TypeError("Minkowski proof partitions must be a list")
+        partitions = [
+            MinkowskiProofPartition.from_dict(value, record_decoder)
+            for value in raw_partitions
+        ]
+        answer = cls(
+            data.get("bound"),
+            data.get("prime_fingerprints", ()),
+            partition_count=data["partition_count"],
+            theorem=data["theorem"],
+            dependency_hashes=data.get("dependency_hashes"),
+            partitions=partitions,
+        )
+        if answer.to_dict() != data:
+            raise ValueError("Minkowski proof progress is not canonically encoded")
+        if record_verifier is not None and not answer.verify_records(record_verifier):
+            raise ValueError("Minkowski proof-record replay verification failed")
+        return answer
+
+
 def _checkpoint_byte_limit(value: Any, name: str) -> int:
     if value is None:
         return DEFAULT_MAX_CHECKPOINT_BYTES
@@ -798,22 +1356,142 @@ def _checkpoint_text(payload: dict[str, Any], maximum_bytes: int) -> str:
     return text
 
 
-def _write_checkpoint_path(path: str, text: str, content_hash: str) -> None:
+def _sync_not_supported(error: OSError) -> bool:
+    unsupported = {
+        getattr(errno, "EINVAL", -1),
+        getattr(errno, "ENOSYS", -1),
+        getattr(errno, "ENOTSUP", -1),
+        getattr(errno, "EOPNOTSUPP", -1),
+    }
+    return getattr(error, "errno", None) in unsupported
+
+
+def _sync_parent_directory(path: str) -> None:
+    if os.name == "nt":
+        return
+    native_open = getattr(os, "open", None)
+    native_close = getattr(os, "close", None)
+    sync = getattr(os, "fsync", None)
+    read_only = getattr(os, "O_RDONLY", None)
+    if (
+        not callable(native_open)
+        or not callable(native_close)
+        or not callable(sync)
+        or not isinstance(read_only, int)
+    ):
+        return
+    flags = read_only
+    directory_flag = getattr(os, "O_DIRECTORY", 0)
+    close_on_exec = getattr(os, "O_CLOEXEC", 0)
+    if isinstance(directory_flag, int):
+        flags |= directory_flag
+    if isinstance(close_on_exec, int):
+        flags |= close_on_exec
+    directory = os.path.dirname(os.path.abspath(path)) or "."
+    try:
+        descriptor = native_open(directory, flags)
+    except OSError as error:
+        if _sync_not_supported(error):
+            return
+        raise
+    try:
+        try:
+            sync(descriptor)
+        except OSError as error:
+            if not _sync_not_supported(error):
+                raise
+    finally:
+        native_close(descriptor)
+
+
+def _checkpoint_temporary_path(path: str) -> str:
+    directory = os.path.dirname(path) or "."
+    basename = os.path.basename(path)
+    token = os.urandom(16).hex()
+    return os.path.join(directory, "." + basename + ".tmp-" + token)
+
+
+def _open_exclusive_checkpoint(path: str) -> int:
+    native_open = getattr(os, "open", None)
+    write_only = getattr(os, "O_WRONLY", None)
+    create = getattr(os, "O_CREAT", None)
+    exclusive = getattr(os, "O_EXCL", None)
+    if (
+        callable(native_open)
+        and isinstance(write_only, int)
+        and isinstance(create, int)
+        and isinstance(exclusive, int)
+    ):
+        flags = write_only | create | exclusive
+        no_follow = getattr(os, "O_NOFOLLOW", 0)
+        close_on_exec = getattr(os, "O_CLOEXEC", 0)
+        binary = getattr(os, "O_BINARY", 0)
+        for optional_flag in (no_follow, close_on_exec, binary):
+            if isinstance(optional_flag, int):
+                flags |= optional_flag
+        descriptor = native_open(path, flags, 0o600)
+        if isinstance(descriptor, bool) or not isinstance(descriptor, int):
+            raise TypeError("os.open() did not return a file descriptor")
+        return descriptor
+    raise NotImplementedError(
+        "secure checkpoint writes require descriptor-level exclusive creation"
+    )
+
+
+def _write_checkpoint_descriptor(descriptor: int, data: bytes) -> None:
+    write = getattr(os, "write", None)
+    sync = getattr(os, "fsync", None)
+    if not callable(write) or not callable(sync):
+        raise NotImplementedError(
+            "secure checkpoint writes require descriptor write and fsync"
+        )
+    offset = 0
+    while offset < len(data):
+        written = write(descriptor, data[offset:])
+        if isinstance(written, bool) or not isinstance(written, int) or written <= 0:
+            raise OSError(errno.EIO, "checkpoint descriptor write made no progress")
+        if written > len(data) - offset:
+            raise OSError(errno.EIO, "checkpoint descriptor write over-reported bytes")
+        offset += written
+    sync(descriptor)
+
+
+def _write_checkpoint_path(path: str, text: str) -> None:
     if path == "":
         raise ValueError("a checkpoint destination path cannot be empty")
-    temporary = path + ".tmp-" + str(os.getpid()) + "-" + content_hash[:16]
+    temporary = None
+    descriptor = None
     try:
-        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
-            handle.write("\n")
-            handle.flush()
-        os.replace(temporary, path)
-    except Exception:
+        for _attempt in range(128):
+            candidate = _checkpoint_temporary_path(path)
+            try:
+                descriptor = _open_exclusive_checkpoint(candidate)
+            except FileExistsError:
+                continue
+            temporary = candidate
+            break
+        if temporary is None:
+            raise FileExistsError(
+                "could not reserve a unique checkpoint temporary file"
+            )
+        if descriptor is None:
+            raise AssertionError("a reserved checkpoint lost its descriptor")
         try:
-            if os.path.exists(temporary):
-                os.remove(temporary)
-        except Exception:
-            pass
+            _write_checkpoint_descriptor(descriptor, (text + "\n").encode("utf-8"))
+        finally:
+            os.close(descriptor)
+            descriptor = None
+        os.replace(temporary, path)
+        temporary = None
+        _sync_parent_directory(path)
+    except BaseException:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
         raise
 
 
@@ -843,11 +1521,7 @@ def save_class_unit_checkpoint(
     content_hash = payload["content_sha256"]
     text = _checkpoint_text(payload, maximum)
     if isinstance(destination, str):
-        _write_checkpoint_path(
-            path=destination,
-            text=text,
-            content_hash=content_hash,
-        )
+        _write_checkpoint_path(path=destination, text=text)
     else:
         save = getattr(destination, "save", None)
         if callable(save):
@@ -904,7 +1578,7 @@ def load_class_unit_checkpoint(
     component_verifiers: dict[str, Any] | None = None,
     max_checkpoint_bytes: int | None = None,
 ) -> ClassUnitGroupContext:
-    """Load, authenticate, decode, and independently verify a checkpoint."""
+    """Load, integrity-check, decode, and independently verify a checkpoint."""
     maximum = _checkpoint_byte_limit(max_checkpoint_bytes, "checkpoint byte limit")
     payload = _read_checkpoint_source(source, maximum)
     return ClassUnitGroupContext.from_dict(
@@ -1026,6 +1700,129 @@ class ClassUnitCheckpoint:
     def restore_proof_progress(self) -> Any:
         return self.context.proof_progress
 
+    def restore_minkowski_proof_progress(
+        self,
+        *,
+        bound: Any,
+        prime_fingerprints: Iterable[Any],
+        partition_count: int = 1,
+        theorem: str = "Minkowski ideal-class theorem",
+        dependency_hashes: dict[str, str] | None = None,
+        record_decoder: Any = None,
+        record_verifier: Any = None,
+    ) -> MinkowskiProofProgress | None:
+        """Restore proof progress only when it matches the requested exact plan."""
+        value = self.context.proof_progress
+        if value is None:
+            return None
+        if isinstance(value, dict):
+            value = MinkowskiProofProgress.from_dict(
+                value,
+                record_decoder=record_decoder,
+                record_verifier=record_verifier,
+            )
+            self.context.set_proof_progress(value)
+        if not isinstance(value, MinkowskiProofProgress):
+            raise TypeError("checkpoint proof progress is not a Minkowski proof plan")
+        if not value.matches_plan(
+            bound,
+            prime_fingerprints,
+            partition_count=partition_count,
+            theorem=theorem,
+            dependency_hashes=dependency_hashes,
+        ):
+            raise ValueError("checkpoint Minkowski proof plan differs from this run")
+        if record_verifier is not None and not value.verify_records(record_verifier):
+            raise ValueError("Minkowski proof-record replay verification failed")
+        return value
+
+    def begin_minkowski_proof(
+        self,
+        bound: Any,
+        prime_fingerprints: Iterable[Any],
+        *,
+        partition_count: int = 1,
+        theorem: str = "Minkowski ideal-class theorem",
+        dependency_hashes: dict[str, str] | None = None,
+        force: bool = True,
+    ) -> MinkowskiProofProgress:
+        """Create and durably record one deterministic Minkowski proof plan."""
+        if self.context.proof_progress is not None:
+            raise ValueError("checkpoint already contains proof progress")
+        self.check_cancelled("unconditional-proof", {"state": "planning"})
+        progress = MinkowskiProofProgress.create(
+            bound,
+            prime_fingerprints,
+            partition_count=partition_count,
+            theorem=theorem,
+            dependency_hashes=dependency_hashes,
+        )
+        self.context.set_proof_progress(progress)
+        self.save(force=force)
+        return progress
+
+    def _checkpoint_minkowski_progress(
+        self,
+        progress: MinkowskiProofProgress,
+        updated: MinkowskiProofProgress,
+        details: Any,
+        force: bool,
+    ) -> MinkowskiProofProgress:
+        current = self.context.proof_progress
+        if (
+            current is not progress
+            and canonical_component(current) != progress.to_dict()
+        ):
+            raise ValueError("Minkowski proof progress is stale for this checkpoint")
+        event_details = canonical_component({} if details is None else details)
+        if not isinstance(event_details, dict):
+            raise TypeError("Minkowski checkpoint details must be a dictionary")
+        event_details.update(
+            {
+                "completed": updated.completed_items,
+                "total": updated.total_items,
+                "plan_sha256": updated.plan_sha256,
+            }
+        )
+        self.check_cancelled("unconditional-proof", event_details)
+        self.context.set_proof_progress(updated)
+        try:
+            self.stage("unconditional-proof", "checkpoint", event_details)
+        finally:
+            # A callback-triggered cancellation or exception cannot discard the
+            # exact prime record which was just accepted.
+            self.save(force=force)
+        return updated
+
+    def checkpoint_minkowski_proof_prime(
+        self,
+        progress: MinkowskiProofProgress,
+        index: int,
+        record: Any,
+        *,
+        details: Any = None,
+        force: bool = True,
+    ) -> MinkowskiProofProgress:
+        """Append and atomically checkpoint one exact proof-prime record."""
+        if not isinstance(progress, MinkowskiProofProgress):
+            raise TypeError("Minkowski proof progress has the wrong type")
+        updated = progress.record(index, record)
+        return self._checkpoint_minkowski_progress(progress, updated, details, force)
+
+    def checkpoint_minkowski_proof_partition(
+        self,
+        progress: MinkowskiProofProgress,
+        partition: MinkowskiProofPartition,
+        *,
+        details: Any = None,
+        force: bool = True,
+    ) -> MinkowskiProofProgress:
+        """Merge and atomically checkpoint one deterministic worker prefix."""
+        if not isinstance(progress, MinkowskiProofProgress):
+            raise TypeError("Minkowski proof progress has the wrong type")
+        updated = progress.merge_partition(partition)
+        return self._checkpoint_minkowski_progress(progress, updated, details, force)
+
     def capture(self, payload: dict[str, Any]) -> None:
         """Capture one exact resumable state update from a producer engine."""
         if not isinstance(payload, dict):
@@ -1142,6 +1939,12 @@ __all__ = [
     "ClassUnitProgressEvent",
     "ClassUnitProofState",
     "DEFAULT_MAX_CHECKPOINT_BYTES",
+    "MINKOWSKI_PROGRESS_RECORD_SCHEMA",
+    "MINKOWSKI_PROOF_PARTITION_SCHEMA",
+    "MINKOWSKI_PROOF_PROGRESS_SCHEMA",
+    "MinkowskiProofPartition",
+    "MinkowskiProofProgress",
+    "MinkowskiProofProgressRecord",
     "PROOF_LABELS",
     "PROOF_STATE_SERIALIZATION_SCHEMA",
     "RESOURCE_LIMITS_SERIALIZATION_SCHEMA",

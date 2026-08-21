@@ -34,6 +34,12 @@ from typing import Any, Iterable, Sequence
 DEFAULT_SCREEN_PRIMES = (46337, 65521, 65519)
 ACCUMULATOR_SCHEMA = "sagejs.number-fields/class-relation-matrix-v1"
 PRESENTATION_SCHEMA = "sagejs.number-fields/class-relation-presentation-v1"
+PRESENTATION_POLICY_SCHEMA = (
+    "sagejs.number-fields/deferred-relation-presentation-policy-v1"
+)
+PRESENTATION_DECISION_SCHEMA = (
+    "sagejs.number-fields/deferred-relation-presentation-decision-v1"
+)
 
 
 class RelationMatrixError(ValueError):
@@ -344,6 +350,390 @@ class RelationInsertion:
     @property
     def adds_modular_rank(self) -> bool:
         return self.modular.independent_somewhere
+
+
+def _relation_prefix_fingerprint(
+    rows: Sequence[SparseRelationRow], row_count: int
+) -> tuple[int, int]:
+    """Return a deterministic non-certificate binding for one relation prefix."""
+    first = 1469598103934665603
+    second = 1099511628211
+    mask = 2**64 - 1
+    for row_index, row in enumerate(rows[:row_count]):
+        first ^= (row_index + 1) * 0x9E3779B185EBCA87
+        first = (first * 1099511628211) & mask
+        second = (second + row.nnz + 0x517CC1B727220A95) & mask
+        for column, exponent in row.entries:
+            encoded = (
+                (column + 1) * 0x94D049BB133111EB
+                + (exponent & mask) * 0xBF58476D1CE4E5B9
+            ) & mask
+            first = ((first ^ encoded) * 1099511628211) & mask
+            second = ((second ^ (encoded >> 1)) * 0x9E3779B185EBCA87) & mask
+    return first, second
+
+
+class PresentationDecision:
+    """Immutable signal describing whether deferred exact extraction is due."""
+
+    def __init__(
+        self,
+        *,
+        should_extract: bool,
+        required_level: str,
+        reason: str,
+        row_count: int,
+        pending_rows: int,
+        batch_size: int,
+        modular_ranks: Sequence[int],
+        full_column_rank_certified: bool,
+        stale: bool,
+    ) -> None:
+        if required_level not in ("hnf", "snf"):
+            raise RelationMatrixError("required_level must be hnf or snf")
+        if not isinstance(reason, str) or reason == "":
+            raise RelationMatrixError("presentation decision reason must be nonempty")
+        self.should_extract = bool(should_extract)
+        self.required_level = required_level
+        self.reason = reason
+        self.row_count = _nonnegative_integer(row_count, "decision row_count")
+        self.pending_rows = _nonnegative_integer(pending_rows, "decision pending_rows")
+        self.batch_size = _nonnegative_integer(batch_size, "decision batch_size")
+        self.modular_ranks = tuple(
+            _nonnegative_integer(rank, "decision modular rank")
+            for rank in modular_ranks
+        )
+        self.full_column_rank_certified = bool(full_column_rank_certified)
+        self.stale = bool(stale)
+
+    @property
+    def needs_exact_hnf(self) -> bool:
+        return self.should_extract
+
+    @property
+    def needs_exact_snf(self) -> bool:
+        return self.should_extract and self.required_level == "snf"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": PRESENTATION_DECISION_SCHEMA,
+            "should_extract": self.should_extract,
+            "required_level": self.required_level,
+            "reason": self.reason,
+            "row_count": self.row_count,
+            "pending_rows": self.pending_rows,
+            "batch_size": self.batch_size,
+            "modular_ranks": list(self.modular_ranks),
+            "full_column_rank_certified": self.full_column_rank_certified,
+            "stale": self.stale,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Any) -> PresentationDecision:
+        if (
+            not isinstance(value, dict)
+            or value.get("schema") != PRESENTATION_DECISION_SCHEMA
+        ):
+            raise RelationMatrixError("unsupported presentation-decision schema")
+        expected = {
+            "schema",
+            "should_extract",
+            "required_level",
+            "reason",
+            "row_count",
+            "pending_rows",
+            "batch_size",
+            "modular_ranks",
+            "full_column_rank_certified",
+            "stale",
+        }
+        if set(value) != expected:
+            raise RelationMatrixError(
+                "presentation-decision payload has unknown fields"
+            )
+        return cls(
+            should_extract=value["should_extract"],
+            required_level=value["required_level"],
+            reason=value["reason"],
+            row_count=value["row_count"],
+            pending_rows=value["pending_rows"],
+            batch_size=value["batch_size"],
+            modular_ranks=value["modular_ranks"],
+            full_column_rank_certified=value["full_column_rank_certified"],
+            stale=value["stale"],
+        )
+
+
+class PresentationUpdate:
+    """One policy decision and its optional newly extracted presentation."""
+
+    def __init__(
+        self,
+        decision: PresentationDecision,
+        presentation: RelationPresentation | None,
+    ) -> None:
+        if presentation is not None and not decision.should_extract:
+            raise RelationMatrixError("a deferred decision cannot carry a presentation")
+        self.decision = decision
+        self.presentation = presentation
+
+    @property
+    def extracted(self) -> bool:
+        return self.presentation is not None
+
+
+class DeferredPresentationPolicy:
+    """Stateful batching policy for expensive exact relation presentations.
+
+    Modular insertion remains incremental in `RelationMatrixAccumulator`.
+    This policy is queried after an admitted relation or at an explicit
+    consumer boundary.  It requests the first exact presentation only after a
+    modular full-column-rank certificate, then batches later exact refreshes.
+    `force=True` is reserved for finalization/checkpoint boundaries and never
+    bypasses the configured full-rank requirement.
+    """
+
+    def __init__(
+        self,
+        column_count: int,
+        *,
+        batch_size: int | None = None,
+        require_full_rank: bool = True,
+    ) -> None:
+        columns = _nonnegative_integer(column_count, "column_count")
+        if batch_size is None:
+            batch = max(8, min(256, (columns + 7) // 8))
+        else:
+            batch = _nonnegative_integer(batch_size, "batch_size")
+            if batch == 0:
+                raise RelationMatrixError("batch_size must be positive")
+        self.column_count = columns
+        self.batch_size = batch
+        self.require_full_rank = bool(require_full_rank)
+        self.last_exact_row_count = 0
+        self.last_exact_level: str | None = None
+        self.last_exact_rank: int | None = None
+        self.last_exact_prefix_fingerprint: tuple[int, int] | None = None
+        self.extraction_count = 0
+
+    def _check_accumulator(self, accumulator: RelationMatrixAccumulator) -> None:
+        if not isinstance(accumulator, RelationMatrixAccumulator):
+            raise RelationMatrixError(
+                "presentation policy requires a RelationMatrixAccumulator"
+            )
+        if accumulator.column_count != self.column_count:
+            raise RelationMatrixError(
+                "presentation policy and accumulator column counts differ"
+            )
+        if self.last_exact_row_count > accumulator.row_count:
+            raise RelationMatrixError(
+                "presentation policy is ahead of the relation accumulator"
+            )
+        if self.last_exact_prefix_fingerprint is not None:
+            actual = _relation_prefix_fingerprint(
+                accumulator.rows, self.last_exact_row_count
+            )
+            if actual != self.last_exact_prefix_fingerprint:
+                raise RelationMatrixError(
+                    "the previously extracted relation prefix has changed"
+                )
+
+    def decision(
+        self,
+        accumulator: RelationMatrixAccumulator,
+        *,
+        required_level: str = "snf",
+        force: bool = False,
+    ) -> PresentationDecision:
+        """Signal an exact update without performing any dense conversion."""
+        self._check_accumulator(accumulator)
+        if required_level not in ("hnf", "snf"):
+            raise RelationMatrixError("required_level must be hnf or snf")
+        pending = accumulator.row_count - self.last_exact_row_count
+        full_rank = accumulator.full_rank_plausible
+        stale = pending > 0
+        if self.require_full_rank and not full_rank:
+            should_extract = False
+            reason = "awaiting-modular-full-rank"
+        elif self.last_exact_level is None:
+            should_extract = accumulator.row_count > 0 or force
+            reason = "first-full-rank" if should_extract else "empty-matrix"
+        elif required_level == "snf" and self.last_exact_level == "hnf":
+            should_extract = True
+            reason = "upgrade-to-smith"
+        elif not stale:
+            should_extract = False
+            reason = "exact-presentation-current"
+        elif force:
+            should_extract = True
+            reason = "forced-finalization"
+        elif pending >= self.batch_size:
+            should_extract = True
+            reason = "pending-batch-ready"
+        else:
+            should_extract = False
+            reason = "batching-new-relations"
+        return PresentationDecision(
+            should_extract=should_extract,
+            required_level=required_level,
+            reason=reason,
+            row_count=accumulator.row_count,
+            pending_rows=pending,
+            batch_size=self.batch_size,
+            modular_ranks=accumulator.modular_ranks,
+            full_column_rank_certified=full_rank,
+            stale=stale,
+        )
+
+    def note_exact_presentation(
+        self,
+        accumulator: RelationMatrixAccumulator,
+        presentation: RelationPresentation,
+        *,
+        extracted_level: str = "snf",
+    ) -> None:
+        """Authenticate and record a presentation of the current exact rows."""
+        self._check_accumulator(accumulator)
+        if extracted_level not in ("hnf", "snf"):
+            raise RelationMatrixError("extracted_level must be hnf or snf")
+        if not isinstance(presentation, RelationPresentation):
+            raise RelationMatrixError("exact update requires a RelationPresentation")
+        if presentation.column_count != accumulator.column_count:
+            raise RelationMatrixError("exact presentation has the wrong column count")
+        if presentation.relation_rows != tuple(accumulator.rows):
+            raise RelationMatrixError(
+                "exact presentation does not match current relations"
+            )
+        if not presentation.verify():
+            raise RelationMatrixError("exact presentation replay failed")
+        if self.require_full_rank and presentation.rank != self.column_count:
+            raise RelationMatrixError("exact presentation is not full column rank")
+        self.last_exact_row_count = accumulator.row_count
+        self.last_exact_level = extracted_level
+        self.last_exact_rank = presentation.rank
+        self.last_exact_prefix_fingerprint = _relation_prefix_fingerprint(
+            accumulator.rows, accumulator.row_count
+        )
+        self.extraction_count += 1
+
+    def extract_if_due(
+        self,
+        accumulator: RelationMatrixAccumulator,
+        *,
+        required_level: str = "snf",
+        force: bool = False,
+        backend: str = "auto",
+    ) -> PresentationUpdate:
+        """Perform at most one exact extraction when the current signal is due."""
+        decision = self.decision(
+            accumulator, required_level=required_level, force=force
+        )
+        if not decision.should_extract:
+            return PresentationUpdate(decision, None)
+        presentation = accumulator.presentation(
+            backend=backend, require_full_rank=self.require_full_rank
+        )
+        # Current extraction produces both exact forms and all SNF transforms,
+        # even when an HNF consumer triggered it. Recording the actual level
+        # prevents an unnecessary upgrade extraction at the same revision.
+        self.note_exact_presentation(accumulator, presentation, extracted_level="snf")
+        return PresentationUpdate(decision, presentation)
+
+    def verify_against(self, accumulator: RelationMatrixAccumulator) -> bool:
+        try:
+            self._check_accumulator(accumulator)
+        except RelationMatrixError:
+            return False
+        if self.last_exact_level is None:
+            return (
+                self.last_exact_row_count == 0
+                and self.last_exact_rank is None
+                and self.last_exact_prefix_fingerprint is None
+                and self.extraction_count == 0
+            )
+        return (
+            self.last_exact_rank is not None
+            and self.last_exact_prefix_fingerprint is not None
+            and self.extraction_count > 0
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": PRESENTATION_POLICY_SCHEMA,
+            "columns": self.column_count,
+            "batch_size": self.batch_size,
+            "require_full_rank": self.require_full_rank,
+            "last_exact_row_count": self.last_exact_row_count,
+            "last_exact_level": self.last_exact_level,
+            "last_exact_rank": self.last_exact_rank,
+            "last_exact_prefix_fingerprint": (
+                None
+                if self.last_exact_prefix_fingerprint is None
+                else list(self.last_exact_prefix_fingerprint)
+            ),
+            "extraction_count": self.extraction_count,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+        accumulator: RelationMatrixAccumulator | None = None,
+    ) -> DeferredPresentationPolicy:
+        if (
+            not isinstance(value, dict)
+            or value.get("schema") != PRESENTATION_POLICY_SCHEMA
+        ):
+            raise RelationMatrixError("unsupported presentation-policy schema")
+        expected = {
+            "schema",
+            "columns",
+            "batch_size",
+            "require_full_rank",
+            "last_exact_row_count",
+            "last_exact_level",
+            "last_exact_rank",
+            "last_exact_prefix_fingerprint",
+            "extraction_count",
+        }
+        if set(value) != expected:
+            raise RelationMatrixError("presentation-policy payload has unknown fields")
+        answer = cls(
+            value["columns"],
+            batch_size=value["batch_size"],
+            require_full_rank=value["require_full_rank"],
+        )
+        answer.last_exact_row_count = _nonnegative_integer(
+            value["last_exact_row_count"], "last_exact_row_count"
+        )
+        level = value["last_exact_level"]
+        if level is not None and level not in ("hnf", "snf"):
+            raise RelationMatrixError("last_exact_level must be hnf, snf, or None")
+        answer.last_exact_level = level
+        rank = value["last_exact_rank"]
+        answer.last_exact_rank = (
+            None if rank is None else _nonnegative_integer(rank, "last_exact_rank")
+        )
+        fingerprint = value["last_exact_prefix_fingerprint"]
+        if fingerprint is None:
+            answer.last_exact_prefix_fingerprint = None
+        else:
+            if not isinstance(fingerprint, list) or len(fingerprint) != 2:
+                raise RelationMatrixError(
+                    "last_exact_prefix_fingerprint must contain two integers"
+                )
+            answer.last_exact_prefix_fingerprint = (
+                _nonnegative_integer(fingerprint[0], "prefix fingerprint"),
+                _nonnegative_integer(fingerprint[1], "prefix fingerprint"),
+            )
+        answer.extraction_count = _nonnegative_integer(
+            value["extraction_count"], "extraction_count"
+        )
+        if accumulator is not None and not answer.verify_against(accumulator):
+            raise RelationMatrixError(
+                "presentation policy does not replay against the relation accumulator"
+            )
+        return answer
 
 
 class RelationMatrixAccumulator:
@@ -1215,9 +1605,14 @@ def modular_rank_and_pivots(
 __all__ = [
     "ACCUMULATOR_SCHEMA",
     "DEFAULT_SCREEN_PRIMES",
+    "DeferredPresentationPolicy",
     "ModularInsertion",
     "ModularPivotScreen",
+    "PRESENTATION_DECISION_SCHEMA",
+    "PRESENTATION_POLICY_SCHEMA",
     "PRESENTATION_SCHEMA",
+    "PresentationDecision",
+    "PresentationUpdate",
     "RelationInsertion",
     "RelationMatrixAccumulator",
     "RelationMatrixError",

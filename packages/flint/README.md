@@ -330,6 +330,12 @@ bootstrap uses the same composite after establishing the compiler once for all
 native packages, and publishes production kernels only after every generated
 adapter exists.
 
+The repository-level `pnpm build` also reconciles an already-installed direct
+FLINT addon before reconciling generated FFI adapters. A source-identity
+manifest beside `sagejs_flint.node` makes changes under `packages/flint/src`
+or `packages/flint/include` rebuild only the addon; the expensive FLINT/GMP
+dependency prefix is left intact.
+
 The portable boundary is intentional: an arm64 ffpoly/smalljac port can be
 developed, benchmarked against the fallback, and proposed upstream without
 changing the public elliptic-curve API or blocking core Apple Silicon support.

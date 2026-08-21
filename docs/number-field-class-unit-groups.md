@@ -89,7 +89,7 @@ unit as a product avoids an unnecessary coefficient explosion. Use
 `unit.factors()` to inspect the product, `unit.norm()` and
 `unit.principal_ideal()` for exact operations, and `unit.evaluate()` only when
 an expanded field element is genuinely needed. `unit.to_dict()` is a
-canonical, authenticated payload and `unit.stable_hash()` is its content hash.
+canonical payload and `unit.stable_hash()` is its content-integrity hash.
 
 `result.regulator()` returns a `RegulatorEnclosure`, not a bare decimal. Its
 `lower`, `upper`, `precision_bits`, `rigorous`, and `proof_status` fields record
@@ -120,18 +120,22 @@ ordinary call. Process-level callers should still enforce wall-clock and
 memory limits outside the runtime.
 
 The successful result's `context` supports `context.checkpoint()` and
-`context.checkpoint_hash()`. Checkpoints are canonical authenticated data tied
-to the exact field, maximal order, discriminant, proof state, resource policy,
-seed, and component states. `ClassUnitGroupContext.from_dict()` verifies those
-bindings and accepts component-specific decoders and verifiers.
+`context.checkpoint_hash()`. Checkpoints are canonical data tied to the exact
+field, maximal order, discriminant, proof state, resource policy, seed, and
+component states. Their unkeyed hash detects accidental corruption; it does
+not authenticate who created a file. `ClassUnitGroupContext.from_dict()`
+verifies the bindings and accepts component-specific decoders and verifiers,
+whose exact mathematical replay is the trust boundary for untrusted input.
 
 For an in-progress computation, pass `checkpoint=path` (or a detached sink)
-to save authenticated stage snapshots and `resume_from=path` (or a detached
+to save integrity-bound stage snapshots and `resume_from=path` (or a detached
 source) to continue the same deterministic search. `progress=callback`
 receives structured events, and `max_checkpoint_bytes` bounds untrusted input.
-Filesystem replacement is atomic, but concurrent writers are not coordinated
-and directory contents are not explicitly `fsync`ed; applications needing
-stronger crash durability should provide their own sink.
+Stage snapshots carry the same content-integrity hash. Filesystem publication
+uses an exclusive same-directory file, flushes and `fsync`s the original file
+descriptor, atomically replaces the destination, and `fsync`s the parent
+directory where supported. Concurrent writers are not coordinated; callers
+that need such coordination should provide their own sink or external lock.
 
 ## Oracle provenance and benchmark method
 
@@ -143,6 +147,14 @@ principality, rigorous 100/200-bit regulator intervals, invalid inputs, and
 bounded hard cases. The developer harness is
 `bench/class-unit-groups/run-oracles.cjs`.
 
+The companion fixture
+`test/fixtures/number-field-class-unit-high-degree-oracles.json` covers
+`x^n-x-1` in degrees 6 through 10. It records signatures, discriminants,
+equation-order indices, class and unit invariants, regulators, and prime
+splitting through each exact Minkowski bound. Sage/PARI, Magma, and Hecke
+0.40.0 independently agree on the normalized data in conditional-GRH and
+unconditional modes. The one-sample timings are provenance, not gates.
+
 The oracle programs are compatibility tools, not runtime dependencies, and no
 upstream source is copied into Sage.js:
 
@@ -150,7 +162,7 @@ upstream source is copied into Sage.js:
 |---|---|---|
 | SageMath with PARI | Independent normalized oracle and Arb regulator capture | GPL-compatible Sage distribution; PARI/GP is GPL-2.0-or-later |
 | Magma 2.18-5 | Independent black-box class, unit, map, and regulator oracle | Proprietary; invoked only from a licensed local installation |
-| Hecke.jl / Oscar.jl | Optional third implementation family | Hecke BSD-2-Clause; Oscar GPL-3.0-or-later |
+| Hecke.jl / Oscar.jl | Independent high-degree oracle; separately instantiated compatibility check | Hecke BSD-2-Clause; Oscar GPL-3.0-or-later |
 
 Correctness checks compare stable mathematical projections and ignore timing.
 Each external system starts once per tier and constructs fresh fields for each

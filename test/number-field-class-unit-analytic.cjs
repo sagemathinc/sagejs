@@ -166,7 +166,48 @@ refined = certified_regulator_enclosure(
 )
 assert calls == [64, 128]
 assert refined.precision_history == (64, 128)
+assert refined.precision_bits == 128
 assert len(refined.determinant_widths) == 2
+
+# A narrow high-precision refinement must not be rounded back to the initial
+# precision before taking the determinant.
+precision_calls = []
+def precision_intersection_provider(precision):
+    precision_calls.append(precision)
+    return [[RealBall.midpoint_radius(
+        "0.5", RationalEndpoint(1, 2 ** (precision - 4)),
+        precision_bits=precision,
+    )]]
+precision_refined = certified_regulator_enclosure(
+    precision_intersection_provider, 1, precision_bits=16,
+    absolute_tolerance_bits=40, maximum_precision_bits=128,
+)
+assert precision_calls == [16, 32, 64]
+assert precision_refined.precision_bits == 64
+assert precision_refined.ball.radius() <= RationalEndpoint(1, 2**40)
+
+dyadic = RealBall.dyadic_endpoints("-3", "-4", "5", "-5", precision_bits=80)
+assert dyadic.lower == RationalEndpoint(-3, 16)
+assert dyadic.upper == RationalEndpoint(5, 32)
+
+for numerator, denominator in ((1.5, 1), (True, 1), (1, 2.0), (1, False)):
+    try:
+        RationalEndpoint(numerator, denominator)
+        raise AssertionError("a truncating rational endpoint was accepted")
+    except TypeError:
+        pass
+
+for bad_value in ("01", "+1", "-0", "1.0", True, 1.0):
+    try:
+        RealBall.dyadic_endpoints(bad_value, "0", "1", "0")
+        raise AssertionError("a noncanonical dyadic mantissa was accepted")
+    except (TypeError, ValueError):
+        pass
+    try:
+        RealBall.dyadic_endpoints("0", bad_value, "1", "0")
+        raise AssertionError("a noncanonical dyadic exponent was accepted")
+    except (TypeError, ValueError):
+        pass
 
 def inconsistent_provider(precision):
     if precision == 64:

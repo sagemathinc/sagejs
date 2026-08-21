@@ -29,6 +29,8 @@ from sagejs.number_fields.class_group_relations import (
     exact_lll_reduce,
     factor_ideal_over_base,
     initial_rational_prime_relations,
+    minkowski_lll_lattice,
+    plan_automorphism_orbits,
     verify_relation_record,
 )
 
@@ -149,6 +151,40 @@ assert screen.add([0, 1, 1]) == (True, 1)
 assert screen.rank == 2 and screen.missing_pivots() == (2,)
 
 assert exact_lll_reduce([[1, 1], [1, -1]]) == [[1, 1], [1, -1]]
+unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
+assert unit_plan.verify(O.ideal(1))
+assert unit_plan.signature == (2, 0)
+assert [list(row) for row in unit_plan.transform] == case["minkowski_transform"]
+assert [list(row) for row in unit_plan.exact_rows] == case["minkowski_exact_rows"]
+assert minkowski_lll_lattice(O.ideal(1), precision=80).transform == unit_plan.transform
+
+# Differential oracle: SageMath's documented Minkowski embedding of
+# Q[x]/(x^3+2), including sqrt(2)-weighted real and imaginary coordinates.
+cubic_case = fixture["nonreal_cubic_minkowski"]
+C = NumberField(R(cubic_case["polynomial_low_to_high"]), "b")
+CO = C.maximal_order()
+cubic_plan = minkowski_lll_lattice(CO.ideal(1), precision=128)
+scale = float(2 ** cubic_plan.scale_bits)
+actual_embedding = [
+    [float(value) / scale for value in row] for row in cubic_plan.embedded_rows
+]
+for actual_row, expected_row in zip(
+    actual_embedding, cubic_case["rows"], strict=True
+):
+    for actual, expected in zip(actual_row, expected_row, strict=True):
+        assert abs(actual - expected) < cubic_case["absolute_tolerance"]
+assert cubic_plan.verify(CO.ideal(1))
+
+orbit_plan = plan_automorphism_orbits(K, factor_base)
+assert not orbit_plan.available
+assert orbit_plan.strategy == "independent-minkowski-relation-search"
+assert not any(orbit_plan.detected.values())
+try:
+    orbit_plan.derive(initial[0].record)
+    raise AssertionError("unavailable automorphism orbits produced a relation")
+except NotImplementedError:
+    pass
+
 search_one = LLLRelationSearch(
     collector, seed=case["search_seed"], max_candidates_per_ideal=10
 )
@@ -159,6 +195,38 @@ short_one = [str(value) for value in search_one.short_elements(O.ideal(1))]
 short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
 assert short_one == short_two
 assert short_one[:len(case["short_element_prefix"])] == case["short_element_prefix"]
+
+# Degenerate random settings retain the deterministic reduced-basis prefix and
+# terminate without consuming the replayable PRNG stream.
+for zero_setting in (
+    {"random_terms": 0, "coefficient_bound": 2},
+    {"random_terms": 2, "coefficient_bound": 0},
+):
+    finite = LLLRelationSearch(
+        collector,
+        seed=case["search_seed"],
+        max_candidates_per_ideal=10,
+        random_terms=zero_setting["random_terms"],
+        coefficient_bound=zero_setting["coefficient_bound"],
+    )
+    initial_random_state = finite.state.random_state
+    finite_elements = finite.short_elements(O.ideal(1))
+    assert len(finite_elements) == 4
+    assert finite.state.random_state == initial_random_state
+
+# A pathological reducer that returns only zero rows can never yield an
+# accepted random candidate, so it exercises the independent attempt bound.
+bounded = LLLRelationSearch(
+    collector,
+    seed=1,
+    max_candidates_per_ideal=10,
+    random_terms=2,
+    coefficient_bound=1,
+    basis_reducer=lambda _rows: [[0, 0], [0, 0]],
+)
+bounded_elements = bounded.short_elements(O.ideal(1))
+assert not bounded_elements
+assert bounded.last_random_attempts == 8 * (10 - 4)
 
 first_ideal, first_row = search_one.random_factor_base_ideal()
 checkpoint = search_one.state.to_dict()
@@ -179,6 +247,10 @@ search = LLLRelationSearch(
 found = search.search_ideal(O.ideal(1), source_row=[0, 0], stop_after=2)
 assert len(found) == 2
 assert all(item.record.verify(O, factor_base)["certified"] for item in found)
+assert all(
+    item.record.provenance["algorithm"] == "minkowski-fixed-point-lll"
+    for item in found
+)
 assert search.state.candidates_tested == 2
 assert search.state.relations_admitted == 2
 
@@ -194,6 +266,9 @@ print(json.dumps({
     "rank": collector.rank_screen.rank,
     "source_row": list(source_relation.record.row),
     "short_prefix": short_one[:len(case["short_element_prefix"])],
+    "minkowski_transform": [list(row) for row in unit_plan.transform],
+    "cubic_embedding": actual_embedding,
+    "automorphism_plan": orbit_plan.to_dict(),
     "search_rows": [list(item.record.row) for item in found],
     "replay_ms": replay_ms,
 }, sort_keys=True))

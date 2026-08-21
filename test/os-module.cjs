@@ -2,9 +2,11 @@
 
 const assert = require("node:assert/strict");
 const {
+  lstatSync,
   mkdtempSync,
   mkdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -50,6 +52,31 @@ async function testNodeHost() {
       "del os.environ['SAGEJS_OS_TEST']",
       "print(os.getenv('SAGEJS_OS_TEST') is None)",
       "print(os.cpu_count() > 0, os.getpid() > 0, len(os.urandom(13)))",
+      "descriptor_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_BINARY",
+      "descriptor = os.open('exclusive.bin', descriptor_flags, 0o600)",
+      "print(os.write(descriptor, b'descriptor-data'))",
+      "os.fsync(descriptor)",
+      "os.close(descriptor)",
+      "try:",
+      "    os.open('exclusive.bin', descriptor_flags, 0o600)",
+      "except FileExistsError as error:",
+      "    print(type(error).__name__, error.errno)",
+      "if os.name != 'nt':",
+      "    writeFile = open('descriptor-victim.txt', 'w')",
+      "    writeFile.write('victim-data')",
+      "    writeFile.close()",
+      "    descriptor = os.open('detached.tmp', descriptor_flags, 0o600)",
+      "    os.unlink('detached.tmp')",
+      "    os.symlink('descriptor-victim.txt', 'detached.tmp')",
+      "    print(os.write(descriptor, b'unlinked-data'))",
+      "    os.fsync(descriptor)",
+      "    os.close(descriptor)",
+      "    victim = open('descriptor-victim.txt', 'r')",
+      "    print(victim.read())",
+      "    victim.close()",
+      "    directory_descriptor = os.open('.', os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)",
+      "    os.fsync(directory_descriptor)",
+      "    os.close(directory_descriptor)",
       "try:",
       "    os.stat('missing')",
       "except FileNotFoundError as error:",
@@ -81,10 +108,17 @@ async function testNodeHost() {
         "works True",
         "True",
         "True True 13",
+        "15",
+        "FileExistsError 17",
+        ...(process.platform === "win32" ? [] : ["13", "victim-data"]),
         "FileNotFoundError 2 missing",
         "False",
       ].join("\n"),
     );
+    if (process.platform !== "win32") {
+      assert.equal(statSync(join(sandbox, "exclusive.bin")).mode & 0o777, 0o600);
+      assert.equal(lstatSync(join(sandbox, "detached.tmp")).isSymbolicLink(), true);
+    }
     assert.equal(process.cwd(), originalProcessCwd, "os.chdir must remain session-local");
   } finally {
     await session.close();

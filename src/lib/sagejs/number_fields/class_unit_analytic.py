@@ -20,12 +20,28 @@ no PARI or Hecke code is loaded during execution.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Callable, Iterable, Sequence
 
 from mpmath import iv
 from mpmath.libmp import to_rational as _mpf_to_rational
 
 _interval_context: Any = iv
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def _content_hash(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
 class AnalyticCertificationError(ArithmeticError):
@@ -52,12 +68,55 @@ def _gcd(left: int, right: int) -> int:
     return left
 
 
+def _exact_integer(value: Any, name: str) -> int:
+    """Return an integer without accepting truncating scalar coercions."""
+    if isinstance(value, bool):
+        raise TypeError(name + " must be an exact integer")
+    if isinstance(value, int):
+        return value
+    try:
+        method = value.__index__
+    except AttributeError:
+        raise TypeError(name + " must be an exact integer") from None
+    answer = method()
+    if isinstance(answer, bool) or not isinstance(answer, int):
+        raise TypeError(name + " __index__ returned a non-integer")
+    return answer
+
+
+def _canonical_decimal_integer(value: Any, name: str) -> int:
+    """Decode an exact integer or the native boundary's canonical decimal."""
+    if not isinstance(value, str):
+        return _exact_integer(value, name)
+    try:
+        answer = int(value)
+    except ValueError:
+        raise ValueError(name + " is not a canonical decimal integer") from None
+    if str(answer) != value:
+        raise ValueError(name + " is not a canonical decimal integer")
+    return answer
+
+
+def _payload_integer(value: Any, name: str) -> int:
+    """Decode a canonical JSON integer without Python's bool/int aliasing."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(name + " must be a canonical integer")
+    return value
+
+
+def _payload_boolean(value: Any, name: str) -> bool:
+    """Decode a canonical JSON boolean without truth-value coercion."""
+    if not isinstance(value, bool):
+        raise TypeError(name + " must be a canonical boolean")
+    return value
+
+
 class RationalEndpoint:
     """A normalized exact rational used as an interval endpoint."""
 
     def __init__(self, numerator: int, denominator: int = 1) -> None:
-        numerator = int(numerator)
-        denominator = int(denominator)
+        numerator = _exact_integer(numerator, "rational endpoint numerator")
+        denominator = _exact_integer(denominator, "rational endpoint denominator")
         if denominator == 0:
             raise ZeroDivisionError("a rational endpoint cannot have denominator zero")
         if denominator < 0:
@@ -157,8 +216,6 @@ def _decimal_rational(value: str) -> RationalEndpoint:
 def _endpoint(value: Any, *, rigorous: bool) -> RationalEndpoint:
     if isinstance(value, RationalEndpoint):
         return value
-    if isinstance(value, bool):
-        return RationalEndpoint(int(value))
     if isinstance(value, int):
         return RationalEndpoint(value)
     if isinstance(value, str):
@@ -172,7 +229,7 @@ def _endpoint(value: Any, *, rigorous: bool) -> RationalEndpoint:
     numerator = getattr(value, "numerator", None)
     denominator = getattr(value, "denominator", None)
     if numerator is not None and denominator is not None:
-        return RationalEndpoint(int(numerator), int(denominator))
+        return RationalEndpoint(numerator, denominator)
     if rigorous:
         raise TypeError("a rigorous endpoint must be exact or a decimal string")
     return _decimal_rational(str(value))
@@ -201,6 +258,39 @@ class RealBall:
         self.precision_bits = int(precision_bits)
         self.rigorous = bool(rigorous)
         self.source = str(source)
+
+    @classmethod
+    def dyadic_endpoints(
+        cls,
+        lower_mantissa: Any,
+        lower_exponent: Any,
+        upper_mantissa: Any,
+        upper_exponent: Any,
+        *,
+        precision_bits: int = 53,
+        rigorous: bool = True,
+        source: str = "outward-dyadic-endpoints",
+    ) -> RealBall:
+        """Build a ball from exact `mantissa * 2^exponent` endpoints."""
+
+        def endpoint(mantissa_value: Any, exponent_value: Any) -> RationalEndpoint:
+            mantissa = _canonical_decimal_integer(
+                mantissa_value, "dyadic endpoint mantissa"
+            )
+            exponent = _canonical_decimal_integer(
+                exponent_value, "dyadic endpoint exponent"
+            )
+            if exponent >= 0:
+                return RationalEndpoint(mantissa * (2**exponent))
+            return RationalEndpoint(mantissa, 2 ** (-exponent))
+
+        return cls(
+            endpoint(lower_mantissa, lower_exponent),
+            endpoint(upper_mantissa, upper_exponent),
+            precision_bits=precision_bits,
+            rigorous=rigorous,
+            source=source,
+        )
 
     @classmethod
     def midpoint_radius(
@@ -375,7 +465,13 @@ class RealBall:
             raise AnalyticCertificationError(
                 "independent certified enclosures are disjoint"
             )
-        precision, rigorous, source = self._binary_state(other)
+        # An intersection is a logical conjunction of two independently valid
+        # enclosures, not an arithmetic operation rounded at the weaker input
+        # precision.  Its exact endpoints therefore retain the strongest
+        # precision reached by either refinement.
+        precision = max(self.precision_bits, other.precision_bits)
+        rigorous = self.rigorous and other.rigorous
+        source = self.source + "; " + other.source
         return RealBall(
             lower,
             upper,
@@ -917,6 +1013,1093 @@ def validate_unit_saturation(
     if not required.issubset(seen):
         raise AnalyticCertificationError("required unit saturation primes are missing")
     return UnitSaturationResult(lattice, evidence)
+
+
+def _prime_divisors(value: int) -> tuple[int, ...]:
+    remaining = abs(int(value))
+    answer: list[int] = []
+    divisor = 2
+    while divisor * divisor <= remaining:
+        if remaining % divisor == 0:
+            answer.append(divisor)
+            while remaining % divisor == 0:
+                remaining //= divisor
+        divisor = 3 if divisor == 2 else divisor + 2
+    if remaining > 1:
+        answer.append(remaining)
+    return tuple(answer)
+
+
+def _coordinate_vectors(bound: int, length: int) -> Iterable[tuple[int, ...]]:
+    if length == 0:
+        yield ()
+        return
+    for prefix in _coordinate_vectors(bound, length - 1):
+        for value in range(-bound, bound + 1):
+            yield prefix + (value,)
+
+
+def _residue_vectors(modulus: int, length: int) -> Iterable[tuple[int, ...]]:
+    if length == 0:
+        yield ()
+        return
+    for prefix in _residue_vectors(modulus, length - 1):
+        for value in range(modulus):
+            yield prefix + (value,)
+
+
+def _ordinary_unit(unit: Any) -> Any:
+    evaluator = getattr(unit, "evaluate", None)
+    return evaluator() if callable(evaluator) else unit
+
+
+def _unit_like(template: Any, field: Any, value: Any) -> Any:
+    from_element = getattr(type(template), "from_element", None)
+    if callable(from_element):
+        return from_element(field, value)
+    return value
+
+
+def _element_payload(element: Any) -> list[list[int]]:
+    coordinates = list(element.list())
+    return [[int(value._numerator), int(value._denominator)] for value in coordinates]
+
+
+def _saturation_field_order_identity(field: Any, order: Any) -> dict[str, Any]:
+    if order.number_field() is not field:
+        raise TypeError("the saturation order belongs to a different field")
+    if not order.is_maximal():
+        raise ValueError("unit saturation requires a certified maximal order")
+    return {
+        "field": {
+            "defining_polynomial": [
+                [int(value._numerator), int(value._denominator)]
+                for value in field._defining_coefficients
+            ],
+            "degree": int(field.degree()),
+            "variable": field.variable_name(),
+        },
+        "maximal_order_basis": [
+            [[int(value._numerator), int(value._denominator)] for value in row]
+            for row in order._basis_rows
+        ],
+        "discriminant": int(order.discriminant()),
+    }
+
+
+def _element_from_payload(field: Any, payload: Any) -> Any:
+    if not isinstance(payload, list) or len(payload) != int(field.degree()):
+        raise ValueError("a saturation element has the wrong coordinate length")
+    base_module = __import__(
+        "sagejs._baselib.number_fields", fromlist=["number_fields"]
+    )
+    rational_field = base_module._nf_global("QQ")
+    coordinates = []
+    for pair in payload:
+        if not isinstance(pair, list) or len(pair) != 2:
+            raise TypeError("a saturation coordinate must be [numerator, denominator]")
+        numerator = _payload_integer(pair[0], "saturation coordinate numerator")
+        denominator = _payload_integer(pair[1], "saturation coordinate denominator")
+        if denominator <= 0:
+            raise ValueError("a saturation coordinate denominator must be positive")
+        if _gcd(numerator, denominator) != 1:
+            raise ValueError("a saturation coordinate must be reduced")
+        coordinates.append(rational_field(numerator) / rational_field(denominator))
+    return field._from_coefficients(coordinates)
+
+
+def _exact_unit(field: Any, order: Any, value: Any) -> bool:
+    try:
+        embedding_module = __import__(
+            "sagejs.number_fields.embeddings", fromlist=["embeddings"]
+        )
+        verified, _norm = embedding_module.exact_norm_is_unit(field, value)
+        return bool(verified and value in order)
+    except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+        return False
+
+
+def _target_element(
+    field: Any,
+    units: Sequence[Any],
+    torsion_elements: Sequence[Any],
+    exponents: Sequence[int],
+    torsion_exponent: int,
+) -> Any:
+    value = torsion_elements[torsion_exponent]
+    for unit, exponent in zip(units, exponents, strict=True):
+        value *= _ordinary_unit(unit) ** int(exponent)
+    return value
+
+
+def _normalized_root_replacement(
+    field: Any,
+    units: Sequence[Any],
+    root: Any,
+    prime: int,
+    exponents: Sequence[int],
+) -> tuple[tuple[Any, ...], int, int, tuple[int, ...], tuple[int, ...]]:
+    replacement = next(
+        index for index, exponent in enumerate(exponents) if exponent % prime
+    )
+    normalization_power = next(
+        value
+        for value in range(1, prime)
+        if (int(exponents[replacement]) * value) % prime == 1
+    )
+    normalized = tuple(normalization_power * int(exponent) for exponent in exponents)
+    quotients = list(value // prime for value in normalized)
+    quotients[replacement] = (normalized[replacement] - 1) // prime
+    adjusted_root = _unit_like(units[0], field, root) ** normalization_power
+    for unit, quotient in zip(units, quotients, strict=True):
+        adjusted_root *= unit ** (-quotient)
+    answer = list(units)
+    answer[replacement] = adjusted_root
+    normalized_relation = tuple(
+        normalized[index] - prime * quotients[index] for index in range(len(normalized))
+    )
+    if normalized_relation[replacement] != 1:
+        raise ArithmeticError("p-root normalization did not produce lattice index p")
+    return (
+        tuple(answer),
+        replacement,
+        normalization_power,
+        tuple(quotients),
+        normalized_relation,
+    )
+
+
+class UnitPthRootCertificate:
+    """Exact replay of one index-`p` enlargement of a unit lattice."""
+
+    def __init__(
+        self,
+        prime: int,
+        exponents: Sequence[int],
+        torsion_exponent: int,
+        root: Any,
+        *,
+        replacement_index: int,
+        normalization_power: int,
+        normalization_quotients: Sequence[int],
+        normalized_exponents: Sequence[int],
+        precision_history: Sequence[int],
+    ) -> None:
+        self.prime = int(prime)
+        self.exponents = tuple(int(value) for value in exponents)
+        self.torsion_exponent = int(torsion_exponent)
+        self.root = root
+        self.replacement_index = int(replacement_index)
+        self.normalization_power = int(normalization_power)
+        self.normalization_quotients = tuple(
+            int(value) for value in normalization_quotients
+        )
+        self.normalized_exponents = tuple(int(value) for value in normalized_exponents)
+        self.lattice_index_change = self.prime
+        self.precision_history = tuple(int(value) for value in precision_history)
+        if not self.precision_history or any(
+            self.precision_history[index + 1] != 2 * self.precision_history[index]
+            for index in range(len(self.precision_history) - 1)
+        ):
+            raise ValueError("p-th-root reconstruction precision must double")
+        self.outcome = "enlarged"
+        self.method = "exact-pth-root-identity"
+        self.rigorous = True
+
+    def replay(
+        self,
+        field: Any,
+        order: Any,
+        units: Sequence[Any],
+        torsion_elements: Sequence[Any],
+    ) -> tuple[Any, ...] | None:
+        if (
+            not _is_prime(self.prime)
+            or len(self.exponents) != len(units)
+            or not any(value % self.prime for value in self.exponents)
+            or not 0 <= self.torsion_exponent < len(torsion_elements)
+            or not _exact_unit(field, order, self.root)
+        ):
+            return None
+        target = _target_element(
+            field,
+            units,
+            torsion_elements,
+            self.exponents,
+            self.torsion_exponent,
+        )
+        if self.root**self.prime != target:
+            return None
+        try:
+            replay = _normalized_root_replacement(
+                field, units, self.root, self.prime, self.exponents
+            )
+        except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+            return None
+        new_units, replacement, power, quotients, normalized = replay
+        if (
+            replacement != self.replacement_index
+            or power != self.normalization_power
+            or quotients != self.normalization_quotients
+            or normalized != self.normalized_exponents
+        ):
+            return None
+        return new_units
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.number-fields.unit-pth-root-certificate.v1",
+            "outcome": self.outcome,
+            "method": self.method,
+            "prime": self.prime,
+            "exponents": list(self.exponents),
+            "torsion_exponent": self.torsion_exponent,
+            "root_coordinates": _element_payload(self.root),
+            "replacement_index": self.replacement_index,
+            "normalization_power": self.normalization_power,
+            "normalization_quotients": list(self.normalization_quotients),
+            "normalized_exponents": list(self.normalized_exponents),
+            "lattice_index_change": self.lattice_index_change,
+            "precision_history": list(self.precision_history),
+            "rigorous": True,
+        }
+
+
+def _order_coordinates(order: Any, element: Any) -> tuple[int, ...]:
+    field = order.number_field()
+    degree = int(field.degree())
+    base_module = __import__(
+        "sagejs._baselib.number_fields", fromlist=["number_fields"]
+    )
+    power_coordinates = base_module._nf_coordinates(element, degree)
+    row = base_module._nf_global("vector")(
+        base_module._nf_global("QQ"), power_coordinates
+    )
+    relative = list(row * order.basis_matrix().inverse())
+    answer = []
+    for value in relative:
+        if int(value._denominator) != 1:
+            raise ArithmeticError("an integral unit has nonintegral order coordinates")
+        answer.append(int(value._numerator))
+    return tuple(answer)
+
+
+def _modular_product(
+    left: Sequence[int],
+    right: Sequence[int],
+    table: Sequence[Sequence[Sequence[Any]]],
+    modulus: int,
+) -> tuple[int, ...]:
+    degree = len(left)
+    answer = [0] * degree
+    for left_index, left_value in enumerate(left):
+        if left_value % modulus == 0:
+            continue
+        for right_index, right_value in enumerate(right):
+            if right_value % modulus == 0:
+                continue
+            scalar = (left_value * right_value) % modulus
+            for coordinate in range(degree):
+                answer[coordinate] = (
+                    answer[coordinate]
+                    + scalar * int(table[left_index][right_index][coordinate])
+                ) % modulus
+    return tuple(answer)
+
+
+def _modular_power(
+    value: Sequence[int],
+    exponent: int,
+    one: Sequence[int],
+    table: Sequence[Sequence[Sequence[Any]]],
+    modulus: int,
+) -> tuple[int, ...]:
+    answer = tuple(int(item) % modulus for item in one)
+    power = tuple(int(item) % modulus for item in value)
+    remaining = int(exponent)
+    while remaining:
+        if remaining & 1:
+            answer = _modular_product(answer, power, table, modulus)
+        remaining //= 2
+        if remaining:
+            power = _modular_product(power, power, table, modulus)
+    return answer
+
+
+def _local_pth_power_obstruction(
+    order: Any,
+    target: Any,
+    prime: int,
+    rational_primes: Sequence[int],
+    residue_candidate_cap: int,
+) -> int | None:
+    if not rational_primes:
+        return None
+    maximal_order = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    table = maximal_order._nf_order_multiplication_table(order)
+    one = _order_coordinates(order, order.number_field().one())
+    target_coordinates = _order_coordinates(order, target)
+    degree = len(one)
+    for modulus in rational_primes:
+        modulus = int(modulus)
+        if not _is_prime(modulus) or modulus**degree > residue_candidate_cap:
+            continue
+        pth_powers = {
+            _modular_power(vector, prime, one, table, modulus)
+            for vector in _residue_vectors(modulus, degree)
+        }
+        reduced_target = tuple(value % modulus for value in target_coordinates)
+        if reduced_target not in pth_powers:
+            return modulus
+    return None
+
+
+class UnitLocalPthPowerObstruction:
+    """Finite-quotient proof that no relevant global `p`-th root exists."""
+
+    def __init__(
+        self,
+        prime: int,
+        target_obstructions: Sequence[tuple[Sequence[int], int, int]],
+        *,
+        residue_candidate_cap: int,
+        precision_history: Sequence[int],
+    ) -> None:
+        self.prime = int(prime)
+        self.target_obstructions = tuple(
+            (tuple(int(value) for value in exponents), int(torsion), int(modulus))
+            for exponents, torsion, modulus in target_obstructions
+        )
+        self.residue_candidate_cap = int(residue_candidate_cap)
+        self.precision_history = tuple(int(value) for value in precision_history)
+        if not self.precision_history:
+            raise ValueError("local obstruction evidence needs a decisive precision")
+        self.outcome = "saturated"
+        self.method = "exact-finite-order-quotient-pth-power-obstruction"
+        self.rigorous = True
+
+    def verify(
+        self,
+        field: Any,
+        order: Any,
+        units: Sequence[Any],
+        torsion_elements: Sequence[Any],
+    ) -> bool:
+        expected = sorted(
+            (exponents, torsion)
+            for exponents in _residue_vectors(self.prime, len(units))
+            if any(exponents)
+            for torsion in range(len(torsion_elements))
+        )
+        recorded = sorted(
+            (exponents, torsion)
+            for exponents, torsion, _modulus in self.target_obstructions
+        )
+        if expected != recorded:
+            return False
+        for exponents, torsion, modulus in self.target_obstructions:
+            target = _target_element(field, units, torsion_elements, exponents, torsion)
+            obstruction = _local_pth_power_obstruction(
+                order,
+                target,
+                self.prime,
+                (modulus,),
+                self.residue_candidate_cap,
+            )
+            if obstruction != modulus:
+                return False
+        return True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.number-fields.unit-local-pth-obstruction.v1",
+            "outcome": self.outcome,
+            "method": self.method,
+            "prime": self.prime,
+            "target_obstructions": [
+                {
+                    "exponents": list(exponents),
+                    "torsion_exponent": torsion,
+                    "rational_prime": modulus,
+                }
+                for exponents, torsion, modulus in self.target_obstructions
+            ],
+            "residue_candidate_cap": self.residue_candidate_cap,
+            "precision_history": list(self.precision_history),
+            "rigorous": True,
+        }
+
+
+def _bounded_exact_pth_root(
+    field: Any,
+    order: Any,
+    units: Sequence[Any],
+    torsion_elements: Sequence[Any],
+    prime: int,
+    coordinate_bound: int,
+    cancelled: Callable[[], Any] | None,
+) -> tuple[tuple[int, ...], int, Any] | None:
+    basis = tuple(order.basis())
+    for coordinates in _coordinate_vectors(coordinate_bound, len(basis)):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit p-saturation was cancelled")
+        root = field.zero()
+        for coefficient, basis_element in zip(coordinates, basis, strict=True):
+            if coefficient:
+                root += coefficient * basis_element
+        if root.is_zero() or not _exact_unit(field, order, root):
+            continue
+        power = root**prime
+        for exponents in _residue_vectors(prime, len(units)):
+            if not any(exponents):
+                continue
+            for torsion in range(len(torsion_elements)):
+                if callable(cancelled) and cancelled():
+                    raise AnalyticResourceError("unit p-saturation was cancelled")
+                target = _target_element(
+                    field, units, torsion_elements, exponents, torsion
+                )
+                if power == target:
+                    return (tuple(exponents), torsion, root)
+    return None
+
+
+def _exact_local_obstruction(
+    field: Any,
+    order: Any,
+    units: Sequence[Any],
+    torsion_elements: Sequence[Any],
+    prime: int,
+    rational_primes: Sequence[int],
+    residue_candidate_cap: int,
+    precision_history: Sequence[int],
+    cancelled: Callable[[], Any] | None,
+) -> UnitLocalPthPowerObstruction | None:
+    records: list[tuple[Sequence[int], int, int]] = []
+    for exponents in _residue_vectors(prime, len(units)):
+        if not any(exponents):
+            continue
+        for torsion in range(len(torsion_elements)):
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("unit p-saturation was cancelled")
+            target = _target_element(field, units, torsion_elements, exponents, torsion)
+            modulus = _local_pth_power_obstruction(
+                order,
+                target,
+                prime,
+                rational_primes,
+                residue_candidate_cap,
+            )
+            if modulus is None:
+                return None
+            records.append((exponents, torsion, modulus))
+    return UnitLocalPthPowerObstruction(
+        prime,
+        records,
+        residue_candidate_cap=residue_candidate_cap,
+        precision_history=precision_history,
+    )
+
+
+class ExactUnitSaturationResult:
+    """Fail-closed result of bounded exact unit `p`-saturation."""
+
+    def __init__(
+        self,
+        field: Any,
+        order: Any,
+        initial_units: Sequence[Any],
+        units: Sequence[Any],
+        torsion_elements: Sequence[Any],
+        *,
+        initial_index_bound: int,
+        remaining_index_bound: int,
+        index_bound_is_rigorous: bool,
+        global_index_certificate: Any,
+        required_primes: Sequence[int],
+        unresolved_primes: Sequence[int],
+        evidence: Sequence[Any],
+        precision_history: Sequence[int],
+        incomplete_reason: str | None,
+        generation_verifier: Callable[..., Any] | None,
+    ) -> None:
+        self.units = tuple(units)
+        self.evidence = tuple(evidence)
+        self.required_primes = tuple(int(value) for value in required_primes)
+        self.unresolved_primes = tuple(int(value) for value in unresolved_primes)
+        self.initial_index_bound = int(initial_index_bound)
+        self.remaining_index_bound = int(remaining_index_bound)
+        self.index_bound_is_rigorous = bool(index_bound_is_rigorous)
+        self.global_index_certificate = global_index_certificate
+        self.precision_history = tuple(int(value) for value in precision_history)
+        self.index_enlargement = self.initial_index_bound // self.remaining_index_bound
+        self.complete = self.index_bound_is_rigorous and not self.unresolved_primes
+        self.saturated = self.complete
+        self.rigorous = self.complete
+        self.incomplete_reason = None if self.complete else incomplete_reason
+        self.status = "rigorous" if self.complete else "incomplete"
+        certificate_status = (
+            None
+            if global_index_certificate is None
+            else global_index_certificate["proof_status"]
+        )
+        self.global_proof_status = certificate_status
+        if self.complete and certificate_status == "exact-relations-conditional-grh":
+            self.proof_status = "exact-unit-p-saturation-conditional-grh"
+        elif self.complete:
+            self.proof_status = "exact-unit-p-saturation-unconditional"
+        else:
+            self.proof_status = "bounded-unit-p-saturation-incomplete"
+        self._field = field
+        self._order = order
+        self._initial_units = tuple(initial_units)
+        self._generation_verifier = generation_verifier
+
+    def verify(self) -> bool:
+        return verify_saturation_evidence(
+            self._field,
+            self._order,
+            self._initial_units,
+            self.to_dict(),
+            generation_verifier=self._generation_verifier,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.number-fields.exact-unit-p-saturation.v1",
+            "initial_index_bound": self.initial_index_bound,
+            "remaining_index_bound": self.remaining_index_bound,
+            "index_bound_is_rigorous": self.index_bound_is_rigorous,
+            "global_index_certificate": self.global_index_certificate,
+            "index_enlargement": self.index_enlargement,
+            "required_primes": list(self.required_primes),
+            "unresolved_primes": list(self.unresolved_primes),
+            "units": [_element_payload(_ordinary_unit(unit)) for unit in self.units],
+            "evidence": [item.to_dict() for item in self.evidence],
+            "precision_history": list(self.precision_history),
+            "complete": self.complete,
+            "saturated": self.saturated,
+            "rigorous": self.rigorous,
+            "status": self.status,
+            "proof_status": self.proof_status,
+            "global_proof_status": self.global_proof_status,
+            "incomplete_reason": self.incomplete_reason,
+        }
+
+
+def _coerce_pth_root_candidate(candidate: Any) -> tuple[tuple[int, ...], int, Any]:
+    if isinstance(candidate, dict):
+        return (
+            tuple(int(value) for value in candidate["exponents"]),
+            int(candidate["torsion_exponent"]),
+            candidate["root"],
+        )
+    if isinstance(candidate, (tuple, list)) and len(candidate) == 3:
+        return (
+            tuple(int(value) for value in candidate[0]),
+            int(candidate[1]),
+            candidate[2],
+        )
+    raise TypeError(
+        "a p-th-root provider must return (exponents, torsion_exponent, root)"
+    )
+
+
+def saturate_unit_lattice(
+    field: Any,
+    order: Any,
+    units: Sequence[Any],
+    index_bound: Any,
+    *,
+    precision_bits: int = 64,
+    maximum_precision_bits: int = 4096,
+    coordinate_bound: int = 4,
+    maximum_root_candidates: int = 100_000,
+    maximum_target_classes: int = 10_000,
+    maximum_saturation_work: int = 1_000_000,
+    local_rational_primes: Sequence[int] = (2, 3, 5, 7, 11, 13),
+    residue_candidate_cap: int = 100_000,
+    torsion: Any = None,
+    candidate_root_provider: Callable[..., Any] | None = None,
+    recoverable_errors: tuple[type[BaseException], ...] = (AnalyticPrecisionError,),
+    cancelled: Callable[[], Any] | None = None,
+) -> ExactUnitSaturationResult:
+    """Enlarge a unit lattice by exact bounded `p`-th roots.
+
+    A positive step is accepted only after replaying
+    `v^p = zeta * product(u_i^a_i)`, exact maximal-order membership, unit norm,
+    and the index-`p` basis replacement.  Exhausting the coordinate box never
+    proves a negative result.  A prime is declared saturated only through
+    exact finite-quotient obstructions for every nonzero exponent class, or
+    because exact enlargements exhaust a rigorous global index.
+
+    Only a replayable `UnitSaturationIndexCertificate` authorizes a rigorous
+    completion. Integer and bare `HRIndexValidationResult` inputs remain useful
+    as search bounds but are always diagnostic-only.
+    """
+    global_index_certificate: Any = None
+    generation_verifier: Callable[..., Any] | None = None
+    if isinstance(index_bound, UnitSaturationIndexCertificate):
+        initial_index = int(index_bound.index_bound)
+        rigorous_bound = index_bound.verify(field, order, units)
+        global_index_certificate = index_bound.to_dict()
+        generation_verifier = index_bound._generation_verifier
+    elif isinstance(index_bound, HRIndexValidationResult):
+        initial_index = int(
+            index_bound.unique_index
+            if index_bound.unique_index is not None
+            else index_bound.upper_index
+        )
+        rigorous_bound = False
+    else:
+        initial_index = int(index_bound)
+        rigorous_bound = False
+    if initial_index < 1:
+        raise ValueError("the saturation index bound must be positive")
+    precision = int(precision_bits)
+    maximum_precision = int(maximum_precision_bits)
+    coordinate_bound = int(coordinate_bound)
+    maximum_root_candidates = int(maximum_root_candidates)
+    maximum_target_classes = int(maximum_target_classes)
+    maximum_saturation_work = int(maximum_saturation_work)
+    residue_candidate_cap = int(residue_candidate_cap)
+    if precision < 16 or maximum_precision < precision:
+        raise ValueError("saturation precision bounds are invalid")
+    if (
+        coordinate_bound < 0
+        or maximum_root_candidates < 1
+        or maximum_target_classes < 1
+        or maximum_saturation_work < 1
+    ):
+        raise ValueError("saturation root-search bounds are invalid")
+    if residue_candidate_cap < 2:
+        raise ValueError("the residue candidate cap must be at least two")
+    selected_units = tuple(units)
+    rank = len(selected_units)
+    if rank and any(
+        not _exact_unit(field, order, _ordinary_unit(unit)) for unit in selected_units
+    ):
+        raise ValueError("every proposed free generator must be an exact integral unit")
+    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+    canonical_torsion = units_module.roots_of_unity(field)
+    if not bool(getattr(canonical_torsion, "complete", False)):
+        raise AnalyticCertificationError("unit p-saturation needs complete torsion")
+    torsion_verifier = getattr(canonical_torsion, "verify", None)
+    if not callable(torsion_verifier) or not torsion_verifier():
+        raise AnalyticCertificationError("roots-of-unity evidence failed replay")
+    if torsion is not None:
+        supplied_verifier = getattr(torsion, "verify", None)
+        if (
+            not bool(getattr(torsion, "complete", False))
+            or not callable(supplied_verifier)
+            or not supplied_verifier()
+            or tuple(torsion.elements) != tuple(canonical_torsion.elements)
+        ):
+            raise AnalyticCertificationError(
+                "supplied torsion does not match canonical roots of unity"
+            )
+    torsion_elements = tuple(canonical_torsion.elements)
+    required_primes = _prime_divisors(initial_index)
+    remaining_index = initial_index
+    evidence: list[Any] = []
+    unresolved: list[int] = []
+    precision_history: list[int] = []
+    incomplete_reason: str | None = None
+    candidate_count = (2 * coordinate_bound + 1) ** int(field.degree())
+
+    for prime in required_primes:
+        target_count = (prime**rank - 1) * len(torsion_elements)
+        residue_work = sum(
+            modulus ** int(field.degree())
+            for modulus in local_rational_primes
+            if _is_prime(int(modulus))
+            and int(modulus) ** int(field.degree()) <= residue_candidate_cap
+        )
+        planned_work = target_count * (candidate_count + residue_work)
+        if (
+            target_count > maximum_target_classes
+            or candidate_count > maximum_root_candidates
+            or planned_work > maximum_saturation_work
+        ):
+            unresolved.append(prime)
+            incomplete_reason = (
+                "unit p-saturation preflight exceeds target or work caps"
+            )
+            continue
+        resolved = False
+        while remaining_index % prime == 0:
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("unit p-saturation was cancelled")
+            attempt_precision = precision
+            attempt_history: list[int] = []
+            candidate: tuple[tuple[int, ...], int, Any] | None = None
+            while attempt_precision <= maximum_precision:
+                precision_history.append(attempt_precision)
+                attempt_history.append(attempt_precision)
+                try:
+                    supplied = (
+                        candidate_root_provider(
+                            field,
+                            order,
+                            selected_units,
+                            prime,
+                            attempt_precision,
+                        )
+                        if callable(candidate_root_provider)
+                        else None
+                    )
+                    if supplied is not None:
+                        candidate = _coerce_pth_root_candidate(supplied)
+                    elif candidate_count <= maximum_root_candidates:
+                        candidate = _bounded_exact_pth_root(
+                            field,
+                            order,
+                            selected_units,
+                            torsion_elements,
+                            prime,
+                            coordinate_bound,
+                            cancelled,
+                        )
+                    break
+                except recoverable_errors:
+                    attempt_precision *= 2
+            if attempt_precision > maximum_precision:
+                incomplete_reason = (
+                    "p-th-root reconstruction exceeded maximum_precision_bits"
+                )
+                break
+            if candidate is None:
+                obstruction = _exact_local_obstruction(
+                    field,
+                    order,
+                    selected_units,
+                    torsion_elements,
+                    prime,
+                    local_rational_primes,
+                    residue_candidate_cap,
+                    attempt_history,
+                    cancelled,
+                )
+                if obstruction is not None and obstruction.verify(
+                    field, order, selected_units, torsion_elements
+                ):
+                    evidence.append(obstruction)
+                    resolved = True
+                else:
+                    incomplete_reason = (
+                        "bounded root search found no exact enlargement and no "
+                        "complete local obstruction"
+                    )
+                break
+            exponents, torsion_exponent, root = candidate
+            if (
+                len(exponents) != rank
+                or not any(value % prime for value in exponents)
+                or not 0 <= torsion_exponent < len(torsion_elements)
+            ):
+                raise AnalyticCertificationError(
+                    "a p-th-root provider returned an invalid exponent class"
+                )
+            replacement = _normalized_root_replacement(
+                field, selected_units, root, prime, exponents
+            )
+            new_units, replaced, power, quotients, normalized = replacement
+            certificate = UnitPthRootCertificate(
+                prime,
+                exponents,
+                torsion_exponent,
+                root,
+                replacement_index=replaced,
+                normalization_power=power,
+                normalization_quotients=quotients,
+                normalized_exponents=normalized,
+                precision_history=attempt_history,
+            )
+            replayed = certificate.replay(
+                field, order, selected_units, torsion_elements
+            )
+            if replayed is None or any(
+                _ordinary_unit(left) != _ordinary_unit(right)
+                for left, right in zip(replayed, new_units, strict=True)
+            ):
+                raise AnalyticCertificationError(
+                    "an exact p-th-root candidate failed certificate replay"
+                )
+            selected_units = tuple(replayed)
+            remaining_index //= prime
+            evidence.append(certificate)
+            if remaining_index % prime != 0:
+                resolved = True
+        if not resolved:
+            unresolved.append(prime)
+    if not rigorous_bound:
+        if incomplete_reason is None:
+            incomplete_reason = "the supplied global index bound was not certified"
+        unresolved = list(required_primes)
+    return ExactUnitSaturationResult(
+        field,
+        order,
+        units,
+        selected_units,
+        torsion_elements,
+        initial_index_bound=initial_index,
+        remaining_index_bound=remaining_index,
+        index_bound_is_rigorous=rigorous_bound,
+        global_index_certificate=global_index_certificate,
+        required_primes=required_primes,
+        unresolved_primes=unresolved,
+        evidence=evidence,
+        precision_history=precision_history or (precision,),
+        incomplete_reason=incomplete_reason,
+        generation_verifier=generation_verifier,
+    )
+
+
+def verify_saturation_evidence(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    payload: Any,
+    *,
+    generation_verifier: Callable[..., Any] | None = None,
+) -> bool:
+    """Replay a canonical exact-unit-saturation payload from algebraic data."""
+    try:
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schema")
+            != "sagejs.number-fields.exact-unit-p-saturation.v1"
+        ):
+            return False
+        for key, name in (
+            ("index_bound_is_rigorous", "global index rigor"),
+            ("complete", "saturation completeness"),
+            ("saturated", "saturation state"),
+            ("rigorous", "saturation rigor"),
+        ):
+            _payload_boolean(payload[key], name)
+        initial_index = _payload_integer(
+            payload["initial_index_bound"], "initial saturation index"
+        )
+        remaining_index = initial_index
+        if initial_index < 1:
+            return False
+        required = _prime_divisors(initial_index)
+        if (
+            tuple(
+                _payload_integer(value, "required saturation prime")
+                for value in payload["required_primes"]
+            )
+            != required
+        ):
+            return False
+        units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+        torsion = units_module.roots_of_unity(field)
+        if not torsion.complete or not torsion.verify():
+            return False
+        selected_torsion = tuple(torsion.elements)
+        selected_units = tuple(initial_units)
+        obstructed: set[int] = set()
+        replayed_evidence: list[Any] = []
+        evidence_precision_history: list[int] = []
+        for record in payload["evidence"]:
+            prime = _payload_integer(record["prime"], "saturation evidence prime")
+            if prime not in required or not _payload_boolean(
+                record["rigorous"], "saturation evidence rigor"
+            ):
+                return False
+            outcome = record.get("outcome")
+            if outcome == "enlarged":
+                if (
+                    record.get("schema")
+                    != "sagejs.number-fields.unit-pth-root-certificate.v1"
+                    or record.get("method") != "exact-pth-root-identity"
+                    or _payload_integer(
+                        record["lattice_index_change"], "lattice index change"
+                    )
+                    != prime
+                    or remaining_index % prime
+                ):
+                    return False
+                certificate = UnitPthRootCertificate(
+                    prime,
+                    record["exponents"],
+                    _payload_integer(record["torsion_exponent"], "torsion exponent"),
+                    _element_from_payload(field, record["root_coordinates"]),
+                    replacement_index=_payload_integer(
+                        record["replacement_index"], "replacement index"
+                    ),
+                    normalization_power=_payload_integer(
+                        record["normalization_power"], "normalization power"
+                    ),
+                    normalization_quotients=record["normalization_quotients"],
+                    normalized_exponents=record["normalized_exponents"],
+                    precision_history=record["precision_history"],
+                )
+                if _canonical_json(certificate.to_dict()) != _canonical_json(record):
+                    return False
+                replayed = certificate.replay(
+                    field, order, selected_units, selected_torsion
+                )
+                if replayed is None:
+                    return False
+                selected_units = replayed
+                remaining_index //= prime
+                replayed_evidence.append(certificate)
+                evidence_precision_history.extend(certificate.precision_history)
+            elif outcome == "saturated":
+                if (
+                    record.get("schema")
+                    != "sagejs.number-fields.unit-local-pth-obstruction.v1"
+                    or record.get("method")
+                    != "exact-finite-order-quotient-pth-power-obstruction"
+                ):
+                    return False
+                targets = tuple(
+                    (
+                        tuple(
+                            _payload_integer(value, "local-obstruction exponent")
+                            for value in item["exponents"]
+                        ),
+                        _payload_integer(
+                            item["torsion_exponent"], "local-obstruction torsion"
+                        ),
+                        _payload_integer(
+                            item["rational_prime"], "local-obstruction prime"
+                        ),
+                    )
+                    for item in record["target_obstructions"]
+                )
+                certificate = UnitLocalPthPowerObstruction(
+                    prime,
+                    targets,
+                    residue_candidate_cap=_payload_integer(
+                        record["residue_candidate_cap"],
+                        "local-obstruction residue cap",
+                    ),
+                    precision_history=record["precision_history"],
+                )
+                if _canonical_json(certificate.to_dict()) != _canonical_json(record):
+                    return False
+                if prime in obstructed or not certificate.verify(
+                    field, order, selected_units, selected_torsion
+                ):
+                    return False
+                obstructed.add(prime)
+                replayed_evidence.append(certificate)
+                evidence_precision_history.extend(certificate.precision_history)
+            else:
+                return False
+        final_payloads = [
+            _element_payload(_ordinary_unit(unit)) for unit in selected_units
+        ]
+        if final_payloads != payload["units"]:
+            return False
+        if (
+            _payload_integer(
+                payload["remaining_index_bound"], "remaining saturation index"
+            )
+            != remaining_index
+        ):
+            return False
+        if (
+            _payload_integer(payload["index_enlargement"], "index enlargement")
+            != initial_index // remaining_index
+        ):
+            return False
+        certificate_payload = payload["global_index_certificate"]
+        rigorous_bound = False
+        if certificate_payload is not None:
+            certificate = UnitSaturationIndexCertificate.from_dict(certificate_payload)
+            rigorous_bound = (
+                certificate.index_bound == initial_index
+                and certificate.verify(
+                    field,
+                    order,
+                    initial_units,
+                    generation_verifier=generation_verifier,
+                )
+            )
+        if (
+            _payload_boolean(payload["index_bound_is_rigorous"], "global index rigor")
+            != rigorous_bound
+        ):
+            return False
+        resolved = {
+            prime for prime in required if remaining_index % prime != 0
+        } | obstructed
+        unresolved = tuple(prime for prime in required if prime not in resolved)
+        if not rigorous_bound:
+            unresolved = required
+        if (
+            tuple(
+                _payload_integer(value, "unresolved saturation prime")
+                for value in payload["unresolved_primes"]
+            )
+            != unresolved
+        ):
+            return False
+        complete = rigorous_bound and not unresolved
+        payload_precision_history = tuple(
+            _payload_integer(value, "saturation precision")
+            for value in payload["precision_history"]
+        )
+        if not payload_precision_history or any(
+            value < 16 for value in payload_precision_history
+        ):
+            return False
+        if complete and evidence_precision_history:
+            if payload_precision_history != tuple(evidence_precision_history):
+                return False
+        expected_status = "rigorous" if complete else "incomplete"
+        global_proof_status = (
+            None if certificate_payload is None else certificate_payload["proof_status"]
+        )
+        if complete and global_proof_status == "exact-relations-conditional-grh":
+            expected_proof_status = "exact-unit-p-saturation-conditional-grh"
+        elif complete:
+            expected_proof_status = "exact-unit-p-saturation-unconditional"
+        else:
+            expected_proof_status = "bounded-unit-p-saturation-incomplete"
+        statuses_match = (
+            _payload_boolean(payload["complete"], "saturation completeness") == complete
+            and _payload_boolean(payload["saturated"], "saturation state") == complete
+            and _payload_boolean(payload["rigorous"], "saturation rigor") == complete
+            and payload["status"] == expected_status
+            and payload["proof_status"] == expected_proof_status
+            and payload["global_proof_status"] == global_proof_status
+            and (not complete or payload["incomplete_reason"] is None)
+        )
+        incomplete_reason = payload["incomplete_reason"]
+        if incomplete_reason is not None and not isinstance(incomplete_reason, str):
+            return False
+        reconstructed = ExactUnitSaturationResult(
+            field,
+            order,
+            initial_units,
+            selected_units,
+            selected_torsion,
+            initial_index_bound=initial_index,
+            remaining_index_bound=remaining_index,
+            index_bound_is_rigorous=rigorous_bound,
+            global_index_certificate=certificate_payload,
+            required_primes=required,
+            unresolved_primes=unresolved,
+            evidence=replayed_evidence,
+            precision_history=payload_precision_history,
+            incomplete_reason=incomplete_reason,
+            generation_verifier=generation_verifier,
+        )
+        return statuses_match and _canonical_json(
+            reconstructed.to_dict()
+        ) == _canonical_json(payload)
+    except (KeyError, TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+        return False
+
+
+verify_saturation_record = verify_saturation_evidence
 
 
 def _determinant_ball(rows: Sequence[Sequence[RealBall]]) -> RealBall:
@@ -1849,26 +3032,401 @@ def validate_hr_index(
     )
 
 
+def _unit_index_proof_payload(
+    regulator: RegulatorEnclosure,
+    zeta: ZetaLogResidueEnclosure,
+    index: HRIndexValidationResult,
+) -> dict[str, Any]:
+    zeta_payload = zeta.to_dict()
+    # Cache counters depend on whether construction reused a workspace. They
+    # are performance diagnostics, not mathematical evidence.
+    zeta_payload.pop("diagnostics", None)
+    return {
+        "regulator": regulator.to_dict(),
+        "zeta_log_residue": zeta_payload,
+        "hr_index": index.to_dict(),
+    }
+
+
+def _compute_unit_index_proof(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    configuration: dict[str, Any],
+    *,
+    workspace: ZetaLogResidueWorkspace | None = None,
+) -> tuple[int, dict[str, Any]]:
+    signature_module = __import__(
+        "sagejs.number_fields.embeddings", fromlist=["embeddings"]
+    )
+    signature = tuple(int(value) for value in signature_module.exact_signature(field))
+    configured_signature = tuple(
+        _payload_integer(value, "global-index signature entry")
+        for value in configuration["signature"]
+    )
+    if signature != configured_signature:
+        raise AnalyticCertificationError(
+            "the global index certificate signature does not match the field"
+        )
+    expected_rank = signature[0] + signature[1] - 1
+    if len(initial_units) != expected_rank:
+        raise AnalyticCertificationError(
+            "the global index certificate has the wrong number of free units"
+        )
+    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+    torsion = units_module.roots_of_unity(field)
+    if (
+        not torsion.complete
+        or not torsion.verify()
+        or int(torsion.order)
+        != _payload_integer(
+            configuration["roots_of_unity"], "global-index torsion order"
+        )
+    ):
+        raise AnalyticCertificationError(
+            "the global index certificate has unverified torsion data"
+        )
+    regulator_configuration = configuration["regulator"]
+    regulator = regulator_from_factored_units(
+        initial_units,
+        unit_rank=expected_rank,
+        precision_bits=_payload_integer(
+            regulator_configuration["precision_bits"], "regulator precision"
+        ),
+        absolute_tolerance_bits=_payload_integer(
+            regulator_configuration["absolute_tolerance_bits"],
+            "regulator absolute tolerance",
+        ),
+        maximum_precision_bits=_payload_integer(
+            regulator_configuration["maximum_precision_bits"],
+            "maximum regulator precision",
+        ),
+    )
+    zeta_configuration = configuration["zeta"]
+    zeta_absolute_error = zeta_configuration["absolute_error"]
+    if (
+        not isinstance(zeta_absolute_error, str)
+        or str(_endpoint(zeta_absolute_error, rigorous=True)) != zeta_absolute_error
+    ):
+        raise TypeError("zeta absolute error must be a canonical rational string")
+    limits_payload = zeta_configuration["limits"]
+    limits = ZetaLogResidueLimits(
+        maximum_prime_bound=_payload_integer(
+            limits_payload["maximum_prime_bound"], "maximum zeta prime bound"
+        ),
+        maximum_degree=_payload_integer(
+            limits_payload["maximum_degree"], "maximum zeta degree"
+        ),
+        splitting_block_size=_payload_integer(
+            limits_payload["splitting_block_size"], "zeta splitting block size"
+        ),
+        maximum_precision_bits=_payload_integer(
+            limits_payload["maximum_precision_bits"], "maximum zeta precision"
+        ),
+    )
+    zeta = zeta_log_residue_bound(
+        int(order.discriminant()),
+        int(field.degree()),
+        order.splitting_records,
+        absolute_error=zeta_absolute_error,
+        precision_bits=_payload_integer(
+            zeta_configuration["precision_bits"], "zeta precision"
+        ),
+        limits=limits,
+        workspace=workspace,
+    )
+    index = validate_hr_index(
+        signature=(signature[0], signature[1]),
+        discriminant=int(order.discriminant()),
+        class_number=_payload_integer(
+            configuration["class_number"], "global-index class number"
+        ),
+        roots_of_unity=_payload_integer(
+            configuration["roots_of_unity"], "global-index torsion order"
+        ),
+        regulator=regulator,
+        zeta_log_residue=zeta,
+        precision_bits=_payload_integer(
+            configuration["hr_precision_bits"], "hR validation precision"
+        ),
+    )
+    if not index.rigorous or index.unique_index is None:
+        raise AnalyticPrecisionError(
+            "the replayed analytic proof does not isolate a unique global index"
+        )
+    return int(index.unique_index), _unit_index_proof_payload(regulator, zeta, index)
+
+
+class UnitSaturationIndexCertificate:
+    """Hash-bound analytic proof of the initial missing class/unit index."""
+
+    def __init__(
+        self,
+        field_order_identity: dict[str, Any],
+        initial_units: Sequence[Any],
+        configuration: dict[str, Any],
+        index_bound: int,
+        analytic_proof: dict[str, Any],
+        generation_evidence: Any,
+        proof_status: str,
+        generation_verifier: Callable[..., Any] | None = None,
+        workspace: ZetaLogResidueWorkspace | None = None,
+    ) -> None:
+        self.field_order_identity = json.loads(_canonical_json(field_order_identity))
+        self.initial_units = json.loads(_canonical_json(list(initial_units)))
+        self.configuration = json.loads(_canonical_json(configuration))
+        self.index_bound = int(index_bound)
+        self.analytic_proof = json.loads(_canonical_json(analytic_proof))
+        self.generation_evidence = json.loads(_canonical_json(generation_evidence))
+        self.proof_status = str(proof_status)
+        self._generation_verifier = generation_verifier
+        self._workspace = workspace
+        if self.index_bound < 1:
+            raise ValueError("a global index certificate needs a positive index")
+        if self.proof_status not in (
+            "exact-unconditional",
+            "exact-relations-conditional-grh",
+        ):
+            raise ValueError("a global index certificate needs an exact proof status")
+
+    def _body_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
+            "field_order_identity": self.field_order_identity,
+            "initial_units": self.initial_units,
+            "configuration": self.configuration,
+            "index_bound": self.index_bound,
+            "analytic_proof": self.analytic_proof,
+            "generation_evidence": self.generation_evidence,
+            "proof_status": self.proof_status,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        body = self._body_dict()
+        body["content_sha256"] = _content_hash(body)
+        return body
+
+    @classmethod
+    def from_dict(cls, payload: Any) -> UnitSaturationIndexCertificate:
+        if not isinstance(payload, dict):
+            raise TypeError("a global index certificate payload must be a dictionary")
+        body = dict(payload)
+        expected_hash = body.pop("content_sha256", None)
+        if (
+            body.get("schema")
+            != "sagejs.number-fields.unit-saturation-index-certificate.v1"
+            or not isinstance(expected_hash, str)
+            or _content_hash(body) != expected_hash
+        ):
+            raise AnalyticCertificationError(
+                "global unit-index certificate hash mismatch"
+            )
+        answer = cls(
+            body["field_order_identity"],
+            body["initial_units"],
+            body["configuration"],
+            _payload_integer(body["index_bound"], "global saturation index"),
+            body["analytic_proof"],
+            body["generation_evidence"],
+            body["proof_status"],
+        )
+        if _canonical_json(answer.to_dict()) != _canonical_json(payload):
+            raise AnalyticCertificationError(
+                "global unit-index certificate payload is not canonical"
+            )
+        return answer
+
+    def verify(
+        self,
+        field: Any,
+        order: Any,
+        initial_units: Sequence[Any],
+        generation_verifier: Callable[..., Any] | None = None,
+    ) -> bool:
+        try:
+            hr_payload = self.analytic_proof["hr_index"]
+            lower_index = _payload_integer(
+                hr_payload["lower_index"], "authenticated hR lower index"
+            )
+            upper_index = _payload_integer(
+                hr_payload["upper_index"], "authenticated hR upper index"
+            )
+            unique_index = _payload_integer(
+                hr_payload["unique_index"], "authenticated hR unique index"
+            )
+            if (
+                lower_index != upper_index
+                or unique_index != lower_index
+                or unique_index != self.index_bound
+                or not _payload_boolean(
+                    hr_payload["rigorous"], "authenticated hR rigor"
+                )
+                or not _payload_boolean(
+                    self.analytic_proof["regulator"]["rigorous"],
+                    "authenticated regulator rigor",
+                )
+                or not _payload_boolean(
+                    self.analytic_proof["zeta_log_residue"]["rigorous"],
+                    "authenticated zeta rigor",
+                )
+            ):
+                return False
+            if _canonical_json(self.field_order_identity) != _canonical_json(
+                _saturation_field_order_identity(field, order)
+            ):
+                return False
+            unit_payloads = [
+                _element_payload(_ordinary_unit(unit)) for unit in initial_units
+            ]
+            if _canonical_json(unit_payloads) != _canonical_json(self.initial_units):
+                return False
+            verifier = generation_verifier or self._generation_verifier
+            if not callable(verifier) or not bool(
+                verifier(
+                    field,
+                    order,
+                    initial_units,
+                    int(self.configuration["class_number"]),
+                    self.generation_evidence,
+                    self.proof_status,
+                )
+            ):
+                return False
+            index_bound, proof = _compute_unit_index_proof(
+                field,
+                order,
+                initial_units,
+                self.configuration,
+                workspace=self._workspace,
+            )
+            return index_bound == self.index_bound and _canonical_json(
+                proof
+            ) == _canonical_json(self.analytic_proof)
+        except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
+            return False
+
+
+def certify_unit_saturation_index(
+    field: Any,
+    order: Any,
+    initial_units: Sequence[Any],
+    *,
+    class_number: int,
+    roots_of_unity: int,
+    precision_bits: int = 128,
+    regulator_absolute_tolerance_bits: int = 64,
+    maximum_precision_bits: int = 4096,
+    zeta_absolute_error: Any = "0.125",
+    zeta_limits: ZetaLogResidueLimits | None = None,
+    workspace: ZetaLogResidueWorkspace | None = None,
+    generation_evidence: Any = None,
+    generation_verifier: Callable[..., Any] | None = None,
+    proof_status: str = "",
+) -> UnitSaturationIndexCertificate:
+    """Construct a replayable analytic index certificate for exact units."""
+    selected_limits = zeta_limits or ZetaLogResidueLimits(
+        maximum_precision_bits=maximum_precision_bits
+    )
+    if generation_evidence is None or not callable(generation_verifier):
+        raise AnalyticCertificationError(
+            "a global index certificate needs replayable generation evidence"
+        )
+    if proof_status not in (
+        "exact-unconditional",
+        "exact-relations-conditional-grh",
+    ):
+        raise AnalyticCertificationError(
+            "a global index certificate needs an exact proof status"
+        )
+    if not bool(
+        generation_verifier(
+            field,
+            order,
+            initial_units,
+            int(class_number),
+            generation_evidence,
+            proof_status,
+        )
+    ):
+        raise AnalyticCertificationError(
+            "the factor-base and relation-generation evidence failed replay"
+        )
+    signature_module = __import__(
+        "sagejs.number_fields.embeddings", fromlist=["embeddings"]
+    )
+    signature = tuple(int(value) for value in signature_module.exact_signature(field))
+    configuration = {
+        "signature": [signature[0], signature[1]],
+        "class_number": int(class_number),
+        "roots_of_unity": int(roots_of_unity),
+        "hr_precision_bits": int(precision_bits),
+        "regulator": {
+            "precision_bits": int(precision_bits),
+            "absolute_tolerance_bits": int(regulator_absolute_tolerance_bits),
+            "maximum_precision_bits": int(maximum_precision_bits),
+        },
+        "zeta": {
+            "absolute_error": str(_endpoint(zeta_absolute_error, rigorous=True)),
+            "precision_bits": int(precision_bits),
+            "limits": {
+                "maximum_prime_bound": selected_limits.maximum_prime_bound,
+                "maximum_degree": selected_limits.maximum_degree,
+                "splitting_block_size": selected_limits.splitting_block_size,
+                "maximum_precision_bits": selected_limits.maximum_precision_bits,
+            },
+        },
+    }
+    selected_workspace = workspace or ZetaLogResidueWorkspace(
+        int(order.discriminant()), int(field.degree()), order.splitting_records
+    )
+    index_bound, proof = _compute_unit_index_proof(
+        field,
+        order,
+        initial_units,
+        configuration,
+        workspace=selected_workspace,
+    )
+    return UnitSaturationIndexCertificate(
+        _saturation_field_order_identity(field, order),
+        [_element_payload(_ordinary_unit(unit)) for unit in initial_units],
+        configuration,
+        index_bound,
+        proof,
+        generation_evidence,
+        proof_status,
+        generation_verifier,
+        selected_workspace,
+    )
+
+
 __all__ = [
     "AnalyticCertificationError",
     "AnalyticPrecisionError",
     "AnalyticResourceError",
     "HRIndexValidationResult",
+    "ExactUnitSaturationResult",
     "IntervalBallField",
     "RationalEndpoint",
     "RealBall",
     "RegulatorEnclosure",
     "UnitLatticeError",
     "UnitLatticeExtractionResult",
+    "UnitLocalPthPowerObstruction",
+    "UnitPthRootCertificate",
     "UnitSaturationEvidence",
+    "UnitSaturationIndexCertificate",
     "UnitSaturationResult",
     "ZetaLogResidueEnclosure",
     "ZetaLogResidueLimits",
     "ZetaLogResidueWorkspace",
     "certified_regulator_enclosure",
+    "certify_unit_saturation_index",
     "extract_unit_lattice",
     "regulator_from_factored_units",
+    "saturate_unit_lattice",
     "validate_hr_index",
     "validate_unit_saturation",
+    "verify_saturation_evidence",
+    "verify_saturation_record",
     "zeta_log_residue_bound",
 ]

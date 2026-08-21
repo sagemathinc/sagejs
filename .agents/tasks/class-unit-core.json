@@ -2,15 +2,18 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "class-unit-core",
-  "title": "Class-unit core representations and checkpoints",
+  "title": "Secure class-unit checkpoint publication",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
-  "objective": "Implement factored elements, immutable proof states, shared class/unit state, and genuinely resumable corruption-resistant checkpoint, cancellation, and progress control",
-  "base_commit": "2927be798ff1784505aeb497678b2e23d4251e2f",
+  "objective": "Publish class-unit checkpoints through unpredictable exclusively created same-directory files, preserve the descriptor through write and fsync, atomically replace, and sync the parent directory where supported",
+  "base_commit": "e8f6547c355e8eaef51ccf22dc26634460565673",
   "claims": [
     "src/lib/sagejs/number_fields/factored_elements.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
+    "src/lib/os.py",
+    "tools/host.ts",
+    "test/os-module.cjs",
     "test/number-field-class-unit-context.cjs",
     "test/fixtures/number-field-class-unit-context.json"
   ],
@@ -35,8 +38,10 @@
   "validation": [
     "pnpm test:baselib:strict",
     "pnpm test:native",
-    "node --test test/number-field-class-unit-context.cjs",
-    "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py"
+    "node test/os-module.cjs",
+    "node --test --test-name-pattern='checkpoint path writes' test/number-field-class-unit-context.cjs",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_context.py",
+    "python -m py_compile src/lib/os.py src/lib/sagejs/number_fields/class_unit_context.py"
   ],
   "runs": [
     {
@@ -78,20 +83,82 @@
       "commit": "d69b3520a2b0c4e6048ffb81dd3e4fbef1325386",
       "workspace_fingerprint": "e7b71364b6f62458b1be4d2120cdb80290721ba6e3a879df289886bf31ac8c4f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.728,
+      "started_at": "2026-08-21T09:26:34.554Z",
+      "commit": "d669b262f4fa2565261ef214f405f6e214a6cbea",
+      "workspace_fingerprint": "0ea90ad988b0a5b603e0bf9039b052658690dcfb6db50ce7d08e39094b0e50dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.759,
+      "started_at": "2026-08-21T09:26:47.951Z",
+      "commit": "d669b262f4fa2565261ef214f405f6e214a6cbea",
+      "workspace_fingerprint": "0ea90ad988b0a5b603e0bf9039b052658690dcfb6db50ce7d08e39094b0e50dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/os-module.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.454,
+      "started_at": "2026-08-21T10:21:37.744Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=checkpoint path writes test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.11,
+      "started_at": "2026-08-21T10:21:39.804Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.664,
+      "started_at": "2026-08-21T10:21:41.528Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/os.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.082,
+      "started_at": "2026-08-21T10:21:43.814Z",
+      "commit": "291daf3dd838a97bf1c2346ba2740b157160f3fd",
+      "workspace_fingerprint": "e24ba74a3049458baf11aff297ed7a2ef17cdc9fc07486f71991276ab43bda4c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Extended the shared ClassUnitGroupContext with authenticated relation-search state and added ClassUnitCheckpoint as a duck-typed execution controller. It restores factor-base, relation, search, matrix, and proof progress; captures every producer state family; writes canonical bounded checkpoints atomically to paths or detached sinks; authenticates and verifies resumes; publishes immutable sequenced progress; and polls cooperative cancellation. The focused restart test proves exact candidate-stream continuity across a fresh controller, preserves factor-base/relation/matrix/proof state, checks detached sinks and byte limits, rejects search-state corruption, and verifies progress sequence continuation and cancellation metadata. The original factored-element/context regression now authenticates the added search-state component and rejects 20 independent mutations.",
+    "summary": "Replaced predictable pathname-reopened checkpoint temporaries with 128-bit random same-directory candidates created atomically and exclusively at mode 0600. Sage.js now exposes minimal descriptor open/write/fsync/close support through the Node host: exclusive creation maps to `wx`, writes and fsync operate on the original descriptor, short writes are retried, the descriptor closes before atomic replace, and the parent directory is fsynced on supported non-Windows hosts. Collision, pre-created symlink, post-open unlink/symlink replacement, restrictive-mode, cleanup, partial-write, and durability-order regressions cover both the generic os boundary and the class-unit publisher.",
     "risks": [
-      "Context component authentication detects accidental mutation, while mathematical semantics remain intentionally owned by producer-supplied replay verifiers.",
-      "Atomic path replacement protects the previous complete checkpoint, but the helper does not fsync file or directory metadata and does not coordinate concurrent writers to the same destination.",
-      "Cancellation is cooperative: expensive producers must call stage/check_cancelled at safe boundaries, and only state captured before save is resumable.",
-      "Broad native and merged-suite gates were deferred to integration at coordinator request; the recorded receipts are the focused Sage.js runtime regression and direct zero-error Pyright check."
+      "The parent-directory fsync is intentionally skipped on Windows and tolerates platform errors that explicitly report the operation unsupported; file-descriptor fsync remains mandatory.",
+      "The descriptor API supports the two combinations needed here (read-only and exclusive writable creation), not the complete CPython os.open flag matrix.",
+      "Atomic publication does not arbitrate multiple legitimate writers targeting the same final checkpoint; the last atomic replacement wins.",
+      "The arithmetic-algebra lane claims were narrowly expanded to shared host/os files with explicit coordinator authorization because genuine same-descriptor safety cannot be implemented in the checkpoint module alone.",
+      "The lane checker still reports the authorized src/lib/os.py and tools/host.ts claims as outside its static arithmetic-algebra allowlist; integration must review those two shared-file changes explicitly.",
+      "Broad native and merged-suite gates were deferred; focused Sage.js host/context runtime regressions, ordinary CPython parsing, and direct zero-error Pyright are recorded."
     ],
     "next_steps": [
-      "Merge the engine lane's lazy hook integration and exercise a real relation-search interruption through the public class_group/unit_group entry point.",
-      "Supply producer-owned decoders and semantic verifiers for factor-base, relation, matrix, unit/analytic, and proof records when constructing resumed controllers.",
-      "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after the controller and engine commits merge."
+      "Run the full stdlib and class-unit suites on merged main, including native Windows CI for the `wx`/fsync/replace path.",
+      "Consider expanding os.open only when another audited caller needs additional flag combinations; do not silently accept unsupported semantics.",
+      "Retain the descriptor-preserving host operations if the built-in file object is later refactored, because reopening a temp pathname after exclusive creation reintroduces the race."
     ]
   }
 }

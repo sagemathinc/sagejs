@@ -7888,7 +7888,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 1034,
+        "line": 1088,
         "lines": 117,
         "sha256": "4ed390265108117ed0ef3e21d45891523a8ff3cf5ae5a81d66dbc90154c5bb14",
         "calls": [
@@ -10559,14 +10559,15 @@
       },
       "implementation": {
         "path": "packages/flint/src/algebraic.c",
-        "line": 971,
-        "lines": 62,
-        "sha256": "d36b1df7980fc9dbb055b21a5249ba0a400edd66c010b7a775f46e503b6159fa",
+        "line": 1008,
+        "lines": 79,
+        "sha256": "4f27108c59fda0b068a7a2b42e1c5b80d26a4b387fda9ab9a62672bd7221ad90",
         "calls": [
           "acb_abs",
           "acb_clear",
           "acb_init",
           "arb_clear",
+          "arb_get_interval_arf",
           "arb_init",
           "arb_is_positive",
           "arb_log",
@@ -10581,13 +10582,15 @@
           "isfinite",
           "napi_create_int64",
           "napi_create_object",
+          "napi_create_string_utf8",
           "napi_get_value_double",
           "napi_set_named_property",
           "napi_throw_range_error",
           "qqbar_get_acb",
           "require_arguments",
           "sagejs_decimal_from_arf",
-          "sagejs_qqbar_unwrap"
+          "sagejs_qqbar_unwrap",
+          "sagejs_set_dyadic_endpoint"
         ]
       },
       "family": "algebraic",

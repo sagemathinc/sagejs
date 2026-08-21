@@ -968,15 +968,53 @@ static napi_value sagejs_decimal_from_arf(
     return ok ? result : NULL;
 }
 
+static napi_value sagejs_fmpz_decimal_string(
+    napi_env env, const fmpz_t value)
+{
+    char *text = fmpz_get_str(NULL, 10, value);
+    napi_value result;
+    const int ok = check_napi(env,
+        napi_create_string_utf8(env, text, NAPI_AUTO_LENGTH, &result));
+    flint_free(text);
+    return ok ? result : NULL;
+}
+
+static int sagejs_set_dyadic_endpoint(
+    napi_env env,
+    napi_value result,
+    const char *mantissa_name,
+    const char *exponent_name,
+    const arf_t endpoint)
+{
+    fmpz_t mantissa, exponent;
+    napi_value mantissa_value, exponent_value;
+    int ok;
+
+    fmpz_init(mantissa);
+    fmpz_init(exponent);
+    arf_get_fmpz_2exp(mantissa, exponent, endpoint);
+    mantissa_value = sagejs_fmpz_decimal_string(env, mantissa);
+    exponent_value = sagejs_fmpz_decimal_string(env, exponent);
+    ok = mantissa_value != NULL && exponent_value != NULL &&
+        check_napi(env, napi_set_named_property(
+            env, result, mantissa_name, mantissa_value)) &&
+        check_napi(env, napi_set_named_property(
+            env, result, exponent_name, exponent_value));
+    fmpz_clear(mantissa);
+    fmpz_clear(exponent);
+    return ok;
+}
+
 napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info)
 {
     napi_value args[2], result, midpoint, radius, precision_value;
+    napi_value endpoint_encoding;
     qqbar_srcptr value;
     double requested;
     slong precision, digits;
     acb_t enclosure;
     arb_t absolute_value, logarithm;
-    arf_t converted_radius;
+    arf_t converted_radius, lower, upper;
 
     if (!require_arguments(env, info, 2, args) ||
         (value = sagejs_qqbar_unwrap(env, args[0])) == NULL ||
@@ -995,6 +1033,8 @@ napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info)
     arb_init(absolute_value);
     arb_init(logarithm);
     arf_init(converted_radius);
+    arf_init(lower);
+    arf_init(upper);
     qqbar_get_acb(enclosure, value, precision + 16);
     acb_abs(absolute_value, enclosure, precision + 16);
     if (!arb_is_positive(absolute_value))
@@ -1004,16 +1044,26 @@ napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info)
         goto failure;
     }
     arb_log(logarithm, absolute_value, precision);
+    arb_get_interval_arf(lower, upper, logarithm, precision);
     midpoint = sagejs_decimal_from_arf(env, arb_midref(logarithm), digits);
     arf_set_mag(converted_radius, arb_radref(logarithm));
     radius = sagejs_decimal_from_arf(env, converted_radius, digits);
     if (midpoint == NULL || radius == NULL ||
         !check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_create_string_utf8(env,
+            "mantissa-times-two-power", NAPI_AUTO_LENGTH,
+            &endpoint_encoding)) ||
         !check_napi(env, napi_create_int64(env, precision, &precision_value)) ||
         !check_napi(env, napi_set_named_property(
             env, result, "midpoint", midpoint)) ||
         !check_napi(env, napi_set_named_property(
             env, result, "radius", radius)) ||
+        !sagejs_set_dyadic_endpoint(env, result,
+            "lowerMantissa", "lowerExponent", lower) ||
+        !sagejs_set_dyadic_endpoint(env, result,
+            "upperMantissa", "upperExponent", upper) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "endpointEncoding", endpoint_encoding)) ||
         !check_napi(env, napi_set_named_property(
             env, result, "precisionBits", precision_value)))
         goto failure;
@@ -1021,6 +1071,8 @@ napi_value sagejs_qqbar_log_abs_ball(napi_env env, napi_callback_info info)
     arb_clear(absolute_value);
     arb_clear(logarithm);
     arf_clear(converted_radius);
+    arf_clear(lower);
+    arf_clear(upper);
     return result;
 
 failure:
@@ -1028,6 +1080,8 @@ failure:
     arb_clear(absolute_value);
     arb_clear(logarithm);
     arf_clear(converted_radius);
+    arf_clear(lower);
+    arf_clear(upper);
     return NULL;
 }
 

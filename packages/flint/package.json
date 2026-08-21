@@ -21,7 +21,7 @@
   "scripts": {
     "install": "node scripts/install.cjs",
     "build:deps": "node scripts/build-deps.cjs",
-    "build:addon": "node-gyp rebuild",
+    "build:addon": "node scripts/build-addon.cjs",
     "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs flint",
     "build": "node scripts/build.cjs",
     "validate:eclib:clean": "node scripts/validate-clean-eclib-build.cjs",

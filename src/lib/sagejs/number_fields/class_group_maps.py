@@ -49,6 +49,8 @@ _SATURATION_SCHEMA = "sagejs.number-fields/class-unit-saturation-v1"
 
 
 def _integer(value: Any, purpose: str) -> int:
+    if isinstance(value, (bool, float, str, bytes, bytearray)):
+        raise TypeError(purpose + " must be an exact integer")
     try:
         answer = int(value)
     except (TypeError, ValueError, OverflowError) as error:
@@ -1310,7 +1312,10 @@ def _engine_unconditional_records(
     answer = []
     for raw in raw_records:
         ideal = replay.decode_ideal(raw["ideal"])
-        coordinates = tuple(int(value) for value in raw["coordinates"])
+        coordinates = tuple(
+            _integer(value, "an unconditional proof coordinate")
+            for value in raw["coordinates"]
+        )
         representative = engine_group.representative_ideal(coordinates)
         quotient = _ideal_quotient(ideal, representative)
         generator = _decode_factored_generator(replay.field, raw["witness"])

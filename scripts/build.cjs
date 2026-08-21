@@ -27,7 +27,7 @@ const stages = [
   ["Converge the self-hosted compiler", 55],
   ["Generate FFI and task-runtime boundaries", 10],
   ["Precompile Python modules and Node runtimes", 190],
-  ["Reconcile installed native adapters", 15],
+  ["Reconcile installed native addons and adapters", 20],
   ["Publish the production native-kernel pack", 30],
 ];
 
@@ -110,8 +110,10 @@ function ffiSummary(output) {
 
 function adapterSummary(output) {
   const lines = nonemptyLines(output);
-  const current = lines.filter((line) => /adapter is current\.$/.test(line)).length;
-  const rebuilt = lines.filter((line) => line.startsWith("Built ")).length;
+  const current = lines.filter((line) =>
+    /(?:addon|adapter) is current\.$/.test(line)
+  ).length;
+  const rebuilt = lines.filter((line) => /^(?:Built|Rebuilt) /.test(line)).length;
   const absent = lines.filter((line) => line.startsWith("Skipped ")).length;
   return `Native adapters: ${current} current, ${rebuilt} rebuilt, ${absent} optional/absent.`;
 }
@@ -239,11 +241,30 @@ async function main() {
   });
 
   await runStage(5, async () => {
-    const output = await run(process.execPath, [
+    const flintAdapter = join(
+      root,
+      "packages",
+      "flint",
+      "build",
+      "generated-ffi",
+      "sagejs_flint_ffi.node",
+    );
+    const hadFlintAdapter = existsSync(flintAdapter);
+    const addon = await run(process.execPath, [
+      join(root, "packages", "flint", "scripts", "build-addon.cjs"),
+      "--reconcile-installed",
+    ]);
+    const restoredFlintAdapter = hadFlintAdapter && !existsSync(flintAdapter)
+      ? await run(process.execPath, [
+        join(root, "scripts", "build-ffi-host-adapter.cjs"),
+        "flint",
+      ])
+      : "";
+    const adapters = await run(process.execPath, [
       join(root, "scripts", "build-ffi-host-adapter.cjs"),
       "--reconcile-installed",
     ]);
-    return adapterSummary(output);
+    return adapterSummary(`${addon}\n${restoredFlintAdapter}\n${adapters}`);
   });
 
   await runStage(6, async () => {

@@ -386,6 +386,22 @@ X_OK = 1
 W_OK = 2
 R_OK = 4
 
+# Stable values matching CPython's POSIX constants.  The Sage.js host adapter
+# interprets the supported combinations below instead of forwarding these
+# numeric values to Node, so the same source also behaves predictably on
+# Windows.
+O_RDONLY = 0
+O_WRONLY = 1
+O_RDWR = 2
+O_CREAT = 0o100
+O_EXCL = 0o200
+O_TRUNC = 0o1000
+O_APPEND = 0o2000
+O_BINARY = 0o100000
+O_DIRECTORY = 0o200000
+O_NOFOLLOW = 0o400000
+O_CLOEXEC = 0o2000000
+
 
 def access(pathname, mode, *, dir_fd=None, effective_ids=False, follow_symlinks=True):
     if dir_fd is not None or effective_ids or not follow_symlinks:
@@ -395,6 +411,40 @@ def access(pathname, mode, *, dir_fd=None, effective_ids=False, follow_symlinks=
         return True
     except OSError:
         return False
+
+
+def open(pathname, flags, mode=0o777, *, dir_fd=None):
+    """Open a filesystem path and return a host file descriptor.
+
+    Sage.js currently supports read-only descriptors and exclusive writable
+    creation.  Exclusive creation maps to Node's `wx` flag, which atomically
+    applies create-and-fail-if-present semantics without following an existing
+    symlink at the final path component.
+    """
+    if dir_fd is not None:
+        raise NotImplementedError("dir_fd is not supported")
+    flags = int(flags)
+    ignored = O_CLOEXEC | O_NOFOLLOW | O_BINARY | O_DIRECTORY
+    operation = flags & ~ignored
+    if operation == O_RDONLY:
+        host_flags = "r"
+    elif operation == O_WRONLY | O_CREAT | O_EXCL:
+        host_flags = "wx"
+    else:
+        raise NotImplementedError("this os.open flag combination is not supported")
+    return int(_host_call("openFd", fspath(pathname), host_flags, int(mode)))
+
+
+def write(fd, data):
+    """Write bytes to an open host descriptor and return the byte count."""
+    if not isinstance(data, (bytes, bytearray)):
+        raise TypeError("a bytes-like object is required")
+    return int(_host_call("writeFd", int(fd), bytes(data)))
+
+
+def fsync(fd):
+    """Force buffered data for an open host descriptor to stable storage."""
+    _host_call("fsyncFd", int(fd))
 
 
 def close(fd):
