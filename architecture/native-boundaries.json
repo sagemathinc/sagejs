@@ -18,7 +18,7 @@
     "declared-ffi-resource": 29,
     "napi-export": 311,
     "runtime-intrinsic": 137,
-    "wasm-export": 69
+    "wasm-export": 72
   },
   "boundaries": [
     {
@@ -10642,6 +10642,33 @@
       "package": "@sagemath/sagejs-flint-wasm",
       "export": "sagejs_wasm_ec_lseries_diagnostic_double",
       "symbol": "sagejs_wasm_ec_lseries_diagnostic_double",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_direct_begin",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_direct_begin",
+      "symbol": "sagejs_wasm_ec_lseries_direct_begin",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_direct_compute",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_direct_compute",
+      "symbol": "sagejs_wasm_ec_lseries_direct_compute",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_ec_lseries_direct_cutoffs",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/curves/elliptic-lseries-adapter.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_ec_lseries_direct_cutoffs",
+      "symbol": "sagejs_wasm_ec_lseries_direct_cutoffs",
       "disposition": "legacy-handwritten-wasm"
     },
     {

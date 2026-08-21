@@ -37,8 +37,8 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   assert.equal(inventory.nonProduction.length, 7);
   assert.equal(coverage.totals.registered_kernels, 31);
   assert.equal(coverage.totals.production_kernels, 24);
-  assert.equal(coverage.totals.compiled_functions, 211);
-  assert.equal(coverage.totals.unsupported_production_functions, 7);
+  assert.equal(coverage.totals.compiled_functions, 218);
+  assert.equal(coverage.totals.unsupported_production_functions, 0);
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
     assert.match(omitted.reason, /\S/);
@@ -112,8 +112,8 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.registeredKernels, 31);
     assert.equal(manifest.productionKernels, 24);
     assert.equal(manifest.compiledKernelCores, 24);
-    assert.equal(manifest.compiledFunctions, 211);
-    assert.equal(manifest.unsupportedFunctions, 7);
+    assert.equal(manifest.compiledFunctions, 218);
+    assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.nonProductionKernels.length, 7);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
     const zeta = manifest.kernels.find((kernel) =>
@@ -126,26 +126,8 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     const extension = manifest.kernels.find((kernel) =>
       kernel.id === "extension-polynomial-flint-production"
     );
-    assert.ok(extension.functions.every((fn) =>
-      fn.status === "unsupported" && /resource/.test(fn.reason)
-    ));
-    assert.deepEqual(
-      manifest.unsupported.map((fn) => `${fn.kernel}:${fn.function}`),
-      [
-        "extension-polynomial-flint-production:" +
-          "flint_extension_polynomial_from_coordinates",
-        "extension-polynomial-flint-production:flint_extension_polynomial_add",
-        "extension-polynomial-flint-production:" +
-          "flint_extension_polynomial_multiply",
-        "extension-polynomial-flint-production:flint_extension_element_coordinate",
-        "extension-polynomial-flint-production:" +
-          "flint_extension_element_coordinate_sum",
-        "extension-polynomial-flint-production:" +
-          "flint_extension_polynomial_coordinate",
-        "extension-polynomial-flint-production:" +
-          "flint_extension_polynomial_coordinate_sum",
-      ],
-    );
+    assert.ok(extension.functions.every((fn) => fn.status === "compiled-source"));
+    assert.deepEqual(manifest.unsupported, []);
     assert.ok(manifest.unsupported.every((fn) =>
       fn.fallback === "same-source" && fn.oracles.length > 0 &&
       fn.tests.length > 0
@@ -204,6 +186,9 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
         "fmpq_matrix",
         "fmpz_matrix",
         "fmpz_mod_polynomial",
+        "fq_context",
+        "fq_element",
+        "fq_polynomial",
         "nmod_matrix",
       ],
     );

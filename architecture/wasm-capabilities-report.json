@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c3784c1314650f6d8a90fd9f42ded454193ab22f1e20540826f1ae769c6cd5f6",
+  "source_sha256": "2dd6db409bfe9f25607a0521cadbfc5bf68a1b0e918a686f575fc68548a3f6a4",
   "counts": {
     "total": 942,
     "by_kind": {
@@ -20,9 +20,9 @@
       "shared-core": 35
     },
     "by_status": {
-      "available": 458,
+      "available": 466,
       "desktop-only": 14,
-      "fallback": 470
+      "fallback": 462
     }
   },
   "workflow_aliases": {
@@ -5574,13 +5574,13 @@
       "id": "kernel:arbitrary-prime-polynomial-resource-production",
       "family": "arbitrary-prime-polynomial-resource",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "arbitrary-prime-polynomial-resource"
       ],
-      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 resource-owned functions."
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:buchmann-lenstra-row-hnf-production",
@@ -5592,7 +5592,7 @@
       "public_consumers": [
         "buchmann-lenstra-row-hnf"
       ],
-      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
@@ -5604,7 +5604,7 @@
       "public_consumers": [
         "compiler-owned-record"
       ],
-      "explanation": "All 3 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 3 functions and the same-source fallback for 3 functions."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",
@@ -5616,19 +5616,19 @@
       "public_consumers": [
         "dense-binary-m4ri"
       ],
-      "explanation": "All 12 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 12 functions and the same-source fallback for 12 functions."
     },
     {
       "id": "kernel:dense-integer-flint-production",
       "family": "dense-integer-flint",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "This family uses compiled WebAssembly for 9 of 15 functions and the same-source fallback for 6 resource-owned functions."
+      "explanation": "All 15 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",
@@ -5640,7 +5640,7 @@
       "public_consumers": [
         "dense-integer"
       ],
-      "explanation": "All 19 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 19 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-prime-fflas-optional",
@@ -5652,7 +5652,7 @@
       "public_consumers": [
         "dense-prime-fflas"
       ],
-      "explanation": "All 5 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 5 functions and the same-source fallback for 5 functions."
     },
     {
       "id": "kernel:dense-prime-flint-production",
@@ -5664,7 +5664,7 @@
       "public_consumers": [
         "dense-prime-flint"
       ],
-      "explanation": "All 9 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-prime-production",
@@ -5676,19 +5676,19 @@
       "public_consumers": [
         "dense-prime"
       ],
-      "explanation": "All 30 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 30 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-rational-flint-production",
       "family": "dense-rational-flint",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-rational-flint"
       ],
-      "explanation": "This family uses compiled WebAssembly for 7 of 12 functions and the same-source fallback for 5 resource-owned functions."
+      "explanation": "All 12 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-rational-production",
@@ -5700,19 +5700,19 @@
       "public_consumers": [
         "dense-rational"
       ],
-      "explanation": "All 25 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 25 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-word-prime-flint-production",
       "family": "dense-word-prime-flint",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "dense-word-prime-flint"
       ],
-      "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 resource-owned functions."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:exact-integer-witness",
@@ -5724,19 +5724,19 @@
       "public_consumers": [
         "exact-integer"
       ],
-      "explanation": "All 4 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 4 functions and the same-source fallback for 4 functions."
     },
     {
       "id": "kernel:extension-polynomial-flint-production",
       "family": "extension-polynomial-flint",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "extension-polynomial-flint"
       ],
-      "explanation": "This family uses compiled WebAssembly for 0 of 7 functions and the same-source fallback for 7 resource-owned functions."
+      "explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:field-analysis-fixed-point-checker-production",
@@ -5748,7 +5748,7 @@
       "public_consumers": [
         "field-analysis-fixed-point-checker"
       ],
-      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:genus3-weil-candidate-production",
@@ -5760,7 +5760,7 @@
       "public_consumers": [
         "genus3-weil-candidate"
       ],
-      "explanation": "All 2 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-composite-analysis-production",
@@ -5772,7 +5772,7 @@
       "public_consumers": [
         "number-field-composite-analysis"
       ],
-      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-discriminant-prefactor-production",
@@ -5784,7 +5784,7 @@
       "public_consumers": [
         "number-field-discriminant-prefactor"
       ],
-      "explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-om-proof-production",
@@ -5796,7 +5796,7 @@
       "public_consumers": [
         "number-field-om-proof"
       ],
-      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-round4-state-production",
@@ -5808,7 +5808,7 @@
       "public_consumers": [
         "number-field-round4-state"
       ],
-      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:number-field-zeta-coefficients-production",
@@ -5820,19 +5820,19 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",
       "family": "p1-heilbronn",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "p1-heilbronn"
       ],
-      "explanation": "This family uses compiled WebAssembly for 19 of 20 functions and the same-source fallback for 1 resource-owned functions."
+      "explanation": "All 20 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-binary64-witness",
@@ -5844,7 +5844,7 @@
       "public_consumers": [
         "packed-binary64"
       ],
-      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
     },
     {
       "id": "kernel:packed-integer-polynomial-production",
@@ -5856,19 +5856,19 @@
       "public_consumers": [
         "packed-integer-polynomial"
       ],
-      "explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-polynomial-flint-production",
       "family": "packed-polynomial-flint",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "packed-polynomial-flint"
       ],
-      "explanation": "This family uses compiled WebAssembly for 20 of 21 functions and the same-source fallback for 1 resource-owned functions."
+      "explanation": "All 21 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-prime-polynomial-production",
@@ -5880,7 +5880,7 @@
       "public_consumers": [
         "packed-prime-polynomial"
       ],
-      "explanation": "All 8 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 8 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-rational-polynomial-production",
@@ -5892,7 +5892,7 @@
       "public_consumers": [
         "packed-rational-polynomial"
       ],
-      "explanation": "All 11 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 11 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:prime-field-witness",
@@ -5904,19 +5904,19 @@
       "public_consumers": [
         "prime-field"
       ],
-      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
     },
     {
       "id": "kernel:sparse-random-matrix-production",
       "family": "sparse-random-matrix",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "same-source-dynamic-python",
       "wasm_module": "source-kernel-pack",
       "public_consumers": [
         "sparse-random-matrix"
       ],
-      "explanation": "This family uses compiled WebAssembly for 2 of 4 functions and the same-source fallback for 2 resource-owned functions."
+      "explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:tate-algorithm-witness",
@@ -5928,7 +5928,7 @@
       "public_consumers": [
         "tate-algorithm"
       ],
-      "explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack."
+      "explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions."
     },
     {
       "id": "kernel:word-prime-krylov-production",
@@ -5940,7 +5940,7 @@
       "public_consumers": [
         "word-prime-krylov"
       ],
-      "explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",

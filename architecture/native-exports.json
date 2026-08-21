@@ -1943,6 +1943,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs",
         "packages/flint-wasm/test/smalljac-coefficients.test.mjs",
         "packages/flint/test/elliptic-native.cjs",
         "packages/flint/test/test.cjs"
@@ -2008,7 +2009,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1661,
+        "line": 1727,
         "lines": 184,
         "sha256": "98ad7c9d6d195026cca472915d1218816d3c3255c221fb6701b4f34038b276eb",
         "calls": [
@@ -2078,7 +2079,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 2296,
+        "line": 2322,
         "lines": 166,
         "sha256": "eb581a6624de19d5ef5ccc4775122cb4a03ab51548fde9cda821bbe5c9155d6d",
         "calls": [
@@ -2123,7 +2124,10 @@
         "PARI/GP",
         "upstream eclib"
       ],
-      "consumers": [],
+      "consumers": [
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs"
+      ],
       "declared_ffi": null
     },
     {
@@ -2136,9 +2140,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 1846,
-        "lines": 449,
-        "sha256": "cb6e115f15eb1b2cd4e71654c24e3a72207507bf2109fc5b05b1d30eb5fd5df8",
+        "line": 1912,
+        "lines": 409,
+        "sha256": "3897f58f776ff44c1f6254a5c0a5aaf842ba3159d9e62596f6f6f569786ee102",
         "calls": [
           "_acb_vec_clear",
           "_acb_vec_init",
@@ -2161,15 +2165,11 @@
           "check_napi",
           "complex_ball_to_object",
           "decimal_from_arf",
-          "ec_lseries_domain",
           "ec_lseries_packed_plot_to_object",
           "ec_lseries_plan_to_object",
-          "fmax",
           "fmpz_clear",
           "fmpz_get_d",
           "fmpz_init",
-          "isfinite",
-          "log",
           "mag_add",
           "mag_clear",
           "mag_cmp",
@@ -2188,9 +2188,9 @@
           "napi_throw_range_error",
           "napi_throw_type_error",
           "packed_coefficient_view_clear",
-          "raw_conversion_guard_bits",
           "sagejs_ec_lseries_values_acb",
           "sagejs_ec_lseries_values_refined_acb",
+          "sagejs_ec_lseries_work_precision",
           "set_named",
           "set_named_double",
           "set_named_slong",
@@ -2213,7 +2213,8 @@
         "upstream eclib"
       ],
       "consumers": [
-        "packages/flint-wasm/test/curve-parity.test.mjs"
+        "packages/flint-wasm/test/curve-parity.test.mjs",
+        "packages/flint-wasm/test/curves-modsym-fastmath.test.mjs"
       ],
       "declared_ffi": null
     },

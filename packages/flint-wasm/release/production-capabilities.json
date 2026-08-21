@@ -324,10 +324,18 @@
       "artifact": "native-kernels/kernel-flint.wasm",
       "capabilities": [],
       "additionalCapabilities": [
+        "kernel:arbitrary-prime-polynomial-resource-production",
+        "kernel:dense-integer-flint-production",
         "kernel:dense-prime-flint-production",
         "kernel:dense-prime-production",
+        "kernel:dense-rational-flint-production",
+        "kernel:dense-word-prime-flint-production",
+        "kernel:extension-polynomial-flint-production",
         "kernel:number-field-round4-state-production",
+        "kernel:p1-heilbronn-production",
+        "kernel:packed-polynomial-flint-production",
         "kernel:packed-prime-polynomial-production",
+        "kernel:sparse-random-matrix-production",
         "kernel:word-prime-krylov-production"
       ]
     },

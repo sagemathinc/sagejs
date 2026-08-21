@@ -10318,18 +10318,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 1,
+        "compiled_functions": 1,
+        "fallback_functions": 0,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10348,8 +10346,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 6 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 6 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 6,
         "fallback_functions": 0,
@@ -10374,8 +10372,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 3-function family is intentionally outside the production source-kernel pack (development-witness-not-in-production-registry) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 3 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 3 functions. The remaining 3 functions use their tested same-source dynamic fallback (development-witness-not-in-production-registry).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 3 functions and the same-source fallback for 3 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 3,
@@ -10402,8 +10400,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 12-function family is intentionally outside the production source-kernel pack (separate-m4ri-ownership-domain) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 12 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 12 functions. The remaining 12 functions use their tested same-source dynamic fallback (separate-m4ri-ownership-domain).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 12 functions and the same-source fallback for 12 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 12,
@@ -10428,18 +10426,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 9 of 15 functions. The remaining 6 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 9 of 15 functions and the same-source fallback for 6 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 15 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 15 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 9,
-        "fallback_functions": 6,
+        "compiled_functions": 15,
+        "fallback_functions": 0,
         "total_functions": 15,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10458,8 +10454,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 19 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 19 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 19 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 19 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 19,
         "fallback_functions": 0,
@@ -10484,8 +10480,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 5-function family is intentionally outside the production source-kernel pack (optional-fflas-desktop-accelerator) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 5 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 5 functions. The remaining 5 functions use their tested same-source dynamic fallback (optional-fflas-desktop-accelerator).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 5 functions and the same-source fallback for 5 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 5,
@@ -10512,8 +10508,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 9 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 9 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 9 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 9,
         "fallback_functions": 0,
@@ -10538,8 +10534,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 30 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 30 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 30 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 30 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 30,
         "fallback_functions": 0,
@@ -10562,18 +10558,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 7 of 12 functions. The remaining 5 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 7 of 12 functions and the same-source fallback for 5 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 12 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 12 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 7,
-        "fallback_functions": 5,
+        "compiled_functions": 12,
+        "fallback_functions": 0,
         "total_functions": 12,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10592,8 +10586,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 25 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 25 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 25 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 25 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 25,
         "fallback_functions": 0,
@@ -10616,18 +10610,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 0 of 2 functions. The remaining 2 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 2,
+        "compiled_functions": 2,
+        "fallback_functions": 0,
         "total_functions": 2,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10646,8 +10638,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 4-function family is intentionally outside the production source-kernel pack (development-witness-not-in-production-registry) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 4 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 4 functions. The remaining 4 functions use their tested same-source dynamic fallback (development-witness-not-in-production-registry).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 4 functions and the same-source fallback for 4 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 4,
@@ -10672,18 +10664,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 0 of 7 functions. The FLINT extension resources now execute in the eager Wasm ownership domain; these redundant source wrappers retain their tested same-source fallback until a same-module resource bridge is generated (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 0 of 7 functions and the same-source fallback for 7 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 7 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 7 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 7,
+        "compiled_functions": 7,
+        "fallback_functions": 0,
         "total_functions": 7,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10702,8 +10692,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 6 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 6 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 6,
         "fallback_functions": 0,
@@ -10728,8 +10718,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 2 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 2 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 2,
         "fallback_functions": 0,
@@ -10754,8 +10744,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 3 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 3,
         "fallback_functions": 0,
@@ -10780,8 +10770,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 1 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 1,
         "fallback_functions": 0,
@@ -10806,8 +10796,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 3 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 3,
         "fallback_functions": 0,
@@ -10832,8 +10822,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 3 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 3,
         "fallback_functions": 0,
@@ -10858,8 +10848,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 1 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 1 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 1,
         "fallback_functions": 0,
@@ -10882,18 +10872,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 19 of 20 functions. The remaining 1 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 19 of 20 functions and the same-source fallback for 1 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 20 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 20 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 19,
-        "fallback_functions": 1,
+        "compiled_functions": 20,
+        "fallback_functions": 0,
         "total_functions": 20,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10912,8 +10900,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 2-function family is intentionally outside the production source-kernel pack (development-witness-not-in-production-registry) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 2 functions. The remaining 2 functions use their tested same-source dynamic fallback (development-witness-not-in-production-registry).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 2,
@@ -10940,8 +10928,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 6 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 6 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 6 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 6,
         "fallback_functions": 0,
@@ -10964,18 +10952,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 20 of 21 functions. The remaining 1 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 20 of 21 functions and the same-source fallback for 1 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 21 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 21 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 20,
-        "fallback_functions": 1,
+        "compiled_functions": 21,
+        "fallback_functions": 0,
         "total_functions": 21,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -10994,8 +10980,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 8 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 8 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 8 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 8 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 8,
         "fallback_functions": 0,
@@ -11020,8 +11006,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 11 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 11 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 11 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 11 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 11,
         "fallback_functions": 0,
@@ -11046,8 +11032,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 2-function family is intentionally outside the production source-kernel pack (development-witness-not-in-production-registry) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 2 functions. The remaining 2 functions use their tested same-source dynamic fallback (development-witness-not-in-production-registry).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 2,
@@ -11072,18 +11058,16 @@
       "tests": [
         "production-kernel-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 2 of 4 functions. The remaining 2 resource-owned functions use their tested same-source dynamic fallback (foreign-resource-ownership-domain-adapter-required).",
-      "public_explanation": "This family uses compiled WebAssembly for 2 of 4 functions and the same-source fallback for 2 resource-owned functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 4 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 2,
-        "fallback_functions": 2,
+        "compiled_functions": 4,
+        "fallback_functions": 0,
         "total_functions": 4,
         "production_pack": true,
-        "fallback_reasons": [
-          "foreign-resource-ownership-domain-adapter-required"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -11102,8 +11086,8 @@
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "This 2-function family is intentionally outside the production source-kernel pack (development-witness-not-in-production-registry) and retains its tested same-source dynamic implementation.",
-      "public_explanation": "All 2 functions remain available through their same-source fallback; this family is intentionally not in the production WebAssembly kernel pack.",
+      "review_note": "The production pack compiles 0 of 2 functions. The remaining 2 functions use their tested same-source dynamic fallback (development-witness-not-in-production-registry).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 2 functions and the same-source fallback for 2 functions.",
       "compiled_coverage": {
         "compiled_functions": 0,
         "fallback_functions": 2,
@@ -11130,8 +11114,8 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "All 3 registered functions are compiled into the receipt-authenticated production source-kernel pack; the same typed source remains the dynamic fallback.",
-      "public_explanation": "All 3 functions in this source-kernel family execute through the production WebAssembly pack when selected.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
         "compiled_functions": 3,
         "fallback_functions": 0,

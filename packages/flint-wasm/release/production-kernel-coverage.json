@@ -4,22 +4,20 @@
   "totals": {
     "registered_kernels": 31,
     "production_kernels": 24,
-    "compiled_functions": 193,
-    "unsupported_production_functions": 25,
+    "compiled_functions": 218,
+    "unsupported_production_functions": 0,
     "non_production_functions": 30,
-    "same_source_fallback_functions": 55
+    "same_source_fallback_functions": 30
   },
   "kernels": [
     {
       "id": "arbitrary-prime-polynomial-resource-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 1,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
       "total_functions": 1,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "buchmann-lenstra-row-hnf-production",
@@ -55,13 +53,11 @@
     {
       "id": "dense-integer-flint-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 9,
-      "fallback_functions": 6,
+      "status": "available",
+      "compiled_functions": 15,
+      "fallback_functions": 0,
       "total_functions": 15,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "dense-integer-production",
@@ -104,13 +100,11 @@
     {
       "id": "dense-rational-flint-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 7,
-      "fallback_functions": 5,
+      "status": "available",
+      "compiled_functions": 12,
+      "fallback_functions": 0,
       "total_functions": 12,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "dense-rational-production",
@@ -124,13 +118,11 @@
     {
       "id": "dense-word-prime-flint-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 2,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
       "total_functions": 2,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "exact-integer-witness",
@@ -146,13 +138,11 @@
     {
       "id": "extension-polynomial-flint-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 0,
-      "fallback_functions": 7,
+      "status": "available",
+      "compiled_functions": 7,
+      "fallback_functions": 0,
       "total_functions": 7,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "field-analysis-fixed-point-checker-production",
@@ -220,13 +210,11 @@
     {
       "id": "p1-heilbronn-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 19,
-      "fallback_functions": 1,
+      "status": "available",
+      "compiled_functions": 20,
+      "fallback_functions": 0,
       "total_functions": 20,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "packed-binary64-witness",
@@ -251,13 +239,11 @@
     {
       "id": "packed-polynomial-flint-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 20,
-      "fallback_functions": 1,
+      "status": "available",
+      "compiled_functions": 21,
+      "fallback_functions": 0,
       "total_functions": 21,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "packed-prime-polynomial-production",
@@ -291,13 +277,11 @@
     {
       "id": "sparse-random-matrix-production",
       "production": true,
-      "status": "fallback",
-      "compiled_functions": 2,
-      "fallback_functions": 2,
+      "status": "available",
+      "compiled_functions": 4,
+      "fallback_functions": 0,
       "total_functions": 4,
-      "fallback_reasons": [
-        "foreign-resource-ownership-domain-adapter-required"
-      ]
+      "fallback_reasons": []
     },
     {
       "id": "tate-algorithm-witness",
