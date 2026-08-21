@@ -207,3 +207,24 @@ jobs:
           name: wasm-browser-${{ matrix.engine }}-receipts
           path: build/wasm-*-${{ matrix.engine }}.json
           if-no-files-found: error
+
+  workload-enforcement:
+    name: Reject silent portable computation
+    needs: browser-release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: wasm-browser-*-receipts
+          merge-multiple: true
+          path: .artifacts/wasm-workload-receipts
+      - run: pnpm wasm:workload-enforce

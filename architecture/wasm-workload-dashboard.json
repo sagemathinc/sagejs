@@ -24,11 +24,11 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "04b719af20615188ecb48ff6b84be174e4ae6aa36867f3957b04067d0bc48931"
+      "sha256": "31c41addb4ec029b9995c355487a6828e72f7faea414500ade544687ed127910"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "c3acbe42ade7bca505a56c4b0f349427782d79a570b97614a3f2663b8120ddbb"
+      "sha256": "1eb8218eff6ba05ce45b19364c97263ce6dfe51028c88ee1b6e8570b88bbaee0"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -42,35 +42,35 @@
     "parity_workloads": 15,
     "performance_workloads": 5,
     "capability_counts": {
-      "total": 942,
+      "total": 943,
       "by_kind": {
         "declared-ffi-function": 412,
         "declared-ffi-resource": 29,
         "napi-export": 311,
-        "production-kernel": 31,
+        "production-kernel": 32,
         "runtime-intrinsic": 137,
         "specialist-capability": 22
       },
       "by_disposition": {
-        "compiled-source": 31,
+        "compiled-source": 32,
         "desktop-only": 14,
-        "generated-wasm": 238,
-        "portable-fallback": 624,
+        "generated-wasm": 268,
+        "portable-fallback": 594,
         "shared-core": 35
       },
       "by_status": {
-        "available": 428,
+        "available": 467,
         "desktop-only": 14,
-        "fallback": 500
+        "fallback": 462
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 31,
-      "production_kernels": 24,
-      "compiled_functions": 193,
-      "unsupported_production_functions": 25,
+      "registered_kernels": 32,
+      "production_kernels": 25,
+      "compiled_functions": 219,
+      "unsupported_production_functions": 0,
       "non_production_functions": 30,
-      "same_source_fallback_functions": 55
+      "same_source_fallback_functions": 30
     }
   },
   "route_classes": {
