@@ -8,8 +8,15 @@ const test = require("node:test");
 const { performance } = require("node:perf_hooks");
 
 const root = join(__dirname, "..");
-const sagejs =
-  process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
+function sagejsInvocation(args) {
+  if (process.env.SAGEJS_TEST_EXECUTABLE) {
+    return [process.env.SAGEJS_TEST_EXECUTABLE, args];
+  }
+  if (process.platform === "win32") {
+    return [process.execPath, [join(root, "bin", "sagejs-source.cjs"), ...args]];
+  }
+  return [join(root, "bin", "sagejs"), args];
+}
 const fixture = JSON.parse(
   readFileSync(
     join(__dirname, "fixtures", "number-field-quadratic-class-units.json"),
@@ -18,7 +25,8 @@ const fixture = JSON.parse(
 );
 
 function runSage(source) {
-  const result = spawnSync(sagejs, ["--python", "-"], {
+  const [executable, arguments_] = sagejsInvocation(["--python", "-"]);
+  const result = spawnSync(executable, arguments_, {
     cwd: root,
     encoding: "utf8",
     input: source,

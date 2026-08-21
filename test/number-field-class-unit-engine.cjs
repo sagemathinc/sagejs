@@ -8,8 +8,15 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const root = join(__dirname, "..");
-const executable =
-  process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
+function sagejsInvocation(args) {
+  if (process.env.SAGEJS_TEST_EXECUTABLE) {
+    return [process.env.SAGEJS_TEST_EXECUTABLE, args];
+  }
+  if (process.platform === "win32") {
+    return [process.execPath, [join(root, "bin", "sagejs-source.cjs"), ...args]];
+  }
+  return [join(root, "bin", "sagejs"), args];
+}
 const fixture = JSON.parse(
   readFileSync(
     join(__dirname, "fixtures", "number-field-class-unit-engine.json"),
@@ -33,7 +40,8 @@ function run(source) {
     ).replace("from __future__ import annotations\n", "");
     const filename = join(directory, "test.py");
     writeFileSync(filename, `${moduleSource}\n${source}`, "utf8");
-    const result = spawnSync(executable, ["--python", filename], {
+    const [executable, arguments_] = sagejsInvocation(["--python", filename]);
+    const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
       timeout: 120_000,

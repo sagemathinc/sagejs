@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "description": "Independent normalized class/unit and prime-splitting oracles for x^n-x-1, degrees 6 through 10",
+  "license": "Sage/PARI and Hecke outputs are derived facts under their respective open-source licenses; Magma output is independently computed factual data. This JSON contains no copied source code or fragile display representations.",
+  "captured_at": "2026-08-21T10:30:00Z",
+  "oracle_agreement": ["sage_pari", "magma", "hecke"],
+  "proof_modes": {
+    "conditional_grh": "complete relation result conditional on GRH",
+    "unconditional": "complete unconditional result"
+  },
+  "systems": {
+    "sage_pari": {
+      "sage": "10.9.post1",
+      "pari": "2.17.1",
+      "executable": "/home/user/sagelite/sage"
+    },
+    "magma": {
+      "version": "2.18-5",
+      "executable": "/home/user/bin/magma"
+    },
+    "hecke": {
+      "julia": "1.10.10",
+      "hecke": "0.40.0",
+      "nemo": "0.56.1",
+      "abstract_algebra": "0.50.2",
+      "flint_jll": "301.600.0+0",
+      "project": "/home/user/upstream/Hecke.jl"
+    },
+    "oscar": {
+      "julia": "1.10.10",
+      "oscar": "1.9.0-DEV",
+      "hecke": "0.39.22",
+      "status": "instantiated independently; checked-out Hecke 0.40.0 is outside Oscar's Hecke 0.39.22-0.39 compatibility range"
+    }
+  },
+  "cases": [
+    {
+      "id": "selmer-degree-6",
+      "polynomial_family": "x^n-x-1",
+      "degree": 6,
+      "polynomial": ["-1", "-1", "0", "0", "0", "0", "1"],
+      "signature": [2, 2],
+      "equation_discriminant": "49781",
+      "field_discriminant": "49781",
+      "equation_order_index": "1",
+      "minkowski_integer_bound": "5",
+      "class_group": {"invariant_factors": [], "order": "1"},
+      "unit_group": {"invariant_factors": ["2", "0", "0", "0"], "rank": 3, "torsion_order": "2"},
+      "regulator_decimal": "0.740631472629114333933568746575",
+      "prime_splitting": [
+        {"rational_prime": 2, "factors": [[1, 6]]},
+        {"rational_prime": 3, "factors": [[1, 6]]},
+        {"rational_prime": 5, "factors": [[1, 1], [1, 5]]}
+      ],
+      "timings_seconds": {
+        "sage_pari": {"conditional_grh": 0.00925, "unconditional": 0.00485},
+        "magma": {"conditional_grh": 0.07, "unconditional": 0.05},
+        "hecke": {"conditional_grh": 1.97, "unconditional": 0.367}
+      }
+    },
+    {
+      "id": "selmer-degree-7",
+      "polynomial_family": "x^n-x-1",
+      "degree": 7,
+      "polynomial": ["-1", "-1", "0", "0", "0", "0", "0", "1"],
+      "signature": [1, 3],
+      "equation_discriminant": "-776887",
+      "field_discriminant": "-776887",
+      "equation_order_index": "1",
+      "minkowski_integer_bound": "11",
+      "class_group": {"invariant_factors": [], "order": "1"},
+      "unit_group": {"invariant_factors": ["2", "0", "0", "0"], "rank": 3, "torsion_order": "2"},
+      "regulator_decimal": "1.037311156139060958435569485866",
+      "prime_splitting": [
+        {"rational_prime": 2, "factors": [[1, 7]]},
+        {"rational_prime": 3, "factors": [[1, 2], [1, 5]]},
+        {"rational_prime": 5, "factors": [[1, 1], [1, 6]]},
+        {"rational_prime": 7, "factors": [[1, 7]]},
+        {"rational_prime": 11, "factors": [[1, 1], [1, 6]]}
+      ],
+      "timings_seconds": {
+        "sage_pari": {"conditional_grh": 0.00819, "unconditional": 0.00795},
+        "magma": {"conditional_grh": 0.04, "unconditional": 0.03},
+        "hecke": {"conditional_grh": 1.68, "unconditional": 0.577}
+      }
+    },
+    {
+      "id": "selmer-degree-8",
+      "polynomial_family": "x^n-x-1",
+      "degree": 8,
+      "polynomial": ["-1", "-1", "0", "0", "0", "0", "0", "0", "1"],
+      "signature": [2, 3],
+      "equation_discriminant": "-17600759",
+      "field_discriminant": "-17600759",
+      "equation_order_index": "1",
+      "minkowski_integer_bound": "20",
+      "class_group": {"invariant_factors": [], "order": "1"},
+      "unit_group": {"invariant_factors": ["2", "0", "0", "0", "0"], "rank": 4, "torsion_order": "2"},
+      "regulator_decimal": "2.284376301862859908400082161591",
+      "prime_splitting": [
+        {"rational_prime": 2, "factors": [[1, 2], [1, 6]]},
+        {"rational_prime": 3, "factors": [[1, 3], [1, 5]]},
+        {"rational_prime": 5, "factors": [[1, 2], [1, 6]]},
+        {"rational_prime": 7, "factors": [[1, 8]]},
+        {"rational_prime": 11, "factors": [[1, 6], [2, 1]]},
+        {"rational_prime": 13, "factors": [[1, 8]]},
+        {"rational_prime": 17, "factors": [[1, 4], [1, 4]]},
+        {"rational_prime": 19, "factors": [[1, 1], [1, 7]]}
+      ],
+      "timings_seconds": {
+        "sage_pari": {"conditional_grh": 0.01559, "unconditional": 0.01590},
+        "magma": {"conditional_grh": 0.29, "unconditional": 0.28},
+        "hecke": {"conditional_grh": 1.83, "unconditional": 0.375}
+      }
+    },
+    {
+      "id": "selmer-degree-9",
+      "polynomial_family": "x^n-x-1",
+      "degree": 9,
+      "polynomial": ["-1", "-1", "0", "0", "0", "0", "0", "0", "0", "1"],
+      "signature": [1, 4],
+      "equation_discriminant": "370643273",
+      "field_discriminant": "370643273",
+      "equation_order_index": "1",
+      "minkowski_integer_bound": "47",
+      "class_group": {"invariant_factors": [], "order": "1"},
+      "unit_group": {"invariant_factors": ["2", "0", "0", "0", "0"], "rank": 4, "torsion_order": "2"},
+      "regulator_decimal": "3.320094303410033324709713886350",
+      "prime_splitting": [
+        {"rational_prime": 2, "factors": [[1, 9]]},
+        {"rational_prime": 3, "factors": [[1, 3], [1, 6]]},
+        {"rational_prime": 5, "factors": [[1, 4], [1, 5]]},
+        {"rational_prime": 7, "factors": [[1, 3], [1, 4], [2, 1]]},
+        {"rational_prime": 11, "factors": [[1, 1], [1, 6], [2, 1]]},
+        {"rational_prime": 13, "factors": [[1, 7], [2, 1]]},
+        {"rational_prime": 17, "factors": [[1, 9]]},
+        {"rational_prime": 19, "factors": [[1, 3], [1, 6]]},
+        {"rational_prime": 23, "factors": [[1, 1], [1, 8]]},
+        {"rational_prime": 29, "factors": [[1, 1], [1, 2], [1, 3], [1, 3]]},
+        {"rational_prime": 31, "factors": [[1, 1], [1, 3], [1, 5]]},
+        {"rational_prime": 37, "factors": [[1, 1], [1, 4], [1, 4]]},
+        {"rational_prime": 41, "factors": [[1, 1], [1, 1], [1, 2], [1, 5]]},
+        {"rational_prime": 43, "factors": [[1, 3], [1, 4], [2, 1]]},
+        {"rational_prime": 47, "factors": [[1, 1], [1, 1], [1, 7]]}
+      ],
+      "timings_seconds": {
+        "sage_pari": {"conditional_grh": 0.01781, "unconditional": 0.02815},
+        "magma": {"conditional_grh": 0.47, "unconditional": 0.46},
+        "hecke": {"conditional_grh": 1.88, "unconditional": 0.630}
+      }
+    },
+    {
+      "id": "selmer-degree-10",
+      "polynomial_family": "x^n-x-1",
+      "degree": 10,
+      "polynomial": ["-1", "-1", "0", "0", "0", "0", "0", "0", "0", "0", "1"],
+      "signature": [2, 4],
+      "equation_discriminant": "10387420489",
+      "field_discriminant": "10387420489",
+      "equation_order_index": "1",
+      "minkowski_integer_bound": "97",
+      "class_group": {"invariant_factors": [], "order": "1"},
+      "unit_group": {"invariant_factors": ["2", "0", "0", "0", "0", "0"], "rank": 5, "torsion_order": "2"},
+      "regulator_decimal": "9.416803855200833192397641283291",
+      "prime_splitting": [
+        {"rational_prime": 2, "factors": [[1, 3], [1, 7]]},
+        {"rational_prime": 3, "factors": [[1, 2], [1, 8]]},
+        {"rational_prime": 5, "factors": [[1, 1], [1, 9]]},
+        {"rational_prime": 7, "factors": [[1, 1], [1, 4], [1, 5]]},
+        {"rational_prime": 11, "factors": [[1, 2], [1, 3], [1, 5]]},
+        {"rational_prime": 13, "factors": [[1, 4], [1, 6]]},
+        {"rational_prime": 17, "factors": [[1, 10]]},
+        {"rational_prime": 19, "factors": [[1, 2], [1, 3], [1, 5]]},
+        {"rational_prime": 23, "factors": [[1, 4], [1, 6]]},
+        {"rational_prime": 29, "factors": [[1, 2], [1, 3], [1, 5]]},
+        {"rational_prime": 31, "factors": [[1, 1], [1, 9]]},
+        {"rational_prime": 37, "factors": [[1, 5], [1, 5]]},
+        {"rational_prime": 41, "factors": [[1, 1], [1, 2], [1, 3], [1, 4]]},
+        {"rational_prime": 43, "factors": [[1, 2], [1, 8]]},
+        {"rational_prime": 47, "factors": [[1, 1], [1, 1], [1, 3], [1, 5]]},
+        {"rational_prime": 53, "factors": [[1, 4], [1, 6]]},
+        {"rational_prime": 59, "factors": [[1, 1], [1, 1], [1, 8]]},
+        {"rational_prime": 61, "factors": [[1, 3], [1, 7]]},
+        {"rational_prime": 67, "factors": [[1, 3], [1, 7]]},
+        {"rational_prime": 71, "factors": [[1, 1], [1, 2], [1, 3], [1, 4]]},
+        {"rational_prime": 73, "factors": [[1, 1], [1, 1], [1, 8]]},
+        {"rational_prime": 79, "factors": [[1, 1], [1, 1], [1, 8]]},
+        {"rational_prime": 83, "factors": [[1, 4], [1, 6]]},
+        {"rational_prime": 89, "factors": [[1, 3], [1, 7]]},
+        {"rational_prime": 97, "factors": [[1, 3], [1, 7]]}
+      ],
+      "timings_seconds": {
+        "sage_pari": {"conditional_grh": 0.02052, "unconditional": 0.04926},
+        "magma": {"conditional_grh": 0.19, "unconditional": 0.18},
+        "hecke": {"conditional_grh": 1.83, "unconditional": 2.68}
+      }
+    }
+  ]
+}
