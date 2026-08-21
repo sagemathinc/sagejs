@@ -369,6 +369,10 @@ import json
 
 from sagejs.number_fields.class_group_maps import IdealClassGroup, class_group_from_engine_result
 from sagejs.number_fields.class_group_proof import EXACT_RELATIONS_CONDITIONAL_GRH
+from sagejs.number_fields.class_group_factor_base import (
+    build_factor_base,
+    factor_base_plan,
+)
 from sagejs.number_fields.class_group_matrix import extract_relation_presentation
 from sagejs.number_fields.class_group_relations import (
     ExactRelationCollector,
@@ -392,10 +396,12 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**2 - x - 1, "a")
 O = K.maximal_order()
+factor_base_plan_evidence = factor_base_plan(
+    O, proof=False, theorem="bdf", max_bound=100_000,
+    max_prime_ideals=4096, max_memory_bytes=512 * 1024 * 1024,
+)
 factor_base = tuple(
-    prime
-    for rational_prime in (2, 5)
-    for prime in O.factor_rational_prime(rational_prime).prime_ideals()
+    record.prime_ideal for record in build_factor_base(factor_base_plan_evidence)
 )
 collector = ExactRelationCollector(O, factor_base)
 initial_rational_prime_relations(collector)
@@ -428,7 +434,7 @@ ENGINE_GROUP = _EngineClassGroup(
     reduce_ideal_over_base,
     lambda left, right: FactoredNumberFieldElement(K, list(left.factors()) + list(right.factors())),
     EXACT_RELATIONS_CONDITIONAL_GRH,
-    "Bach",
+    factor_base_plan_evidence.theorem,
 )
 
 class Stage:
@@ -471,7 +477,7 @@ class EngineResult:
     complete = True
     proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
     algorithm = "buchmann-hecke"
-    diagnostics = {"factor_base_bound": 48, "relations": len(relations)}
+    diagnostics = {"factor_base_bound": int(factor_base_plan_evidence.bound), "relations": len(relations)}
     stages = (
         Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
         Stage("proof", "complete", {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH, "exact_relations": len(relations)}),
@@ -490,15 +496,16 @@ class EngineResult:
 
 C = class_group_from_engine_result(EngineResult())
 assert isinstance(C, IdealClassGroup)
-assert C.invariants() == (2,) and C.order() == 2
+assert C.invariants() == tuple(presentation.invariants)
+assert C.order() == int(presentation.order) and C.order() > 1
 assert C.gen().ideal() == generator_ideals[0]
-assert C.gen().order() == 2 and (C.gen()**2).is_one()
+assert C.gen().order() == C.invariants()[0] and (C.gen()**C.gen().order()).is_one()
 assert C(C.gen().ideal()) == C.gen()
-arbitrary = generator_ideals[0] ** 9 * factor_base[0] ** 3
+arbitrary = generator_ideals[0] ** (C.gen().order() + 1) * O.ideal(2) ** 3
 assert C(arbitrary) == C.gen()
 assert C.discrete_log(arbitrary).principal_witness.verify(O)
 assert not C.is_principal(arbitrary, proof=False)
-principal = generator_ideals[0] ** 8 * factor_base[0] ** 3
+principal = generator_ideals[0] ** (2 * C.gen().order()) * O.ideal(2) ** 3
 answer = C.principality(principal)
 assert answer and answer.generator.verify_principal_ideal(principal)
 try:
@@ -512,6 +519,7 @@ assert C.verify_proof_payload(payload)
 evidence = payload["conditional_evidence"]
 assert evidence["schema"] == "sagejs.number-fields/conditional-class-group-evidence-v1"
 assert evidence["field_order_fingerprint"] == factor_base[0].to_dict()["field_order_fingerprint"]
+assert evidence["factor_base_plan"]["bound"]["bound"] == int(factor_base_plan_evidence.bound)
 assert len(evidence["factor_base"]) == len(factor_base)
 assert len(evidence["relations"]) == len(relations)
 assert evidence["presentation"] == presentation.to_dict()
@@ -559,6 +567,30 @@ corrupted = copy.deepcopy(payload)
 _ignored = corrupted["conditional_evidence"]["relations"].reverse()
 corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
 assert not C.verify_proof_payload(corrupted)
+
+corrupted = copy.deepcopy(payload)
+_omitted = corrupted["conditional_evidence"]["factor_base"].pop()
+corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+assert not C.verify_proof_payload(corrupted)
+
+corrupted = copy.deepcopy(payload)
+corrupted["conditional_evidence"]["factor_base_plan"]["caps"]["max_prime_ideals"] += 1
+corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+assert not C.verify_proof_payload(corrupted)
+
+for path, value in (
+    (("assumption",), "G" * ((1 << 16) + 1)),
+    (("relation_count",), 1 << 4097),
+    (("relations",), [None] * 2049),
+):
+    corrupted = copy.deepcopy(payload)
+    target = corrupted["conditional_evidence"]
+    for part in path[:-1]: target = target[part]
+    target[path[-1]] = value
+    corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+    assert not C.verify_proof_payload(corrupted), path
+
+assert not C.verify_proof_payload(payload, cancelled=lambda: True)
 
 bad_saturation = EngineResult()
 bad_saturation.saturation_record.payload["required_primes"] = [2, 5]
@@ -774,6 +806,20 @@ for path, value in (
     for part in path[:-1]: target = target[part]
     target[path[-1]] = value
     assert not C.verify_proof_payload(corrupted)
+
+for path, value in (
+    (("theorem",), "M" * ((1 << 16) + 1)),
+    (("discriminant",), 1 << 4097),
+    (("prime_records",), [payload["prime_records"][0]] * 4097),
+    (("proof_progress", "partitions"), [None] * 8193),
+):
+    corrupted = copy.deepcopy(payload)
+    target = corrupted
+    for part in path[:-1]: target = target[part]
+    target[path[-1]] = value
+    assert not C.verify_proof_payload(corrupted), path
+
+assert not C.verify_proof_payload(payload, cancelled=lambda: True)
 
 bad_progress = copy.deepcopy(PROGRESS)
 bad_progress["partitions"][0]["records"][0]["index"] = 1
