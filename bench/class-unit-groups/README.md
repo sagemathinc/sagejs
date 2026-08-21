@@ -57,7 +57,7 @@ The external corpus does not by itself claim that Sage.js completes those
 degrees. `run-live-high-degree-sagejs.cjs` is the separate bounded acceptance
 runner for that question. It launches one fresh Sage.js child per degree and
 proof mode, runs all `proof=False` jobs before any `proof=True` jobs, and
-classifies each result as supported-complete, supported-incomplete, timeout, or
+classifies each result as live-supported-complete, live-incomplete, timeout, or
 error. A complete result must match the exact class invariants and order, unit
 rank and torsion, and contain the pinned regulator in a rigorous enclosure.
 

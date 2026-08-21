@@ -240,10 +240,20 @@ function checkComplete(record, expected, proof) {
   record.mismatches = failures;
 }
 
+function policyForDegree(degree, timeoutScale) {
+  const casePolicy = CASE_POLICIES[degree];
+  const limits = { ...SHARED_LIMITS, ...casePolicy };
+  delete limits.timeout_seconds;
+  return {
+    timeout_seconds: casePolicy.timeout_seconds * timeoutScale,
+    limits,
+  };
+}
+
 function runCase(options, entry, proof) {
-  const policy = { ...SHARED_LIMITS, ...CASE_POLICIES[entry.degree] };
-  const timeoutSeconds = policy.timeout_seconds * options.timeoutScale;
-  delete policy.timeout_seconds;
+  const selectedPolicy = policyForDegree(entry.degree, options.timeoutScale);
+  const policy = selectedPolicy.limits;
+  const timeoutSeconds = selectedPolicy.timeout_seconds;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), `sagejs-live-cu-${entry.degree}-`));
   const sourcePath = path.join(directory, "case.py");
   fs.writeFileSync(sourcePath, pythonSource(entry, proof, policy), "utf8");
@@ -280,7 +290,7 @@ function runCase(options, entry, proof) {
       .findLast((candidate) => candidate.startsWith("SAGEJS_LIVE_CU|"));
     if (!line) return { ...common, outcome: "error", error: "missing normalized record" };
     const record = { ...common, ...JSON.parse(line.slice("SAGEJS_LIVE_CU|".length)) };
-    record.outcome = record.complete ? "supported-complete" : "supported-incomplete";
+    record.outcome = record.complete ? "live-supported-complete" : "live-incomplete";
     if (record.complete) checkComplete(record, entry, proof);
     return record;
   } finally {
@@ -317,9 +327,7 @@ function main() {
           degree: job.entry.degree,
           proof: job.proof,
           outcome: "not-run",
-          timeout_seconds:
-            CASE_POLICIES[job.entry.degree].timeout_seconds * options.timeoutScale,
-          limits: { ...SHARED_LIMITS, ...CASE_POLICIES[job.entry.degree] },
+          ...policyForDegree(job.entry.degree, options.timeoutScale),
         }
       : runCase(options, job.entry, job.proof);
     receipt.records.push(record);
@@ -340,7 +348,8 @@ function main() {
   if (
     !options.dryRun &&
     receipt.records.some(
-      (record) => record.outcome !== "supported-complete" || record.acceptance !== "pass",
+      (record) =>
+        record.outcome !== "live-supported-complete" || record.acceptance !== "pass",
     )
   ) {
     process.exitCode = 1;
