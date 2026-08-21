@@ -1005,6 +1005,7 @@ def native_central_weight_values(
             "contour_points": int(_property(native, "contourPoints")),
             "coarse_contour_points": int(_property(native, "coarseContourPoints")),
             "contour_step": str(_property(native, "contourStep")),
+            "contour_real": int(_property(native, "contourReal")),
             "coefficient_terms": int(_property(native, "coefficientTerms")),
             "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
             "coefficient_prefix_extensions": coefficient_prefix.extensions,

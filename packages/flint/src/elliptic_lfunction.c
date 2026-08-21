@@ -2594,6 +2594,22 @@ static void hg_acb_mul_factorial(acb_t value, slong order, slong precision)
         acb_mul_ui(value, value, (ulong) index, precision);
 }
 
+static void hg_log_a_exact(
+    arb_t result, const fmpz_t conductor, slong genus, slong precision)
+{
+    arb_t temporary;
+    arb_init(temporary);
+    arb_set_fmpz(result, conductor);
+    arb_log(result, result, precision);
+    arb_mul_2exp_si(result, result, -1);
+    arb_const_pi(temporary, precision);
+    arb_mul_ui(temporary, temporary, 2, precision);
+    arb_log(temporary, temporary, precision);
+    arb_mul_ui(temporary, temporary, (ulong) genus, precision);
+    arb_sub(result, result, temporary, precision);
+    arb_clear(temporary);
+}
+
 static int hg_raw_jet_from_completed_arb(
     acb_ptr raw,
     acb_srcptr completed,
@@ -2658,30 +2674,6 @@ static int hg_raw_jet_from_completed_arb(
     return 1;
 }
 
-static int hg_raw_jet_from_completed(
-    acb_ptr raw,
-    acb_srcptr completed,
-    const acb_t point,
-    slong derivative_count,
-    slong genus,
-    double log_a,
-    slong precision)
-{
-    arb_t log_a_arb;
-    arb_init(log_a_arb);
-    arb_set_d(log_a_arb, log_a);
-    const int status = hg_raw_jet_from_completed_arb(
-        raw,
-        completed,
-        point,
-        derivative_count,
-        genus,
-        log_a_arb,
-        precision);
-    arb_clear(log_a_arb);
-    return status;
-}
-
 /*
  * At the center, the integrated inverse-Mellin weight has the single-contour
  * representation
@@ -2695,6 +2687,7 @@ static int hg_raw_jet_from_completed(
  */
 
 #define SAGEJS_HG_CENTRAL_MAX_POINTS 8000
+#define SAGEJS_HG_PHASE_REANCHOR_MASK 63
 
 typedef struct
 {
@@ -2703,7 +2696,7 @@ typedef struct
     slong work_precision;
     double contour_step;
     double contour_height;
-    double log_a;
+    slong contour_real;
 } hg_central_weight_plan;
 
 static int hg_central_weight_make_plan(
@@ -2761,7 +2754,7 @@ static int hg_central_weight_make_plan(
     plan->work_precision = target_bits + 32;
     plan->contour_step = contour_step;
     plan->contour_height = contour_step * (double) contour_points;
-    plan->log_a = log_a;
+    plan->contour_real = target_bits >= 160 ? 3 : 2;
     return 1;
 }
 
@@ -2782,6 +2775,7 @@ static int hg_central_weight_grid(
     const slong precision = plan->work_precision;
     const slong contour_count = plan->contour_points + 1;
     const slong derivative_count = maximum_derivative + 1;
+    const int reanchor_phases = precision >= 192;
     acb_ptr bases = _acb_vec_init(contour_count);
 
     arb_t logarithm, amplitude, angle, sine, cosine, scale, temporary_arb;
@@ -2811,14 +2805,7 @@ static int hg_central_weight_grid(
      * Storing log(A) in the double-valued planning structure is fine for
      * choosing a cutoff, but using that approximation in A^s or in the
      * completed-to-raw conversion caps the result at roughly 53 bits. */
-    arb_set_fmpz(log_a_exact, conductor);
-    arb_log(log_a_exact, log_a_exact, precision);
-    arb_mul_2exp_si(log_a_exact, log_a_exact, -1);
-    arb_const_pi(temporary_arb, precision);
-    arb_mul_ui(temporary_arb, temporary_arb, 2, precision);
-    arb_log(temporary_arb, temporary_arb, precision);
-    arb_mul_ui(temporary_arb, temporary_arb, (ulong) genus, precision);
-    arb_sub(log_a_exact, log_a_exact, temporary_arb, precision);
+    hg_log_a_exact(log_a_exact, conductor, genus, precision);
 
     for (slong n = 1; n <= plan->cutoff; ++n)
     {
@@ -2826,7 +2813,7 @@ static int hg_central_weight_grid(
         if (coefficient_value == 0) continue;
         arb_set_ui(logarithm, (ulong) n);
         arb_log(logarithm, logarithm, precision);
-        arb_mul_si(amplitude, logarithm, -2, precision);
+        arb_mul_si(amplitude, logarithm, -plan->contour_real, precision);
         arb_exp(amplitude, amplitude, precision);
         arb_mul_si(amplitude, amplitude, (slong) coefficient_value, precision);
         arb_set_d(angle, -plan->contour_step);
@@ -2836,18 +2823,34 @@ static int hg_central_weight_grid(
         acb_one(phase);
         for (slong index = 0; index < contour_count; ++index)
         {
+            /* Re-anchor the oscillatory phase periodically.  Repeated ball
+             * multiplication is mathematically sound, but after hundreds
+             * of steps its enclosure of a unit-modulus value grows enough
+             * to cap otherwise high-precision central jets. */
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -plan->contour_step);
+                arb_mul_ui(angle, angle, (ulong) index, precision);
+                arb_mul(angle, angle, logarithm, precision);
+                arb_sin_cos(sine, cosine, angle, precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
             acb_mul_arb(temporary, phase, amplitude, precision);
             acb_add(bases + index, bases + index, temporary, precision);
-            if (index + 1 < contour_count)
+            if (index + 1 < contour_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
                 acb_mul(phase, phase, phase_step, precision);
         }
     }
 
     for (slong index = 0; index < contour_count; ++index)
     {
-        acb_set_si(point, 2);
-        arb_set_d(
-            acb_imagref(point), plan->contour_step * (double) index);
+        acb_set_si(point, plan->contour_real);
+        arb_set_d(temporary_arb, plan->contour_step);
+        arb_mul_ui(
+            acb_imagref(point), temporary_arb, (ulong) index, precision);
         acb_gamma(gamma_value, point, precision);
         acb_pow_ui(gamma_power, gamma_value, (ulong) genus, precision);
         acb_mul(bases + index, bases + index, gamma_power, precision);
@@ -2862,9 +2865,10 @@ static int hg_central_weight_grid(
         acb_zero(completed + order);
     for (slong index = 0; index < contour_count; ++index)
     {
-        acb_set_si(point, 2);
-        arb_set_d(
-            acb_imagref(point), plan->contour_step * (double) index);
+        acb_set_si(point, plan->contour_real);
+        arb_set_d(temporary_arb, plan->contour_step);
+        arb_mul_ui(
+            acb_imagref(point), temporary_arb, (ulong) index, precision);
         acb_sub_ui(denominator_value, point, 1, precision);
         acb_set(denominator_power, denominator_value);
         for (slong order = 0; order < derivative_count; ++order)
@@ -2946,10 +2950,12 @@ static int hg_lseries_grid(
     const slong inverse_count = plan->inverse_points + 1;
     const slong outer_count = plan->outer_points + 1;
     const slong derivative_count = maximum_derivative + 1;
+    const int reanchor_phases = precision >= 192;
     acb_ptr bases = _acb_vec_init(inverse_count);
     arb_ptr theta = _arb_vec_init(outer_count);
 
     arb_t logarithm, amplitude, angle, sine, cosine, u, scale, temporary_arb;
+    arb_t log_a_exact;
     arb_init(logarithm);
     arb_init(amplitude);
     arb_init(angle);
@@ -2958,6 +2964,7 @@ static int hg_lseries_grid(
     arb_init(u);
     arb_init(scale);
     arb_init(temporary_arb);
+    arb_init(log_a_exact);
     acb_t phase, phase_step, temporary, q, gamma_value, power_value;
     acb_t exponential, factor, term;
     acb_init(phase);
@@ -2969,6 +2976,8 @@ static int hg_lseries_grid(
     acb_init(exponential);
     acb_init(factor);
     acb_init(term);
+
+    hg_log_a_exact(log_a_exact, conductor, genus, precision);
 
     /* All Dirichlet polynomials on the vertical inverse-Mellin grid. */
     for (slong n = 1; n <= plan->cutoff; ++n)
@@ -2987,9 +2996,20 @@ static int hg_lseries_grid(
         acb_one(phase);
         for (slong index = 0; index < inverse_count; ++index)
         {
+            if (reanchor_phases && index != 0 &&
+                (index & SAGEJS_HG_PHASE_REANCHOR_MASK) == 0)
+            {
+                arb_set_d(angle, -plan->inverse_step);
+                arb_mul_ui(angle, angle, (ulong) index, precision);
+                arb_mul(angle, angle, logarithm, precision);
+                arb_sin_cos(sine, cosine, angle, precision);
+                acb_set_arb_arb(phase, cosine, sine);
+            }
             acb_mul_arb(temporary, phase, amplitude, precision);
             acb_add(bases + index, bases + index, temporary, precision);
-            if (index + 1 < inverse_count)
+            if (index + 1 < inverse_count &&
+                (!reanchor_phases ||
+                    ((index + 1) & SAGEJS_HG_PHASE_REANCHOR_MASK) != 0))
                 acb_mul(phase, phase, phase_step, precision);
         }
     }
@@ -2997,23 +3017,27 @@ static int hg_lseries_grid(
     for (slong index = 0; index < inverse_count; ++index)
     {
         acb_set_si(q, 2);
-        arb_set_d(acb_imagref(q), plan->inverse_step * (double) index);
+        arb_set_d(temporary_arb, plan->inverse_step);
+        arb_mul_ui(
+            acb_imagref(q), temporary_arb, (ulong) index, precision);
         acb_gamma(gamma_value, q, precision);
         acb_pow_ui(power_value, gamma_value, (ulong) genus, precision);
         acb_mul(bases + index, bases + index, power_value, precision);
-        arb_set_d(temporary_arb, plan->log_a);
-        acb_mul_arb(temporary, q, temporary_arb, precision);
+        acb_mul_arb(temporary, q, log_a_exact, precision);
         acb_exp(temporary, temporary, precision);
         acb_mul(bases + index, bases + index, temporary, precision);
         if (index == plan->inverse_points)
             acb_mul_2exp_si(bases + index, bases + index, -1);
     }
 
-    arb_set_d(scale, plan->inverse_step / (2.0 * SAGEJS_PI));
+    arb_const_pi(scale, precision);
+    arb_mul_ui(scale, scale, 2, precision);
+    arb_set_d(temporary_arb, plan->inverse_step);
+    arb_div(scale, temporary_arb, scale, precision);
     for (slong outer = 0; outer < outer_count; ++outer)
     {
-        const double u_double = plan->outer_step * (double) outer;
-        arb_set_d(u, u_double);
+        arb_set_d(u, plan->outer_step);
+        arb_mul_ui(u, u, (ulong) outer, precision);
         acb_set_si(q, 2);
         acb_mul_arb(temporary, q, u, precision);
         acb_neg(temporary, temporary);
@@ -3023,7 +3047,9 @@ static int hg_lseries_grid(
         for (slong index = 1; index < inverse_count; ++index)
         {
             acb_set_si(q, 2);
-            arb_set_d(acb_imagref(q), plan->inverse_step * (double) index);
+            arb_set_d(temporary_arb, plan->inverse_step);
+            arb_mul_ui(
+                acb_imagref(q), temporary_arb, (ulong) index, precision);
             acb_mul_arb(temporary, q, u, precision);
             acb_neg(temporary, temporary);
             acb_exp(exponential, temporary, precision);
@@ -3042,8 +3068,8 @@ static int hg_lseries_grid(
             acb_zero(point_completed + order);
         for (slong outer = 0; outer < outer_count; ++outer)
         {
-            const double u_double = plan->outer_step * (double) outer;
-            arb_set_d(u, u_double);
+            arb_set_d(u, plan->outer_step);
+            arb_mul_ui(u, u, (ulong) outer, precision);
             acb_mul_arb(temporary, points + point_index, u, precision);
             acb_exp(exponential, temporary, precision);
             acb_set_si(temporary, 2);
@@ -3080,9 +3106,9 @@ static int hg_lseries_grid(
                     temporary_arb,
                     precision);
         }
-        hg_raw_jet_from_completed(
+        hg_raw_jet_from_completed_arb(
             point_raw, point_completed, points + point_index,
-            derivative_count, genus, plan->log_a, precision);
+            derivative_count, genus, log_a_exact, precision);
     }
 
     acb_clear(term);
@@ -3095,6 +3121,7 @@ static int hg_lseries_grid(
     acb_clear(phase_step);
     acb_clear(phase);
     arb_clear(temporary_arb);
+    arb_clear(log_a_exact);
     arb_clear(scale);
     arb_clear(u);
     arb_clear(cosine);
@@ -3417,6 +3444,8 @@ napi_value sagejs_hyperelliptic_central_weights(
             env, result, "contourPoints", fine_plan.contour_points) ||
         !set_named_double(
             env, result, "contourStep", fine_plan.contour_step) ||
+        !set_named_slong(
+            env, result, "contourReal", fine_plan.contour_real) ||
         !set_named_double(
             env, result, "contourHeight", fine_plan.contour_height) ||
         !set_named_slong(env, result, "coefficientTerms",

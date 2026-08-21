@@ -38,6 +38,35 @@ test("native Arb values and jets agree with the readable genus-2 evaluator", asy
   }
 });
 
+test("200-bit central jets agree with the independent inverse-Mellin route", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "R = PolynomialRing(QQ, 'x')",
+        "x = R.gen()",
+        "C = HyperellipticCurve(x, x^3-x+1)",
+        "L = C.lseries()",
+        "central = L.central_jet(4, completed=True, prec=200, algorithm='native')",
+        "central_diag = dict(L.last_diagnostics())",
+        "inverse = L.central_jet(4, completed=True, prec=200, algorithm='inverse_mellin')",
+        "inverse_diag = dict(L.last_diagnostics())",
+        "(all(abs(central[k]-inverse[k]) < 2**-150 for k in range(5)),",
+        " central_diag['refinement_stable'], inverse_diag['refinement_stable'],",
+        " central_diag['algorithm'], inverse_diag['algorithm'])",
+      ].join("\n"),
+      { timeout: 300_000 },
+    );
+    assert.equal(
+      result.repr,
+      "(True, True, True, 'native-arb-central-mellin-weights', " +
+        "'native-arb-double-mellin')",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("prepared central weights cache jets and batch general values", async () => {
   const session = await createSage();
   try {

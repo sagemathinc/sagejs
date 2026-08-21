@@ -28,6 +28,15 @@ discretization and coefficient tail are presently checked by refinement
 rather than a proved enclosure, diagnostics state `rigorous=False` while
 separately recording that the finite Arb arithmetic balls are rigorous.
 
+At 160 bits and above the central engine moves the equivalent Mellin contour
+from `Re(s)=2` to `Re(s)=3`, increasing its distance from the pole at `s=1`.
+Oscillatory phases are periodically recomputed instead of allowing hundreds
+of interval multiplications to widen their balls.  On the conductor-713
+genus-2 example, jets through order four agree between the specialized and
+independent double-Mellin routes at 200-bit working precision (the checked
+regression requires an absolute difference below `2^-150`).  This slower
+high-precision path does not change the common 53/100-bit grids.
+
 The strict-Python reference exposes `central_kernel` and `central_weight`.
 For genus 2 it uses
 

@@ -62,8 +62,8 @@
     },
     {
       "path": "packages/flint/src/elliptic_lfunction.c",
-      "lines": 3528,
-      "bytes": 134518,
+      "lines": 3557,
+      "bytes": 136373,
       "decision": "retain-primitive",
       "priority": "medium",
       "responsibilities": [

@@ -4616,9 +4616,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 3347,
-        "lines": 182,
-        "sha256": "7e8fb5ec7cd1a4769d7ab889364412db09ace351605eb6c0be1a579875e593ea",
+        "line": 3374,
+        "lines": 184,
+        "sha256": "7d57b3e739bb72835a8c07a3fe11810f0d836cf7512757ea0574b11438cf44b2",
         "calls": [
           "_acb_vec_clear",
           "_acb_vec_init",
@@ -4684,7 +4684,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/elliptic_lfunction.c",
-        "line": 3133,
+        "line": 3160,
         "lines": 213,
         "sha256": "ee1c40b05db883f70bac9820946ba8bc13c6d782e75307b31bbae25b03794d36",
         "calls": [

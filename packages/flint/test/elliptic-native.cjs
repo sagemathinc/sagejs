@@ -183,6 +183,13 @@ test("genus-2/3 central weights return packed completed and raw jets", () => {
   assert.equal(probe.status, "insufficient_coefficients");
   assert.ok(probe.requiredCutoff >= probe.coarseCutoff);
   assert.ok(probe.contourPoints >= probe.coarseContourPoints);
+  assert.equal(probe.contourReal, 2);
+
+  const highPrecisionProbe = flint.hyperellipticCentralWeights(
+    713n, 1, 2, new Int32Array([0, 1]), 200, 4,
+  );
+  assert.equal(highPrecisionProbe.status, "insufficient_coefficients");
+  assert.equal(highPrecisionProbe.contourReal, 3);
 
   const coefficients = new Int32Array(probe.requiredCutoff + 1);
   coefficients[1] = 1;
