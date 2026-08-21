@@ -12,7 +12,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 90 | 0 |
+| `wasm-library` | 89 | 0 |
 | `wasm-compiled-source` | 14 | 0 |
 | `portable-orchestration` | 3 | 0 |
 | `portable-computation` | 0 | 0 |

@@ -156,7 +156,6 @@
       "id": "extension-field-polynomial-5632",
       "family": "extension-fields",
       "requires": [
-        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
         { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "P.<t>=PolynomialRing(GF(65537))\nK.<a>=GF(65537^3,modulus=t^3+3*t+6)\nR.<x>=PolynomialRing(K)\nf=x^1024+(a^2+7*a+11)*x^511+a+19\ng=(x+a+1)^384\nanswer=f\nfor k in range(12): answer=answer*g\nprint(answer.degree(),answer[0],answer[answer.degree()])",

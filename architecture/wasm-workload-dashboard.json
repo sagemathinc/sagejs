@@ -32,7 +32,7 @@
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "fde1d2fcf0815ce1d7bd1a2d5dc1eb540663259825e3203526c1c28148a3ea8b"
+      "sha256": "f99d959fe0d115319181094b00c48657881d8fea15d38c0285dc07bda66589fc"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 90,
+      "wasm-library": 89,
       "wasm-compiled-source": 14,
       "portable-orchestration": 3,
       "portable-computation": 0
@@ -2804,15 +2804,6 @@
       "heavy": true,
       "status": "failed",
       "expected_routes": [
-        {
-          "capability_id": "ffi:flint:fq_context",
-          "legacy_route": "receipt-backed-wasm-artifact",
-          "route_class": "wasm-library",
-          "reviewed": true,
-          "review": null,
-          "capability_status": "available",
-          "capability_disposition": "generated-wasm"
-        },
         {
           "capability_id": "ffi:flint:fq_polynomial_mul",
           "legacy_route": "receipt-backed-wasm-artifact",

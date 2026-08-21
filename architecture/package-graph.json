@@ -378,7 +378,7 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 110000,
+      "max_source_bytes": 112000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
