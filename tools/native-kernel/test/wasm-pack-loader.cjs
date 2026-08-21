@@ -164,6 +164,25 @@ test("a pack digest mismatch cannot establish route authority", async () => {
   await assert.rejects(runtime(source), /Wasm pack digest mismatch for gmp/);
 });
 
+test("precompiled modules remain callable but cannot claim digest authentication", async () => {
+  const {
+    instantiateWasmKernelPacks,
+    instrumentAuthenticatedWasmKernelResolver,
+  } = await import("../wasm-pack-loader.mjs");
+  const source = manifest();
+  const module = await WebAssembly.compile(wasm);
+  const resolver = await instantiateWasmKernelPacks({
+    manifest: source,
+    load: async () => module,
+    host: async () => ({}),
+  });
+  assert.equal(resolver.function(routes[0][1], routes[0][2])(), 42n);
+  assert.throws(
+    () => instrumentAuthenticatedWasmKernelResolver(resolver, () => {}),
+    /no authenticated pack identity/,
+  );
+});
+
 test("route metadata must match the digest-authenticated pack identity", async () => {
   const source = manifest();
   source.kernels[0].logicalSource = "user/relabeled.py";

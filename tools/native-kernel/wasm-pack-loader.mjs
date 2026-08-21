@@ -32,6 +32,7 @@ function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
       throw new Error("invalid production source-kernel route metadata");
     }
     const pack = packs.get(kernel.domain);
+    if (pack === undefined) continue;
     const identityModule = pack?.identity?.modules?.find((module) =>
       module.identityHash === kernel.identityHash
     );
@@ -519,10 +520,12 @@ export async function instantiateWasmKernelPacks(options) {
       return result;
     },
   });
-  authenticatedCapabilities.set(
-    resolver,
-    authenticatedCapabilityIndex(manifest, authenticatedDomains),
-  );
+  if (authenticatedDomains.size !== 0) {
+    authenticatedCapabilities.set(
+      resolver,
+      authenticatedCapabilityIndex(manifest, authenticatedDomains),
+    );
+  }
   return resolver;
 }
 
