@@ -369,6 +369,17 @@ import json
 
 from sagejs.number_fields.class_group_maps import IdealClassGroup, class_group_from_engine_result
 from sagejs.number_fields.class_group_proof import EXACT_RELATIONS_CONDITIONAL_GRH
+from sagejs.number_fields.class_group_matrix import extract_relation_presentation
+from sagejs.number_fields.class_group_relations import (
+    ExactRelationCollector,
+    FactoredPrincipalWitness,
+    factor_ideal_over_base,
+    initial_rational_prime_relations,
+    reduce_ideal_over_base,
+    reconstruct_factor_base_ideal,
+)
+from sagejs.number_fields.class_unit_groups import _EngineClassGroup
+from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
 def seal(payload):
     body = copy.deepcopy(payload)
@@ -377,50 +388,48 @@ def seal(payload):
     body["content_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return body
 
-class ToyOrder:
-    def ideal(self, value):
-        if value == 1: return ToyIdeal(self, 0, 0)
-        if isinstance(value, ToyFactored): return value.principal_ideal(self)
-        raise TypeError("unknown toy generator")
-    def number_field(self): return self
-    def discriminant(self): return -23
-    def degree(self): return 2
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**2 - x - 1, "a")
+O = K.maximal_order()
+factor_base = tuple(
+    prime
+    for rational_prime in (2, 5)
+    for prime in O.factor_rational_prime(rational_prime).prime_ideals()
+)
+collector = ExactRelationCollector(O, factor_base)
+initial_rational_prime_relations(collector)
+relations = tuple(collector.records)
+presentation = extract_relation_presentation(
+    [record.row for record in relations], len(factor_base), backend="python"
+)
+generator_rows = tuple(presentation.generator_transforms)
+generator_ideals = tuple(
+    reconstruct_factor_base_ideal(O, factor_base, row) for row in generator_rows
+)
 
-class ToyIdeal:
-    def __init__(self, order, class_exponent, scalar_exponent):
-        self._order, self.class_exponent, self.scalar_exponent = order, class_exponent, scalar_exponent
-    def ring(self): return self._order
-    def is_zero(self): return False
-    def __mul__(self, other): return ToyIdeal(self._order, self.class_exponent + other.class_exponent, self.scalar_exponent + other.scalar_exponent)
-    def __truediv__(self, other): return ToyIdeal(self._order, self.class_exponent - other.class_exponent, self.scalar_exponent - other.scalar_exponent)
-    def __pow__(self, exponent): return ToyIdeal(self._order, self.class_exponent * exponent, self.scalar_exponent * exponent)
-    def __eq__(self, other): return isinstance(other, ToyIdeal) and other._order is self._order and (other.class_exponent, other.scalar_exponent) == (self.class_exponent, self.scalar_exponent)
+def combine_relations(coefficients):
+    factors = []
+    for record, coefficient in zip(relations, coefficients, strict=False):
+        witness = FactoredPrincipalWitness.from_dict(K, record.witness)
+        factors.extend((element, exponent * int(coefficient)) for element, exponent in witness.factors())
+    return FactoredNumberFieldElement(K, factors)
 
-class ToyFactored:
-    def __init__(self, a, b): self.a, self.b = a, b
-    def factors(self): return (("g", self.a), ("s", self.b))
-    def principal_ideal(self, order=None): return ToyIdeal(ORDER if order is None else order, self.a, self.b)
-    def verify_principal_ideal(self, ideal): return self.principal_ideal(ideal.ring()) == ideal
-
-class MatrixPresentation:
-    invariants = (4,)
-    order = 4
-    free_rank = 0
-    def verify(self, *_args): return True
-
-class EngineGroup:
-    proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
-    factor_base_theorem = "Bach"
-    _presentation = MatrixPresentation()
-    def __init__(self): self._order = ORDER
-    def invariants(self): return (4,)
-    def gens_ideals(self): return (ToyIdeal(ORDER, 1, 0),)
-    def representative_ideal(self, coordinates): return ToyIdeal(ORDER, coordinates[0] % 4, 0)
-    def discrete_log(self, ideal):
-        coordinate = ideal.class_exponent % 4
-        quotient = ideal / self.representative_ideal((coordinate,))
-        return ((coordinate,), ToyFactored(quotient.class_exponent, quotient.scalar_exponent))
-    def verify(self): return self._presentation.verify()
+ENGINE_GROUP = _EngineClassGroup(
+    O,
+    presentation.invariants,
+    generator_ideals,
+    generator_rows,
+    presentation,
+    factor_base,
+    relations,
+    combine_relations,
+    factor_ideal_over_base,
+    reduce_ideal_over_base,
+    lambda left, right: FactoredNumberFieldElement(K, list(left.factors()) + list(right.factors())),
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+    "Bach",
+)
 
 class Stage:
     def __init__(self, name, state, details): self.name, self.state, self.details = name, state, details
@@ -455,40 +464,43 @@ class SaturationProducer:
         })
     def to_dict(self): return copy.deepcopy(self.payload)
     def verify(self, field, order, original_units, analytic_validation=None):
-        return field is ORDER and order is ORDER and tuple(original_units) == ("u0",) and analytic_validation == "analytic-artifact"
+        return field is K and order is O and tuple(original_units) == ("u0",) and analytic_validation == "analytic-artifact"
 
 class EngineResult:
+    field = K
     complete = True
     proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
     algorithm = "buchmann-hecke"
-    diagnostics = {"factor_base_bound": 48, "relations": 7}
+    diagnostics = {"factor_base_bound": 48, "relations": len(relations)}
     stages = (
         Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
-        Stage("proof", "complete", {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH, "exact_relations": 7}),
+        Stage("proof", "complete", {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH, "exact_relations": len(relations)}),
     )
     def __init__(self):
-        self._group = EngineGroup()
+        self._group = ENGINE_GROUP
         self.saturation_record = SaturationProducer()
         self.saturation_original_units = ("u0",)
         self.analytic_validation = "analytic-artifact"
+        self.conditional_factor_base = factor_base
+        self.conditional_relation_records = relations
+        self.conditional_presentation_evidence = presentation
     def class_group(self): return self._group
     def verify_saturation_record(self, payload):
-        return payload == self.saturation_record.to_dict() and self.saturation_record.verify(ORDER, ORDER, self.saturation_original_units, analytic_validation=self.analytic_validation)
+        return payload == self.saturation_record.to_dict() and self.saturation_record.verify(K, O, self.saturation_original_units, analytic_validation=self.analytic_validation)
 
-ORDER = ToyOrder()
 C = class_group_from_engine_result(EngineResult())
 assert isinstance(C, IdealClassGroup)
-assert C.invariants() == (4,) and C.order() == 4
-assert C.gen().ideal() == ToyIdeal(ORDER, 1, 0)
-assert C.gen().order() == 4 and (C.gen()**4).is_one()
+assert C.invariants() == (2,) and C.order() == 2
+assert C.gen().ideal() == generator_ideals[0]
+assert C.gen().order() == 2 and (C.gen()**2).is_one()
 assert C(C.gen().ideal()) == C.gen()
-arbitrary = ToyIdeal(ORDER, 9, 3)
+arbitrary = generator_ideals[0] ** 9 * factor_base[0] ** 3
 assert C(arbitrary) == C.gen()
-assert C.discrete_log(arbitrary).principal_witness.verify(ORDER)
+assert C.discrete_log(arbitrary).principal_witness.verify(O)
 assert not C.is_principal(arbitrary, proof=False)
-principal = ToyIdeal(ORDER, 8, 3)
+principal = generator_ideals[0] ** 8 * factor_base[0] ** 3
 answer = C.principality(principal)
-assert answer and answer.generator.factors() == (("g", 8), ("s", 3))
+assert answer and answer.generator.verify_principal_ideal(principal)
 try:
     C.is_principal(principal, proof=True)
     raise AssertionError("a GRH-conditional group answered proof=True")
@@ -497,6 +509,12 @@ except ValueError:
 
 payload = C.proof_payload()
 assert C.verify_proof_payload(payload)
+evidence = payload["conditional_evidence"]
+assert evidence["schema"] == "sagejs.number-fields/conditional-class-group-evidence-v1"
+assert evidence["field_order_fingerprint"] == factor_base[0].to_dict()["field_order_fingerprint"]
+assert len(evidence["factor_base"]) == len(factor_base)
+assert len(evidence["relations"]) == len(relations)
+assert evidence["presentation"] == presentation.to_dict()
 assert payload["saturation"]["class_primes"] == [2]
 assert payload["saturation"]["unit_primes"] == [3]
 assert payload["saturation"]["index_bound"] == 6
@@ -514,6 +532,33 @@ for path, value in (
     for part in path[:-1]: target = target[part]
     target[path[-1]] = value
     assert not C.verify_proof_payload(corrupted)
+
+# The nested digest catches blind corruption, while reauthenticated mutations
+# still fail exact prime, relation-witness, row, and matrix replay.
+corrupted = copy.deepcopy(payload)
+corrupted["conditional_evidence"]["content_sha256"] = "0" * 64
+assert not C.verify_proof_payload(corrupted)
+
+for path, mutate in (
+    (("theorem",), lambda value: "forged-" + value),
+    (("relation_count",), lambda _value: True),
+    (("factor_base", 0, "f"), lambda value: value + 1),
+    (("relations", 0, "row", 0), lambda value: value + 1),
+    (("relations", 0, "witness", "factors", 0, "exponent"), lambda value: value + 1),
+    (("presentation", "smith", 0, 0), lambda value: value + 1),
+    (("presentation", "smith_right", 0, 0), lambda value: value + 1),
+):
+    corrupted = copy.deepcopy(payload)
+    target = corrupted["conditional_evidence"]
+    for part in path[:-1]: target = target[part]
+    target[path[-1]] = mutate(target[path[-1]])
+    corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+    assert not C.verify_proof_payload(corrupted), path
+
+corrupted = copy.deepcopy(payload)
+_ignored = corrupted["conditional_evidence"]["relations"].reverse()
+corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+assert not C.verify_proof_payload(corrupted)
 
 bad_saturation = EngineResult()
 bad_saturation.saturation_record.payload["required_primes"] = [2, 5]
