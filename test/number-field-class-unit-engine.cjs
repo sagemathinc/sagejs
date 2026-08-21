@@ -518,7 +518,7 @@ engine = ClassUnitGroupEngine(
     limits=limits,
     progress=events.append,
 )
-collector, presentation = engine._relations((P2,), 0)
+collector, presentation = engine._relations((P2,), 0, minimum_dependencies=2)
 assert presentation.rank == 1
 assert len(presentation.dependency_transforms) >= 2
 relation_events = [event for event in events if event["event"] == "relation-search"]
@@ -641,6 +641,7 @@ stage = engine.stages[-1]
 assert stage.name == "relations" and stage.state == "complete"
 assert stage.details["unit_log_rank"] == 2
 assert stage.details["unit_rank_target"] == 2
+assert stage.details["dependency_target"] == 2
 assert _floating_matrix_rank(((1.0, 2.0), (2.0, 4.0))) == 1
 assert _floating_matrix_rank(((1.0, 2.0), (2.0, 5.0))) == 2
 print("adaptive-unit-rank")
