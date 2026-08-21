@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-zeta-perf",
+  "title": "Class Unit Zeta Perf",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile and materially reduce motivating-quintic certified zeta workspace cost without changing proof intervals",
+  "base_commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_analytic.py",
+    "test/number-field-class-unit-analytic.cjs",
+    "bench/class-unit-groups/zeta-workspace.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing exact interval implementation",
+      "Hecke/Oscar Belabas-Friedman formulation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
