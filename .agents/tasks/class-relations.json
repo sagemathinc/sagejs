@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-relations",
+  "title": "Exact class-group relations",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement exact relation admission/replay, smooth principal-ideal factorization, initial rational-prime relations, deterministic LLL relation search scaffolding, and focused tests",
+  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_relations.py",
+    "test/number-field-class-group-relations.cjs",
+    "test/fixtures/number-field-class-group-relations.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Rel_add.jl",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp/Main_LLL.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Hecke/Oscar",
+      "Sage/PARI"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-class-group-relations.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/number_fields/class_group_relations.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.377,
+      "started_at": "2026-08-21T05:00:14.285Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "6f007d0c98d443d8703d5d64b7f39a72126b3df52990e45c2bddd8e2fdd2058f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/number_fields/class_group_relations.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.729,
+      "started_at": "2026-08-21T05:00:25.314Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "6f007d0c98d443d8703d5d64b7f39a72126b3df52990e45c2bddd8e2fdd2058f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.833,
+      "started_at": "2026-08-21T05:01:34.735Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "8997bed3acf0054c7c5e808e1f7a5f05116e41ee72602bf126167e9e1d052b1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/number_fields/class_group_relations.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.533,
+      "started_at": "2026-08-21T05:01:47.234Z",
+      "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+      "workspace_fingerprint": "8997bed3acf0054c7c5e808e1f7a5f05116e41ee72602bf126167e9e1d052b1f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented an ordinary-Python exact relation layer with canonical factored principal-witness payloads, full source/quotient/principal ideal evidence, complete norm smoothness evidence, optional archimedean log payloads, deterministic provenance, independent replay, and component-mutation rejection. `RelationRecord.row` is the dense principal exponent row and `sparse_row()` returns zero-based nonzero entries for matrix consumers. `ExactRelationCollector` verifies before admission, incrementally screens rank modulo a prime, deduplicates exact records, and optionally forwards duck-typed records into `context.add_relation`. Rational-prime decomposition seeds are deterministic and admitted only when the complete decomposition lies in the factor base. The bounded LLL scaffold uses exact 3/4 reduction of coefficient lattices, Hecke-style basis/weight-two candidates, deterministic bounded combinations, missing-pivot-biased factor-base ideal products, and serializable xorshift state. The offline Sage/PARI and Hecke/Oscar fixture covers inert 2, ramified 5, a source-ideal uniformizer relation, signed fractional rows, nonsmooth rejection, five certificate corruptions, checkpoint/resume, and bounded replay. Focused runtime validation passes in about 10.4 seconds including 12 full replays; standalone pyright reports zero errors.",
+    "risks": [
+      "The readable initial reducer is exact for the power-basis coefficient lattice, not yet a Minkowski/Arb-weighted lattice. `LLLRelationSearch.basis_reducer` is an explicit injection point for the production Minkowski reducer without changing certificates.",
+      "Smoothness currently computes exact valuations and reconstructs the ideal. It is correctness-first and will inherit the integration lane's cached prime-power/coordinate-inverse valuation acceleration; no duplicate fast valuation path is present here.",
+      "Archimedean logs and precision are retained with the frozen complex-place convention but are not used to certify exact ideal replay. The analytic/unit lane must recompute and validate them for regulator claims.",
+      "Large-prime partial matching and automorphism orbits remain future search accelerations. Nonsmooth candidates are rejected exactly rather than admitted heuristically.",
+      "The lane-required broad baselib strict and native receipts are intentionally pending per coordinator direction; central integration owns those gates and the transition from active to review."
+    ],
+    "next_steps": [
+      "Integrate `RelationRecord` and `ExactRelationCollector` through the shared class/unit context using their duck-typed `add_relation`, `row`, `sparse_row`, `to_dict`, and `verify` surfaces.",
+      "Add the module to pyrightconfig.json and any public/test registries in the integration lane, then run and record `pnpm test:baselib:strict` and `pnpm test:native` before moving this contract to review.",
+      "Connect a Minkowski/Arb basis reducer and the integration lane's fast integral valuation cache, then benchmark cubic/quartic factor bases before selecting any native kernel.",
+      "Add exact one-large-prime partial combination and independently replayable automorphism-derived records once the deterministic small-field vertical slice is integrated."
+    ]
+  }
+}
