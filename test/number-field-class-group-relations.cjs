@@ -16,6 +16,7 @@ const fixture = JSON.parse(
 
 const source = String.raw`
 import json
+import hashlib
 import time
 
 from sagejs.number_fields.class_group_relations import (
@@ -256,6 +257,83 @@ except IdealReductionResourceLimit as error:
 assert reduction_checkpoint.candidates_tested == reduction_case["first_budget"]
 checkpoint_payload = reduction_checkpoint.to_dict()
 assert IdealReductionState.from_dict(checkpoint_payload).to_dict() == checkpoint_payload
+assert reduction_checkpoint.stable_hash() == checkpoint_payload["content_sha256"]
+
+def rehash_reduction_state(payload):
+    body = dict(payload)
+    del body["content_sha256"]
+    payload["content_sha256"] = hashlib.sha256(
+        json.dumps(
+            body,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+mutated_checkpoint = json.loads(json.dumps(checkpoint_payload))
+mutated_checkpoint["cube_index"] += 1
+try:
+    IdealReductionState.from_dict(mutated_checkpoint)
+    raise AssertionError("checkpoint mutation retained an obsolete hash")
+except ValueError:
+    pass
+rehash_reduction_state(mutated_checkpoint)
+try:
+    IdealReductionState.from_dict(mutated_checkpoint)
+    raise AssertionError("a rehashed checkpoint skipped a shell candidate")
+except ValueError:
+    pass
+skipping_checkpoint = json.loads(json.dumps(checkpoint_payload))
+skipping_checkpoint["cube_index"] += 1
+skipping_checkpoint["candidates_tested"] += 1
+rehash_reduction_state(skipping_checkpoint)
+skipping_state = IdealReductionState.from_dict(skipping_checkpoint)
+try:
+    reduce_ideal_over_base(
+        hard_ideal,
+        reduction_base,
+        max_candidates=1,
+        checkpoint=skipping_state,
+    )
+    raise AssertionError("a rehashed checkpoint skipped a successful generator")
+except ValueError as error:
+    assert "skipped a successful candidate" in str(error)
+extra_checkpoint = json.loads(json.dumps(checkpoint_payload))
+extra_checkpoint["unexpected"] = 1
+try:
+    IdealReductionState.from_dict(extra_checkpoint)
+    raise AssertionError("checkpoint accepted an unexpected key")
+except ValueError:
+    pass
+boolean_checkpoint = json.loads(json.dumps(checkpoint_payload))
+boolean_checkpoint["radius"] = True
+rehash_reduction_state(boolean_checkpoint)
+try:
+    IdealReductionState.from_dict(boolean_checkpoint)
+    raise AssertionError("checkpoint accepted a Boolean cursor")
+except TypeError:
+    pass
+oversize_checkpoint = json.loads(json.dumps(checkpoint_payload))
+oversize_checkpoint["radius"] = 1 << 40
+rehash_reduction_state(oversize_checkpoint)
+try:
+    IdealReductionState.from_dict(oversize_checkpoint)
+    raise AssertionError("checkpoint exponentiated an oversized radius")
+except ValueError:
+    pass
+work_checkpoint = json.loads(json.dumps(checkpoint_payload))
+work_checkpoint["radius"] = 1 << 20
+work_checkpoint["dimension"] = 64
+work_checkpoint["cube_index"] = 0
+work_checkpoint["candidates_tested"] = 0
+rehash_reduction_state(work_checkpoint)
+try:
+    IdealReductionState.from_dict(work_checkpoint)
+    raise AssertionError("checkpoint exceeded the verifier work limit")
+except ValueError:
+    pass
 resumed_row, resumed_witness = reduce_ideal_over_base(
     hard_ideal,
     reduction_base,
