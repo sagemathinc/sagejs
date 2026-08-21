@@ -30,6 +30,7 @@ import json
 from typing import Any, Callable, Iterable
 
 import sagejs as sage
+import sagejs.runtime as runtime
 from sagejs.number_fields.embeddings import archimedean_data
 
 RELATION_SCHEMA = "sagejs.number-fields/class-relation-v1"
@@ -1290,6 +1291,7 @@ class LLLRelationSearch:
             raise ValueError("embedding precision must be at least 53 bits")
         self.basis_reducer = basis_reducer
         self.last_lattice_plan: MinkowskiLatticePlan | None = None
+        self.last_random_attempts = 0
         self.state = RelationSearchState(seed) if state is None else state
 
     def short_elements(self, ideal: Any) -> tuple[Any, ...]:
@@ -1317,7 +1319,18 @@ class LLLRelationSearch:
                 coefficient_rows.append(
                     [a - b for a, b in zip(reduced[left], reduced[right], strict=False)]
                 )
-        while len(coefficient_rows) < self.max_candidates_per_ideal and reduced:
+        missing = max(0, self.max_candidates_per_ideal - len(coefficient_rows))
+        random_draw_budget = (
+            8 * missing
+            if reduced and self.random_terms > 0 and self.coefficient_bound > 0
+            else 0
+        )
+        self.last_random_attempts = 0
+        for _draw in range(random_draw_budget):
+            if len(coefficient_rows) >= self.max_candidates_per_ideal:
+                break
+            runtime.check_interrupt()
+            self.last_random_attempts += 1
             candidate = [0 for _ in reduced[0]]
             terms = min(self.random_terms, len(reduced))
             for _term in range(terms):

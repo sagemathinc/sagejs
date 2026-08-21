@@ -196,6 +196,38 @@ short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
 assert short_one == short_two
 assert short_one[:len(case["short_element_prefix"])] == case["short_element_prefix"]
 
+# Degenerate random settings retain the deterministic reduced-basis prefix and
+# terminate without consuming the replayable PRNG stream.
+for zero_setting in (
+    {"random_terms": 0, "coefficient_bound": 2},
+    {"random_terms": 2, "coefficient_bound": 0},
+):
+    finite = LLLRelationSearch(
+        collector,
+        seed=case["search_seed"],
+        max_candidates_per_ideal=10,
+        random_terms=zero_setting["random_terms"],
+        coefficient_bound=zero_setting["coefficient_bound"],
+    )
+    initial_random_state = finite.state.random_state
+    finite_elements = finite.short_elements(O.ideal(1))
+    assert len(finite_elements) == 4
+    assert finite.state.random_state == initial_random_state
+
+# A pathological reducer that returns only zero rows can never yield an
+# accepted random candidate, so it exercises the independent attempt bound.
+bounded = LLLRelationSearch(
+    collector,
+    seed=1,
+    max_candidates_per_ideal=10,
+    random_terms=2,
+    coefficient_bound=1,
+    basis_reducer=lambda _rows: [[0, 0], [0, 0]],
+)
+bounded_elements = bounded.short_elements(O.ideal(1))
+assert not bounded_elements
+assert bounded.last_random_attempts == 8 * (10 - 4)
+
 first_ideal, first_row = search_one.random_factor_base_ideal()
 checkpoint = search_one.state.to_dict()
 resumed = LLLRelationSearch(
