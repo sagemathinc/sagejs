@@ -82,6 +82,7 @@ print(json.dumps({
         'point_count': batch_diagnostics['point_count'],
         'evaluated_point_count': batch_diagnostics['evaluated_point_count'],
         'native_call_count': batch_diagnostics['native_call_count'],
+        'fine_precision_bits': batch_diagnostics['fine_precision_bits'],
         'grid_points': batch_diagnostics['grid_points'],
         'coefficient_terms': batch_diagnostics['coefficient_terms'],
     },
