@@ -14,6 +14,78 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _flint_ffi_module() -> Any:
+    """Load the generated FLINT ownership facade on first extension use."""
+    global _flint_ffi_module_cache
+    if _flint_ffi_module_cache is runtime.undefined:
+        _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    return _flint_ffi_module_cache
+
+
+def _generated_extension_resources_available() -> bool:
+    """Return whether the host owns the complete public `fq` resource slice."""
+    global _generated_extension_resources_available_cache
+    if _generated_extension_resources_available_cache is runtime.undefined:
+        backend = runtime.flint_backend()
+        names = [
+            "ffiFqContextCreate",
+            "ffiFqContextClose",
+            "ffiFqElementCreate",
+            "ffiFqElementClose",
+            "ffiFqElementAdd",
+            "ffiFqElementSub",
+            "ffiFqElementMul",
+            "ffiFqElementNeg",
+            "ffiFqElementInverse",
+            "ffiFqElementPow",
+            "ffiFqElementEqual",
+            "ffiFqElementCoordinateBytes",
+            "ffiFqPolynomialCreate",
+            "ffiFqPolynomialClose",
+            "ffiFqPolynomialAdd",
+            "ffiFqPolynomialSub",
+            "ffiFqPolynomialMul",
+            "ffiFqPolynomialNeg",
+            "ffiFqPolynomialPow",
+            "ffiFqPolynomialEqual",
+            "ffiFqPolynomialLength",
+            "ffiFqPolynomialCoordinateBytes",
+        ]
+        available = True
+        for name in names:
+            if runtime.jstype(runtime.reflect.get(backend, name)) != "function":
+                available = False
+                break
+        _generated_extension_resources_available_cache = available
+    return bool(_generated_extension_resources_available_cache)
+
+
+def _read_little_endian_u64(source: Any, offset: int) -> int:
+    value = runtime.bigint(0)
+    multiplier = runtime.bigint(1)
+    for index in range(8):
+        value += runtime.bigint(source[offset + index]) * multiplier
+        multiplier *= runtime.bigint(256)
+    return runtime.normalize_integer(value)
+
+
+def _decode_extension_element_coordinates(source: Any, degree: int) -> list[Any]:
+    """Decode one checked `SJFE` bulk export from the generated resource."""
+    if len(source) != 16 + 8 * degree:
+        raise ValueError("finite extension element payload has invalid length")
+    if [source[index] for index in range(4)] != [83, 74, 70, 69]:
+        raise ValueError("finite extension element payload has invalid magic")
+    if source[4] != 1 or [source[index] for index in range(5, 8)] != [0, 0, 0]:
+        raise ValueError("finite extension element payload has invalid version")
+    if _read_little_endian_u64(source, 8) != degree:
+        raise ValueError("finite extension element payload has incompatible degree")
+    return [_read_little_endian_u64(source, 16 + 8 * index) for index in range(degree)]
+
+
+_flint_ffi_module_cache = runtime.undefined
+_generated_extension_resources_available_cache = runtime.undefined
+
+
 @runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class FiniteFieldElement(sage.Element):
@@ -419,18 +491,30 @@ class FiniteFieldExtensionElement(sage.Element):
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
+        if self._parent._generatedResourceBackend:
+            return self._new(
+                _flint_ffi_module().fq_element_add(self._native, other._native)
+            )
         return self._new(runtime.flint_backend().fqAdd(self._native, other._native))
 
     def _sub_(
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
+        if self._parent._generatedResourceBackend:
+            return self._new(
+                _flint_ffi_module().fq_element_sub(self._native, other._native)
+            )
         return self._new(runtime.flint_backend().fqSub(self._native, other._native))
 
     def _mul_(
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
+        if self._parent._generatedResourceBackend:
+            return self._new(
+                _flint_ffi_module().fq_element_mul(self._native, other._native)
+            )
         return self._new(runtime.flint_backend().fqMul(self._native, other._native))
 
     def _truediv_(
@@ -439,9 +523,21 @@ class FiniteFieldExtensionElement(sage.Element):
     ) -> FiniteFieldExtensionElement:
         if other.is_zero():
             raise sage.ZeroDivisionError("finite field division by zero")
+        if self._parent._generatedResourceBackend:
+            inverse = _flint_ffi_module().fq_element_inverse(other._native)
+            try:
+                return self._new(
+                    _flint_ffi_module().fq_element_mul(self._native, inverse)
+                )
+            finally:
+                inverse.close()
         return self._new(runtime.flint_backend().fqDiv(self._native, other._native))
 
     def _eq_(self, other: FiniteFieldExtensionElement) -> bool:
+        if self._parent._generatedResourceBackend:
+            return bool(
+                _flint_ffi_module().fq_element_equal(self._native, other._native)
+            )
         return runtime.flint_backend().fqEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
@@ -460,6 +556,8 @@ class FiniteFieldExtensionElement(sage.Element):
         return runtime.coercion_model.equals(self, other)
 
     def __neg__(self) -> FiniteFieldExtensionElement:
+        if self._parent._generatedResourceBackend:
+            return self._new(_flint_ffi_module().fq_element_neg(self._native))
         return self._new(runtime.flint_backend().fqNeg(self._native))
 
     def __pow__(
@@ -469,15 +567,52 @@ class FiniteFieldExtensionElement(sage.Element):
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0 and self.is_zero():
             raise sage.ZeroDivisionError("cannot invert zero in a finite field")
+        if self._parent._generatedResourceBackend:
+            return self._new(_flint_ffi_module().fq_element_pow(self._native, exponent))
         return self._new(runtime.flint_backend().fqPow(self._native, exponent))
 
     def is_zero(self) -> bool:
+        if self._parent._generatedResourceBackend:
+            return bool(_flint_ffi_module().fq_element_is_zero(self._native))
         return runtime.flint_backend().fqIsZero(self._native)
 
     def is_one(self) -> bool:
+        if self._parent._generatedResourceBackend:
+            return bool(_flint_ffi_module().fq_element_is_one(self._native))
         return runtime.flint_backend().fqIsOne(self._native)
 
+    def _power_basis_coordinates(self) -> list[Any]:
+        """Return one host-owned coordinate copy for conversion and display."""
+        if not self._parent._generatedResourceBackend:
+            raise TypeError("power-basis export requires generated `fq` resources")
+        region = _flint_ffi_module().fq_element_coordinate_bytes(self._native)
+        return _decode_extension_element_coordinates(
+            region.take_bytes(), self._parent._degree
+        )
+
     def __repr__(self) -> str:
+        if self._parent._generatedResourceBackend:
+            coordinates = self._power_basis_coordinates()
+            pieces = []
+            for exponent in range(len(coordinates) - 1, -1, -1):
+                coefficient = coordinates[exponent]
+                if coefficient == 0:
+                    continue
+                if exponent == 0:
+                    term = str(coefficient)
+                else:
+                    monomial = (
+                        self._parent._variable
+                        if exponent == 1
+                        else self._parent._variable + "^" + str(exponent)
+                    )
+                    term = (
+                        monomial
+                        if coefficient == 1
+                        else str(coefficient) + "*" + monomial
+                    )
+                pieces.append(term)
+            return " + ".join(pieces) if len(pieces) != 0 else "0"
         raw = runtime.flint_backend().fqToString(self._native)
         return raw.replace(runtime.regexp(r"\+", "g"), " + ").replace(
             runtime.regexp(r"([^-])-+", "g"), "$1 - "
@@ -691,6 +826,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         prime_subfield: FiniteField_prime_modn,
         element_type: type[FiniteFieldExtensionElement],
         explicit_modulus: bool = False,
+        generated_resource_backend: bool = False,
     ) -> None:
         self._name = (
             "Finite Field in "
@@ -711,6 +847,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._degree = degree
         self._variable = variable
         self._explicitModulus = explicit_modulus
+        self._generatedResourceBackend = generated_resource_backend
 
     def __call__(
         self,
@@ -729,6 +866,20 @@ class FiniteFieldExtensionParent(sage.Parent):
             denominator = self(value._denominator)
             return numerator._truediv_(denominator)
         value = runtime.integer_bigint(value)
+        if self._generatedResourceBackend:
+            reduced = runtime.native_mod(value, self._prime)
+            if reduced < 0:
+                reduced += self._prime
+            coordinates = [runtime.bigint(0) for _index in range(self._degree)]
+            coordinates[0] = reduced
+            return _new_extension_field_element(
+                self,
+                _flint_ffi_module().fq_element(
+                    self._nativeContext,
+                    runtime.uint64_buffer(coordinates),
+                    self._degree,
+                ),
+            )
         return _new_extension_field_element(
             self,
             runtime.flint_backend().fqFromBigInt(self._nativeContext, value),
@@ -739,6 +890,24 @@ class FiniteFieldExtensionParent(sage.Parent):
         native_value: Any,
     ) -> FiniteFieldExtensionElement:
         return _new_extension_field_element(self, native_value)
+
+    def _from_power_basis_coordinates(
+        self,
+        coordinates: list[Any],
+    ) -> FiniteFieldExtensionElement:
+        """Construct from checked canonical coordinates at a bulk boundary."""
+        if not self._generatedResourceBackend:
+            raise TypeError("power-basis ingress requires generated `fq` resources")
+        if len(coordinates) != self._degree:
+            raise ValueError("finite-field coordinate width does not match degree")
+        return _new_extension_field_element(
+            self,
+            _flint_ffi_module().fq_element(
+                self._nativeContext,
+                runtime.uint64_buffer(coordinates),
+                self._degree,
+            ),
+        )
 
     def order(self) -> int:
         return runtime.normalize_integer(self._order)
@@ -770,6 +939,17 @@ class FiniteFieldExtensionParent(sage.Parent):
         index = runtime.integer_bigint(index)
         if index != runtime.bigint(0):
             raise IndexError("only one generator")
+        if self._generatedResourceBackend:
+            coordinates = [runtime.bigint(0) for _index in range(self._degree)]
+            coordinates[1] = runtime.bigint(1)
+            return _new_extension_field_element(
+                self,
+                _flint_ffi_module().fq_element(
+                    self._nativeContext,
+                    runtime.uint64_buffer(coordinates),
+                    self._degree,
+                ),
+            )
         return _new_extension_field_element(
             self, runtime.flint_backend().fqGen(self._nativeContext)
         )
@@ -965,8 +1145,22 @@ def _make_extension_field(
     backend = runtime.flint_backend()
     context = runtime.undefined
     missing_conway = False
-    try:
+    generated_resource_backend = (
+        _generated_extension_resources_available()
+        and prime <= runtime.bigint(0xFFFFFFFFFFFFFFFF)
+    )
+    if coefficients is None and generated_resource_backend:
+        coefficients = _database_conway_coefficients(prime, degree)
         if coefficients is None:
+            generated_resource_backend = False
+    try:
+        if generated_resource_backend:
+            context = _flint_ffi_module().fq_context(
+                runtime.uint64_buffer(coefficients),
+                degree + 1,
+                prime,
+            )
+        elif coefficients is None:
             context = backend.fqContext(prime, degree, variable)
         else:
             context = backend.fqContextWithModulus(
@@ -998,7 +1192,11 @@ def _make_extension_field(
             + "implemented for this finite field"
         )
 
-    modulus_coefficients = backend.fqContextModulus(context)
+    modulus_coefficients = (
+        coefficients
+        if generated_resource_backend
+        else backend.fqContextModulus(context)
+    )
     if order < runtime.bigint(65536):
         parent_type = FiniteField_givaro
         element_type = FiniteField_givaroElement
@@ -1019,6 +1217,7 @@ def _make_extension_field(
         prime_field,
         element_type,
         explicit_modulus,
+        generated_resource_backend,
     )
     _extension_fields.set(key, field)
     conversion = _field_coercion(field)

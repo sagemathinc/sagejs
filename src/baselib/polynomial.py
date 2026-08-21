@@ -72,6 +72,13 @@ class _FmpzModPolynomialResourceStorage:
         self.resource = resource
 
 
+class _FqPolynomialResourceStorage:
+    """Own one generated FLINT polynomial over a public `GF(p^n)` parent."""
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+
+
 def _flint_ffi_module() -> Any:
     """Load generated safe FLINT resources without exposing package handles."""
     global _flint_ffi_module_cache
@@ -194,6 +201,36 @@ def _integer_capacity_error(error: Exception) -> bool:
 def _buffer_length(source: Any) -> int:
     length = runtime.reflect.get(source, "length")
     return len(source) if length is runtime.undefined else int(length)
+
+
+def _read_extension_u64(source: Any, offset: int) -> int:
+    value = runtime.bigint(0)
+    multiplier = runtime.bigint(1)
+    for index in range(8):
+        value += runtime.bigint(source[offset + index]) * multiplier
+        multiplier *= runtime.bigint(256)
+    return runtime.normalize_integer(value)
+
+
+def _decode_extension_polynomial_coordinates(
+    source: Any, expected_degree: int
+) -> tuple[int, list[Any]]:
+    """Decode one versioned `SJFC` resource export into a flat coordinate table."""
+    if len(source) < 24 or [source[index] for index in range(4)] != [83, 74, 70, 67]:
+        raise ValueError("finite extension polynomial payload has invalid magic")
+    if source[4] != 1 or [source[index] for index in range(5, 8)] != [0, 0, 0]:
+        raise ValueError("finite extension polynomial payload has invalid version")
+    degree = _read_extension_u64(source, 8)
+    count = _read_extension_u64(source, 16)
+    if degree != expected_degree:
+        raise ValueError("finite extension polynomial payload has incompatible degree")
+    coordinate_count = count * degree
+    if len(source) != 24 + 8 * coordinate_count:
+        raise ValueError("finite extension polynomial payload has invalid length")
+    coordinates = [
+        _read_extension_u64(source, 24 + 8 * index) for index in range(coordinate_count)
+    ]
+    return count, coordinates
 
 
 def _trim_polynomial_coefficients(values: list[Any]) -> list[Any]:
@@ -834,6 +871,10 @@ def _packed_polynomial_kind(base: sage.Parent) -> str:
         if int(_untyped(base).characteristic()) <= 0xFFFFFFFFFFFFFFFF:
             return "GF"
         return "GF_ARB" if _generated_flint_resources_available() else "legacy"
+    if getattr(base, "_kind", None) == "GF_EXTENSION" and getattr(
+        base, "_generatedResourceBackend", False
+    ):
+        return "GF_EXT"
     return "legacy"
 
 
@@ -898,6 +939,7 @@ class PolynomialElement(sage.Element):
                     _FmpzPolynomialResourceStorage,
                     _FmpqPolynomialResourceStorage,
                     _FmpzModPolynomialResourceStorage,
+                    _FqPolynomialResourceStorage,
                 ),
             ):
                 self._storage = value
@@ -945,6 +987,14 @@ class PolynomialElement(sage.Element):
 
     def _has_fmpz_mod_polynomial_resource(self) -> bool:
         return isinstance(self._storage, _FmpzModPolynomialResourceStorage)
+
+    def _has_fq_polynomial_resource(self) -> bool:
+        return isinstance(self._storage, _FqPolynomialResourceStorage)
+
+    def _extension_polynomial_resource(self) -> Any:
+        if not self._has_fq_polynomial_resource():
+            raise TypeError("polynomial does not own an extension-field resource")
+        return self._storage.resource
 
     def _arbitrary_prime_polynomial_resource(self) -> Any:
         if not self._has_fmpz_mod_polynomial_resource():
@@ -1134,6 +1184,15 @@ class PolynomialElement(sage.Element):
                     other._arbitrary_prime_polynomial_resource(),
                 )
             )
+        if kind == "GF_EXT":
+            return self._new(
+                _FqPolynomialResourceStorage(
+                    _flint_ffi_module().fq_polynomial_add(
+                        self._extension_polynomial_resource(),
+                        other._extension_polynomial_resource(),
+                    )
+                )
+            )
         if kind == "GF":
             length = max(_buffer_length(self._storage), _buffer_length(other._storage))
             wide = _wide_prime_polynomial(base)
@@ -1267,6 +1326,15 @@ class PolynomialElement(sage.Element):
                 _flint_ffi_module().fmpz_mod_polynomial_sub(
                     self._arbitrary_prime_polynomial_resource(),
                     other._arbitrary_prime_polynomial_resource(),
+                )
+            )
+        if kind == "GF_EXT":
+            return self._new(
+                _FqPolynomialResourceStorage(
+                    _flint_ffi_module().fq_polynomial_sub(
+                        self._extension_polynomial_resource(),
+                        other._extension_polynomial_resource(),
+                    )
                 )
             )
         if kind == "GF":
@@ -1466,6 +1534,15 @@ class PolynomialElement(sage.Element):
                     other._arbitrary_prime_polynomial_resource(),
                 )
             )
+        if kind == "GF_EXT":
+            return self._new(
+                _FqPolynomialResourceStorage(
+                    _flint_ffi_module().fq_polynomial_mul(
+                        self._extension_polynomial_resource(),
+                        other._extension_polynomial_resource(),
+                    )
+                )
+            )
         if kind == "GF":
             use_flint = (
                 _wide_prime_polynomial(base) or left_length * right_length >= 4096
@@ -1636,6 +1713,14 @@ class PolynomialElement(sage.Element):
                     base._modulus,
                 )
             return self._new(_canonical_uint64_output(output))
+        if kind == "GF_EXT":
+            return self._new(
+                _FqPolynomialResourceStorage(
+                    _flint_ffi_module().fq_polynomial_neg(
+                        self._extension_polynomial_resource()
+                    )
+                )
+            )
         if base._kind == "GF_EXTENSION":
             return self._new(runtime.flint_backend().fqPolyNeg(self._native))
         return self._new(runtime.flint_backend().polyNeg(self._native))
@@ -1664,6 +1749,14 @@ class PolynomialElement(sage.Element):
             return self._parent._from_fmpz_mod_polynomial_resource(
                 _flint_ffi_module().fmpz_mod_polynomial_pow(
                     self._arbitrary_prime_polynomial_resource(), exponent
+                )
+            )
+        if self._has_fq_polynomial_resource():
+            return self._new(
+                _FqPolynomialResourceStorage(
+                    _flint_ffi_module().fq_polynomial_pow(
+                        self._extension_polynomial_resource(), exponent
+                    )
                 )
             )
         if _packed_polynomial_kind(self._parent.base_ring()) != "legacy":
@@ -2027,6 +2120,13 @@ class PolynomialElement(sage.Element):
                     other._arbitrary_prime_polynomial_resource(),
                 )
             )
+        if kind == "GF_EXT":
+            return bool(
+                _flint_ffi_module().fq_polynomial_equal(
+                    self._extension_polynomial_resource(),
+                    other._extension_polynomial_resource(),
+                )
+            )
         if kind == "GF":
             if _wide_prime_polynomial(base):
                 return bool(
@@ -2075,6 +2175,12 @@ class PolynomialElement(sage.Element):
             return runtime.number(
                 _flint_ffi_module().fmpz_mod_polynomial_length(
                     self._arbitrary_prime_polynomial_resource()
+                )
+            )
+        if kind == "GF_EXT":
+            return runtime.number(
+                _flint_ffi_module().fq_polynomial_length(
+                    self._extension_polynomial_resource()
                 )
             )
         if kind == "GF":
@@ -2869,6 +2975,22 @@ class PolynomialElement(sage.Element):
                 base,
                 base._elementType,
             )
+        if kind == "GF_EXT":
+            region = _flint_ffi_module().fq_polynomial_coordinate_bytes(
+                self._extension_polynomial_resource()
+            )
+            count, coordinates = _decode_extension_polynomial_coordinates(
+                region.take_bytes(), base._degree
+            )
+            answer = []
+            for coefficient in range(count):
+                offset = coefficient * base._degree
+                answer.append(
+                    base._from_power_basis_coordinates(
+                        coordinates[offset : offset + base._degree]
+                    )
+                )
+            return answer
         if base._kind == "GF_EXTENSION":
             raw = runtime.flint_backend().fqPolyCoefficients(self._native)
         else:
@@ -3187,6 +3309,14 @@ class PolynomialRingParent(sage.Parent):
         _flint_ffi_module().fmpq_polynomial_length(resource)
         return PolynomialElement(self, _FmpqPolynomialResourceStorage(resource))
 
+    def _from_fq_polynomial_resource(self, resource: Any) -> PolynomialElement:
+        """Take ownership of a checked `GF(p^n)[x]` resource."""
+        if _packed_polynomial_kind(self._base) != "GF_EXT":
+            resource.close()
+            raise TypeError("extension polynomial resource requires `GF(p^n)`")
+        _flint_ffi_module().fq_polynomial_length(resource)
+        return PolynomialElement(self, _FqPolynomialResourceStorage(resource))
+
     def _from_fmpz_mod_polynomial_resource(self, resource: Any) -> PolynomialElement:
         """Take ownership of a checked sealed arbitrary-prime resource."""
         if _packed_polynomial_kind(self._base) != "GF_ARB":
@@ -3361,6 +3491,22 @@ class PolynomialRingParent(sage.Parent):
             finally:
                 region.close()
             return self._from_fmpz_mod_polynomial_resource(resource)
+        if kind == "GF_EXT":
+            values = [self._base(value) for value in coefficients]
+            length = len(values)
+            while length > 0 and values[length - 1].is_zero():
+                length -= 1
+            coordinates = []
+            for index in range(length):
+                coordinates.extend(values[index]._power_basis_coordinates())
+            return self._from_fq_polynomial_resource(
+                _flint_ffi_module().fq_polynomial(
+                    self._base._nativeContext,
+                    runtime.uint64_buffer(coordinates),
+                    len(coordinates),
+                    length,
+                )
+            )
         result = self(0)
         generator = self.gen()
         for coefficient in reversed(coefficients):
