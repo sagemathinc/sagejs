@@ -929,6 +929,15 @@ function sameNativeCachePath(left, right) {
     : left === right;
 }
 
+function absolutePathIsWithin(path, root) {
+  const suffix = relative(root, path);
+  return suffix === "" || (
+    suffix !== ".." &&
+    !suffix.startsWith(`..${sep}`) &&
+    !isAbsolute(suffix)
+  );
+}
+
 function assertExactNativeCacheRoot(
   workspace,
   requestedRoot,
@@ -1115,28 +1124,45 @@ function discoverNativeCacheProtections(workspace, cacheRoot, options = {}) {
       if (!nativeCacheArtifactIds.has(spec.id)) continue;
       for (const outputRoot of spec.outputRoots || []) {
         let output;
+        let target;
         try {
           output = workspacePath(root, outputRoot, { allowLeafSymlink: true });
-        } catch (error) {
-          issues.push(
-            `cannot validate installed output ${root}/${outputRoot}: ` +
-              `${error.message || error}`,
-          );
-          continue;
+        } catch {
+          const lexicalOutput = join(root, safeRelativePath(outputRoot));
+          if (pathMetadata(lexicalOutput) === null) continue;
+          try {
+            target = realpathSync(lexicalOutput);
+          } catch (resolutionError) {
+            issues.push(
+              `cannot resolve installed output ${root}/${outputRoot}: ` +
+                `${resolutionError.message || resolutionError}`,
+            );
+            continue;
+          }
+          // Worktrees can intentionally share a package-local .native tree.
+          // If the fully resolved output is outside the cache under
+          // maintenance, it cannot protect any generation in that cache.
+          if (!absolutePathIsWithin(target, cacheRoot)) continue;
         }
-        const metadata = pathMetadata(output);
-        if (metadata === null || !metadata.isSymbolicLink()) continue;
-        const target = resolve(dirname(output), readlinkSync(output));
+        if (target === undefined) {
+          const metadata = pathMetadata(output);
+          if (metadata === null || !metadata.isSymbolicLink()) continue;
+          target = resolve(dirname(output), readlinkSync(output));
+          if (!absolutePathIsWithin(target, cacheRoot)) continue;
+        }
         const targetRelative = relative(cacheRoot, target);
         const components = targetRelative.split(sep);
         if (
-          targetRelative.startsWith("..") || isAbsolute(targetRelative) ||
           components.length < 4 ||
           components[0] !== spec.id ||
           !/^[a-f0-9]{64}$/.test(components[1]) ||
           components[2] !== "payload" ||
           target !== join(cacheRoot, spec.id, components[1], "payload", outputRoot)
         ) {
+          issues.push(
+            `installed output ${root}/${outputRoot} points inside the cache ` +
+              "without an exact generation identity",
+          );
           continue;
         }
         add(spec.id, components[1], `installed-link:${root}`);

@@ -621,6 +621,82 @@ test("installed shared cache links retain their exact generation", {
   }
 });
 
+test("maintenance ignores ancestor links into a different native cache", {
+  skip: process.platform === "win32",
+}, () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const unrelatedWorkspace = join(directory, "unrelated-worktree");
+  const unrelatedNative = join(directory, "other-native-tree");
+  const key = "4".repeat(64);
+  const selectedKey = "5".repeat(64);
+  const outputRoot = "build/native";
+  const currentSpecs = [{
+    id: "graph-addon",
+    key: selectedKey,
+    outputRoots: [outputRoot],
+  }];
+  try {
+    const entry = writeMaintenanceGeneration(cacheRoot, "graph-addon", key, {
+      outputRoot,
+    });
+    mkdirSync(unrelatedWorkspace);
+    mkdirSync(join(unrelatedNative, "native"), { recursive: true });
+    symlinkSync(unrelatedNative, join(unrelatedWorkspace, "build"), "dir");
+    const result = cleanupNativeCache(workspace, cacheRoot, {
+      apply: true,
+      currentSpecs,
+      expectedRoot: cacheRoot,
+      maxBytes: 1024,
+      maxGenerations: 1,
+      workspaces: [workspace, unrelatedWorkspace],
+    });
+    assert.equal(result.removed.generations[0].key, key);
+    assert.equal(existsSync(entry), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("ancestor links into the maintained cache protect their exact generation", {
+  skip: process.platform === "win32",
+}, () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const linkedWorkspace = join(directory, "linked-worktree");
+  const installedKey = "6".repeat(64);
+  const selectedKey = "7".repeat(64);
+  const outputRoot = "build/native";
+  try {
+    const installed = writeMaintenanceGeneration(
+      cacheRoot,
+      "graph-addon",
+      installedKey,
+      { outputRoot },
+    );
+    mkdirSync(linkedWorkspace);
+    symlinkSync(
+      join(installed, "payload", "build"),
+      join(linkedWorkspace, "build"),
+      "dir",
+    );
+    const status = nativeCacheStatus(workspace, cacheRoot, {
+      currentSpecs: [{
+        id: "graph-addon",
+        key: selectedKey,
+        outputRoots: [outputRoot],
+      }],
+      expectedRoot: cacheRoot,
+      workspaces: [workspace, linkedWorkspace],
+    });
+    assert.equal(status.safe, true);
+    const generation = status.artifacts[0].generations[0];
+    assert.equal(generation.key, installedKey);
+    assert.equal(generation.state, "retained");
+    assert.ok(generation.reasons[0].startsWith("installed-link:"));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
   skip: process.platform === "win32",
 }, () => {
