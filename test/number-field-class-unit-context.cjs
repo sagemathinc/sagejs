@@ -192,7 +192,32 @@ assert saturation.remaining_index_bound == 1
 assert saturation.index_enlargement == 2
 assert len(saturation.evidence) == 1
 assert saturation.evidence[0].root**2 == epsilon**2
+provider_calls_before_live_result_replay = analytic_workspace.provider_calls
 assert saturation.verify()
+result_replay_diagnostics = square_index_certificate.workspace_diagnostics()
+assert result_replay_diagnostics["certificate_replay_calls"] == 2
+assert result_replay_diagnostics["regulator_cache_hits"] == 2
+assert analytic_workspace.provider_calls == provider_calls_before_live_result_replay
+
+# The same serialized record starts cold unless its caller explicitly supplies
+# a per-computation workspace. A fresh workspace makes that cold work visible
+# without changing anything in the authenticated payload.
+detached_workspace = ZetaLogResidueWorkspace(
+    int(O.discriminant()), int(K.degree()), O.splitting_records,
+)
+assert verify_saturation_evidence(
+    K,
+    O,
+    square_subgroup,
+    saturation.to_dict(),
+    generation_verifier=verify_generation,
+    workspace=detached_workspace,
+)
+detached_diagnostics = detached_workspace.diagnostics()
+assert detached_diagnostics["certificate_replay_calls"] == 1
+assert detached_diagnostics["provider_calls"] > 0
+assert detached_diagnostics["regulator_cache_hits"] == 0
+assert detached_diagnostics["splitting_cache_hits"] == 0
 assert saturation.proof_status == "exact-unit-p-saturation-conditional-grh"
 tampered_saturation = copy.deepcopy(saturation.to_dict())
 tampered_saturation["evidence"][0]["root_coordinates"][0][0] += 1

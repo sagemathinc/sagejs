@@ -1672,6 +1672,7 @@ class ExactUnitSaturationResult:
         precision_history: Sequence[int],
         incomplete_reason: str | None,
         generation_verifier: Callable[..., Any] | None,
+        workspace: ZetaLogResidueWorkspace | None = None,
     ) -> None:
         self.units = tuple(units)
         self.evidence = tuple(evidence)
@@ -1712,14 +1713,17 @@ class ExactUnitSaturationResult:
         self._order = order
         self._initial_units = tuple(initial_units)
         self._generation_verifier = generation_verifier
+        self._workspace = workspace
 
-    def verify(self) -> bool:
+    def verify(self, *, workspace: ZetaLogResidueWorkspace | None = None) -> bool:
+        """Replay in-process work when available; detached replay stays cold."""
         return verify_saturation_evidence(
             self._field,
             self._order,
             self._initial_units,
             self.to_dict(),
             generation_verifier=self._generation_verifier,
+            workspace=self._workspace if workspace is None else workspace,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -1800,11 +1804,13 @@ def saturate_unit_lattice(
     as search bounds but are always diagnostic-only.
     """
     index_certificate: UnitSaturationIndexCertificate | None = None
+    analytic_workspace: ZetaLogResidueWorkspace | None = None
     global_index_certificate: Any = None
     generation_verifier: Callable[..., Any] | None = None
     if isinstance(index_bound, UnitSaturationIndexCertificate):
         initial_index = int(index_bound.index_bound)
         index_certificate = index_bound
+        analytic_workspace = index_bound._workspace
     elif isinstance(index_bound, HRIndexValidationResult):
         initial_index = int(
             index_bound.unique_index
@@ -1862,6 +1868,7 @@ def saturate_unit_lattice(
                 "unit-index factorization exhausted maximum_saturation_work"
             ),
             generation_verifier=None,
+            workspace=analytic_workspace,
         )
     saturation_work_remaining = maximum_saturation_work - factor_work
     if index_certificate is not None:
@@ -2095,6 +2102,7 @@ def saturate_unit_lattice(
         precision_history=precision_history or (precision,),
         incomplete_reason=incomplete_reason,
         generation_verifier=generation_verifier,
+        workspace=analytic_workspace,
     )
 
 
@@ -2106,8 +2114,14 @@ def verify_saturation_evidence(
     *,
     generation_verifier: Callable[..., Any] | None = None,
     cancelled: Callable[[], Any] | None = None,
+    workspace: ZetaLogResidueWorkspace | None = None,
 ) -> bool:
-    """Replay a canonical exact-unit-saturation payload from algebraic data."""
+    """Replay a canonical exact-unit-saturation payload from algebraic data.
+
+    A caller may supply its live field-scoped analytic workspace. Serialized
+    evidence never contains a workspace, so ordinary detached replay remains
+    independent and cold by default.
+    """
     try:
         expected_payload_keys = {
             "schema",
@@ -2502,6 +2516,7 @@ def verify_saturation_evidence(
         if certificate_payload is not None:
             _consume_replay_structure(certificate_payload, budget)
             certificate = UnitSaturationIndexCertificate.from_dict(certificate_payload)
+            certificate._workspace = workspace
             rigorous_bound = (
                 certificate.index_bound == initial_index
                 and certificate.verify(
@@ -2592,6 +2607,7 @@ def verify_saturation_evidence(
             precision_history=payload_precision_history,
             incomplete_reason=incomplete_reason,
             generation_verifier=generation_verifier,
+            workspace=workspace,
         )
         return statuses_match and _canonical_json(
             reconstructed.to_dict()
