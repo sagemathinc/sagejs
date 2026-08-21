@@ -2,12 +2,12 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "class-unit-core",
-  "title": "Class-unit core representations",
+  "title": "Class-unit core representations and checkpoints",
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement factored number-field elements, immutable proof states, shared ClassUnitGroupContext state/serialization, and corruption-resistant replay tests",
-  "base_commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
+  "objective": "Implement factored elements, immutable proof states, shared class/unit state, and genuinely resumable corruption-resistant checkpoint, cancellation, and progress control",
+  "base_commit": "2927be798ff1784505aeb497678b2e23d4251e2f",
   "claims": [
     "src/lib/sagejs/number_fields/factored_elements.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
@@ -58,19 +58,40 @@
       "commit": "2e54c8b72afc1030aacbdad17aca250d4f022556",
       "workspace_fingerprint": "b04398f34ae610cd287256ea0208d17b07dafc34a0a5a1d9f5e0df1d8f77593a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.817,
+      "started_at": "2026-08-21T07:52:22.896Z",
+      "commit": "d69b3520a2b0c4e6048ffb81dd3e4fbef1325386",
+      "workspace_fingerprint": "e7b71364b6f62458b1be4d2120cdb80290721ba6e3a879df289886bf31ac8c4f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/factored_elements.py src/lib/sagejs/number_fields/class_unit_context.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.518,
+      "started_at": "2026-08-21T07:52:28.321Z",
+      "commit": "d69b3520a2b0c4e6048ffb81dd3e4fbef1325386",
+      "workspace_fingerprint": "e7b71364b6f62458b1be4d2120cdb80290721ba6e3a879df289886bf31ac8c4f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added canonical FactoredNumberFieldElement arithmetic and authenticated replay, immutable exact proof labels and ResourceLimits, and a shared duck-typed ClassUnitGroupContext with policy-separated cache keys, proof forks, component update helpers, SHA-256 checkpoints, decoders, and producer verifiers. The frozen quadratic fixture and focused test cover exact expansion/norm/principal ideals/logarithms, portable replay, all four proof labels, immutable policy state, 19 component mutations, recomputed-hash identity/label failures, noncanonical factors, and semantic relation rejection.",
+    "summary": "Extended the shared ClassUnitGroupContext with authenticated relation-search state and added ClassUnitCheckpoint as a duck-typed execution controller. It restores factor-base, relation, search, matrix, and proof progress; captures every producer state family; writes canonical bounded checkpoints atomically to paths or detached sinks; authenticates and verifies resumes; publishes immutable sequenced progress; and polls cooperative cancellation. The focused restart test proves exact candidate-stream continuity across a fresh controller, preserves factor-base/relation/matrix/proof state, checks detached sinks and byte limits, rejects search-state corruption, and verifies progress sequence continuation and cancellation metadata. The original factored-element/context regression now authenticates the added search-state component and rejects 20 independent mutations.",
     "risks": [
       "Context component authentication detects accidental mutation, while mathematical semantics remain intentionally owned by producer-supplied replay verifiers.",
-      "The lane did not claim pyrightconfig.json or package exports; integration must register both strict modules and any desired public re-exports.",
+      "Atomic path replacement protects the previous complete checkpoint, but the helper does not fsync file or directory metadata and does not coordinate concurrent writers to the same destination.",
+      "Cancellation is cooperative: expensive producers must call stage/check_cancelled at safe boundaries, and only state captured before save is resumable.",
       "Broad native and merged-suite gates were deferred to integration at coordinator request; the recorded receipts are the focused Sage.js runtime regression and direct zero-error Pyright check."
     ],
     "next_steps": [
-      "Add factored_elements.py and class_unit_context.py to pyrightconfig.json in the integration lane.",
-      "Wire factor-base, relation, matrix, unit/analytic, and map/proof record decoders and verifiers into ClassUnitGroupContext replay.",
-      "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after all class/unit lanes merge."
+      "Merge the engine lane's lazy hook integration and exercise a real relation-search interruption through the public class_group/unit_group entry point.",
+      "Supply producer-owned decoders and semantic verifiers for factor-base, relation, matrix, unit/analytic, and proof records when constructing resumed controllers.",
+      "Run pnpm test:baselib:strict, pnpm test:native, pnpm architecture:check, and pnpm test:changed after the controller and engine commits merge."
     ]
   }
 }

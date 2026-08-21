@@ -1,7 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
 
@@ -75,6 +76,11 @@ context = ClassUnitGroupContext(
         "witness": witness,
         "provenance": {"kind": "fixture"},
     }],
+    search_state={
+        "schema": "test.search-state.v1",
+        "candidates_tested": 4,
+        "random_state": [7, 13],
+    },
     matrix_state={"schema": "test.matrix.v1", "rank": 1, "rows": [[1]]},
     class_group_state={"schema": "test.class-group.v1", "invariants": []},
     unit_state={"schema": "test.unit.v1", "rank": 1, "generators": [witness]},
@@ -207,6 +213,7 @@ mutations = (
     (("factor_base", 0, "p"), 3),
     (("relations", 0, "row", 0, 1), 2),
     (("relations", 0, "witness", "factors", 0, "exponent"), -2),
+    (("search_state", "candidates_tested"), 5),
     (("matrix_state", "rank"), 0),
     (("class_group_state", "invariants"), [2]),
     (("unit_state", "rank"), 2),
@@ -291,11 +298,190 @@ print(json.dumps({
   const report = JSON.parse(result.stdout.trim());
   assert.deepEqual(report, {
     context_hash:
-      "7764c770d05257ef3c365b94a5c54cc5342ee3902dd21230686f21e1cbf2d2cd",
+      "b6b2a98701b6bd36f8888b0b82a2d2f9e788124bb51efb2d013c272c2e36dbd6",
     factored_hash:
       "ac7b4a166714ec2a76cf2c3fc6f5c190cd41dca50fc6dda4f4d8936d52469fec",
-    hash_rejections: 19,
+    hash_rejections: 20,
     immutable_rejections: 4,
     portable_replay: true,
+  });
+});
+
+test("class/unit checkpoints resume exact search state and reject corruption", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-class-unit-"));
+  const checkpointPath = join(directory, "checkpoint.json");
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const source = String.raw`
+import copy
+import json
+
+from sagejs.number_fields.class_unit_context import (
+    ClassUnitCancellationError,
+    ClassUnitCheckpoint,
+    ClassUnitProofState,
+    ResourceLimits,
+    load_class_unit_checkpoint,
+    save_class_unit_checkpoint,
+)
+
+checkpoint_path = ${JSON.stringify(checkpointPath)}
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**2 - 5, "a")
+O = K.maximal_order()
+
+class SearchState:
+    schema = "test.resumable-search.v1"
+
+    def __init__(self, random_state, position=0):
+        self.random_state = random_state
+        self.position = position
+
+    def next_candidate(self):
+        self.random_state = (1103515245 * self.random_state + 12345) % (2**31)
+        self.position += 1
+        return self.random_state
+
+    def to_dict(self):
+        return {
+            "schema": self.schema,
+            "random_state": self.random_state,
+            "position": self.position,
+        }
+
+    @classmethod
+    def from_dict(cls, payload):
+        if payload.get("schema") != cls.schema:
+            raise ValueError("wrong search-state schema")
+        if set(payload) != {"schema", "random_state", "position"}:
+            raise ValueError("noncanonical search state")
+        return cls(payload["random_state"], payload["position"])
+
+def verify_search_state(state, context):
+    return (
+        type(state) is SearchState
+        and state.position >= 0
+        and 0 <= state.random_state < 2**31
+        and context.order is O
+    )
+
+proof = ClassUnitProofState.unconditional("Minkowski bound", 11)
+limits = ResourceLimits(max_checkpoint_bytes=1048576, max_relations=20)
+progress = []
+cancellation = {"requested": False}
+controller = ClassUnitCheckpoint(
+    K,
+    O,
+    proof,
+    algorithm="buchmann-hecke",
+    limits=limits,
+    random_seed=23,
+    destination=checkpoint_path,
+    progress=lambda event: progress.append(event.to_dict()),
+    cancelled=lambda: cancellation["requested"],
+)
+
+search = SearchState(23)
+prefix = [search.next_candidate() for _ in range(3)]
+first_event = controller.stage(
+    "relation-search",
+    "checkpoint",
+    {"candidates_tested": search.position},
+)
+first_details = first_event.details
+first_details["candidates_tested"] = 999
+assert first_event.details["candidates_tested"] == 3
+first_hash = controller.save({
+    "factor_base": [{"schema": "test.factor-base.v1", "index": 0, "norm": 4}],
+    "relations": [{"schema": "test.relation.v1", "row": [[0, 1]]}],
+    "search_state": search,
+    "matrix_state": {"schema": "test.matrix.v1", "rank": 1},
+    "proof_progress": {"stage": "relations", "checked": 3},
+})
+
+# Continuing directly and continuing after a fresh controller restore must
+# consume precisely the same candidate stream.
+expected_tail = [search.next_candidate() for _ in range(5)]
+resumed_progress = []
+resumed = ClassUnitCheckpoint(
+    K,
+    O,
+    resume_from=checkpoint_path,
+    progress=lambda event: resumed_progress.append(event.to_dict()),
+    component_decoders={"search_state": SearchState.from_dict},
+    component_verifiers={"search_state": verify_search_state},
+)
+restored_search = resumed.restore_search_state()
+actual_tail = [restored_search.next_candidate() for _ in range(5)]
+assert resumed.resumed
+assert actual_tail == expected_tail
+assert resumed.restore_factor_base()[0]["index"] == 0
+assert resumed.restore_relations()[0]["row"] == [[0, 1]]
+assert resumed.restore_matrix_state()["rank"] == 1
+assert resumed.restore_proof_progress() == {"stage": "relations", "checked": 3}
+second_event = resumed.stage("relation-search", "resumed", {"tail": len(actual_tail)})
+assert second_event.sequence == 1
+second_hash = resumed.save({"search_state": restored_search})
+assert second_hash != first_hash
+
+# A detached sink is another supported checkpoint destination and can be used
+# as a resume source without sharing mutable producer objects.
+sink_payloads = []
+sink_hash = save_class_unit_checkpoint(sink_payloads.append, resumed.context)
+assert sink_hash == second_hash
+detached = load_class_unit_checkpoint(
+    sink_payloads[0],
+    K,
+    O,
+    component_decoders={"search_state": SearchState.from_dict},
+    component_verifiers={"search_state": verify_search_state},
+)
+assert detached.stable_hash() == second_hash
+
+try:
+    load_class_unit_checkpoint(sink_payloads[0], K, O, max_checkpoint_bytes=16)
+    raise AssertionError("checkpoint byte limit was ignored")
+except ValueError:
+    pass
+
+corrupted = copy.deepcopy(sink_payloads[0])
+corrupted["search_state"]["position"] += 1
+try:
+    load_class_unit_checkpoint(corrupted, K, O)
+    raise AssertionError("corrupted search progress was accepted")
+except ValueError:
+    pass
+
+cancellation["requested"] = True
+try:
+    controller.check_cancelled("relation-search", {"candidates_tested": 3})
+    raise AssertionError("cancellation request was ignored")
+except ClassUnitCancellationError as error:
+    assert error.stage == "relation-search"
+    assert error.details == {"candidates_tested": 3}
+
+print(json.dumps({
+    "actual_tail": actual_tail,
+    "checkpoint_hash_changed": first_hash != second_hash,
+    "corruption_rejected": True,
+    "prefix": prefix,
+    "progress_sequences": [progress[0]["sequence"], resumed_progress[0]["sequence"]],
+    "sink_detached": sink_payloads[0] is not resumed.context,
+}, sort_keys=True))
+`;
+  const result = await session.evaluate(source);
+  assert.equal(result.stderr ?? "", "");
+  assert.equal(result.error, undefined);
+  const report = JSON.parse(result.stdout.trim());
+  assert.deepEqual(report, {
+    actual_tail: [955942579, 958927984, 1256915945, 813160558, 2047662863],
+    checkpoint_hash_changed: true,
+    corruption_rejected: true,
+    prefix: [1758542852, 1350039021, 844110882],
+    progress_sequences: [0, 1],
+    sink_detached: true,
   });
 });
