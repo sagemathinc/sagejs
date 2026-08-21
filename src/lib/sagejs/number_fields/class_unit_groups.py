@@ -249,6 +249,8 @@ class ClassUnitSaturationRecord:
         remaining_index_bound: int,
         attempts: Sequence[Any],
         analytic_validation: dict[str, Any],
+        analytic_certificate: Any = None,
+        analytic_generation_verifier: Any = None,
         producer_artifacts: Sequence[tuple[Any, Sequence[Any], Any, Any]] = (),
         analytic_module: Any = None,
         reason: str = "",
@@ -260,6 +262,8 @@ class ClassUnitSaturationRecord:
         self.remaining_index_bound = max(1, int(remaining_index_bound))
         self.attempts = tuple(_component_payload(value) for value in attempts)
         self.analytic_validation = _component_payload(analytic_validation)
+        self._analytic_certificate = analytic_certificate
+        self._analytic_generation_verifier = analytic_generation_verifier
         self._producer_artifacts = tuple(
             (artifact, tuple(before), torsion, generation_verifier)
             for artifact, before, torsion, generation_verifier in producer_artifacts
@@ -268,6 +272,7 @@ class ClassUnitSaturationRecord:
         self.rigorous = bool(self.analytic_validation.get("rigorous"))
         self.complete = bool(
             self.rigorous
+            and self._analytic_certificate is not None
             and int(self.analytic_validation.get("lower_index", 0)) == 1
             and int(self.analytic_validation.get("upper_index", 0)) == 1
             and self.remaining_index_bound == 1
@@ -299,6 +304,7 @@ class ClassUnitSaturationRecord:
             "remaining_index_bound": self.remaining_index_bound,
             "attempts": list(self.attempts),
             "analytic_validation": self.analytic_validation,
+            "analytic_certificate": _component_payload(self._analytic_certificate),
             "original_units": [
                 self._unit_payload(unit) for unit in self.original_units
             ],
@@ -330,36 +336,48 @@ class ClassUnitSaturationRecord:
             return False
         one = selected_order.ideal(1)
         try:
+            certificate = self._analytic_certificate
+            replay_certificate = getattr(certificate, "verify", None)
+            if not callable(replay_certificate):
+                return False
+            if int(_value(certificate, ("index_bound",), 0)) != int(
+                self.remaining_index_bound
+            ):
+                return False
+            if int(self.analytic_validation.get("lower_index", 0)) != int(
+                self.remaining_index_bound
+            ) or int(self.analytic_validation.get("upper_index", 0)) != int(
+                self.remaining_index_bound
+            ):
+                return False
+            if not bool(
+                replay_certificate(
+                    selected_field,
+                    selected_order,
+                    self.units,
+                    generation_verifier=self._analytic_generation_verifier,
+                )
+            ):
+                return False
             if any(unit.principal_ideal(selected_order) != one for unit in self.units):
                 return False
             for (
                 artifact,
                 before,
-                torsion,
+                _torsion,
                 generation_verifier,
             ) in self._producer_artifacts:
                 verifier = getattr(
                     self._analytic_module, "verify_saturation_record", None
                 )
                 if callable(verifier):
-                    torsion_elements = tuple(_value(torsion, ("elements",), ()))
-                    try:
-                        accepted = verifier(
-                            selected_field,
-                            selected_order,
-                            before,
-                            artifact.to_dict(),
-                            torsion_elements=torsion_elements,
-                            generation_verifier=generation_verifier,
-                        )
-                    except TypeError:
-                        accepted = verifier(
-                            selected_field,
-                            selected_order,
-                            before,
-                            artifact.to_dict(),
-                            torsion_elements=torsion_elements,
-                        )
+                    accepted = verifier(
+                        selected_field,
+                        selected_order,
+                        before,
+                        artifact.to_dict(),
+                        generation_verifier=generation_verifier,
+                    )
                     if not bool(accepted):
                         return False
                     continue
@@ -618,14 +636,30 @@ class _EngineClassGroup:
         return self(ideal).is_one()
 
     def verify(self) -> bool:
-        if not self._presentation.verify():
+        try:
+            if not self._presentation.verify():
+                return False
+            presentation_rows = tuple(
+                tuple(int(value) for value in row.dense())
+                for row in self._presentation.relation_rows
+            )
+            relation_rows = tuple(
+                tuple(int(value) for value in record.row) for record in self._relations
+            )
+            if relation_rows != presentation_rows:
+                return False
+            for record in self._relations:
+                replay = record.verify(self._order, self._factor_base)
+                if replay["certified"] is not True:
+                    return False
+            for generator in self._gens:
+                if self(generator.ideal()) != generator:
+                    return False
+                if not (generator ** generator.order()).is_one():
+                    return False
+            return True
+        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
             return False
-        for generator in self._gens:
-            if self(generator.ideal()) != generator:
-                return False
-            if not (generator ** generator.order()).is_one():
-                return False
-        return True
 
 
 class ClassUnitComputation:
@@ -657,6 +691,13 @@ class ClassUnitComputation:
         self.stages = tuple(stages)
         self._class_group = class_group
         self._unit_group = unit_group
+        self.conditional_relation_records = tuple(
+            getattr(class_group, "_relations", ())
+        )
+        self.conditional_presentation_evidence = getattr(
+            class_group, "_presentation", None
+        )
+        self.conditional_factor_base = tuple(getattr(class_group, "_factor_base", ()))
         self.tentative_invariants = tuple(int(value) for value in tentative_invariants)
         self.context = context
         self.diagnostics = {} if diagnostics is None else dict(diagnostics)
@@ -1049,6 +1090,36 @@ class ClassUnitGroupEngine:
             return None
         if not classes.complete or not units.complete:
             return None
+        factored_type = getattr(
+            self.components.factored, "FactoredNumberFieldElement", None
+        )
+        regulator_producer = getattr(
+            self.components.analytic, "regulator_from_factored_units", None
+        )
+        if factored_type is None or not callable(regulator_producer):
+            return None
+        try:
+            factored_units = tuple(
+                factored_type.from_element(self.field, unit)
+                for unit in tuple(units.generators)
+            )
+            regulator = regulator_producer(
+                factored_units,
+                unit_rank=int(units.unit_rank),
+                precision_bits=self.limits.precision_bits,
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
+        except (TypeError, ValueError, ArithmeticError):
+            return None
+        unit_group = UnitGroupComputation(
+            units.torsion,
+            factored_units,
+            int(units.unit_rank),
+            complete=True,
+            regulator=regulator,
+            reason="bounded specialized exact units with rigorous regulator",
+            proof_status=EXACT_UNCONDITIONAL,
+        )
         self._phase_finish("specialized", started)
         self._stage(
             "specialized",
@@ -1068,7 +1139,7 @@ class ClassUnitGroupEngine:
             algorithm="specialized",
             stages=self.stages,
             class_group=classes.group,
-            unit_group=units,
+            unit_group=unit_group,
             tentative_invariants=classes.invariants(),
             diagnostics=self._diagnostics(),
         )
@@ -2099,49 +2170,25 @@ class ClassUnitGroupEngine:
                     )
                 return bool(self.cancelled())
 
-            authority: Any = index
-            certificate_factory = getattr(
-                self.components.analytic, "certify_unit_saturation_index", None
+            authority = self._unit_index_certificate(
+                units,
+                torsion,
+                class_number,
+                generation_evidence,
+                generation_verifier,
+                proof_status,
             )
-            if not callable(certificate_factory):
+            if authority is None:
                 attempt["reason"] = (
                     "no authenticated class/unit index certificate producer is installed"
                 )
                 return units, None, attempt
-            zeta_limits_type = getattr(
-                self.components.analytic, "ZetaLogResidueLimits", None
-            )
-            zeta_limits = (
-                None
-                if not callable(zeta_limits_type)
-                else zeta_limits_type(
-                    maximum_prime_bound=self.limits.max_analytic_prime_bound,
-                    maximum_degree=max(2, int(self.field.degree())),
-                    maximum_precision_bits=self.limits.max_precision_bits,
-                )
-            )
-            authority = certificate_factory(
-                self.field,
-                self.order,
-                units,
-                class_number=class_number,
-                roots_of_unity=int(_value(torsion, ("order",), 0)),
-                precision_bits=self.limits.precision_bits,
-                maximum_precision_bits=self.limits.max_precision_bits,
-                zeta_limits=zeta_limits,
-                generation_evidence=generation_evidence,
-                generation_verifier=generation_verifier,
-                proof_status=proof_status,
-            )
             attempt["index_certificate"] = _component_payload(authority)
             result = producer(
                 self.field,
                 self.order,
                 units,
                 authority,
-                index_bound_is_rigorous=bool(
-                    index.rigorous and int(index.lower_index) == int(index.upper_index)
-                ),
                 torsion=torsion,
                 precision_bits=self.limits.precision_bits,
                 maximum_precision_bits=self.limits.max_precision_bits,
@@ -2156,27 +2203,15 @@ class ClassUnitGroupEngine:
                 self.components.analytic, "verify_saturation_record", None
             )
             if callable(module_verifier):
-                try:
-                    replayed = bool(
-                        module_verifier(
-                            self.field,
-                            self.order,
-                            units,
-                            result_payload,
-                            torsion_elements=tuple(_value(torsion, ("elements",), ())),
-                            generation_verifier=generation_verifier,
-                        )
+                replayed = bool(
+                    module_verifier(
+                        self.field,
+                        self.order,
+                        units,
+                        result_payload,
+                        generation_verifier=generation_verifier,
                     )
-                except TypeError:
-                    replayed = bool(
-                        module_verifier(
-                            self.field,
-                            self.order,
-                            units,
-                            result_payload,
-                            torsion_elements=tuple(_value(torsion, ("elements",), ())),
-                        )
-                    )
+                )
             else:
                 replay = getattr(result, "verify", None)
                 if not callable(replay):
@@ -2230,6 +2265,47 @@ class ClassUnitGroupEngine:
             attempt["reason"] = str(error)
             return units, None, attempt
 
+    def _unit_index_certificate(
+        self,
+        units: tuple[Any, ...],
+        torsion: Any,
+        class_number: int,
+        generation_evidence: Any,
+        generation_verifier: Any,
+        proof_status: str,
+    ) -> Any:
+        """Bind an `h*R` index to exact units and class-generation evidence."""
+        certificate_factory = getattr(
+            self.components.analytic, "certify_unit_saturation_index", None
+        )
+        if not callable(certificate_factory):
+            return None
+        zeta_limits_type = getattr(
+            self.components.analytic, "ZetaLogResidueLimits", None
+        )
+        zeta_limits = (
+            None
+            if not callable(zeta_limits_type)
+            else zeta_limits_type(
+                maximum_prime_bound=self.limits.max_analytic_prime_bound,
+                maximum_degree=max(2, int(self.field.degree())),
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
+        )
+        return certificate_factory(
+            self.field,
+            self.order,
+            units,
+            class_number=class_number,
+            roots_of_unity=int(_value(torsion, ("order",), 0)),
+            precision_bits=self.limits.precision_bits,
+            maximum_precision_bits=self.limits.max_precision_bits,
+            zeta_limits=zeta_limits,
+            generation_evidence=generation_evidence,
+            generation_verifier=generation_verifier,
+            proof_status=proof_status,
+        )
+
     def _unit_logarithmic_rank_from_units(
         self, units: Sequence[Any], unit_rank: int
     ) -> int:
@@ -2258,6 +2334,24 @@ class ClassUnitGroupEngine:
         required_primes = set(_prime_divisors(initial_bound))
         attempts: list[Any] = []
         artifacts: list[tuple[Any, Sequence[Any], Any, Any]] = []
+
+        def current_generation_authority() -> tuple[Any, Any]:
+            if plan is not None:
+                return self._generation_authority(
+                    plan,
+                    factor_base,
+                    collector,
+                    presentation,
+                    proof_status,
+                )
+            evidence = {"schema": "sagejs.number-fields/duck-generation-authority-v1"}
+
+            def verifier(*args: Any, **kwargs: Any) -> bool:
+                del args, kwargs
+                return True
+
+            return evidence, verifier
+
         for round_index in range(self.limits.max_saturation_rounds):
             if index.index_one:
                 break
@@ -2266,23 +2360,7 @@ class ClassUnitGroupEngine:
             bound = max(1, int(index.upper_index))
             required_primes.update(_prime_divisors(bound))
             before_units = units
-            if plan is None:
-                generation_evidence = {
-                    "schema": "sagejs.number-fields/duck-generation-authority-v1"
-                }
-
-                def generation_verifier(*args: Any, **kwargs: Any) -> bool:
-                    del args, kwargs
-                    return True
-
-            else:
-                generation_evidence, generation_verifier = self._generation_authority(
-                    plan,
-                    factor_base,
-                    collector,
-                    presentation,
-                    proof_status,
-                )
+            generation_evidence, generation_verifier = current_generation_authority()
             saturated_units, artifact, attempt = self._try_unit_saturation(
                 units,
                 torsion,
@@ -2367,6 +2445,17 @@ class ClassUnitGroupEngine:
                 break
 
         analytic_validation = self._analytic_validation_payload(index, regulator)
+        final_generation_evidence, final_generation_verifier = (
+            current_generation_authority()
+        )
+        analytic_certificate = self._unit_index_certificate(
+            units,
+            torsion,
+            int(_value(presentation, ("order",), 1)),
+            final_generation_evidence,
+            final_generation_verifier,
+            proof_status,
+        )
         record = ClassUnitSaturationRecord(
             self.field,
             self.order,
@@ -2377,6 +2466,8 @@ class ClassUnitGroupEngine:
             remaining_index_bound=max(1, int(index.upper_index)),
             attempts=attempts,
             analytic_validation=analytic_validation,
+            analytic_certificate=analytic_certificate,
+            analytic_generation_verifier=final_generation_verifier,
             producer_artifacts=artifacts,
             analytic_module=self.components.analytic,
             reason=(
@@ -2524,9 +2615,17 @@ class ClassUnitGroupEngine:
                 reason="rigorous hR index-one validation",
                 proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
             )
-            if not index.index_one:
+            saturation_replayed = bool(
+                saturation_record.complete
+                and saturation_record.verify(self.field, self.order)
+            )
+            if not index.index_one or not saturation_replayed:
                 return self._incomplete(
-                    "bounded saturation did not isolate class/unit index one",
+                    (
+                        "bounded saturation did not isolate class/unit index one"
+                        if not index.index_one
+                        else "class/unit index one failed authenticated analytic replay"
+                    ),
                     invariants=presentation.invariants,
                     unit_group=unit_group,
                     diagnostics={
