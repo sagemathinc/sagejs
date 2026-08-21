@@ -15,7 +15,7 @@ floating-point inputs are never promoted to rigorous balls.
 The zeta implementation follows Hecke's BSD-licensed
 `src/NumFieldOrd/NfOrd/Zeta.jl`, which implements the explicit estimate of
 Belabas and Friedman.  PARI's `buch2.c` is an independent algorithmic oracle;
-no PARI or Hecke code is loaded at runtime.
+no PARI or Hecke code is loaded during execution.
 """
 
 from __future__ import annotations
