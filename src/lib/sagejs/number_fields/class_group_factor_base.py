@@ -845,7 +845,13 @@ def _two_generator_data(prime_ideal: Any) -> dict[str, Any] | None:
 class FactorBasePrimeRecord:
     """Compact authenticated metadata for one indexed factor-base prime."""
 
-    def __init__(self, index: int, prime_ideal: Any) -> None:
+    def __init__(
+        self,
+        index: int,
+        prime_ideal: Any,
+        *,
+        second_generator: Any = None,
+    ) -> None:
         if index < 0:
             raise ValueError("a factor-base index must be nonnegative")
         self.index = index
@@ -857,7 +863,18 @@ class FactorBasePrimeRecord:
         if prime_ideal.norm() != runtime.bigint(self.norm):
             raise ArithmeticError("a factor-base prime has inconsistent exact norm")
         self.hnf_fingerprint = _encode_rows(prime_ideal._basis_rows)
-        self.two_generator = _two_generator_data(prime_ideal)
+        if second_generator is None:
+            self.two_generator = _two_generator_data(prime_ideal)
+        else:
+            # The selective Dedekind--Kummer producer just constructed this
+            # exact ideal as `(p, second_generator)`.  Reconstructing its HNF
+            # here would duplicate the dominant materialization work.
+            self.two_generator = {
+                "rational_prime": self.rational_prime,
+                "second_generator": [
+                    list(pair) for pair in _encode_element(second_generator)
+                ],
+            }
         self.valuation_metadata = {
             "rational_prime_valuation": self.ramification_index,
             "ideal_norm_exponent": self.residue_degree,
@@ -903,7 +920,24 @@ def factor_base_prime_from_dict(
     decomposition = _prime_ideals.factor_rational_prime(order, prime)
     for prime_ideal in decomposition.prime_ideals():
         if _encode_rows(prime_ideal._basis_rows) == fingerprint:
-            record = FactorBasePrimeRecord(int(data["index"]), prime_ideal)
+            two_generator = data.get("two_generator")
+            second_generator = None
+            if two_generator is not None:
+                if int(two_generator.get("rational_prime", 0)) != prime:
+                    raise ValueError("two-generator metadata has the wrong prime")
+                rows = _prime_ideals._decode_rows([two_generator["second_generator"]])
+                second_generator = _prime_ideals._nf_element_from_row(
+                    order.number_field(), rows[0]
+                )
+                if order.ideal(prime, second_generator) != prime_ideal:
+                    raise ValueError(
+                        "two-generator metadata does not reproduce the prime ideal"
+                    )
+            record = FactorBasePrimeRecord(
+                int(data["index"]),
+                prime_ideal,
+                second_generator=second_generator,
+            )
             if record.to_dict() != data:
                 raise ValueError("factor-base prime metadata failed authentication")
             return record
@@ -932,9 +966,16 @@ class FactorBasePlan:
         self.max_rational_primes = max_rational_primes
         self.max_prime_ideals = max_prime_ideals
         self.max_memory_bytes = max_memory_bytes
+        self._descriptor_cache: Any = None
+        self._factor_base_cache: Any = None
+        self._selected_prime_cache: dict[int, dict[int, list[tuple[Any, Any]]]] = {}
+        self._record_cache: dict[tuple[int, int, int, int], Any] = {}
         maximum_degree = 0 if self.bound < 2 else self.bound.bit_length() - 1
         self.degree_filters = tuple(range(1, min(self.degree, maximum_degree) + 1))
-        self.estimated_rational_primes = max(0, self.bound - 1)
+        # There is one even prime and every other rational prime is odd.  This
+        # elementary bound is exact enough for portable preflight policy and
+        # halves the former all-integers estimate without a sieve allocation.
+        self.estimated_rational_primes = 0 if self.bound < 2 else (self.bound + 1) // 2
         self.estimated_prime_ideals = self.degree * self.estimated_rational_primes
         bytes_per_record = 192 + 32 * self.degree * self.degree
         self.estimated_memory_bytes = self.estimated_prime_ideals * bytes_per_record
@@ -974,6 +1015,27 @@ class FactorBasePlan:
             },
             "fits_caps": self.fits_caps,
             "cap_failures": list(self.cap_failures),
+        }
+
+    def progress(self) -> dict[str, Any]:
+        """Return immutable planning/construction progress metadata."""
+        descriptors = self._descriptor_cache
+        factor_base = self._factor_base_cache
+        rational_primes = None
+        prime_ideals = None
+        if descriptors is not None:
+            rational_primes = len({descriptor[1] for descriptor in descriptors})
+            prime_ideals = len(descriptors)
+        return {
+            "schema": "sagejs.number-fields/factor-base-progress-v1",
+            "bound": self.bound,
+            "splitting_scan_complete": descriptors is not None,
+            "factor_base_complete": factor_base is not None,
+            "eligible_rational_primes": rational_primes,
+            "eligible_prime_ideals": prime_ideals,
+            "materialized_prime_ideals": (
+                len(factor_base) if factor_base is not None else len(self._record_cache)
+            ),
         }
 
 
@@ -1016,7 +1078,10 @@ def factor_base_plan(
 
 def _eligible_descriptors(plan: FactorBasePlan) -> list[tuple[int, int, int, int]]:
     """Return `(norm,p,f,occurrence)` descriptors without ideal lattices."""
+    if plan._descriptor_cache is not None:
+        return list(plan._descriptor_cache)
     if plan.bound < 2:
+        plan._descriptor_cache = ()
         return []
     descriptors: list[tuple[int, int, int, int]] = []
     for splitting in _prime_ideals.splitting_records(plan.order, 2, plan.bound + 1):
@@ -1030,46 +1095,115 @@ def _eligible_descriptors(plan: FactorBasePlan) -> list[tuple[int, int, int, int
             if norm <= plan.bound:
                 descriptors.append((norm, prime, residue_degree, occurrence))
     descriptors.sort()
+    plan._descriptor_cache = tuple(descriptors)
     return descriptors
+
+
+def _selective_dedekind_kummer(
+    order: Any,
+    prime: int,
+    residue_degrees: set[int],
+) -> list[tuple[Any, Any]] | None:
+    """Construct only requested Dedekind--Kummer prime ideals above `p`.
+
+    This route is used only when the equation order is certified `p`-maximal.
+    At index-dividing primes the caller falls back to the complete finite
+    algebra decomposition and its independent product certificate.
+    """
+    field = order.number_field()
+    maximal = _prime_ideals._maximal
+    if not maximal.equation_order_is_p_maximal(field, prime):
+        return None
+    polynomial = maximal.integral_equation_polynomial(field)
+    coefficients = tuple(int(value) for value in polynomial.list())
+    modular_factors = _prime_ideals._om.factor_mod_prime(coefficients, prime)
+    scale = runtime.integer_bigint(field._integral_equation_scale_cache)
+    beta = field.gen() * scale
+    selected: list[tuple[Any, Any]] = []
+    for factor in modular_factors:
+        residue_degree = len(factor.polynomial) - 1
+        if residue_degree not in residue_degrees:
+            continue
+        second_generator = field.zero()
+        for coefficient in reversed(factor.polynomial):
+            second_generator = second_generator * beta + int(coefficient)
+        ideal = order.ideal(prime, second_generator)
+        prime_ideal = _prime_ideals._prime_from_ideal(
+            ideal,
+            prime,
+            int(factor.multiplicity),
+            residue_degree,
+        )
+        selected.append((prime_ideal, second_generator))
+    selected.sort(key=lambda pair: _prime_ideals._prime_sort_key(pair[0]))
+    return selected
 
 
 def prime_ideal_norm_stream(plan: FactorBasePlan) -> Iterator[FactorBasePrimeRecord]:
     """Stream authenticated factor-base primes in deterministic norm order."""
     plan.require_feasible()
+    if plan._factor_base_cache is not None:
+        yield from plan._factor_base_cache
+        return
     descriptors = _eligible_descriptors(plan)
     if len(descriptors) > plan.max_prime_ideals:
         raise ValueError("exact factor-base size exceeds max_prime_ideals")
-    grouped: dict[int, dict[int, list[Any]]] = {}
-    remaining: dict[int, int] = {}
-    for _norm, prime, _degree, _occurrence in descriptors:
-        remaining[prime] = remaining.get(prime, 0) + 1
+    grouped = plan._selected_prime_cache
     for index, descriptor in enumerate(descriptors):
+        cached_record = plan._record_cache.get(descriptor)
+        if cached_record is not None:
+            yield cached_record
+            continue
         _norm, prime, residue_degree, occurrence = descriptor
         if prime not in grouped:
-            decomposition = _prime_ideals.factor_rational_prime(plan.order, prime)
-            by_degree: dict[int, list[Any]] = {}
-            for prime_ideal in decomposition.prime_ideals():
+            requested_degrees = {
+                candidate[2] for candidate in descriptors if candidate[1] == prime
+            }
+            selected = _selective_dedekind_kummer(plan.order, prime, requested_degrees)
+            if selected is None:
+                # `splitting_records` computes and caches the complete
+                # decomposition at every index-dividing prime.  Reuse that
+                # certified object instead of entering the public producer a
+                # second time.
+                decomposition = _prime_ideals._cache_get(plan.order, prime)
+                if decomposition is None:
+                    decomposition = _prime_ideals.factor_rational_prime(
+                        plan.order, prime
+                    )
+                selected = [
+                    (prime_ideal, None)
+                    for prime_ideal in decomposition.prime_ideals()
+                    if int(prime_ideal.residue_class_degree()) in requested_degrees
+                ]
+            by_degree: dict[int, list[tuple[Any, Any]]] = {}
+            for prime_ideal, second_generator in selected:
                 degree = int(prime_ideal.residue_class_degree())
-                by_degree.setdefault(degree, []).append(prime_ideal)
+                by_degree.setdefault(degree, []).append((prime_ideal, second_generator))
             grouped[prime] = by_degree
         candidates = grouped[prime].get(residue_degree, [])
         if occurrence >= len(candidates):
             raise ArithmeticError("compact splitting data disagrees with exact ideals")
-        record = FactorBasePrimeRecord(index, candidates[occurrence])
+        prime_ideal, second_generator = candidates[occurrence]
+        record = FactorBasePrimeRecord(
+            index,
+            prime_ideal,
+            second_generator=second_generator,
+        )
         if record.norm != descriptor[0]:
             raise ArithmeticError("factor-base norm descriptor failed replay")
+        plan._record_cache[descriptor] = record
         yield record
-        remaining[prime] -= 1
-        if remaining[prime] == 0:
-            del grouped[prime]
 
 
 def build_factor_base(plan: FactorBasePlan) -> tuple[FactorBasePrimeRecord, ...]:
     """Materialize one planned compact factor base after cap validation."""
+    if plan._factor_base_cache is not None:
+        return plan._factor_base_cache
     records = tuple(prime_ideal_norm_stream(plan))
     estimated_record_bytes = 192 + 32 * plan.degree * plan.degree
     if len(records) * estimated_record_bytes > plan.max_memory_bytes:
         raise ValueError("exact factor-base records exceed max_memory_bytes")
+    plan._factor_base_cache = records
     return records
 
 
