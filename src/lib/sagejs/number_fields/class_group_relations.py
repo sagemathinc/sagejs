@@ -691,6 +691,27 @@ class RelationRecord:
         self.archimedean_logs = tuple(_json_value(value) for value in archimedean_logs)
         self.log_precision = _checked_nonnegative(log_precision, "log precision")
         self.provenance = _json_value({} if provenance is None else provenance)
+        self._principal_ideal_cache: list[tuple[Any, str, Any]] = []
+
+    def _principal_from_witness(self, order: Any) -> Any:
+        """Replay the witness ideal with bounded live-record memoization."""
+        witness_key = json.dumps(self.witness, sort_keys=True, separators=(",", ":"))
+        for cached_order, cached_key, cached_ideal in self._principal_ideal_cache:
+            if cached_order is order and cached_key == witness_key:
+                return cached_ideal
+        witness = FactoredPrincipalWitness.from_dict(order.number_field(), self.witness)
+        principal = witness.principal_ideal(order)
+        if len(self._principal_ideal_cache) >= 2:
+            self._principal_ideal_cache.pop(0)
+        self._principal_ideal_cache.append((order, witness_key, principal))
+        return principal
+
+    def _remember_principal_ideal(self, order: Any, principal: Any) -> None:
+        """Seed a live record with the exact ideal checked during admission."""
+        witness_key = json.dumps(self.witness, sort_keys=True, separators=(",", ":"))
+        if len(self._principal_ideal_cache) >= 2:
+            self._principal_ideal_cache.pop(0)
+        self._principal_ideal_cache.append((order, witness_key, principal))
 
     def sparse_row(self) -> tuple[tuple[int, int], ...]:
         """Return zero-based `(factor_base_index, exponent)` entries."""
@@ -817,10 +838,7 @@ def verify_relation_record(
         ):
             failures.append("principal row is not source_row + quotient_row")
 
-        witness = FactoredPrincipalWitness.from_dict(
-            order.number_field(), relation.witness
-        )
-        principal = witness.principal_ideal(order)
+        principal = relation._principal_from_witness(order)
         recorded_principal = _ideal_from_payload(order, relation.principal_ideal)
         source = _ideal_from_payload(order, relation.source_ideal)
         quotient = _ideal_from_payload(order, relation.smooth_quotient)
@@ -1039,6 +1057,7 @@ class ExactRelationCollector:
             log_precision=log_precision,
             provenance=provenance,
         )
+        record._remember_principal_ideal(self.order, principal)
         # Everything used to construct this record was checked above with
         # exact ideal equality.  Avoid the public deserialization replay here:
         # it would refactor the same source, quotient, and principal ideals a

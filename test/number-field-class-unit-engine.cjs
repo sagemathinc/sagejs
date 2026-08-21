@@ -357,6 +357,57 @@ print("matched")
   assert.equal(output, "matched");
 });
 
+test("live exact principal-ideal replay caches remain bounded and mutation-safe", () => {
+  const output = run(String.raw`
+relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+factored = __import__(
+    "sagejs.number_fields.factored_elements",
+    fromlist=["factored_elements"],
+)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+O = K.maximal_order()
+P2 = O.factor_rational_prime(2)[0][0]
+
+unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+first = unit.principal_ideal(O)
+second = unit.principal_ideal(O)
+assert first == second and first is second
+assert len(unit._principal_ideal_cache) == 1
+
+collector = relations.ExactRelationCollector(O, (P2,))
+admission = collector.admit_witness(
+    relations.FactoredPrincipalWitness.from_element(K(2))
+)
+record = admission.record
+detached = relations.RelationRecord.from_dict(record.to_dict())
+calls = [0]
+original = relations.FactoredPrincipalWitness.principal_ideal
+def counting(self, order=None):
+    calls[0] += 1
+    return original(self, order)
+relations.FactoredPrincipalWitness.principal_ideal = counting
+assert detached.verify(O, (P2,))["certified"]
+assert calls[0] == 1
+assert len(record._principal_ideal_cache) == 1
+assert len(detached._principal_ideal_cache) == 1
+
+assert record.verify(O, (P2,))["certified"]
+assert calls[0] == 1
+record.witness["factors"][0]["exponent"] = 2
+assert not record.verify(O, (P2,))["certified"]
+assert calls[0] == 2
+relations.FactoredPrincipalWitness.principal_ideal = original
+assert len(record._principal_ideal_cache) == 2
+print("bounded-principal-cache")
+`);
+  assert.equal(output, "bounded-principal-cache");
+});
+
 test("checkpoint controllers receive stages, diagnostics, saves, and cancellation", () => {
   const output = run(String.raw`
 class Controller:
