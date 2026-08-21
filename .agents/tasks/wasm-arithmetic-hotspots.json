@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-arithmetic-hotspots",
+  "title": "Wasm public arithmetic hotspots",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Accelerate the public moebius.range normal heavy case with one bounded source-transparent packed sieve call, exact fallback, Node-Wasm/direct-Wasm/disabled-native differentials, fixed route evidence, and a representative benchmark",
+  "base_commit": "f60a0e6832741fd4725710ecc4d2b5ac4d4a6720",
+  "claims": [
+    "src/baselib/builtins.py",
+    "src/lib/sagejs/kernels/arithmetic/",
+    "test/wasm-arithmetic-hotspots.cjs",
+    "bench/wasm-arithmetic-hotspots.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "scalar-factorization"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
