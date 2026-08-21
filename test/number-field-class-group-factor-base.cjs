@@ -142,6 +142,34 @@ try:
     raise AssertionError("a corrupted norm passed factor-base authentication")
 except ValueError:
     pass
+for path in (("f",), ("index",), ("hnf_fingerprint", 0, 0, 0)):
+    corrupt = pure_records[0].to_dict()
+    target = corrupt
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = True
+    try:
+        factor_base_prime_from_dict(pure_plan.order, corrupt)
+        raise AssertionError("a boolean integer passed factor-base authentication")
+    except (TypeError, ValueError):
+        pass
+for path in (
+    ("e",),
+    ("norm",),
+    ("valuation_metadata", "rational_prime_valuation"),
+    ("residue_modulus", 0),
+    ("two_generator", "second_generator", 0, 0),
+):
+    corrupt = pure_records[0].to_dict()
+    target = corrupt
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = True if target[path[-1]] == 1 else float(target[path[-1]])
+    try:
+        factor_base_prime_from_dict(pure_plan.order, corrupt)
+        raise AssertionError("a noncanonical number passed factor-base authentication")
+    except (TypeError, ValueError):
+        pass
 
 # A tiny-degree presentation with one enormous coefficient must be rejected by
 # preflight even though the former fixed 192 + 32*n^2 formula would report

@@ -24,6 +24,11 @@ import hashlib
 import json
 
 from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+from sagejs.number_fields.class_unit_analytic import (
+    AnalyticPrecisionError,
+    saturate_unit_lattice,
+    verify_saturation_evidence,
+)
 from sagejs.number_fields.class_unit_context import (
     PROOF_LABELS,
     ClassUnitGroupContext,
@@ -106,7 +111,85 @@ assert witness.evaluate() == (a + 3) / 2
 assert witness.norm() == 1
 assert witness.principal_ideal(O) == O.ideal(witness.evaluate())
 assert witness.verify_principal_ideal(O.ideal(witness.evaluate()))
-assert len(witness.archimedean_logarithms(100)) == 2
+logarithms = witness.archimedean_logarithms(100)
+assert len(logarithms) == 2
+assert all(logarithm.rigorous for logarithm in logarithms)
+assert all(logarithm.precision_bits == 100 for logarithm in logarithms)
+assert all("outward dyadic" in logarithm.source for logarithm in logarithms)
+
+epsilon = (a + 1) / 2
+square_subgroup = [FactoredNumberFieldElement.from_element(K, epsilon**2)]
+saturation = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=1,
+)
+assert saturation.complete and saturation.saturated and saturation.rigorous
+assert saturation.remaining_index_bound == 1
+assert saturation.index_enlargement == 2
+assert len(saturation.evidence) == 1
+assert saturation.evidence[0].root**2 == epsilon**2
+assert saturation.verify()
+assert verify_saturation_evidence(K, O, square_subgroup, saturation.to_dict())
+tampered_saturation = copy.deepcopy(saturation.to_dict())
+tampered_saturation["evidence"][0]["root_coordinates"][0][0] += 1
+assert not verify_saturation_evidence(K, O, square_subgroup, tampered_saturation)
+
+untrusted_bound = saturate_unit_lattice(
+    K, O, square_subgroup, 2, coordinate_bound=1
+)
+assert not untrusted_bound.complete
+assert untrusted_bound.unresolved_primes == (2,)
+
+failed_closed = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=0,
+    local_rational_primes=(),
+)
+assert not failed_closed.complete
+assert failed_closed.evidence == ()
+
+locally_obstructed = saturate_unit_lattice(
+    K,
+    O,
+    [FactoredNumberFieldElement.from_element(K, epsilon)],
+    2,
+    index_bound_is_rigorous=True,
+    coordinate_bound=1,
+)
+assert locally_obstructed.complete and locally_obstructed.verify()
+assert locally_obstructed.evidence[0].outcome == "saturated"
+assert locally_obstructed.evidence[0].method == (
+    "exact-finite-order-quotient-pth-power-obstruction"
+)
+
+reconstruction_precisions = []
+def adaptive_root_provider(field, order, generators, prime, precision):
+    reconstruction_precisions.append(precision)
+    if precision < 128:
+        raise AnalyticPrecisionError("insufficient root reconstruction precision")
+    return ([1], 0, epsilon)
+
+adaptive_saturation = saturate_unit_lattice(
+    K,
+    O,
+    square_subgroup,
+    2,
+    index_bound_is_rigorous=True,
+    precision_bits=64,
+    maximum_precision_bits=128,
+    candidate_root_provider=adaptive_root_provider,
+)
+assert adaptive_saturation.complete
+assert reconstruction_precisions == [64, 128]
+assert adaptive_saturation.precision_history == (64, 128)
 assert FactoredNumberFieldElement.from_dict(K, witness.to_dict()) == witness
 assert witness * ~witness == FactoredNumberFieldElement(K)
 assert witness**0 == FactoredNumberFieldElement(K)
@@ -484,4 +567,270 @@ print(json.dumps({
     progress_sequences: [0, 1],
     sink_detached: true,
   });
+});
+
+test("Minkowski proof partitions checkpoint atomically and replay exactly", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-minkowski-proof-"));
+  const checkpointPath = join(directory, "checkpoint.json");
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const source = String.raw`
+import copy
+import hashlib
+import json
+
+from sagejs.number_fields.class_unit_context import (
+    ClassUnitCancellationError,
+    ClassUnitCheckpoint,
+    ClassUnitProofState,
+    MinkowskiProofProgress,
+    MinkowskiProofProgressRecord,
+    stable_component_hash,
+)
+
+checkpoint_path = ${JSON.stringify(checkpointPath)}
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x - 1, "a")
+O = K.maximal_order()
+fingerprints = tuple(
+    {"index": index, "norm": prime, "ideal_hnf": [[prime, 0], [0, 1]]}
+    for index, prime in enumerate((2, 3, 4, 5, 7, 8, 9))
+)
+dependencies = {
+    "relations": stable_component_hash({"rows": [[1, 0], [0, 1]]}),
+    "generators": stable_component_hash({"ideals": [fingerprints[0]]}),
+    "saturation": stable_component_hash({"class_primes": [2], "complete": True}),
+}
+bound = (31, 2)
+
+def record(index, coordinate=None):
+    return MinkowskiProofProgressRecord(
+        index,
+        fingerprints[index],
+        {
+            "coordinates": [index if coordinate is None else coordinate],
+            "principal_witness_sha256": stable_component_hash(
+                {"prime_index": index, "power": 1}
+            ),
+        },
+    )
+
+def decode_record(payload):
+    return MinkowskiProofProgressRecord.from_dict(payload)
+
+def verify_record(value, index, fingerprint):
+    return (
+        type(value) is MinkowskiProofProgressRecord
+        and value.index == index
+        and value.prime_fingerprint == fingerprint
+        and value.evidence["coordinates"] == [index]
+    )
+
+cancellation = {"requested": False}
+
+def observe(event):
+    if (
+        event.stage == "unconditional-proof"
+        and event.state == "checkpoint"
+        and event.details["completed"] == 3
+    ):
+        cancellation["requested"] = True
+
+controller = ClassUnitCheckpoint(
+    K,
+    O,
+    ClassUnitProofState.incomplete("unconditional proof in progress"),
+    algorithm="buchmann-hecke",
+    destination=checkpoint_path,
+    progress=observe,
+    cancelled=lambda: cancellation["requested"],
+)
+progress = controller.begin_minkowski_proof(
+    bound,
+    fingerprints,
+    partition_count=3,
+    dependency_hashes=dependencies,
+)
+assert progress.pending_indices() == tuple(range(7))
+assert progress.pending_indices(0) == (0, 3, 6)
+
+# A worker may advance its strided partition independently, then merge that
+# authenticated prefix into the shared checkpoint.
+worker_zero = progress.partitions[0].append(record(0)).append(record(3))
+progress = controller.checkpoint_minkowski_proof_partition(
+    progress,
+    worker_zero,
+    details={"worker": 0},
+)
+assert progress.completed_items == 2
+
+# Cancellation requested by the progress callback occurs after the newly
+# accepted record is atomically saved by the controller's finally boundary.
+try:
+    controller.checkpoint_minkowski_proof_prime(
+        progress,
+        1,
+        record(1),
+        details={"worker": 1},
+    )
+    raise AssertionError("proof-pass cancellation was ignored")
+except ClassUnitCancellationError as error:
+    assert error.stage == "unconditional-proof"
+
+def decode_progress(payload):
+    if payload is None:
+        return None
+    return MinkowskiProofProgress.from_dict(payload, decode_record)
+
+resumed = ClassUnitCheckpoint(
+    K,
+    O,
+    resume_from=checkpoint_path,
+    component_decoders={"proof_progress": decode_progress},
+)
+progress = resumed.restore_minkowski_proof_progress(
+    bound=bound,
+    prime_fingerprints=fingerprints,
+    partition_count=3,
+    dependency_hashes=dependencies,
+    record_verifier=verify_record,
+)
+assert progress is not None
+assert progress.completed_items == 3
+assert progress.pending_indices() == (2, 4, 5, 6)
+
+for index in progress.pending_indices():
+    progress = resumed.checkpoint_minkowski_proof_prime(
+        progress,
+        index,
+        record(index),
+        details={"resumed": True},
+    )
+assert progress.complete
+assert progress.completed_items == progress.total_items == 7
+
+replayed = MinkowskiProofProgress.from_dict(
+    progress.to_dict(),
+    record_decoder=decode_record,
+    record_verifier=verify_record,
+)
+assert replayed.to_dict() == progress.to_dict()
+
+def rehash(payload):
+    body = dict(payload)
+    body.pop("content_sha256", None)
+    text = json.dumps(
+        body,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    payload["content_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+def replan(payload):
+    plan = {
+        "theorem": payload["theorem"],
+        "bound": payload["bound"],
+        "prime_fingerprints": payload["prime_fingerprints"],
+        "dependency_hashes": payload["dependency_hashes"],
+        "partition_count": payload["partition_count"],
+    }
+    text = json.dumps(
+        plan,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    payload["plan_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    for partition in payload["partitions"]:
+        partition["plan_sha256"] = payload["plan_sha256"]
+        rehash(partition)
+    rehash(payload)
+
+# Prime-plan and every dependency mutation can be internally rehashed, but it
+# no longer matches the exact plan requested by the computation being resumed.
+plan_mutations = []
+changed_prime = copy.deepcopy(progress.to_dict())
+changed_prime["prime_fingerprints"][0]["norm"] = 11
+plan_mutations.append(changed_prime)
+for name in ("relations", "generators", "saturation"):
+    changed = copy.deepcopy(progress.to_dict())
+    changed["dependency_hashes"][name] = "0" * 64
+    plan_mutations.append(changed)
+plan_mismatches = 0
+for changed in plan_mutations:
+    replan(changed)
+    try:
+        altered = MinkowskiProofProgress.from_dict(changed, decode_record)
+        matches = altered.matches_plan(
+            bound,
+            fingerprints,
+            partition_count=3,
+            dependency_hashes=dependencies,
+        )
+    except ValueError:
+        matches = False
+    if not matches:
+        plan_mismatches += 1
+assert plan_mismatches == 4
+
+# Rehashing a mutated record still cannot bypass producer-owned mathematical
+# verification of its coordinates and principal witness.
+bad_record = copy.deepcopy(progress.to_dict())
+bad_record["partitions"][0]["records"][0]["evidence"]["coordinates"] = [99]
+rehash(bad_record["partitions"][0]["records"][0])
+rehash(bad_record["partitions"][0])
+rehash(bad_record)
+try:
+    MinkowskiProofProgress.from_dict(
+        bad_record,
+        record_decoder=decode_record,
+        record_verifier=verify_record,
+    )
+    raise AssertionError("a mutated proof-prime record was accepted")
+except ValueError:
+    pass
+
+# Removing an authenticated suffix produces resumable incomplete progress,
+# never a false unconditional completion claim.
+truncated = copy.deepcopy(progress.to_dict())
+truncated["partitions"][0]["records"].pop()
+truncated["partitions"][0]["content_sha256"] = "stale"
+truncated["completed_items"] -= 1
+truncated["complete"] = False
+try:
+    MinkowskiProofProgress.from_dict(truncated, decode_record)
+    raise AssertionError("stale partition authentication was accepted")
+except ValueError:
+    pass
+rehash(truncated["partitions"][0])
+rehash(truncated)
+incomplete = MinkowskiProofProgress.from_dict(truncated, decode_record)
+assert not incomplete.complete
+assert incomplete.pending_indices(0) == (6,)
+
+print(json.dumps({
+    "atomic_cancel_completed": 3,
+    "complete": progress.complete,
+    "partition_records": [len(value.records) for value in progress.partitions],
+    "plan_mismatches": plan_mismatches,
+    "remaining_after_cancel": [2, 4, 5, 6],
+    "replay_hash": replayed.stable_hash(),
+}, sort_keys=True))
+`;
+  const result = await session.evaluate(source);
+  assert.equal(result.stderr ?? "", "");
+  assert.equal(result.error, undefined);
+  const report = JSON.parse(result.stdout.trim());
+  assert.equal(report.atomic_cancel_completed, 3);
+  assert.equal(report.complete, true);
+  assert.deepEqual(report.partition_records, [3, 2, 2]);
+  assert.equal(report.plan_mismatches, 4);
+  assert.deepEqual(report.remaining_after_cancel, [2, 4, 5, 6]);
+  assert.match(report.replay_hash, /^[0-9a-f]{64}$/);
 });

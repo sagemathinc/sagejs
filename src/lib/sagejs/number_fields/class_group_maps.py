@@ -18,11 +18,17 @@ This module imports no concrete context or matrix implementation.  In
 particular, a matrix lane can expose transformations without the map lane
 depending on its class names, and factored elements can prove principal ideals
 through `verify_principal_ideal(ideal)` or `principal_ideal()` without being
-expanded.
+expanded.  The engine adapter additionally consumes a verified
+`saturation_record`; unconditional results must expose authenticated
+`proof_progress` with strided partitions plus independently computed
+`proof_dependency_hashes` for `relations`, `presentation`, `generators`, and
+`saturation`.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from sagejs.number_fields.class_group_proof import (
@@ -36,8 +42,15 @@ from sagejs.number_fields.class_group_proof import (
     proof_label,
 )
 
+_PROGRESS_SCHEMA = "sagejs.number-fields.minkowski-proof-progress.v1"
+_PARTITION_SCHEMA = "sagejs.number-fields.minkowski-proof-partition.v1"
+_PROGRESS_RECORD_SCHEMA = "sagejs.number-fields.minkowski-proof-progress-record.v1"
+_SATURATION_SCHEMA = "sagejs.number-fields/class-unit-saturation-v1"
+
 
 def _integer(value: Any, purpose: str) -> int:
+    if isinstance(value, (bool, float, str, bytes, bytearray)):
+        raise TypeError(purpose + " must be an exact integer")
     try:
         answer = int(value)
     except (TypeError, ValueError, OverflowError) as error:
@@ -126,6 +139,48 @@ def _stage(result: Any, name: str) -> Any:
     return None
 
 
+def _canonical_payload(value: Any, purpose: str) -> dict[str, Any]:
+    serializer = getattr(value, "to_dict", None)
+    if callable(serializer):
+        value = serializer()
+    if not isinstance(value, dict):
+        raise TypeError(purpose + " must serialize to a dictionary")
+    try:
+        text = json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        payload = json.loads(text)
+    except (TypeError, ValueError) as error:
+        raise TypeError(purpose + " must be JSON-safe") from error
+    if not isinstance(payload, dict):
+        raise TypeError(purpose + " must serialize to a dictionary")
+    return payload
+
+
+def _payload_hash(payload: dict[str, Any]) -> str:
+    text = json.dumps(
+        payload,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _authenticated_payload(payload: dict[str, Any]) -> bool:
+    expected = payload.get("content_sha256")
+    if not isinstance(expected, str):
+        return False
+    body = dict(payload)
+    del body["content_sha256"]
+    return _payload_hash(body) == expected
+
+
 def _portable_ideal_fingerprint(ideal: Any) -> dict[str, Any]:
     arithmetic = __import__(
         "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
@@ -170,6 +225,101 @@ def _engine_material(engine_group: Any, result: Any) -> tuple[Any, Any]:
     if presentation is None:
         presentation = getattr(engine_group, "_presentation", None)
     return order, presentation
+
+
+def _producer_saturation(result: Any) -> tuple[Any, dict[str, Any]]:
+    raw = getattr(result, "saturation_record", None)
+    if raw is None:
+        diagnostics = getattr(result, "diagnostics", None)
+        if isinstance(diagnostics, dict):
+            raw = diagnostics.get("saturation_record")
+    if raw is None:
+        raise ArithmeticError(
+            "a completed engine result has no replayable saturation evidence"
+        )
+    payload = _canonical_payload(raw, "engine saturation evidence")
+    if payload.get("schema") != _SATURATION_SCHEMA:
+        raise ValueError("engine saturation evidence has the wrong schema")
+    if not _authenticated_payload(payload):
+        raise ArithmeticError("engine saturation evidence failed authentication")
+    for name in ("rigorous", "complete", "saturated"):
+        if payload.get(name) is not True:
+            raise ArithmeticError("engine saturation evidence is not " + name)
+    remaining = _integer(
+        payload.get("remaining_index_bound"), "remaining saturation index bound"
+    )
+    if remaining != 1:
+        raise ArithmeticError("engine saturation evidence leaves a nontrivial index")
+    return raw, payload
+
+
+def _saturation_record(payload: dict[str, Any]) -> SaturationProofRecord:
+    class_primes = tuple(
+        _integer(value, "class saturation prime")
+        for value in payload.get("class_primes", ())
+    )
+    unit_primes = tuple(
+        _integer(value, "unit saturation prime")
+        for value in payload.get("unit_primes", payload.get("required_primes", ()))
+    )
+    required = {
+        _integer(value, "required saturation prime")
+        for value in payload.get("required_primes", ())
+    }
+    if not required.issubset(set(class_primes) | set(unit_primes)):
+        raise ArithmeticError("required saturation-prime coverage is incomplete")
+    initial_bound = _integer(
+        payload.get("initial_index_bound", payload.get("index_bound")),
+        "initial saturation index bound",
+    )
+    return SaturationProofRecord(
+        class_primes,
+        unit_primes,
+        index_bound=initial_bound,
+        complete=True,
+        evidence=payload,
+    )
+
+
+def _producer_proof_progress(result: Any) -> tuple[Any, dict[str, Any]]:
+    raw = getattr(result, "proof_progress", None)
+    if raw is None:
+        diagnostics = getattr(result, "diagnostics", None)
+        if isinstance(diagnostics, dict):
+            raw = diagnostics.get("proof_progress")
+    if raw is None:
+        raise ArithmeticError(
+            "an unconditional engine result has no authenticated proof progress"
+        )
+    payload = _canonical_payload(raw, "Minkowski proof progress")
+    if payload.get("schema") != _PROGRESS_SCHEMA:
+        raise ValueError("Minkowski proof progress has the wrong schema")
+    if not _authenticated_payload(payload):
+        raise ArithmeticError("Minkowski proof progress failed authentication")
+    if payload.get("complete") is not True:
+        raise ArithmeticError("incomplete proof progress cannot prove a class group")
+    return raw, payload
+
+
+def _producer_dependency_hashes(result: Any) -> dict[str, str]:
+    raw = getattr(result, "proof_dependency_hashes", None)
+    if raw is None:
+        diagnostics = getattr(result, "diagnostics", None)
+        if isinstance(diagnostics, dict):
+            raw = diagnostics.get("proof_dependency_hashes")
+    if not isinstance(raw, dict):
+        raise ArithmeticError("Minkowski proof dependencies are unavailable")
+    answer: dict[str, str] = {}
+    for name in ("relations", "presentation", "generators", "saturation"):
+        value = raw.get(name)
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value)
+        ):
+            raise ValueError("Minkowski proof dependency hash is missing: " + name)
+        answer[name] = value
+    return answer
 
 
 class PrincipalIdealWitness:
@@ -759,7 +909,11 @@ class IdealClassGroup:
             encoder = getattr(self._proof_context, "encode_prime_record", None)
             if not callable(encoder):
                 raise TypeError("the Minkowski replay context has no prime encoder")
-            return self._proof_record.to_dict(encoder)
+            payload = self._proof_record.to_dict(encoder)
+            progress = getattr(self._proof_context, "proof_progress_payload", None)
+            if callable(progress):
+                payload["proof_progress"] = progress()
+            return payload
         raise TypeError("unknown class-group completeness proof record")
 
     def verify_proof_payload(self, payload: dict[str, Any]) -> bool:
@@ -773,6 +927,11 @@ class IdealClassGroup:
                 if not callable(decoder):
                     return False
                 record = UnconditionalMinkowskiProofRecord.from_dict(payload, decoder)
+                progress = getattr(
+                    self._proof_context, "verify_proof_progress_payload", None
+                )
+                if callable(progress) and progress(payload, record) is not True:
+                    return False
             else:
                 return False
             return record.verify(self, self._proof_context) is True
@@ -856,7 +1015,12 @@ class _EngineProofReplayContext:
         engine_group: Any,
         order: Any,
         saturation: SaturationProofRecord,
+        saturation_producer: Any,
+        saturation_payload: dict[str, Any],
         bound: int,
+        proof_progress: Any = None,
+        proof_progress_payload: dict[str, Any] | None = None,
+        dependency_hashes: dict[str, str] | None = None,
     ) -> None:
         self.result = result
         self.engine_group = engine_group
@@ -875,20 +1039,192 @@ class _EngineProofReplayContext:
         self.discriminant = int(order.discriminant())
         self.minkowski_bound = (int(bound), 1)
         self.saturation_record = saturation
+        self._saturation_producer = saturation_producer
+        self._saturation_payload = saturation_payload
+        self._proof_progress = proof_progress
+        self._proof_progress_payload = proof_progress_payload
+        self._dependency_hashes = dependency_hashes
 
     def verify_saturation_record(self, record: Any) -> bool:
-        if record.to_dict() != self.saturation_record.to_dict():
+        if (
+            record.to_dict() != self.saturation_record.to_dict()
+            or record.evidence != self._saturation_payload
+        ):
             return False
-        analytic = _stage(self.result, "analytic-index")
-        return (
-            record.complete
-            and record.index_bound == 1
-            and analytic is not None
-            and analytic.state == "complete"
-            and analytic.details.get("rigorous") is True
-            and int(analytic.details.get("lower_index", 0)) == 1
-            and int(analytic.details.get("upper_index", 0)) == 1
+        checker = getattr(self.result, "verify_saturation_record", None)
+        if callable(checker):
+            return checker(self._saturation_payload) is True
+        checker = getattr(self._saturation_producer, "verify", None)
+        if not callable(checker):
+            return False
+        original_units = getattr(self.result, "saturation_original_units", None)
+        if original_units is None:
+            original_units = _value(self.result, ("units",), ())
+        analytic_validation = getattr(self.result, "analytic_validation", None)
+        try:
+            return (
+                checker(
+                    self.field,
+                    self.order,
+                    tuple(original_units),
+                    analytic_validation=analytic_validation,
+                )
+                is True
+            )
+        except TypeError:
+            try:
+                return checker(self.field, self.order, tuple(original_units)) is True
+            except TypeError:
+                return checker() is True
+
+    def proof_progress_payload(self) -> dict[str, Any]:
+        if self._proof_progress_payload is None:
+            raise ValueError("the proof has no authenticated partition progress")
+        return _canonical_payload(
+            self._proof_progress_payload, "Minkowski proof progress"
         )
+
+    def _progress_records(self, payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+        count = _integer(payload.get("partition_count"), "proof partition count")
+        fingerprints = payload.get("prime_fingerprints")
+        partitions = payload.get("partitions")
+        if (
+            count < 1
+            or not isinstance(fingerprints, list)
+            or not isinstance(partitions, list)
+        ):
+            raise ValueError("Minkowski proof progress has invalid coverage metadata")
+        if len(partitions) != count:
+            raise ValueError("Minkowski proof progress lost a partition")
+        total = len(fingerprints)
+        if (
+            _integer(payload.get("completed_items"), "completed proof item count")
+            != total
+        ):
+            raise ValueError("Minkowski proof progress is not complete")
+        indexed: dict[int, dict[str, Any]] = {}
+        plan_hash = payload.get("plan_sha256")
+        if (
+            not isinstance(plan_hash, str)
+            or len(plan_hash) != 64
+            or any(character not in "0123456789abcdef" for character in plan_hash)
+        ):
+            raise ValueError("Minkowski proof progress has no plan hash")
+        for expected_partition, partition in enumerate(partitions):
+            if (
+                not isinstance(partition, dict)
+                or partition.get("schema") != _PARTITION_SCHEMA
+                or not _authenticated_payload(partition)
+            ):
+                raise ValueError("a Minkowski proof partition failed authentication")
+            if (
+                _integer(partition.get("partition_index"), "proof partition index")
+                != expected_partition
+                or _integer(partition.get("partition_count"), "proof partition count")
+                != count
+                or _integer(partition.get("total_items"), "proof item count") != total
+                or partition.get("plan_sha256") != plan_hash
+            ):
+                raise ValueError("a Minkowski proof partition has stale plan metadata")
+            records = partition.get("records")
+            if not isinstance(records, list):
+                raise TypeError("a Minkowski proof partition has no record list")
+            previous = expected_partition - count
+            for entry in records:
+                if not isinstance(entry, dict):
+                    raise TypeError("a Minkowski proof partition record is not a map")
+                index = _integer(entry.get("index"), "proof-prime global index")
+                if (
+                    index < 0
+                    or index >= total
+                    or index % count != expected_partition
+                    or index <= previous
+                    or index in indexed
+                ):
+                    raise ValueError(
+                        "Minkowski proof partition coverage is invalid: "
+                        + str((index, total, count, expected_partition, previous))
+                    )
+                schema = entry.get("schema")
+                if schema == _PROGRESS_RECORD_SCHEMA:
+                    if (
+                        not _authenticated_payload(entry)
+                        or entry.get("prime_fingerprint") != fingerprints[index]
+                        or not isinstance(entry.get("evidence"), dict)
+                    ):
+                        raise ValueError(
+                            "a wrapped proof-prime record failed authentication"
+                        )
+                    raw = dict(entry["evidence"])
+                    evidence_index = raw.get("index")
+                    if (
+                        evidence_index is not None
+                        and _integer(evidence_index, "proof evidence global index")
+                        != index
+                    ):
+                        raise ValueError("proof evidence has the wrong global index")
+                    raw["index"] = index
+                else:
+                    raw = entry
+                indexed[index] = raw
+                previous = index
+        if tuple(sorted(indexed)) != tuple(range(total)):
+            raise ValueError("Minkowski proof partitions are not complete")
+        return tuple(indexed[index] for index in range(total))
+
+    def verify_proof_progress_payload(
+        self,
+        proof_payload: dict[str, Any],
+        record: UnconditionalMinkowskiProofRecord,
+    ) -> bool:
+        try:
+            progress = proof_payload.get("proof_progress")
+            if not isinstance(progress, dict) or self._proof_progress_payload is None:
+                return False
+            if _canonical_payload(progress, "Minkowski proof progress") != (
+                self._proof_progress_payload
+            ):
+                return False
+            if not _authenticated_payload(progress):
+                return False
+            if progress.get("bound") != list(record.bound):
+                return False
+            if progress.get("theorem") != proof_payload.get("theorem"):
+                return False
+            fingerprints = progress.get("prime_fingerprints")
+            if fingerprints != [item.fingerprint for item in record.prime_records]:
+                return False
+            dependencies = progress.get("dependency_hashes")
+            if (
+                not isinstance(dependencies, dict)
+                or self._dependency_hashes is None
+                or dependencies != self._dependency_hashes
+            ):
+                return False
+            saturation_hash = self._saturation_payload.get("content_sha256")
+            if not isinstance(saturation_hash, str):
+                saturation_hash = _payload_hash(self._saturation_payload)
+            if dependencies.get("saturation") != saturation_hash:
+                return False
+            raw_records = self._progress_records(progress)
+            public_records = proof_payload.get("prime_records")
+            if not isinstance(public_records, list) or len(public_records) != len(
+                raw_records
+            ):
+                return False
+            for raw, public in zip(raw_records, public_records, strict=True):
+                witness = public.get("principal_witness")
+                if (
+                    raw.get("ideal") != public.get("ideal")
+                    or raw.get("norm") != public.get("norm")
+                    or raw.get("coordinates") != public.get("coordinates")
+                    or not isinstance(witness, dict)
+                    or raw.get("witness") != witness.get("generator")
+                ):
+                    return False
+            return True
+        except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
+            return False
 
     def verify_conditional_grh_record(self, record: Any) -> bool:
         proof_stage = _stage(self.result, "proof")
@@ -976,7 +1312,10 @@ def _engine_unconditional_records(
     answer = []
     for raw in raw_records:
         ideal = replay.decode_ideal(raw["ideal"])
-        coordinates = tuple(int(value) for value in raw["coordinates"])
+        coordinates = tuple(
+            _integer(value, "an unconditional proof coordinate")
+            for value in raw["coordinates"]
+        )
         representative = engine_group.representative_ideal(coordinates)
         quotient = _ideal_quotient(ideal, representative)
         generator = _decode_factored_generator(replay.field, raw["witness"])
@@ -1030,21 +1369,12 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     relation_count = int(diagnostics.get("relations"))
     if int(proof_stage.details.get("exact_relations", -1)) != relation_count:
         raise ArithmeticError("the proof stage has the wrong exact relation count")
-    analytic = _stage(result, "analytic-index")
-    saturation = SaturationProofRecord(
-        (),
-        (),
-        index_bound=1,
-        complete=(
-            analytic is not None
-            and analytic.state == "complete"
-            and analytic.details.get("rigorous") is True
-            and int(analytic.details.get("lower_index", 0)) == 1
-            and int(analytic.details.get("upper_index", 0)) == 1
-        ),
-        evidence="rigorous hR index-one enclosure",
-    )
+    saturation_producer, saturation_payload = _producer_saturation(result)
+    saturation = _saturation_record(saturation_payload)
     unconditional_stage = None
+    proof_progress = None
+    progress_payload = None
+    dependency_hashes = None
     if proof_status == EXACT_UNCONDITIONAL:
         unconditional_stage = _stage(result, "unconditional-proof")
         if unconditional_stage is None or unconditional_stage.state != "complete":
@@ -1054,13 +1384,28 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         if "Minkowski" not in str(unconditional_stage.details.get("theorem")):
             raise ArithmeticError("the unconditional stage does not name Minkowski")
         bound = int(unconditional_stage.details.get("bound"))
+        proof_progress, progress_payload = _producer_proof_progress(result)
+        dependency_hashes = _producer_dependency_hashes(result)
     else:
         bound = int(diagnostics.get("factor_base_bound"))
-    replay = _EngineProofReplayContext(result, engine_group, order, saturation, bound)
+    replay = _EngineProofReplayContext(
+        result,
+        engine_group,
+        order,
+        saturation,
+        saturation_producer,
+        saturation_payload,
+        bound,
+        proof_progress,
+        progress_payload,
+        dependency_hashes,
+    )
     if proof_status == EXACT_UNCONDITIONAL:
         if unconditional_stage is None:
             raise ArithmeticError("the unconditional proof stage disappeared")
-        raw_prime_records = diagnostics.get("unconditional_prime_records", ())
+        if progress_payload is None:
+            raise ArithmeticError("the unconditional proof progress disappeared")
+        raw_prime_records = replay._progress_records(progress_payload)
         if int(unconditional_stage.details.get("prime_ideals", -1)) != len(
             raw_prime_records
         ) or int(proof_stage.details.get("minkowski_primes", -1)) != len(

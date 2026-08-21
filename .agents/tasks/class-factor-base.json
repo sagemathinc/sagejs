@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Make factor-base memory caps coefficient-height-aware and fail closed against actual canonical record limb growth while preserving exact selective construction",
-  "base_commit": "786fb70376945f486cf24ebce7c8ca551c0f220e",
+  "base_commit": "e28e63bdda5c834dbf63030dd0758777cb944277",
   "claims": [
     "src/lib/sagejs/number_fields/class_group_factor_base.py",
     "test/number-field-class-group-factor-base.cjs",
