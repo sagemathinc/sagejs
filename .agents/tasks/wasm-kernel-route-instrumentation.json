@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Derive every source-kernel telemetry capability from authenticated production pack metadata and emit fixed non-forgeable private route observations for graph, matrix/polynomial, P1, and number-field kernels",
-  "base_commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "base_commit": "1cd3f657b324bb7ea489bc414b18a9780da0ad22",
   "claims": [
     ".agents/lanes.json",
     "packages/flint-wasm/evaluator.mjs",
