@@ -38,10 +38,10 @@ have the following public Wasm owners:
 | Desktop-only capability | Reviewed disposition | Public Wasm capability |
 | --- | --- | --- |
 | `modular_float_available` | desktop implementation probe | none |
-| `modular_float_mul` | covered by packed FLINT | `ffi:flint:nmod_mat_mul` |
-| `modular_float_rank` | covered by packed FLINT | `ffi:flint:nmod_mat_rank` |
-| `modular_float_rref` | covered by packed FLINT | `ffi:flint:nmod_mat_rref` |
-| `modular_float_right_nullspace` | covered by packed FLINT | `ffi:flint:nmod_mat_right_kernel` |
+| `modular_float_mul` | covered by source-transparent packed FLINT | `kernel:dense-prime-flint-production` |
+| `modular_float_rank` | covered by source-transparent packed FLINT | `kernel:dense-prime-flint-production` |
+| `modular_float_rref` | covered by source-transparent packed FLINT | `kernel:dense-prime-flint-production` |
+| `modular_float_right_nullspace` | covered by source-transparent packed FLINT | `kernel:dense-prime-flint-production` |
 | `modular_double_available` | desktop implementation probe | none |
 | `modular_double_mul` | covered by owned FLINT resource | `ffi:flint:nmod_matrix_mul` |
 | `modular_double_rank` | covered by owned FLINT resource | `ffi:flint:nmod_matrix_rank` |

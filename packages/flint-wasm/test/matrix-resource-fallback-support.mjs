@@ -49,6 +49,11 @@ print(K.dimensions(), (A * K.transpose()).list())
 
 set_random_seed(1)
 print(random_matrix(QQ, 30).charpoly().degree())
+
+M = ModularSymbols(389, 2, sign=1)
+D = M.decomposition()
+print([M.new_submodule() is M, D is M.decomposition(),
+       [A.dimension() for A in D], sum(A.dimension() for A in D)])
 `;
 
 export const expectedStdout = [
@@ -67,5 +72,6 @@ export const expectedStdout = [
   "x^2 - 4/3*x - 1/12 x^2 - 4/3*x - 1/12",
   "(1, 3) [0, 0]",
   "30",
+  "[True, True, [1, 1, 2, 3, 6, 20], 33]",
   "",
 ].join("\n");

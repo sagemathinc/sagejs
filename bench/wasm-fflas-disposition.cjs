@@ -14,10 +14,10 @@ const packageRoot = path.join(repositoryRoot, "packages", "flint-wasm");
 
 const FFLAS_DISPOSITIONS = Object.freeze([
   ["ffi:fflas:modular_float_available", null],
-  ["ffi:fflas:modular_float_mul", "ffi:flint:nmod_mat_mul"],
-  ["ffi:fflas:modular_float_rank", "ffi:flint:nmod_mat_rank"],
-  ["ffi:fflas:modular_float_rref", "ffi:flint:nmod_mat_rref"],
-  ["ffi:fflas:modular_float_right_nullspace", "ffi:flint:nmod_mat_right_kernel"],
+  ["ffi:fflas:modular_float_mul", "kernel:dense-prime-flint-production"],
+  ["ffi:fflas:modular_float_rank", "kernel:dense-prime-flint-production"],
+  ["ffi:fflas:modular_float_rref", "kernel:dense-prime-flint-production"],
+  ["ffi:fflas:modular_float_right_nullspace", "kernel:dense-prime-flint-production"],
   ["ffi:fflas:modular_double_available", null],
   ["ffi:fflas:modular_double_mul", "ffi:flint:nmod_matrix_mul"],
   ["ffi:fflas:modular_double_rank", "ffi:flint:nmod_matrix_rank"],
@@ -33,10 +33,7 @@ const FFLAS_DISPOSITIONS = Object.freeze([
 
 const REQUIRED_WASM_CAPABILITIES = Object.freeze({
   float: Object.freeze([
-    "ffi:flint:nmod_mat_mul",
-    "ffi:flint:nmod_mat_rank",
-    "ffi:flint:nmod_mat_rref",
-    "ffi:flint:nmod_mat_right_kernel",
+    "kernel:dense-prime-flint-production",
   ]),
   double: Object.freeze([
     "ffi:flint:nmod_matrix_mul",

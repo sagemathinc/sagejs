@@ -663,6 +663,22 @@ def _lseries_precision(value: Any) -> int:
     return precision
 
 
+def _lseries_precision_options(prec: Any, digits: Any) -> int:
+    """Resolve mutually exclusive binary-bit and decimal-digit precision."""
+    if digits is None:
+        return _lseries_precision(53 if prec is None else prec)
+    if prec is not None:
+        raise ValueError("prec and digits are mutually exclusive")
+    decimal_digits = int(digits)
+    if decimal_digits != digits or decimal_digits < 1:
+        raise ValueError("digits must be a positive integer")
+    # 3322/1000 is a deliberate rational upper approximation to log2(10).
+    # The native evaluator has a 32-bit floor, so small decimal requests still
+    # get comfortably more than the requested number of significant digits.
+    precision = max(32, (3322 * decimal_digits + 999) // 1000)
+    return _lseries_precision(precision)
+
+
 def _lseries_algorithm(value: Any) -> str:
     algorithm = str(value)
     if algorithm not in ("auto", "native", "reference"):
@@ -1102,18 +1118,25 @@ class Lseries_ell:
     def value(
         self,
         s: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
-        """Return a non-rigorous numerical approximation to `L(E, s)`."""
-        values, precision = self._evaluate([s], prec, algorithm)
+        """Return a non-rigorous numerical approximation to `L(E, s)`.
+
+        Specify binary `prec` or decimal `digits`, but not both. The default is
+        53 bits.
+        """
+        requested_precision = _lseries_precision_options(prec, digits)
+        values, precision = self._evaluate([s], requested_precision, algorithm)
         return self._coerce_results(values, precision, False)[0]
 
     def values(
         self,
         points: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Evaluate `L(E, s)` at several points using one shared batch.
 
@@ -1121,10 +1144,11 @@ class Lseries_ell:
         coefficients and a Mellin grid; feasible points with real part greater
         than two use the explicit direct-series tail bound.
         """
+        requested_precision = _lseries_precision_options(prec, digits)
         point_list = list(points)
         if not point_list:
             return []
-        values, precision = self._evaluate(point_list, prec, algorithm)
+        values, precision = self._evaluate(point_list, requested_precision, algorithm)
         return self._coerce_results(values, precision, False)
 
     def values_along_line(
@@ -1132,8 +1156,9 @@ class Lseries_ell:
         s0: Any,
         s1: Any,
         number_samples: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Return `(s,L(E,s))` at equally spaced points from `s0` toward `s1`.
 
@@ -1143,7 +1168,7 @@ class Lseries_ell:
         count = int(number_samples)
         if count < 1:
             raise ValueError("number_samples must be positive")
-        precision = _lseries_precision(prec)
+        precision = _lseries_precision_options(prec, digits)
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
             precision
         )
@@ -1356,11 +1381,13 @@ class Lseries_ell:
     def completed_value(
         self,
         s: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Return canonical `A^s Gamma(s) L(E,s)`, where `A=sqrt(N)/(2*pi)`."""
-        values, precision = self._evaluate([s], prec, algorithm)
+        requested_precision = _lseries_precision_options(prec, digits)
+        values, precision = self._evaluate([s], requested_precision, algorithm)
         return self._coerce_results(values, precision, True)[0]
 
     def __repr__(self) -> str:

@@ -11281,7 +11281,6 @@
       ],
       "consumers": [
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py",
         "test/higher-weight-hecke-resource.cjs"
       ],
       "declared_ffi": null

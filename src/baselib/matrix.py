@@ -2591,11 +2591,40 @@ class Matrix(sage.Element):
             # generated resource, and immediately discard the legacy handle.
             # New algorithms must return generated resources directly instead
             # of relying on this bridge.
-            packed_bytes = runtime.flint_backend().qqMatrixExportPacked(native_value)
-            packed_matrix = parent._from_packed_rationals(packed_bytes)
-            native_value = _FmpqMatrixResourceStorage(
-                _flint_ffi_module().fmpq_matrix_copy(packed_matrix._rational_resource())
-            )
+            backend = runtime.flint_backend()
+            export_packed = runtime.reflect.get(backend, "qqMatrixExportPacked")
+            if runtime.jstype(export_packed) == "function":
+                packed_bytes = runtime.reflect.apply(
+                    export_packed, backend, [native_value]
+                )
+                packed_matrix = parent._from_packed_rationals(packed_bytes)
+            else:
+                # The browser's portable exact backend represents temporary
+                # rational matrices as canonical numerator/denominator pairs.
+                # Import those pairs through the generated resource boundary
+                # just as the integer compatibility path above imports scalar
+                # entries when its desktop packed exporter is unavailable.
+                matrix_entry = runtime.reflect.get(backend, "matrixEntry")
+                if runtime.jstype(matrix_entry) != "function":
+                    raise RuntimeError(
+                        "rational matrix backend has no exact compatibility ingress"
+                    )
+                entries = []
+                for row in range(parent.nrows()):
+                    for column in range(parent.ncols()):
+                        entries.append(
+                            _rational_result(
+                                runtime.reflect.apply(
+                                    matrix_entry,
+                                    backend,
+                                    [native_value, row, column],
+                                )
+                            )
+                        )
+                packed_matrix = parent._from_rational_values(entries)
+            # Transfer the generated resource wrapper; copying here would
+            # create a second owner and leave the temporary to finalization.
+            native_value = packed_matrix._rational_storage_cache
         self._parent = parent
         self._native_handle: Any = runtime.undefined
         self._m4ri_storage_cache: Any = runtime.undefined
@@ -7748,7 +7777,11 @@ class Matrix(sage.Element):
             (int(index) for index in rows),
             self.nrows(),
         )
-        if self._has_fmpq_matrix_resource():
+        if (
+            self._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSelectRows")
+            and _flint_backend_has_function("ffiFmpqMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpq_matrix_select_rows(
                 self._rational_resource(),
                 _packed_uint64(indices),
@@ -7918,7 +7951,11 @@ class Matrix(sage.Element):
             (int(index) for index in columns),
             self.ncols(),
         )
-        if self._has_fmpq_matrix_resource():
+        if (
+            self._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSelectColumns")
+            and _flint_backend_has_function("ffiFmpqMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpq_matrix_select_columns(
                 self._rational_resource(),
                 _packed_uint64(indices),

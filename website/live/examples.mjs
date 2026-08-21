@@ -47,4 +47,22 @@ print(M)
 print(M.dimension())
 M.cuspidal_subspace()`,
   },
+  {
+    id: "random-graph-plot",
+    title: "Random graph",
+    description: "Generate and plot an Erdős–Rényi random graph.",
+    source: `set_random_seed(0)
+g = graphs.RandomGNP(30, .1)
+g
+g.plot()`,
+  },
+  {
+    id: "graph-automorphisms",
+    title: "Graph automorphisms",
+    description: "Compute the automorphism group of a random graph.",
+    source: `set_random_seed(0)
+g = graphs.RandomGNP(20, .2)
+g
+g.automorphism_group()`,
+  },
 ]);

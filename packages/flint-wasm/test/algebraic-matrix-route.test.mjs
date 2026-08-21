@@ -29,8 +29,16 @@ print(M.charpoly()(r))
         ingress_bytes: 126,
         egress_bytes: 56,
       },
+      {
+        capability_id: "kernel:packed-rational-polynomial-production",
+        selected_route: "receipt-backed-wasm-artifact",
+        execution_target: "wasm-artifact",
+        call_count: 3,
+        ingress_bytes: 0,
+        egress_bytes: 0,
+      },
     ]);
-    assert.equal(result.instrumentation.boundary_crossings, 7);
+    assert.equal(result.instrumentation.boundary_crossings, 10);
   } finally {
     await sage.close();
   }

@@ -261,7 +261,7 @@ try {
     } else {
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
-    await runSource("import math\nmath.sin(math.pi/2)", "1");
+    await runSource("import math\nmath.sin(math.pi/2)", "1.0");
     await runSource("prime_pi(10)", "4");
     await runSource(
       "x = var('x')\nf = sin(x^2)\nf.derivative(x)",
@@ -329,6 +329,13 @@ try {
         "f = M.hecke_matrix(2).charpoly()\n" +
         "print(M.dimension(), f(3) % 1000000007)",
       "154 804456041\n",
+    );
+    await runSource(
+      "M = ModularSymbols(389,2,sign=1)\n" +
+        "D = M.decomposition()\n" +
+        "print([M.new_submodule() is M, D is M.decomposition(), " +
+        "[A.dimension() for A in D], sum(A.dimension() for A in D)])",
+      "[True, True, [1, 1, 2, 3, 6, 20], 33]\n",
     );
     await runSource(
       "for n in [2025..2050]:\n    print(factor(n))",

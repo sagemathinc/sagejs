@@ -35,7 +35,8 @@ test("all ten desktop FFLAS boundaries have a precise public Wasm disposition", 
     wasmCapability !== null);
   assert.equal(operations.length, 8);
   assert.ok(operations.every(({ wasmCapability }) =>
-    wasmCapability.startsWith("ffi:flint:nmod_")));
+    wasmCapability === "kernel:dense-prime-flint-production"
+    || wasmCapability.startsWith("ffi:flint:nmod_matrix_")));
 });
 
 test("public float and double prime-matrix workloads agree with native exactly", {
@@ -69,7 +70,7 @@ test("public float and double prime-matrix workloads agree with native exactly",
       assert.equal(actual.exact_sha256, expected.exact_sha256);
       assert.deepEqual(actual.mathematical, expected.mathematical);
       const routes = checkedWasmRoutes(wasm.instrumentation, modulus);
-      assert.equal(routes.routes.length, 4);
+      assert.equal(routes.routes.length, modulus < 256 ? 1 : 4);
       assert.ok(routes.boundary_crossings >= 4);
       assert.ok(routes.copied_bytes > 0);
     }
