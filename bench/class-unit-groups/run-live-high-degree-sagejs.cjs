@@ -218,6 +218,31 @@ function compareRationals(left, right) {
   return difference < 0n ? -1 : difference > 0n ? 1 : 0;
 }
 
+function decimalRoundingCell(text) {
+  const match = /^-?\d+(?:\.(\d+))?$/.exec(text);
+  if (!match) throw new Error(`non-decimal oracle value: ${text}`);
+  const center = rationalFromText(text);
+  const radiusDenominator = 2n * 10n ** BigInt((match[1] || "").length);
+  return [
+    [
+      center[0] * radiusDenominator - center[1],
+      center[1] * radiusDenominator,
+    ],
+    [
+      center[0] * radiusDenominator + center[1],
+      center[1] * radiusDenominator,
+    ],
+  ];
+}
+
+function regulatorOverlapsRoundedDecimal(lower, upper, text) {
+  const [cellLower, cellUpper] = decimalRoundingCell(text);
+  return (
+    compareRationals(lower, cellUpper) <= 0 &&
+    compareRationals(cellLower, upper) <= 0
+  );
+}
+
 function regulatorWidthIsSmall(lower, upper, target) {
   const differenceNumerator = upper[0] * lower[1] - lower[0] * upper[1];
   const differenceDenominator = upper[1] * lower[1];
@@ -258,7 +283,7 @@ function checkComplete(record, expected, proof) {
     const lower = rationalFromText(record.regulator.lower);
     const upper = rationalFromText(record.regulator.upper);
     const target = rationalFromText(expected.regulator_decimal);
-    if (compareRationals(lower, target) > 0 || compareRationals(target, upper) > 0) {
+    if (!regulatorOverlapsRoundedDecimal(lower, upper, expected.regulator_decimal)) {
       failures.push("regulator_containment");
     }
     if (!regulatorWidthIsSmall(lower, upper, target)) {
@@ -385,7 +410,14 @@ function main() {
   }
 }
 
-module.exports = { compareRationals, rationalFromText, regulatorWidthIsSmall };
+module.exports = {
+  checkComplete,
+  compareRationals,
+  decimalRoundingCell,
+  rationalFromText,
+  regulatorOverlapsRoundedDecimal,
+  regulatorWidthIsSmall,
+};
 
 if (require.main === module) {
   try {
