@@ -273,7 +273,7 @@ FqContext = flint.resource(
     close="ffiFqContextClose",
     clear="sagejs_fq_context_clear",
     size="sagejs_fq_context_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -284,7 +284,7 @@ FqElement = flint.resource(
     close="ffiFqElementClose",
     clear="sagejs_fq_element_clear",
     size="sagejs_fq_element_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -295,7 +295,7 @@ FqPolynomial = flint.resource(
     close="ffiFqPolynomialClose",
     clear="sagejs_fq_polynomial_clear",
     size="sagejs_fq_polynomial_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -3044,7 +3044,7 @@ def fmpz_matrix_snf_transform(
         exception=RuntimeError,
         message="integer matrix right kernel failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_right_kernel(source: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -3588,7 +3588,7 @@ def fmpq_matrix(rows: uint64, columns: uint64) -> FmpqMatrix: ...
         exception=OverflowError,
         message="rational random matrix parameters are too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_randbits(
     rows: uint64,
@@ -8767,7 +8767,7 @@ def fmpq_poly_factor(
         exception=ValueError,
         message="finite extension modulus is invalid or unsupported",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_context(
     modulus: UInt64Buffer,
@@ -8783,7 +8783,7 @@ def fq_context(
     abi=[in_("context", sagejs_fq_context_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_context_characteristic(context: FqContext) -> uint64: ...
 
@@ -8795,7 +8795,7 @@ def fq_context_characteristic(context: FqContext) -> uint64: ...
     abi=[in_("context", sagejs_fq_context_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_context_degree(context: FqContext) -> uint64: ...
 
@@ -8832,7 +8832,7 @@ def fq_context_degree(context: FqContext) -> uint64: ...
         exception=ValueError,
         message="finite extension element coordinates are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_element(
     context: FqContext,
@@ -8856,7 +8856,7 @@ def fq_element(
         raises=[RuntimeError],
     ),
     result=Status(1, exception=RuntimeError, message="finite extension copy failed"),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_copy(source: FqElement) -> FqElement: ...
 
@@ -8868,7 +8868,7 @@ def fq_element_copy(source: FqElement) -> FqElement: ...
     abi=[in_("element", sagejs_fq_element_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_extension_degree(element: FqElement) -> uint64: ...
 
@@ -8901,7 +8901,7 @@ def fq_element_coordinate(element: FqElement, basis_index: uint64) -> uint64: ..
     ],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_equal(left: FqElement, right: FqElement) -> bool: ...
 
@@ -8922,7 +8922,7 @@ def fq_element_equal(left: FqElement, right: FqElement) -> bool: ...
         raises=[TypeError],
     ),
     result=Status(1, exception=TypeError, message="finite extension contexts differ"),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_add(left: FqElement, right: FqElement) -> FqElement: ...
 
@@ -8943,7 +8943,7 @@ def fq_element_add(left: FqElement, right: FqElement) -> FqElement: ...
         raises=[TypeError],
     ),
     result=Status(1, exception=TypeError, message="finite extension contexts differ"),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_sub(left: FqElement, right: FqElement) -> FqElement: ...
 
@@ -8964,7 +8964,7 @@ def fq_element_sub(left: FqElement, right: FqElement) -> FqElement: ...
         raises=[TypeError],
     ),
     result=Status(1, exception=TypeError, message="finite extension contexts differ"),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
 
@@ -8986,7 +8986,7 @@ def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
     result=Status(
         1, exception=RuntimeError, message="finite extension negation failed"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_neg(source: FqElement) -> FqElement: ...
 
@@ -9010,7 +9010,7 @@ def fq_element_neg(source: FqElement) -> FqElement: ...
         exception=RuntimeError,
         message="finite extension inverse failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_inverse(source: FqElement) -> FqElement: ...
 
@@ -9035,7 +9035,7 @@ def fq_element_inverse(source: FqElement) -> FqElement: ...
         exception=RuntimeError,
         message="finite extension power failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_pow(source: FqElement, exponent: Integer) -> FqElement: ...
 
@@ -9047,7 +9047,7 @@ def fq_element_pow(source: FqElement, exponent: Integer) -> FqElement: ...
     abi=[in_("source", sagejs_fq_element_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_is_zero(source: FqElement) -> bool: ...
 
@@ -9059,7 +9059,7 @@ def fq_element_is_zero(source: FqElement) -> bool: ...
     abi=[in_("source", sagejs_fq_element_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_is_one(source: FqElement) -> bool: ...
 
@@ -9083,7 +9083,7 @@ def fq_element_is_one(source: FqElement) -> bool: ...
         exception=OverflowError,
         message="finite extension element export is too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_element_coordinate_bytes(element: FqElement) -> FlintByteRegion: ...
 
@@ -9121,7 +9121,7 @@ def fq_element_coordinate_bytes(element: FqElement) -> FlintByteRegion: ...
         exception=ValueError,
         message="finite extension polynomial coordinates are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial(
     context: FqContext,
@@ -9148,7 +9148,7 @@ def fq_polynomial(
     result=Status(
         1, exception=RuntimeError, message="extension polynomial copy failed"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_copy(source: FqPolynomial) -> FqPolynomial: ...
 
@@ -9160,7 +9160,7 @@ def fq_polynomial_copy(source: FqPolynomial) -> FqPolynomial: ...
     abi=[in_("polynomial", sagejs_fq_polynomial_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_length(polynomial: FqPolynomial) -> uint64: ...
 
@@ -9172,7 +9172,7 @@ def fq_polynomial_length(polynomial: FqPolynomial) -> uint64: ...
     abi=[in_("polynomial", sagejs_fq_polynomial_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_extension_degree(polynomial: FqPolynomial) -> uint64: ...
 
@@ -9210,7 +9210,7 @@ def fq_polynomial_coordinate(
     ],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_equal(left: FqPolynomial, right: FqPolynomial) -> bool: ...
 
@@ -9233,7 +9233,7 @@ def fq_polynomial_equal(left: FqPolynomial, right: FqPolynomial) -> bool: ...
     result=Status(
         1, exception=TypeError, message="extension polynomial contexts differ"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_add(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
 
@@ -9256,7 +9256,7 @@ def fq_polynomial_add(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: 
     result=Status(
         1, exception=TypeError, message="extension polynomial contexts differ"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_sub(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
 
@@ -9279,7 +9279,7 @@ def fq_polynomial_sub(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: 
     result=Status(
         1, exception=TypeError, message="extension polynomial contexts differ"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_mul(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
 
@@ -9301,7 +9301,7 @@ def fq_polynomial_mul(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: 
     result=Status(
         1, exception=RuntimeError, message="extension polynomial negation failed"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_neg(source: FqPolynomial) -> FqPolynomial: ...
 
@@ -9324,7 +9324,7 @@ def fq_polynomial_neg(source: FqPolynomial) -> FqPolynomial: ...
     result=Status(
         1, exception=OverflowError, message="extension polynomial exponent is too large"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_pow(source: FqPolynomial, exponent: uint64) -> FqPolynomial: ...
 
@@ -9346,7 +9346,7 @@ def fq_polynomial_pow(source: FqPolynomial, exponent: uint64) -> FqPolynomial: .
     result=Status(
         1, exception=OverflowError, message="extension polynomial export is too large"
     ),
-    wasm=False,
+    wasm=True,
 )
 def fq_polynomial_coordinate_bytes(polynomial: FqPolynomial) -> FlintByteRegion: ...
 

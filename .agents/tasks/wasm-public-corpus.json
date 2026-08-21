@@ -1,0 +1,154 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-public-corpus",
+  "title": "Wasm Public Corpus",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add bounded public browser parity coverage for AA/QQbar, modular symbols, the headline cubic number-field workflow, and canonical number-field ideal/certificate serialization with exact capability routes and synchronized documentation",
+  "base_commit": "6923efe0238ffeac9c6039e617ca280266b1e32f",
+  "claims": [
+    "test/browser-wasm-parity-corpus.json",
+    "docs/webassembly-examples.md",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/native-exports.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "existing Node public Sage runtime and exact expected outputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node scripts/check-wasm-capabilities.cjs",
+    "node --test test/webassembly-docs.cjs test/wasm-capabilities.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/webassembly-docs.cjs test/wasm-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.532,
+      "started_at": "2026-08-20T08:22:17.086Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "5aec8ef70008b9468bc61de5724bc68d85d73b34271d7452390ce548de4a0aa6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.289,
+      "started_at": "2026-08-20T08:22:43.505Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "5aec8ef70008b9468bc61de5724bc68d85d73b34271d7452390ce548de4a0aa6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.937,
+      "started_at": "2026-08-20T08:22:54.748Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "5aec8ef70008b9468bc61de5724bc68d85d73b34271d7452390ce548de4a0aa6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.582,
+      "started_at": "2026-08-20T08:23:34.380Z",
+      "commit": "1d1ec779958978f5d49713157bb707995875201b",
+      "workspace_fingerprint": "5aec8ef70008b9468bc61de5724bc68d85d73b34271d7452390ce548de4a0aa6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.936,
+      "started_at": "2026-08-20T08:26:37.186Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "ce7647104b1329aced8d98d8450b3c82a2905438204d0ba394511a459f71f11d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-wasm-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.299,
+      "started_at": "2026-08-20T08:27:32.615Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "ce7647104b1329aced8d98d8450b3c82a2905438204d0ba394511a459f71f11d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/webassembly-docs.cjs test/wasm-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.561,
+      "started_at": "2026-08-20T08:27:36.937Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "ce7647104b1329aced8d98d8450b3c82a2905438204d0ba394511a459f71f11d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.6,
+      "started_at": "2026-08-20T08:28:25.902Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "a4d7520521e3736cdade68655631ecff34e7bccee2b797fbb00c63d5ca3f3ebc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.408,
+      "started_at": "2026-08-20T08:28:40.078Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "a4d7520521e3736cdade68655631ecff34e7bccee2b797fbb00c63d5ca3f3ebc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.893,
+      "started_at": "2026-08-20T08:29:21.926Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "a4d7520521e3736cdade68655631ecff34e7bccee2b797fbb00c63d5ca3f3ebc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added bounded routine browser-parity cases and byte-identical documentation for AA/QQbar roots, weight-two modular symbols, the headline cubic number-field workflow, and canonical SagePack persistence of number fields, maximal orders, ideals, authenticated prime ideals, and maximality certificates. Declared each workflow's exact artifact, shared-runtime, or portable-fallback routes and regenerated the public capability report.",
+    "risks": [
+      "The full browser run must use the final clean production artifact. Native AA/QQbar and modular-symbol outputs were checked directly; the cubic signature and ramified-prime output were checked directly, while the isolated lane lacked a built optional FLINT adapter for rerunning the zeta coefficient batch.",
+      "A post-rebase portable-suite rerun reached an unrelated module-cache failure because this lane's dist predates the integrated Unicode dynamic-namespace fix. The final clean integration build must rerun that suite."
+    ],
+    "next_steps": [
+      "Merge before the runtime-route tracing lane so it can treat these new cases as trace coverage.",
+      "Run the routine and release parity corpus in all three browser engines against the final authenticated artifact."
+    ]
+  }
+}

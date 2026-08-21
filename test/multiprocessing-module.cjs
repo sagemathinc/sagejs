@@ -469,13 +469,19 @@ test("task evaluators load only validated precompiled module resources", () => {
     join(root, "dist/compiler/compiler.js"),
     "utf8",
   );
+  const filenameMarker =
+    "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
   const dependencyCache = {
+    schema: "sagejs.lazy-module-template/v1",
     version: "test-compiler-version",
     signature: sha1(dependencySourceText),
     mode: "python",
     module: "colorsys",
+    package: false,
+    filenameMarker,
+    packagePathMarker: null,
     javascriptTemplate: [
-      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      `var __file__ = ${JSON.stringify(filenameMarker)};`,
       "var collision;",
       "collision = function collision(left, right) { return left + right; };",
       "var dependencyFixture = function dependencyFixture(value) { return collision(value, 1); };",
@@ -483,12 +489,16 @@ test("task evaluators load only validated precompiled module resources", () => {
     ].join("\n"),
   };
   const cache = {
+    schema: "sagejs.lazy-module-template/v1",
     version: "test-compiler-version",
     signature: sha1(sourceText),
     mode: "python",
     module: "fnmatch",
+    package: false,
+    filenameMarker,
+    packagePathMarker: null,
     javascriptTemplate: [
-      'var __file__ = "__sagejs_precompiled_module_filename__";',
+      `var __file__ = ${JSON.stringify(filenameMarker)};`,
       'void Reflect.get(ρσ_modules, "__name__");',
       "var collision;",
       'var dependency = globalThis.__sagejs_load_module__("colorsys");',
@@ -503,7 +513,7 @@ test("task evaluators load only validated precompiled module resources", () => {
   writeFileSync(join(directory, "fnmatch.json"), JSON.stringify(cache));
   writeFileSync(join(directory, "colorsys.json"), JSON.stringify(dependencyCache));
   const manifest = {
-    schema: "sagejs.task-runtime-modules/v2",
+    schema: "sagejs.task-runtime-modules/v3",
     compilerSha256: sha256(compilerText),
     roots: ["fnmatch"],
     modules: {
@@ -512,7 +522,9 @@ test("task evaluators load only validated precompiled module resources", () => {
         version: cache.version,
         signature: cache.signature,
         mode: cache.mode,
-        filename: "/__sagejs_task_modules__/fnmatch.py",
+        package: false,
+        filename: "/__sagejs_lazy_modules__/fnmatch.py",
+        packagePath: null,
         source: "fnmatch.py",
       },
       colorsys: {
@@ -520,7 +532,9 @@ test("task evaluators load only validated precompiled module resources", () => {
         version: dependencyCache.version,
         signature: dependencyCache.signature,
         mode: dependencyCache.mode,
-        filename: "/__sagejs_task_modules__/colorsys.py",
+        package: false,
+        filename: "/__sagejs_lazy_modules__/colorsys.py",
+        packagePath: null,
         source: "colorsys.py",
       },
       // Freshness validates every allowlisted source, but loading the used
@@ -530,11 +544,18 @@ test("task evaluators load only validated precompiled module resources", () => {
         version: cache.version,
         signature: sha1(unusedSourceText),
         mode: cache.mode,
-        filename: "/__sagejs_task_modules__/calendar.py",
+        package: false,
+        filename: "/__sagejs_lazy_modules__/calendar.py",
+        packagePath: null,
         source: "calendar.py",
       },
     },
   };
+  manifest.modules = Object.fromEntries(
+    Object.entries(manifest.modules).sort(([left], [right]) =>
+      left.localeCompare(right)
+    ),
+  );
   const manifestFilename = join(directory, "task-runtime-modules.json");
   writeFileSync(manifestFilename, JSON.stringify(manifest));
   try {

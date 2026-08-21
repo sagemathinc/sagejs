@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-qqbar-matrix",
+  "title": "Wasm QQbar matrix resources",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run representative public AA/QQbar polynomial-root and matrix workflows through receipt-backed FLINT qqbar/Arb WebAssembly with exact and enclosure differentials, explicit fallback, and a balanced warm benchmark",
+  "base_commit": "69381f4784e6c512e6f321de57841007a1a3d9c1",
+  "claims": [
+    "packages/flint/src/algebraic_core.c",
+    "packages/flint/src/algebraic_core.h",
+    "packages/flint-wasm/src/algebraic.c",
+    "packages/flint-wasm/algebraic.mjs",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+    "packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+    "packages/flint-wasm/test/algebraic-matrix-route.test.mjs",
+    "test/algebraic-wasm-parity.cjs",
+    "test/algebraic-matrix-wasm-route.cjs",
+    "bench/wasm-algebraic-matrix.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT qqbar and gr_mat APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "native @sagemath/sagejs-flint qqbar matrix operations",
+      "portable exact polynomial and matrix computation with algebraic accelerator disabled"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "node --test test/algebraic-wasm-parity.cjs packages/flint-wasm/test/algebraic-matrix-route.test.mjs packages/flint-wasm/test/algebraic-resource.test.mjs packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+    "node packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+    "node bench/wasm-algebraic-matrix.cjs --check",
+    "cc -std=c11 -Wall -Wextra -Werror -fsyntax-only -Ipackages/flint/.native/prefix/include packages/flint/src/algebraic_core.c"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/algebraic-wasm-parity.cjs test/algebraic-matrix-wasm-route.cjs packages/flint-wasm/test/algebraic-resource.test.mjs packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.016,
+      "started_at": "2026-08-21T01:04:14.423Z",
+      "commit": "8c378b089b3276d0dc819346faba39a552781d71",
+      "workspace_fingerprint": "029c97116448d463b16ac704c392fdefd50f911905c07f26d65f1fea3694e78c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/algebraic-matrix-browser-proof.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.911,
+      "started_at": "2026-08-21T01:04:20.913Z",
+      "commit": "8c378b089b3276d0dc819346faba39a552781d71",
+      "workspace_fingerprint": "029c97116448d463b16ac704c392fdefd50f911905c07f26d65f1fea3694e78c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-algebraic-matrix.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.316,
+      "started_at": "2026-08-21T01:04:28.135Z",
+      "commit": "8c378b089b3276d0dc819346faba39a552781d71",
+      "workspace_fingerprint": "029c97116448d463b16ac704c392fdefd50f911905c07f26d65f1fea3694e78c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "cc -std=c11 -Wall -Wextra -Werror -fsyntax-only -Ipackages/flint/.native/prefix/include packages/flint/src/algebraic_core.c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.077,
+      "started_at": "2026-08-21T01:04:42.985Z",
+      "commit": "8c378b089b3276d0dc819346faba39a552781d71",
+      "workspace_fingerprint": "029c97116448d463b16ac704c392fdefd50f911905c07f26d65f1fea3694e78c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.66,
+      "started_at": "2026-08-21T01:05:25.513Z",
+      "commit": "8c378b089b3276d0dc819346faba39a552781d71",
+      "workspace_fingerprint": "029c97116448d463b16ac704c392fdefd50f911905c07f26d65f1fea3694e78c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "AA/QQbar dense matrices now use bounded generation-tagged resources over FLINT gr_mat and qqbar in the standalone algebraic Wasm artifact. Public Sage source and explicit Chromium proofs cover construction, arithmetic, RREF/inverse, determinant/rank, characteristic polynomials, exact/enclosure differentials, route telemetry, cleanup, and portable fallback. A balanced warm native/Wasm benchmark prevents silent slow-path regression.",
+    "risks": [
+      "The integration lane must regenerate and review shared native export inventory files for the eleven new C ABI functions before architecture:check can pass.",
+      "The bounded browser ABI intentionally limits dimensions to 128 and total entries to 4096; callers receive an explicit resource-limit error beyond that scope."
+    ],
+    "next_steps": [
+      "Cherry-pick a6d5e01c and 8c378b08, then run node scripts/audit-native-exports.cjs --write in the integration lane.",
+      "Rebuild the production Wasm receipt after integration so the exact browser and Node-Wasm runtime closure authenticates the new algebraic artifact."
+    ]
+  }
+}

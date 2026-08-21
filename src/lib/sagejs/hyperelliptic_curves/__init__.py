@@ -7,14 +7,11 @@ importing `hasse_witt` or `genus3_completion` does not pull in that boundary.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from .model import (
-        HyperellipticCurve,
-        HyperellipticCurve_generic,
-        HyperellipticCurvePoint,
-    )
+HyperellipticCurve: Any
+HyperellipticCurve_generic: Any
+HyperellipticCurvePoint: Any
 
 __all__ = [
     "HyperellipticCurve",

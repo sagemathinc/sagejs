@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-numeric-plot",
+  "title": "Wasm numeric and analytic plot batching",
+  "lane": "elliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile browser analytic and complex-plot workloads, eliminate the highest-value per-point/materialization overhead with a semantics-preserving batched path, and add focused route and performance regressions",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "packages/flint/src/elliptic_lfunction.c",
+    "packages/flint/include/sagejs/elliptic_lfunction_ffi.h",
+    "test/wasm-numeric-plot-batching.cjs",
+    "bench/wasm-numeric-plot-profile.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython-compatible complex_plot sampling semantics",
+      "JavaScript fallback plot pixel and diagnostic output",
+      "Receipt-backed elliptic L-series Wasm batch diagnostics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:elliptic-curves"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

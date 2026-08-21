@@ -19,12 +19,14 @@ _dense_prime_flint_module_cache = runtime.undefined
 _dense_prime_fflas_module_cache = runtime.undefined
 _dense_word_prime_flint_module_cache = runtime.undefined
 _dense_binary_m4ri_kernel_module_cache = runtime.undefined
+_dense_integer_kernel_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
 _dense_rational_kernel_module_cache = runtime.undefined
 _dense_rational_flint_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
+_wasm_word_prime_resource_available_cache = runtime.undefined
 _FFLAS_DOUBLE_MAX_MODULUS = 94906266
 _PACKED_PRIME_MAX_MODULUS = 256
 _matrix_selection_module_cache = runtime.undefined
@@ -67,6 +69,14 @@ class _FmpqMatrixResourceStorage:
         self.denominators: Any = runtime.undefined
 
 
+class _SingularPackedRationalMatrix(Exception):
+    """Signal a mathematically singular packed rational inverse."""
+
+
+class _NonuniquePackedRationalSolve(Exception):
+    """Signal that the square packed solve has no unique solution."""
+
+
 class _M4riMatrixResourceStorage:
     """Own one generated M4RI binary-matrix resource.
 
@@ -89,6 +99,16 @@ class _NmodMatrixResourceStorage:
 
     def __init__(self, resource: Any) -> None:
         self.resource = resource
+
+
+def _dense_integer_kernel_module() -> Any:
+    """Load source-transparent dense `ZZ` structural kernels lazily."""
+    global _dense_integer_kernel_module_cache
+    if _dense_integer_kernel_module_cache is runtime.undefined:
+        _dense_integer_kernel_module_cache = __import__(
+            "sagejs.kernels.matrix.dense_integer", fromlist=["dense_integer"]
+        )
+    return _dense_integer_kernel_module_cache
 
 
 def _dense_integer_flint_module() -> Any:
@@ -129,6 +149,12 @@ def _flint_ffi_module() -> Any:
     if _flint_ffi_module_cache is runtime.undefined:
         _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
     return _flint_ffi_module_cache
+
+
+def _flint_backend_has_function(name: str) -> bool:
+    """Test one optional generated FLINT operation without caching it."""
+    candidate = runtime.reflect.get(runtime.flint_backend(), name)
+    return runtime.jstype(candidate) == "function"
 
 
 def _m4ri_ffi_module() -> Any:
@@ -427,8 +453,11 @@ def _is_word_prime_resource_base(base: sage.Parent) -> bool:
     # FLINT's mature canonical nmod_mat representation; merely fitting exactly
     # in Modular<double> is not sufficient to make conversion competitive.
     # The Node adapter and FLINT resources in this release are 64-bit. Wasm32
-    # FLINT has 32-bit `ulong`; large moduli must remain on the portable packed
-    # path until an arbitrary-prime matrix resource is available there.
+    # FLINT has 32-bit `ulong`, so its authenticated generated-resource route
+    # is valid through `2^32 - 1`. This includes the complete exact
+    # `Modular<double>` range used by the optional desktop FFLAS adapter.
+    # Larger browser moduli and hosts without the production Wasm resolver
+    # retain the portable path until an arbitrary-prime resource is available.
     process = runtime.reflect.get(runtime.global_object, "process")
     versions = (
         runtime.undefined
@@ -440,9 +469,25 @@ def _is_word_prime_resource_base(base: sage.Parent) -> bool:
         if versions is runtime.undefined
         else runtime.reflect.get(versions, "node")
     )
+    if node is not runtime.undefined:
+        return _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFFFFFFFFFF
+    global _wasm_word_prime_resource_available_cache
+    if _wasm_word_prime_resource_available_cache is runtime.undefined:
+        resolver_available = (
+            runtime.reflect.get(
+                runtime.global_object,
+                "__sagejs_wasm_native_resolver__",
+            )
+            is not runtime.undefined
+        )
+        # A module may be imported while the evaluator is still installing
+        # its authenticated resolver. Cache success, but retry an early false
+        # observation on the first actual matrix construction.
+        if resolver_available:
+            _wasm_word_prime_resource_available_cache = True
     return (
-        node is not runtime.undefined
-        and _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFFFFFFFFFF
+        _wasm_word_prime_resource_available_cache is True
+        and _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFF
     )
 
 
@@ -577,9 +622,44 @@ def _dense_integer_zeros(
                     word_capacity,
                 ],
             )
+        return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
     if _declared_ffi_kernel(kernel_function):
         return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
     return [0 for _index in range(length)]
+
+
+def _portable_integer_matrix_rank(source: Any, rows: int, columns: int) -> int:
+    """Compute exact rank by division-free elimination over `ZZ`."""
+    values = [runtime.integer_bigint(value) for value in source]
+    rank = 0
+    for column in range(columns):
+        pivot_row = rank
+        while pivot_row < rows and values[pivot_row * columns + column] == 0:
+            pivot_row += 1
+        if pivot_row == rows:
+            continue
+        if pivot_row != rank:
+            for index in range(columns):
+                left = rank * columns + index
+                right = pivot_row * columns + index
+                values[left], values[right] = values[right], values[left]
+        pivot = values[rank * columns + column]
+        for row in range(rank + 1, rows):
+            factor = values[row * columns + column]
+            if factor == 0:
+                continue
+            for index in range(column + 1, columns):
+                destination = row * columns + index
+                pivot_entry = rank * columns + index
+                values[destination] = runtime.native_sub(
+                    runtime.native_mul(pivot, values[destination]),
+                    runtime.native_mul(factor, values[pivot_entry]),
+                )
+            values[row * columns + column] = runtime.bigint(0)
+        rank += 1
+        if rank == rows:
+            break
+    return rank
 
 
 def _compact_integer_buffer(source: Any) -> Any:
@@ -1387,6 +1467,12 @@ class MatrixSpaceParent(sage.Parent):
             except TypeError:
                 packed_integers = runtime.undefined
             if packed_integers is not runtime.undefined:
+                if not _flint_backend_has_function("ffiFmpqMatrixFromFmpz"):
+                    numerators = runtime.integer_buffer_from_packed_bytes(
+                        packed_integers,
+                        self._rows * self._cols,
+                    )
+                    return self._from_canonical_integer_rationals(numerators)
                 ffi = _flint_ffi_module()
                 region = ffi.FlintByteRegion.from_bytes(packed_integers)
                 integer_resource = runtime.undefined
@@ -1428,6 +1514,35 @@ class MatrixSpaceParent(sage.Parent):
         return self._from_packed_rationals(
             runtime.exact_integer_values_to_packed_bytes(parts)
         )
+
+    def _from_canonical_integer_rationals(self, entries: Any) -> Matrix:
+        """Own trusted integer numerators as packed rationals of denominator one."""
+        if self._base is not sage.QQ:
+            raise TypeError("integer-rational storage requires QQ")
+        count = self._rows * self._cols
+        if _integer_buffer_length(entries) != count:
+            raise ValueError("rational matrix entry count does not match dimensions")
+        return Matrix(
+            self,
+            _PackedRationalStorage(
+                _owned_integer_buffer(entries),
+                runtime.integer_buffer([1 for _entry in range(count)], 1),
+            ),
+        )
+
+    def _from_fmpz_resource_as_rationals(self, resource: Any) -> Matrix:
+        """Copy an integer resource through the available exact promotion route."""
+        if self._base is not sage.QQ:
+            raise TypeError("integer-resource promotion requires QQ")
+        ffi = _flint_ffi_module()
+        if _flint_backend_has_function("ffiFmpqMatrixFromFmpz"):
+            return self._from_fmpq_matrix_resource(ffi.fmpq_matrix_from_fmpz(resource))
+        region = ffi.fmpz_matrix_serialize(resource)
+        entries = runtime.integer_buffer_from_packed_bytes(
+            _packed_uint8_suffix(region.take_bytes(), 24),
+            self._rows * self._cols,
+        )
+        return self._from_canonical_integer_rationals(entries)
 
     def _from_rational_parts(
         self,
@@ -1578,18 +1693,21 @@ class MatrixSpaceParent(sage.Parent):
                 if resource is not runtime.undefined:
                     if self._base is sage.ZZ:
                         return self._from_fmpz_matrix_resource(resource)
-                    ffi = _flint_ffi_module()
                     try:
-                        rational_resource = ffi.fmpq_matrix_from_fmpz(resource)
+                        result = self._from_fmpz_resource_as_rationals(resource)
                     finally:
                         resource.close()
                     _trace_dense_rational_selection(
                         "random_element",
-                        "generated-fmpz-resource-promotion",
+                        (
+                            "generated-fmpz-resource-promotion"
+                            if _flint_backend_has_function("ffiFmpqMatrixFromFmpz")
+                            else "packed-fmpz-denominator-one"
+                        ),
                         self._rows,
                         self._cols,
                     )
-                    return self._from_fmpq_matrix_resource(rational_resource)
+                    return result
         entries = []
         for _index in range(self._rows * self._cols):
             if _random_float() > probability:
@@ -2431,8 +2549,36 @@ class Matrix(sage.Element):
             # may still return an opaque FLINT matrix.  Convert at this single
             # audited ingress and discard the handle immediately: no public
             # ZZ Matrix may own, cache, or later recover it.
-            packed_bytes = runtime.flint_backend().zzMatrixExportPacked(native_value)
-            packed_matrix = parent._from_packed_integers(packed_bytes)
+            backend = runtime.flint_backend()
+            export_packed = runtime.reflect.get(backend, "zzMatrixExportPacked")
+            if runtime.jstype(export_packed) == "function":
+                packed_bytes = runtime.reflect.apply(
+                    export_packed, backend, [native_value]
+                )
+                packed_matrix = parent._from_packed_integers(packed_bytes)
+            else:
+                # The browser's portable exact backend intentionally has no
+                # opaque-handle export. Its checked `matrixEntry` boundary is
+                # the compatibility ingress for the remaining legacy
+                # producers, including the weight-2 modular-symbol builders.
+                matrix_entry = runtime.reflect.get(backend, "matrixEntry")
+                if runtime.jstype(matrix_entry) != "function":
+                    raise RuntimeError(
+                        "integer matrix backend has no exact compatibility ingress"
+                    )
+                entries = []
+                for row in range(parent.nrows()):
+                    for column in range(parent.ncols()):
+                        entries.append(
+                            runtime.normalize_integer(
+                                runtime.reflect.apply(
+                                    matrix_entry,
+                                    backend,
+                                    [native_value, row, column],
+                                )
+                            )
+                        )
+                packed_matrix = parent._from_integer_values(entries)
             # Transfer the generated resource wrapper; copying here would
             # create a second owner and leave the temporary to GC finalization.
             native_value = packed_matrix._integer_storage_cache
@@ -2445,11 +2591,40 @@ class Matrix(sage.Element):
             # generated resource, and immediately discard the legacy handle.
             # New algorithms must return generated resources directly instead
             # of relying on this bridge.
-            packed_bytes = runtime.flint_backend().qqMatrixExportPacked(native_value)
-            packed_matrix = parent._from_packed_rationals(packed_bytes)
-            native_value = _FmpqMatrixResourceStorage(
-                _flint_ffi_module().fmpq_matrix_copy(packed_matrix._rational_resource())
-            )
+            backend = runtime.flint_backend()
+            export_packed = runtime.reflect.get(backend, "qqMatrixExportPacked")
+            if runtime.jstype(export_packed) == "function":
+                packed_bytes = runtime.reflect.apply(
+                    export_packed, backend, [native_value]
+                )
+                packed_matrix = parent._from_packed_rationals(packed_bytes)
+            else:
+                # The browser's portable exact backend represents temporary
+                # rational matrices as canonical numerator/denominator pairs.
+                # Import those pairs through the generated resource boundary
+                # just as the integer compatibility path above imports scalar
+                # entries when its desktop packed exporter is unavailable.
+                matrix_entry = runtime.reflect.get(backend, "matrixEntry")
+                if runtime.jstype(matrix_entry) != "function":
+                    raise RuntimeError(
+                        "rational matrix backend has no exact compatibility ingress"
+                    )
+                entries = []
+                for row in range(parent.nrows()):
+                    for column in range(parent.ncols()):
+                        entries.append(
+                            _rational_result(
+                                runtime.reflect.apply(
+                                    matrix_entry,
+                                    backend,
+                                    [native_value, row, column],
+                                )
+                            )
+                        )
+                packed_matrix = parent._from_rational_values(entries)
+            # Transfer the generated resource wrapper; copying here would
+            # create a second owner and leave the temporary to finalization.
+            native_value = packed_matrix._rational_storage_cache
         self._parent = parent
         self._native_handle: Any = runtime.undefined
         self._m4ri_storage_cache: Any = runtime.undefined
@@ -2820,23 +2995,33 @@ class Matrix(sage.Element):
         """Decode one affine entry sequence through a generated bulk export."""
         ffi = _flint_ffi_module()
         if self._has_fmpz_matrix_resource():
-            region = ffi.fmpz_matrix_serialize_sequence(
-                self._integer_resource(), start, stride, count
-            )
-            values = runtime.exact_integer_values_from_packed_bytes(
-                region.take_bytes(), count
-            )
-            return [runtime.normalize_integer(value) for value in values]
+            if _flint_backend_has_function(
+                "ffiFmpzMatrixSerializeSequence"
+            ) and _flint_backend_has_function("ffiFlintByteRegionClose"):
+                region = ffi.fmpz_matrix_serialize_sequence(
+                    self._integer_resource(), start, stride, count
+                )
+                values = runtime.exact_integer_values_from_packed_bytes(
+                    region.take_bytes(), count
+                )
+                return [runtime.normalize_integer(value) for value in values]
+            values = self._exact_host_values()
+            return [values[start + index * stride] for index in range(count)]
         if self._has_fmpq_matrix_resource():
-            region = ffi.fmpq_matrix_serialize_sequence(
-                self._rational_resource(), start, stride, count
-            )
-            parts = runtime.exact_integer_values_from_packed_bytes(
-                region.take_bytes(), 2 * count
-            )
-            return runtime.reduced_rational_values_from_parts(
-                parts, _untyped(sage.Rational), sage.QQ
-            )
+            if _flint_backend_has_function(
+                "ffiFmpqMatrixSerializeSequence"
+            ) and _flint_backend_has_function("ffiFlintByteRegionClose"):
+                region = ffi.fmpq_matrix_serialize_sequence(
+                    self._rational_resource(), start, stride, count
+                )
+                parts = runtime.exact_integer_values_from_packed_bytes(
+                    region.take_bytes(), 2 * count
+                )
+                return runtime.reduced_rational_values_from_parts(
+                    parts, _untyped(sage.Rational), sage.QQ
+                )
+            values = self._exact_host_values()
+            return [values[start + index * stride] for index in range(count)]
         raise TypeError("bulk exact selection requires a generated matrix resource")
 
     def _cached_row_vectors(self) -> list[Vector]:
@@ -2947,7 +3132,9 @@ class Matrix(sage.Element):
 
     def is_zero(self) -> bool:
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
+            if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+                "ffiFmpqMatrixIsZero"
+            ):
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_is_zero(self._rational_resource())
                 )
@@ -2969,12 +3156,20 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_integer_storage():
-            result = bool(
-                _flint_ffi_module().fmpz_matrix_is_zero(self._integer_resource())
-            )
+            if _flint_backend_has_function("ffiFmpzMatrixIsZero"):
+                result = bool(
+                    _flint_ffi_module().fmpz_matrix_is_zero(self._integer_resource())
+                )
+                implementation = "generated-flint-resource"
+            else:
+                kernel = _dense_integer_kernel_module().dense_integer_matrix_is_zero
+                result = bool(
+                    kernel(_dense_integer_buffer(kernel, self._integer_entries()))
+                )
+                implementation = _typed_python_implementation(kernel)
             _trace_dense_integer_selection(
                 "is_zero",
-                "generated-flint-resource",
+                implementation,
                 self.nrows(),
                 self.ncols(),
             )
@@ -3684,9 +3879,7 @@ class Matrix(sage.Element):
                     base,
                     self.nrows(),
                     self.ncols(),
-                )._from_fmpq_matrix_resource(
-                    _flint_ffi_module().fmpq_matrix_from_fmpz(self._integer_resource())
-                )
+                )._from_fmpz_resource_as_rationals(self._integer_resource())
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if base is sage.ZZ and self.base_ring() is sage.QQ:
             if self._has_packed_rational_storage():
@@ -3760,7 +3953,11 @@ class Matrix(sage.Element):
     def __add__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
-            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+            if (
+                left._has_fmpq_matrix_resource()
+                and right._has_fmpq_matrix_resource()
+                and _flint_backend_has_function("ffiFmpqMatrixAdd")
+            ):
                 resource = _flint_ffi_module().fmpq_matrix_add(
                     left._rational_resource(),
                     right._rational_resource(),
@@ -3806,16 +4003,40 @@ class Matrix(sage.Element):
                 storage.numerators, storage.denominators
             )
         if left._has_integer_storage() and right._has_integer_storage():
-            resource = _flint_ffi_module().fmpz_matrix_add(
-                left._integer_resource(), right._integer_resource()
+            if _flint_backend_has_function("ffiFmpzMatrixAdd"):
+                resource = _flint_ffi_module().fmpz_matrix_add(
+                    left._integer_resource(), right._integer_resource()
+                )
+                _trace_dense_integer_selection(
+                    "add",
+                    "generated-flint-resource",
+                    left.nrows(),
+                    left.ncols(),
+                )
+                return left._parent._from_fmpz_matrix_resource(resource)
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_add
+            left_entries = _dense_integer_buffer(kernel, left._integer_entries())
+            right_entries = _dense_integer_buffer(kernel, right._integer_entries())
+            output = _dense_integer_zeros(
+                kernel,
+                left.nrows() * left.ncols(),
+                max(
+                    _matrix_integer_word_capacity(left_entries),
+                    _matrix_integer_word_capacity(right_entries),
+                )
+                + 1,
             )
+            if not kernel(output, left_entries, right_entries):
+                raise RuntimeError("dense integer addition mismatch")
             _trace_dense_integer_selection(
                 "add",
-                "generated-flint-resource",
+                _typed_python_implementation(kernel),
                 left.nrows(),
                 left.ncols(),
             )
-            return left._parent._from_fmpz_matrix_resource(resource)
+            return left._parent._from_canonical_integer_entries(
+                _compact_integer_buffer(output)
+            )
         if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
             resource = _m4ri_ffi_module().matrix_add(
                 left._m4ri_resource(), right._m4ri_resource()
@@ -3863,7 +4084,11 @@ class Matrix(sage.Element):
     def __sub__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
-            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+            if (
+                left._has_fmpq_matrix_resource()
+                and right._has_fmpq_matrix_resource()
+                and _flint_backend_has_function("ffiFmpqMatrixSub")
+            ):
                 resource = _flint_ffi_module().fmpq_matrix_sub(
                     left._rational_resource(),
                     right._rational_resource(),
@@ -3909,16 +4134,40 @@ class Matrix(sage.Element):
                 storage.numerators, storage.denominators
             )
         if left._has_integer_storage() and right._has_integer_storage():
-            resource = _flint_ffi_module().fmpz_matrix_sub(
-                left._integer_resource(), right._integer_resource()
+            if _flint_backend_has_function("ffiFmpzMatrixSub"):
+                resource = _flint_ffi_module().fmpz_matrix_sub(
+                    left._integer_resource(), right._integer_resource()
+                )
+                _trace_dense_integer_selection(
+                    "subtract",
+                    "generated-flint-resource",
+                    left.nrows(),
+                    left.ncols(),
+                )
+                return left._parent._from_fmpz_matrix_resource(resource)
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_subtract
+            left_entries = _dense_integer_buffer(kernel, left._integer_entries())
+            right_entries = _dense_integer_buffer(kernel, right._integer_entries())
+            output = _dense_integer_zeros(
+                kernel,
+                left.nrows() * left.ncols(),
+                max(
+                    _matrix_integer_word_capacity(left_entries),
+                    _matrix_integer_word_capacity(right_entries),
+                )
+                + 1,
             )
+            if not kernel(output, left_entries, right_entries):
+                raise RuntimeError("dense integer subtraction mismatch")
             _trace_dense_integer_selection(
                 "subtract",
-                "generated-flint-resource",
+                _typed_python_implementation(kernel),
                 left.nrows(),
                 left.ncols(),
             )
-            return left._parent._from_fmpz_matrix_resource(resource)
+            return left._parent._from_canonical_integer_entries(
+                _compact_integer_buffer(output)
+            )
         if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
             resource = _m4ri_ffi_module().matrix_add(
                 left._m4ri_resource(), right._m4ri_resource()
@@ -3968,7 +4217,9 @@ class Matrix(sage.Element):
         )
 
     def __neg__(self) -> Matrix:
-        if self._has_fmpz_matrix_resource():
+        if self._has_fmpz_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpzMatrixNeg"
+        ):
             resource = _flint_ffi_module().fmpz_matrix_neg(self._integer_resource())
             _trace_dense_integer_selection(
                 "negate",
@@ -3977,7 +4228,9 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return self._parent._from_same_shape_fmpz_matrix_resource(resource)
-        if self._has_fmpq_matrix_resource():
+        if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpqMatrixNeg"
+        ):
             resource = _flint_ffi_module().fmpq_matrix_neg(self._rational_resource())
             _trace_dense_rational_selection(
                 "negate",
@@ -4016,6 +4269,25 @@ class Matrix(sage.Element):
             )
             return self._parent._from_canonical_rational_entries(
                 storage.numerators, storage.denominators
+            )
+        if self._has_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_negate
+            source = _dense_integer_buffer(kernel, self._integer_entries())
+            output = _dense_integer_zeros(
+                kernel,
+                self.nrows() * self.ncols(),
+                _matrix_integer_word_capacity(source),
+            )
+            if not kernel(output, source):
+                raise RuntimeError("dense integer negation mismatch")
+            _trace_dense_integer_selection(
+                "negate",
+                _typed_python_implementation(kernel),
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_canonical_integer_entries(
+                _compact_integer_buffer(output)
             )
         if self._has_m4ri_matrix_resource():
             resource = _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
@@ -4062,7 +4334,11 @@ class Matrix(sage.Element):
             self.base_ring()
         ):
             return self.change_ring(_untyped(scalar_parent))._scalar_mul(scalar)
-        if self._has_fmpz_matrix_resource() and runtime.is_exact_integer(scalar):
+        if (
+            self._has_fmpz_matrix_resource()
+            and runtime.is_exact_integer(scalar)
+            and _flint_backend_has_function("ffiFmpzMatrixScalarMul")
+        ):
             resource = _flint_ffi_module().fmpz_matrix_scalar_mul(
                 self._integer_resource(), scalar
             )
@@ -4073,8 +4349,10 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return self._parent._from_same_shape_fmpz_matrix_resource(resource)
-        if self._has_fmpq_matrix_resource() and (
-            runtime.is_exact_integer(scalar) or isinstance(scalar, sage.Rational)
+        if (
+            self._has_fmpq_matrix_resource()
+            and (runtime.is_exact_integer(scalar) or isinstance(scalar, sage.Rational))
+            and _flint_backend_has_function("ffiFmpqMatrixScalarMul")
         ):
             if isinstance(scalar, sage.Rational):
                 numerator = scalar._numerator
@@ -4169,19 +4447,40 @@ class Matrix(sage.Element):
                 result_base = _common_base(self.base_ring(), scalar_base)
                 return self.change_ring(result_base)._scalar_mul(scalar)
             factor = sage.ZZ(scalar)
-            resource = _flint_ffi_module().fmpz_matrix_scalar_mul(
-                self._integer_resource(), factor
+            if _flint_backend_has_function("ffiFmpzMatrixScalarMul"):
+                resource = _flint_ffi_module().fmpz_matrix_scalar_mul(
+                    self._integer_resource(), factor
+                )
+                _trace_dense_integer_selection(
+                    "scalar_multiply",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return self._parent._from_same_shape_fmpz_matrix_resource(resource)
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_scalar_multiply
+            source = _dense_integer_buffer(kernel, self._integer_entries())
+            output = _dense_integer_zeros(
+                kernel,
+                self.nrows() * self.ncols(),
+                _matrix_integer_word_capacity(source) + _integer_value_capacity(factor),
             )
+            if not kernel(output, source, factor):
+                raise RuntimeError("dense integer scalar multiplication mismatch")
             _trace_dense_integer_selection(
                 "scalar_multiply",
-                "generated-flint-resource",
+                _typed_python_implementation(kernel),
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_same_shape_fmpz_matrix_resource(resource)
+            return self._parent._from_canonical_integer_entries(
+                _compact_integer_buffer(output)
+            )
         if self._has_packed_rational_storage():
             rational = sage.QQ(scalar)
-            if self._has_fmpq_matrix_resource():
+            if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+                "ffiFmpqMatrixScalarMul"
+            ):
                 resource = _flint_ffi_module().fmpq_matrix_scalar_mul(
                     self._rational_resource(),
                     rational._numerator,
@@ -4515,7 +4814,12 @@ class Matrix(sage.Element):
             raise ArithmeticError("matrix must be square")
         if exponent < 0:
             return self.inverse() ** (-exponent)
-        if self._has_fmpz_matrix_resource() and exponent <= 18446744073709551615:
+        if (
+            self._has_fmpz_matrix_resource()
+            and exponent <= 18446744073709551615
+            and _flint_backend_has_function("ffiFmpzMatrixPow")
+            and _flint_backend_has_function("ffiFmpzMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpz_matrix_pow(
                 self._integer_resource(), runtime.normalize_integer(exponent)
             )
@@ -4911,20 +5215,39 @@ class Matrix(sage.Element):
                 )
             elif self._has_integer_storage():
                 ffi = _flint_ffi_module()
-                resource = self._integer_resource()
                 maximum_rank = min(self.nrows(), self.ncols())
+                exact_rank = runtime.reflect.get(backend, "ffiFmpzMatrixRank")
+                modular_rank = runtime.reflect.get(backend, "ffiFmpzMatrixRankMod46337")
+                if exact_rank is runtime.undefined:
+                    self._rank_cache = _portable_integer_matrix_rank(
+                        self._exact_host_values(), self.nrows(), self.ncols()
+                    )
+                    _trace_dense_integer_selection(
+                        "rank",
+                        "division-free-integer-portable",
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                    return self._rank_cache
+                resource = self._integer_resource()
                 if algorithm in ["flint", "linbox"]:
                     rank = ffi.fmpz_matrix_rank(resource)
                     implementation = "generated-flint-resource-exact"
                 else:
-                    rank = ffi.fmpz_matrix_rank_mod_46337(resource)
-                    if rank == maximum_rank:
-                        implementation = "generated-flint-resource-modular-certificate"
-                    else:
+                    if modular_rank is runtime.undefined:
                         rank = ffi.fmpz_matrix_rank(resource)
-                        implementation = (
-                            "generated-flint-resource-modular-inconclusive-exact"
-                        )
+                        implementation = "generated-flint-resource-exact"
+                    else:
+                        rank = ffi.fmpz_matrix_rank_mod_46337(resource)
+                        if rank == maximum_rank:
+                            implementation = (
+                                "generated-flint-resource-modular-certificate"
+                            )
+                        else:
+                            rank = ffi.fmpz_matrix_rank(resource)
+                            implementation = (
+                                "generated-flint-resource-modular-inconclusive-exact"
+                            )
                 self._rank_cache = runtime.number(rank)
                 _trace_dense_integer_selection(
                     "rank",
@@ -5377,31 +5700,66 @@ class Matrix(sage.Element):
         if transformation:
             if self._hermite_transform_cache is runtime.undefined:
                 ffi = _flint_ffi_module()
-                hermite_resource = ffi.fmpz_matrix(self.nrows(), self.ncols())
-                transform_resource = runtime.undefined
-                try:
-                    transform_resource = ffi.fmpz_matrix(self.nrows(), self.nrows())
-                    ffi.fmpz_matrix_hnf_transform(
-                        hermite_resource,
-                        transform_resource,
-                        self._integer_resource(),
+                if _flint_backend_has_function("ffiFmpzMatrixHnfTransform"):
+                    hermite_resource = ffi.fmpz_matrix(self.nrows(), self.ncols())
+                    transform_resource = runtime.undefined
+                    try:
+                        transform_resource = ffi.fmpz_matrix(self.nrows(), self.nrows())
+                        ffi.fmpz_matrix_hnf_transform(
+                            hermite_resource,
+                            transform_resource,
+                            self._integer_resource(),
+                        )
+                        self._hermite_cache = self._parent._from_fmpz_matrix_resource(
+                            hermite_resource
+                        )
+                        self._hermite_transform_cache = MatrixSpace(
+                            sage.ZZ, self.nrows(), self.nrows()
+                        )._from_fmpz_matrix_resource(transform_resource)
+                    except Exception:
+                        hermite_resource.close()
+                        if transform_resource is not runtime.undefined:
+                            transform_resource.close()
+                        raise
+                    implementation = "generated-flint-resource"
+                else:
+                    kernel = _dense_integer_flint_module().flint_dense_integer_matrix_hnf_transform
+                    source = _dense_integer_buffer(kernel, self._integer_entries())
+                    capacity = max(1, _matrix_integer_word_capacity(source)) * max(
+                        1, self.nrows()
                     )
-                    self._hermite_cache = self._parent._from_fmpz_matrix_resource(
-                        hermite_resource
+                    hermite = _dense_integer_zeros(
+                        kernel, self.nrows() * self.ncols(), capacity
+                    )
+                    transform = _dense_integer_zeros(
+                        kernel, self.nrows() * self.nrows(), capacity
+                    )
+                    if not kernel(
+                        hermite,
+                        transform,
+                        source,
+                        self.nrows(),
+                        self.ncols(),
+                    ):
+                        raise RuntimeError("dense integer HNF transform failed")
+                    self._hermite_cache = self._parent._from_canonical_integer_entries(
+                        _compact_integer_buffer(hermite)
                     )
                     self._hermite_transform_cache = MatrixSpace(
                         sage.ZZ, self.nrows(), self.nrows()
-                    )._from_fmpz_matrix_resource(transform_resource)
-                except Exception:
-                    hermite_resource.close()
-                    if transform_resource is not runtime.undefined:
-                        transform_resource.close()
-                    raise
+                    )._from_canonical_integer_entries(
+                        _compact_integer_buffer(transform)
+                    )
+                    implementation = (
+                        "declared-flint-isolated"
+                        if _native_kernel_available(kernel)
+                        else "declared-flint-adapter"
+                    )
                 self._hermite_cache._hermite_cache = self._hermite_cache
                 self._hermite_cache.set_immutable()
                 _trace_dense_integer_selection(
                     "hermite_form",
-                    "generated-flint-resource",
+                    implementation,
                     self.nrows(),
                     self.ncols(),
                 )
@@ -5432,41 +5790,89 @@ class Matrix(sage.Element):
             raise TypeError("Smith form currently requires an integer matrix")
         if self._smith_cache is runtime.undefined:
             ffi = _flint_ffi_module()
-            smith_resource = ffi.fmpz_matrix(self.nrows(), self.ncols())
-            left_resource = runtime.undefined
-            right_resource = runtime.undefined
-            try:
-                left_resource = ffi.fmpz_matrix(self.nrows(), self.nrows())
-                right_resource = ffi.fmpz_matrix(self.ncols(), self.ncols())
-                ffi.fmpz_matrix_snf_transform(
-                    smith_resource,
-                    left_resource,
-                    right_resource,
-                    self._integer_resource(),
+            if _flint_backend_has_function("ffiFmpzMatrixSnfTransform"):
+                smith_resource = ffi.fmpz_matrix(self.nrows(), self.ncols())
+                left_resource = runtime.undefined
+                right_resource = runtime.undefined
+                try:
+                    left_resource = ffi.fmpz_matrix(self.nrows(), self.nrows())
+                    right_resource = ffi.fmpz_matrix(self.ncols(), self.ncols())
+                    ffi.fmpz_matrix_snf_transform(
+                        smith_resource,
+                        left_resource,
+                        right_resource,
+                        self._integer_resource(),
+                    )
+                    self._smith_cache = runtime.math_tuple(
+                        [
+                            MatrixSpace(
+                                sage.ZZ, self.nrows(), self.ncols()
+                            )._from_fmpz_matrix_resource(smith_resource),
+                            MatrixSpace(
+                                sage.ZZ, self.nrows(), self.nrows()
+                            )._from_fmpz_matrix_resource(left_resource),
+                            MatrixSpace(
+                                sage.ZZ, self.ncols(), self.ncols()
+                            )._from_fmpz_matrix_resource(right_resource),
+                        ]
+                    )
+                except Exception:
+                    smith_resource.close()
+                    if left_resource is not runtime.undefined:
+                        left_resource.close()
+                    if right_resource is not runtime.undefined:
+                        right_resource.close()
+                    raise
+                implementation = "generated-flint-resource"
+            else:
+                kernel = _dense_integer_flint_module().flint_dense_integer_matrix_snf_transform
+                source = _dense_integer_buffer(kernel, self._integer_entries())
+                capacity = max(1, _matrix_integer_word_capacity(source)) * max(
+                    1, self.nrows(), self.ncols()
                 )
+                smith = _dense_integer_zeros(
+                    kernel, self.nrows() * self.ncols(), capacity
+                )
+                left = _dense_integer_zeros(
+                    kernel, self.nrows() * self.nrows(), capacity
+                )
+                right = _dense_integer_zeros(
+                    kernel, self.ncols() * self.ncols(), capacity
+                )
+                if not kernel(
+                    smith,
+                    left,
+                    right,
+                    source,
+                    self.nrows(),
+                    self.ncols(),
+                ):
+                    raise RuntimeError("dense integer SNF transform failed")
                 self._smith_cache = runtime.math_tuple(
                     [
-                        MatrixSpace(
-                            sage.ZZ, self.nrows(), self.ncols()
-                        )._from_fmpz_matrix_resource(smith_resource),
+                        self._parent._from_canonical_integer_entries(
+                            _compact_integer_buffer(smith)
+                        ),
                         MatrixSpace(
                             sage.ZZ, self.nrows(), self.nrows()
-                        )._from_fmpz_matrix_resource(left_resource),
+                        )._from_canonical_integer_entries(
+                            _compact_integer_buffer(left)
+                        ),
                         MatrixSpace(
                             sage.ZZ, self.ncols(), self.ncols()
-                        )._from_fmpz_matrix_resource(right_resource),
+                        )._from_canonical_integer_entries(
+                            _compact_integer_buffer(right)
+                        ),
                     ]
                 )
-            except Exception:
-                smith_resource.close()
-                if left_resource is not runtime.undefined:
-                    left_resource.close()
-                if right_resource is not runtime.undefined:
-                    right_resource.close()
-                raise
+                implementation = (
+                    "declared-flint-isolated"
+                    if _native_kernel_available(kernel)
+                    else "declared-flint-adapter"
+                )
             _trace_dense_integer_selection(
                 "smith_form",
-                "generated-flint-resource",
+                implementation,
                 self.nrows(),
                 self.ncols(),
             )
@@ -5679,7 +6085,9 @@ class Matrix(sage.Element):
                     self.nrows(),
                     self.ncols(),
                 )
-            elif self._has_fmpq_matrix_resource():
+            elif self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+                "ffiFmpqMatrixRightKernel"
+            ):
                 columns = int(self.ncols())
                 ffi = _flint_ffi_module()
                 resource = ffi.fmpq_matrix_right_kernel(self._rational_resource())
@@ -6187,7 +6595,9 @@ class Matrix(sage.Element):
         if cached is not runtime.undefined:
             return cached
         ring = sage.PolynomialRing(self.base_ring(), variable)
-        if self._has_fmpz_matrix_resource():
+        if self._has_fmpz_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpzMatrixCharpoly"
+        ):
             resource = _flint_ffi_module().fmpz_matrix_charpoly(
                 self._integer_resource()
             )
@@ -6200,7 +6610,9 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return answer
-        if self._has_fmpq_matrix_resource():
+        if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpqMatrixCharpoly"
+        ):
             resource = _flint_ffi_module().fmpq_matrix_charpoly(
                 self._rational_resource()
             )
@@ -6223,6 +6635,30 @@ class Matrix(sage.Element):
             )
             self._charpoly_cache.set(variable, answer)
             self._trace_word_prime_resource("charpoly")
+            return answer
+        if self._has_integer_storage():
+            kernel = _dense_integer_flint_module().flint_dense_integer_matrix_charpoly
+            coefficient_count = self.nrows() + 1
+            source = _dense_integer_buffer(kernel, self._integer_entries())
+            output = _dense_integer_zeros(
+                kernel,
+                coefficient_count,
+                max(1, _matrix_integer_word_capacity(source)) * max(1, self.nrows()),
+            )
+            if not kernel(output, source, coefficient_count, self.nrows(), 1):
+                raise RuntimeError("dense integer characteristic polynomial failed")
+            answer = ring._from_coefficients(_integer_buffer_values(output))
+            self._charpoly_cache.set(variable, answer)
+            _trace_dense_integer_selection(
+                "charpoly",
+                (
+                    "declared-flint-isolated"
+                    if _native_kernel_available(kernel)
+                    else "declared-flint-adapter"
+                ),
+                self.nrows(),
+                self.ncols(),
+            )
             return answer
         if self._has_packed_rational_storage():
             kernel = _dense_rational_flint_module().flint_dense_rational_matrix_charpoly
@@ -6247,7 +6683,10 @@ class Matrix(sage.Element):
                 kernel,
                 coefficient_count,
                 invoke_rational_charpoly,
-                self._rational_capacity() + 1,
+                # A degree-`n` coefficient can contain products of `n`
+                # entries, so size the copied exact components like the
+                # integer characteristic-polynomial path above.
+                (self._rational_capacity() + 1) * max(1, self.nrows()),
             )
             numerators = _integer_buffer_values(storage.numerators)
             denominators = _integer_buffer_values(storage.denominators)
@@ -6332,7 +6771,9 @@ class Matrix(sage.Element):
         cached = self._minpoly_cache.get(variable)
         if cached is not runtime.undefined:
             return cached
-        if self._has_fmpz_matrix_resource():
+        if self._has_fmpz_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpzMatrixMinpoly"
+        ):
             ring = sage.PolynomialRing(sage.ZZ, variable)
             resource = _flint_ffi_module().fmpz_matrix_minpoly(self._integer_resource())
             answer = ring._from_fmpz_polynomial_resource(resource)
@@ -6344,7 +6785,9 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return answer
-        if self._has_fmpq_matrix_resource():
+        if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpqMatrixMinpoly"
+        ):
             ring = sage.PolynomialRing(sage.QQ, variable)
             resource = _flint_ffi_module().fmpq_matrix_minpoly(
                 self._rational_resource()
@@ -6473,12 +6916,14 @@ class Matrix(sage.Element):
             raise ArithmeticError("matrix must be square")
         if self._inverse_cache is not runtime.undefined:
             return self._inverse_cache.__copy__()
-        if self._has_fmpq_matrix_resource():
+        if self._has_fmpq_matrix_resource() and _flint_backend_has_function(
+            "ffiFmpqMatrixInv"
+        ):
             try:
                 resource = _flint_ffi_module().fmpq_matrix_inv(
                     self._rational_resource()
                 )
-            except Exception:
+            except ValueError:
                 raise ZeroDivisionError(  # noqa: B904
                     "matrix must be nonsingular"
                 )
@@ -6498,22 +6943,27 @@ class Matrix(sage.Element):
                 output_numerators: Any,
                 output_denominators: Any,
             ) -> None:
-                kernel(
-                    output_numerators,
-                    output_denominators,
-                    source_numerators,
-                    source_denominators,
-                    self.nrows(),
-                )
+                try:
+                    inverted = kernel(
+                        output_numerators,
+                        output_denominators,
+                        source_numerators,
+                        source_denominators,
+                        self.nrows(),
+                    )
+                except ValueError:
+                    raise _SingularPackedRationalMatrix  # noqa: B904
+                if not inverted:
+                    raise _SingularPackedRationalMatrix
 
             try:
                 storage = _run_rational_output(
                     kernel,
                     self.nrows() * self.ncols(),
                     invoke_rational_inverse,
-                    self._rational_capacity() + 1,
+                    (self._rational_capacity() + 1) * max(1, self.nrows()) + 1,
                 )
-            except Exception:
+            except _SingularPackedRationalMatrix:
                 raise ZeroDivisionError(  # noqa: B904
                     "matrix must be nonsingular"
                 )
@@ -6649,6 +7099,8 @@ class Matrix(sage.Element):
             and self._has_fmpz_matrix_resource()
             and right_matrix._has_fmpz_matrix_resource()
             and self.is_square()
+            and _flint_backend_has_function("ffiFmpqMatrixFromFmpz")
+            and _flint_backend_has_function("ffiFmpqMatrixSolve")
         ):
             ffi = _flint_ffi_module()
             rational_left = runtime.undefined
@@ -6690,6 +7142,7 @@ class Matrix(sage.Element):
         if (
             left_matrix._has_fmpq_matrix_resource()
             and right_matrix._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSolve")
         ):
             try:
                 resource = _flint_ffi_module().fmpq_matrix_solve(
@@ -6708,7 +7161,7 @@ class Matrix(sage.Element):
                     right_matrix.ncols(),
                 )
                 return solution.column(0) if vector_result else solution
-            except Exception:
+            except ValueError:
                 raise ValueError(  # noqa: B904
                     "matrix equation has no solutions"
                 )
@@ -6729,26 +7182,35 @@ class Matrix(sage.Element):
                 output_numerators: Any,
                 output_denominators: Any,
             ) -> None:
-                kernel(
-                    output_numerators,
-                    output_denominators,
-                    left_numerators,
-                    left_denominators,
-                    right_numerators,
-                    right_denominators,
-                    left_matrix.nrows(),
-                    right_matrix.ncols(),
-                )
+                try:
+                    solved = kernel(
+                        output_numerators,
+                        output_denominators,
+                        left_numerators,
+                        left_denominators,
+                        right_numerators,
+                        right_denominators,
+                        left_matrix.nrows(),
+                        right_matrix.ncols(),
+                    )
+                except ValueError:
+                    raise _NonuniquePackedRationalSolve  # noqa: B904
+                if not solved:
+                    raise _NonuniquePackedRationalSolve
 
             try:
                 storage = _run_rational_output(
                     kernel,
                     left_matrix.ncols() * right_matrix.ncols(),
                     invoke_rational_solve,
-                    max(
-                        left_matrix._rational_capacity(),
-                        right_matrix._rational_capacity(),
+                    (
+                        max(
+                            left_matrix._rational_capacity(),
+                            right_matrix._rational_capacity(),
+                        )
+                        + 1
                     )
+                    * max(1, left_matrix.nrows())
                     + 1,
                 )
                 solution = MatrixSpace(
@@ -6769,7 +7231,7 @@ class Matrix(sage.Element):
                     right_matrix.ncols(),
                 )
                 return solution.column(0) if vector_result else solution
-            except Exception:
+            except _NonuniquePackedRationalSolve:
                 pass
         if (
             left_matrix._has_m4ri_matrix_resource()
@@ -7315,7 +7777,11 @@ class Matrix(sage.Element):
             (int(index) for index in rows),
             self.nrows(),
         )
-        if self._has_fmpq_matrix_resource():
+        if (
+            self._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSelectRows")
+            and _flint_backend_has_function("ffiFmpqMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpq_matrix_select_rows(
                 self._rational_resource(),
                 _packed_uint64(indices),
@@ -7370,20 +7836,35 @@ class Matrix(sage.Element):
                 self.ncols(),
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
-            target = _flint_ffi_module().fmpz_matrix_select_rows(
-                self._integer_resource(),
-                _packed_uint64(indices),
-                len(indices),
+            selector = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpzMatrixSelectRows"
             )
+            target_space = MatrixSpace(self.base_ring(), len(indices), self.ncols())
+            if runtime.jstype(selector) == "function":
+                target = _flint_ffi_module().fmpz_matrix_select_rows(
+                    self._integer_resource(),
+                    _packed_uint64(indices),
+                    len(indices),
+                )
+                _trace_dense_integer_selection(
+                    "matrix_from_rows",
+                    "generated-flint-resource",
+                    len(indices),
+                    self.ncols(),
+                )
+                return target_space._from_fmpz_matrix_resource(target)
+            source = self._exact_host_values()
+            selected = []
+            for row in indices:
+                start = row * self.ncols()
+                selected.extend(source[start : start + self.ncols()])
             _trace_dense_integer_selection(
                 "matrix_from_rows",
-                "generated-flint-resource",
+                "exact-host-values",
                 len(indices),
                 self.ncols(),
             )
-            return MatrixSpace(
-                self.base_ring(), len(indices), self.ncols()
-            )._from_fmpz_matrix_resource(target)
+            return target_space._from_integer_values(selected)
         if self._has_nmod_matrix_resource():
             target = _flint_ffi_module().nmod_matrix_select_rows(
                 self._nmod_resource(), _packed_uint64(indices), len(indices)
@@ -7470,7 +7951,11 @@ class Matrix(sage.Element):
             (int(index) for index in columns),
             self.ncols(),
         )
-        if self._has_fmpq_matrix_resource():
+        if (
+            self._has_fmpq_matrix_resource()
+            and _flint_backend_has_function("ffiFmpqMatrixSelectColumns")
+            and _flint_backend_has_function("ffiFmpqMatrixClose")
+        ):
             resource = _flint_ffi_module().fmpq_matrix_select_columns(
                 self._rational_resource(),
                 _packed_uint64(indices),
@@ -7670,7 +8155,13 @@ class Matrix(sage.Element):
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
+            if (
+                self._has_fmpq_matrix_resource()
+                and _flint_backend_has_function("ffiFmpqMatrixTrace")
+                and _flint_backend_has_function("ffiFmpqValueNumerator")
+                and _flint_backend_has_function("ffiFmpqValueDenominator")
+                and _flint_backend_has_function("ffiFmpqValueClose")
+            ):
                 ffi = _flint_ffi_module()
                 value = ffi.fmpq_matrix_trace(self._rational_resource())
                 try:
@@ -7737,7 +8228,14 @@ class Matrix(sage.Element):
         left = self.change_ring(base)
         right = other.change_ring(base)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
-            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+            rational_equal = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpqMatrixEqual"
+            )
+            if (
+                rational_equal is not runtime.undefined
+                and left._has_fmpq_matrix_resource()
+                and right._has_fmpq_matrix_resource()
+            ):
                 result = bool(
                     _flint_ffi_module().fmpq_matrix_equal(
                         left._rational_resource(),
@@ -7770,14 +8268,22 @@ class Matrix(sage.Element):
             )
             return result
         if left._has_integer_storage() and right._has_integer_storage():
-            result = bool(
-                _flint_ffi_module().fmpz_matrix_equal(
-                    left._integer_resource(), right._integer_resource()
-                )
+            integer_equal = runtime.reflect.get(
+                runtime.flint_backend(), "ffiFmpzMatrixEqual"
             )
+            if integer_equal is runtime.undefined:
+                result = left._exact_host_values() == right._exact_host_values()
+                implementation = "exact-host-values"
+            else:
+                result = bool(
+                    _flint_ffi_module().fmpz_matrix_equal(
+                        left._integer_resource(), right._integer_resource()
+                    )
+                )
+                implementation = "generated-flint-resource"
             _trace_dense_integer_selection(
                 "equal",
-                "generated-flint-resource",
+                implementation,
                 left.nrows(),
                 left.ncols(),
             )
@@ -8401,7 +8907,10 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
     size = int(size)
     if size < 0:
         raise ValueError("matrix dimensions must be nonnegative")
-    if base is sage.ZZ:
+    resource_identity = _flint_backend_has_function(
+        "ffiFmpzMatrixPow"
+    ) and _flint_backend_has_function("ffiFmpzMatrixClose")
+    if base is sage.ZZ and resource_identity:
         ffi = _flint_ffi_module()
         zero = ffi.fmpz_matrix(size, size)
         try:
@@ -8409,7 +8918,7 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         finally:
             zero.close()
         return MatrixSpace(sage.ZZ, size, size)._from_fmpz_matrix_resource(resource)
-    if base is sage.QQ:
+    if base is sage.QQ and resource_identity:
         ffi = _flint_ffi_module()
         zero = ffi.fmpz_matrix(size, size)
         try:
@@ -8417,12 +8926,22 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         finally:
             zero.close()
         try:
-            rational_resource = ffi.fmpq_matrix_from_fmpz(integer_resource)
+            result = MatrixSpace(sage.QQ, size, size)._from_fmpz_resource_as_rationals(
+                integer_resource
+            )
         finally:
             integer_resource.close()
-        return MatrixSpace(sage.QQ, size, size)._from_fmpq_matrix_resource(
-            rational_resource
-        )
+        return result
+    if base is sage.ZZ or base is sage.QQ:
+        identity_entries = []
+        for row in range(size):
+            for col in range(size):
+                identity_entries.append(1 if row == col else 0)
+        entries = runtime.integer_buffer(identity_entries, 1)
+        parent = MatrixSpace(base, size, size)
+        if base is sage.ZZ:
+            return parent._from_canonical_integer_entries(entries)
+        return parent._from_canonical_integer_rationals(entries)
     if _is_packed_dense_prime_base(base):
         kernel = _dense_prime_kernel_module().dense_prime_field_matrix_identity
         storage = _dense_prime_zeros(kernel, size * size)
@@ -9072,9 +9591,11 @@ def random_matrix(
     The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
     a square matrix. The common Sage keywords `density`, `x`, `y`, and
     `distribution='uniform'` are supported where meaningful. Full-density
-    matrices over `QQ` use FLINT's two-bit rational distribution and are
-    constructed directly in their owned FLINT resource. This intentionally
-    differs from SageMath's bounded default rational distribution.
+    matrices over `QQ` use FLINT's two-bit rational distribution. A backend
+    with the random-resource constructor fills the owned FLINT resource
+    directly; otherwise the same bounded nonzero rational domain is built
+    through ordinary packed matrix ingress. This intentionally differs from
+    SageMath's bounded default rational distribution.
 
     ### Examples
 
@@ -9332,10 +9853,25 @@ def random_matrix(
         ffi = _flint_ffi_module()
         if rows * cols == 0:
             resource = ffi.fmpq_matrix(rows, cols)
-        else:
+        elif _flint_backend_has_function("ffiFmpqMatrixRandbits"):
             seed1 = _random_int(0, 4294967295)
             seed2 = _random_int(0, 4294967295)
             resource = ffi.fmpq_matrix_randbits(rows, cols, 2, seed1, seed2)
+        else:
+            values = []
+            for _index in range(rows * cols):
+                numerator = _random_int(1, 3)
+                if _random_int(0, 1) != 0:
+                    numerator = -numerator
+                denominator = _random_int(1, 3)
+                values.append(sage.QQ(numerator) / sage.QQ(denominator))
+            _trace_dense_rational_selection(
+                "random_matrix",
+                "portable-flint-randbits-semantics",
+                rows,
+                cols,
+            )
+            return matrix(sage.QQ, rows, cols, values)
         _trace_dense_rational_selection(
             "random_matrix",
             "generated-flint-resource",

@@ -38,9 +38,187 @@ MAX_DEGREE = 16
 MAX_RATIONAL_PRIME = 9_007_199_254_740_991
 DEFAULT_MAX_PRIMITIVE_CANDIDATES = 4096
 MAX_CACHE_ENTRIES = 256
+COMPACT_FACTOR_BATCH_SIZE = 8192
 
 _decomposition_cache: list[tuple[Any, int, Any]] = []
 _identity_tokens: list[Any] = []
+
+
+def _native_factor_degree_data(
+    polynomial: Any,
+    primes: list[int],
+    *,
+    backend_override: Any | None = None,
+) -> dict[str, Any] | None:
+    """Return raw packed FLINT factor degrees, or `None` without the adapter."""
+    if len(primes) == 0:
+        return {
+            "degree": int(polynomial.degree()),
+            "intervalStart": 2,
+            "intervalStop": 2,
+            "completePrimeInterval": True,
+            "primes": [],
+            "packedPrimes": runtime.uint64_buffer([]),
+            "factorCounts": [],
+            "exponents": [],
+            "degrees": [],
+            "records": [],
+        }
+    if backend_override is None:
+        try:
+            backend = runtime.flint_backend()
+        except Exception:
+            return None
+    else:
+        backend = backend_override
+    function = runtime.reflect.get(backend, "nfFactorDegreesBatch")
+    if function is runtime.undefined:
+        return None
+    maximum_prime = runtime.reflect.get(backend, "nfFactorDegreesBatchMaxPrime")
+    if maximum_prime is not runtime.undefined:
+        limit = int(runtime.integer_bigint(maximum_prime))
+        if any(prime > limit for prime in primes):
+            # Wasm32 deliberately exposes only the fixed-width word-prime
+            # accelerator. The caller retains the exact finite-field route,
+            # including certified index-prime decomposition, beyond it.
+            return None
+    coefficients = [
+        runtime.integer_bigint(coefficient) for coefficient in polynomial.list()
+    ]
+    packed_primes = runtime.uint64_buffer([runtime.bigint(prime) for prime in primes])
+    result = runtime.reflect.apply(
+        function,
+        backend,
+        [coefficients, packed_primes],
+    )
+    degree = int(runtime.reflect.get(result, "degree"))
+    counts = runtime.reflect.get(result, "factorCounts")
+    exponents = runtime.reflect.get(result, "exponents")
+    degrees = runtime.reflect.get(result, "degrees")
+    data = {
+        "degree": degree,
+        "primes": primes,
+        "packedPrimes": packed_primes,
+        "factorCounts": counts,
+        "exponents": exponents,
+        "degrees": degrees,
+    }
+    return data
+
+
+def _materialize_factor_degree_records(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Construct public compact records from host-neutral packed arrays."""
+    degree = int(data["degree"])
+    primes = data["primes"]
+    counts = data["factorCounts"]
+    exponents = data["exponents"]
+    degrees = data["degrees"]
+    records: list[dict[str, Any]] = []
+    for row, prime in enumerate(primes):
+        count = int(counts[row])
+        if count < 1 or count > degree:
+            raise ArithmeticError("packed compact splitting count is invalid")
+        factors = [
+            {
+                "e": int(exponents[row * degree + index]),
+                "f": int(degrees[row * degree + index]),
+            }
+            for index in range(count)
+        ]
+        if any(factor["e"] < 1 or factor["f"] < 1 for factor in factors):
+            raise ArithmeticError("packed compact splitting factor is invalid")
+        if sum(factor["e"] * factor["f"] for factor in factors) != degree:
+            raise ArithmeticError(
+                "packed compact splitting data has the wrong local degree"
+            )
+        records.append(
+            {
+                "version": 1,
+                "prime": prime,
+                "factors": factors,
+            }
+        )
+    return records
+
+
+def _native_factor_degree_records(
+    polynomial: Any,
+    primes: list[int],
+    *,
+    backend_override: Any | None = None,
+) -> list[dict[str, Any]] | None:
+    """Materialize public compact records above either packed host adapter."""
+    data = _native_factor_degree_data(
+        polynomial, primes, backend_override=backend_override
+    )
+    if data is None:
+        return None
+    return _materialize_factor_degree_records(data)
+
+
+def packed_factor_degree_data(
+    order: Any,
+    start: Any,
+    stop: Any,
+) -> dict[str, Any] | None:
+    """Return a private packed stream for coefficient construction.
+
+    The packed representation is used only when the integral equation order
+    is already maximal, so every prime in the interval has the same direct
+    Dedekind--Kummer route.  Fields with index primes deliberately return
+    `None` and retain the complete certified stream.
+    """
+    lower = max(2, int(runtime.integer_bigint(start)))
+    upper = int(runtime.integer_bigint(stop))
+    if upper < lower:
+        raise ValueError("a splitting-record interval has reversed endpoints")
+    if upper > MAX_RATIONAL_PRIME + 1:
+        raise NotImplementedError("the splitting interval exceeds the prime bound")
+    if upper - lower > 1_000_000:
+        raise ValueError(
+            "a single splitting-record interval is limited to length 1000000"
+        )
+    if not order.is_maximal():
+        raise ValueError("splitting records require a certified maximal order")
+
+    field = order.number_field()
+    polynomial = _maximal.integral_equation_polynomial(field)
+    equation_discriminant = abs(int(polynomial.discriminant()))
+    order_discriminant = abs(int(order.discriminant()))
+    if order_discriminant == 0 or equation_discriminant % order_discriminant:
+        raise ArithmeticError("equation and maximal-order discriminants disagree")
+    if equation_discriminant // order_discriminant != 1:
+        return None
+    candidates = [int(prime) for prime in _nf_global("prime_range")(lower, upper)]
+    data = _native_factor_degree_data(polynomial, candidates)
+    if data is not None:
+        data["intervalStart"] = lower
+        data["intervalStop"] = upper
+        data["completePrimeInterval"] = True
+    return data
+
+
+def _dynamic_factor_degree_record(polynomial: Any, prime: int) -> dict[str, Any]:
+    residue_ring = _nf_global("PolynomialRing")(
+        _nf_global("GF")(prime),
+        polynomial._parent.variable_name(),
+    )
+    modular_factors = residue_ring(polynomial).factor()
+    factors = [
+        {
+            "e": int(multiplicity),
+            "f": int(factor.degree()),
+        }
+        for factor, multiplicity in modular_factors
+    ]
+    factors.sort(key=lambda factor: (factor["f"], factor["e"]))
+    return {
+        "version": 1,
+        "prime": prime,
+        "factors": factors,
+    }
 
 
 def _freeze_tree(value: Any) -> Any:
@@ -1129,87 +1307,41 @@ def splitting_records(
         raise ArithmeticError("equation and maximal-order discriminants disagree")
     index_squared = equation_discriminant // order_discriminant
 
-    candidates = [
-        int(prime_value) for prime_value in _nf_global("prime_range")(lower, upper)
-    ]
-    compact_candidates = [
-        candidate
-        for candidate in candidates
-        if not include_lattices and index_squared % candidate != 0
-    ]
-    compact_records: dict[int, dict[str, Any]] = {}
-    if compact_candidates:
-        batch_splitting_types = None
-        try:
-            batch_splitting_types = getattr(
-                runtime.flint_backend(), "numberFieldSplittingTypes", None
-            )
-        except (AttributeError, ImportError, RuntimeError):
-            pass
-        if batch_splitting_types is not None:
-            coefficient_values = [
-                runtime.bigint(int(coefficient)) for coefficient in polynomial.list()
-            ]
-            raw_records = batch_splitting_types(
-                coefficient_values,
-                [runtime.number(candidate) for candidate in compact_candidates],
-            )
-            for candidate, raw_factors in zip(
-                compact_candidates, raw_records, strict=True
-            ):
-                factors = [
-                    {
-                        "e": int(runtime.number(pair[0])),
-                        "f": int(runtime.number(pair[1])),
-                    }
-                    for pair in raw_factors
-                ]
-                factors.sort(key=lambda factor: (factor["f"], factor["e"]))
-                if (
-                    sum(factor["e"] * factor["f"] for factor in factors)
-                    != order.degree()
-                ):
-                    raise ArithmeticError(
-                        "batched compact splitting data has the wrong local degree"
-                    )
-                compact_records[candidate] = {
-                    "version": 1,
-                    "prime": candidate,
-                    "factors": factors,
-                }
-
-    for candidate in candidates:
+    candidates = [int(prime) for prime in _nf_global("prime_range")(lower, upper)]
+    position = 0
+    while position < len(candidates):
+        candidate = candidates[position]
         if include_lattices or index_squared % candidate == 0:
             yield factor_rational_prime(order, candidate).splitting_record(
                 include_lattices
             )
+            position += 1
             continue
 
-        batched_record = compact_records.get(candidate)
-        if batched_record is not None:
-            yield batched_record
-            continue
-
-        residue_ring = _nf_global("PolynomialRing")(
-            _nf_global("GF")(candidate),
-            polynomial._parent.variable_name(),
-        )
-        modular_factors = residue_ring(polynomial).factor()
-        factors = [
-            {
-                "e": int(multiplicity),
-                "f": int(factor.degree()),
-            }
-            for factor, multiplicity in modular_factors
-        ]
-        factors.sort(key=lambda factor: (factor["f"], factor["e"]))
-        if sum(factor["e"] * factor["f"] for factor in factors) != order.degree():
-            raise ArithmeticError("compact splitting data has the wrong local degree")
-        yield {
-            "version": 1,
-            "prime": candidate,
-            "factors": factors,
-        }
+        stop = position
+        while (
+            stop < len(candidates)
+            and index_squared % candidates[stop] != 0
+            and stop - position < COMPACT_FACTOR_BATCH_SIZE
+        ):
+            stop += 1
+        batch = candidates[position:stop]
+        records = _native_factor_degree_records(polynomial, batch)
+        native_records = records is not None
+        if records is None:
+            records = [
+                _dynamic_factor_degree_record(polynomial, prime) for prime in batch
+            ]
+        for record in records:
+            if not native_records and (
+                sum(factor["e"] * factor["f"] for factor in record["factors"])
+                != order.degree()
+            ):
+                raise ArithmeticError(
+                    "compact splitting data has the wrong local degree"
+                )
+            yield record
+        position = stop
 
 
 def _encode_rows(rows: list[list[Any]]) -> list[list[list[int]]]:

@@ -102,6 +102,16 @@
         "FLINT"
       ]
     },
+    "number-field-zeta": {
+      "rationale": "Number-field zeta exports batch exact good-prime factor-degree extraction through mature FLINT polynomial factorization.",
+      "fallback": "Strict Python orchestration uses the public finite-field polynomial factorization path when the packed adapter is unavailable.",
+      "oracles": [
+        "Sage.js dynamic fallback",
+        "SageMath",
+        "Magma",
+        "Hecke/Oscar"
+      ]
+    },
     "numerical": {
       "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
       "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
@@ -290,6 +300,11 @@
       "id": "napi:@sagemath/sagejs-flint:complexFromReals",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexGammaValues",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
@@ -767,6 +782,11 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
       "family": "hyperelliptic",
       "decision": "retain-host-adapter"
@@ -1085,6 +1105,11 @@
       "id": "napi:@sagemath/sagejs-flint:nextPrime",
       "family": "exact-arithmetic",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
+      "family": "number-field-zeta",
+      "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrix",
@@ -1624,6 +1649,11 @@
     },
     {
       "id": "napi:@sagemath/sagejs-flint:riemannXiStandardValue",
+      "family": "dirichlet",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:riemannXiValues",
       "family": "dirichlet",
       "decision": "retain-host-adapter"
     },

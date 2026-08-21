@@ -1,0 +1,215 @@
+name: Deploy the Sage.js browser application
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful "Sage.js WebAssembly reproducible release" run to deploy
+        required: true
+        type: string
+      target:
+        description: Cloudflare Pages deployment target
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+      preview_name:
+        description: Lowercase preview alias (ignored for production)
+        required: false
+        default: candidate
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: sagejs-app-${{ inputs.target }}
+  cancel-in-progress: ${{ inputs.target == 'preview' }}
+
+jobs:
+  deploy:
+    name: Receipt-authenticated Cloudflare Pages ${{ inputs.target }} deployment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: sagejs-app-${{ inputs.target }}
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - name: Validate the completed release run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          TARGET: ${{ inputs.target }}
+          PREVIEW_NAME: ${{ inputs.preview_name }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "source_run_id must be a positive GitHub Actions run id" >&2
+            exit 1
+          }
+          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}")"
+          [[ "$(jq -r .repository.full_name <<<"$run_metadata")" == "$GH_REPO" ]]
+          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/wasm-release.yml" ]] || {
+            echo "The source run did not execute the WebAssembly release workflow" >&2
+            exit 1
+          }
+          [[ "$(jq -r .conclusion <<<"$run_metadata")" == "success" ]] || {
+            echo "The WebAssembly release run has not completed successfully" >&2
+            exit 1
+          }
+          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
+          [[ "$source_sha" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "The release run reported an invalid source commit" >&2
+            exit 1
+          }
+
+          jobs="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}/jobs?per_page=100")"
+          for required in \
+            "Native Node oracle for the public browser corpus" \
+            "Clean reproducibility build a" \
+            "Clean reproducibility build b" \
+            "reproducibility" \
+            "Public parity (chromium)" \
+            "Public parity (firefox)" \
+            "Public parity (webkit)"
+          do
+            conclusion="$(jq -r --arg name "$required" \
+              '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
+              <<<"$jobs")"
+            [[ "$conclusion" == "success" ]] || {
+              echo "Required release job '$required' concluded '$conclusion'" >&2
+              exit 1
+            }
+          done
+
+          if [[ "$TARGET" == "production" ]]; then
+            deploy_branch="main"
+          else
+            [[ "$PREVIEW_NAME" =~ ^[a-z0-9][a-z0-9-]{0,38}$ ]] || {
+              echo "preview_name must contain only lowercase letters, digits, and hyphens" >&2
+              exit 1
+            }
+            deploy_branch="preview-${PREVIEW_NAME}-${source_sha:0:12}"
+          fi
+          echo "sha=$source_sha" >>"$GITHUB_OUTPUT"
+          echo "branch=$deploy_branch" >>"$GITHUB_OUTPUT"
+
+      - name: Check out exactly the validated source commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Require production deployments to come from main
+        if: inputs.target == 'production'
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main || {
+            echo "Production deployment source $SOURCE_SHA is not reachable from origin/main" >&2
+            exit 1
+          }
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+
+      - name: Fail closed when Cloudflare configuration is absent
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          set -euo pipefail
+          [[ -n "$CLOUDFLARE_API_TOKEN" ]] || { echo "Missing CLOUDFLARE_API_TOKEN" >&2; exit 1; }
+          [[ -n "$CLOUDFLARE_ACCOUNT_ID" ]] || { echo "Missing CLOUDFLARE_ACCOUNT_ID" >&2; exit 1; }
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]] || { echo "Invalid CLOUDFLARE_ACCOUNT_ID" >&2; exit 1; }
+          [[ "$CLOUDFLARE_PAGES_PROJECT" =~ ^[a-z0-9][a-z0-9-]{0,57}[a-z0-9]$ ]] || {
+            echo "Missing or invalid CLOUDFLARE_PAGES_PROJECT" >&2
+            exit 1
+          }
+
+      - name: Download the reproducible production artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          set -euo pipefail
+          gh run download "$SOURCE_RUN_ID" \
+            --repo "$GH_REPO" \
+            --name wasm-clean-build-a \
+            --dir build/prebuilt
+          test -f build/prebuilt/packages/flint-wasm/dist/production-manifest.json
+          test -f build/prebuilt/packages/flint-wasm/dist/build-receipt.json
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+
+      - name: Verify the receipt and stage the credential-free application
+        run: |
+          set -euo pipefail
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node website/live/scripts/stage.mjs
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/dist/_headers
+          node --test website/live/test/*.test.mjs
+          node --test test/wasm-deployment-workflow.cjs
+          test -f website/live/dist/runtime-version.json
+          test -f website/live/dist/asset-manifest.json
+
+      - name: Preserve the exact staged site as a deployment receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-app-${{ inputs.target }}-${{ steps.source.outputs.sha }}
+          path: website/live/dist
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Deploy the staged directory to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.32.0"
+          command: >-
+            pages deploy website/live/dist
+            --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+            --branch=${{ steps.source.outputs.branch }}
+            --commit-hash=${{ steps.source.outputs.sha }}
+            --commit-message=sagejs-wasm-${{ inputs.source_run_id }}
+            --commit-dirty=true
+
+      - name: Validate the deployed preview origin
+        if: inputs.target == 'preview'
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOYMENT_URL" =~ ^https://[a-z0-9.-]+\.pages\.dev/?$ ]] || {
+            echo "Cloudflare returned an unexpected preview URL" >&2
+            exit 1
+          }
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/_headers \
+            --origin "$DEPLOYMENT_URL"
+
+      - name: Validate app.sagejs.org after production deployment
+        if: inputs.target == 'production'
+        run: |
+          set -euo pipefail
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/_headers \
+            --origin https://app.sagejs.org

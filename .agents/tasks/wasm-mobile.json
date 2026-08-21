@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-mobile",
+  "title": "Offline Sage.js mobile shell",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Deliver a React Native new-architecture iPhone and iPad WebView application foundation with bundled offline runtime assets, a restricted versioned bridge, worksheet documents, iPad integration, lifecycle recovery, tests, and physical-device feasibility recording",
+  "base_commit": "b7cc6ce31c0dca8564b1d90bef05165f755d4948",
+  "claims": [
+    "apps/sagejs-mobile/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Versioned bridge contract and React Native component tests",
+      "Physical-device feasibility receipt schema and validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.79,
+      "started_at": "2026-08-20T05:27:24.637Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile lint",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.274,
+      "started_at": "2026-08-20T05:27:30.147Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.885,
+      "started_at": "2026-08-20T05:27:37.341Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.354,
+      "started_at": "2026-08-20T05:27:43.980Z",
+      "commit": "804949a760dfb727f9ff615240b1fb5b2d6e2e9d",
+      "workspace_fingerprint": "94d9389e0d2b837768980144687511a2628a533c53c717ece7e0dd85957dc392",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

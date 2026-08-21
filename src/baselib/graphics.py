@@ -751,8 +751,17 @@ def _plot_spec_2d_trace(payload: dict[str, Any]) -> Any:
         trace = _native_record(
             type="scatter",
             mode=style["mode"],
-            x=data["x"],
-            y=data["y"],
+            # Plotly consumes native JavaScript numbers.  Preserve exact Sage
+            # coordinates in the semantic plot specification, and normalize
+            # them only when lowering that specification to a renderer trace.
+            x=[
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in data["x"]
+            ],
+            y=[
+                None if coordinate is None else runtime.number(float(coordinate))
+                for coordinate in data["y"]
+            ],
             line=line_style,
             opacity=style["opacity"],
             showlegend=legend["show"],
@@ -1553,10 +1562,17 @@ class ComplexPlot(GraphicPrimitive):
     def _plotly_trace(self) -> Any:
         rows = len(self.rgb_data)
         columns = 0 if rows == 0 else len(self.rgb_data[0])
-        xstep = (
-            1.0 if columns < 2 else (self.x_range[1] - self.x_range[0]) / (columns - 1)
-        )
-        ystep = 1.0 if rows < 2 else (self.y_range[1] - self.y_range[0]) / (rows - 1)
+        # Plotly's image trace performs geometry arithmetic directly on these
+        # values.  Exact Sage integers are runtime objects in the browser, so
+        # passing them through as `x0`, `y0`, `dx`, or `dy` makes Plotly derive
+        # SVG image attributes equal to `NaN`.  Normalize only at the renderer
+        # boundary, leaving the public primitive's Sage values unchanged.
+        xmin = runtime.number(float(self.x_range[0]))
+        xmax = runtime.number(float(self.x_range[1]))
+        ymin = runtime.number(float(self.y_range[0]))
+        ymax = runtime.number(float(self.y_range[1]))
+        xstep = 1.0 if columns < 2 else (xmax - xmin) / (columns - 1)
+        ystep = 1.0 if rows < 2 else (ymax - ymin) / (rows - 1)
         pixels = [
             [
                 [
@@ -1574,8 +1590,8 @@ class ComplexPlot(GraphicPrimitive):
             type="image",
             z=pixels,
             colormodel="rgb",
-            x0=self.x_range[0],
-            y0=self.y_range[1],
+            x0=xmin,
+            y0=ymax,
             dx=xstep,
             dy=-ystep,
             zsmooth=(False if interpolation in ("none", "nearest") else "best"),

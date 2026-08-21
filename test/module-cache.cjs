@@ -217,17 +217,22 @@ try {
   });
   assert.ok(currentCacheFilename);
   const currentCache = JSON.parse(readFileSync(currentCacheFilename, "utf8"));
-  const filenameMarker = "__sagejs_precompiled_module_filename__";
+  const filenameMarker =
+    "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
   const filenameLiteral = JSON.stringify(currentCache.filename);
   assert.ok(currentCache.javascript.includes(filenameLiteral));
   mkdirSync(portableCache);
   writeFileSync(
     join(portableCache, "cached_value.json"),
     JSON.stringify({
+      schema: "sagejs.lazy-module-template/v1",
       version: currentCache.version,
       signature: currentCache.signature,
       mode: currentCache.mode,
       module: "cached_value",
+      package: false,
+      filenameMarker,
+      packagePathMarker: null,
       javascriptTemplate: currentCache.javascript.replaceAll(
         filenameLiteral,
         JSON.stringify(filenameMarker),
@@ -256,9 +261,10 @@ try {
   assert.ok(!materialized.javascript.includes(filenameMarker));
 
   const dynamicProgram = [
-    "namespace = {'input_value': 41}",
-    "exec('answer = input_value + 1', namespace)",
+    "namespace = {'input_value': 41, 'α': 7}",
+    "exec('answer = input_value + 1; beta = α + 1', namespace)",
     "print(namespace['answer'])",
+    "print(namespace['beta'])",
     "",
   ].join("\n");
   for (let index = 0; index < 2; index += 1) {
@@ -267,7 +273,7 @@ try {
         env: { SAGEJS_DYNAMIC_CACHE_DIR: dynamicCache },
         input: dynamicProgram,
       }),
-      "42",
+      "42\n8",
     );
   }
   assert.equal(filesBelow(dynamicCache).length, 1);

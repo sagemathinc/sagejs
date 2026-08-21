@@ -25,6 +25,34 @@ test("elliptic L-series evaluates the motivating complex value", async () => {
   }
 });
 
+test("elliptic L-series accepts decimal digits in the live example", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "E = EllipticCurve([1, 2, 3, 4, 999])",
+        "L = E.lseries()",
+        "values = L.values([1 + k*I/10 for k in range(30)], digits=6)",
+        "[len(values), values[0].parent().precision(),",
+        " abs(float(values[10].real()) + 0.005310319526029921) < 1e-6,",
+        " abs(float(values[10].imag()) - 0.09905202773967817) < 1e-6]",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "[30, 32, True, True]");
+    await assert.rejects(
+      session.evaluate("L.values([1], prec=53, digits=6)"),
+      /prec and digits are mutually exclusive/,
+    );
+    await assert.rejects(
+      session.evaluate("L.values([1], digits=0)"),
+      /digits must be a positive integer/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("elliptic L-series batch, completed values, and functional equation agree", async () => {
   const session = await createSage();
   try {
@@ -49,6 +77,41 @@ test("elliptic L-series batch, completed values, and functional equation agree",
       { timeout: 120_000 },
     );
     assert.equal(result.repr, "[True, True, True, True, True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
+test("elliptic plot batches agree with scalar values across the displayed region", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "E = EllipticCurve([1,2,3,4,999])",
+        "L = E.lseries()",
+        "coordinates = [[x,y] for y in [-4,-2,0,2,4] for x in [0,.5,1,1.5,2]]",
+        "batch = L._plot_complex_batch(coordinates, 53, {'adaptive': False})['fine']",
+        "scalar = L.values([CDF(x,y) for x,y in coordinates], prec=53)",
+        "errors = [abs(complex(float(a.real()),float(a.imag())) - complex(float(b.real()),float(b.imag()))) for a,b in zip(batch,scalar)]",
+        "scales = [max(1,abs(complex(float(b.real()),float(b.imag())))) for b in scalar]",
+        "all(error <= 5e-13*scale for error,scale in zip(errors,scales))",
+      ].join("\n"),
+      { timeout: 120_000 },
+    );
+    assert.equal(result.repr, "True");
+
+    const batchedPlot = await session.evaluate(
+      "complex_plot(L,(0,2),(-4,4),plot_points=8,plot_precision=53,interpolation='nearest')",
+      { timeout: 120_000 },
+    );
+    const scalarPlot = await session.evaluate(
+      "complex_plot(lambda z:L(z),(0,2),(-4,4),plot_points=8,interpolation='nearest')",
+      { timeout: 120_000 },
+    );
+    assert.deepEqual(
+      batchedPlot.display?.data.data[0].z,
+      scalarPlot.display?.data.data[0].z,
+    );
   } finally {
     await session.close();
   }

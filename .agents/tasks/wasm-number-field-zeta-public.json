@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-number-field-zeta-public",
+  "title": "Wasm Number Field Zeta Public",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Materialize number-field splitting records above host boundaries and select exact finite-field fallback beyond the Wasm word-prime capability while preserving certified index-prime behavior",
+  "base_commit": "aa271460f56c885e1f52bf65b46b2cb8497930c7",
+  "claims": [
+    "src/lib/sagejs/number_fields/prime_ideals.py",
+    "test/number-field-zeta-wasm-dispatch.cjs",
+    "test/number-field-foundations-performance.cjs"
+  ],
+  "dependencies": [
+    "wasm-number-field-zeta-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Native packed backend versus strict finite-field splitting records",
+      "Simulated Wasm capability boundary and public zeta/prime decomposition digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

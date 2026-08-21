@@ -5,6 +5,11 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  expectedStdout as matrixFallbackExpectedStdout,
+  publicSource as matrixFallbackPublicSource,
+} from "./matrix-resource-fallback-support.mjs";
+
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -256,7 +261,7 @@ try {
     } else {
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
-    await runSource("import math\nmath.sin(math.pi/2)", "1");
+    await runSource("import math\nmath.sin(math.pi/2)", "1.0");
     await runSource("prime_pi(10)", "4");
     await runSource(
       "x = var('x')\nf = sin(x^2)\nf.derivative(x)",
@@ -282,6 +287,7 @@ try {
         "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
     );
     await runPublicExactSubspaces();
+    await runSource(matrixFallbackPublicSource, matrixFallbackExpectedStdout);
     await runSource(
       "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +
         "print(A.det(), A.rank())\n" +
@@ -298,7 +304,7 @@ try {
         "[1 0 3]\n[0 1 1]\n[0 0]\n[0 0]",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
-    await runSource("factor(a^2)", "2^4 * 3^2");
+    await runSource("a = 12\nfactor(a^2)", "2^4 * 3^2");
     await runSource(
       "P = P1List(11)\n" +
         "print(len(P), P.normalize_with_scalar(3,7), P.apply_S(0))\n" +
@@ -323,6 +329,13 @@ try {
         "f = M.hecke_matrix(2).charpoly()\n" +
         "print(M.dimension(), f(3) % 1000000007)",
       "154 804456041\n",
+    );
+    await runSource(
+      "M = ModularSymbols(389,2,sign=1)\n" +
+        "D = M.decomposition()\n" +
+        "print([M.new_submodule() is M, D is M.decomposition(), " +
+        "[A.dimension() for A in D], sum(A.dimension() for A in D)])",
+      "[True, True, [1, 1, 2, 3, 6, 20], 33]\n",
     );
     await runSource(
       "for n in [2025..2050]:\n    print(factor(n))",
@@ -363,6 +376,39 @@ try {
       traces: 1,
       points: [0, Math.PI, 2 * Math.PI],
     });
+    await startSource(
+      "E = EllipticCurve([1, 2, 3, 4, 999])\n" +
+        "L = E.lseries()\n" +
+        "complex_plot(L, (0, 2), (-4, 4), plot_points=100, " +
+        "interpolation='nearest')",
+    );
+    assert.equal(
+      await waitForIdle(),
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const complexPlotState = await command("Runtime.evaluate", {
+      expression: `(() => {
+        const display = document.querySelector('#display');
+        const trace = display?.data?.[0] ?? {};
+        const image = display?.querySelector('image') ?? null;
+        return {
+          trace: [trace.x0, trace.y0, trace.dx, trace.dy],
+          image: image === null ? null : ['x', 'y', 'width', 'height'].map(
+            (name) => Number(image.getAttribute(name))
+          )
+        };
+      })()`,
+      returnByValue: true,
+    });
+    const complexGeometry = complexPlotState.result.value;
+    assert.deepEqual(complexGeometry.trace, [0, 4, 2 / 99, -8 / 99]);
+    assert.ok(complexGeometry.image !== null, "complex plot must render an SVG image");
+    assert.ok(
+      complexGeometry.image.every(Number.isFinite),
+      `complex plot SVG geometry must be finite: ${complexGeometry.image}`,
+    );
+    assert.ok(complexGeometry.image[2] > 0);
+    assert.ok(complexGeometry.image[3] > 0);
     const imageExportState = await command("Runtime.evaluate", {
       expression: `(async () => {
         const renderer = await import("/plotly-renderer.mjs");

@@ -1,0 +1,128 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-sparse-linear",
+  "title": "Sparse integer linear algebra in WebAssembly",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Profile sparse ZZ/QQ/GF exact linear algebra, enable the measured integer right-kernel public workload through the existing FLINT resource core in WebAssembly, and prove exact native/disabled, direct Wasm, Node-Wasm, and browser routes with bounded malformed/capacity coverage",
+  "base_commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "packages/flint-wasm/test/sparse-integer-linear-algebra-support.mjs",
+    "packages/flint-wasm/test/sparse-integer-linear-algebra.test.mjs",
+    "packages/flint-wasm/test/sparse-integer-linear-algebra-browser.mjs",
+    "test/public-sparse-integer-linear-algebra.cjs",
+    "bench/wasm-sparse-integer-linear-algebra.cjs",
+    "bench/WASM-SPARSE-INTEGER-LINEAR-ALGEBRA.md",
+    "bench/results/wasm-sparse-integer-linear-algebra.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_mat exact nullspace/HNF right-kernel resource core",
+    "agents/webassembly-fast-mathematics-completion-plan.md W2"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "same-source",
+    "oracles": [
+      "Native public Sage.js Matrix(ZZ) right_kernel_matrix with and without native resources",
+      "Direct generated FLINT Wasm resource API and public Node/browser evaluator"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm ffi:check",
+    "pnpm test:baselib:strict",
+    "node test/public-sparse-integer-linear-algebra.cjs",
+    "node --test packages/flint-wasm/test/sparse-integer-linear-algebra.test.mjs",
+    "node packages/flint-wasm/test/sparse-integer-linear-algebra-browser.mjs",
+    "node bench/wasm-sparse-integer-linear-algebra.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.154,
+      "started_at": "2026-08-21T02:02:14.924Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.931,
+      "started_at": "2026-08-21T02:02:25.133Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-sparse-integer-linear-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.788,
+      "started_at": "2026-08-21T02:02:58.238Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/sparse-integer-linear-algebra.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.985,
+      "started_at": "2026-08-21T02:03:20.596Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/sparse-integer-linear-algebra-browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.075,
+      "started_at": "2026-08-21T02:03:28.158Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-sparse-integer-linear-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.582,
+      "started_at": "2026-08-21T02:03:38.837Z",
+      "commit": "8f7c13a6caac1b0a78ab81dff0622278572161be",
+      "workspace_fingerprint": "1ae74e106b8e3c49bdef118176b6c6bf106eed8921b1ab69d2ceb9ae01400795",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Admits the existing FLINT owned fmpz-matrix right-kernel core to Wasm after profiling sparse ZZ, QQ, and GF rank/kernel/solve workloads. Exact native/disabled and direct Wasm oracles, public Node-Wasm and Chromium fixed-route receipts, malformed/capacity/zero-dimension lifecycle tests, and native/Wasm crossover measurements are included.",
+    "risks": [
+      "The declaration change intentionally makes the central Wasm capability and production-capability ratchets stale; those shared descriptors were left to the integration owner.",
+      "Linux x64 direct and Chromium receipts passed. Other browser engines and native target platforms rely on the unchanged portable FLINT core and generated fallback but were not run in this lane."
+    ],
+    "next_steps": [
+      "Add ffi:flint:fmpz_matrix_right_kernel to the central Wasm capability and production-capability descriptors, then regenerate the workload dashboard and production receipt.",
+      "Add the public sparse ZZ workload to the shared Node/browser corpus and node test manifest.",
+      "Re-run architecture:check and the production Wasm build after those integration-owned registry updates."
+    ]
+  }
+}

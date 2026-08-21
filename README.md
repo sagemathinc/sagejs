@@ -102,12 +102,13 @@ a content-addressed static dependency bundle for the current supported target,
 verifies its SHA-256 sidecar and complete internal file manifest, and then only
 builds the comparatively small Sage.js native adapters. Linux and macOS bundles
 contain GMP, MPFR, MPC, OpenBLAS, FLINT, FFLAS/FFPACK, igraph, and M4RI.
-Linux x64 also builds ffpoly and smalljac; Windows installs the arithmetic
-stack from a pinned vcpkg baseline and builds the same pinned igraph source.
-Every platform statically links its libraries into the native addons and SEA.
-The ffpoly/smalljac accelerator still contains x86-64
-GNU assembly, so Linux arm64, macOS, and Windows currently use the tested
-portable elliptic-curve point-count fallback behind the same API. Verified
+The supported native targets also build ffpoly and smalljac; Windows installs
+the rest of the arithmetic stack from a pinned vcpkg baseline. Every platform
+statically links its libraries into the native addons and SEA. The pinned
+ffpoly/smalljac sources select their upstream assembly on compatible x86-64
+GNU targets and use Sage.js's fixed-width portable word layer elsewhere. The
+production Wasm reactor links the reviewed genus-one coefficient closure from
+the same sources. Verified
 bundles are cached by content identity under `~/.cache/sagejs/native-prebuilt`;
 installed prefixes remain under each package's `.native` directory.
 The published bundles use the portable native-math profile: ordinary compiled

@@ -18,6 +18,27 @@ _Int = int
 _Str = str
 
 
+def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
+    """Return checked WebAssembly capabilities or one public workflow.
+
+    With no arguments this returns every public capability record. Pass a
+    family such as `"number-fields"` to filter records, or pass
+    `workflow="riemann-zeta-batch"` for its checked requirement and
+    availability record. Results are detached, deeply immutable host data.
+    """
+
+    api = runtime.reflect.get(runtime.global_object, "__sagejs_capability_api__")
+    if api is runtime.undefined:
+        raise RuntimeError("the Sage.js host did not install capability metadata")
+    if workflow is not None:
+        if family is not None:
+            raise TypeError("family and workflow cannot both be specified")
+        method = runtime.reflect.get(api, "workflow")
+        return runtime.reflect.apply(method, api, [workflow])
+    method = runtime.reflect.get(api, "sagejs_capabilities")
+    return runtime.reflect.apply(method, api, [family])
+
+
 def _builtins_default_build_class(
     body: Any,
     name: str,
@@ -6490,10 +6511,114 @@ def moebius(value: Any) -> Any:
     return sign
 
 
+_PACKED_MOEBIUS_MIN_STOP = 1024
+# Three signed/unsigned 64-bit spans consume 48 MiB at this bound.  Larger or
+# shifted intervals retain the scalar fallback until a segmented packed ABI is
+# justified by a public profile.
+_PACKED_MOEBIUS_MAX_STOP = 2 * 1024 * 1024
+
+
+def _record_moebius_range_acceleration(
+    route: str,
+    reason: str,
+    boundary_crossings: _Int,
+    copied_values: _Int,
+) -> None:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "route", route)
+    runtime.reflect.set(record, "reason", reason)
+    runtime.reflect.set(record, "boundaryCrossings", boundary_crossings)
+    runtime.reflect.set(record, "copiedValues", copied_values)
+    runtime.reflect.set(moebius, "_last_range_acceleration", record)
+
+
+def _packed_moebius_modules() -> Any:
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    if loader is runtime.undefined:
+        raise RuntimeError("the packed Möbius kernel loader is unavailable")
+    return (
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.native"]),
+        runtime.reflect.apply(
+            loader,
+            runtime.undefined,
+            ["sagejs.kernels.arithmetic.moebius"],
+        ),
+    )
+
+
+def _packed_moebius_range(stop: _Int) -> Any:
+    native_module, kernel_module = _packed_moebius_modules()
+    kernel = runtime.reflect.get(kernel_module, "packed_moebius_range")
+    kernel_int64_zeros = runtime.reflect.get(native_module, "kernel_int64_zeros")
+    kernel_uint64_zeros = runtime.reflect.get(native_module, "kernel_uint64_zeros")
+    native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+    output = runtime.reflect.apply(
+        kernel_int64_zeros,
+        native_module,
+        [kernel, stop],
+    )
+    workspace = runtime.reflect.apply(
+        kernel_uint64_zeros,
+        native_module,
+        [kernel, 2 * stop],
+    )
+    valid = bool(
+        runtime.reflect.apply(
+            kernel,
+            kernel_module,
+            [output, workspace, stop],
+        )
+    )
+    if not valid:
+        raise RuntimeError("packed Möbius range rejected its bounded storage")
+
+    execution_target = getattr(kernel, "executionTarget", None)
+    if execution_target == "wasm":
+        route = "wasm-compiled-source"
+        reason = "normal-heavy-case"
+    elif bool(
+        runtime.reflect.apply(native_is_compiled, native_module, [kernel])
+    ) and bool(getattr(kernel, "nativeAvailable", False)):
+        route = "native-compiled-source"
+        reason = "normal-heavy-case"
+    else:
+        route = "portable-computation"
+        reason = "compiled-source-unavailable"
+    _record_moebius_range_acceleration(
+        route,
+        reason,
+        1 if route != "portable-computation" else 0,
+        3 * stop,
+    )
+    return [int(output[index]) for index in range(stop)]
+
+
 def _moebius_range(start: Any, stop: Any = None) -> Any:
     if stop is None:
         stop = start
         start = 0
+    if runtime.is_exact_integer(start) and runtime.is_exact_integer(stop):
+        start_integer = runtime.integer_bigint(start)
+        stop_integer = runtime.integer_bigint(stop)
+        if (
+            start_integer == runtime.bigint(0)
+            and stop_integer >= runtime.bigint(_PACKED_MOEBIUS_MIN_STOP)
+            and stop_integer <= runtime.bigint(_PACKED_MOEBIUS_MAX_STOP)
+        ):
+            return _packed_moebius_range(runtime.number(stop_integer))
+        reason = (
+            "below-packed-threshold"
+            if start_integer == runtime.bigint(0)
+            and stop_integer >= runtime.bigint(0)
+            and stop_integer < runtime.bigint(_PACKED_MOEBIUS_MIN_STOP)
+            else "exceptional-range"
+        )
+        _record_moebius_range_acceleration(
+            "portable-computation",
+            reason,
+            0,
+            0,
+        )
     return [moebius(value) for value in range(start, stop)]
 
 
@@ -6555,45 +6680,122 @@ def _riemann_zeta_module() -> Any:
     return _riemann_zeta_module_cache
 
 
+def _analytic_precision(value: Any) -> Any:
+    if value is None:
+        value = 53
+    precision = runtime.normalize_integer(value)
+    if (
+        runtime.jstype(precision) != "number"
+        or not runtime.number.isSafeInteger(precision)
+        or precision < 16
+    ):
+        raise ValueError("analytic precision must be at least 16 bits")
+    return precision
+
+
+def _analytic_complex_point(field: Any, value: Any) -> Any:
+    if runtime.array.isArray(value) and len(value) == 2:
+        return field(value[0], value[1])
+    try:
+        return field(value)
+    except Exception:
+        evaluator_factory = getattr(value, "_plot_complex_callable", None)
+        if evaluator_factory is not None:
+            evaluator = evaluator_factory([])
+            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+            real_part = runtime.reflect.get(evaluated, "real")
+            imaginary_part = runtime.reflect.get(evaluated, "imag")
+            if (
+                runtime.jstype(real_part) != "number"
+                or runtime.jstype(imaginary_part) != "number"
+                or not runtime.number.isFinite(real_part)
+                or not runtime.number.isFinite(imaginary_part)
+            ):
+                return _riemann_raise_nonfinite()
+            return field(real_part, imaginary_part)
+        real_part = getattr(value, "real", runtime.undefined)
+        imaginary_part = getattr(value, "imag", runtime.undefined)
+        if (
+            real_part is not runtime.undefined
+            and imaginary_part is not runtime.undefined
+        ):
+            if callable(real_part):
+                real_part = real_part()
+            if callable(imaginary_part):
+                imaginary_part = imaginary_part()
+            try:
+                return field(str(real_part), str(imaginary_part))
+            except Exception:
+                pass
+        raise
+
+
+def _analytic_complex_batch(points: Any, precision: Any) -> Any:
+    if not runtime.array.isArray(points) or len(points) == 0:
+        raise ValueError("analytic points must be a nonempty list or tuple")
+    precision = _analytic_precision(precision)
+    field = runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
+    return field, [_analytic_complex_point(field, point)._native for point in points]
+
+
+def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
+    """Numerically evaluate complex gamma at a nonempty batch of points.
+
+    The entire batch is sent through one Arb/Acb backend call. The returned
+    midpoint values belong to `ComplexField(prec)`; this function does not
+    implement symbolic gamma or exact integer/half-integer simplification.
+    """
+
+    field, native_points = _analytic_complex_batch(points, prec)
+    backend = runtime.flint_backend()
+    evaluator = getattr(backend, "complexGammaValues", runtime.undefined)
+    if evaluator is runtime.undefined:
+        raise RuntimeError("the complex-gamma batch backend is unavailable")
+    native_values = evaluator(native_points, field.precision())
+    return [field._fromNative(value) for value in native_values]
+
+
+def complex_gamma(value: Any, prec: Any = 53) -> Any:
+    """Numerically evaluate complex gamma in `ComplexField(prec)`."""
+
+    return complex_gamma_values([value], prec=prec)[0]
+
+
+def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
+    """Numerically evaluate Riemann xi at a nonempty batch of points.
+
+    Sage.js uses the no-half normalization
+    `s*(s-1)*pi^(-s/2)*Gamma(s/2)*zeta(s)`, matching
+    `RiemannZeta(prec).xi(s)`. The entire batch uses one backend call when the
+    receipt-backed Arb/Acb batch is available.
+    """
+
+    field, native_points = _analytic_complex_batch(points, prec)
+    backend = runtime.flint_backend()
+    evaluator = getattr(backend, "riemannXiValues", runtime.undefined)
+    if evaluator is runtime.undefined:
+        scalar = getattr(backend, "riemannXiStandardValue", runtime.undefined)
+        if scalar is runtime.undefined:
+            raise RuntimeError("the Riemann-xi backend is unavailable")
+        native_values = [scalar(point, field.precision()) for point in native_points]
+    else:
+        native_values = evaluator(native_points, field.precision())
+    two = field(2)
+    return [field._fromNative(value) * two for value in native_values]
+
+
+def riemann_xi(value: Any, prec: Any = 53) -> Any:
+    """Numerically evaluate no-half-normalized Riemann xi."""
+
+    return riemann_xi_values([value], prec=prec)[0]
+
+
 class _FlintRiemannZetaProvider:
     def _field(self, precision: Any) -> Any:
         return runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
 
     def _point(self, field: Any, value: Any) -> Any:
-        if runtime.array.isArray(value) and len(value) == 2:
-            return field(value[0], value[1])
-        try:
-            return field(value)
-        except Exception:
-            evaluator_factory = getattr(value, "_plot_complex_callable", None)
-            if evaluator_factory is not None:
-                evaluator = evaluator_factory([])
-                evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
-                real_part = runtime.reflect.get(evaluated, "real")
-                imaginary_part = runtime.reflect.get(evaluated, "imag")
-                if (
-                    runtime.jstype(real_part) != "number"
-                    or runtime.jstype(imaginary_part) != "number"
-                    or not runtime.number.isFinite(real_part)
-                    or not runtime.number.isFinite(imaginary_part)
-                ):
-                    return _riemann_raise_nonfinite()
-                return field(real_part, imaginary_part)
-            real_part = getattr(value, "real", runtime.undefined)
-            imaginary_part = getattr(value, "imag", runtime.undefined)
-            if (
-                real_part is not runtime.undefined
-                and imaginary_part is not runtime.undefined
-            ):
-                if callable(real_part):
-                    real_part = real_part()
-                if callable(imaginary_part):
-                    imaginary_part = imaginary_part()
-                try:
-                    return field(str(real_part), str(imaginary_part))
-                except Exception:
-                    pass
-            raise
+        return _analytic_complex_point(field, value)
 
     def jet(
         self,

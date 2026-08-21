@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-curves",
+  "title": "Wasm Curves",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Port moderate-domain elliptic L-series batches and plotting kernels to a shared Wasm-compatible core; classify specialist elliptic and hyperelliptic dependencies with tested portable fallbacks",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "packages/flint-wasm/src/curves/",
+    "packages/flint-wasm/curve-backend.mjs",
+    "packages/flint-wasm/curve-backend.d.ts",
+    "packages/flint-wasm/test/curve-parity.test.mjs",
+    "test/wasm-curve-fallbacks.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "desktop ecLseriesValues packed and decimal contracts",
+      "ordinary elliptic L-series evaluation",
+      "ordinary exhaustive hyperelliptic local-factor and Jacobian algorithms"
+    ],
+    "exceptions": [
+      "eclib, smalljac, and rforest remain specialist desktop-only dependencies with explicit portable fallbacks"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Implemented a host-neutral packed elliptic L-series Wasm adapter with exact decimal-ball and explicit binary64 plot transports, a JS backend matching ecLseriesValues plan/value/plot modes, a source-preserving core extractor, bounded resource contracts, and reviewed specialist curve dependency dispositions.",
+    "risks": [
+      "The shared Wasm build and architecture inventories must add the new source, exports, backend merge, and classifications in the integration lane.",
+      "The first release leaves far-right direct-series acceleration on the existing ordinary fallback and limits each packed plot tile to 10000 points."
+    ],
+    "next_steps": [
+      "Materialize ellipticLseriesCoreSource(packages/flint/src/elliptic_lfunction.c) into dist and compile it with src/curves/elliptic-lseries-adapter.c.",
+      "Export every sagejs_wasm_ec_lseries_* symbol, merge createCurveBackend(instance) into runtime.flint_backend(), and publish the curve backend files.",
+      "Classify the new C/header and Wasm boundaries, then run the real Chromium E37 L-series and complex-plot fixtures."
+    ]
+  }
+}

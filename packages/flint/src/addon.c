@@ -43,6 +43,7 @@
 #include "matrix.h"
 #include "multivariate.h"
 #include "number_field_factor.h"
+#include "number_field_zeta.h"
 #include "p1.h"
 #include "prime_count.h"
 
@@ -4586,6 +4587,12 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"riemannZetaValues", NULL,
             sagejs_riemann_zeta_values,
             NULL, NULL, NULL, napi_default, NULL},
+        {"complexGammaValues", NULL,
+            sagejs_complex_gamma_values,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"riemannXiValues", NULL,
+            sagejs_riemann_xi_values,
+            NULL, NULL, NULL, napi_default, NULL},
         {"riemannXiStandardValue", NULL,
             sagejs_riemann_xi_standard_value,
             NULL, NULL, NULL, napi_default, NULL},
@@ -5021,6 +5028,9 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"hyperellipticLseriesValues", NULL,
             sagejs_hyperelliptic_lseries_values,
             NULL, NULL, NULL, napi_default, NULL},
+        {"hyperellipticCentralWeights", NULL,
+            sagejs_hyperelliptic_central_weights,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,
@@ -5031,6 +5041,9 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"nmodPolyRoots", NULL, nmod_poly_roots_value, NULL, NULL, NULL,
             napi_default, NULL},
+        {"nfFactorDegreesBatch", NULL,
+            sagejs_nf_factor_degrees_batch_value,
+            NULL, NULL, NULL, napi_default, NULL},
         {"polyExactRoots", NULL, exact_poly_roots, NULL, NULL, NULL,
             napi_default, NULL},
         {"realFromString", NULL, sagejs_real_from_string, NULL, NULL, NULL,

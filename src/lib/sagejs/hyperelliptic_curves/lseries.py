@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import cmath
 import math
-from typing import Any
+from typing import Any, Mapping
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -71,6 +71,26 @@ class HyperellipticLseriesResourceError(ValueError):
 
 class HyperellipticLseriesNumericalIndeterminacyError(ArithmeticError):
     """Nested numerical refinements do not determine the requested result."""
+
+
+_CENTRAL_PLAN_CACHE: dict[tuple[int, int, int, int, bool], dict[str, Any]] = {}
+_CENTRAL_WEIGHT_CACHE: dict[tuple[int, int, str, int], Any] = {}
+_CENTRAL_CACHE_LIMIT = 256
+
+
+def clear_central_weight_cache() -> None:
+    """Clear bounded process-local central plan and reference-weight caches."""
+    _CENTRAL_PLAN_CACHE.clear()
+    _CENTRAL_WEIGHT_CACHE.clear()
+
+
+def central_weight_cache_info() -> dict[str, int]:
+    """Return inspectable process-local central cache sizes and limits."""
+    return {
+        "curve_plans": len(_CENTRAL_PLAN_CACHE),
+        "reference_weights": len(_CENTRAL_WEIGHT_CACHE),
+        "limit": _CENTRAL_CACHE_LIMIT,
+    }
 
 
 class GlobalCoefficientPrefix:
@@ -140,6 +160,29 @@ class GlobalCoefficientPrefix:
         self.values = values
         self.extensions += 1
         return self.values
+
+    def _seed_exact_values(
+        self,
+        values: list[int],
+        backend_counts: Mapping[str, int] | None = None,
+    ) -> None:
+        """Seed this prefix from an independently authenticated exact cache.
+
+        The persistent family cache validates the curve identity, schema, and
+        payload digest before calling this internal method.  Keeping the
+        mutation here makes the prefix invariant explicit and prevents cache
+        plumbing from publishing a partially initialized prefix.
+        """
+        if len(values) < 2 or int(values[0]) != 0 or int(values[1]) != 1:
+            raise ValueError("an exact coefficient prefix must begin with [0, 1]")
+        checked = [int(value) for value in values]
+        self.values = checked
+        self.backend_counts = {
+            str(name): int(count)
+            for name, count in dict(
+                {} if backend_counts is None else backend_counts
+            ).items()
+        }
 
 
 def _checked_precision(value: Any) -> int:
@@ -419,6 +462,294 @@ def _raw_derivatives(
     return answer
 
 
+def central_kernel(genus: Any, x: Any, prec: Any = 53) -> Any:
+    """Return the inverse Mellin kernel `K_g(x)` for genus 2 or 3.
+
+    Genus 2 uses the closed Bessel formula.  Genus 3 uses a readable vertical
+    inverse-Mellin integral and is intended as a differential oracle, not the
+    production central evaluator.
+    """
+    genus_value = int(genus)
+    bits = _checked_precision(prec)
+    if genus_value not in (2, 3):
+        raise ValueError("the central kernel currently supports genus 2 or 3")
+    with mp.workprec(bits + 48):
+        argument = mp.mpf(x)
+        if argument <= 0:
+            raise ValueError("the central-kernel argument must be positive")
+        if genus_value == 2:
+            return 2 * mp.besselk(0, 2 * mp.sqrt(argument))
+        real_part = mp.mpf(2)
+
+        def integrand(height: Any) -> Any:
+            point = mp.mpc(real_part, height)
+            return mp.re(mp.gamma(point) ** genus_value * argument ** (-point))
+
+        return mp.quad(integrand, [0, mp.inf]) / mp.pi
+
+
+def central_weight(genus: Any, order: Any, x: Any, prec: Any = 53) -> Any:
+    """Return the universal logarithmic central weight `W_(g,k)(x)`.
+
+    The genus-2 order-zero case is evaluated by
+    `2*K_1(2*sqrt(x))/sqrt(x)`.  Other cases use the defining single Mellin
+    contour and are cached as high-precision reference values.
+    """
+    genus_value = int(genus)
+    order_value = _checked_order(order)
+    bits = _checked_precision(prec)
+    if genus_value not in (2, 3):
+        raise ValueError("central weights currently support genus 2 or 3")
+    with mp.workprec(bits + 64):
+        argument = mp.mpf(x)
+        if argument <= 0:
+            raise ValueError("the central-weight argument must be positive")
+        key = (
+            genus_value,
+            order_value,
+            str(mp.nstr(argument, bits // 3 + 12)),
+            bits,
+        )
+        cached = _CENTRAL_WEIGHT_CACHE.get(key)
+        if cached is not None:
+            return +cached
+        if genus_value == 2 and order_value == 0:
+            result = 2 * mp.besselk(1, 2 * mp.sqrt(argument)) / mp.sqrt(argument)
+        else:
+            real_part = mp.mpf(2)
+            factorial = mp.factorial(order_value)
+
+            def integrand(height: Any) -> Any:
+                point = mp.mpc(real_part, height)
+                return mp.re(
+                    mp.gamma(point) ** genus_value
+                    * argument ** (-point)
+                    * factorial
+                    / (point - 1) ** (order_value + 1)
+                )
+
+            result = mp.quad(integrand, [0, mp.inf]) / mp.pi
+        if len(_CENTRAL_WEIGHT_CACHE) >= _CENTRAL_CACHE_LIMIT:
+            del _CENTRAL_WEIGHT_CACHE[next(iter(_CENTRAL_WEIGHT_CACHE))]
+        _CENTRAL_WEIGHT_CACHE[key] = +result
+        return +result
+
+
+def _central_weight_plan(
+    conductor: int,
+    genus: int,
+    precision_bits: int,
+    maximum_derivative: int,
+    *,
+    fine: bool,
+) -> dict[str, Any]:
+    """Plan the one-dimensional central-weight contour.
+
+    The identity
+
+    `W_(g,k)(x) = k!/(2*pi*i) integral Gamma(s)^g*x^-s/(s-1)^(k+1) ds`
+
+    turns the central jet into one vertical-contour Dirichlet-polynomial
+    calculation.  This is deliberately independent of the two-dimensional
+    theta grid retained below as a differential oracle.
+    """
+    cache_key = (conductor, genus, precision_bits, maximum_derivative, fine)
+    cached = _CENTRAL_PLAN_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached)
+    conductor_value = mp.mpf(conductor)
+    demand = (precision_bits + 18) * mp.log(2)
+    cutoff = int(
+        mp.ceil(
+            max(
+                64,
+                2 * mp.sqrt(conductor_value) * (demand / (2 * mp.pi * genus)) ** genus,
+            )
+        )
+    )
+    cutoff = int(mp.ceil(cutoff * max(mp.mpf(1), precision_bits / mp.mpf(64))))
+    cutoff = int(mp.ceil(cutoff))
+    # The closest singularity to Re(s)=2 is the pole at s=1 introduced by
+    # the integrated central weight.  The trapezoid error therefore decays
+    # geometrically like exp(-2*pi/h).  The extra logarithmic bandwidth term
+    # resolves x=n/A through the requested coefficient cutoff.
+    log_a = mp.log(conductor_value) / 2 - genus * mp.log(2 * mp.pi)
+    bandwidth = max(mp.mpf(1), abs(mp.log(cutoff) - log_a))
+    denominator = demand + bandwidth + 12 + maximum_derivative * mp.log(demand + 3)
+    step = 4 * mp.pi / denominator
+    if not fine:
+        step *= mp.mpf("1.1")
+    height = (demand + (genus * mp.mpf("1.5") + 3) * mp.log(demand + 3) + 8) / (
+        genus * mp.pi / 2
+    )
+    points = int(mp.ceil(height / step))
+    if cutoff > 2_000_000 or points > 8000 or cutoff * (points + 1) > 200_000_000:
+        raise HyperellipticLseriesResourceError(
+            "the hyperelliptic central-weight plan exceeds resource limits",
+            {
+                "cutoff": cutoff,
+                "contour_points": points,
+                "contour_step": str(step),
+            },
+        )
+    result = {
+        "precision_bits": precision_bits,
+        "work_precision_bits": precision_bits + 80,
+        "cutoff": cutoff,
+        "contour_step": step,
+        "contour_points": points,
+        "contour_height": step * points,
+        "contour_real_part": 2,
+        "log_a": log_a,
+    }
+    if len(_CENTRAL_PLAN_CACHE) >= 64:
+        del _CENTRAL_PLAN_CACHE[next(iter(_CENTRAL_PLAN_CACHE))]
+    _CENTRAL_PLAN_CACHE[cache_key] = dict(result)
+    return result
+
+
+def _central_weight_contour(
+    coefficients: list[int],
+    genus: int,
+    root_number: int,
+    maximum_derivative: int,
+    plan: dict[str, Any],
+) -> tuple[list[Any], int]:
+    """Evaluate completed central derivatives from their Mellin weights."""
+    cutoff = int(plan["cutoff"])
+    logarithms = [mp.log(index) for index in range(1, cutoff + 1)]
+    values = coefficients[1 : cutoff + 1]
+    step = mp.mpf(plan["contour_step"])
+    contour_points = int(plan["contour_points"])
+    log_a = mp.mpf(plan["log_a"])
+    totals = [mp.mpf(0) for _order in range(maximum_derivative + 1)]
+    factorials = [mp.factorial(order) for order in range(maximum_derivative + 1)]
+    coefficient_terms = 0
+    for index in range(contour_points + 1):
+        height = step * index
+        point = mp.mpc(2, height)
+        dirichlet = mp.fsum(
+            coefficient * mp.exp(-point * logarithm)
+            for coefficient, logarithm in zip(values, logarithms, strict=True)
+            if coefficient != 0
+        )
+        base = mp.gamma(point) ** genus * mp.exp(point * log_a) * dirichlet
+        endpoint_weight = mp.mpf("0.5") if index in (0, contour_points) else 1
+        denominator = point - 1
+        denominator_power = denominator
+        for order in range(maximum_derivative + 1):
+            parity_factor = 1 + root_number * (-1) ** order
+            if parity_factor:
+                totals[order] += (
+                    endpoint_weight
+                    * parity_factor
+                    * factorials[order]
+                    * mp.re(base / denominator_power)
+                )
+            denominator_power *= denominator
+        coefficient_terms += cutoff
+    scale = step / mp.pi
+    return [scale * value for value in totals], coefficient_terms
+
+
+def central_weight_values(
+    curve: Any,
+    precision_bits: int,
+    coefficient_prefix: GlobalCoefficientPrefix,
+    maximum_derivative: int = 0,
+) -> dict[str, Any]:
+    """Evaluate the central jet with cached-weight contour identities."""
+    precision_bits = _checked_precision(precision_bits)
+    maximum_derivative = _checked_order(maximum_derivative)
+    genus = int(curve.genus())
+    conductor = int(curve.conductor())
+    root_number = int(curve.root_number())
+    with mp.workprec(precision_bits + 96):
+        coarse_plan = _central_weight_plan(
+            conductor,
+            genus,
+            precision_bits,
+            maximum_derivative,
+            fine=False,
+        )
+        fine_plan = _central_weight_plan(
+            conductor,
+            genus,
+            precision_bits,
+            maximum_derivative,
+            fine=True,
+        )
+        coefficients = coefficient_prefix.through(int(fine_plan["cutoff"]))
+        coarse_completed, coarse_terms = _central_weight_contour(
+            coefficients[: int(coarse_plan["cutoff"]) + 1],
+            genus,
+            root_number,
+            maximum_derivative,
+            coarse_plan,
+        )
+        fine_completed, fine_terms = _central_weight_contour(
+            coefficients,
+            genus,
+            root_number,
+            maximum_derivative,
+            fine_plan,
+        )
+        point = mp.mpf(1)
+        raw = _raw_derivatives(fine_completed, point, conductor, genus)
+        coarse_raw = _raw_derivatives(coarse_completed, point, conductor, genus)
+        maximum_difference = mp.mpf(0)
+        maximum_relative_difference = mp.mpf(0)
+        for left, right in zip(coarse_raw, raw, strict=True):
+            maximum_difference = max(maximum_difference, abs(right - left))
+            maximum_relative_difference = max(
+                maximum_relative_difference,
+                abs(right - left) / max(1, abs(right)),
+            )
+        return {
+            "algorithm": "central-mellin-weights",
+            "status": "ok",
+            "precision_bits": precision_bits,
+            "work_precision_bits": int(fine_plan["work_precision_bits"]),
+            "conductor": conductor,
+            "root_number": root_number,
+            "genus": genus,
+            "cutoff": int(fine_plan["cutoff"]),
+            "coarse_cutoff": int(coarse_plan["cutoff"]),
+            "contour_points": int(fine_plan["contour_points"]),
+            "contour_step": mp.nstr(fine_plan["contour_step"], 30),
+            "coefficient_terms": fine_terms + coarse_terms,
+            "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
+            "coefficient_prefix_extensions": coefficient_prefix.extensions,
+            "values": [
+                {
+                    "s_real": "1",
+                    "s_imag": "0",
+                    "raw_derivatives": tuple(
+                        _serialized_complex(value) for value in raw
+                    ),
+                    "completed_derivatives": tuple(
+                        _serialized_complex(value) for value in fine_completed
+                    ),
+                    "coarse_raw_derivatives": tuple(
+                        _serialized_complex(value) for value in coarse_raw
+                    ),
+                    "coarse_completed_derivatives": tuple(
+                        _serialized_complex(value) for value in coarse_completed
+                    ),
+                }
+            ],
+            "refinement_difference": mp.nstr(maximum_difference, 30),
+            "refinement_relative_difference": mp.nstr(maximum_relative_difference, 30),
+            "refinement_stable": maximum_relative_difference
+            <= mp.power(2, -max(12, precision_bits // 2)),
+            "rigorous": False,
+            "analytic_error_status": (
+                "coefficient and central-contour truncation checked by "
+                "independent nested refinement"
+            ),
+        }
+
+
 def lseries_values(
     curve: Any,
     point_pairs: list[tuple[str, str]],
@@ -634,6 +965,116 @@ def native_lseries_values(
         return None
 
 
+def native_central_weight_values(
+    curve: Any,
+    precision_bits: int,
+    coefficient_prefix: GlobalCoefficientPrefix,
+    maximum_derivative: int = 0,
+) -> dict[str, Any] | None:
+    """Evaluate the one-contour central weights with FLINT Arb/Acb."""
+    try:
+        backend = runtime.flint_backend()
+        function = _property(backend, "hyperellipticCentralWeights")
+        if function is runtime.undefined:
+            return None
+        conductor = runtime.bigint(int(curve.conductor()))
+        root_number = int(curve.root_number())
+        genus = int(curve.genus())
+        arguments: list[Any] = [
+            conductor,
+            root_number,
+            genus,
+            [0, 1],
+            precision_bits,
+            maximum_derivative,
+        ]
+        planned = runtime.reflect.apply(function, backend, arguments)
+        required = int(_property(planned, "requiredCutoff"))
+        coefficients = coefficient_prefix.through(required)
+        if any(value < -(2**31) or value > 2**31 - 1 for value in coefficients):
+            return None
+        arguments[3] = coefficients
+        native = runtime.reflect.apply(function, backend, arguments)
+        if str(_property(native, "status")) != "ok":
+            raise HyperellipticLseriesResourceError(
+                "the native central-weight coefficient plan was not satisfied",
+                {"required_cutoff": required},
+            )
+        raw = _property(native, "rawDerivatives")
+        completed = _property(native, "completedDerivatives")
+        coarse_raw = _property(native, "coarseRawDerivatives")
+        coarse_completed = _property(native, "coarseCompletedDerivatives")
+        raw_pairs = tuple(_ball_pair(raw[index]) for index in range(len(raw)))
+        completed_pairs = tuple(
+            _ball_pair(completed[index]) for index in range(len(completed))
+        )
+        coarse_raw_pairs = tuple(
+            _ball_pair(coarse_raw[index]) for index in range(len(coarse_raw))
+        )
+        coarse_completed_pairs = tuple(
+            _ball_pair(coarse_completed[index])
+            for index in range(len(coarse_completed))
+        )
+        return {
+            "algorithm": "native-arb-central-mellin-weights",
+            "status": "ok",
+            "precision_bits": precision_bits,
+            "work_precision_bits": int(_property(native, "workPrecisionBits")),
+            "conductor": int(curve.conductor()),
+            "root_number": root_number,
+            "genus": genus,
+            "cutoff": int(_property(native, "requiredCutoff")),
+            "coarse_cutoff": int(_property(native, "coarseCutoff")),
+            "contour_points": int(_property(native, "contourPoints")),
+            "coarse_contour_points": int(_property(native, "coarseContourPoints")),
+            "contour_step": str(_property(native, "contourStep")),
+            "contour_real": int(_property(native, "contourReal")),
+            "coefficient_terms": int(_property(native, "coefficientTerms")),
+            "coefficient_backend_counts": dict(coefficient_prefix.backend_counts),
+            "coefficient_prefix_extensions": coefficient_prefix.extensions,
+            "values": [
+                {
+                    "s_real": "1",
+                    "s_imag": "0",
+                    "raw_derivatives": raw_pairs,
+                    "completed_derivatives": completed_pairs,
+                    "coarse_raw_derivatives": coarse_raw_pairs,
+                    "coarse_completed_derivatives": coarse_completed_pairs,
+                }
+            ],
+            "balls": (
+                {
+                    "raw": tuple(
+                        _ball_diagnostics(raw[index]) for index in range(len(raw))
+                    ),
+                    "completed": tuple(
+                        _ball_diagnostics(completed[index])
+                        for index in range(len(completed))
+                    ),
+                },
+            ),
+            "refinement_difference": "not-materialized",
+            "refinement_relative_difference": str(
+                _property(native, "refinementRelativeDifference")
+            ),
+            "refinement_stable": bool(_property(native, "refinementStable")),
+            "rigorous": False,
+            "arithmetic_balls_rigorous": True,
+            "analytic_error_status": str(_property(native, "analyticErrorStatus")),
+        }
+    except (HyperellipticLseriesResourceError, ArithmeticError):
+        raise
+    except Exception:
+        return None
+
+
+def _pairs_are_central(point_pairs: list[tuple[str, str]]) -> bool:
+    if len(point_pairs) != 1:
+        return False
+    with mp.workprec(80):
+        return mp.mpf(point_pairs[0][0]) == 1 and mp.mpf(point_pairs[0][1]) == 0
+
+
 class HyperellipticLSeries:
     """Numerical Hasse--Weil L-function of a genus-2/3 Jacobian."""
 
@@ -647,6 +1088,7 @@ class HyperellipticLSeries:
             else coefficient_prefix
         )
         self._last_diagnostics: Any = None
+        self._evaluation_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
 
     def __repr__(self) -> str:
         return "L-series of " + repr(self._curve)
@@ -665,10 +1107,42 @@ class HyperellipticLSeries:
         bits = _checked_precision(precision)
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(bits)
         pairs = [_point_pair(complex_field, point) for point in points]
-        if algorithm not in ("auto", "native", "reference"):
-            raise ValueError("algorithm must be 'auto', 'native', or 'reference'")
+        if algorithm not in ("auto", "native", "reference", "inverse_mellin"):
+            raise ValueError(
+                "algorithm must be 'auto', 'native', 'reference', or 'inverse_mellin'"
+            )
+        central = _pairs_are_central(pairs)
+        cache_key = (
+            tuple(pairs),
+            bits,
+            int(maximum_derivative),
+            algorithm,
+        )
+        cached = self._evaluation_cache.get(cache_key)
+        if cached is not None:
+            self._last_diagnostics = cached
+            return cached, bits
         result = None
-        if algorithm != "reference":
+        if central and algorithm != "inverse_mellin":
+            if algorithm != "reference":
+                result = native_central_weight_values(
+                    self._curve,
+                    bits,
+                    self._coefficient_prefix,
+                    maximum_derivative,
+                )
+                if result is None and algorithm == "native":
+                    raise NotImplementedError(
+                        "the native Arb central-weight backend is unavailable"
+                    )
+            if result is None:
+                result = central_weight_values(
+                    self._curve,
+                    bits,
+                    self._coefficient_prefix,
+                    maximum_derivative,
+                )
+        elif algorithm != "reference":
             result = native_lseries_values(
                 self._curve,
                 pairs,
@@ -692,6 +1166,10 @@ class HyperellipticLSeries:
             raise HyperellipticLseriesNumericalIndeterminacyError(
                 "the hyperelliptic L-series refinement did not stabilize"
             )
+        if len(self._evaluation_cache) >= 32:
+            first_key = next(iter(self._evaluation_cache))
+            del self._evaluation_cache[first_key]
+        self._evaluation_cache[cache_key] = result
         self._last_diagnostics = result
         return result, bits
 
@@ -746,18 +1224,25 @@ class HyperellipticLSeries:
     ) -> Any:
         """Return the probable order of vanishing at the central point."""
         maximum = _checked_order(max_order)
-        result, bits = self._evaluate([1], prec, maximum, algorithm)
-        completed = [
-            _deserialized_complex(value)
-            for value in result["values"][0]["completed_derivatives"]
-        ]
-        coarse_completed = [
-            _deserialized_complex(value)
-            for value in result["values"][0]["coarse_completed_derivatives"]
-        ]
         parity = 0 if int(self._curve.root_number()) == 1 else 1
         rank = None
+        leading_completed = None
+        bits = _checked_precision(prec)
         for order in range(parity, maximum + 1, 2):
+            # High completed derivatives require progressively finer contours.
+            # Most curves have small rank, so asking only for the derivatives
+            # needed by the current rank candidate is both faster and avoids
+            # rejecting a well-isolated low derivative because an unused high
+            # derivative has not stabilized at the requested precision.
+            result, bits = self._evaluate([1], bits, order, algorithm)
+            completed = [
+                _deserialized_complex(value)
+                for value in result["values"][0]["completed_derivatives"]
+            ]
+            coarse_completed = [
+                _deserialized_complex(value)
+                for value in result["values"][0]["coarse_completed_derivatives"]
+            ]
             value = completed[order]
             coarse_value = coarse_completed[order]
             uncertainty = max(
@@ -766,8 +1251,9 @@ class HyperellipticLSeries:
             )
             if abs(value) > 16 * uncertainty:
                 rank = order
+                leading_completed = value
                 break
-        if rank is None:
+        if rank is None or leading_completed is None:
             raise HyperellipticLseriesNumericalIndeterminacyError(
                 "no nonzero central derivative was isolated through order "
                 + str(maximum)
@@ -778,7 +1264,7 @@ class HyperellipticLSeries:
             scale = mp.sqrt(int(self._curve.conductor())) / (2 * mp.pi) ** int(
                 self._curve.genus()
             )
-            leading = completed[rank] / scale
+            leading = leading_completed / scale
         return sage.ZZ(rank), self._coerce(_serialized_complex(leading), bits)
 
     def check_functional_equation(self, prec: Any = 53) -> Any:
@@ -798,6 +1284,23 @@ class HyperellipticLSeries:
         if cutoff < 1 or cutoff != bound:
             raise ValueError("coefficient bound must be a positive integer")
         return [sage.ZZ(value) for value in self._coefficient_prefix.through(cutoff)]
+
+    def init(
+        self,
+        *,
+        prec: Any = 53,
+        max_order: Any = 6,
+        domain: Any = None,
+        algorithm: str = "auto",
+    ) -> Any:
+        """Return a prepared reusable evaluator for this `L`-function."""
+        return LFunctionInit(
+            self,
+            prec=prec,
+            max_order=max_order,
+            domain=domain,
+            algorithm=algorithm,
+        )
 
     def central_jet(
         self,
@@ -851,10 +1354,204 @@ class HyperellipticLSeries:
         return self._last_diagnostics
 
 
+class LFunctionInit:
+    """Prepared genus-2/3 `L`-function evaluation state.
+
+    Central values and derivatives are materialized at construction. General
+    points are cached lazily and continue to use the prepared coefficient
+    prefix and inverse-Mellin implementation.
+    """
+
+    def __init__(
+        self,
+        lseries: HyperellipticLSeries,
+        *,
+        prec: Any = 53,
+        max_order: Any = 6,
+        domain: Any = None,
+        algorithm: str = "auto",
+    ) -> None:
+        self._lseries = lseries
+        self._precision = _checked_precision(prec)
+        self._maximum_order = _checked_order(max_order)
+        self._domain = domain
+        self._algorithm = str(algorithm)
+        self._closed = False
+        self._central_result, _bits = lseries._evaluate(
+            [1],
+            self._precision,
+            self._maximum_order,
+            self._algorithm,
+        )
+        self._point_cache: dict[str, Any] = {}
+
+    def __repr__(self) -> str:
+        return "Initialized " + repr(self._lseries)
+
+    def _check_open(self) -> None:
+        if self._closed:
+            raise ValueError("this LFunctionInit has been closed")
+
+    def close(self) -> None:
+        """Release prepared host caches owned by this object."""
+        self._point_cache.clear()
+        self._closed = True
+
+    def __enter__(self) -> Any:
+        self._check_open()
+        return self
+
+    def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def curve(self) -> Any:
+        self._check_open()
+        return self._lseries.curve()
+
+    def central_value(self) -> Any:
+        self._check_open()
+        return self._lseries._coerce(
+            self._central_result["values"][0]["raw_derivatives"][0],
+            self._precision,
+        )
+
+    def central_jet(self, max_order: Any = None, *, completed: bool = False) -> Any:
+        self._check_open()
+        maximum = (
+            self._maximum_order if max_order is None else _checked_order(max_order)
+        )
+        if maximum > self._maximum_order:
+            raise ValueError("the requested order exceeds this initialized jet")
+        key = "completed_derivatives" if completed else "raw_derivatives"
+        return runtime.math_tuple(
+            [
+                self._lseries._coerce(value, self._precision)
+                for value in self._central_result["values"][0][key][: maximum + 1]
+            ]
+        )
+
+    def analytic_rank(self, *, leading_coefficient: bool = False) -> Any:
+        self._check_open()
+        completed = [
+            _deserialized_complex(value)
+            for value in self._central_result["values"][0]["completed_derivatives"]
+        ]
+        coarse_completed = [
+            _deserialized_complex(value)
+            for value in self._central_result["values"][0][
+                "coarse_completed_derivatives"
+            ]
+        ]
+        parity = 0 if int(self.curve().root_number()) == 1 else 1
+        rank = None
+        for order in range(parity, self._maximum_order + 1, 2):
+            value = completed[order]
+            coarse_value = coarse_completed[order]
+            uncertainty = max(
+                abs(value - coarse_value),
+                mp.power(2, -max(16, self._precision // 2)) * max(1, abs(value)),
+            )
+            if abs(value) > 16 * uncertainty:
+                rank = order
+                break
+        if rank is None:
+            raise HyperellipticLseriesNumericalIndeterminacyError(
+                "no nonzero central derivative was isolated through order "
+                + str(self._maximum_order)
+            )
+        if not leading_coefficient:
+            return sage.ZZ(rank)
+        raw = self._central_result["values"][0]["raw_derivatives"][rank]
+        return sage.ZZ(rank), self._lseries._coerce(raw, self._precision)
+
+    def leading_derivative(self) -> Any:
+        """Return `(rank, L^(rank)(1))` using the prepared jet."""
+        return self.analytic_rank(leading_coefficient=True)
+
+    def value(self, s: Any) -> Any:
+        self._check_open()
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            self._precision
+        )
+        pair = _point_pair(complex_field, s)
+        key = pair[0] + ":" + pair[1]
+        cached = self._point_cache.get(key)
+        if cached is not None:
+            return cached
+        if _pairs_are_central([pair]):
+            value = self.central_value()
+        else:
+            value = self._lseries.value(
+                s,
+                prec=self._precision,
+                algorithm=self._algorithm,
+            )
+        self._point_cache[key] = value
+        return value
+
+    def __call__(self, s: Any) -> Any:
+        return self.value(s)
+
+    def values(self, points: Any) -> Any:
+        self._check_open()
+        point_list = list(points)
+        if not point_list:
+            return []
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            self._precision
+        )
+        pairs = [_point_pair(complex_field, point) for point in point_list]
+        missing_points = []
+        missing_keys = []
+        for point, pair in zip(point_list, pairs, strict=True):
+            key = pair[0] + ":" + pair[1]
+            if key not in self._point_cache and not _pairs_are_central([pair]):
+                missing_points.append(point)
+                missing_keys.append(key)
+        if missing_points:
+            result, bits = self._lseries._evaluate(
+                missing_points,
+                self._precision,
+                algorithm=self._algorithm,
+            )
+            for key, record in zip(missing_keys, result["values"], strict=True):
+                self._point_cache[key] = self._lseries._coerce(
+                    record["raw_derivatives"][0], bits
+                )
+        return [self.value(point) for point in point_list]
+
+    def values_along_line(self, start: Any, stop: Any, count: Any) -> Any:
+        """Evaluate `count` equally spaced points on a complex line segment."""
+        self._check_open()
+        number = int(count)
+        if isinstance(count, bool) or number != count or number < 2:
+            raise ValueError("count must be an integer at least 2")
+        step = (stop - start) / (number - 1)
+        return self.values([start + index * step for index in range(number)])
+
+    def diagnostics(self) -> Any:
+        self._check_open()
+        return {
+            "precision_bits": self._precision,
+            "maximum_derivative": self._maximum_order,
+            "domain": self._domain,
+            "algorithm": self._central_result["algorithm"],
+            "central": self._central_result,
+            "cached_points": len(self._point_cache),
+        }
+
+
 __all__ = [
     "GlobalCoefficientPrefix",
     "HyperellipticLSeries",
     "HyperellipticLseriesNumericalIndeterminacyError",
     "HyperellipticLseriesResourceError",
+    "LFunctionInit",
+    "central_kernel",
+    "central_weight",
+    "central_weight_cache_info",
+    "central_weight_values",
+    "clear_central_weight_cache",
     "lseries_values",
 ]

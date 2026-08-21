@@ -40,7 +40,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 665000,
+      "max_source_bytes": 674000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -78,7 +78,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 675000,
+      "max_source_bytes": 700000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -134,6 +134,20 @@
       "prefixes": []
     },
     {
+      "id": "arithmetic-native-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic"
+      ],
+      "modules": ["sagejs.kernels.arithmetic"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/kernels/arithmetic/"]
+    },
+    {
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
@@ -147,6 +161,7 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
         "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
@@ -221,6 +236,7 @@
         "sagejs.number_fields.general_zeta",
         "sagejs.number_fields.quadratic_characters",
         "sagejs.number_fields.riemann_zeta",
+        "sagejs.number_fields.zeta_coefficient_kernel",
         "sagejs.number_fields.zeta_coefficients"
       ],
       "files": [
@@ -230,6 +246,7 @@
         "src/lib/sagejs/number_fields/general_zeta.py",
         "src/lib/sagejs/number_fields/quadratic_characters.py",
         "src/lib/sagejs/number_fields/riemann_zeta.py",
+        "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
         "src/lib/sagejs/number_fields/zeta_coefficients.py"
       ],
       "prefixes": []
@@ -331,9 +348,26 @@
       "id": "groups-combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 33000,
+      "max_source_bytes": 38000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
       "files": ["src/baselib/groups.py"],
+      "prefixes": []
+    },
+    {
+      "id": "group-native-kernels",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "groups-combinatorics"
+      ],
+      "modules": ["sagejs.kernels.groups"],
+      "files": [
+        "src/lib/sagejs/kernels/groups/__init__.py",
+        "src/lib/sagejs/kernels/groups/permutation.py"
+      ],
       "prefixes": []
     },
     {
@@ -350,10 +384,24 @@
       "prefixes": []
     },
     {
+      "id": "graph-native-kernels",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "native-integration", "graph-theory"],
+      "modules": ["sagejs.kernels.graph"],
+      "files": [
+        "src/lib/sagejs/kernels/graph/__init__.py",
+        "src/lib/sagejs/kernels/graph/components.py",
+        "src/lib/sagejs/kernels/graph/shortest_paths.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 110000,
+      "max_source_bytes": 112000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
@@ -402,7 +450,7 @@
       "id": "hyperelliptic-curves-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 525000,
+      "max_source_bytes": 590000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "numeric-compat", "hyperelliptic-curves"

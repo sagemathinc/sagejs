@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-production-kernels",
+  "title": "Production WebAssembly native-kernel packs",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate production WebAssembly packs for every applicable registered source-transparent kernel, reuse canonical source and ABI identities, expose a runtime manifest and loader contract, and differentially execute the compiled Wasm cores",
+  "base_commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+  "claims": [
+    "tools/native-kernel/",
+    "test/wasm-production-native-kernels.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/webassembly-production-parity-and-apps-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "generated JavaScript same-source execution",
+      "native core production manifest identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/wasm-production-native-kernels.cjs",
+    "env SAGEJS_WASI_CLANG=/usr/bin/clang SAGEJS_WASI_SYSROOT=/usr SAGEJS_WASM_GMP_PREFIX=/tmp/sagejs-gmp-wasm.fmlxyX/prefix node --test --test-name-pattern=compiled Wasm core test/wasm-production-native-kernels.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/wasm-production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.883,
+      "started_at": "2026-08-20T05:32:52.430Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "bb3a55e8f06651ca34d276cda31084852c17234ee7438f72d69232347fadc90b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_WASI_CLANG=/usr/bin/clang SAGEJS_WASI_SYSROOT=/usr SAGEJS_WASM_GMP_PREFIX=/tmp/sagejs-gmp-wasm.fmlxyX/prefix node --test --test-name-pattern=compiled Wasm core test/wasm-production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.698,
+      "started_at": "2026-08-20T05:33:14.182Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "bb3a55e8f06651ca34d276cda31084852c17234ee7438f72d69232347fadc90b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.35,
+      "started_at": "2026-08-20T05:33:23.060Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "bb3a55e8f06651ca34d276cda31084852c17234ee7438f72d69232347fadc90b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.264,
+      "started_at": "2026-08-20T05:34:20.289Z",
+      "commit": "60e8788c3eb3e78c27d5e7f073e888a0be2fbcd6",
+      "workspace_fingerprint": "bb3a55e8f06651ca34d276cda31084852c17234ee7438f72d69232347fadc90b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Emits canonical source-transparent cores for all 24 production families, bridges 193 exact functions into content-addressed GMP/FLINT ownership-domain Wasm packs, and explicitly classifies 25 resource-owned functions plus all 7 non-production families with reasons, same-source fallbacks, oracles, and tests. Native and Wasm pack manifests now share portable source, ABI, declaration, core, and oracle identities. The portable loader verifies pack hashes, marshals exact values and packed buffers, exposes a hash-checked synchronous resolver, and passed a focused actual-Wasm same-source differential, a full 2.02 MiB GMP-domain link/execute receipt, and a full pinned-toolchain 32.59 MiB FLINT-domain link/execute receipt with exact integer matrix multiplication.",
+    "risks": [
+      "The 25 foreign-resource functions need generated FLINT ownership-domain adapters before they can dispatch to Wasm; they currently and intentionally resolve to the same-source fallback.",
+      "The existing full native-pack test requires packages/flint/build/Release/sagejs_flint.node in the worktree; 5 of 7 focused production-pack tests passed after rebuilding, while 2 were blocked by that missing unrelated addon."
+    ],
+    "next_steps": [
+      "Instantiate built packs before importing decorated standard-library modules, then make runtime-bootstrap resolveNativeFunction consult loader.resolve(logicalSource, name, {sourceHash, abiHash, declarationHash, portableIdentity}) synchronously before Node-native compilation.",
+      "Treat null from loader.resolve as normal same-source fallback and expose domains/manifest for browser capability diagnostics.",
+      "Add the generated FLINT resource adapter and public browser NumberField.maximal_order differential described in tools/native-kernel/WASM-PACK-CONTRACT.md."
+    ]
+  }
+}

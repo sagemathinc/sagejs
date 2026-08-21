@@ -1,0 +1,120 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-algebraic",
+  "title": "Browser algebraic numbers and advanced exact polynomials",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a host-neutral Wasm32-safe QQbar/AA and advanced exact-polynomial resource slice for roots, comparisons, enclosures, signatures, embeddings, and extension-field polynomial resources with Node/Wasm/browser differential and lifecycle tests",
+  "base_commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+  "claims": [
+    "packages/flint/src/algebraic_core.c",
+    "packages/flint/src/algebraic_core.h",
+    "packages/flint-wasm/src/algebraic.c",
+    "packages/flint-wasm/algebraic.mjs",
+    "packages/flint-wasm/test/algebraic-resource.test.mjs",
+    "packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+    "test/algebraic-wasm-core.cjs",
+    "test/algebraic-wasm-parity.cjs",
+    "docs/wasm-algebraic-numbers.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing Node QQbar/AA and exact polynomial public tests",
+      "FLINT qqbar and polynomial exact arithmetic",
+      "Node/Wasm/browser differential corpus"
+    ],
+    "exceptions": [
+      "The mature FLINT qqbar representation and certified enclosures require a compact shared C resource boundary; public policy remains in strict Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/algebraic-wasm-core.cjs test/algebraic-wasm-parity.cjs",
+    "node --test packages/flint-wasm/test/algebraic-resource.test.mjs",
+    "node packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+    "Wasm32 reactor link with pinned FLINT 3.6 under -Wall -Wextra -Werror",
+    "pnpm parallel:check",
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/algebraic-wasm-core.cjs test/algebraic-wasm-parity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.461,
+      "started_at": "2026-08-20T05:40:42.861Z",
+      "commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+      "workspace_fingerprint": "fb4ff178c674ab2f8db891994d17511ad55dde70bf9fea28bef3e063ef3c444c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_ALGEBRAIC_WASM=/tmp/sagejs-algebraic-core.stripped.wasm node --test packages/flint-wasm/test/algebraic-resource.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.207,
+      "started_at": "2026-08-20T05:40:54.435Z",
+      "commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+      "workspace_fingerprint": "fb4ff178c674ab2f8db891994d17511ad55dde70bf9fea28bef3e063ef3c444c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_ALGEBRAIC_WASM=/tmp/sagejs-algebraic-core.stripped.wasm node packages/flint-wasm/test/algebraic-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.009,
+      "started_at": "2026-08-20T05:40:55.262Z",
+      "commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+      "workspace_fingerprint": "fb4ff178c674ab2f8db891994d17511ad55dde70bf9fea28bef3e063ef3c444c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.597,
+      "started_at": "2026-08-20T05:41:02.582Z",
+      "commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+      "workspace_fingerprint": "fb4ff178c674ab2f8db891994d17511ad55dde70bf9fea28bef3e063ef3c444c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.627,
+      "started_at": "2026-08-20T05:41:19.156Z",
+      "commit": "49a4dfd4682efb29ed6b3fc779a58899ee708342",
+      "workspace_fingerprint": "fb4ff178c674ab2f8db891994d17511ad55dde70bf9fea28bef3e063ef3c444c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a host-neutral FLINT qqbar resource core, a flat Wasm32 adapter, and a memory-growth-safe JavaScript owner. The slice supplies exact AA/QQbar arithmetic, ordering, roots with multiplicity, minimal polynomials, certified dyadic enclosures, roots of unity, deterministic serialization, and precision-aware approximation display. Native, real Wasm, and real Chromium tests cover differential semantics, malformed data, generation handles, resource ceilings, memory growth, and leak-free close.",
+    "risks": [
+      "The standalone qqbar closure is 4.8 MiB stripped and 2.0 MiB gzip; integration must measure incremental main-module cost and may prefer a lazy flint-algebraic.wasm artifact.",
+      "qqbarApprox supplies certified exact-dyadic midpoint display and explicit double conversion, but arbitrary complex arithmetic requires composition with the analytic Acb backend before that capability is advertised as a complete workflow.",
+      "Finite-field fq extension-polynomial resources are a separate generated-FFI closure and are intentionally not falsely reported by this algebraic-number artifact.",
+      "Architecture checks cannot pass in this narrow lane until integration classifies the two shared core files and adapter, regenerates the native-export inventory, and adds production receipt evidence."
+    ],
+    "next_steps": [
+      "Classify packages/flint/src/algebraic_core.c and .h as accepted external-library-bridge files and packages/flint-wasm/src/algebraic.c as an accepted host-adapter in architecture/native-code.json, then run scripts/audit-native-exports.cjs --write.",
+      "Link both C sources into a receipt-bound main or lazy production artifact, export all sagejs_wasm_algebraic_* symbols, package algebraic.mjs, and compose createAlgebraicBackend(instance) into the FLINT backend after the generated/resource backends.",
+      "Add aggregate capability algebraic:qqbar-resource-core and bind supported existing qqbar/polyExactRoots NAPI IDs to the artifact receipt; do not mark qqbarMatrix, qqbarMatrixScalarMul, or fq resources available.",
+      "Run the two artifact tests with SAGEJS_ALGEBRAIC_WASM pointing to the production artifact and include their Node/Chromium receipts in release validation.",
+      "Complete the separate generated fq_context/fq_element/fq_polynomial closure for finite-field extension-polynomial public workflows."
+    ]
+  }
+}

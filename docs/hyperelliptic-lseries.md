@@ -193,6 +193,57 @@ succeed. In particular, bad reduction at 2 and odd reduction outside the
 implemented almost-good/semistable envelope remain honest capability
 boundaries.
 
+## Central weights and prepared evaluations
+
+At the center, Sage.js now avoids the general two-dimensional theta grid.  It
+uses the single-contour central weights
+
+```text
+W_(g,k)(x) = k!/(2*pi*i) integral Gamma(s)^g*x^(-s)/(s-1)^(k+1) ds
+Lambda^(k)(1) = (1+w*(-1)^k) sum_n a_n W_(g,k)(n/A).
+```
+
+The factor in front makes derivatives of the wrong functional-equation parity
+exact zeros.  The default native implementation performs the weighted sums in
+Arb/Acb and compares nested coefficient/contour plans.  It is substantially
+faster than the retained `algorithm="inverse_mellin"` implementation, which is
+still useful as an independent numerical oracle.  Arb encloses the finite
+arithmetic, but the contour error is currently checked by refinement, so the
+overall result remains explicitly probable rather than theorem-proving.
+
+For repeated work, initialize the L-function once:
+
+```sage
+L = C.lseries()
+init = L.init(prec=80, max_order=6, domain=(0, 2, -20, 20))
+init.central_value()
+init.central_jet(4)
+init.analytic_rank()
+init.leading_derivative()
+CC = ComplexField(80)
+init.values_along_line(1, 1 + 3*CC.gen(), 101)
+init.diagnostics()
+```
+
+The central jet is materialized once, exact coefficients are shared, and
+general points requested together use one inverse-Mellin grid.  `close()`
+clears the prepared host cache; the current implementation owns no persistent
+native pointer.  Process-local reference-weight and curve-plan caches are
+bounded and inspectable with `central_weight_cache_info()`, and may be reset
+with `clear_central_weight_cache()`.
+
+The readable universal functions are public for checking normalization:
+
+```sage
+from sagejs.hyperelliptic_curves.lseries import central_kernel, central_weight
+central_kernel(2, 1)       # 2*K_0(2)
+central_weight(2, 0, 1)    # 2*K_1(2)
+```
+
+Genus 3 uses the inverse Mellin transform of `Gamma(s)^3` as its readable
+reference.  Production central values sum the equivalent one-contour weights
+directly rather than evaluating one Meijer-G function per coefficient.
+
 ## Quadratic-twist families
 
 `quadratic_twists` scans fundamental quadratic discriminants in deterministic
@@ -201,6 +252,85 @@ numerically indeterminate rows are retained rather than silently skipped.
 The present segmented squarefree sieve accepts endpoints through `10^12` in
 absolute value; analytic resource limits can still turn a very large twist
 into an explicit unsupported row.
+
+### Persistent multicore CPU scans
+
+The authoritative CPU scanner can distribute deterministic tiles across
+persistent Sage.js worker evaluators.  Workers are isolated V8 evaluators, so
+the calculation uses multiple CPU cores without exposing Node worker objects
+in the mathematical API.  Every worker still calls the same Arb central-weight
+engine used by an individual `L`-series evaluation.
+
+```sage
+scan = C.quadratic_twists(
+    -10^5, 10^5,
+    prec=53,
+    max_order=2,
+    workers="auto",       # or an explicit positive integer
+    tile_size=8,
+    cache_dir="auto",     # ~/.cache/sagejs/hyperelliptic-families
+)
+scan.export_jsonl("twists.jsonl", resume=True)
+scan.diagnostics()
+```
+
+The parent computes each exact base coefficient only once.  It publishes
+immutable prefix files whose identity includes the exact curve model, global
+conductor, root number, bad Euler factors, coefficient algorithm, and schema.
+The filename contains the SHA-256 digest of the canonical payload; both the
+parent and every worker verify the identity, cutoff, initial coefficients, and
+digest before use.  Publication uses a same-directory temporary file followed
+by atomic replacement.  At most `max_cache_entries` prefixes are retained for
+one curve identity.  Set `cache_dir=None` to disable durable caching; this also
+selects the sequential engine because isolated workers require shared exact
+input storage.
+
+`workers="auto"` is bounded by the available CPUs, the reported host memory
+budget, and a conservative maximum of eight workers. Intervals narrower than
+256 integers remain sequential so worker startup cannot dominate them;
+explicit worker counts are useful for measurement and dedicated hosts.
+`tile_size` changes only
+scheduling: results are reassembled and yielded in canonical discriminant
+order.  A worker result is treated as transport data and must bind to exactly
+one submitted discriminant before it is exposed.
+Worker pools are process-local and persist across family objects, so repeated
+scans amortize evaluator startup; immutable coefficient files are normally
+served from the operating system's page cache after their first authenticated
+read. Long-running applications can release the worker pool with
+`close_cpu_family_workers()` from `sagejs.hyperelliptic_curves.twists`;
+session shutdown also releases the host workers.
+
+Checkpoint schema v3 forms a SHA-256 chain from the exact header through every
+record.  Resume verifies the mathematical request, sequence number,
+discriminant order, previous digest, and current digest.  A partial final line
+is truncated safely, while mutation of any complete row is rejected.  Worker
+count, tile size, and cache location are deliberately not part of the
+mathematical request, so a scan may resume with a different CPU count or on a
+different machine after copying its JSONL checkpoint.  The coefficient cache
+is only an accelerator and can always be deleted and reconstructed.
+
+Use `max_coefficient_cutoff` to impose a family-level memory/work boundary.
+Rows exceeding it are retained with status `resource_limit`; they are never
+silently omitted.  Cancellation is observed at deterministic discriminant
+boundaries.  A tile may finish internally before cancellation is noticed, but
+only the verified canonical prefix of its rows reaches the checkpoint.
+
+Preflight asks the same native central-weight planner used by evaluation for
+its exact coefficient cutoff. If that capability is unavailable, a documented
+conservative analytic estimate is used instead. This avoids constructing a
+large upper-bound prefix merely to discover a substantially smaller native
+plan.
+
+The reproducible CPU comparison is:
+
+```bash
+pnpm bench:hyperelliptic-cpu-twists
+```
+
+It reports sequential, forced cold-worker, forced warm-worker, and checkpoint
+stages separately. Its deliberately small interval exposes startup overhead;
+it is a reproducible diagnostic, not a claim that parallel execution wins on
+ten rows. Its exact interval and precision are part of the JSON receipt.
 For `gcd(D,N)=1`, it uses the primitive-character identities
 
 ```text
@@ -242,9 +372,31 @@ line is safely truncated, and resume verifies every preceding fundamental
 discriminant before appending:
 
 ```sage
-scan = C.quadratic_twists(-10^6, 10^6, prec=53)
+scan = C.quadratic_twists(-10^6, 10^6, prec=53, mode="candidates",
+                          backend="auto", candidate_threshold=1e-8)
 scan.export_jsonl("twists.jsonl", resume=True)
 ```
+
+The v2 checkpoint records mode, requested backend, threshold, exact CPU/GPU
+selection, per-row timings, and screening metadata.  `backend="auto"` remains
+CPU until a named physical WebGPU device passes both the candidate-safety
+corpus and the documented 5x crossover gate.  `backend="gpu"` fails clearly
+when WebGPU is absent or uncalibrated; it never silently substitutes an
+unverified f32 result.
+
+The optional WebGPU feasibility boundary is separately inspectable:
+
+```sage
+from sagejs.hyperelliptic_curves.gpu_twists import gpu_twist_capabilities
+gpu_twist_capabilities()
+```
+
+It provides deterministic packed f32 dot products, an explicit sequential
+roundoff bound, and device/shader provenance.  GPU values are candidate-screen
+data only—not Arb balls—and every retained or ambiguous candidate must be
+refined by the CPU central-weight engine.  The portable dependency is Dawn's
+MIT-licensed `webgpu` package; CPU-only installations retain the complete
+mathematical API.
 
 Progress and cancellation callbacks run only at safe discriminant boundaries.
 All twists share one extendable exact coefficient prefix for the base curve;

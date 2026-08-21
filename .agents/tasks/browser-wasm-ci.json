@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "browser-wasm-ci",
+  "title": "Browser Wasm Ci",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add public browser-Wasm parity, security, offline/cache, performance/payload, and reproducible release CI gates",
+  "base_commit": "9510881c1d0611b1b7efe535eadd67ac5de23218",
+  "claims": [
+    "test/browser-wasm-parity-corpus.json",
+    "test/browser-wasm-release-gates.cjs",
+    "packages/flint-wasm/test/browser-wasm-support.mjs",
+    "packages/flint-wasm/test/browser-wasm-parity.mjs",
+    "packages/flint-wasm/test/browser-wasm-security.mjs",
+    "packages/flint-wasm/test/browser-wasm-offline-cache.mjs",
+    "packages/flint-wasm/test/browser-wasm-node-parity.cjs",
+    "packages/flint-wasm/test/browser-wasm-serialization.mjs",
+    "packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs",
+    "packages/flint-wasm/scripts/browser-wasm-deployment.cjs",
+    "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
+    ".github/workflows/wasm-routine.yml",
+    ".github/workflows/wasm-release.yml",
+    ".github/workflows/wasm-deployment.yml",
+    "bench/browser-wasm-budget.json",
+    "bench/browser-wasm-performance-cases.json",
+    "bench/browser-wasm-performance.mjs",
+    "bench/browser-wasm-performance.schema.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/browser-wasm-release-gates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.532,
+      "started_at": "2026-08-20T08:20:42.879Z",
+      "commit": "9510881c1d0611b1b7efe535eadd67ac5de23218",
+      "workspace_fingerprint": "c769ac878a132800af0d2e542a20c86ebb4c7cfe3eea02f10c9a085d1bf3b464",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a bounded heavyweight browser/native performance profile, v2 receipts with cold/warm timings, per-operation memory and evaluator route/copy telemetry, native ratio calculation, and release-workflow production of a same-workload native reference.",
+    "risks": [
+      "Reviewed performance and browser/native ratio baselines intentionally remain null until final production artifacts produce empirical receipts.",
+      "The local lane had a stale native addon/generated-FFI pair, so the complete native receipt was not generated here; clean release CI rebuilds both together. Four non-number-field workload sources passed against the current root runtime, and the focused schema/gate tests passed."
+    ],
+    "next_steps": [
+      "After capability instrumentation lands, run a production Chromium receipt and require every heavyweight workload's expected routes to be matched.",
+      "After the final reproducible artifact is selected, review receipts and populate performance_baseline, native_ratio_baseline, and a reviewed native ratio regression allowance."
+    ]
+  }
+}

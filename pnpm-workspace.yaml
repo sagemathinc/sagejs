@@ -6,6 +6,7 @@ allowBuilds:
   tree-sitter-macaulay2: false
   tree-sitter-python: false
   wasi-js: false
+  webgpu: true
   zeromq: true
 minimumReleaseAgeExclude:
   - '@cortex-js/compute-engine@0.98.0'

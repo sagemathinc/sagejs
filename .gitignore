@@ -18,3 +18,4 @@ bench/.dense-prime-migration-cache/
 bench/.native-tate-corpus
 bench/.native-poc
 build/*
+.artifacts/

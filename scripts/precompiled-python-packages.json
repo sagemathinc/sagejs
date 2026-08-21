@@ -3,7 +3,22 @@
     "conway_polynomials",
     "mpmath",
     "sage.databases.conway",
+    "sagejs_elliptic_advanced",
+    "sagejs_elliptic_descent",
+    "sagejs.elliptic_curves.analytic_rank",
     "sagejs.elliptic_curves.lseries",
+    "sagejs.hyperelliptic_curves",
+    "sagejs.hyperelliptic_curves.frobenius",
+    "sagejs.hyperelliptic_curves.model",
+    "sagejs.kernels.arithmetic.moebius",
+    "sagejs.kernels.graph",
+    "sagejs.kernels.graph.components",
+    "sagejs.kernels.graph.shortest_paths",
+    "sagejs.kernels.groups",
+    "sagejs.kernels.groups.permutation",
+    "sagejs.kernels.matrix.combinatorial",
+    "sagejs.linear_algebra.combinatorial",
+    "sagejs.linear_algebra.sparse_random_m4ri",
     "sagejs.number_fields.analytic_zeta",
     "sagejs.number_fields.class_groups",
     "sagejs.number_fields.dedekind_zeta",
@@ -15,9 +30,16 @@
     "sagejs.number_fields.quadratic_characters",
     "sagejs.number_fields.riemann_zeta",
     "sagejs.number_fields.units",
-    "sagejs.number_fields.zeta_coefficients"
+    "sagejs.number_fields.zeta_coefficient_kernel",
+    "sagejs.number_fields.zeta_coefficients",
+    "traceback"
+  ],
+  "dynamicWarmups": [
+    "from mpmath import mp\nmp.dps = 30\nmp.hyp2f1(1, 2, 3, mp.mpf('0.25'))"
   ],
   "taskRuntimeImports": [
+    "multiprocessing",
+    "sagejs.hyperelliptic_curves.family_cpu",
     "sagejs.number_fields.local_parallel_worker",
     "sagejs.number_fields.local_parallel",
     "sagejs.number_fields.maximal_order_engine",
@@ -26,6 +48,7 @@
     "sagejs.number_fields.local_polygons",
     "sagejs.number_fields.om_auto_selector",
     "sagejs.number_fields.om_maxmin",
+    "sagejs.polynomial_algorithms.structural_calculus",
     "sagejs.polynomial_algorithms.public_structural",
     "sagejs.kernels.polynomial.structural_flint"
   ]

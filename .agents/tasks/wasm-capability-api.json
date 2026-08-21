@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-capability-api",
+  "title": "Checked WebAssembly capability API",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Validate browser workflow aliases against exact reviewed capability IDs, generate them into the public report, and expose a host-neutral capability query API for web and mobile shells",
+  "base_commit": "394348c3911459c8cba2e090d734231e50ad9a00",
+  "claims": [
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/WASM-CAPABILITIES.md",
+    "architecture/wasm-capability-api.mjs",
+    "scripts/check-wasm-capabilities.cjs",
+    "test/wasm-capabilities.cjs",
+    "test/wasm-capability-api.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "browser parity corpus requires arrays"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.255,
+      "started_at": "2026-08-20T05:59:57.227Z",
+      "commit": "394348c3911459c8cba2e090d734231e50ad9a00",
+      "workspace_fingerprint": "63f58f33f531ec68f5709c971418e74bbb843dff85d2b8c753ef067ba21db87f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.352,
+      "started_at": "2026-08-20T06:00:09.337Z",
+      "commit": "394348c3911459c8cba2e090d734231e50ad9a00",
+      "workspace_fingerprint": "63f58f33f531ec68f5709c971418e74bbb843dff85d2b8c753ef067ba21db87f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.251,
+      "started_at": "2026-08-20T06:00:39.411Z",
+      "commit": "394348c3911459c8cba2e090d734231e50ad9a00",
+      "workspace_fingerprint": "63f58f33f531ec68f5709c971418e74bbb843dff85d2b8c753ef067ba21db87f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a reviewed workflow-alias table tied exactly to the browser parity corpus, fail-closed manifest and report validation, 11 newly explicit analytic/elliptic/SagePack/algebraic capability records, and a deeply immutable host-neutral query API for website, mobile, and release shells.",
+    "risks": [
+      "Shared analytic, elliptic, and algebraic records deliberately remain planned on this pre-receipt branch; integration must only mark them available when the production toolchain receipt contains their exact IDs.",
+      "The website/mobile staging closure must authenticate and copy wasm-capability-api.mjs beside the generated report before those shells replace their local report helpers."
+    ],
+    "next_steps": [
+      "After the toolchain receipt lands, mark its eight aggregate shared/generated capabilities available and classify the 24 receipt-bound algebraic N-API operations as shared-core/available.",
+      "Stage architecture/wasm-capability-api.mjs with the authenticated public report and pass receipt capability IDs to createSagejsCapabilityAPI.",
+      "Install the checked API into the isolated evaluator before adding a Sage-language sagejs_capabilities wrapper; do not embed the 400+ KiB report in strict Python."
+    ]
+  }
+}

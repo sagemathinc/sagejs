@@ -1,0 +1,152 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "mobile-runtime-evidence",
+  "title": "Mobile runtime evidence and simulator CI",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Expose validated loopback/isolation/worker evidence in runtime.ready and physical-device receipts, and continuously compile exact-asset iPhone and iPad simulator builds on macOS",
+  "base_commit": "f4a5edd6df995f2690610178e57692d177f69930",
+  "claims": [
+    "apps/sagejs-mobile/runtime-shell/main.mjs",
+    "apps/sagejs-mobile/src/bridge/protocol.ts",
+    "apps/sagejs-mobile/src/runtime/RuntimeWebView.tsx",
+    "apps/sagejs-mobile/src/SageJSMobileApp.tsx",
+    "apps/sagejs-mobile/__tests__/protocol.test.ts",
+    "apps/sagejs-mobile/device-receipts/",
+    "apps/sagejs-mobile/fixtures/device-receipts/",
+    "apps/sagejs-mobile/scripts/validate-device-receipt.mjs",
+    "apps/sagejs-mobile/test/mobile-runtime-evidence.test.mjs",
+    ".github/workflows/mobile-simulators.yml"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Bridge protocol, receipt validator, fixtures, and workflow contract tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "pnpm --dir apps/sagejs-mobile typecheck",
+    "pnpm --dir apps/sagejs-mobile lint",
+    "pnpm --dir apps/sagejs-mobile test",
+    "pnpm --dir apps/sagejs-mobile test:contracts"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.916,
+      "started_at": "2026-08-20T08:29:31.824Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "3ef23686cde25a2fa69c1b1831acd7c24a73ec746e847ac9caf11f48a00ad64f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile lint",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.016,
+      "started_at": "2026-08-20T08:29:34.611Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "3ef23686cde25a2fa69c1b1831acd7c24a73ec746e847ac9caf11f48a00ad64f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.898,
+      "started_at": "2026-08-20T08:29:38.493Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "3ef23686cde25a2fa69c1b1831acd7c24a73ec746e847ac9caf11f48a00ad64f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.231,
+      "started_at": "2026-08-20T08:29:41.239Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "3ef23686cde25a2fa69c1b1831acd7c24a73ec746e847ac9caf11f48a00ad64f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile typecheck",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.961,
+      "started_at": "2026-08-20T08:31:39.456Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "90efde2fb83068edd20571fdd7b898cdf96ce6531d1bab703ab11e0d8621a2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile lint",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.05,
+      "started_at": "2026-08-20T08:31:42.170Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "90efde2fb83068edd20571fdd7b898cdf96ce6531d1bab703ab11e0d8621a2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.865,
+      "started_at": "2026-08-20T08:31:46.001Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "90efde2fb83068edd20571fdd7b898cdf96ce6531d1bab703ab11e0d8621a2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir apps/sagejs-mobile test:contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.061,
+      "started_at": "2026-08-20T08:31:48.594Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "90efde2fb83068edd20571fdd7b898cdf96ce6531d1bab703ab11e0d8621a2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.359,
+      "started_at": "2026-08-20T08:31:50.392Z",
+      "commit": "f4a5edd6df995f2690610178e57692d177f69930",
+      "workspace_fingerprint": "90efde2fb83068edd20571fdd7b898cdf96ce6531d1bab703ab11e0d8621a2e3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "runtime.ready now carries a strictly validated, capability-free observation of the loopback HTTP origin, cross-origin isolation, SharedArrayBuffer availability, and the outer/nested module-worker topology. The physical-device receipt schema and validator require the same evidence for a passing receipt and preserve honest unobserved fields for blocked fixtures. A macOS CI workflow builds the exact production-attested mobile asset closure for installed iPhone and iPad simulator destinations and uploads an artifact-identity-bound build receipt and logs.",
+    "risks": [
+      "The macOS simulator workflow cannot run on this Linux lane; its exact-asset preparation, destination selection, two Release xcodebuild invocations, and receipt fields are protected by a static contract test and must receive an actual GitHub Actions receipt after integration.",
+      "No signed physical iPhone/iPad or TestFlight account was available. The checked-in fixtures remain explicitly blocked and must not be presented as device evidence.",
+      "The focused mobile checks pass. The broad portable check initially failed because this fresh worktree had no generated dist tree; its subsequent full build was stopped at the parent's immediate-integration request. Native and SEA were therefore not rerun for this TypeScript/JSON/workflow-only follow-up; the integration lane should use its current receipts and rerun them at the release checkpoint."
+    ],
+    "next_steps": [
+      "Run the mobile-simulators workflow after integration and retain its uploaded sagejs.mobile-simulator-build/v1 receipt for both form factors.",
+      "Replace each blocked fixture only after capturing runtime.ready and completing all checks on a signed physical iPhone and iPad; then submit the same artifact through TestFlight and update its status honestly."
+    ]
+  }
+}

@@ -121,21 +121,31 @@ async function availableProductionFunctions(kernel, source, sourcePath) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const production = manifest.kernels.filter((kernel) =>
+  const productionDescriptors = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production"),
   );
-  if (production.length === 0) {
+  if (productionDescriptors.length === 0) {
     throw new Error("native kernel manifest has no production kernels");
   }
-  const duplicateSources = production.filter(
-    (kernel, index) =>
-      production.findIndex((other) => other.source === kernel.source) !== index,
-  );
-  if (duplicateSources.length !== 0) {
-    throw new Error(
-      `duplicate production source ${duplicateSources[0].source}`,
-    );
+  const productionBySource = new Map();
+  for (const descriptor of productionDescriptors) {
+    let kernel = productionBySource.get(descriptor.source);
+    if (kernel === undefined) {
+      kernel = { ...descriptor, ids: [descriptor.id], functions: [] };
+      productionBySource.set(descriptor.source, kernel);
+    } else {
+      kernel.ids.push(descriptor.id);
+    }
+    for (const name of descriptor.functions) {
+      if (kernel.functions.includes(name)) {
+        throw new Error(
+          `duplicate production function ${descriptor.source}:${name}`,
+        );
+      }
+      kernel.functions.push(name);
+    }
   }
+  const production = [...productionBySource.values()];
 
   mkdirSync(options.cacheRoot, { recursive: true });
   const built = [];
@@ -153,10 +163,16 @@ async function main() {
       (name) => !functions.includes(name),
     );
     if (skippedFunctions.length !== 0) {
-      missingCapabilities.push({
-        kernel: kernel.id,
-        functions: skippedFunctions,
-      });
+      for (const descriptor of productionDescriptors.filter(
+        (item) => item.source === kernel.source,
+      )) {
+        const missing = descriptor.functions.filter((name) =>
+          skippedFunctions.includes(name)
+        );
+        if (missing.length !== 0) {
+          missingCapabilities.push({ kernel: descriptor.id, functions: missing });
+        }
+      }
     }
     if (functions.length === 0) {
       process.stdout.write(
@@ -198,7 +214,7 @@ async function main() {
       shimHeaderPath: compiled.shimHeaderPath,
     });
     process.stdout.write(
-      `${compiled.cached ? "cached" : "built"} ${kernel.id} ` +
+      `${compiled.cached ? "cached" : "built"} ${kernel.ids.join("+")} ` +
         `(${actualFunctions.length} functions` +
         `${skippedFunctions.length === 0 ? "" : `; skipped ${skippedFunctions.join(", ")}`})\n`,
     );

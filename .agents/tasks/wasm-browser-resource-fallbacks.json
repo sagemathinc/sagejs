@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-browser-resource-fallbacks",
+  "title": "Browser generated resource fallbacks",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make exact matrix, finite-field polynomial, and number-field browser workflows use sound generated-resource capability checks with exact source-transparent fallbacks, with focused regressions",
+  "base_commit": "b6eeaa8f38a7c3576c9616668b4a80e6778dfa7e",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/baselib/polynomial.py",
+    "test/browser-wasm-resource-fallbacks.cjs",
+    "test/node-test-manifest.cjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "tools/standalone-library.cjs",
+    "packages/flint-wasm/test/browser-resource-fallbacks.test.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Node generated FLINT resource backend",
+      "browser parity corpus exact outputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

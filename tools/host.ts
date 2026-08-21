@@ -152,6 +152,169 @@ socket.on("error", fail);
 socket.setTimeout(workerData.timeout, () => { const error = new Error("socket timed out"); error.code = "ETIMEDOUT"; socket.destroy(error); });
 `;
 
+/*
+ * Optional WebGPU twist screening lives in an isolated worker because Dawn's
+ * adapter/device discovery is asynchronous while the CPython host ABI is
+ * deliberately synchronous.  The worker is also a clean capability boundary:
+ * installations without the optional `webgpu` package or a physical adapter
+ * return `available=false` without changing the mathematical CPU path.
+ *
+ * Each invocation computes one deterministic f32 dot product per
+ * (discriminant, derivative) pair.  There are no floating-point atomics and a
+ * single invocation accumulates terms in increasing n order, so repeated runs
+ * on one device have a fixed reduction order.  The authoritative Python layer
+ * supplies and records conservative error bounds and refines retained rows
+ * with Arb.
+ */
+const webGpuTwistShader = String.raw`
+struct Parameters { rows: u32, orders: u32, terms: u32, padding: u32 }
+@group(0) @binding(0) var<storage, read> coefficients: array<f32>;
+@group(0) @binding(1) var<storage, read> characters: array<f32>;
+@group(0) @binding(2) var<storage, read> weights: array<f32>;
+@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+@group(0) @binding(4) var<uniform> parameters: Parameters;
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  let item = id.x;
+  let total = parameters.rows * parameters.orders;
+  if (item >= total) { return; }
+  let row = item / parameters.orders;
+  let order = item % parameters.orders;
+  var sum: f32 = 0.0;
+  var n: u32 = 0u;
+  loop {
+    if (n >= parameters.terms) { break; }
+    let character = characters[row * parameters.terms + n];
+    let weightIndex = (row * parameters.orders + order) * parameters.terms + n;
+    sum = sum + coefficients[n] * character * weights[weightIndex];
+    n = n + 1u;
+  }
+  output[item] = sum;
+}
+`;
+
+const webGpuTwistWorkerSource = String.raw`
+(async () => {
+  const crypto = require("node:crypto");
+  let webgpu;
+  try { webgpu = require("webgpu"); }
+  catch (error) {
+    finish({ available: false, reason: "optional webgpu package unavailable", detail: String(error && error.message || error) });
+    return;
+  }
+  Object.assign(globalThis, webgpu.globals);
+  const options = String(process.env.SAGEJS_WEBGPU_OPTIONS || "")
+    .split(";").map(value => value.trim()).filter(Boolean);
+  const implementation = webgpu.create(options);
+  const adapter = await implementation.requestAdapter({ powerPreference: "high-performance" });
+  if (!adapter) {
+    finish({ available: false, reason: "no WebGPU adapter available" });
+    return;
+  }
+  const info = adapter.info || {};
+  const provenance = {
+    implementation: "webgpu-dawn-node-0.4.0",
+    vendor: String(info.vendor || ""),
+    architecture: String(info.architecture || ""),
+    device: String(info.device || ""),
+    description: String(info.description || ""),
+    numericFormat: "f32",
+    reduction: "one-invocation-increasing-index",
+  };
+  if (workerData.mode === "capabilities") {
+    finish({ available: true, ...provenance });
+    return;
+  }
+  const rows = Number(workerData.rows);
+  const orders = Number(workerData.orders);
+  const terms = Number(workerData.terms);
+  const coefficients = Float32Array.from(workerData.coefficients || []);
+  const characters = Float32Array.from(workerData.characters || []);
+  const weights = Float32Array.from(workerData.weights || []);
+  if (!Number.isSafeInteger(rows) || rows < 1 ||
+      !Number.isSafeInteger(orders) || orders < 1 ||
+      !Number.isSafeInteger(terms) || terms < 1 ||
+      coefficients.length !== terms ||
+      characters.length !== rows * terms ||
+      weights.length !== rows * orders * terms) {
+    throw new RangeError("invalid WebGPU twist-dot-product dimensions");
+  }
+  const outputLength = rows * orders;
+  const shader = String(workerData.shader);
+  const shaderHash = crypto.createHash("sha256").update(shader).digest("hex");
+  if (options.includes("backend=null")) {
+    const values = [];
+    for (let row = 0; row < rows; row += 1) {
+      for (let order = 0; order < orders; order += 1) {
+        let sum = Math.fround(0);
+        for (let n = 0; n < terms; n += 1) {
+          const product = Math.fround(
+            Math.fround(coefficients[n] * characters[row * terms + n]) *
+              weights[(row * orders + order) * terms + n],
+          );
+          sum = Math.fround(sum + product);
+        }
+        values.push(sum);
+      }
+    }
+    finish({
+      available: true, values, shaderHash, rows, orders, terms,
+      ...provenance,
+      implementation: "webgpu-dawn-null-contract-emulator",
+      device: "Dawn null adapter",
+    });
+    return;
+  }
+  const device = await adapter.requestDevice();
+  function buffer(data, usage) {
+    const size = Math.max(4, (data.byteLength + 3) & ~3);
+    const result = device.createBuffer({ size, usage, mappedAtCreation: true });
+    new Uint8Array(result.getMappedRange()).set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+    result.unmap();
+    return result;
+  }
+  const storageRead = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+  const coefficientBuffer = buffer(coefficients, storageRead);
+  const characterBuffer = buffer(characters, storageRead);
+  const weightBuffer = buffer(weights, storageRead);
+  const outputBuffer = device.createBuffer({
+    size: outputLength * 4,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+  });
+  const readBuffer = device.createBuffer({
+    size: outputLength * 4,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+  const parameters = new Uint32Array([rows, orders, terms, 0]);
+  const parameterBuffer = buffer(parameters, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const module = device.createShaderModule({ code: shader });
+  const pipeline = device.createComputePipeline({ layout: "auto", compute: { module, entryPoint: "main" } });
+  const bindGroup = device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: coefficientBuffer } },
+      { binding: 1, resource: { buffer: characterBuffer } },
+      { binding: 2, resource: { buffer: weightBuffer } },
+      { binding: 3, resource: { buffer: outputBuffer } },
+      { binding: 4, resource: { buffer: parameterBuffer } },
+    ],
+  });
+  const encoder = device.createCommandEncoder();
+  const pass = encoder.beginComputePass();
+  pass.setPipeline(pipeline);
+  pass.setBindGroup(0, bindGroup);
+  pass.dispatchWorkgroups(Math.ceil(outputLength / 64));
+  pass.end();
+  encoder.copyBufferToBuffer(outputBuffer, 0, readBuffer, 0, outputLength * 4);
+  device.queue.submit([encoder.finish()]);
+  await readBuffer.mapAsync(GPUMapMode.READ);
+  const values = Array.from(new Float32Array(readBuffer.getMappedRange().slice(0)));
+  readBuffer.unmap();
+  device.destroy();
+  finish({ available: true, values, shaderHash, rows, orders, terms, ...provenance });
+})().catch(fail);
+`;
+
 function failure(error: unknown): HostResult {
   const value = error as NodeJS.ErrnoException & {
     dest?: string;
@@ -566,6 +729,34 @@ export class NodeHostAdapter {
             ),
           };
         }
+        case "webgpuTwistCapabilities":
+          return {
+            ok: true,
+            value: synchronousWorkerRequest(
+              webGpuTwistWorkerSource,
+              { mode: "capabilities", shader: webGpuTwistShader },
+              Number(args[0] ?? 30_000),
+            ),
+          };
+        case "webgpuTwistDotProducts": {
+          return {
+            ok: true,
+            value: synchronousWorkerRequest(
+              webGpuTwistWorkerSource,
+              {
+                mode: "dot-products",
+                rows: Number(args[0]),
+                orders: Number(args[1]),
+                terms: Number(args[2]),
+                coefficients: args[3],
+                characters: args[4],
+                weights: args[5],
+                shader: webGpuTwistShader,
+              },
+              Number(args[6] ?? 120_000),
+            ),
+          };
+        }
         case "environmentEntries":
           return { ok: true, value: Object.entries(this.environment) };
         case "setEnv": {
@@ -620,7 +811,7 @@ export class NodeHostAdapter {
         }
         case "serializationPack": {
           const serializer = require("./serialization") as typeof import("./serialization");
-          return { ok: true, value: serializer.pack(args[0]) };
+          return { ok: true, value: serializer.packPython(args[0]) };
         }
         case "serializationUnpack": {
           const serializer = require("./serialization") as typeof import("./serialization");

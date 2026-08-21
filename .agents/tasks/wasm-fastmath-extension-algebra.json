@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fastmath-extension-algebra",
+  "title": "Wasm Fastmath Extension Algebra",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Close word-extension and arbitrary-prime polynomial Wasm resource execution with exact public workflows, lifecycle/memory proofs, and no silent expensive fallback",
+  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "claims": [
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "ffi/flint.ffi.json",
+    "ffi/flint.ffi.py",
+    "packages/flint/include/sagejs/fq_polynomial_ffi.h",
+    "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
+    "src/lib/sagejs/polynomial_algorithms/extension_scalar_resource.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "packages/flint-wasm/test/extension-algebra.test.mjs",
+    "packages/flint-wasm/test/resource.test.mjs",
+    "packages/flint-wasm/test/fmpq-polynomial-ingress.test.mjs",
+    "packages/flint-wasm/test/fmpq-resource.test.mjs",
+    "packages/flint-wasm/test/fmpq-resource-proof.test.mjs",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/release/production-kernel-coverage.json",
+    "test/fixtures/native-ffi-flint-extension/witness.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "flint",
+      "javascript"
+    ],
+    "exceptions": [
+      "Host-neutral FLINT resource declarations and representation headers are required to expose mature finite-field algorithms without duplicating mathematics; handwritten code is limited to checked ownership and transfer adapters."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -1,0 +1,27 @@
+name: Sage.js WebAssembly deployed-origin validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      origin:
+        description: Dedicated, non-credentialed Sage.js execution origin
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-origin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Verify isolation headers and absence of ambient credentials
+        run: |
+          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            --headers website/live/_headers \
+            --origin "${{ inputs.origin }}"

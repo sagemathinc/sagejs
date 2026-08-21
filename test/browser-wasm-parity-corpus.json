@@ -1,0 +1,554 @@
+{
+  "schema_version": 2,
+  "description": "Public Sage programs that must agree across Node and browser WebAssembly hosts.",
+  "cases": [
+    {
+      "id": "exact-big-integer",
+      "family": "exact-arithmetic",
+      "workflow": "exact-integer-factorization",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "print(2^80 + 17)\nprint(factor(2026))",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "1208925819614629174706193\n2 * 1013\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "capability-report-api",
+      "family": "runtime",
+      "workflow": "capability-report-api",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:capability-report-api", "route": "shared-runtime-js" }
+      ],
+      "source": "caps = sagejs_capabilities()\nnf_caps = sagejs_capabilities('number-fields')\nworkflow = sagejs_capabilities(workflow='exact-integer-factorization')\nprint(len(caps) >= 900, len(nf_caps) > 0, workflow.available)\ntry:\n    caps[0] = None\nexcept TypeError:\n    print('immutable')",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\nimmutable\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "exact-matrix-and-finite-field-polynomial",
+      "family": "exact-arithmetic",
+      "workflow": "exact-matrices-and-finite-field-polynomials",
+      "tier": "routine",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_det", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fmpz_mod_polynomial_gcd", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "A = matrix(ZZ, [[1,2],[3,4]])\nR.<x> = PolynomialRing(GF(18446744073709551629))\nf = x^4 + 3*x + 7\nprint(A.det(), A.rank())\nprint(A.hermite_form())\nprint(f.gcd(f.derivative()))",
+      "timeout_ms": 20000,
+      "expect": {
+        "stdout": "-2 2\n[1 0]\n[0 2]\n1\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "sagepack-exact-roundtrip",
+      "family": "serialization",
+      "workflow": "sagepack-exact-roundtrip",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:sagepack", "route": "shared-runtime-js" }
+      ],
+      "source": "from sagejs_serialization import dumps, loads\nA = matrix(QQ, [[1/2,2/3],[3/4,4/5]])\ndata = dumps(A)\nprint(data[:8] == b'SAGEPK1\\x00', loads(data) == A, dumps(loads(data)) == data)",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "exact-algebraic-roots",
+      "family": "algebraic-numbers",
+      "workflow": "exact-algebraic-roots",
+      "tier": "routine",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nprint((x^2 - 2).roots(AA))\nprint((x^2 + 1).roots(QQbar))\na = AA(2).sqrt()\nprint(a.minpoly(), a > 1, a < 2)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[(-1.414213562373095?, 1), (1.414213562373095?, 1)]\n[(-I, 1), (I, 1)]\nx^2 - 2 True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "algebraic-matrix-qqbar",
+      "family": "algebraic-numbers",
+      "workflow": "algebraic-matrix-qqbar",
+      "tier": "release",
+      "requires": [
+        { "id": "algebraic:qqbar-resource-core", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nr = (x^2 - 2).roots(AA, multiplicities=False)[1]\nM = matrix(AA, 4, 4, [r,1,0,0, 0,r,1,0, 0,0,r,1, 1,0,0,r])\nprint(M.det())\nprint(M.rank())\nprint((M*M)[0,0])\nprint(M.charpoly()(r))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "3\n4\n2\n-1\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "modular-symbols-weight-two",
+      "family": "modular-symbols",
+      "workflow": "modular-symbols-weight-two",
+      "tier": "routine",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:p1List", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "M = ModularSymbols(37, 2)\nprint(M)\nprint(M.dimension())\nC = M.cuspidal_subspace()\nprint(C.dimension())\nprint(M.hecke_matrix(2).trace())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "Modular Symbols space of dimension 5 for Gamma_0(37) of weight 2 with sign 0 over Rational Field\n5\n4\n-1\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "number-field-maximal-order-prime-zeta",
+      "family": "number-fields",
+      "workflow": "number-field-maximal-order-prime-zeta",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:number_field_order_maximal_at_primes", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nD = O.factor_rational_prime(11)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(16))",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(2, 0)\n[(11, 1, 1, 11), (11, 1, 1, 11)]\n[1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 1]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "graph-components-packed",
+      "family": "graphs",
+      "workflow": "graph-components-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-graph-components-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G = graphs.CycleGraph(10000)\nC = G.connected_components()\nprint(len(C), len(C[0]), C[0][:5])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "1 10000 [0, 1, 9999, 2, 9998]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "graph-shortest-paths-packed",
+      "family": "graphs",
+      "workflow": "graph-shortest-paths-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-graph-shortest-paths-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=graphs.CycleGraph(1000)\npath=G.shortest_path(0,500)\nH=graphs.CycleGraph(120)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][60])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "501 60\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "group-permutation-center",
+      "family": "groups-combinatorics",
+      "workflow": "group-permutation-center",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-permutation-center-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])\nC=G.center()\nprint(G.order())\nprint(C.gens())",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "40320\n((),)\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "gf2-matrix-m4ri",
+      "family": "dense-binary-matrices",
+      "workflow": "gf2-matrix-m4ri",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:m4ri:matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_right_kernel", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:m4ri:matrix_solve", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F = GF(2)\nA = matrix(F, 4, 5, [1,0,1,1,0, 0,1,1,0,1, 1,1,0,1,1, 0,0,1,1,1])\nB = matrix(F, 5, 3, [1,0,1, 0,1,1, 1,1,0, 1,0,0, 0,1,0])\nQ = matrix(F, 3, 3, [1,1,0, 0,1,1, 1,1,1])\nrhs = matrix(F, 3, 1, [1,0,1])\nrank = A.rank()\nC = A * B\nK = A.right_kernel_matrix()\nX = Q.solve_right(rhs)\nprint(rank)\nprint(C.str().replace('\\n', ';'))\nprint(K.nrows(), K.ncols(), (A * K.transpose()).is_zero())\nprint(X.str().replace('\\n', ';'), Q * X == rhs)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "3\n[1 1 1];[1 1 1];[0 0 0];[0 0 0]\n2 5 True\n[1];[0];[0] True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "matrix-combinatorial-invariants",
+      "family": "combinatorics",
+      "workflow": "matrix-combinatorial-invariants",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-combinatorial-integer-rational-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:packed-combinatorial-prime-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "from sagejs.linear_algebra.combinatorial import matrix_permanent, matrix_minors\nanswer = []\nfor base in [ZZ, QQ, GF(7)]:\n    A = matrix(base, 8, 8, [base((i*7+3)%11-5) for i in range(64)])\n    B = matrix(base, 6, 7, [base((i*7+3)%11-5) for i in range(42)])\n    answer.append((matrix_permanent(A), len(matrix_minors(B, 3))))\nprint(answer)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[(3903574, 700), (3903574, 700), (3, 700)]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "matrix-word-prime-flint",
+      "family": "dense-prime-matrices",
+      "workflow": "matrix-word-prime-flint",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:nmod_matrix_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rank", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_rref", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:nmod_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(65537)\nA=matrix(F,3,4,[1,2,3,4,0,1,1,0,1,3,4,4])\nB=matrix(F,4,2,[1,2,3,4,5,6,7,8])\nprint((A*B).str().replace('\\n',';'))\nprint(A.rank())\nprint(A.rref().str().replace('\\n',';'))\nK=A.right_kernel_matrix()\nprint(K.str().replace('\\n',';'))\nprint((A*K.transpose()).is_zero())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[50 60];[ 8 10];[58 70]\n2\n[1 0 1 4];[0 1 1 0];[0 0 0 0]\n[    1     0     0 16384];[    0     1 65536 49153]\nTrue\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "sparse-integer-right-kernel",
+      "family": "sparse-exact-linear-algebra",
+      "workflow": "sparse-integer-right-kernel",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_right_kernel", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "rows=48\ncolumns=56\nentries=[0 for _ in range(rows*columns)]\nfor row in range(rows):\n    entries[row*columns+row]=1\n    for shift,value in [(1,-2),(7,3),(13,-1)]:\n        column=row+shift\n        if column<columns: entries[row*columns+column]=value\nA=matrix(ZZ,rows,columns,entries,sparse=True)\nK=A.right_kernel_matrix()\nprint(K.dimensions(),A.rank())\nprint((A*K.transpose()).is_zero())",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(8, 56) 48\nTrue\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "moebius-range-batch",
+      "family": "combinatorics-number-theory",
+      "workflow": "moebius-range-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-moebius-range-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "values=moebius.range(10000)\nprint([len(values),sum(values),sum(abs(x) for x in values),values[-10:]])",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "[10000, -23, 6083, [0, 1, 0, 1, -1, 1, 0, 1, 1, 0]]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "multivariate-resultant-packed",
+      "family": "multivariate-polynomials",
+      "workflow": "multivariate-resultant-packed",
+      "tier": "release",
+      "requires": [
+        { "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=PolynomialRing(ZZ,names=('x','y','z'))\nx,y,z=R.gens()\nleft=(x+y+z+1)^7+(x-y+2*z+3)^6+y^5*z\nright=(2*x-y+z+2)^6+(x+2*y-z+1)^5+z^6\nprint(left.resultant(right,x).number_of_terms())",
+      "timeout_ms": 180000,
+      "expect": {
+        "stdout": "946\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "analytic-gamma-xi-batches",
+      "family": "analytic-functions",
+      "workflow": "analytic-gamma-xi-batches",
+      "tier": "release",
+      "requires": [
+        { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(gamma_batch[0])\nprint(gamma_batch[1])\nprint(xi_batch[0],xi_batch[1])\nprint(xi_batch[2])\nprint(xi_batch[3])",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1.7724538509055160272981674833411451827975494561\n0.49801566811835604271369111746219809195296296759 - 0.15494982830181068512495513048388660519587965208*I\n1.0000000000000000000000000000000000000000000000 1.0000000000000000000000000000000000000000000000\n0.99424155637662821982554747937079543961458721912\n1.0471975511965977461542144610931676280657231331\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numeric-realfield-arithmetic",
+      "family": "numerical",
+      "workflow": "numeric-realfield-arithmetic",
+      "tier": "release",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:realDiv", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R=RealField(100)\nx=R(1)/R(3)\nprint(x,x.precision())",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "0.33333333333333333333333333333 100\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numeric-special-functions",
+      "family": "numerical",
+      "workflow": "numeric-special-functions",
+      "tier": "release",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:zetaZeros", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:complexEi", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:complexBesselI", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "zeros=zeta_zeros(3)\nei=Ei(CDF(1,2))\nbessel=bessel_I(1+I,2+I).n(80)\nprint(zeros[0],zeros[1],zeros[2],float(ei.real()),float(ei.imag()),float(bessel.real()),float(bessel.imag()))",
+      "timeout_ms": 30000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [14.134725141734693, 21.022039638771552, 25.010857580145686, 1.0421677081649356, 3.7015014259378742, 1.4409091470417881, 0.47516726750336723],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "symbolic-numerical-kernels",
+      "family": "numerical",
+      "workflow": "symbolic-numerical-kernels",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "x=var('x')\nintegral=numerical_integral(exp(x^2),1,2,eps_abs=1e-12,eps_rel=1e-12)\nroot=(x^2-2).find_root(1,2)\nprint(float(integral[0]),float(root))",
+      "timeout_ms": 30000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [14.989976019600046, 1.414213562372879],
+          "absolute_tolerance": 1e-10,
+          "relative_tolerance": 1e-10
+        }
+      }
+    },
+    {
+      "id": "extension-field-polynomial-arithmetic",
+      "family": "extension-fields",
+      "workflow": "extension-field-polynomial-arithmetic",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_pow", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_polynomial_mul", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_polynomial_pow", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<t> = PolynomialRing(GF(3))\nK.<a> = GF(3^4, modulus=t^4 + 2*t^3 + 2)\nR.<x> = PolynomialRing(K)\nleft = x^160 + (a^3 + 2*a + 1)*x^80 + a + 2\nright = (x + a + 1)^96\nproduct = left * right\npower = (x^5 + a*x + 2)^17\nprint([K.modulus(), a^81 == a, a * (a^-1), product.degree(), power.degree(), product == R(product.list()), [product[0], product[80], product[160], product[256]], [power[0], power[1], power[5], power[85]]])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "[x^4 + 2*x^3 + 2, True, 1, 256, 85, True, [2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], [2, 2*a, 2*a^3 + 2*a + 1, 1]]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "extension-field-conway-data",
+      "family": "extension-fields",
+      "workflow": "extension-field-conway-data",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:fq_context", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element", "route": "receipt-backed-wasm-artifact" },
+        { "id": "ffi:flint:fq_element_pow", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "F=GF(3^4,'a')\na=F.gen()\nprint(F)\nprint(F.modulus())\nprint((a+1)^20)",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "Finite Field in a of size 3^4\nx^4 + 2*x^3 + 2\n1\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "hyperelliptic-smalljac-local-factors",
+      "family": "hyperelliptic-curves",
+      "workflow": "hyperelliptic-smalljac-local-factors",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:smalljac", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nC = HyperellipticCurve(x^5 + x + 1)\nvalues = C.local_lpolynomials(3, 101, algorithm='smalljac')\nprint((len(values), values[0][0], values[-1][0], values[0][1].list()))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "(22, 5, 101, [1, 0, 10, 0, 25])\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "number-field-cubic-headline",
+      "family": "number-fields",
+      "workflow": "number-field-cubic-headline",
+      "tier": "routine",
+      "requires": [
+        { "id": "ffi:flint:fmpz_matrix_hnf", "route": "receipt-backed-wasm-artifact" },
+        { "id": "kernel:number-field-zeta-coefficients-production", "route": "receipt-backed-wasm-artifact" },
+        { "id": "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^3 - x - 1)\nO = K.maximal_order()\nD = O.factor_rational_prime(23)\nprint(K.signature())\nprint([(P.rational_prime(),e,P.residue_class_degree(),P.norm()) for P,e in D])\nprint(K.zeta_function().coefficients(24))",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "(1, 1)\n[(23, 1, 1, 23), (23, 2, 1, 23)]\n[1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 2, 0]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "number-field-ideal-certificate-sagepack",
+      "family": "number-fields",
+      "workflow": "number-field-ideal-certificate-sagepack",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:sagepack", "route": "shared-runtime-js" }
+      ],
+      "source": "from sagejs_serialization import dumps, loads\nimport hashlib\nR.<x> = QQ[]\nK.<a> = NumberField(x^2 - 5)\nO = K.maximal_order()\nideal = O.ideal(2)\nP = O.factor_rational_prime(5)[0][0]\ncertificate = O.maximality_certificate()\ndata = dumps([K, O, ideal, P, ideal, P, certificate])\nanswer = loads(data)\nKK, OO, II, PP, II2, PP2, restored_certificate = answer\nprint(hashlib.sha256(data).hexdigest())\nprint(len(data), data[:8] == b'SAGEPK1\\x00', dumps(loads(data)) == data)\nprint(OO.number_field() is KK, II.ring() is OO, PP.ring() is OO)\nprint(II2 is II, PP2 is PP, OO.is_maximal())\nprint(II.basis_matrix() == ideal.basis_matrix(), II.norm() == ideal.norm())\nprint(PP.basis_matrix() == P.basis_matrix(), PP.rational_prime(), PP.ramification_index(), PP.residue_class_degree())\nprint(restored_certificate == certificate, OO.maximality_certificate() == certificate, certificate['certified'])",
+      "timeout_ms": 60000,
+      "expect": {
+        "stdout": "0265c0622cb1dde8aeed6412f652395dd4bbddd633c0a545440646753b3d76cc\n7203 True True\nTrue True True\nTrue True True\nTrue True\nTrue 5 2 1\nTrue True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "riemann-zeta-batch",
+      "family": "analytic-functions",
+      "workflow": "riemann-zeta-batch",
+      "tier": "release",
+      "requires": [
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R = RiemannZeta(80)\nfor z in R.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [1.6449340668482264, 0, 1.2020569031595942, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "dirichlet-l-batch",
+      "family": "analytic-functions",
+      "workflow": "dirichlet-l-batch",
+      "tier": "release",
+      "requires": [
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "G = DirichletGroup(5)\nL = G[2].lfunction(80)\nfor z in L.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [0.706211403259741, 0, 0.854824766648543, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "quadratic-dedekind-zeta-batch",
+      "family": "analytic-functions",
+      "workflow": "quadratic-dedekind-zeta-batch",
+      "tier": "release",
+      "requires": [
+        { "id": "analytic:riemann-zeta-batch", "route": "receipt-backed-wasm-artifact" },
+        { "id": "analytic:dirichlet-l-batch", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "R.<x> = PolynomialRing(QQ)\nK.<a> = NumberField(x^2 - 5)\nZ = K.zeta_function(prec=80)\nfor z in Z.values([2,3]):\n    print(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [1.1616711956186385, 0, 1.0275480117416704, 0],
+          "absolute_tolerance": 1e-13,
+          "relative_tolerance": 1e-13
+        }
+      }
+    },
+    {
+      "id": "elliptic-smalljac-coefficients",
+      "family": "elliptic-curves",
+      "workflow": "elliptic-smalljac-coefficients",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nprint(E.root_number())\nprint(E.anlist(12))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "-1\n[0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6]\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "elliptic-lseries-values",
+      "family": "elliptic-curves",
+      "workflow": "elliptic-lseries-values",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([1,2,3,4,999])\nL = E.lseries()\nz = L(1+I)\nprint(float(z.real()), float(z.imag()))",
+      "timeout_ms": 60000,
+      "expect": {
+        "repr": "",
+        "numeric_tokens": {
+          "stream": "stdout",
+          "values": [-0.005310319526029921, 0.09905202773967817],
+          "absolute_tolerance": 1e-12,
+          "relative_tolerance": 1e-12
+        }
+      }
+    },
+    {
+      "id": "elliptic-lseries-complex-plot",
+      "family": "plotting",
+      "workflow": "elliptic-lseries-complex-plot",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:integer-factorization-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-coefficients-smalljac-wasm", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-values", "route": "receipt-backed-wasm-artifact" },
+        { "id": "elliptic-lseries-plot", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "E = EllipticCurve([0,0,1,-1,0])\nL = E.lseries()\ncomplex_plot(L,(0,2),(-1,1),plot_points=12,interpolation='nearest')",
+      "timeout_ms": 90000,
+      "expect": {
+        "repr": "Graphics object consisting of 1 graphics primitive",
+        "display": {
+          "mime": "application/vnd.plotly.v1+json",
+          "minimum_traces": 1,
+          "trace_types": ["image"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-dynamic-exec",
+  "title": "Wasm Dynamic Exec",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Python compile/eval/exec execute synchronously in the production browser evaluator under CSP, including mpmath dynamic arithmetic and hypergeometric workflows, with Chromium regression coverage and packaged authenticated assets.",
+  "base_commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+  "claims": [
+    "packages/flint-wasm/",
+    "scripts/build-lazy-module-cache.cjs",
+    "scripts/precompiled-python-packages.json",
+    "tools/runtime-bootstrap.ts",
+    "tools/task-evaluator.ts",
+    "tools/resources.ts",
+    "test/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Node evaluator compile/eval/exec semantics",
+      "Production Chromium mpmath analytic workflows"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node packages/flint-wasm/test/browser-dynamic-code.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.854,
+      "started_at": "2026-08-20T08:30:16.038Z",
+      "commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+      "workspace_fingerprint": "4e4f83384e02692f12a01b044c612cdd9e9acecbaef398004c884968772f8ea7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/dynamic-compiler.test.mjs packages/flint-wasm/test/evaluator-host.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.222,
+      "started_at": "2026-08-20T08:30:30.648Z",
+      "commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+      "workspace_fingerprint": "4e4f83384e02692f12a01b044c612cdd9e9acecbaef398004c884968772f8ea7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:wasm",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.058,
+      "started_at": "2026-08-20T08:30:31.806Z",
+      "commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+      "workspace_fingerprint": "4e4f83384e02692f12a01b044c612cdd9e9acecbaef398004c884968772f8ea7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.396,
+      "started_at": "2026-08-20T08:30:33.798Z",
+      "commit": "30336689f0a8e2e4372086f0591e708147fe26fc",
+      "workspace_fingerprint": "4e4f83384e02692f12a01b044c612cdd9e9acecbaef398004c884968772f8ea7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Production browser evaluators now expose authoritative synchronous Python compile/eval/exec through an isolated compiler-worker RPC. Non-isolated hosts execute authenticated precompiled dynamic programs, including mpmath arithmetic and hyp2f1, and reject unknown source or namespace shapes clearly. The dynamic bundle is receipt-backed and production-packaged, and focused Chromium coverage exercises both hosting modes.",
+    "risks": [
+      "Unrestricted dynamic execution requires SharedArrayBuffer/cross-origin isolation; non-isolated hosts intentionally support only authenticated precompiled programs.",
+      "The synchronous compiler response buffer is capped at 8 MiB and requests time out after 120 seconds.",
+      "The full architecture check is currently blocked by native export inventory drift already present in base 30336689; architecture:wasm passes."
+    ],
+    "next_steps": [
+      "Rebuild the final integrated production artifact and run the complete portable/release browser matrix on the integration head.",
+      "Serve mobile WebViews from the authenticated loopback origin with COOP/COEP to enable unrestricted dynamic execution."
+    ]
+  }
+}

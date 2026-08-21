@@ -663,6 +663,22 @@ def _lseries_precision(value: Any) -> int:
     return precision
 
 
+def _lseries_precision_options(prec: Any, digits: Any) -> int:
+    """Resolve mutually exclusive binary-bit and decimal-digit precision."""
+    if digits is None:
+        return _lseries_precision(53 if prec is None else prec)
+    if prec is not None:
+        raise ValueError("prec and digits are mutually exclusive")
+    decimal_digits = int(digits)
+    if decimal_digits != digits or decimal_digits < 1:
+        raise ValueError("digits must be a positive integer")
+    # 3322/1000 is a deliberate rational upper approximation to log2(10).
+    # The native evaluator has a 32-bit floor, so small decimal requests still
+    # get comfortably more than the requested number of significant digits.
+    precision = max(32, (3322 * decimal_digits + 999) // 1000)
+    return _lseries_precision(precision)
+
+
 def _lseries_algorithm(value: Any) -> str:
     algorithm = str(value)
     if algorithm not in ("auto", "native", "reference"):
@@ -702,6 +718,32 @@ def _lseries_record_get(record: Any, name: str) -> Any:
     if runtime.jstype(getter) == "function":
         return runtime.reflect.apply(getter, record, [name])
     return runtime.reflect.get(record, name)
+
+
+@runtime.lightweight_math_class
+class _LseriesPlotComplex:
+    """A resource-free machine complex value owned by the plot grid.
+
+    Plot batches have already rounded their packed Acb output to binary64.
+    Re-wrapping every pair in `CDF` would allocate a bounded MPFR/Acb Wasm
+    resource for each pixel even though the graphics layer immediately reads
+    only `real()` and `imag()`.  A 64-by-64 coarse/fine tile would therefore
+    occupy all 8,192 numeric resource slots and a retained plot would prevent
+    the next render from starting.  This private value keeps that ownership
+    boundary explicit: native resources end at the packed batch crossing and
+    the rendered grid owns two ordinary machine numbers.
+    """
+
+    def __init__(self, real_part: float, imaginary_part: float) -> None:
+        self._real_part = float(real_part)
+        self._imaginary_part = float(imaginary_part)
+        runtime.object.freeze(self)
+
+    def real(self) -> float:
+        return self._real_part
+
+    def imag(self) -> float:
+        return self._imaginary_part
 
 
 @runtime.callable_instance_class
@@ -1076,18 +1118,25 @@ class Lseries_ell:
     def value(
         self,
         s: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
-        """Return a non-rigorous numerical approximation to `L(E, s)`."""
-        values, precision = self._evaluate([s], prec, algorithm)
+        """Return a non-rigorous numerical approximation to `L(E, s)`.
+
+        Specify binary `prec` or decimal `digits`, but not both. The default is
+        53 bits.
+        """
+        requested_precision = _lseries_precision_options(prec, digits)
+        values, precision = self._evaluate([s], requested_precision, algorithm)
         return self._coerce_results(values, precision, False)[0]
 
     def values(
         self,
         points: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Evaluate `L(E, s)` at several points using one shared batch.
 
@@ -1095,10 +1144,11 @@ class Lseries_ell:
         coefficients and a Mellin grid; feasible points with real part greater
         than two use the explicit direct-series tail bound.
         """
+        requested_precision = _lseries_precision_options(prec, digits)
         point_list = list(points)
         if not point_list:
             return []
-        values, precision = self._evaluate(point_list, prec, algorithm)
+        values, precision = self._evaluate(point_list, requested_precision, algorithm)
         return self._coerce_results(values, precision, False)
 
     def values_along_line(
@@ -1106,8 +1156,9 @@ class Lseries_ell:
         s0: Any,
         s1: Any,
         number_samples: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Return `(s,L(E,s))` at equally spaced points from `s0` toward `s1`.
 
@@ -1117,7 +1168,7 @@ class Lseries_ell:
         count = int(number_samples)
         if count < 1:
             raise ValueError("number_samples must be positive")
-        precision = _lseries_precision(prec)
+        precision = _lseries_precision_options(prec, digits)
         complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
             precision
         )
@@ -1274,7 +1325,6 @@ class Lseries_ell:
             point_pairs
         ):
             raise ArithmeticError("elliptic L-series plot batch has invalid size")
-        complex_double = runtime.reflect.get(runtime.global_object, "CDF")
         fine = []
         coarse = []
         errors = []
@@ -1282,13 +1332,13 @@ class Lseries_ell:
             coarse_value = canonical_coarse[index]
             fine_value = canonical_fine[index]
             coarse.append(
-                complex_double(
+                _LseriesPlotComplex(
                     float(coarse_value[0]),
                     sign * float(coarse_value[1]),
                 )
             )
             fine.append(
-                complex_double(
+                _LseriesPlotComplex(
                     float(fine_value[0]),
                     sign * float(fine_value[1]),
                 )
@@ -1304,7 +1354,7 @@ class Lseries_ell:
             "evaluated_point_count": len(point_pairs),
             "conjugation_reconstructed": len(points) - len(point_pairs),
             "tile_count": len(tile_diagnostics),
-            "tile_point_limit": native_tile_limit,
+            "tile_point_limit": max(tile["point_count"] for tile in tile_diagnostics),
             "native_call_count": 2 * len(tile_diagnostics),
             "packed_output": True,
             "prepared_grid_reused": True,
@@ -1331,11 +1381,13 @@ class Lseries_ell:
     def completed_value(
         self,
         s: Any,
-        prec: Any = 53,
+        prec: Any = None,
         algorithm: str = "auto",
+        digits: Any = None,
     ) -> Any:
         """Return canonical `A^s Gamma(s) L(E,s)`, where `A=sqrt(N)/(2*pi)`."""
-        values, precision = self._evaluate([s], prec, algorithm)
+        requested_precision = _lseries_precision_options(prec, digits)
+        values, precision = self._evaluate([s], requested_precision, algorithm)
         return self._coerce_results(values, precision, True)[0]
 
     def __repr__(self) -> str:
@@ -1701,18 +1753,60 @@ class EllipticCurveParent(sage.Parent):
             self._lseries_cache = Lseries_ell(self)
         return self._lseries_cache
 
-    def root_number(self) -> int:
-        """Return the global root number of this elliptic curve over `QQ`."""
+    def root_number(self, precomputed: Any = None) -> int:
+        """Return the global root number of this elliptic curve over `QQ`.
+
+        The optional `precomputed` value records a certified root number from
+        an external source.  It must be `-1` or `1` and is cached on the
+        curve.  This explicit override is useful on portable hosts when the
+        curve has additive reduction and the optional eclib backend is not
+        present; Sage.js never guesses the missing additive local signs.
+
+        Without eclib, semistable curves are handled exactly from certified
+        Tate local data: split multiplicative primes have local sign `-1`,
+        nonsplit multiplicative primes have sign `1`, and the real place has
+        sign `-1`.
+
+        ```sage
+        sage: EllipticCurve([0,0,1,-1,0]).root_number()
+        -1
+        sage: E = EllipticCurve([1,2,3,4,999])
+        sage: E.root_number(precomputed=1)
+        1
+        """
         if self._base is not sage.QQ and self._base is not sage.ZZ:
             raise NotImplementedError("root numbers are only implemented over QQ")
+        if precomputed is not None:
+            answer = int(precomputed)
+            if answer not in (-1, 1):
+                raise ValueError("a precomputed root number must be -1 or 1")
+            if (
+                self._root_number is not runtime.undefined
+                and int(self._root_number) != answer
+            ):
+                raise ValueError("the precomputed root number conflicts with the cache")
+            self._root_number = answer
+            return answer
         if self._root_number is not runtime.undefined:
             return int(self._root_number)
         backend = runtime.flint_backend()
         native_function = runtime.reflect.get(backend, "ecRootNumber")
         if native_function is runtime.undefined:
-            raise NotImplementedError(
-                "the native eclib root-number evaluator is unavailable"
-            )
+            finite_sign = 1
+            for prime in self.bad_primes():
+                local = self.local_data(prime)
+                if local.has_split_multiplicative_reduction():
+                    finite_sign = -finite_sign
+                elif not local.has_nonsplit_multiplicative_reduction():
+                    raise NotImplementedError(
+                        "the eclib root-number evaluator is unavailable and "
+                        "additive local root numbers are not yet implemented; "
+                        "supply root_number(precomputed=-1 or 1) from a "
+                        "certified external computation"
+                    )
+            answer = -finite_sign
+            self._root_number = answer
+            return answer
         native_arguments = []
         for coefficient in self._ainvs:
             if hasattr(coefficient, "_denominator"):
@@ -2316,8 +2410,8 @@ class EllipticCurveParent(sage.Parent):
         Return the trace of Frobenius `a_p` at the prime `p`.
 
         Integral curves over `QQ` use smalljac's optimized native
-        point-counting algorithms. Rational nonintegral models use the
-        direct Sage.js point counter.
+        point-counting algorithms when available. Portable hosts use the
+        exact direct Sage.js point counter.
 
         ```sage
         sage: E = EllipticCurve([0,0,1,-1,0])
@@ -2332,16 +2426,23 @@ class EllipticCurveParent(sage.Parent):
             raise ValueError("p must be prime")
         integral_coefficients = self._integral_model_coefficients()
         if integral_coefficients is not None:
-            return int(
-                runtime.flint_backend().ecApIntegral(
-                    integral_coefficients[0],
-                    integral_coefficients[1],
-                    integral_coefficients[2],
-                    integral_coefficients[3],
-                    integral_coefficients[4],
-                    runtime.bigint(prime),
+            backend = runtime.flint_backend()
+            native_function = runtime.reflect.get(backend, "ecApIntegral")
+            if native_function is not runtime.undefined:
+                return int(
+                    runtime.reflect.apply(
+                        native_function,
+                        backend,
+                        [
+                            integral_coefficients[0],
+                            integral_coefficients[1],
+                            integral_coefficients[2],
+                            integral_coefficients[3],
+                            integral_coefficients[4],
+                            runtime.bigint(prime),
+                        ],
+                    )
                 )
-            )
         if self._base is not sage.QQ and self._base is not sage.ZZ:
             raise NotImplementedError(
                 "ap() is currently implemented for curves over QQ or ZZ"
@@ -2353,7 +2454,8 @@ class EllipticCurveParent(sage.Parent):
         Return `[a_p : p < bound]`, with `p` prime.
 
         The complete prime interval is computed in one native smalljac
-        invocation for integral curves.
+        invocation for integral curves when available. Portable hosts retain
+        the same exact Euler-factor recurrence using direct point counts.
 
         ```sage
         sage: EllipticCurve([0,0,1,-1,0]).aplist(10)
@@ -2377,19 +2479,27 @@ class EllipticCurveParent(sage.Parent):
         integral_coefficients = self._integral_model_coefficients()
         if integral_coefficients is None:
             return None
+        backend = runtime.flint_backend()
+        native_function = runtime.reflect.get(backend, "ecAnlistIntegral")
+        if native_function is runtime.undefined:
+            return None
         discriminant = self.discriminant()
         if hasattr(discriminant, "_numerator"):
             native_discriminant = discriminant._numerator
         else:
             native_discriminant = runtime.integer_bigint(discriminant)
-        return runtime.flint_backend().ecAnlistIntegral(
-            integral_coefficients[0],
-            integral_coefficients[1],
-            integral_coefficients[2],
-            integral_coefficients[3],
-            integral_coefficients[4],
-            native_discriminant,
-            runtime.bigint(bound),
+        return runtime.reflect.apply(
+            native_function,
+            backend,
+            [
+                integral_coefficients[0],
+                integral_coefficients[1],
+                integral_coefficients[2],
+                integral_coefficients[3],
+                integral_coefficients[4],
+                native_discriminant,
+                runtime.bigint(bound),
+            ],
         )
 
     def anlist(self, bound: int) -> list[int]:

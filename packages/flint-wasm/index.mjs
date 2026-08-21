@@ -5,6 +5,16 @@ import {
 } from "./dist/ffi-resource-backend.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
+import {
+  composeNumericRepresentationBackends,
+  createNumericBackend,
+} from "./numeric-backend.mjs";
+import { createAnalyticWasmBackend } from "./analytic-backend.mjs";
+import { createNumberFieldZetaBackend } from "./number-field-zeta.mjs";
+import { createCurveBackend } from "./curve-backend.mjs";
+import { createAlgebraicBackend } from "./algebraic.mjs";
+import { createDirichletGroupBackend } from "./dirichlet-group.mjs";
+import { createMultivariateBackend } from "./multivariate-backend.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -40,7 +50,14 @@ function readCString(memory, pointer, capacity) {
  * `source` may be a URL, Response, ArrayBuffer, typed-array view, or an
  * already compiled WebAssembly.Module.
  */
-export async function instantiateFlintFactor(source) {
+export async function instantiateFlintFactor(
+  source,
+  {
+    algebraicSource,
+    recordCapability = () => {},
+    multivariateResultant = true,
+  } = {},
+) {
   const module = await compile(source);
   const wasi = createWasiHost();
   const instance = await WebAssembly.instantiate(module, {
@@ -48,9 +65,55 @@ export async function instantiateFlintFactor(source) {
   });
   const memory = instance.exports.memory;
   wasi.initialize(instance);
-  const generatedResourceBackend = createGeneratedWasmBackend(instance);
+  const generatedResourceBackend = createGeneratedWasmBackend(instance, {
+    recordCapability,
+  });
   const polynomialBackend = createPortablePolynomialBackend();
+  const multivariateBackend = createMultivariateBackend(instance, {
+    recordCapability,
+    enabled: multivariateResultant,
+  });
   const matrixBackend = createPortableMatrixBackend();
+  const numericBackend = createNumericBackend(instance, { recordCapability });
+  const publicGeneratedResourceBackend = generatedResourceBackend;
+  const dirichletGroupBackend = createDirichletGroupBackend(instance);
+  const analyticBackend = createAnalyticWasmBackend(instance, {
+    recordCapability,
+    serializePoint: numericBackend.serializeAnalyticPoint,
+    materialize(record, precision) {
+      return numericBackend.complexFromStrings(
+        record.real,
+        record.imaginary,
+        precision,
+      );
+    },
+    resolveDirichletModulus(value) {
+      return dirichletGroupBackend.isDirichletGroup(value)
+        ? dirichletGroupBackend.dirichletGroupModulus(value)
+        : value;
+    },
+  });
+  const numberFieldZetaBackend = createNumberFieldZetaBackend(instance, {
+    recordCapability,
+  });
+  const curveBackend = createCurveBackend(instance, { recordCapability });
+  let algebraicBackend = {};
+  if (algebraicSource !== undefined) {
+    const algebraicModule = await compile(algebraicSource);
+    const algebraicWasi = createWasiHost();
+    const algebraicInstance = await WebAssembly.instantiate(algebraicModule, {
+      wasi_snapshot_preview1: algebraicWasi.imports,
+    });
+    algebraicWasi.initialize(algebraicInstance);
+    algebraicBackend = createAlgebraicBackend(algebraicInstance, {
+      recordCapability,
+      matrixFallback: matrixBackend,
+    });
+  }
+  const numericRepresentationBackend = composeNumericRepresentationBackends(
+    numericBackend,
+    algebraicBackend,
+  );
 
   // WebAssembly i32 results reach JavaScript as signed numbers even when the
   // C declaration is uint32_t/size_t. Normalize handles, pointers, and sizes.
@@ -75,7 +138,7 @@ export async function instantiateFlintFactor(source) {
     } catch {
       throw new TypeError(`${operation} input must be an integer`);
     }
-    writeText(input, operation);
+    return writeText(input, operation);
   }
 
   function writeText(input, operation) {
@@ -93,10 +156,11 @@ export async function instantiateFlintFactor(source) {
     );
     destination.set(bytes);
     destination[bytes.length] = 0;
+    return bytes.length;
   }
 
   function factor(value) {
-    writeInteger(value, "factor");
+    const ingressBytes = writeInteger(value, "factor");
     const status = instance.exports.sagejs_factor();
     if (status === 1) {
       throw new TypeError("FLINT rejected the integer input");
@@ -113,6 +177,15 @@ export async function instantiateFlintFactor(source) {
 
     const encoded = readCString(memory, outputPointer, outputCapacity);
     const result = JSON.parse(encoded);
+    recordCapability(
+      "specialist:integer-factorization-wasm",
+      "receipt-backed-wasm-artifact",
+      {
+        executionTarget: "wasm-artifact",
+        ingressBytes,
+        egressBytes: encoder.encode(encoded).length,
+      },
+    );
     return {
       sign: result.sign,
       factors: result.factors.map(([prime, exponent]) => [
@@ -301,6 +374,7 @@ export async function instantiateFlintFactor(source) {
     });
     p1Objects.add(value);
     p1Finalizer?.register(value, handle);
+    traceWasmP1(p1WasmCapabilities.list, 4, 8);
     return value;
   }
 
@@ -383,6 +457,27 @@ export async function instantiateFlintFactor(source) {
     "dimension",
   ];
 
+  // These identifiers are deliberately closed over here instead of being
+  // assembled from caller-controlled text.  Each operation below crosses the
+  // JavaScript/Wasm boundary into src/modsym.c, whose persistent P1 handle owns
+  // the exact shared C presentation and matrix computation.
+  const p1WasmCapabilities = Object.freeze({
+    list: "napi:@sagemath/sagejs-flint:p1List",
+    presentation:
+      "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+    hecke: "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+    boundary: "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+    cuspidal: "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+  });
+
+  function traceWasmP1(capabilityId, ingressBytes, egressBytes) {
+    recordCapability(
+      capabilityId,
+      "receipt-backed-wasm-artifact",
+      { executionTarget: "wasm-artifact", ingressBytes, egressBytes },
+    );
+  }
+
   function p1ListManinPresentationInfo(value) {
     const p1 = p1Object(value);
     const result = {};
@@ -395,6 +490,11 @@ export async function instantiateFlintFactor(source) {
       }
       result[presentationNames[field]] = number;
     }
+    traceWasmP1(
+      p1WasmCapabilities.presentation,
+      4,
+      presentationNames.length * 4,
+    );
     return Object.freeze(result);
   }
 
@@ -430,10 +530,16 @@ export async function instantiateFlintFactor(source) {
         "weight-2 Hecke index must be a prime fitting in 31 bits",
       );
     }
-    return runMatrixOperation(value, "exact weight-2 Hecke matrix",
+    const result = runMatrixOperation(value, "exact weight-2 Hecke matrix",
       (handle) => instance.exports.sagejs_p1_hecke_matrix(
         handle, Number(prime),
       ));
+    traceWasmP1(
+      p1WasmCapabilities.hecke,
+      8,
+      8 + result.rows * result.cols * 4,
+    );
+    return result;
   }
 
   function p1ListBoundaryData(value) {
@@ -444,12 +550,23 @@ export async function instantiateFlintFactor(source) {
       instance.exports.sagejs_p1_cusp_numerator(index),
       instance.exports.sagejs_p1_cusp_denominator(index),
     ]);
+    traceWasmP1(
+      p1WasmCapabilities.boundary,
+      4,
+      12 + matrix.rows * matrix.cols * 4 + count * 16,
+    );
     return Object.freeze({ matrix, cusps: Object.freeze(cusps) });
   }
 
   function p1ListCuspidalBasis(value) {
-    return runMatrixOperation(value, "exact cuspidal cycle basis",
+    const result = runMatrixOperation(value, "exact cuspidal cycle basis",
       (handle) => instance.exports.sagejs_p1_cuspidal_basis(handle));
+    traceWasmP1(
+      p1WasmCapabilities.cuspidal,
+      4,
+      8 + result.rows * result.cols * 4,
+    );
+    return result;
   }
 
   function p1ListStarMatrix(value) {
@@ -511,9 +628,17 @@ export async function instantiateFlintFactor(source) {
     p1ListStarEigenspaceBasis,
     p1ListReducePath,
     ...polynomialBackend,
+    ...multivariateBackend,
     ...matrixBackend,
+    ...numericBackend,
     matrixCharpoly,
-    ...generatedResourceBackend,
+    ...publicGeneratedResourceBackend,
+    ...dirichletGroupBackend,
+    ...numberFieldZetaBackend,
+    ...analyticBackend,
+    ...curveBackend,
+    ...algebraicBackend,
+    ...numericRepresentationBackend,
   };
   Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
     value: () => instance.exports.sagejs_wasm_resource_live_count(),

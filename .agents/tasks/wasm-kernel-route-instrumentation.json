@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-kernel-route-instrumentation",
+  "title": "Authenticated Wasm source-kernel route telemetry",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive every source-kernel telemetry capability from authenticated production pack metadata and emit fixed non-forgeable private route observations for graph, matrix/polynomial, P1, and number-field kernels",
+  "base_commit": "1cd3f657b324bb7ea489bc414b18a9780da0ad22",
+  "claims": [
+    ".agents/lanes.json",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/scripts/production-receipt.cjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/test/capability-dispatch-trace.test.mjs",
+    "packages/flint-wasm/test/evaluator-host.test.mjs",
+    "packages/flint-wasm/test/production-receipt.test.cjs",
+    "test/node-test-manifest.cjs",
+    "test/wasm-kernel-route-instrumentation.cjs",
+    "tools/native-kernel/wasm-pack-loader.mjs",
+    "tools/native-kernel/test/wasm-pack-loader.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Generated native-kernel manifest and production pack receipt",
+      "Adversarial evaluator telemetry regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

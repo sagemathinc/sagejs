@@ -29,9 +29,12 @@ const RUNTIME_BOOTSTRAP_SOURCE_ASSET =
 const RUNTIME_BOOTSTRAP_CACHE_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const TASK_RUNTIME_MODULE_MANIFEST = "task-runtime-modules.json";
-const TASK_RUNTIME_MODULE_SCHEMA = "sagejs.task-runtime-modules/v2";
+const TASK_RUNTIME_MODULE_SCHEMA = "sagejs.task-runtime-modules/v3";
 const PRECOMPILED_MODULE_FILENAME =
-  "__sagejs_precompiled_module_filename__";
+  "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
+const PRECOMPILED_PACKAGE_PATH =
+  "/__sagejs_lazy_modules__/__SAGEJS_PACKAGE_PATH__";
+const LAZY_MODULE_VIRTUAL_ROOT = "/__sagejs_lazy_modules__";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const FLINT_FFI_ASSET = "native/sagejs_flint_ffi.node";
 const FLINT_FFI_MANIFEST_ASSET = "native/sagejs_flint_ffi_manifest.json";
@@ -337,7 +340,9 @@ interface TaskRuntimeModuleRecord {
   version: string;
   signature: string;
   mode: "python";
+  package: boolean;
   filename: string;
+  packagePath: string | null;
   source: string;
 }
 
@@ -349,15 +354,24 @@ interface TaskRuntimeModuleManifest {
 }
 
 interface PrecompiledTaskModule {
+  schema: "sagejs.lazy-module-template/v1";
   version: string;
   signature: string;
   mode: "python";
   module: string;
+  package: boolean;
+  filenameMarker: string;
+  packagePathMarker: string | null;
   javascriptTemplate: string;
 }
 
 const pythonModuleNamePattern =
   /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+const reservedModuleSegments = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
 const sha1Pattern = /^[a-f0-9]{40}$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
@@ -371,6 +385,34 @@ function own(object: unknown, name: PropertyKey): boolean {
     (typeof object === "object" || typeof object === "function") &&
     Object.prototype.hasOwnProperty.call(object, name)
   );
+}
+
+function validLazyModuleName(name: unknown): name is string {
+  return typeof name === "string" && pythonModuleNamePattern.test(name) &&
+    name.split(".").every((segment) => !reservedModuleSegments.has(segment));
+}
+
+function exactRecordKeys(value: unknown, expected: string[]): boolean {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return JSON.stringify(Object.keys(value).sort()) ===
+    JSON.stringify([...expected].sort());
+}
+
+function canonicalTaskModuleFilename(name: string, isPackage: boolean): string {
+  const stem = name.replaceAll(".", "/");
+  return isPackage
+    ? `${LAZY_MODULE_VIRTUAL_ROOT}/${stem}/__init__.py`
+    : `${LAZY_MODULE_VIRTUAL_ROOT}/${stem}.py`;
+}
+
+function canonicalTaskPackagePath(name: string, isPackage: boolean): string | null {
+  return isPackage
+    ? `${LAZY_MODULE_VIRTUAL_ROOT}/${name.replaceAll(".", "/")}`
+    : null;
 }
 
 function taskRuntimeModuleCacheDirectory(fallbackDirectory?: string): string {
@@ -402,22 +444,23 @@ function validTaskModuleRecord(
   record: unknown,
 ): record is TaskRuntimeModuleRecord {
   const expectedResource = `${name.replaceAll(".", "-")}.json`;
-  return (
-    pythonModuleNamePattern.test(name) &&
-    record !== null &&
-    typeof record === "object" &&
-    Reflect.get(record, "resource") === expectedResource &&
-    typeof Reflect.get(record, "version") === "string" &&
-    typeof Reflect.get(record, "signature") === "string" &&
-    Reflect.get(record, "mode") === "python" &&
-    typeof Reflect.get(record, "filename") === "string" &&
-    Reflect.get(record, "filename").startsWith(
-      "/__sagejs_task_modules__/",
-    ) &&
-    typeof Reflect.get(record, "source") === "string" &&
-    expectedTaskModuleSources(name).includes(Reflect.get(record, "source")) &&
-    sha1Pattern.test(Reflect.get(record, "signature") as string)
-  );
+  if (!validLazyModuleName(name) || !exactRecordKeys(record, [
+    "resource", "version", "signature", "mode", "package", "filename",
+    "packagePath", "source",
+  ])) return false;
+  const candidate = record as Record<PropertyKey, unknown>;
+  const isPackage = candidate.package;
+  const expectedSource = isPackage
+    ? `${name.replaceAll(".", "/")}/__init__.py`
+    : `${name.replaceAll(".", "/")}.py`;
+  return candidate.resource === expectedResource &&
+    typeof candidate.version === "string" &&
+    typeof candidate.signature === "string" &&
+    candidate.mode === "python" && typeof isPackage === "boolean" &&
+    candidate.filename === canonicalTaskModuleFilename(name, isPackage) &&
+    candidate.packagePath === canonicalTaskPackagePath(name, isPackage) &&
+    candidate.source === expectedSource &&
+    sha1Pattern.test(candidate.signature);
 }
 
 function validatedTaskManifestIdentity(
@@ -457,14 +500,30 @@ function validatedTaskModuleResource(
     join(cacheDirectory, record.resource),
   )) as PrecompiledTaskModule;
   if (
-    cached?.version !== record.version ||
+    !exactRecordKeys(cached, [
+      "schema", "version", "signature", "mode", "module", "package",
+      "filenameMarker", "packagePathMarker", "javascriptTemplate",
+    ]) ||
+    cached.schema !== "sagejs.lazy-module-template/v1" ||
+    cached.version !== record.version ||
     cached.signature !== record.signature ||
     cached.mode !== record.mode ||
     cached.module !== name ||
+    cached.package !== record.package ||
+    cached.filenameMarker !== PRECOMPILED_MODULE_FILENAME ||
+    cached.packagePathMarker !== (
+      record.package ? PRECOMPILED_PACKAGE_PATH : null
+    ) ||
     typeof cached.javascriptTemplate !== "string" ||
     !cached.javascriptTemplate.includes(
       JSON.stringify(PRECOMPILED_MODULE_FILENAME),
-    )
+    ) || (record.package
+      ? !cached.javascriptTemplate.includes(
+        JSON.stringify(PRECOMPILED_PACKAGE_PATH),
+      )
+      : cached.javascriptTemplate.includes(
+        JSON.stringify(PRECOMPILED_PACKAGE_PATH),
+      ))
   ) {
     throw new Error(
       `invalid precompiled multiprocessing module resource ${name}`,
@@ -478,7 +537,7 @@ export function hasPrecompiledTaskModule(
   name: string,
   fallbackDirectory?: string,
 ): boolean {
-  if (!pythonModuleNamePattern.test(name)) return false;
+  if (!validLazyModuleName(name)) return false;
   try {
     const cacheDirectory = taskRuntimeModuleCacheDirectory(fallbackDirectory);
     const manifest = JSON.parse(readResourceText(
@@ -486,9 +545,10 @@ export function hasPrecompiledTaskModule(
     )) as TaskRuntimeModuleManifest;
     if (
       manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
-      manifest.modules === null ||
-      typeof manifest.modules !== "object" ||
-      Array.isArray(manifest.modules) ||
+      !exactRecordKeys(manifest, [
+        "schema", "compilerSha256", "roots", "modules",
+      ]) ||
+      !exactRecordKeys(manifest.modules, Object.keys(manifest.modules ?? {})) ||
       !Object.hasOwn(manifest.modules, name)
     ) return false;
     validatedTaskManifestIdentity(manifest);
@@ -527,10 +587,11 @@ export function installPrecompiledTaskModuleLoader(
   const manifest = JSON.parse(manifestText) as TaskRuntimeModuleManifest;
   if (
     manifest?.schema !== TASK_RUNTIME_MODULE_SCHEMA ||
+    !exactRecordKeys(manifest, [
+      "schema", "compilerSha256", "roots", "modules",
+    ]) ||
     !Array.isArray(manifest.roots) ||
-    manifest.modules === null ||
-    typeof manifest.modules !== "object" ||
-    Array.isArray(manifest.modules)
+    !exactRecordKeys(manifest.modules, Object.keys(manifest.modules ?? {}))
   ) {
     throw new Error("invalid precompiled multiprocessing module manifest");
   }
@@ -538,11 +599,17 @@ export function installPrecompiledTaskModuleLoader(
   for (const root of manifest.roots) {
     if (
       typeof root !== "string" ||
-      !pythonModuleNamePattern.test(root) ||
+      !validLazyModuleName(root) ||
       !Object.hasOwn(manifest.modules, root)
     ) {
       throw new Error("invalid precompiled multiprocessing module root");
     }
+  }
+  if (JSON.stringify(manifest.roots) !==
+      JSON.stringify([...new Set(manifest.roots)].sort()) ||
+      JSON.stringify(Object.keys(manifest.modules)) !==
+        JSON.stringify(Object.keys(manifest.modules).sort())) {
+    throw new Error("noncanonical precompiled multiprocessing manifest");
   }
   for (const [name, record] of Object.entries(manifest.modules)) {
     if (!validTaskModuleRecord(name, record)) {
@@ -586,7 +653,7 @@ export function installPrecompiledTaskModuleLoader(
     return error;
   };
   const load = (name: string): unknown => {
-    if (!pythonModuleNamePattern.test(name)) {
+    if (!validLazyModuleName(name)) {
       throw new TypeError(
         `invalid multiprocessing module name ${JSON.stringify(name)}`,
       );
@@ -626,10 +693,15 @@ export function installPrecompiledTaskModuleLoader(
         name,
         record,
       );
-      const source = cached.javascriptTemplate.replaceAll(
-        JSON.stringify(PRECOMPILED_MODULE_FILENAME),
-        JSON.stringify(record.filename),
-      );
+      const source = cached.javascriptTemplate
+        .replaceAll(
+          JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+          JSON.stringify(record.filename),
+        )
+        .replaceAll(
+          JSON.stringify(PRECOMPILED_PACKAGE_PATH),
+          JSON.stringify(record.packagePath),
+        );
       // Each compiler-emitted module expects its ``var`` declarations to be
       // module-local. Running raw templates at global scope lets similarly
       // named lowered bindings in later modules overwrite earlier closures.

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Security, privacy and limits — Sage.js</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./privacy.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">S</span><span><strong>Sage.js</strong><small>mathematics, locally</small></span></a>
+    </header>
+    <main class="document">
+      <article>
+        <p class="eyebrow">Public execution environment</p>
+        <h1>Security, privacy and resource limits</h1>
+        <p class="lede">The live Sage.js environment runs user-authored Sage code locally in a replaceable browser worker. It has no backend mathematical process and requires no account.</p>
+
+        <h2>What leaves your browser</h2>
+        <p>Mathematical evaluation does not send source, variables, results, or plots to Sage.js servers. After the application assets are cached, the mathematical runtime works offline. Ordinary hosting infrastructure can still receive standard requests for the static application files, including an IP address and browser metadata.</p>
+        <p>A share URL stores UTF-8 source in the URL fragment. Browsers do not include fragments in HTTP requests. Anyone who receives the complete URL can read its source. Share URLs contain neither results nor live kernel state.</p>
+
+        <h2>Local persistence</h2>
+        <p>Worksheet titles and source are saved in browser local storage. Outputs and live mathematical objects are not saved. Imported files are read only after explicit selection. Export and graphics downloads happen only after explicit action.</p>
+        <p>Deleting site data removes saved worksheets and offline assets. Private-browsing modes may discard them automatically. Do not rely on browser storage as the only copy of important work.</p>
+
+        <h2>Execution boundary</h2>
+        <p>Every evaluation runs in the outer kernel Web Worker. Interrupt, timeout, reset, or excessive textual output terminates and replaces that worker, releasing its mathematical resources and clearing all variables. This termination model also handles tight JavaScript and native WebAssembly loops that cannot cooperatively yield.</p>
+        <p>A worker is not a security boundary against browser-engine vulnerabilities. The production application must remain on a dedicated origin with no authentication cookies, secrets, privileged server API, or broad native bridge. Response headers isolate the origin, restrict connections and embedding, and grant no camera, microphone, location, payment, USB, serial, or Bluetooth permission.</p>
+
+        <h2>Published limits</h2>
+        <ul>
+          <li>Selectable wall-time ceiling: 5, 15, 30, or 60 seconds.</li>
+          <li>Displayed text: 1,000,000 UTF-8 bytes per evaluation.</li>
+          <li>Structured plot payload: 8,000,000 UTF-8 bytes per display.</li>
+          <li>Imported source or SagePack file: 4,000,000 bytes.</li>
+          <li>Share URL source: 48,000 UTF-8 bytes.</li>
+          <li>Locally saved source: 2,000,000 UTF-8 bytes per worksheet, up to 40 worksheets.</li>
+        </ul>
+        <p>Each published FLINT and M4RI WebAssembly module starts with 16 MiB and has a linker-enforced 512 MiB linear-memory maximum. M4RI is loaded lazily. JavaScript/browser heap is separate; where a browser does not expose its reliable use, the interface says so rather than estimating it. An out-of-memory browser process may be terminated by the operating system before application code can report a friendly error.</p>
+
+        <h2>Dynamic code policy</h2>
+        <p>Sage.js compiles the source you can see into JavaScript inside its worker. Therefore the execution origin's Content Security Policy deliberately permits dynamic evaluation and WebAssembly. This is incompatible with storing sensitive application state on the same origin and is the reason for the dedicated non-credentialed deployment.</p>
+
+        <h2>Files and serialization</h2>
+        <p>Plain <code>.sage</code> files are visible source. SagePack is a versioned, data-only Sage.js serialization format; imports are bounded before decoding. Do not confuse data-format validation with trust in arbitrary imported mathematics. Review visible source before running it.</p>
+
+        <h2>Reporting problems</h2>
+        <p>Report reproducible defects or security concerns through the project's <a href="https://github.com/sagemathinc/sagejs">GitHub repository</a>. Include the artifact revision shown in the capabilities panel, but remove private worksheet content first.</p>
+        <p><a href="./">Return to the live Sage.js environment</a></p>
+      </article>
+    </main>
+  </body>
+</html>

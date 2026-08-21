@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/browser-wasm-performance-v2.json",
+  "title": "Sage.js browser WebAssembly and native-reference performance receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runtime",
+    "samples",
+    "workload_identity",
+    "startup_ms",
+    "interrupt_latency_ms",
+    "operations",
+    "native_comparison",
+    "budget"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.browser-wasm-performance/v2" },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "engine"],
+      "properties": {
+        "kind": { "enum": ["browser-wasm", "node-native"] },
+        "engine": { "enum": ["chromium", "firefox", "webkit", null] }
+      }
+    },
+    "source_revision": { "type": ["string", "null"] },
+    "workload_identity": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "samples": { "type": "integer", "minimum": 1 },
+    "startup_ms": { "$ref": "#/$defs/distribution" },
+    "interrupt_latency_ms": { "$ref": "#/$defs/distribution" },
+    "operations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/operation" }
+    },
+    "native_comparison": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "const": "unavailable" },
+            "reason": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "startup_median_ratio", "interrupt_median_ratio", "operations"],
+          "properties": {
+            "status": { "const": "available" },
+            "reference_identity": { "type": ["string", "null"] },
+            "reference_source_revision": { "type": ["string", "null"] },
+            "startup_median_ratio": { "$ref": "#/$defs/nullableRatio" },
+            "interrupt_median_ratio": { "$ref": "#/$defs/nullableRatio" },
+            "operations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["cold_median_ratio", "warm_median_ratio"],
+                "properties": {
+                  "cold_median_ratio": { "$ref": "#/$defs/nullableRatio" },
+                  "warm_median_ratio": { "$ref": "#/$defs/nullableRatio" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "budget": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["status", "baseline_present", "failures"],
+          "properties": {
+            "status": { "enum": ["reviewed", "unbaselined", "failed"] },
+            "baseline_present": { "type": "boolean" },
+            "failures": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "diagnostics": { "type": ["object", "null"] },
+    "artifact_root": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "nullableRatio": { "type": ["number", "null"], "minimum": 0 },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "median", "maximum", "samples"],
+      "properties": {
+        "minimum": { "type": "number", "minimum": 0 },
+        "median": { "type": "number", "minimum": 0 },
+        "maximum": { "type": "number", "minimum": 0 },
+        "samples": { "type": "array", "minItems": 1, "items": { "type": "number", "minimum": 0 } }
+      }
+    },
+    "routeRequirement": {
+      "type": "object",
+      "required": ["id", "route"],
+      "properties": {
+        "id": { "type": "string" },
+        "route": { "enum": ["receipt-backed-wasm-artifact", "shared-runtime-js", "portable-fallback"] }
+      }
+    },
+    "routeRecord": {
+      "type": "object",
+      "required": ["capability_id", "selected_route", "execution_target", "call_count", "ingress_bytes", "egress_bytes"],
+      "properties": {
+        "capability_id": { "type": "string" },
+        "selected_route": { "enum": ["receipt-backed-wasm-artifact", "shared-runtime-js", "portable-fallback"] },
+        "execution_target": { "enum": ["wasm-artifact", "host-runtime-js", "portable-python"] },
+        "call_count": { "type": "integer", "minimum": 0 },
+        "ingress_bytes": { "type": "integer", "minimum": 0 },
+        "egress_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "instrumentationSample": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["routes", "boundary_crossings", "copied_bytes"],
+          "properties": {
+            "routes": { "type": "array", "items": { "$ref": "#/$defs/routeRecord" } },
+            "boundary_crossings": { "type": "integer", "minimum": 0 },
+            "copied_bytes": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "instrumentation": {
+      "type": "object",
+      "required": ["status", "samples", "boundary_crossings", "copied_bytes", "observed_routes", "required_routes"],
+      "properties": {
+        "status": { "enum": ["available", "partial", "unavailable"] },
+        "samples": { "type": "array", "items": { "$ref": "#/$defs/instrumentationSample" } },
+        "boundary_crossings": { "oneOf": [{ "$ref": "#/$defs/distribution" }, { "type": "null" }] },
+        "copied_bytes": { "oneOf": [{ "$ref": "#/$defs/distribution" }, { "type": "null" }] },
+        "observed_routes": { "type": "array", "items": { "$ref": "#/$defs/routeRecord" } },
+        "required_routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["capability_id", "expected_route", "observed_routes", "status"],
+            "properties": {
+              "capability_id": { "type": "string" },
+              "expected_route": { "type": "string" },
+              "observed_routes": { "type": "array", "items": { "type": "string" } },
+              "status": { "enum": ["matched", "mismatch", "missing", "unavailable"] }
+            }
+          }
+        }
+      }
+    },
+    "memorySnapshot": {
+      "type": "object",
+      "required": ["js_heap_bytes", "user_agent_bytes", "resident_set_bytes"],
+      "properties": {
+        "js_heap_bytes": { "type": ["number", "null"], "minimum": 0 },
+        "user_agent_bytes": { "type": ["number", "null"], "minimum": 0 },
+        "resident_set_bytes": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "required": ["family", "required_capability_routes", "cold_ms", "warm_ms", "instrumentation", "memory"],
+      "properties": {
+        "family": { "type": "string" },
+        "required_capability_routes": { "type": "array", "items": { "$ref": "#/$defs/routeRequirement" } },
+        "cold_ms": { "$ref": "#/$defs/distribution" },
+        "warm_ms": { "$ref": "#/$defs/distribution" },
+        "instrumentation": {
+          "type": "object",
+          "required": ["cold", "warm"],
+          "properties": {
+            "cold": { "$ref": "#/$defs/instrumentation" },
+            "warm": { "$ref": "#/$defs/instrumentation" }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "required": ["samples", "maximum_js_heap_bytes", "maximum_user_agent_bytes", "maximum_resident_set_bytes"],
+          "properties": {
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["before", "after_cold", "after_warm"],
+                "properties": {
+                  "before": { "$ref": "#/$defs/memorySnapshot" },
+                  "after_cold": { "$ref": "#/$defs/memorySnapshot" },
+                  "after_warm": { "$ref": "#/$defs/memorySnapshot" }
+                }
+              }
+            },
+            "maximum_js_heap_bytes": { "type": ["number", "null"], "minimum": 0 },
+            "maximum_user_agent_bytes": { "type": ["number", "null"], "minimum": 0 },
+            "maximum_resident_set_bytes": { "type": ["number", "null"], "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}
