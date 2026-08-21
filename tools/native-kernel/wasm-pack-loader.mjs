@@ -176,7 +176,39 @@ function integerFromLimbs(sign, limbs) {
   return sign < 0 ? -value : value;
 }
 
+function isPackedIntegerBuffer(argument) {
+  return argument !== null && typeof argument === "object" &&
+    argument.sizes instanceof Int32Array &&
+    argument.limbs instanceof BigUint64Array &&
+    Number.isInteger(argument.length) && argument.length >= 0 &&
+    Number.isInteger(argument.wordCapacity) &&
+    argument.wordCapacity > 0 && argument.wordCapacity <= 0xffff &&
+    argument.sizes.length === argument.length &&
+    argument.limbs.length === argument.length * argument.wordCapacity;
+}
+
+function packedIntegerBuffer(argument) {
+  if (!isPackedIntegerBuffer(argument)) return null;
+  const values = new Array(argument.length);
+  for (let index = 0; index < argument.length; index += 1) {
+    const size = argument.sizes[index];
+    if (Math.abs(size) > argument.wordCapacity) {
+      throw new RangeError("IntegerBuffer size exceeds its wordCapacity");
+    }
+    values[index] = integerFromLimbs(
+      Math.sign(size),
+      Array.from(argument.limbs.subarray(
+        index * argument.wordCapacity,
+        index * argument.wordCapacity + Math.abs(size),
+      )),
+    );
+  }
+  return { target: argument, values, wordCapacity: argument.wordCapacity };
+}
+
 function valuesAndCapacity(argument) {
+  const packed = packedIntegerBuffer(argument);
+  if (packed !== null) return packed;
   const values = Array.isArray(argument) || ArrayBuffer.isView(argument)
     ? argument
     : argument?.values;
@@ -197,6 +229,19 @@ function valuesAndCapacity(argument) {
 
 function setTarget(target, index, value) {
   if (target === undefined) return;
+  if (isPackedIntegerBuffer(target)) {
+    const words = integerLimbs(value);
+    if (words.length > target.wordCapacity) {
+      throw new RangeError("Wasm kernel exceeded IntegerBuffer capacity");
+    }
+    const start = index * target.wordCapacity;
+    target.limbs.fill(0n, start, start + target.wordCapacity);
+    words.forEach((word, offset) => {
+      target.limbs[start + offset] = word;
+    });
+    target.sizes[index] = value < 0n ? -words.length : words.length;
+    return;
+  }
   target[index] = value;
 }
 
