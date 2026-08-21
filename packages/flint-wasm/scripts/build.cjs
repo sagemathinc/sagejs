@@ -387,6 +387,7 @@ const flintLocalIncludeArguments = [
 ];
 const flintLinkedSources = [
   path.join(packageRoot, "src", "factor.c"),
+  path.join(packageRoot, "src", "multivariate.c"),
   path.join(packageRoot, "src", "numeric.c"),
   path.join(packageRoot, "src", "modsym.c"),
   path.join(packageRoot, "src", "analytic.c"),
@@ -401,6 +402,7 @@ const flintLinkedSources = [
   path.join(repositoryRoot, "packages", "flint", "src", "number_field_zeta_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "multivariate_wasm_core.c"),
   path.join(packageRoot, "src", "wasi-stubs.c"),
 ];
 const m4riLocalIncludeArguments = [
@@ -557,6 +559,12 @@ const exportNames = [
   "sagejs_factor",
   "sagejs_is_prime",
   "sagejs_next_prime",
+  "sagejs_wasm_mpoly_input",
+  "sagejs_wasm_mpoly_input_capacity",
+  "sagejs_wasm_mpoly_output",
+  "sagejs_wasm_mpoly_output_capacity",
+  "sagejs_wasm_mpoly_output_length",
+  "sagejs_wasm_mpoly_resultant",
   "sagejs_integer_charpoly_begin",
   "sagejs_integer_charpoly_set",
   "sagejs_integer_charpoly_compute",

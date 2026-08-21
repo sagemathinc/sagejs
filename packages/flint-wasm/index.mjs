@@ -14,6 +14,7 @@ import { createNumberFieldZetaBackend } from "./number-field-zeta.mjs";
 import { createCurveBackend } from "./curve-backend.mjs";
 import { createAlgebraicBackend } from "./algebraic.mjs";
 import { createDirichletGroupBackend } from "./dirichlet-group.mjs";
+import { createMultivariateBackend } from "./multivariate-backend.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -51,7 +52,11 @@ function readCString(memory, pointer, capacity) {
  */
 export async function instantiateFlintFactor(
   source,
-  { algebraicSource, recordCapability = () => {} } = {},
+  {
+    algebraicSource,
+    recordCapability = () => {},
+    multivariateResultant = true,
+  } = {},
 ) {
   const module = await compile(source);
   const wasi = createWasiHost();
@@ -64,6 +69,10 @@ export async function instantiateFlintFactor(
     recordCapability,
   });
   const polynomialBackend = createPortablePolynomialBackend();
+  const multivariateBackend = createMultivariateBackend(instance, {
+    recordCapability,
+    enabled: multivariateResultant,
+  });
   const matrixBackend = createPortableMatrixBackend();
   const numericBackend = createNumericBackend(instance, { recordCapability });
   const publicGeneratedResourceBackend = generatedResourceBackend;
@@ -619,6 +628,7 @@ export async function instantiateFlintFactor(
     p1ListStarEigenspaceBasis,
     p1ListReducePath,
     ...polynomialBackend,
+    ...multivariateBackend,
     ...matrixBackend,
     ...numericBackend,
     matrixCharpoly,

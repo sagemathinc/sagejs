@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-multivariate-public",
+  "title": "Public Wasm multivariate resultant integration",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compile the bounded FLINT multivariate resultant core into flint-factor Wasm and expose one-crossing authenticated public ZZ resultant dispatch with exact fallback and Node/browser proof",
+  "base_commit": "ebbb742db1f946100210a91cfa22e1cf9020783a",
+  "claims": [
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/src/multivariate.c",
+    "packages/flint-wasm/multivariate-backend.mjs",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/test/multivariate-backend.test.mjs",
+    "packages/flint-wasm/test/multivariate-public-workflow.test.mjs",
+    "src/baselib/polynomial.py",
+    "test/wasm-multivariate-polynomial-public.cjs",
+    "bench/wasm-multivariate-public.cjs"
+  ],
+  "dependencies": [
+    "wasm-multivariate-polynomial"
+  ],
+  "references": [
+    "f95f9519",
+    "bench/WASM-MULTIVARIATE-POLYNOMIAL.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing exact native FLINT public resultant",
+      "direct packed core differential fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
