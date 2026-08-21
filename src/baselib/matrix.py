@@ -2966,23 +2966,33 @@ class Matrix(sage.Element):
         """Decode one affine entry sequence through a generated bulk export."""
         ffi = _flint_ffi_module()
         if self._has_fmpz_matrix_resource():
-            region = ffi.fmpz_matrix_serialize_sequence(
-                self._integer_resource(), start, stride, count
-            )
-            values = runtime.exact_integer_values_from_packed_bytes(
-                region.take_bytes(), count
-            )
-            return [runtime.normalize_integer(value) for value in values]
+            if _flint_backend_has_function(
+                "ffiFmpzMatrixSerializeSequence"
+            ) and _flint_backend_has_function("ffiFlintByteRegionClose"):
+                region = ffi.fmpz_matrix_serialize_sequence(
+                    self._integer_resource(), start, stride, count
+                )
+                values = runtime.exact_integer_values_from_packed_bytes(
+                    region.take_bytes(), count
+                )
+                return [runtime.normalize_integer(value) for value in values]
+            values = self._exact_host_values()
+            return [values[start + index * stride] for index in range(count)]
         if self._has_fmpq_matrix_resource():
-            region = ffi.fmpq_matrix_serialize_sequence(
-                self._rational_resource(), start, stride, count
-            )
-            parts = runtime.exact_integer_values_from_packed_bytes(
-                region.take_bytes(), 2 * count
-            )
-            return runtime.reduced_rational_values_from_parts(
-                parts, _untyped(sage.Rational), sage.QQ
-            )
+            if _flint_backend_has_function(
+                "ffiFmpqMatrixSerializeSequence"
+            ) and _flint_backend_has_function("ffiFlintByteRegionClose"):
+                region = ffi.fmpq_matrix_serialize_sequence(
+                    self._rational_resource(), start, stride, count
+                )
+                parts = runtime.exact_integer_values_from_packed_bytes(
+                    region.take_bytes(), 2 * count
+                )
+                return runtime.reduced_rational_values_from_parts(
+                    parts, _untyped(sage.Rational), sage.QQ
+                )
+            values = self._exact_host_values()
+            return [values[start + index * stride] for index in range(count)]
         raise TypeError("bulk exact selection requires a generated matrix resource")
 
     def _cached_row_vectors(self) -> list[Vector]:
