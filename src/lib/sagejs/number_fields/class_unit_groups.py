@@ -268,6 +268,7 @@ class ClassUnitSaturationRecord:
         analytic_generation_verifier: Any = None,
         producer_artifacts: Sequence[tuple[Any, Sequence[Any], Any, Any]] = (),
         analytic_module: Any = None,
+        analytic_workspace: Any = None,
         reason: str = "",
     ) -> None:
         self.original_units = tuple(original_units)
@@ -284,6 +285,7 @@ class ClassUnitSaturationRecord:
             for artifact, before, torsion, generation_verifier in producer_artifacts
         )
         self._analytic_module = analytic_module
+        self._analytic_workspace = analytic_workspace
         self.rigorous = bool(self.analytic_validation.get("rigorous"))
         self.complete = bool(
             self.rigorous
@@ -392,6 +394,7 @@ class ClassUnitSaturationRecord:
                         before,
                         artifact.to_dict(),
                         generation_verifier=generation_verifier,
+                        workspace=self._analytic_workspace,
                     )
                     if not bool(accepted):
                         return False
@@ -886,6 +889,16 @@ class ClassUnitGroupEngine:
         if self.progress is not None and not callable(self.progress):
             raise TypeError("progress must be callable")
         self.components = _Components() if components is None else components
+        self._analytic_workspace: Any = None
+        workspace_type = getattr(
+            self.components.analytic, "ZetaLogResidueWorkspace", None
+        )
+        if callable(workspace_type) and int(self.field.degree()) > 1:
+            self._analytic_workspace = workspace_type(
+                int(self.order.discriminant()),
+                int(self.field.degree()),
+                self.order.splitting_records,
+            )
         self.checkpoint_controller = checkpoint_controller
         if self.checkpoint_controller is None and (
             checkpoint is not None or resume_from is not None
@@ -978,7 +991,12 @@ class ClassUnitGroupEngine:
             "presentation_extractions": 0,
             "saturation_rounds": 0,
             "proof_primes_completed": 0,
+            "generation_verification_calls": 0,
+            "generation_verification_cache_hits": 0,
+            "generation_verification_full_replays": 0,
         }
+        self._generation_verification_cache: dict[str, bool] = {}
+        self._generation_verification_cache_active = True
         self._partials: dict[tuple[Any, ...], _LargePrimePartial] = {}
         self._relation_unit_log_rank = 0
         self._relation_search_state: Any = None
@@ -1035,12 +1053,15 @@ class ClassUnitGroupEngine:
         self.progress(payload)
 
     def _diagnostics(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
-        answer = {
+        answer: dict[str, Any] = {
             "elapsed_seconds": self._elapsed_seconds(),
             "phase_timings": dict(self._phase_timings),
             "resources": dict(self._resource_usage),
             "limits": self.limits.to_dict(),
         }
+        workspace_diagnostics = getattr(self._analytic_workspace, "diagnostics", None)
+        if callable(workspace_diagnostics):
+            answer["analytic_workspace"] = workspace_diagnostics()
         if extra:
             answer.update(extra)
         return answer
@@ -1109,8 +1130,12 @@ class ClassUnitGroupEngine:
             self.components.factored, "FactoredNumberFieldElement", None
         )
         regulator_producer = getattr(
-            self.components.analytic, "regulator_from_factored_units", None
+            self._analytic_workspace, "regulator_from_factored_units", None
         )
+        if not callable(regulator_producer):
+            regulator_producer = getattr(
+                self.components.analytic, "regulator_from_factored_units", None
+            )
         if factored_type is None or not callable(regulator_producer):
             return None
         try:
@@ -2023,22 +2048,38 @@ class ClassUnitGroupEngine:
             raise ArithmeticError(
                 "relations did not yield the full Dirichlet unit rank"
             )
-        regulator = analytic.regulator_from_factored_units(
-            units,
-            unit_rank=unit_rank,
-            precision_bits=self.limits.precision_bits,
-            maximum_precision_bits=self.limits.max_precision_bits,
+        workspace_regulator = getattr(
+            self._analytic_workspace, "regulator_from_factored_units", None
         )
+        if callable(workspace_regulator):
+            regulator = workspace_regulator(
+                units,
+                unit_rank=unit_rank,
+                precision_bits=self.limits.precision_bits,
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
+        else:
+            regulator = analytic.regulator_from_factored_units(
+                units,
+                unit_rank=unit_rank,
+                precision_bits=self.limits.precision_bits,
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
         zeta_limits = analytic.ZetaLogResidueLimits(
             maximum_prime_bound=self.limits.max_analytic_prime_bound,
             maximum_precision_bits=self.limits.max_precision_bits,
         )
+        zeta_options: dict[str, Any] = {
+            "precision_bits": self.limits.precision_bits,
+            "limits": zeta_limits,
+        }
+        if self._analytic_workspace is not None:
+            zeta_options["workspace"] = self._analytic_workspace
         zeta = analytic.zeta_log_residue_bound(
             int(self.order.discriminant()),
             int(self.field.degree()),
             self.order.splitting_records,
-            precision_bits=self.limits.precision_bits,
-            limits=zeta_limits,
+            **zeta_options,
         )
         units_module = _optional_module("sagejs.number_fields.units")
         torsion = units_module.roots_of_unity(self.field)
@@ -2096,6 +2137,13 @@ class ClassUnitGroupEngine:
             "presentation": _component_payload(presentation),
         }
         canonical = _component_payload(evidence)
+        cache_key = _content_hash(
+            {
+                "evidence": canonical,
+                "class_number": int(presentation.order),
+                "proof_status": proof_status,
+            }
+        )
 
         def verify_generation(
             field: Any,
@@ -2107,14 +2155,23 @@ class ClassUnitGroupEngine:
         ) -> bool:
             del initial_units
             try:
+                self._resource_usage["generation_verification_calls"] += 1
                 if field is not self.field or order is not self.order:
                     return False
                 if (
                     supplied_proof_status != proof_status
                     or _component_payload(supplied_evidence) != canonical
                     or int(class_number) != int(presentation.order)
-                    or not presentation.verify()
                 ):
+                    return False
+                if (
+                    self._generation_verification_cache_active
+                    and self._generation_verification_cache.get(cache_key) is True
+                ):
+                    self._resource_usage["generation_verification_cache_hits"] += 1
+                    return True
+                self._resource_usage["generation_verification_full_replays"] += 1
+                if not presentation.verify():
                     return False
                 rebuilt_records = self.components.factor_base.build_factor_base(plan)
                 rebuilt_factor_base = tuple(
@@ -2133,8 +2190,10 @@ class ClassUnitGroupEngine:
                     return False
                 for record in collector.records:
                     replay = record.verify(order, factor_base)
-                    if replay.get("certified") is not True:
+                    if replay["certified"] is not True:
                         return False
+                if self._generation_verification_cache_active:
+                    self._generation_verification_cache[cache_key] = True
                 return True
             except (AttributeError, TypeError, ValueError, ArithmeticError):
                 return False
@@ -2225,6 +2284,7 @@ class ClassUnitGroupEngine:
                         units,
                         result_payload,
                         generation_verifier=generation_verifier,
+                        workspace=self._analytic_workspace,
                     )
                 )
             else:
@@ -2316,6 +2376,7 @@ class ClassUnitGroupEngine:
             precision_bits=self.limits.precision_bits,
             maximum_precision_bits=self.limits.max_precision_bits,
             zeta_limits=zeta_limits,
+            workspace=self._analytic_workspace,
             generation_evidence=generation_evidence,
             generation_verifier=generation_verifier,
             proof_status=proof_status,
@@ -2485,6 +2546,7 @@ class ClassUnitGroupEngine:
             analytic_generation_verifier=final_generation_verifier,
             producer_artifacts=artifacts,
             analytic_module=self.components.analytic,
+            analytic_workspace=self._analytic_workspace,
             reason=(
                 "rigorous hR index-one validation after bounded saturation"
                 if index.index_one
@@ -2623,10 +2685,15 @@ class ClassUnitGroupEngine:
                 reason="rigorous hR index-one validation",
                 proof_status=initial_proof_status,
             )
-            saturation_replayed = bool(
-                saturation_record.complete
-                and saturation_record.verify(self.field, self.order)
-            )
+            try:
+                saturation_replayed = bool(
+                    saturation_record.complete
+                    and saturation_record.verify(self.field, self.order)
+                )
+            finally:
+                # Proof objects used after the computation must replay their
+                # detached evidence instead of inheriting this live-work memo.
+                self._generation_verification_cache_active = False
             if not index.index_one or not saturation_replayed:
                 return self._incomplete(
                     (

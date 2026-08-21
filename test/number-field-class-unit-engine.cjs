@@ -651,6 +651,89 @@ print("batched")
   assert.equal(output, "batched");
 });
 
+test("live generation authority memo detaches after computation", () => {
+  const output = run(String.raw`
+counts = {"factor_base": 0, "presentation": 0, "relations": 0}
+
+class FakePrime:
+    def to_dict(self):
+        return {"schema": "fake-prime-v1", "prime": 2}
+
+prime = FakePrime()
+
+class FakeFactorBaseRecord:
+    prime_ideal = prime
+
+class FakeFactorBase:
+    @staticmethod
+    def build_factor_base(plan):
+        counts["factor_base"] += 1
+        return (FakeFactorBaseRecord(),)
+
+class FakeRelation:
+    row = (1,)
+    def to_dict(self):
+        return {"schema": "fake-relation-v1", "row": [1]}
+    def verify(self, order, factor_base):
+        counts["relations"] += 1
+        return {"certified": tuple(factor_base) == (prime,)}
+
+class FakeCollector:
+    records = (FakeRelation(),)
+
+class FakePresentation:
+    order = 1
+    def to_dict(self):
+        return {"schema": "fake-presentation-v1", "order": 1}
+    def verify(self):
+        counts["presentation"] += 1
+        return True
+
+class FakePlan:
+    theorem = "BDF factor-base theorem"
+    assumptions = ("GRH",)
+    bound = 17
+
+class Components:
+    context = None
+    factored = object()
+    factor_base = FakeFactorBase
+    relations = object()
+    matrix = object()
+    analytic = object()
+    def missing(self):
+        return ()
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+engine = ClassUnitGroupEngine(
+    K, algorithm="buchmann-hecke", components=Components()
+)
+evidence, verifier = engine._generation_authority(
+    FakePlan(), (prime,), FakeCollector(), FakePresentation(),
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert counts == {"factor_base": 1, "presentation": 1, "relations": 1}
+for _index in range(2):
+    assert verifier(
+        K, K.maximal_order(), (), 1, evidence,
+        EXACT_RELATIONS_CONDITIONAL_GRH,
+    )
+assert counts == {"factor_base": 1, "presentation": 1, "relations": 1}
+assert engine._resource_usage["generation_verification_cache_hits"] == 2
+engine._generation_verification_cache_active = False
+assert verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert counts == {"factor_base": 2, "presentation": 2, "relations": 2}
+assert engine._resource_usage["generation_verification_full_replays"] == 2
+print("generation-memo")
+`);
+  assert.equal(output, "generation-memo");
+});
+
 test("forced nontrivial hR index uses replayed p-saturation evidence", () => {
   const output = run(String.raw`
 class FakeUnit:
@@ -724,9 +807,10 @@ class FakeAnalytic:
         return SaturationResult((FakeUnit("new", 1.0),))
     @staticmethod
     def verify_saturation_record(
-        field, order, units, payload, *, generation_verifier=None
+        field, order, units, payload, *, generation_verifier=None, workspace=None
     ):
         assert generation_verifier is not None
+        assert workspace is None
         assert payload["schema"] == "fake-saturation-v1"
         return True
 
@@ -816,6 +900,14 @@ engine = ClassUnitGroupEngine(
 Factored = engine.components.factored.FactoredNumberFieldElement
 initial_units = (Factored.from_element(K, epsilon**2),)
 torsion = _optional_module("sagejs.number_fields.units").roots_of_unity(K)
+class Presentation:
+    order = 1
+
+_torsion, _regulator, initial_index = engine._analytic_index(
+    Presentation(), initial_units, 1
+)
+assert initial_index.rigorous
+assert initial_index.lower_index == 2 and initial_index.upper_index == 2
 generation_evidence = {
     "schema": "test.engine-generation-authority.v1",
     "class_number": 1,
@@ -829,41 +921,39 @@ def verify_generation(field, order, units, class_number, evidence, status):
         and status == EXACT_RELATIONS_CONDITIONAL_GRH
     )
 
-certificate = engine.components.analytic.certify_unit_saturation_index(
-    K,
-    engine.order,
+before_saturation = engine._analytic_workspace.diagnostics()
+updated, artifact, attempt = engine._try_unit_saturation(
     initial_units,
-    class_number=1,
-    roots_of_unity=torsion.order,
-    precision_bits=96,
-    maximum_precision_bits=256,
-    zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
-        maximum_prime_bound=20000,
-        maximum_precision_bits=256,
-    ),
-    generation_evidence=generation_evidence,
-    generation_verifier=verify_generation,
-    proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+    torsion,
+    initial_index,
+    1,
+    1,
+    generation_evidence,
+    verify_generation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
 )
-assert certificate.index_bound == 2
-artifact = engine.components.analytic.saturate_unit_lattice(
-    K,
-    engine.order,
-    initial_units,
-    certificate,
-    torsion=torsion,
-    coordinate_bound=1,
-)
+assert attempt["accepted"] and artifact is not None
 assert artifact.complete and artifact.remaining_index_bound == 1
-updated = tuple(artifact.units)
-assert len(updated) == 1 and updated[0].evaluate()**2 == epsilon**2
-assert engine.components.analytic.verify_saturation_record(
-    K,
-    engine.order,
-    initial_units,
-    artifact.to_dict(),
-    generation_verifier=verify_generation,
+after_saturation = engine._analytic_workspace.diagnostics()
+assert after_saturation["provider_calls"] == before_saturation["provider_calls"]
+assert after_saturation["regulator_cache_hits"] > (
+    before_saturation["regulator_cache_hits"]
 )
+assert after_saturation["finite_term_cache_hits"] > (
+    before_saturation["finite_term_cache_hits"]
+)
+assert after_saturation["certificate_construction_calls"] == (
+    before_saturation["certificate_construction_calls"] + 1
+)
+assert after_saturation["certificate_replay_calls"] >= (
+    before_saturation["certificate_replay_calls"] + 2
+)
+detached = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    artifact.global_index_certificate
+)
+assert detached.workspace_diagnostics() is None
+assert engine._diagnostics()["analytic_workspace"] == after_saturation
+assert len(updated) == 1 and updated[0].evaluate()**2 == epsilon**2
 print("real-saturation-replay")
 `);
   assert.equal(output, "real-saturation-replay");
