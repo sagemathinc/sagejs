@@ -26,6 +26,21 @@ EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
 INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 
 
+def _factor_base_proof_status(plan: Any) -> str:
+    """Derive discovery authority from the theorem and its assumptions."""
+    if tuple(plan.assumptions):
+        return EXACT_RELATIONS_CONDITIONAL_GRH
+    if "Minkowski" not in str(plan.theorem):
+        raise ArithmeticError(
+            "an unconditional factor-base plan needs Minkowski authority"
+        )
+    return EXACT_UNCONDITIONAL
+
+
+def _needs_unconditional_upgrade(requested_proof: bool, proof_status: str) -> bool:
+    return bool(requested_proof and proof_status != EXACT_UNCONDITIONAL)
+
+
 def _optional_module(name: str) -> Any:
     try:
         return __import__(name, fromlist=[name.rsplit(".", 1)[-1]])
@@ -2578,14 +2593,7 @@ class ClassUnitGroupEngine:
             torsion, regulator, index = self._analytic_index(
                 presentation, units, unit_rank
             )
-            conditional_discovery = bool(tuple(plan.assumptions))
-            if not conditional_discovery and not discovery_proof:
-                raise ArithmeticError("a conditional run did not record its assumption")
-            initial_proof_status = (
-                EXACT_RELATIONS_CONDITIONAL_GRH
-                if conditional_discovery
-                else EXACT_UNCONDITIONAL
-            )
+            initial_proof_status = _factor_base_proof_status(plan)
             (
                 collector,
                 presentation,
@@ -2613,7 +2621,7 @@ class ClassUnitGroupEngine:
                 complete=bool(index.index_one),
                 regulator=regulator,
                 reason="rigorous hR index-one validation",
-                proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+                proof_status=initial_proof_status,
             )
             saturation_replayed = bool(
                 saturation_record.complete
@@ -2644,7 +2652,7 @@ class ClassUnitGroupEngine:
             )
             proof_records: tuple[Any, ...] = ()
             proof_status = initial_proof_status
-            if self.proof or discovery_proof:
+            if _needs_unconditional_upgrade(self.proof, initial_proof_status):
                 proof_records = self._unconditional_proof_pass(group)
                 proof_status = EXACT_UNCONDITIONAL
                 group.proof_status = proof_status
