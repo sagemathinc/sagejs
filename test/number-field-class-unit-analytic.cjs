@@ -111,6 +111,62 @@ try:
     raise AssertionError("nonmaximal evidence omitted its enlargement index")
 except ValueError:
     pass
+
+# Resource preflight must terminate before touching field/order operations.
+huge_index = (1 << 4096) - 159
+bounded_factorization = saturate_unit_lattice(
+    None,
+    None,
+    [],
+    huge_index,
+    maximum_saturation_work=8,
+)
+assert not bounded_factorization.complete
+assert not bounded_factorization.factorization_complete
+assert bounded_factorization.factorization_work <= 8
+assert bounded_factorization.factorization_remaining > 1
+assert "factorization" in bounded_factorization.incomplete_reason
+
+cancel_polls = []
+def cancel_factorization():
+    cancel_polls.append(1)
+    return len(cancel_polls) == 4
+try:
+    saturate_unit_lattice(
+        None,
+        None,
+        [],
+        huge_index,
+        maximum_saturation_work=1000,
+        cancelled=cancel_factorization,
+    )
+    raise AssertionError("unit-index factorization ignored cancellation")
+except AnalyticResourceError:
+    pass
+
+assert module._checked_power_at_most(2, 1000000, 100, None) is None
+assert module._checked_power_at_most(1000000, 1000000, 100, None) is None
+power_factors, power_cofactor, power_complete, power_work = (
+    module._bounded_prime_divisors(1 << 100000, 100, None)
+)
+assert power_factors == ()
+assert power_cofactor == 1 << 100000
+assert not power_complete and power_work == 0
+
+determinant_provider_calls = []
+def forbidden_high_rank_provider(precision):
+    determinant_provider_calls.append(precision)
+    raise AssertionError("high-rank determinant preflight called its provider")
+try:
+    certified_regulator_enclosure(
+        forbidden_high_rank_provider,
+        63,
+        maximum_determinant_states=65536,
+    )
+    raise AssertionError("an exponential rank-63 determinant was attempted")
+except AnalyticResourceError:
+    pass
+assert determinant_provider_calls == []
 print("unit-lattice-ok")
 `);
   assert.equal(output, "unit-lattice-ok");

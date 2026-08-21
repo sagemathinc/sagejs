@@ -149,12 +149,24 @@ class FakeOrder:
     def ideal(self, value):
         return FakeIdeal(0)
 
+class FakeSparseRow:
+    def dense(self):
+        return (4,)
+
+class FakeRelation:
+    def __init__(self, row=(4,), certified=True):
+        self.row = row
+        self.certified = certified
+    def verify(self, order, factor_base):
+        return {"certified": self.certified}
+
 class FakePresentation:
     invariants = (4,)
     invariant_positions = (0,)
     smith_right_inverse = ((1,),)
     rank = 1
     diagonal = (4,)
+    relation_rows = (FakeSparseRow(),)
     def smith_coordinates(self, row):
         return tuple(row)
     def class_coordinates(self, row):
@@ -175,7 +187,7 @@ C = _EngineClassGroup(
     ((1,),),
     FakePresentation(),
     (P,),
-    (object(),),
+    (FakeRelation(),),
     lambda coefficients: tuple(coefficients),
     lambda ideal, factor_base: (ideal.exponent,),
     lambda ideal, factor_base: ((-ideal.exponent,), object()),
@@ -190,6 +202,23 @@ assert C(P**4).is_one()
 assert C.gen(0).ideal() == P
 assert C.gen(0).order() == 4
 assert C.verify()
+result = ClassUnitComputation(
+    object(),
+    proof_status=EXACT_UNCONDITIONAL,
+    complete=True,
+    reason="test",
+    algorithm="test",
+    stages=(),
+    class_group=C,
+    unit_group=object(),
+)
+assert result.conditional_relation_records == C._relations
+assert result.conditional_presentation_evidence is C._presentation
+assert result.conditional_factor_base == C._factor_base
+C._relations = (FakeRelation((5,)),)
+assert not C.verify()
+C._relations = (FakeRelation(certified=False),)
+assert not C.verify()
 print("C4")
 `);
   assert.equal(output, "C4");
@@ -653,8 +682,13 @@ class FakeIndex:
         self.rigorous = True
 
 class FakeCertificate(FakeIndex):
+    def __init__(self, bound):
+        FakeIndex.__init__(self, bound)
+        self.index_bound = bound
     def to_dict(self):
         return {"schema": "fake-index-certificate-v1", "index_bound": self.upper_index}
+    def verify(self, field, order, units, generation_verifier=None):
+        return callable(generation_verifier)
 
 class FakeRegulator:
     precision_bits = 128
@@ -689,13 +723,20 @@ class FakeAnalytic:
             field, order, units, 1, options["generation_evidence"],
             options["proof_status"],
         )
-        return FakeCertificate(2)
+        return FakeCertificate(1 if units[0].name == "new" else 2)
     @staticmethod
     def saturate_unit_lattice(field, order, units, index_bound, **options):
         assert index_bound.upper_index == 2
-        assert options["index_bound_is_rigorous"]
+        assert "index_bound_is_rigorous" not in options
         assert options["precision_bits"] == 128
         return SaturationResult((FakeUnit("new", 1.0),))
+    @staticmethod
+    def verify_saturation_record(
+        field, order, units, payload, *, generation_verifier=None
+    ):
+        assert generation_verifier is not None
+        assert payload["schema"] == "fake-saturation-v1"
+        return True
 
 class Components:
     context = None
@@ -735,13 +776,105 @@ assert units == (FakeUnit("new", 1.0),)
 assert index.index_one
 assert record.complete and record.saturated and record.rigorous
 assert record.index_bound == 2 and record.required_primes == (2,)
+assert record._analytic_certificate.index_bound == record.remaining_index_bound
 assert record.verify(K, K.maximal_order(), old)
+forged = ClassUnitSaturationRecord(
+    K,
+    K.maximal_order(),
+    units,
+    units,
+    index_bound=1,
+    required_primes=(),
+    remaining_index_bound=1,
+    attempts=(),
+    analytic_validation={
+        "lower_index": 1,
+        "upper_index": 1,
+        "index_one": True,
+        "rigorous": True,
+    },
+)
+assert not forged.complete and not forged.verify()
+record.analytic_validation["lower_index"] = 2
+assert not record.verify()
 assert engine._resource_usage["saturation_rounds"] == 1
 assert engine.stages[-1].name == "saturation"
 assert engine.stages[-1].state == "complete"
 print("p-saturated")
 `);
   assert.equal(output, "p-saturated");
+});
+
+test("engine replays real analytic saturation from a nontrivial hR index", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**2 - 5, "a")
+a = K.gen()
+epsilon = (a + 1) / 2
+engine = ClassUnitGroupEngine(
+    K,
+    algorithm="buchmann-hecke",
+    limits=ClassUnitEngineLimits(
+        precision_bits=96,
+        max_precision_bits=256,
+        max_analytic_prime_bound=20000,
+    ),
+)
+Factored = engine.components.factored.FactoredNumberFieldElement
+initial_units = (Factored.from_element(K, epsilon**2),)
+torsion = _optional_module("sagejs.number_fields.units").roots_of_unity(K)
+generation_evidence = {
+    "schema": "test.engine-generation-authority.v1",
+    "class_number": 1,
+}
+def verify_generation(field, order, units, class_number, evidence, status):
+    return (
+        field is K
+        and order is engine.order
+        and int(class_number) == 1
+        and evidence == generation_evidence
+        and status == EXACT_RELATIONS_CONDITIONAL_GRH
+    )
+
+certificate = engine.components.analytic.certify_unit_saturation_index(
+    K,
+    engine.order,
+    initial_units,
+    class_number=1,
+    roots_of_unity=torsion.order,
+    precision_bits=96,
+    maximum_precision_bits=256,
+    zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+        maximum_prime_bound=20000,
+        maximum_precision_bits=256,
+    ),
+    generation_evidence=generation_evidence,
+    generation_verifier=verify_generation,
+    proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert certificate.index_bound == 2
+artifact = engine.components.analytic.saturate_unit_lattice(
+    K,
+    engine.order,
+    initial_units,
+    certificate,
+    torsion=torsion,
+    coordinate_bound=1,
+)
+assert artifact.complete and artifact.remaining_index_bound == 1
+updated = tuple(artifact.units)
+assert len(updated) == 1 and updated[0].evaluate()**2 == epsilon**2
+assert engine.components.analytic.verify_saturation_record(
+    K,
+    engine.order,
+    initial_units,
+    artifact.to_dict(),
+    generation_verifier=verify_generation,
+)
+print("real-saturation-replay")
+`);
+  assert.equal(output, "real-saturation-replay");
 });
 
 test("missing saturation producer exhausts bounded retries honestly", () => {
@@ -835,13 +968,29 @@ class FakeCollector:
     def __init__(self):
         self.records = []
 
+class FakeCertificate:
+    def __init__(self, index_bound):
+        self.index_bound = index_bound
+    def to_dict(self):
+        return {
+            "schema": "fake-final-index-certificate-v1",
+            "index_bound": self.index_bound,
+        }
+    def verify(self, field, order, units, generation_verifier=None):
+        return callable(generation_verifier)
+
+class FakeAnalytic:
+    @staticmethod
+    def certify_unit_saturation_index(field, order, units, **options):
+        return FakeCertificate(options["class_number"])
+
 class Components:
     context = None
     factored = None
     factor_base = object()
     relations = object()
     matrix = object()
-    analytic = object()
+    analytic = FakeAnalytic
     def missing(self):
         return ()
 

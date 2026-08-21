@@ -28,6 +28,7 @@ from mpmath import iv
 from mpmath.libmp import to_rational as _mpf_to_rational
 
 _interval_context: Any = iv
+_MAXIMUM_SATURATION_REPLAY_WORK = 1_000_000
 
 
 def _canonical_json(value: Any) -> str:
@@ -1015,24 +1016,76 @@ def validate_unit_saturation(
     return UnitSaturationResult(lattice, evidence)
 
 
-def _prime_divisors(value: int) -> tuple[int, ...]:
+def _bounded_prime_divisors(
+    value: int,
+    maximum_work: int,
+    cancelled: Callable[[], Any] | None,
+) -> tuple[tuple[int, ...], int, bool, int]:
+    """Trial-divide within an exact work budget and return the residual cofactor."""
     remaining = abs(int(value))
+    maximum_work = int(maximum_work)
     answer: list[int] = []
     divisor = 2
+    work = 0
     while divisor * divisor <= remaining:
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit-index factorization was cancelled")
+        division_work = max(1, (remaining.bit_length() + 63) // 64)
+        if division_work > maximum_work - work:
+            return tuple(answer), remaining, False, work
+        work += division_work
         if remaining % divisor == 0:
             answer.append(divisor)
             while remaining % divisor == 0:
+                if callable(cancelled) and cancelled():
+                    raise AnalyticResourceError(
+                        "unit-index factorization was cancelled"
+                    )
+                division_work = max(1, (remaining.bit_length() + 63) // 64)
+                if division_work > maximum_work - work:
+                    return tuple(answer), remaining, False, work
+                work += division_work
                 remaining //= divisor
         divisor = 3 if divisor == 2 else divisor + 2
     if remaining > 1:
         answer.append(remaining)
-    return tuple(answer)
+    return tuple(answer), 1, True, work
+
+
+def _checked_power_at_most(
+    base: int,
+    exponent: int,
+    limit: int,
+    cancelled: Callable[[], Any] | None,
+) -> int | None:
+    """Return `base**exponent` only when it does not exceed `limit`."""
+    base = int(base)
+    exponent = int(exponent)
+    limit = int(limit)
+    if base < 0 or exponent < 0 or limit < 0:
+        raise ValueError("checked powers require nonnegative inputs")
+    if exponent == 0:
+        return 1 if limit >= 1 else None
+    if base == 0:
+        return 0
+    if base == 1:
+        return 1 if limit >= 1 else None
+    value = 1
+    for _index in range(exponent):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit p-saturation was cancelled")
+        if value > limit // base:
+            return None
+        value *= base
+    return value
 
 
 def _coordinate_vectors(bound: int, length: int) -> Iterable[tuple[int, ...]]:
     if length == 0:
         yield ()
+        return
+    if bound == 0:
+        yield (0,) * length
         return
     for prefix in _coordinate_vectors(bound, length - 1):
         for value in range(-bound, bound + 1):
@@ -1518,6 +1571,10 @@ class ExactUnitSaturationResult:
         remaining_index_bound: int,
         index_bound_is_rigorous: bool,
         global_index_certificate: Any,
+        factorization_complete: bool,
+        factorization_remaining: int,
+        factorization_work: int,
+        factorization_work_limit: int,
         required_primes: Sequence[int],
         unresolved_primes: Sequence[int],
         evidence: Sequence[Any],
@@ -1533,9 +1590,17 @@ class ExactUnitSaturationResult:
         self.remaining_index_bound = int(remaining_index_bound)
         self.index_bound_is_rigorous = bool(index_bound_is_rigorous)
         self.global_index_certificate = global_index_certificate
+        self.factorization_complete = bool(factorization_complete)
+        self.factorization_remaining = int(factorization_remaining)
+        self.factorization_work = int(factorization_work)
+        self.factorization_work_limit = int(factorization_work_limit)
         self.precision_history = tuple(int(value) for value in precision_history)
         self.index_enlargement = self.initial_index_bound // self.remaining_index_bound
-        self.complete = self.index_bound_is_rigorous and not self.unresolved_primes
+        self.complete = (
+            self.index_bound_is_rigorous
+            and self.factorization_complete
+            and not self.unresolved_primes
+        )
         self.saturated = self.complete
         self.rigorous = self.complete
         self.incomplete_reason = None if self.complete else incomplete_reason
@@ -1573,6 +1638,10 @@ class ExactUnitSaturationResult:
             "remaining_index_bound": self.remaining_index_bound,
             "index_bound_is_rigorous": self.index_bound_is_rigorous,
             "global_index_certificate": self.global_index_certificate,
+            "factorization_complete": self.factorization_complete,
+            "factorization_remaining": self.factorization_remaining,
+            "factorization_work": self.factorization_work,
+            "factorization_work_limit": self.factorization_work_limit,
             "index_enlargement": self.index_enlargement,
             "required_primes": list(self.required_primes),
             "unresolved_primes": list(self.unresolved_primes),
@@ -1639,23 +1708,21 @@ def saturate_unit_lattice(
     completion. Integer and bare `HRIndexValidationResult` inputs remain useful
     as search bounds but are always diagnostic-only.
     """
+    index_certificate: UnitSaturationIndexCertificate | None = None
     global_index_certificate: Any = None
     generation_verifier: Callable[..., Any] | None = None
     if isinstance(index_bound, UnitSaturationIndexCertificate):
         initial_index = int(index_bound.index_bound)
-        rigorous_bound = index_bound.verify(field, order, units)
-        global_index_certificate = index_bound.to_dict()
-        generation_verifier = index_bound._generation_verifier
+        index_certificate = index_bound
     elif isinstance(index_bound, HRIndexValidationResult):
         initial_index = int(
             index_bound.unique_index
             if index_bound.unique_index is not None
             else index_bound.upper_index
         )
-        rigorous_bound = False
     else:
         initial_index = int(index_bound)
-        rigorous_bound = False
+    rigorous_bound = False
     if initial_index < 1:
         raise ValueError("the saturation index bound must be positive")
     precision = int(precision_bits)
@@ -1678,6 +1745,38 @@ def saturate_unit_lattice(
         raise ValueError("the residue candidate cap must be at least two")
     selected_units = tuple(units)
     rank = len(selected_units)
+    required_primes, factorization_remaining, factorization_complete, factor_work = (
+        _bounded_prime_divisors(initial_index, maximum_saturation_work, cancelled)
+    )
+    if not factorization_complete:
+        return ExactUnitSaturationResult(
+            field,
+            order,
+            units,
+            selected_units,
+            (),
+            initial_index_bound=initial_index,
+            remaining_index_bound=initial_index,
+            index_bound_is_rigorous=False,
+            global_index_certificate=None,
+            factorization_complete=False,
+            factorization_remaining=factorization_remaining,
+            factorization_work=factor_work,
+            factorization_work_limit=maximum_saturation_work,
+            required_primes=required_primes,
+            unresolved_primes=required_primes,
+            evidence=(),
+            precision_history=(precision,),
+            incomplete_reason=(
+                "unit-index factorization exhausted maximum_saturation_work"
+            ),
+            generation_verifier=None,
+        )
+    saturation_work_remaining = maximum_saturation_work - factor_work
+    if index_certificate is not None:
+        rigorous_bound = index_certificate.verify(field, order, units)
+        global_index_certificate = index_certificate.to_dict()
+        generation_verifier = index_certificate._generation_verifier
     if rank and any(
         not _exact_unit(field, order, _ordinary_unit(unit)) for unit in selected_units
     ):
@@ -1701,37 +1800,84 @@ def saturate_unit_lattice(
                 "supplied torsion does not match canonical roots of unity"
             )
     torsion_elements = tuple(canonical_torsion.elements)
-    required_primes = _prime_divisors(initial_index)
     remaining_index = initial_index
     evidence: list[Any] = []
     unresolved: list[int] = []
     precision_history: list[int] = []
     incomplete_reason: str | None = None
-    candidate_count = (2 * coordinate_bound + 1) ** int(field.degree())
+    degree = int(field.degree())
+    candidate_count = _checked_power_at_most(
+        2 * coordinate_bound + 1,
+        degree,
+        min(maximum_root_candidates, maximum_saturation_work),
+        cancelled,
+    )
+    residue_work = 0
+    selected_local_primes: list[int] = []
+    for modulus_value in local_rational_primes:
+        modulus = int(modulus_value)
+        if modulus < 2 or modulus > residue_candidate_cap:
+            continue
+        modulus_power = _checked_power_at_most(
+            modulus,
+            degree,
+            min(residue_candidate_cap, maximum_saturation_work),
+            cancelled,
+        )
+        modulus_factors, _cofactor, modulus_factored, modulus_factor_work = (
+            _bounded_prime_divisors(
+                modulus,
+                saturation_work_remaining,
+                cancelled,
+            )
+        )
+        saturation_work_remaining -= modulus_factor_work
+        if (
+            modulus_power is not None
+            and modulus_factored
+            and modulus_factors == (modulus,)
+        ):
+            selected_local_primes.append(modulus)
+            if residue_work > maximum_saturation_work - modulus_power:
+                residue_work = maximum_saturation_work + 1
+                break
+            residue_work += modulus_power
 
     for prime in required_primes:
-        target_count = (prime**rank - 1) * len(torsion_elements)
-        residue_work = sum(
-            modulus ** int(field.degree())
-            for modulus in local_rational_primes
-            if _is_prime(int(modulus))
-            and int(modulus) ** int(field.degree()) <= residue_candidate_cap
+        torsion_count = len(torsion_elements)
+        target_power_limit = min(
+            maximum_target_classes // torsion_count + 1,
+            saturation_work_remaining // torsion_count + 1,
         )
-        planned_work = target_count * (candidate_count + residue_work)
-        if (
-            target_count > maximum_target_classes
-            or candidate_count > maximum_root_candidates
-            or planned_work > maximum_saturation_work
-        ):
+        prime_power = _checked_power_at_most(prime, rank, target_power_limit, cancelled)
+        if prime_power is None or candidate_count is None:
             unresolved.append(prime)
             incomplete_reason = (
                 "unit p-saturation preflight exceeds target or work caps"
             )
             continue
+        target_count = (prime_power - 1) * torsion_count
+        # Root search visits every target for every coordinate candidate. A
+        # complete local obstruction constructs every target once and its
+        # mandatory replay constructs/enumerates them again, so reserve a
+        # conservative global upper bound before either phase starts.
+        per_target_work = candidate_count + 3 + 2 * residue_work
+        planned_work = (
+            maximum_saturation_work + 1
+            if per_target_work > 0
+            and target_count > maximum_saturation_work // per_target_work
+            else target_count * per_target_work
+        )
         resolved = False
         while remaining_index % prime == 0:
             if callable(cancelled) and cancelled():
                 raise AnalyticResourceError("unit p-saturation was cancelled")
+            if planned_work > saturation_work_remaining:
+                incomplete_reason = (
+                    "unit p-saturation exhausted maximum_saturation_work"
+                )
+                break
+            saturation_work_remaining -= planned_work
             attempt_precision = precision
             attempt_history: list[int] = []
             candidate: tuple[tuple[int, ...], int, Any] | None = None
@@ -1777,7 +1923,7 @@ def saturate_unit_lattice(
                     selected_units,
                     torsion_elements,
                     prime,
-                    local_rational_primes,
+                    selected_local_primes,
                     residue_candidate_cap,
                     attempt_history,
                     cancelled,
@@ -1848,6 +1994,10 @@ def saturate_unit_lattice(
         remaining_index_bound=remaining_index,
         index_bound_is_rigorous=rigorous_bound,
         global_index_certificate=global_index_certificate,
+        factorization_complete=factorization_complete,
+        factorization_remaining=factorization_remaining,
+        factorization_work=factor_work,
+        factorization_work_limit=maximum_saturation_work,
         required_primes=required_primes,
         unresolved_primes=unresolved,
         evidence=evidence,
@@ -1886,7 +2036,34 @@ def verify_saturation_evidence(
         remaining_index = initial_index
         if initial_index < 1:
             return False
-        required = _prime_divisors(initial_index)
+        factorization_work_limit = _payload_integer(
+            payload["factorization_work_limit"], "factorization work limit"
+        )
+        if factorization_work_limit < 1:
+            return False
+        required, factorization_remaining, factorization_complete, factor_work = (
+            _bounded_prime_divisors(
+                initial_index,
+                min(
+                    factorization_work_limit,
+                    _MAXIMUM_SATURATION_REPLAY_WORK,
+                ),
+                None,
+            )
+        )
+        if (
+            _payload_boolean(
+                payload["factorization_complete"], "factorization completeness"
+            )
+            != factorization_complete
+            or _payload_integer(
+                payload["factorization_remaining"], "factorization cofactor"
+            )
+            != factorization_remaining
+            or _payload_integer(payload["factorization_work"], "factorization work")
+            != factor_work
+        ):
+            return False
         if (
             tuple(
                 _payload_integer(value, "required saturation prime")
@@ -2041,7 +2218,7 @@ def verify_saturation_evidence(
             != unresolved
         ):
             return False
-        complete = rigorous_bound and not unresolved
+        complete = rigorous_bound and factorization_complete and not unresolved
         payload_precision_history = tuple(
             _payload_integer(value, "saturation precision")
             for value in payload["precision_history"]
@@ -2085,6 +2262,10 @@ def verify_saturation_evidence(
             remaining_index_bound=remaining_index,
             index_bound_is_rigorous=rigorous_bound,
             global_index_certificate=certificate_payload,
+            factorization_complete=factorization_complete,
+            factorization_remaining=factorization_remaining,
+            factorization_work=factor_work,
+            factorization_work_limit=factorization_work_limit,
             required_primes=required,
             unresolved_primes=unresolved,
             evidence=replayed_evidence,
@@ -2102,7 +2283,12 @@ def verify_saturation_evidence(
 verify_saturation_record = verify_saturation_evidence
 
 
-def _determinant_ball(rows: Sequence[Sequence[RealBall]]) -> RealBall:
+def _determinant_ball(
+    rows: Sequence[Sequence[RealBall]],
+    *,
+    maximum_states: int,
+    cancelled: Callable[[], Any] | None,
+) -> RealBall:
     size = len(rows)
     if size == 0:
         return RealBall(1)
@@ -2115,8 +2301,14 @@ def _determinant_ball(rows: Sequence[Sequence[RealBall]]) -> RealBall:
         0: RealBall(1, precision_bits=precision, rigorous=rigorous)
     }
     for row_index in range(size):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("regulator determinant was cancelled")
         next_states: dict[int, RealBall] = {}
         for mask, partial in states.items():
+            if len(next_states) > maximum_states:
+                raise AnalyticResourceError(
+                    "regulator determinant exceeded its state cap"
+                )
             for column in range(size):
                 bit = 1 << column
                 if mask & bit:
@@ -2194,6 +2386,8 @@ def certified_regulator_enclosure(
     absolute_tolerance_bits: int = 64,
     maximum_precision_bits: int = 4096,
     weighted_complex_places: bool = True,
+    maximum_determinant_states: int = 65_536,
+    cancelled: Callable[[], Any] | None = None,
 ) -> RegulatorEnclosure:
     """Enclose the weighted-log determinant with precision escalation.
 
@@ -2203,8 +2397,15 @@ def certified_regulator_enclosure(
     regulator convention.
     """
     unit_rank = int(unit_rank)
+    maximum_states = int(maximum_determinant_states)
     if unit_rank < 0:
         raise ValueError("unit_rank must be nonnegative")
+    if maximum_states < 1:
+        raise ValueError("maximum_determinant_states must be positive")
+    if _checked_power_at_most(2, unit_rank, maximum_states, cancelled) is None:
+        raise AnalyticResourceError(
+            "regulator determinant subset states exceed maximum_determinant_states"
+        )
     if not weighted_complex_places:
         raise AnalyticCertificationError(
             "certified regulators require the frozen complex-place factor-two convention"
@@ -2266,7 +2467,11 @@ def certified_regulator_enclosure(
                 for row in range(unit_rank)
             ]
         refined_rows = rows
-        determinant = _determinant_ball(rows).absolute_value()
+        determinant = _determinant_ball(
+            rows,
+            maximum_states=maximum_states,
+            cancelled=cancelled,
+        ).absolute_value()
         determinant_widths.append(determinant.width())
         if not determinant.contains_zero() and determinant.radius() <= tolerance:
             return RegulatorEnclosure(
@@ -2291,6 +2496,8 @@ def regulator_from_factored_units(
     precision_bits: int = 100,
     absolute_tolerance_bits: int = 64,
     maximum_precision_bits: int = 4096,
+    maximum_determinant_states: int = 65_536,
+    cancelled: Callable[[], Any] | None = None,
 ) -> RegulatorEnclosure:
     """Use factored elements' weighted archimedean-logarithm provider."""
 
@@ -2309,6 +2516,8 @@ def regulator_from_factored_units(
         precision_bits=precision_bits,
         absolute_tolerance_bits=absolute_tolerance_bits,
         maximum_precision_bits=maximum_precision_bits,
+        maximum_determinant_states=maximum_determinant_states,
+        cancelled=cancelled,
     )
 
 
