@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Enforce reproducible lazy specialist dependency receipts and per-specialist compressed delta budgets so large mathematical libraries cannot silently enter the eager Wasm core",
-  "base_commit": "2adc7bce453723e4b960787363474f51faed7f6a",
+  "base_commit": "8caf746854a8337da94eee995910c0fce44191ea",
   "claims": [
     "packages/flint-wasm/scripts/production-receipt.cjs",
     "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
@@ -37,10 +37,27 @@
     "pnpm test:native",
     "pnpm test:sea"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 59.772,
+      "started_at": "2026-08-21T00:23:48.392Z",
+      "commit": "bde962935cd1011a81767455194c20ef14a15d7c",
+      "workspace_fingerprint": "575cc533b7622d7943f8bd24c6e9be5dc6b2d14748763ed7f79259d18fd64227",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Production manifests now authenticate one eager group, release evidence, and five lazy specialist groups with exact asset ownership, dependency closure, source entries, and independently enforced gzip/Brotli delta ceilings. Focused receipt/release mutation tests and architecture checks pass; the real 123.6 MB production artifact passed the topology audit.",
+    "risks": [
+      "The aggregate branch currently fails an unrelated wasm-capabilities mutation assertion after workload/capability integration; pnpm test:portable is recorded as failed until the integration lane repairs that test.",
+      "Existing flint-wasm payload assertions still use the pre-smalljac 6 MB raw limit and must be reconciled with the reviewed per-group compressed budgets."
+    ],
+    "next_steps": [
+      "Rebuild the exact integrated artifact and rerun the three required distribution receipts after the aggregate capability test is repaired.",
+      "Classify every newly staged host asset or specialist binary in artifactTopology; unclassified assets intentionally fail manifest generation."
+    ]
   }
 }

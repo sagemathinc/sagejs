@@ -153,7 +153,10 @@
         "id": "compiled-flint",
         "kind": "specialist",
         "dependencies": ["eager-core"],
-        "assets": ["native-kernels/kernel-flint.wasm"],
+        "assets": [
+          "kernel-flint-resource-backend.mjs",
+          "native-kernels/kernel-flint.wasm"
+        ],
         "maximumCompressedDelta": {
           "gzipBytes": 2400000,
           "brotliBytes": 1900000
