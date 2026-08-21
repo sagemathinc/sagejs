@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quadratic-narrow-relations",
+  "title": "Quadratic narrow relation presentation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compute bounded non-materializing real quadratic narrow class-group invariant factors and ideal maps from authenticated ordinary relation-engine evidence",
+  "base_commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+  "claims": [
+    "src/lib/sagejs/number_fields/quadratic_narrow_relations.py",
+    "src/baselib/number_fields.py",
+    "test/number-field-quadratic-narrow-relations.cjs",
+    "test/fixtures/number-field-quadratic-narrow-relations.json",
+    "bench/compare-quadratic-class-groups.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch1.c",
+    "/home/user/upstream/Hecke.jl/src/NumFieldOrd/NfOrd/Clgp.jl"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage/PARI NarrowClassGroup exact invariants",
+      "Magma NarrowClassGroup exact invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-quadratic-narrow-relations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.673,
+      "started_at": "2026-08-21T15:19:09.490Z",
+      "commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+      "workspace_fingerprint": "18caf697050a0def45bb29c58c8f24a6a551ccbacc913812ff7c7bdceef9a53e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/quadratic_narrow_relations.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.505,
+      "started_at": "2026-08-21T15:19:11.802Z",
+      "commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+      "workspace_fingerprint": "18caf697050a0def45bb29c58c8f24a6a551ccbacc913812ff7c7bdceef9a53e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.402,
+      "started_at": "2026-08-21T15:19:25.755Z",
+      "commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+      "workspace_fingerprint": "18caf697050a0def45bb29c58c8f24a6a551ccbacc913812ff7c7bdceef9a53e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.121,
+      "started_at": "2026-08-21T15:19:55.804Z",
+      "commit": "817ce63721b0aad7fae91dc8c4d7b1c3c69f5318",
+      "workspace_fingerprint": "18caf697050a0def45bb29c58c8f24a6a551ccbacc913812ff7c7bdceef9a53e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a bounded ordinary-Python augmented relation presentation for real quadratic narrow class groups. Authenticated principal relations gain an exact norm-sign bit, the orientation generator has order two, saturated negative-norm units collapse it, and exact SNF retains non-split extension data. Public auto/explicit routing now returns non-materializing invariant-factor groups with capped enumeration, bounded arbitrary-ideal inverse maps, exact representative ideals, and replayable live certificates. Added Sage/PARI and Magma fixtures, C4 versus C2xC2 regression coverage, public routing/cap tests, and an opt-in relation benchmark. Full build passed after the final Python source fix; D=12 and D=60 live Buchmann-Hecke computations and certificate replay passed, including D=60 generator ideal roundtrips.",
+    "risks": [
+      "Central integration must raise the number-field-algorithms package budget: this lane measures 1138236 bytes against the current 1120000-byte cap.",
+      "The new strict module must be added to pyrightconfig.json by the integration lane because that shared file is outside this lane; direct Pyright reports zero errors.",
+      "This is a bounded relation/SNF backend, not NUCOMP. Runtime still depends on the existing Buchmann-Hecke relation collector and inverse ideal reduction may exhaust its explicit candidate cap."
+    ],
+    "next_steps": [
+      "Add src/lib/sagejs/number_fields/quadratic_narrow_relations.py to pyrightconfig.json and raise the number-field-algorithms source budget before central architecture checks.",
+      "Run exact-head package architecture and changed-test gates after cherry-pick."
+    ]
+  }
+}
