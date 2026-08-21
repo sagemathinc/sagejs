@@ -26,7 +26,7 @@ def packed_permutation_center(
     center_indices: UInt64Buffer,
     generators: UInt64Buffer,
     hash_table: UInt64Buffer,
-    status: UInt64Buffer,
+    result_status: UInt64Buffer,
     degree: uint64,
     generator_count: uint64,
     element_capacity: uint64,
@@ -44,12 +44,12 @@ def packed_permutation_center(
     one: uint64 = 1
     two: uint64 = 2
     three: uint64 = 3
-    if len(status) != 4:
+    if len(result_status) != 4:
         return one
-    status[0] = 1
-    status[1] = 0
-    status[2] = 0
-    status[3] = 0
+    result_status[0] = 1
+    result_status[1] = 0
+    result_status[2] = 0
+    result_status[3] = 0
     if degree == 0 or degree > 8:
         return one
     if generator_count == 0 or generator_count > 4:
@@ -86,7 +86,7 @@ def packed_permutation_center(
             point = point + one
         generator_index = generator_index + one
     if valid == zero:
-        status[3] = work
+        result_status[3] = work
         return one
 
     hash_slots = len(hash_table)
@@ -113,9 +113,9 @@ def packed_permutation_center(
             point = zero
             while point < degree:
                 if work >= max_work:
-                    status[0] = two
-                    status[1] = element_count
-                    status[3] = work
+                    result_status[0] = two
+                    result_status[1] = element_count
+                    result_status[3] = work
                     return two
                 generator_image = generators[generator_index * degree + point]
                 image = elements[cursor * degree + generator_image - one]
@@ -136,9 +136,9 @@ def packed_permutation_center(
                     point = zero
                     while point < degree and equal != 0:
                         if work >= max_work:
-                            status[0] = two
-                            status[1] = element_count
-                            status[3] = work
+                            result_status[0] = two
+                            result_status[1] = element_count
+                            result_status[3] = work
                             return two
                         generator_image = generators[generator_index * degree + point]
                         image = elements[cursor * degree + generator_image - one]
@@ -154,9 +154,9 @@ def packed_permutation_center(
 
             if found == zero:
                 if element_count >= element_capacity:
-                    status[0] = three
-                    status[1] = element_count
-                    status[3] = work
+                    result_status[0] = three
+                    result_status[1] = element_count
+                    result_status[3] = work
                     return three
                 point = zero
                 while point < degree:
@@ -179,10 +179,10 @@ def packed_permutation_center(
             point = zero
             while point < degree and central != 0:
                 if work >= max_work:
-                    status[0] = two
-                    status[1] = element_count
-                    status[2] = center_count
-                    status[3] = work
+                    result_status[0] = two
+                    result_status[1] = element_count
+                    result_status[2] = center_count
+                    result_status[3] = work
                     return two
                 generator_image = generators[generator_index * degree + point]
                 element_image = elements[element_index * degree + point]
@@ -198,10 +198,10 @@ def packed_permutation_center(
             center_count = center_count + one
         element_index = element_index + one
 
-    status[0] = zero
-    status[1] = element_count
-    status[2] = center_count
-    status[3] = work
+    result_status[0] = zero
+    result_status[1] = element_count
+    result_status[2] = center_count
+    result_status[3] = work
     return zero
 
 
