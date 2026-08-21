@@ -6576,45 +6576,122 @@ def _riemann_zeta_module() -> Any:
     return _riemann_zeta_module_cache
 
 
+def _analytic_precision(value: Any) -> Any:
+    if value is None:
+        value = 53
+    precision = runtime.normalize_integer(value)
+    if (
+        runtime.jstype(precision) != "number"
+        or not runtime.number.isSafeInteger(precision)
+        or precision < 16
+    ):
+        raise ValueError("analytic precision must be at least 16 bits")
+    return precision
+
+
+def _analytic_complex_point(field: Any, value: Any) -> Any:
+    if runtime.array.isArray(value) and len(value) == 2:
+        return field(value[0], value[1])
+    try:
+        return field(value)
+    except Exception:
+        evaluator_factory = getattr(value, "_plot_complex_callable", None)
+        if evaluator_factory is not None:
+            evaluator = evaluator_factory([])
+            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
+            real_part = runtime.reflect.get(evaluated, "real")
+            imaginary_part = runtime.reflect.get(evaluated, "imag")
+            if (
+                runtime.jstype(real_part) != "number"
+                or runtime.jstype(imaginary_part) != "number"
+                or not runtime.number.isFinite(real_part)
+                or not runtime.number.isFinite(imaginary_part)
+            ):
+                return _riemann_raise_nonfinite()
+            return field(real_part, imaginary_part)
+        real_part = getattr(value, "real", runtime.undefined)
+        imaginary_part = getattr(value, "imag", runtime.undefined)
+        if (
+            real_part is not runtime.undefined
+            and imaginary_part is not runtime.undefined
+        ):
+            if callable(real_part):
+                real_part = real_part()
+            if callable(imaginary_part):
+                imaginary_part = imaginary_part()
+            try:
+                return field(str(real_part), str(imaginary_part))
+            except Exception:
+                pass
+        raise
+
+
+def _analytic_complex_batch(points: Any, precision: Any) -> Any:
+    if not runtime.array.isArray(points) or len(points) == 0:
+        raise ValueError("analytic points must be a nonempty list or tuple")
+    precision = _analytic_precision(precision)
+    field = runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
+    return field, [_analytic_complex_point(field, point)._native for point in points]
+
+
+def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
+    """Numerically evaluate complex gamma at a nonempty batch of points.
+
+    The entire batch is sent through one Arb/Acb backend call. The returned
+    midpoint values belong to `ComplexField(prec)`; this function does not
+    implement symbolic gamma or exact integer/half-integer simplification.
+    """
+
+    field, native_points = _analytic_complex_batch(points, prec)
+    backend = runtime.flint_backend()
+    evaluator = getattr(backend, "complexGammaValues", runtime.undefined)
+    if evaluator is runtime.undefined:
+        raise RuntimeError("the complex-gamma batch backend is unavailable")
+    native_values = evaluator(native_points, field.precision())
+    return [field._fromNative(value) for value in native_values]
+
+
+def complex_gamma(value: Any, prec: Any = 53) -> Any:
+    """Numerically evaluate complex gamma in `ComplexField(prec)`."""
+
+    return complex_gamma_values([value], prec=prec)[0]
+
+
+def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
+    """Numerically evaluate Riemann xi at a nonempty batch of points.
+
+    Sage.js uses the no-half normalization
+    `s*(s-1)*pi^(-s/2)*Gamma(s/2)*zeta(s)`, matching
+    `RiemannZeta(prec).xi(s)`. The entire batch uses one backend call when the
+    receipt-backed Arb/Acb batch is available.
+    """
+
+    field, native_points = _analytic_complex_batch(points, prec)
+    backend = runtime.flint_backend()
+    evaluator = getattr(backend, "riemannXiValues", runtime.undefined)
+    if evaluator is runtime.undefined:
+        scalar = getattr(backend, "riemannXiStandardValue", runtime.undefined)
+        if scalar is runtime.undefined:
+            raise RuntimeError("the Riemann-xi backend is unavailable")
+        native_values = [scalar(point, field.precision()) for point in native_points]
+    else:
+        native_values = evaluator(native_points, field.precision())
+    two = field(2)
+    return [field._fromNative(value) * two for value in native_values]
+
+
+def riemann_xi(value: Any, prec: Any = 53) -> Any:
+    """Numerically evaluate no-half-normalized Riemann xi."""
+
+    return riemann_xi_values([value], prec=prec)[0]
+
+
 class _FlintRiemannZetaProvider:
     def _field(self, precision: Any) -> Any:
         return runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
 
     def _point(self, field: Any, value: Any) -> Any:
-        if runtime.array.isArray(value) and len(value) == 2:
-            return field(value[0], value[1])
-        try:
-            return field(value)
-        except Exception:
-            evaluator_factory = getattr(value, "_plot_complex_callable", None)
-            if evaluator_factory is not None:
-                evaluator = evaluator_factory([])
-                evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
-                real_part = runtime.reflect.get(evaluated, "real")
-                imaginary_part = runtime.reflect.get(evaluated, "imag")
-                if (
-                    runtime.jstype(real_part) != "number"
-                    or runtime.jstype(imaginary_part) != "number"
-                    or not runtime.number.isFinite(real_part)
-                    or not runtime.number.isFinite(imaginary_part)
-                ):
-                    return _riemann_raise_nonfinite()
-                return field(real_part, imaginary_part)
-            real_part = getattr(value, "real", runtime.undefined)
-            imaginary_part = getattr(value, "imag", runtime.undefined)
-            if (
-                real_part is not runtime.undefined
-                and imaginary_part is not runtime.undefined
-            ):
-                if callable(real_part):
-                    real_part = real_part()
-                if callable(imaginary_part):
-                    imaginary_part = imaginary_part()
-                try:
-                    return field(str(real_part), str(imaginary_part))
-                except Exception:
-                    pass
-            raise
+        return _analytic_complex_point(field, value)
 
     def jet(
         self,
