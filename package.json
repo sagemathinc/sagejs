@@ -121,6 +121,7 @@
     "architecture:check": "pnpm run ffi:check && pnpm run architecture:packages && pnpm run architecture:native && pnpm run architecture:wasm && pnpm run architecture:wasm-workloads",
     "wasm:workload-dashboard": "node scripts/wasm-workload-dashboard.cjs --write",
     "wasm:workload-enforce": "node scripts/wasm-workload-dashboard.cjs --check",
+    "bench:wasm-numeric-plot": "node bench/wasm-numeric-plot-profile.mjs",
     "ffi:check": "node bin/sagejs ffi check",
     "ffi:lifecycle:fuzz": "node tools/ffi/lifecycle-fuzz.cjs && node test/fmpq-resource-ops-lifecycle.cjs && node test/ffi-resource-memory.cjs && node test/exact-polynomial-resource-ffi.cjs && node test/fmpz-matrix-resource-ffi.cjs && node test/nmod-matrix-resource-lifecycle.cjs && node test/extension-polynomial-resource-ffi.cjs",
     "parallel:new": "node scripts/parallel-development.cjs new",

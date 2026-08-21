@@ -56,6 +56,7 @@ const unit = [
   "test/wasm-production-native-kernels.cjs",
   "test/wasm-production-resource-closure.cjs",
   "test/wasm-graph-components.cjs",
+  "test/wasm-numeric-plot-batching.cjs",
   "test/wasm-workload-dashboard.cjs",
   "test/generated-classification.cjs",
   "test/gf2-polynomial-packed-core.cjs",
