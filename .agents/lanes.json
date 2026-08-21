@@ -52,6 +52,7 @@
         "packages/flint/src/analytic_batch_core.c",
         "packages/flint/src/analytic_batch_core.h",
         "packages/flint-wasm/src/numeric.c",
+        "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/numeric-backend.mjs",
         "packages/flint-wasm/analytic-backend.mjs",
         "packages/flint-wasm/scripts/build.cjs",
