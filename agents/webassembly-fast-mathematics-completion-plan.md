@@ -1,12 +1,63 @@
 # WebAssembly fast-mathematics completion plan
 
-**Status:** proposed program of work  
-**Written:** 2026-08-20  
+**Status:** implemented release candidate; external device activation remains
+**Written:** 2026-08-20
+**Completion recorded:** 2026-08-21
 **Primary product boundary:** fast Sage-compatible mathematics in browsers,
 Node.js, and application-owned WebViews  
 **Related plans:**
 [`webassembly-production-parity-and-apps-plan.md`](webassembly-production-parity-and-apps-plan.md),
 [`hyperelliptic-smalljac-genus2-3-plan.md`](hyperelliptic-smalljac-genus2-3-plan.md)
+
+## Completion record
+
+The locally verifiable program is implemented in release candidate
+`b164bfafcf061ae1bc2d0abc398c87d7e68aae98`, production artifact
+`sha256:ee239b992d3245b132b9cf6d507b81769ee5dc8842801ef2b7d46c69f72612e2`.
+Its receipt identifies the exact source and pinned toolchain closure. The
+machine-generated completion evidence records:
+
+- 953 reviewed Wasm-relevant capabilities, including 514 available public or
+  internal boundaries;
+- 37 registered source-kernel families, 30 production families, 229 compiled
+  functions, and zero unsupported production functions;
+- 32 public release-parity workflows passing unchanged on Chromium, Firefox,
+  and WebKit, with all 66 required route occurrences observed and no page
+  errors;
+- 20 heavyweight performance workloads with reviewed native and per-engine
+  baselines;
+- 44 of 44 heavyweight dashboard entries accelerated, with no observed
+  `portable-computation` route;
+- authenticated Node-Wasm CLI, website, and mobile asset consumers of the same
+  artifact;
+- 60 production assets totaling 126,892,806 raw, 18,837,149 gzip, and
+  11,883,741 Brotli bytes, all within reviewed global and per-topology budgets.
+
+The implemented surface includes mature smalljac/ffpoly elliptic and genus-2
+coefficient generation, elliptic L-values and batched plots, modular symbols,
+number-field order/ideal/zeta paths, exact and sparse matrices, M4RI, extension
+fields and authenticated Conway data, algebraic matrices, graphs, group and
+combinatorial kernels, multivariate resultants, MPFR/Arb/Acb numerical fields
+and special functions, and bounded symbolic integration/root finding. The
+Node-Wasm CLI accepts files, standard input, `-c`, and interactive input and
+emits authenticated route diagnostics.
+
+This completion is not a claim that every engine matches native speed.
+Three-sample baselines preserve visible performance debt: Firefox remains
+notably slower for Acb-heavy plotting and several algebraic/numerical kernels,
+and modular-symbol startup is disproportionately expensive in every browser.
+Those paths are nevertheless authenticated Wasm rather than Python fallback,
+complete at their documented sizes without timeout, and remain explicit
+optimization work rather than hidden compatibility work.
+
+The release boundary is equally explicit. Linux validation prepared and
+verified the Android/iOS offline asset closure, mobile TypeScript/lint/Jest and
+contract suites, the live website's offline/cache/interrupt behavior, and the
+WebKit memory and file-origin contracts. macOS/Xcode simulator builds, signed
+physical current iPhone and iPad receipts, App Store provisioning, TestFlight,
+and production DNS remain external activation gates. Genus-3 smalljac
+certification and arbitrary native-extension/Unix compatibility remain product
+exclusions, not silent fallbacks.
 
 ## Decision
 

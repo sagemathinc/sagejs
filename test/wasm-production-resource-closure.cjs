@@ -177,7 +177,7 @@ function resourceBridgeState() {
   };
 }
 
-test("production resource closure leaves only undeclared extension resources", async () => {
+test("production resource closure compiles every registered function", async () => {
   const inventory = await inventoryProductionKernels({
     root,
     manifestPath: join(root, "architecture", "native-kernels.json"),
@@ -187,30 +187,8 @@ test("production resource closure leaves only undeclared extension resources", a
       .map((fn) => [kernel.id, fn.name, fn.reason, fn.resources])
   );
   assert.equal(inventory.inventory.flatMap((kernel) => kernel.functions)
-    .filter((fn) => fn.status === "compiled-source").length, 211);
-  assert.deepEqual(unsupported, [
-    ["extension-polynomial-flint-production",
-      "flint_extension_polynomial_from_coordinates",
-      "foreign-resource-not-declared-for-wasm", ["fq_context", "fq_polynomial"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_polynomial_add",
-      "foreign-resource-not-declared-for-wasm", ["fq_polynomial"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_polynomial_multiply",
-      "foreign-resource-not-declared-for-wasm", ["fq_polynomial"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_element_coordinate",
-      "foreign-resource-not-declared-for-wasm", ["fq_element"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_element_coordinate_sum",
-      "foreign-resource-not-declared-for-wasm", ["fq_element"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_polynomial_coordinate",
-      "foreign-resource-not-declared-for-wasm", ["fq_polynomial"]],
-    ["extension-polynomial-flint-production",
-      "flint_extension_polynomial_coordinate_sum",
-      "foreign-resource-not-declared-for-wasm", ["fq_polynomial"]],
-  ]);
+    .filter((fn) => fn.status === "compiled-source").length, 229);
+  assert.deepEqual(unsupported, []);
 });
 
 test("real FLINT Wasm adopts, borrows, grows memory, and closes resources", {

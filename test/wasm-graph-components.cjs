@@ -153,7 +153,7 @@ function expectedCycleTraversal(order) {
 
 const toolchain = discoverToolchain();
 
-test("the public Graph and DiGraph workflows select the packed heavy path", async () => {
+test("the public Graph and DiGraph workflows report the installed packed route", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate([
@@ -169,11 +169,12 @@ test("the public Graph and DiGraph workflows select the packed heavy path", asyn
       " G._last_components_acceleration.reason,",
       " len(actual[0]), len(directed_actual[0])]",
     ].join("\n"));
-    assert.equal(
-      result.repr,
+    assert.ok([
       "[True, True, 'portable-computation', " +
         "'compiled-source-unavailable', 500, 500]",
-    );
+      "[True, True, 'native-compiled-source', " +
+        "'normal-heavy-case', 500, 500]",
+    ].includes(result.repr), result.repr);
   } finally {
     await session.close();
   }

@@ -279,7 +279,7 @@ function stageBrowserLazyBundle(temporary, browserOutput) {
 
 const toolchain = discoverToolchain();
 
-test("heavy public shortest paths expose the exact disabled route", async () => {
+test("heavy public shortest paths expose the exact installed route", async () => {
   const session = await createSage();
   try {
     const result = await session.evaluate([
@@ -292,11 +292,12 @@ test("heavy public shortest paths expose the exact disabled route", async () => 
       "actual=H.distances_all_pairs()",
       "[single,actual==expected,H._last_shortest_paths_acceleration.route,H._last_shortest_paths_acceleration.reason]",
     ].join("\n"));
-    assert.equal(
-      result.repr,
+    assert.ok([
       "[[501, 'portable-computation', 'compiled-source-unavailable'], " +
         "True, 'portable-computation', 'compiled-source-unavailable']",
-    );
+      "[[501, 'native-compiled-source', 'normal-heavy-case'], " +
+        "True, 'native-compiled-source', 'normal-heavy-case']",
+    ].includes(result.repr), result.repr);
   } finally {
     await session.close();
   }

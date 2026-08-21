@@ -35,8 +35,21 @@ test("staging consumes and verifies the production artifact manifest", async () 
     layout: {},
     assets,
     capabilities: [],
+    topology: {
+      schema: "sagejs.wasm-artifact-topology/v1",
+      identity: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      eagerGroup: "eager-core",
+      groups: [],
+    },
   };
   artifact.identity = productionArtifactIdentity(artifact);
+  assert.notEqual(
+    productionArtifactIdentity({
+      ...artifact,
+      topology: { ...artifact.topology, eagerGroup: "mutated" },
+    }),
+    artifact.identity,
+  );
   const manifestContents = JSON.stringify(artifact);
   await writeFile(path.join(packageRoot, "dist/production-manifest.json"), manifestContents);
   await writeFile(path.join(packageRoot, "dist/build-receipt.json"), JSON.stringify({ schema: "sagejs.wasm-build-receipt/v1", artifact, commit: "deadbeef", productionManifestSha256: createHash("sha256").update(manifestContents).digest("hex") }));

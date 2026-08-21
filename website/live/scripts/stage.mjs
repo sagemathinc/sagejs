@@ -40,6 +40,7 @@ export function productionArtifactIdentity(manifest) {
     layout: manifest.layout,
     assets: manifest.assets,
     capabilities: manifest.capabilities,
+    topology: manifest.topology,
   })).digest("hex")}`;
 }
 

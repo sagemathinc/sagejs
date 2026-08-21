@@ -294,6 +294,7 @@ const integration = [
   "test/elliptic-lseries-native.cjs",
   "test/elliptic-lseries-oracles.cjs",
   "test/elliptic-lseries-reference.cjs",
+  "test/elliptic-lseries-wasm-resource.cjs",
   "test/wasm-curve-fallbacks.cjs",
   "test/wasm-elliptic-public-fallbacks.cjs",
   "test/webassembly-docs.cjs",
