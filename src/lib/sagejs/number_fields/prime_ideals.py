@@ -579,6 +579,9 @@ class NumberFieldPrimeIdeal(NumberFieldIdeal):
         self._ramification_index = int(ramification_index)
         self._residue_degree = int(residue_degree)
         self._residue_presentation = presentation
+        # Successive powers are immutable exact ideals and are reused heavily
+        # by integral element valuations during class-group relation search.
+        self._valuation_power_cache = [self]
 
     def rational_prime(self) -> Any:
         return sage.ZZ(self._rational_prime)

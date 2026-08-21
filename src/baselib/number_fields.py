@@ -1367,6 +1367,10 @@ class NumberFieldIdeal:
         self._order = order
         self._field = order.number_field()
         self._basis_rows = _nf_canonical_lattice(rows, self._field.degree())
+        # Ideal membership is one of the hottest operations in relation
+        # collection.  The canonical lattice never changes, so its inverse
+        # coordinate matrix is safe to compute lazily once per ideal.
+        self._membership_inverse_cache = runtime.undefined
         if len(self._basis_rows) not in [0, self._field.degree()]:
             raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows):
@@ -1403,8 +1407,15 @@ class NumberFieldIdeal:
             element = self._field(value)
         except Exception:
             return False
+        if len(self._basis_rows) == 0:
+            return element.is_zero()
         row = _nf_coordinates(element, self._field.degree())
-        return _nf_row_in_lattice(row, self._basis_rows)
+        if self._membership_inverse_cache is runtime.undefined:
+            self._membership_inverse_cache = self.basis_matrix().inverse()
+        coordinates = (
+            _nf_global("vector")(sage.QQ, row) * self._membership_inverse_cache
+        )
+        return all(value._denominator == 1 for value in coordinates)
 
     def contains_ideal(self, other: NumberFieldIdeal) -> bool:
         return _nf_ideal_arithmetic_module().ideal_contains(self, other)
