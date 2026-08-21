@@ -173,5 +173,11 @@
     "cold_max_seconds": 8,
     "warm_iterations": 5,
     "warm_max_seconds": 5
+  },
+  "routing_benchmark": {
+    "imaginary_forms_max_abs_discriminant": 1000000007,
+    "imaginary_forms_cyclic_structure_median_seconds": 0.010602253800000017,
+    "real_forms_default_max_enumeration_checks": 5000000,
+    "source": "website/performance/quadratic-class-groups-pilot.json and exact real candidate-count preflight"
   }
 }
