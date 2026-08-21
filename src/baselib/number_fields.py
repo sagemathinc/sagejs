@@ -120,6 +120,13 @@ def _nf_quadratic_class_units_module() -> Any:
     )
 
 
+def _nf_quadratic_narrow_relations_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_quadratic_narrow_relations_module__",
+        "sagejs.number_fields.quadratic_narrow_relations",
+    )
+
+
 def _nf_complex_result(value: Any, precision: int) -> Any:
     field = _nf_global("ComplexField")(precision)
     if hasattr(value, "_native"):
@@ -2566,8 +2573,20 @@ class NumberFieldParent(sage.Parent):
             algorithm == "auto" and len(general_limits) != 0
         ):
             if narrow:
-                raise NotImplementedError(
-                    "large-discriminant narrow class groups await a narrow relation backend"
+                return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
+                    discriminant,
+                    narrow,
+                    algorithm,
+                    "buchmann-hecke-narrow",
+                    (
+                        "explicit augmented narrow relation algorithm"
+                        if algorithm == "buchmann-hecke"
+                        else "general relation-engine limits were requested"
+                    ),
+                    None,
+                    None,
+                    None,
+                    False,
                 )
             return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
                 discriminant,
@@ -2598,12 +2617,11 @@ class NumberFieldParent(sage.Parent):
                         discriminant,
                         narrow,
                         algorithm,
-                        "quadratic-forms",
+                        "buchmann-hecke-narrow",
                         "the exact narrow reduced-form candidate estimate exceeds its cap",
                         None,
                         form_plan.enumeration_checks,
                         form_plan.max_enumeration_checks,
-                        True,
                         False,
                     )
                 return _nf_quadratic_class_units_module().QuadraticClassRoutingPlan(
@@ -2672,11 +2690,39 @@ class NumberFieldParent(sage.Parent):
         )
 
     def _quadratic_general_limits(self, limits: dict[str, Any]) -> dict[str, Any]:
-        specialized = {"max_reduced_forms", "max_enumeration_checks", "max_steps"}
+        specialized = {
+            "max_reduced_forms",
+            "max_enumeration_checks",
+            "max_steps",
+            "narrow_max_relations",
+            "narrow_max_columns",
+            "narrow_max_matrix_entries",
+            "narrow_max_integer_bits",
+            "narrow_max_list_size",
+            "narrow_max_reduction_candidates",
+        }
         answer = {}
         for name in runtime.object.keys(limits):
             if name not in specialized:
                 answer[name] = runtime.reflect.get(limits, name)
+        return answer
+
+    def _quadratic_narrow_relation_limits(
+        self, limits: dict[str, Any]
+    ) -> dict[str, Any]:
+        prefix = "narrow_"
+        names = {
+            "max_relations",
+            "max_columns",
+            "max_matrix_entries",
+            "max_integer_bits",
+            "max_list_size",
+            "max_reduction_candidates",
+        }
+        answer = {}
+        for name in runtime.object.keys(limits):
+            if name.startswith(prefix) and name[len(prefix) :] in names:
+                answer[name[len(prefix) :]] = runtime.reflect.get(limits, name)
         return answer
 
     def class_group(
@@ -2757,19 +2803,35 @@ class NumberFieldParent(sage.Parent):
         if use_cache and self._narrow_class_group_cache is not runtime.undefined:
             return self._narrow_class_group_cache
         routing = self.quadratic_class_group_plan(algorithm, narrow=True, **limits)
-        if routing.backend != "quadratic-forms":
-            raise NotImplementedError(
-                "the selected backend does not compute narrow quadratic classes"
+        if routing.backend == "buchmann-hecke-narrow":
+            general_limits = self._quadratic_general_limits(limits)
+            narrow_limits = self._quadratic_narrow_relation_limits(limits)
+            context = _nf_class_unit_groups_module().class_unit_context(
+                self,
+                proof=proof,
+                algorithm="buchmann-hecke",
+                **general_limits,
             )
-        routing.require_supported()
-        backend = _nf_quadratic_class_units_module().real_quadratic_class_group(
-            int(self.discriminant()),
-            narrow=True,
-            algorithm="quadratic-forms",
-            **limits,
-        )
-        backend.routing_plan = routing
-        result = NumberFieldClassGroup(self, backend)
+            result = (
+                _nf_quadratic_narrow_relations_module().narrow_class_group_from_result(
+                    context, **narrow_limits
+                )
+            )
+            result.routing_plan = routing
+        else:
+            if routing.backend != "quadratic-forms":
+                raise NotImplementedError(
+                    "the selected backend does not compute narrow quadratic classes"
+                )
+            routing.require_supported()
+            backend = _nf_quadratic_class_units_module().real_quadratic_class_group(
+                int(self.discriminant()),
+                narrow=True,
+                algorithm="quadratic-forms",
+                **limits,
+            )
+            backend.routing_plan = routing
+            result = NumberFieldClassGroup(self, backend)
         if use_cache:
             self._narrow_class_group_cache = result
         return result
@@ -2846,6 +2908,12 @@ class NumberFieldParent(sage.Parent):
         if signature[0] == 0 and signature[1] == 1:
             return self.class_number(proof=proof, algorithm=algorithm, **limits)
         routing = self.quadratic_class_group_plan(algorithm, narrow=True, **limits)
+        if routing.backend == "buchmann-hecke-narrow":
+            return int(
+                self.narrow_class_group(
+                    proof=proof, algorithm=algorithm, **limits
+                ).order()
+            )
         if routing.backend != "quadratic-forms":
             raise NotImplementedError(
                 "the selected backend does not compute narrow quadratic classes"

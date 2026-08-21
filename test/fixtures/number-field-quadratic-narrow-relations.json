@@ -1,0 +1,46 @@
+{
+  "schema": "sagejs.number-fields/quadratic-narrow-relations-oracle-v1",
+  "generated": "2026-08-21",
+  "oracles": {
+    "sage_pari": {
+      "version": "SageMath 10.9.post1 / PARI 2.18",
+      "command": "K.<a> = QuadraticField(D); K.class_group().invariants(); K.narrow_class_group().invariants()"
+    },
+    "magma": {
+      "version": "Magma V2.29-1",
+      "command": "K:=QuadraticField(D); O:=Integers(K); AbelianInvariants(ClassGroup(O)); AbelianInvariants(NarrowClassGroup(O));"
+    }
+  },
+  "cases": [
+    {
+      "discriminant": 12,
+      "ordinary_invariants": [],
+      "narrow_invariants": [2],
+      "negative_norm_unit": false
+    },
+    {
+      "discriminant": 40,
+      "ordinary_invariants": [2],
+      "narrow_invariants": [2],
+      "negative_norm_unit": true
+    },
+    {
+      "discriminant": 60,
+      "ordinary_invariants": [2],
+      "narrow_invariants": [2, 2],
+      "negative_norm_unit": false
+    },
+    {
+      "discriminant": 321,
+      "ordinary_invariants": [3],
+      "narrow_invariants": [6],
+      "negative_norm_unit": false
+    },
+    {
+      "discriminant": 10000001,
+      "ordinary_invariants": [],
+      "narrow_invariants": [2],
+      "negative_norm_unit": false
+    }
+  ]
+}

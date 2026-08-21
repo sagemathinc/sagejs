@@ -10,6 +10,7 @@ const flint = require(join(root, "packages", "flint"));
 const gp = process.env.PARI_GP || "gp";
 const magma = process.env.MAGMA || "/home/user/bin/magma";
 const json = process.argv.includes("--json");
+const relationGroups = process.argv.includes("--narrow-relations");
 const realCase = {
   discriminant: 10000001n,
   classNumber: 1n,
@@ -127,6 +128,51 @@ print("RESULT_REAL", ordinary.order(), narrow.order(), ordinary.certificate.redu
     seconds: Number(match[6]),
     semantics: "exact-unconditional streamed reduced-form cycle count",
   };
+}
+
+function realRelationGroupResults() {
+  const [executable, arguments_] = sagejsInvocation(["--python", "-"]);
+  const source = `
+import time
+x = polygen(QQ, "x")
+for D, polynomial in ((12, x*x - 3), (60, x*x - 15)):
+    field = NumberField(polynomial, "a")
+    started = time.perf_counter()
+    group = field.narrow_class_group(algorithm="buchmann-hecke")
+    seconds = time.perf_counter() - started
+    print("RESULT_NARROW_RELATIONS", D, list(group.invariants()), group.order(), group.proof_status, seconds)
+`;
+  const result = spawnSync(executable, arguments_, {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    input: source,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    process.stderr.write(result.stdout || "");
+    process.stderr.write(result.stderr || "");
+    throw new Error("Sage.js narrow relation benchmark failed");
+  }
+  return result.stdout
+    .split("\n")
+    .map((line) => line.match(
+      /RESULT_NARROW_RELATIONS\s+(\d+)\s+\[([^\]]*)\]\s+(\d+)\s+(\S+)\s+([0-9.]+)/,
+    ))
+    .filter(Boolean)
+    .map((match) => ({
+      discriminant: Number(match[1]),
+      invariants: match[2]
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map(Number),
+      order: Number(match[3]),
+      proofStatus: match[4],
+      seconds: Number(match[5]),
+      semantics: "bounded authenticated augmented-relation SNF",
+      materializesAllClasses: false,
+    }));
 }
 
 function pariResults() {
@@ -247,11 +293,24 @@ realQuadratic.correct =
   BigInt(realQuadratic.narrowClassNumber) === realCase.narrowClassNumber &&
   !realQuadratic.materializesAllReducedForms;
 correct &&= realQuadratic.correct;
+const narrowRelationGroups = relationGroups ? realRelationGroupResults() : [];
+const expectedNarrowRelations = new Map([
+  [12, "2"],
+  [60, "2,2"],
+]);
+for (const row of narrowRelationGroups) {
+  row.correct =
+    row.invariants.join(",") === expectedNarrowRelations.get(row.discriminant) &&
+    row.proofStatus === "exact-unconditional" &&
+    !row.materializesAllClasses;
+  correct &&= row.correct;
+}
 
 const report = {
   generatedAt: new Date().toISOString(),
   correct,
   realQuadratic,
+  narrowRelationGroups,
   rows: rows.map((row) => ({
     ...row,
     discriminant: row.discriminant.toString(),
@@ -304,6 +363,14 @@ if (json) {
       `${realQuadratic.preflightChecks} bounded divisor trials, ` +
       `materializes classes=${realQuadratic.materializesAllReducedForms}`,
   );
+  for (const row of narrowRelationGroups) {
+    console.log(
+      `${row.discriminant} Sage.js narrow relation group`.padEnd(54),
+      `${(row.seconds * 1000).toFixed(3)} ms`.padStart(12),
+      `invariants=[${row.invariants.join(", ")}], ${row.semantics}`,
+      row.correct ? "" : "WRONG ANSWER",
+    );
+  }
   console.log(`\ncorrectness: ${correct ? "PASS" : "FAIL"}`);
 }
 
