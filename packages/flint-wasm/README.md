@@ -116,17 +116,32 @@ console.log((await sage.evaluate("factor(2026)")).stdout);
 await sage.close();
 ```
 
-The package also includes a developer CLI.  It accepts a source file, `-c`,
-piped source, or starts a line-oriented REPL:
+The package also includes a production-artifact developer CLI. It accepts a
+source file, `-c`, piped source, or starts a line-oriented REPL:
 
 ```sh
 node packages/flint-wasm/node-cli.mjs -c 'print(factor(2026))'
 printf '%s\n' 'E = EllipticCurve([1,2,3,4,999]); print(E.anlist(10000)[-5:])' |
   node packages/flint-wasm/node-cli.mjs
+node packages/flint-wasm/node-cli.mjs --timeout 30000 --diagnostics example.sage
 ```
 
 Both forms use `dist/production-manifest.json` and the same Wasm modules,
 compiler cache, capability report, and nested compiler worker as the browser.
+Before starting a worker, the CLI verifies every artifact digest and proves
+that the package-root Node runtime sources exactly match the copies bound into
+the build receipt. A stale source/artifact combination therefore fails closed
+instead of testing an unrecorded evaluator. `--verify-only` performs just this
+check. `--diagnostics` writes a separate JSON record to stderr containing the
+artifact identity, input digest, elapsed time, outcome, and evaluator-owned
+capability-route instrumentation; `--diagnostics-file FILE` writes that record
+to a file without mixing it into ordinary program output.
+
+`--timeout MS` uses the session's worker-replacement timeout, so synchronous
+compiler or mathematics loops cannot wedge the Node process. In the interactive
+REPL, `:reset` explicitly replaces the worker and clears session state. This is
+a mathematical evaluation and profiling harness: it deliberately has no shell,
+subprocess, host-filesystem, package-manager, or general Unix emulation surface.
 
 Rich graphics can be rendered with the separate adapter:
 
